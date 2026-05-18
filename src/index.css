@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: #FFF8F2;
+}
+::selection { background: #DB6433; color: white; }
+
+/* Storefront uses bespoke type — never render italics. Scoped to .no-italic
+   so third-party widgets (Lucide etc.) keep their intended styling. */
+.no-italic em, .no-italic i { font-style: normal; }
+
+@keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.fade-in { animation: fade-in .55s cubic-bezier(.2,.7,.2,1) both; }
+
+@keyframes scale-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+.scale-in { animation: scale-in .35s cubic-bezier(.2,.7,.2,1) both; }
+
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.marquee { animation: marquee 45s linear infinite; }
+
+.scrollx::-webkit-scrollbar { display: none; }
+.scrollx { -ms-overflow-style: none; scrollbar-width: none; }
+
+@keyframes slide-fade { from { opacity: 0; transform: scale(1.02); } to { opacity: 1; transform: scale(1); } }
+.slide-fade { animation: slide-fade .8s cubic-bezier(.2,.7,.2,1) both; }
+
+@keyframes pulse-ring { 0% { transform: scale(.95); opacity: .8; } 70% { transform: scale(1.4); opacity: 0; } 100% { transform: scale(1.4); opacity: 0; } }
+.pulse-ring { animation: pulse-ring 2.2s cubic-bezier(.4,0,.6,1) infinite; }
+
+.arr-scroll { scroll-snap-type: x mandatory; scroll-behavior: smooth; }
+.arr-scroll > * { scroll-snap-align: start; }
+
+.glass-panel { background: rgba(255,255,255,.92); backdrop-filter: blur(16px); }
+.focus-ring:focus-visible { outline: 3px solid #DB6433; outline-offset: 3px; }
+
+@media (max-width: 640px) {
+  .hero-min { min-height: 420px !important; }
+  .hero-text { font-size: 2rem !important; line-height: 1.1 !important; }
+}

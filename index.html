@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#DB6433" />
+    <title>Alabama Wholesale Inc · Direct-From-Manufacturer Wholesale</title>
+    <meta name="description" content="Tobacco, novelties, candy, beverages, motor oil and more — wholesale ready to ship from Birmingham, AL. Licensed retailers only." />
+    <link rel="canonical" href="https://alabamawholesaleinc.com/" />
+
+    <!-- Open Graph / social previews -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Alabama Wholesale Inc" />
+    <meta property="og:title" content="Alabama Wholesale Inc · Direct-From-Manufacturer Wholesale" />
+    <meta property="og:description" content="Tobacco, novelties, candy, beverages, motor oil and more — wholesale ready to ship from Birmingham, AL. Licensed retailers only." />
+    <meta property="og:url" content="https://alabamawholesaleinc.com/" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Font preconnect + preload (kept here instead of injected at runtime to avoid FOUC) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
+
+    <!-- LocalBusiness structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      "name": "Alabama Wholesale Inc",
+      "url": "https://alabamawholesaleinc.com/",
+      "image": "https://alabamawholesaleinc.com/og.jpg",
+      "telephone": "+1-205-555-0199",
+      "email": "trade@alabamawholesale.com",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "613 Graymont Ave N",
+        "addressLocality": "Birmingham",
+        "addressRegion": "AL",
+        "postalCode": "35203",
+        "addressCountry": "US"
+      },
+      "openingHoursSpecification": [
+        { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"], "opens": "07:00", "closes": "18:00" },
+        { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Saturday","Sunday"], "opens": "08:00", "closes": "17:00" }
+      ],
+      "areaServed": ["Alabama","Georgia","Mississippi","Tennessee"]
+    }
+    </script>
+  </head>
+  <body>
+    <!-- Static form definitions for Netlify Forms. The build-time HTML parser
+         registers these by name; the live React forms POST to "/" with matching
+         field names. Hidden from users via display:none. -->
+    <form name="apply" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input type="text" name="business" />
+      <input type="text" name="contact" />
+      <input type="email" name="email" />
+      <input type="tel" name="phone" />
+      <input type="text" name="type" />
+      <input type="text" name="license" />
+      <input type="text" name="state" />
+      <input type="text" name="volume" />
+      <input type="text" name="bot-field" />
+    </form>
+    <form name="quote" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input type="text" name="business" />
+      <input type="text" name="contact" />
+      <input type="email" name="email" />
+      <input type="tel" name="phone" />
+      <input type="text" name="delivery" />
+      <input type="date" name="preferredDate" />
+      <textarea name="notes"></textarea>
+      <input type="text" name="refNum" />
+      <input type="text" name="accountType" />
+      <textarea name="items"></textarea>
+      <input type="number" name="totalUnits" />
+      <input type="text" name="subtotal" />
+      <input type="text" name="bot-field" />
+    </form>
+    <form name="newsletter" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input type="email" name="email" />
+      <input type="text" name="bot-field" />
+    </form>
+
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
