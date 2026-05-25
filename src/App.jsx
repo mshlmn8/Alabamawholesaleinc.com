@@ -11,6 +11,19 @@ import {
   WELCOME_OFFERS, STORAGE, FREE_DELIVERY_THRESHOLD
 } from './data/content.js';
 import { PRODUCTS, NAV_ORDER, NAV_CATEGORIES, NEW_ARRIVALS_IDS } from './data/products.js';
+import { useAuth } from './lib/useAuth.js';
+import { submitOrder } from './lib/orders.js';
+import { AuthModal } from './components/AuthModal.jsx';
+import { AccountPage } from './pages/account/AccountPage.jsx';
+import { AdminPage } from './pages/admin/AdminPage.jsx';
+
+// Pricing tier → display discount. Mirrors the seed values in
+// supabase/migrations/20260517000000_initial_schema.sql.
+const TIER_DISCOUNT = { standard: 0, silver: 0.05, gold: 0.10 };
+const priceForProfile = (listPrice, profile) => {
+  const d = TIER_DISCOUNT[profile?.pricing_tier] || 0;
+  return listPrice * (1 - d);
+};
 
 const safeReadJson = (key, fallback) => {
   if (typeof window === 'undefined') return fallback;
@@ -86,8 +99,12 @@ export default function App() {
   const [megaOpen, setMegaOpen] = useState(false);
   const [annIdx, setAnnIdx] = useState(0);
 
-  // LOGIN — when logged in, prices are revealed
-  const [user, setUser] = useState(() => safeReadJson(STORAGE.user, null)); // { name, email, business }
+  // Real auth via Supabase. `user` is kept in the legacy { name, email, business }
+  // shape so downstream components don't have to change.
+  const auth = useAuth();
+  const { profile, signOut } = auth;
+  const user = profile ? { id: profile.id, name: profile.name, email: profile.email, business: profile.business } : null;
+  const isAdmin = profile?.role === 'admin';
   const [loginOpen, setLoginOpen] = useState(false);
 
   // WELCOME POPUP — shows on first visit
@@ -103,12 +120,16 @@ export default function App() {
     if (section === 'product' && rest[0]) return { page: 'product', productId: Number(decodeURIComponent(rest[0])) };
     if (section === 'category' && rest[0]) return { page: 'category', category: decodeURIComponent(rest[0]) };
     if (section === 'quote') return { page: 'quote' };
+    if (section === 'account') return { page: 'account' };
+    if (section === 'admin') return { page: 'admin' };
     return { page: 'home' };
   };
   const routeToHash = (r) => {
     if (r.page === 'product') return `#/product/${r.productId}`;
     if (r.page === 'category') return `#/category/${encodeURIComponent(r.category)}`;
     if (r.page === 'quote') return '#/quote';
+    if (r.page === 'account') return '#/account';
+    if (r.page === 'admin') return '#/admin';
     return '#/';
   };
 
@@ -225,7 +246,12 @@ export default function App() {
   }, [cartOpen, navOpen, loginOpen, welcomeOpen]);
 
   const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
-  const cartItems = PRODUCTS.filter(p => cart[p.id]).map(p => ({ ...p, qty: cart[p.id] }));
+  const cartItems = PRODUCTS.filter(p => cart[p.id]).map(p => ({
+    ...p,
+    qty: cart[p.id],
+    // Apply per-tier discount for display + order persistence.
+    price: priceForProfile(p.price, profile),
+  }));
   const cartTotal = cartItems.reduce((s, i) => s + i.qty * (user ? i.price : 0), 0);
   const addToCart = (id, n = 1) => setCart(c => ({ ...c, [id]: (c[id] || 0) + n }));
   const decCart = (id) => setCart(c => {
@@ -235,11 +261,10 @@ export default function App() {
   const removeCart = (id) => setCart(c => { const n = { ...c }; delete n[id]; return n; });
   const clearCart = () => setCart({});
 
-  const handleLogin = (data) => {
-    setUser(data);
-    setLoginOpen(false);
+  const handleLogout = async () => {
+    await signOut();
+    navigate({ page: 'home' });
   };
-  const handleLogout = () => setUser(null);
 
   if (!verified) return <AgeGate onYes={handleAgeYes} onNo={() => setTooYoung(true)} tooYoung={tooYoung} />;
 
@@ -254,22 +279,31 @@ export default function App() {
               navOpen={navOpen} setNavOpen={setNavOpen}
               megaOpen={megaOpen} setMegaOpen={setMegaOpen}
               goHome={goHome} goCategory={goCategory} goProduct={goProduct}
-              user={user} onLoginClick={() => setLoginOpen(true)} onLogout={handleLogout} />
+              user={user} isAdmin={isAdmin}
+              onAccountClick={() => navigate({ page: 'account' })}
+              onAdminClick={() => navigate({ page: 'admin' })}
+              onLoginClick={() => setLoginOpen(true)} onLogout={handleLogout} />
 
       {route.page === 'home' && <HomePage goProduct={goProduct} goCategory={goCategory} cart={cart} addToCart={addToCart} decCart={decCart} user={user} onLoginClick={() => setLoginOpen(true)} />}
       {route.page === 'product' && <ProductPage productId={route.productId} cart={cart} addToCart={addToCart} decCart={decCart} goProduct={goProduct} goHome={goHome} goCategory={goCategory} user={user} onLoginClick={() => setLoginOpen(true)} />}
       {route.page === 'category' && <CategoryPage category={route.category} cart={cart} addToCart={addToCart} decCart={decCart} goProduct={goProduct} goHome={goHome} user={user} onLoginClick={() => setLoginOpen(true)} />}
-      {route.page === 'quote' && <QuotePage items={cartItems} total={cartTotal} addToCart={addToCart} decCart={decCart} removeCart={removeCart} clearCart={clearCart} goHome={goHome} user={user} />}
+      {route.page === 'quote' && <QuotePage items={cartItems} total={cartTotal} addToCart={addToCart} decCart={decCart} removeCart={removeCart} clearCart={clearCart} goHome={goHome} user={user} profile={profile} />}
+      {route.page === 'account' && <AccountPage profile={profile} goHome={goHome} />}
+      {route.page === 'admin' && <AdminPage profile={profile} goHome={goHome} />}
 
       <Footer goHome={goHome} goCategory={goCategory} />
 
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)}
                   items={cartItems} total={cartTotal} addToCart={addToCart} decCart={decCart}
                   goQuote={goQuote} user={user} onLoginClick={() => setLoginOpen(true)} />
-      {navOpen && <MobileNav onClose={() => setNavOpen(false)} goHome={goHome} goCategory={goCategory} user={user} onLoginClick={() => { setNavOpen(false); setLoginOpen(true); }} onLogout={handleLogout} />}
+      {navOpen && <MobileNav onClose={() => setNavOpen(false)} goHome={goHome} goCategory={goCategory}
+                              user={user} isAdmin={isAdmin}
+                              onAccountClick={() => { setNavOpen(false); navigate({ page: 'account' }); }}
+                              onAdminClick={() => { setNavOpen(false); navigate({ page: 'admin' }); }}
+                              onLoginClick={() => { setNavOpen(false); setLoginOpen(true); }} onLogout={handleLogout} />}
 
       <WelcomePopup open={welcomeOpen} onClose={() => setWelcomeOpen(false)} goCategory={(c) => { setWelcomeOpen(false); goCategory(c); }} goQuote={() => { setWelcomeOpen(false); goQuote(); }} />
-      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} onLogin={handleLogin} />
+      <AuthModal open={loginOpen} onClose={() => setLoginOpen(false)} />
 
       <WhatsAppButton />
     </div>
@@ -339,7 +373,7 @@ function AgeGate({ onYes, onNo, tooYoung }) {
 // =============================================================================
 // HEADER
 // =============================================================================
-function Header({ cartCount, onCart, navOpen, setNavOpen, megaOpen, setMegaOpen, goHome, goCategory, goProduct, user, onLoginClick, onLogout }) {
+function Header({ cartCount, onCart, navOpen, setNavOpen, megaOpen, setMegaOpen, goHome, goCategory, goProduct, user, isAdmin, onAccountClick, onAdminClick, onLoginClick, onLogout }) {
   return (
     <>
       {/* Utility bar */}
@@ -357,9 +391,16 @@ function Header({ cartCount, onCart, navOpen, setNavOpen, megaOpen, setMegaOpen,
             </span>
           </div>
           <div className="flex items-center gap-5" style={{ ...mono, fontWeight: 500 }}>
-            <a href="#apply" className="hover:text-[#DB6433] transition-colors">APPLY FOR ACCOUNT</a>
-            <span style={{ color: C.border }}>·</span>
-            <a href="#" className="hover:text-[#DB6433] transition-colors">TRACK ORDER</a>
+            {!user && <button onClick={onLoginClick} className="hover:text-[#DB6433] transition-colors">APPLY FOR ACCOUNT</button>}
+            {user && (
+              <button onClick={onAccountClick} className="hover:text-[#DB6433] transition-colors">MY ACCOUNT</button>
+            )}
+            {isAdmin && (
+              <>
+                <span style={{ color: C.border }}>·</span>
+                <button onClick={onAdminClick} className="hover:text-[#DB6433] transition-colors" style={{ color: C.orange }}>ADMIN</button>
+              </>
+            )}
             <span style={{ color: C.border }}>·</span>
             {user ? (
               <button onClick={onLogout} className="hover:text-[#DB6433] transition-colors flex items-center gap-1.5">
@@ -404,12 +445,14 @@ function Header({ cartCount, onCart, navOpen, setNavOpen, megaOpen, setMegaOpen,
 
           {/* Right side */}
           <div className="flex items-center gap-3 md:gap-5 ml-auto shrink-0">
-            <a href="#apply" className="hidden lg:flex items-center gap-2 text-xs uppercase font-bold transition-colors hover:text-[#DB6433]"
-               style={{ ...mono, letterSpacing: '0.15em', color: C.text }}>
-              <Users size={16} /> APPLY
-            </a>
+            {!user && (
+              <button onClick={onLoginClick} className="hidden lg:flex items-center gap-2 text-xs uppercase font-bold transition-colors hover:text-[#DB6433]"
+                      style={{ ...mono, letterSpacing: '0.15em', color: C.text }}>
+                <Users size={16} /> APPLY
+              </button>
+            )}
             {user ? (
-              <button onClick={onLogout} className="hidden md:flex items-center gap-2 text-xs uppercase font-bold transition-colors hover:text-[#DB6433]"
+              <button onClick={onAccountClick} className="hidden md:flex items-center gap-2 text-xs uppercase font-bold transition-colors hover:text-[#DB6433]"
                       style={{ ...mono, letterSpacing: '0.15em', color: C.greenTag }}>
                 <span className="w-2 h-2 rounded-full" style={{ background: C.greenTag }} /> {user.name?.split(' ')[0] || 'Trade'}
               </button>
@@ -601,7 +644,7 @@ function ProductSearch({ goProduct, goCategory, compact = false }) {
   );
 }
 
-function MobileNav({ onClose, goHome, goCategory, user, onLoginClick, onLogout }) {
+function MobileNav({ onClose, goHome, goCategory, user, isAdmin, onAccountClick, onAdminClick, onLoginClick, onLogout }) {
   return (
     <div className="lg:hidden fixed inset-0 z-50 flex" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={onClose}>
       <aside onClick={(e) => e.stopPropagation()}
@@ -652,10 +695,24 @@ function MobileNav({ onClose, goHome, goCategory, user, onLoginClick, onLogout }
               <Users size={14} /> SIGN IN FOR PRICING
             </button>
           )}
-          <a href="#apply" onClick={onClose} className="block text-center py-3 text-xs uppercase font-bold"
-             style={{ ...mono, letterSpacing: '0.18em', background: C.orange, color: 'white' }}>
-            APPLY FOR WHOLESALE
-          </a>
+          {user && (
+            <button onClick={onAccountClick} className="w-full text-center py-3 text-xs uppercase font-bold"
+                    style={{ ...mono, letterSpacing: '0.18em', background: C.navy, color: 'white' }}>
+              My Account
+            </button>
+          )}
+          {isAdmin && (
+            <button onClick={onAdminClick} className="w-full text-center py-3 text-xs uppercase font-bold"
+                    style={{ ...mono, letterSpacing: '0.18em', background: C.orange, color: 'white' }}>
+              Admin Dashboard
+            </button>
+          )}
+          {!user && (
+            <button onClick={onLoginClick} className="block w-full text-center py-3 text-xs uppercase font-bold"
+                    style={{ ...mono, letterSpacing: '0.18em', background: C.orange, color: 'white' }}>
+              APPLY FOR WHOLESALE
+            </button>
+          )}
           <a href={`tel:${COMPANY.phoneRaw}`} className="flex items-center justify-center gap-2 py-3 text-xs uppercase"
              style={{ ...mono, letterSpacing: '0.15em', border: `1px solid ${C.border}`, color: C.text }}>
             <Phone size={14} /> {COMPANY.phone}
@@ -1735,7 +1792,7 @@ function CategoryPage({ category, cart, addToCart, decCart, goProduct, goHome, u
   );
 }
 
-function QuotePage({ items, total, addToCart, decCart, removeCart, clearCart, goHome, user }) {
+function QuotePage({ items, total, addToCart, decCart, removeCart, clearCart, goHome, user, profile }) {
   const [step, setStep] = useState('review');
   const [data, setData] = useState({
     business: user?.business || '', contact: user?.name || '', email: user?.email || '', phone: '', notes: '',
@@ -1754,6 +1811,22 @@ function QuotePage({ items, total, addToCart, decCart, removeCart, clearCart, go
     const itemsText = items.map(it =>
       `${it.qty} × ${it.name} (${it.sku})${user ? ` @ $${it.price.toFixed(2)}` : ''}`
     ).join('\n');
+
+    // Try Supabase first (creates an orders row + line items the trade rep can
+    // see in the admin dashboard). Always also POST to Netlify Forms so any
+    // inbox/Slack notification rule still fires. We treat the submission as
+    // successful if EITHER path lands the lead.
+    let supaOk = false;
+    try {
+      const r = await submitOrder({
+        profile, refNum, formData: data, items,
+        totalUnits, subtotal: user ? total : null,
+      });
+      supaOk = r.source === 'supabase' && r.ok;
+    } catch (err) {
+      console.warn('Supabase order submit failed, falling back to Netlify Forms', err);
+    }
+
     try {
       const res = await submitNetlifyForm('quote', {
         ...data,
@@ -1763,11 +1836,17 @@ function QuotePage({ items, total, addToCart, decCart, removeCart, clearCart, go
         totalUnits,
         subtotal: user ? total.toFixed(2) : 'pending'
       });
-      if (!res.ok) throw new Error(`Submission failed (${res.status})`);
+      if (!supaOk && !res.ok) throw new Error(`Submission failed (${res.status})`);
       setStep('submitted');
       window.scrollTo(0, 0);
     } catch (err) {
-      setSubmitError(`We couldn't reach our server. Please call ${COMPANY.phone} or email ${COMPANY.email} and reference ${refNum}.`);
+      if (supaOk) {
+        // DB has the order; Netlify failure is non-fatal.
+        setStep('submitted');
+        window.scrollTo(0, 0);
+      } else {
+        setSubmitError(`We couldn't reach our server. Please call ${COMPANY.phone} or email ${COMPANY.email} and reference ${refNum}.`);
+      }
     } finally {
       setSending(false);
     }
@@ -2837,83 +2916,3 @@ function WelcomePopup({ open, onClose, goCategory, goQuote }) {
   );
 }
 
-// =============================================================================
-// LOGIN MODAL — simple sign-in form (no password validation, just gate pricing)
-// =============================================================================
-function LoginModal({ open, onClose, onLogin }) {
-  const [data, setData] = useState({ name: '', email: '', business: '' });
-  const set = k => e => setData({ ...data, [k]: e.target.value });
-  if (!open) return null;
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!data.name || !data.email) return;
-    onLogin(data);
-    setData({ name: '', email: '', business: '' });
-  };
-  return (
-    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6"
-         style={{ background: 'rgba(15, 12, 50, 0.75)', backdropFilter: 'blur(6px)' }}>
-      <div onClick={(e) => e.stopPropagation()}
-           className="relative w-full max-w-md scale-in"
-           style={{ background: 'white', boxShadow: '0 20px 80px rgba(0,0,0,0.4)' }}>
-        <button onClick={onClose} aria-label="Close"
-                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center transition-colors hover:bg-gray-100"
-                style={{ color: C.muted }}>
-          <X size={18} />
-        </button>
-        {/* Header */}
-        <div className="px-6 md:px-8 pt-8 pb-6 text-center">
-          <img src={IMG.logo} alt={COMPANY.name}
-               className="mx-auto mb-4"
-               style={{ width: 64, height: 64, objectFit: 'contain', borderRadius: 8 }} />
-          <div style={{ ...mono, fontWeight: 700, letterSpacing: '0.3em', color: C.orange }} className="text-[10px] md:text-[11px] uppercase mb-2">
-            ★ TRADE ACCOUNT SIGN-IN
-          </div>
-          <h2 style={{ ...display, fontWeight: 800, color: C.navy }} className="text-2xl md:text-3xl leading-tight mb-2">
-            See live prices
-          </h2>
-          <p className="text-xs md:text-sm" style={{ color: C.muted, maxWidth: '36ch', margin: '0 auto' }}>
-            Sign in to view wholesale pricing on all 368 SKUs.
-          </p>
-        </div>
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="px-6 md:px-8 pb-6 md:pb-8 space-y-4">
-          <div>
-            <label className="text-[10px] uppercase mb-2 block" style={{ ...mono, letterSpacing: '0.22em', fontWeight: 600, color: C.muted }}>
-              Your Name <span style={{ color: C.orange }}>*</span>
-            </label>
-            <input type="text" value={data.name} onChange={set('name')} required autoFocus
-                   className="w-full bg-transparent outline-none text-sm md:text-base pb-2 transition-colors focus:border-[#DB6433]"
-                   style={{ color: C.text, borderBottom: `1px solid ${C.border}` }} />
-          </div>
-          <div>
-            <label className="text-[10px] uppercase mb-2 block" style={{ ...mono, letterSpacing: '0.22em', fontWeight: 600, color: C.muted }}>
-              Email <span style={{ color: C.orange }}>*</span>
-            </label>
-            <input type="email" value={data.email} onChange={set('email')} required
-                   className="w-full bg-transparent outline-none text-sm md:text-base pb-2 transition-colors focus:border-[#DB6433]"
-                   style={{ color: C.text, borderBottom: `1px solid ${C.border}` }} />
-          </div>
-          <div>
-            <label className="text-[10px] uppercase mb-2 block" style={{ ...mono, letterSpacing: '0.22em', fontWeight: 600, color: C.muted }}>
-              Business Name (optional)
-            </label>
-            <input type="text" value={data.business} onChange={set('business')}
-                   className="w-full bg-transparent outline-none text-sm md:text-base pb-2 transition-colors focus:border-[#DB6433]"
-                   style={{ color: C.text, borderBottom: `1px solid ${C.border}` }} />
-          </div>
-          <div className="pt-2 space-y-2">
-            <button type="submit"
-                    className="w-full py-3.5 text-xs uppercase font-bold transition-transform hover:scale-[1.01] inline-flex items-center justify-center gap-2"
-                    style={{ ...mono, letterSpacing: '0.22em', background: C.orange, color: 'white' }}>
-              Sign In & See Prices <ArrowRight size={14} />
-            </button>
-            <p className="text-[10px] md:text-[11px] text-center" style={{ ...mono, color: C.muted, letterSpacing: '0.05em' }}>
-              No account? <a href="#apply" onClick={onClose} className="font-bold transition-colors hover:text-[#DB6433]" style={{ color: C.orange }}>Apply for one →</a>
-            </p>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}

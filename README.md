@@ -83,8 +83,12 @@ Use short 5-10 second silent loops. Vimeo direct MP4s, Cloudflare Stream, or S3 
 - Vite 5 (build tool)
 - Tailwind CSS 3 (utility classes)
 - Lucide React (icons)
+- Supabase (Postgres + Auth + RLS) — optional; see [BACKEND.md](BACKEND.md)
 
-No backend. No database. No tracking. Just a static site.
+The site works as a pure static catalog when no Supabase env vars are set.
+Once `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are configured, real
+trade accounts, order history, and the admin dashboard light up. See
+[BACKEND.md](BACKEND.md) for the setup recipe.
 
 ## License
 
