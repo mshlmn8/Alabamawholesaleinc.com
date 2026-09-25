@@ -1,0 +1,84 @@
+{
+  "fontFaces": [
+    {
+      "file": "barlow-condensed-latin-500.woff2",
+      "status": "loaded",
+      "family": "\"Barlow Condensed\"",
+      "weight": "500"
+    },
+    {
+      "file": "barlow-condensed-latin-600.woff2",
+      "status": "loaded",
+      "family": "\"Barlow Condensed\"",
+      "weight": "600"
+    },
+    {
+      "file": "barlow-condensed-latin-700.woff2",
+      "status": "loaded",
+      "family": "\"Barlow Condensed\"",
+      "weight": "700"
+    },
+    {
+      "file": "barlow-condensed-latin-800.woff2",
+      "status": "loaded",
+      "family": "\"Barlow Condensed\"",
+      "weight": "800"
+    },
+    {
+      "file": "dm-sans-latin-variable.woff2",
+      "status": "loaded",
+      "family": "\"DM Sans\"",
+      "weight": "400 700"
+    }
+  ],
+  "requiredWeights": [
+    {
+      "family": "Barlow Condensed",
+      "weight": 500,
+      "loaded": 1,
+      "check": true
+    },
+    {
+      "family": "Barlow Condensed",
+      "weight": 600,
+      "loaded": 1,
+      "check": true
+    },
+    {
+      "family": "Barlow Condensed",
+      "weight": 700,
+      "loaded": 1,
+      "check": true
+    },
+    {
+      "family": "Barlow Condensed",
+      "weight": 800,
+      "loaded": 1,
+      "check": true
+    },
+    {
+      "family": "DM Sans",
+      "weight": 400,
+      "loaded": 1,
+      "check": true
+    },
+    {
+      "family": "DM Sans",
+      "weight": 500,
+      "loaded": 1,
+      "check": true
+    },
+    {
+      "family": "DM Sans",
+      "weight": 600,
+      "loaded": 1,
+      "check": true
+    },
+    {
+      "family": "DM Sans",
+      "weight": 700,
+      "loaded": 1,
+      "check": true
+    }
+  ]
+}
