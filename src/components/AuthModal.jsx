@@ -60,7 +60,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose }) {
         </p>
 
         {!isBackendConfigured && (
-          <p className="form-error">Account sign-in is unavailable right now. Call {COMPANY.phone} or email {COMPANY.email} and a trade rep will help you.</p>
+          <p className="form-error">Account sign-in is unavailable right now. Call <a href={`tel:${COMPANY.phoneRaw}`}>{COMPANY.phone}</a> or email <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a> and a trade rep will help you.</p>
         )}
 
         {mode === 'signin' && (

@@ -51,6 +51,7 @@ button { cursor: pointer; }
 .aw-header { position: relative; z-index: 20; background: #fff; }
 .aw-utility { display: flex; justify-content: space-between; padding-top: 12px; color: var(--muted); font-size: 10px; }
 .aw-utility span:first-child { font-size: 9px; letter-spacing: 1.6px; font-weight: 700; color: var(--purple); }
+.aw-utility a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .aw-masthead { display: flex; align-items: center; gap: 48px; min-height: 106px; padding: 12px 0 18px; }
 .aw-logo { flex: 0 0 215px; padding: 6px 0; line-height: 1; display: block; background: none; border: 0; text-align: left; }
 .aw-logo > span { display: block; font: 700 37px/1 var(--body); letter-spacing: -1.8px; color: var(--orange); }
@@ -295,6 +296,8 @@ h2 { font-size: 35px; margin-bottom: 0; }
 .footer-grid p { font-size: 12px; color: #e9e2f5; line-height: 1.9; margin: 0; }
 .footer-grid button { display: block; font-size: 12px; color: #e9e2f5; line-height: 1.9; background: none; border: 0; padding: 0; text-align: left; }
 .footer-grid button:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+.footer-grid a { color: #e9e2f5; text-decoration: underline; text-underline-offset: 2px; }
+.footer-grid a:hover { color: #fff; }
 .footer-brand > span { font: 700 26px/1 var(--body); letter-spacing: -1.2px; color: var(--orange); display: block; }
 .footer-brand > small { font: 700 9px/1.4 var(--body); letter-spacing: 2.4px; color: #cbb8ec; display: block; margin-top: 6px; }
 .footer-legal { border-top: 1px solid #3a2270; margin-top: 30px; padding-top: 18px; display: flex; justify-content: space-between; gap: 20px; font-size: 10px; color: #a993d1; flex-wrap: wrap; }
@@ -317,6 +320,8 @@ h2 { font-size: 35px; margin-bottom: 0; }
 .form-grid input, .form-grid select { width: 100%; height: 42px; border: 1px solid #dcd5cc; background: #f8f6f2; border-radius: 2px; padding: 0 12px; font-size: 13px; color: var(--ink); }
 .form-grid .full { grid-column: 1 / -1; }
 .form-error { font-size: 12px; color: var(--orange-dark); margin: 10px 0 0; }
+.form-error a, .dialog .form-grid a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.dialog .form-grid a { color: var(--purple); }
 .dialog-actions { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
 
 .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(430px, 100%); background: #fff; z-index: 61; box-shadow: -18px 0 60px #190e3840; display: flex; flex-direction: column; }

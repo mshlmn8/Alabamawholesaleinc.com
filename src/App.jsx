@@ -326,7 +326,7 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, de
     <header className="aw-header container">
       <div className="aw-utility">
         <span>ALABAMA WHOLESALE INC.</span>
-        <span>{COMPANY.addressShort} · {COMPANY.phone}</span>
+        <span>{COMPANY.addressShort} · <a href={`tel:${COMPANY.phoneRaw}`}>{COMPANY.phone}</a></span>
       </div>
       <div className="aw-masthead">
         <button className="aw-logo" onClick={() => runNav(goHome)} aria-label="Alabama Wholesale home">
@@ -438,12 +438,12 @@ function HomePage(props) {
           <img src={IMG.hero_vape} alt="Assorted wholesale products on the Alabama Wholesale warehouse floor" loading="eager" />
           <span className="hero-media-shade" aria-hidden="true"></span>
           <span className="block-label">BIRMINGHAM WAREHOUSE → YOUR STORE</span>
-          <span className="block-foot">NEXT-DAY DELIVERY · AL · MS · GA</span>
+          <span className="block-foot">NEXT-DAY ON OUR ROUTES · AL · MS · GA</span>
         </div>
         <div className="hero-copy">
           <p className="eyebrow">WHOLESALE DISTRIBUTOR / EST. BIRMINGHAM</p>
           <h1>Stock your store.<br /><em>Next-day.</em></h1>
-          <p>Tobacco, disposables, smoke-shop accessories, candy, drinks and more — delivered on our own trucks to licensed retail accounts across Alabama, Mississippi and Georgia.</p>
+          <p>Tobacco, disposables, smoke-shop accessories, candy, drinks and more — delivered on our own trucks to licensed retail accounts on our delivery routes in Alabama, Mississippi and Georgia.</p>
           <button className="button" type="button" onClick={props.onApplyClick}>Apply for account <span aria-hidden="true">↗</span></button>
           <button className="text-link" type="button" onClick={() => goCategory('TOBACCO')}>Browse the catalog</button>
           <div className="hero-stats">
@@ -496,7 +496,7 @@ function HomePage(props) {
       </section>
 
       <section className="services" aria-label="Services">
-        <div className="service"><span>01</span><h3>Next-day delivery, our own trucks</h3><p>We run our own delivery service across Alabama, Mississippi and Georgia. Free delivery on orders over $1,500. Same-day will-call pickup if you order by 11 AM.</p></div>
+        <div className="service"><span>01</span><h3>Next-day delivery, our own trucks</h3><p>We run our own delivery service on routes in Alabama, Mississippi and Georgia. Free delivery on orders over $1,500 when the stop is on a delivery route. Same-day will-call pickup if you order by 11 AM.</p></div>
         <div className="service"><span>02</span><h3>Net-30 trade terms</h3><p>Approved retail accounts order now and pay on Net-30 terms. Volume discounts up to 18% on pallet quantities across all eight departments.</p></div>
         <div className="service"><span>03</span><h3>Licensed businesses only</h3><p>We verify your state retail tobacco license and resale certificate before your first order. No consumer sales, no exceptions — 21+ trade accounts only.</p></div>
       </section>
@@ -527,7 +527,7 @@ function HomePage(props) {
         <div className="services" style={{ marginTop: 0 }}>
           <div className="service"><span>A</span><h3>1 · Apply online</h3><p>Tell us about your store — business name, EIN, state retail tobacco license number and resale certificate. Takes about five minutes.</p></div>
           <div className="service"><span>B</span><h3>2 · We verify</h3><p>Our team checks your license with the state and approves most accounts within one business day. You'll get price-list access by email.</p></div>
-          <div className="service"><span>C</span><h3>3 · Order &amp; receive</h3><p>Order online or by phone before 2 PM for next-day delivery on our trucks, or same-day will-call at the Birmingham warehouse.</p></div>
+          <div className="service"><span>C</span><h3>3 · Order &amp; receive</h3><p>Order online or by phone before 2 PM for next-day delivery on our trucks when the stop is on a delivery route, or same-day will-call at the Birmingham warehouse.</p></div>
         </div>
         <div style={{ marginTop: 26, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           <button className="button" type="button" onClick={props.onApplyClick}>Start application <span aria-hidden="true">↗</span></button>
@@ -770,7 +770,7 @@ function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLi
         <div className="pd-info">
           <p className="pd-brand">{p.brand} · {p.sub}</p>
           <h1>{p.name}</h1>
-          <p className="pd-desc">Wholesale {p.sub.toLowerCase()} from {p.brand}. SKU {p.sku}. Supplied to licensed retail businesses for lawful resale — order by 2 PM Central for next-day delivery on our trucks across AL, MS and GA.</p>
+          <p className="pd-desc">Wholesale {p.sub.toLowerCase()} from {p.brand}. SKU {p.sku}. Supplied to licensed retail businesses for lawful resale — order by 2 PM Central for next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA.</p>
           {variants.length > 0 && (
             <div className="variant-chips" role="group" aria-label={choiceRequired ? 'Choose a variant' : 'Variant'}>
               {variants.map(v => (
@@ -827,6 +827,14 @@ function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLi
 // =============================================================================
 // QUOTE / CHECKOUT — saved only by submit_quote, which prices the lines
 // =============================================================================
+function TradeDeskContact({ before, after }) {
+  return (
+    <>
+      {before} <a href={`tel:${COMPANY.phoneRaw}`}>{COMPANY.phone}</a> or email <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>{after}
+    </>
+  );
+}
+
 function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHome, goProduct, profile, isApprovedBuyer, isBackendConfigured }) {
   const [step, setStep] = useState('review');
   const [data, setData] = useState({
@@ -845,7 +853,7 @@ function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHo
   const handleQuoteSubmit = async (e) => {
     e.preventDefault();
     if (!isBackendConfigured) {
-      setSubmitError(`Quote requests can’t be saved right now. Call ${COMPANY.phone} or email ${COMPANY.email} and the trade desk will write it up with you.`);
+      setSubmitError({ before: 'Quote requests can’t be saved right now. Call', after: ' and the trade desk will write it up with you.' });
       return;
     }
     if (needsVariant) {
@@ -862,8 +870,8 @@ function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHo
       window.scrollTo(0, 0);
     } catch (err) {
       setSubmitError(err?.code === 'unavailable'
-        ? `Quote requests can’t be saved right now. Call ${COMPANY.phone} or email ${COMPANY.email} and the trade desk will write it up with you.`
-        : `We couldn’t save this quote. Please call ${COMPANY.phone} or email ${COMPANY.email} and reference ${refNum}.`);
+        ? { before: 'Quote requests can’t be saved right now. Call', after: ' and the trade desk will write it up with you.' }
+        : { before: 'We couldn’t save this quote. Please call', after: ` and reference ${refNum}.` });
     } finally { setSending(false); }
   };
 
@@ -941,7 +949,7 @@ function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHo
             <div><label htmlFor="ship-zip">ZIP</label><input id="ship-zip" value={data.shipZip} onChange={set('shipZip')} required autoComplete="postal-code" inputMode="numeric" /></div>
             <div><label>Delivery method</label>
               <select value={data.delivery} onChange={set('delivery')}>
-                <option value="delivery">Next-day delivery</option>
+                <option value="delivery">Next-day delivery (on route)</option>
                 <option value="willcall">Same-day will-call</option>
               </select>
             </div>
@@ -952,12 +960,12 @@ function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHo
             <span>{totalUnits} units</span>
             <span>{isApprovedBuyer ? money(total) : (profile ? 'Pricing after approval' : 'Pricing after sign-in')}</span>
           </div>
-          {!isBackendConfigured && <p className="form-error">Quote requests can’t be saved right now. Call {COMPANY.phone} or email {COMPANY.email} and the trade desk will write it up with you.</p>}
+          {!isBackendConfigured && <p className="form-error"><TradeDeskContact before="Quote requests can’t be saved right now. Call" after=" and the trade desk will write it up with you." /></p>}
           {needsVariant && <p className="form-error">Choose a variant for every product that has more than one.</p>}
-          {submitError && <p className="form-error">{submitError}</p>}
+          {submitError && <p className="form-error">{typeof submitError === 'string' ? submitError : <TradeDeskContact before={submitError.before} after={submitError.after} />}</p>}
           <button className="button wide" type="submit" disabled={sending || !isBackendConfigured || needsVariant}>
             {sending ? 'Sending…' : (isApprovedBuyer ? 'Submit order' : 'Submit quote request')} <span aria-hidden="true">↗</span></button>
-          <p className="fine">Orders over $1,500 qualify for free delivery in AL, MS &amp; GA. Tobacco products supplied to licensed retailers only — 21+.</p>
+          <p className="fine">Orders over $1,500 qualify for free delivery on a delivery route in AL, MS &amp; GA. Tobacco products supplied to licensed retailers only — 21+.</p>
         </form>
       </div>
     </section>
@@ -990,7 +998,7 @@ function Footer({ goHome, goCategory, departments, onLoginClick, onApplyClick, o
           <div>
             <h4>Contact</h4>
             <p>{COMPANY.addressLine1}<br />{COMPANY.addressLine2}</p>
-            <p>{COMPANY.phone}<br />{COMPANY.email}</p>
+            <p><a href={`tel:${COMPANY.phoneRaw}`}>{COMPANY.phone}</a><br /><a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a></p>
             <p>{COMPANY.hoursLine1}<br />{COMPANY.hoursLine2}</p>
           </div>
         </div>
@@ -1015,8 +1023,8 @@ function HelpDialog({ onClose, onApply }) {
         <h2 id="help-title">Talk to the warehouse</h2>
         <p className="desc">Real people, same building as the inventory. Call, email or stop by will-call.</p>
         <div className="form-grid">
-          <div><label>Phone</label><p style={{ margin: 0 }}>{COMPANY.phone}</p></div>
-          <div><label>Email</label><p style={{ margin: 0 }}>{COMPANY.email}</p></div>
+          <div><label>Phone</label><p style={{ margin: 0 }}><a href={`tel:${COMPANY.phoneRaw}`}>{COMPANY.phone}</a></p></div>
+          <div><label>Email</label><p style={{ margin: 0 }}><a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a></p></div>
           <div><label>Hours</label><p style={{ margin: 0 }}>{COMPANY.hoursLine1} · {COMPANY.hoursLine2}</p></div>
           <div><label>Will-call</label><p style={{ margin: 0 }}>{COMPANY.addressShort}</p></div>
         </div>
@@ -1024,7 +1032,7 @@ function HelpDialog({ onClose, onApply }) {
           <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Call now <span aria-hidden="true">↗</span></a>
           <button className="text-link" type="button" onClick={onApply}>Apply for an account</button>
         </div>
-        <p className="fine">Ordering before 2 PM Central gets next-day delivery on our own trucks in AL, MS and GA.</p>
+        <p className="fine">Ordering before 2 PM Central gets next-day delivery on our own trucks when the stop is on a delivery route in AL, MS and GA.</p>
       </div>
     </div>
   );
@@ -1075,7 +1083,7 @@ function CartDrawer({ open, onClose, items, total, addLine, decLine, removeLine,
                   <button className="drawer-signin text-link" type="button" onClick={onLoginClick}>Sign in for account pricing</button>
                 </>
           )}
-          <p className="fine" style={{ borderTop: 0, marginTop: 12, paddingTop: 0 }}>Free delivery over $1,500 in AL, MS &amp; GA. Orders placed before 2 PM ship next-day on our trucks.</p>
+          <p className="fine" style={{ borderTop: 0, marginTop: 12, paddingTop: 0 }}>Free delivery over $1,500 applies on a delivery route in AL, MS &amp; GA. Orders placed before 2 PM ship next-day on our trucks when the stop is on a route.</p>
         </div>
       </aside>
     </>
