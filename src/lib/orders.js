@@ -1,42 +1,35 @@
-// Order submission helper. Writes to Supabase when configured; otherwise falls
-// back to Netlify Forms (which captures the lead even without a database).
+// Quote submission. Prices and totals are calculated inside submit_quote.
+// The browser sends product id, variant label, and quantity only.
 
 import { supabase } from './supabase.js';
 
-export const submitOrder = async ({ profile, refNum, formData, items, totalUnits, subtotal }) => {
-  if (!supabase) return { source: 'netlify', ok: true }; // caller handles Netlify path
-
-  const { data: order, error } = await supabase
-    .from('orders')
-    .insert({
-      ref_num: refNum,
-      user_id: profile?.id || null,
-      business: formData.business,
-      contact: formData.contact,
-      email: formData.email,
-      phone: formData.phone,
-      delivery: formData.delivery,
-      preferred_date: formData.preferredDate || null,
-      notes: formData.notes || null,
-      total_units: totalUnits,
-      subtotal: subtotal ?? null,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-
-  if (items.length) {
-    const rows = items.map(it => ({
-      order_id: order.id,
-      product_id: it.id,
-      product_name: it.name,
-      sku: it.sku,
-      qty: it.qty,
-      unit_price: profile ? it.price : null,
-    }));
-    const { error: itemsErr } = await supabase.from('order_items').insert(rows);
-    if (itemsErr) throw itemsErr;
+export const submitOrder = async ({ refNum, formData, items }) => {
+  if (!supabase) {
+    const err = new Error('Quote requests can’t be saved right now.');
+    err.code = 'unavailable';
+    throw err;
   }
 
-  return { source: 'supabase', ok: true, order };
+  const { data, error } = await supabase.rpc('submit_quote', {
+    p_ref_num: refNum,
+    p_business: formData.business,
+    p_contact: formData.contact,
+    p_email: formData.email,
+    p_phone: formData.phone,
+    p_delivery: formData.delivery,
+    p_preferred_date: formData.preferredDate || null,
+    p_notes: formData.notes || null,
+    p_ship_street: formData.shipStreet,
+    p_ship_city: formData.shipCity,
+    p_ship_state: formData.shipState,
+    p_ship_zip: formData.shipZip,
+    p_items: items.map((it) => ({
+      product_id: it.productId,
+      variant: it.variant || null,
+      qty: it.qty,
+    })),
+  });
+  if (error) throw error;
+  if (!data?.id) throw new Error('The quote was not saved.');
+  return { source: 'supabase', ok: true, order: data };
 };

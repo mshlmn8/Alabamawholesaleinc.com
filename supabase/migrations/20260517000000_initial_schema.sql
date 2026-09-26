@@ -30,19 +30,15 @@ create index on public.profiles (role);
 
 -- Auto-create a profile row when a new auth.users entry is inserted.
 -- raw_user_meta_data.name / business are passed in from the sign-up form.
+-- Every signup is a pending customer. Owner access is granted later by running
+-- supabase/seed/provision_owner.sql in the SQL editor — never by public signup.
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer
 set search_path = public
 as $$
-declare
-  is_first_user boolean;
 begin
-  -- The very first signup gets admin role + approved status. Subsequent users
-  -- start as pending/customer and must be approved by an existing admin.
-  select count(*) = 0 into is_first_user from public.profiles;
-
   insert into public.profiles (id, email, name, business, phone, license_no, business_type, state, expected_volume, role, status)
   values (
     new.id,
@@ -54,8 +50,8 @@ begin
     new.raw_user_meta_data->>'business_type',
     new.raw_user_meta_data->>'state',
     new.raw_user_meta_data->>'expected_volume',
-    case when is_first_user then 'admin' else 'customer' end,
-    case when is_first_user then 'approved' else 'pending' end
+    'customer',
+    'pending'
   );
   return new;
 end;

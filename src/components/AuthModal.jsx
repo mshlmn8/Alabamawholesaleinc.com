@@ -1,10 +1,10 @@
 // Sign-in (email + password) and sign-up (business onboarding) on the 2A
-// dialog shell. On sign-up a profile row is created automatically via the
-// handle_new_user trigger; the very first signup is auto-promoted to
-// admin/approved (see initial_schema.sql).
+// dialog shell. On sign-up a profile row is created as a pending customer.
+// Owner access is a separate admin step, not part of public signup.
 
 import React, { useState } from 'react';
 import { useAuth } from '../lib/useAuth.js';
+import { COMPANY } from '../data/content.js';
 
 const STATES = ['AL','GA','MS','TN','FL','LA','SC','NC','KY','Other'];
 const BUSINESS_TYPES = ['Convenience Store','Smoke Shop','Vape Shop','Liquor Store','Grocery / Bodega','Auto Parts','Hookah Lounge','Other'];
@@ -60,7 +60,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose }) {
         </p>
 
         {!isBackendConfigured && (
-          <p className="form-error">Backend not configured. Set <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> in your <code>.env</code>.</p>
+          <p className="form-error">Account sign-in is unavailable right now. Call {COMPANY.phone} or email {COMPANY.email} and a trade rep will help you.</p>
         )}
 
         {mode === 'signin' && (

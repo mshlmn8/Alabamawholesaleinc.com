@@ -12,7 +12,7 @@ const STATUS_META = {
   cancelled:  { label: 'Cancelled',  color: '#6B6B6B', icon: XCircle },
 };
 
-export function AccountPage({ profile, goHome }) {
+export function AccountPage({ profile, goHome, onSignIn }) {
   const [orders, setOrders] = useState(null);
   const [error, setError] = useState(null);
 
@@ -32,7 +32,15 @@ export function AccountPage({ profile, goHome }) {
   if (!profile) {
     return (
       <section className="px-3 md:px-6 lg:px-10 py-16 text-center">
-        <p style={{ color: C.muted }}>Sign in to view your account.</p>
+        <h1 style={{ ...display, fontWeight: 800, color: C.navy }} className="text-3xl mb-3">My Account</h1>
+        <p style={{ color: C.muted, marginBottom: 16 }}>Sign in to view your account and quick reorder.</p>
+        {onSignIn && (
+          <button type="button" onClick={onSignIn}
+                  className="px-4 py-2 text-xs uppercase font-bold"
+                  style={{ ...mono, letterSpacing: '0.14em', background: C.navy, color: 'white' }}>
+            Sign in
+          </button>
+        )}
       </section>
     );
   }

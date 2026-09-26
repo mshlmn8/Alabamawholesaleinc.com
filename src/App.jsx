@@ -2,16 +2,21 @@ import React, { useState, useEffect, useMemo } from 'react';
 
 import { IMG } from './data/theme.js';
 import { COMPANY, ANNOUNCEMENTS, STORAGE } from './data/content.js';
-import { PRODUCTS, NAV_ORDER, NAV_CATEGORIES, NEW_ARRIVALS_IDS } from './data/products.js';
+import { NAV_ORDER, NEW_ARRIVALS_IDS } from './data/products.js';
 import { useAuth } from './lib/useAuth.js';
+import { useCatalog } from './lib/useCatalog.js';
 import { submitOrder } from './lib/orders.js';
+import { lineKey, variantList, variantSku, requiresVariantChoice, resolveCartItems, normalizeCart } from './lib/lines.js';
 import { AuthModal } from './components/AuthModal.jsx';
 import { AccountPage } from './pages/account/AccountPage.jsx';
 import { AdminPage } from './pages/admin/AdminPage.jsx';
 
-// Pricing tier → display discount. Mirrors supabase/migrations seed values.
+// Display-only tier discounts. Saved quotes ignore this and price on the server.
 const TIER_DISCOUNT = { standard: 0, silver: 0.05, gold: 0.10 };
-const priceForProfile = (listPrice, profile) => listPrice * (1 - (TIER_DISCOUNT[profile?.pricing_tier] || 0));
+const priceForProfile = (listPrice, profile) => {
+  if (profile?.status !== 'approved' || listPrice == null) return null;
+  return Number(listPrice) * (1 - (TIER_DISCOUNT[profile.pricing_tier] || 0));
+};
 
 const CAT_LABEL = {
   'TOBACCO': 'Tobacco', 'NOVELTIES': 'Novelties & Vapes', 'MERCHANDISE': 'Merchandise',
@@ -31,18 +36,12 @@ const safeReadJson = (key, fallback) => {
 };
 const safeWriteJson = (key, value) => { try { window.localStorage.setItem(key, JSON.stringify(value)); } catch {} };
 
-const submitNetlifyForm = (formName, data) => {
-  const body = new URLSearchParams({ 'form-name': formName });
-  Object.entries(data).forEach(([k, v]) => body.append(k, v == null ? '' : String(v)));
-  return fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() });
-};
-
 const productText = (p) => `${p.name} ${p.brand} ${p.cat} ${p.sub} ${p.sku} ${(p.variants || []).join(' ')}`.toLowerCase();
-const getSearchMatches = (query, limit = 10) => {
+const getSearchMatches = (products, query, limit = 10) => {
   const q = query.trim().toLowerCase();
   if (q.length < 2) return [];
   const terms = q.split(/\s+/).filter(Boolean);
-  return PRODUCTS
+  return products
     .map(p => {
       const h = productText(p);
       const score =
@@ -62,14 +61,18 @@ const getSearchMatches = (query, limit = 10) => {
 
 const TICKER_TEXT = ANNOUNCEMENTS.join('  ·  ') + '  ·  ';
 
-// Departments with counts + sub-lines, derived from PRODUCTS (NAV_CATEGORIES
-// carries { name, sub } only — count is computed here once).
-const DEPARTMENTS = NAV_CATEGORIES.map(c => ({
-  key: c.name,
-  label: catLabel(c.name),
-  subs: c.sub,
-  count: PRODUCTS.filter(p => p.cat === c.name).length,
-}));
+function departmentsFor(products) {
+  const known = new Set(NAV_ORDER);
+  const extras = [];
+  for (const p of products) {
+    if (p.cat && !known.has(p.cat) && !extras.includes(p.cat)) extras.push(p.cat);
+  }
+  return [...NAV_ORDER, ...extras].map(name => {
+    const rows = products.filter(p => p.cat === name);
+    const subs = Array.from(new Set(rows.map(p => p.sub).filter(Boolean))).sort();
+    return { key: name, label: catLabel(name), subs, count: rows.length };
+  });
+}
 
 // =============================================================================
 // ROOT
@@ -84,9 +87,12 @@ export default function App() {
   const [helpOpen, setHelpOpen] = useState(false);
 
   const auth = useAuth();
-  const { profile, signOut } = auth;
+  const { products } = useCatalog();
+  const { profile, signOut, isBackendConfigured } = auth;
   const user = profile ? { id: profile.id, name: profile.name, email: profile.email, business: profile.business } : null;
+  const isApprovedBuyer = profile?.status === 'approved';
   const isAdmin = profile?.role === 'admin';
+  const departments = useMemo(() => departmentsFor(products), [products]);
 
   // hash router — same routes as before: #/ #/category/X #/product/ID #/quote #/account #/admin
   const parseHash = () => {
@@ -127,11 +133,11 @@ export default function App() {
     let title = titles[route.page] || titles.home;
     if (route.page === 'category') title = `${catLabel(route.category)} · Wholesale Catalog · ${COMPANY.name}`;
     if (route.page === 'product') {
-      const p = PRODUCTS.find(x => x.id === route.productId);
+      const p = products.find(x => Number(x.id) === route.productId);
       if (p) title = `${p.name} · ${p.brand} · ${COMPANY.name}`;
     }
     document.title = title;
-  }, [route]);
+  }, [route, products]);
 
   const navigate = (next, { scroll = true } = {}) => {
     window.history.pushState(null, '', routeToHash(next));
@@ -162,12 +168,25 @@ export default function App() {
     return () => { document.body.style.overflow = ''; };
   }, [cartOpen, loginOpen, helpOpen]);
 
-  const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
-  const cartItems = PRODUCTS.filter(p => cart[p.id]).map(p => ({ ...p, qty: cart[p.id], price: priceForProfile(p.price, profile) }));
-  const cartTotal = cartItems.reduce((s, i) => s + i.qty * (user ? i.price : 0), 0);
-  const addToCart = (id, n = 1) => setCart(c => ({ ...c, [id]: (c[id] || 0) + n }));
-  const decCart = (id) => setCart(c => { const next = { ...c }; const v = (next[id] || 0) - 1; if (v <= 0) delete next[id]; else next[id] = v; return next; });
-  const removeCart = (id) => setCart(c => { const n = { ...c }; delete n[id]; return n; });
+  useEffect(() => {
+    setCart(current => normalizeCart(current, products));
+  }, [products]);
+
+  const cartCount = Object.values(cart).reduce((a, b) => a + Number(b || 0), 0);
+  const cartItems = useMemo(
+    () => resolveCartItems(cart, products).map(item => ({ ...item, price: priceForProfile(item.listPrice, profile) })),
+    [cart, products, profile]
+  );
+  const cartTotal = cartItems.reduce((s, i) => s + (i.price == null ? 0 : i.qty * i.price), 0);
+  const addLine = (productId, variant, n = 1) => {
+    const product = products.find(p => Number(p.id) === Number(productId));
+    if (!product || product.active === false) return;
+    if (requiresVariantChoice(product) && !variant) return;
+    const key = lineKey(product.id, variant || null);
+    setCart(c => ({ ...c, [key]: (Number(c[key]) || 0) + n }));
+  };
+  const decLine = (key) => setCart(c => { const next = { ...c }; const v = (Number(next[key]) || 0) - 1; if (v <= 0) delete next[key]; else next[key] = v; return next; });
+  const removeLine = (key) => setCart(c => { const n = { ...c }; delete n[key]; return n; });
   const clearCart = () => setCart({});
 
   const handleAgeYes = () => { setVerified(true); window.localStorage.setItem(STORAGE.age, 'yes'); };
@@ -186,7 +205,11 @@ export default function App() {
 
   if (!verified) return <AgeGate onYes={handleAgeYes} onNo={() => setTooYoung(true)} tooYoung={tooYoung} />;
 
-  const shared = { user, profile, cart, addToCart, decCart, onLoginClick: openSignin, onApplyClick: openSignup, goProduct, goCategory, goHome };
+  const shared = {
+    user, profile, isApprovedBuyer, cart, addLine, decLine, products, departments,
+    onLoginClick: openSignin, onApplyClick: openSignup, onAccountClick: () => navigate({ page: 'account' }),
+    goProduct, goCategory, goHome,
+  };
 
   return (
     <div style={{ minHeight: '100vh', background: '#fff' }}>
@@ -201,6 +224,7 @@ export default function App() {
       <Header
         cartCount={cartCount} onCart={() => setCartOpen(true)}
         goHome={goHome} goCategory={goCategory} goProduct={goProduct}
+        products={products} departments={departments}
         onNewArrivals={() => goHomeSection('new-arrivals')} onBestsellers={() => goHomeSection('bestsellers')}
         user={user} isAdmin={isAdmin}
         onAccountClick={() => navigate({ page: 'account' })}
@@ -213,16 +237,21 @@ export default function App() {
         {route.page === 'home' && <HomePage {...shared} />}
         {route.page === 'product' && <ProductPage productId={route.productId} {...shared} />}
         {route.page === 'category' && <CategoryPage category={route.category} sub={route.sub} {...shared} />}
-        {route.page === 'quote' && <QuotePage items={cartItems} total={cartTotal} addToCart={addToCart} decCart={decCart} removeCart={removeCart} clearCart={clearCart} goHome={goHome} user={user} profile={profile} />}
-        {route.page === 'account' && <AccountPage profile={profile} goHome={goHome} />}
+        {route.page === 'quote' && (
+          <QuotePage items={cartItems} total={cartTotal} addLine={addLine} decLine={decLine} removeLine={removeLine}
+                     clearCart={clearCart} goHome={goHome} goProduct={goProduct} profile={profile}
+                     isApprovedBuyer={isApprovedBuyer} isBackendConfigured={isBackendConfigured} />
+        )}
+        {route.page === 'account' && <AccountPage profile={profile} goHome={goHome} onSignIn={openSignin} />}
         {route.page === 'admin' && <AdminPage profile={profile} goHome={goHome} />}
       </main>
 
-      <Footer goHome={goHome} goCategory={goCategory} onLoginClick={openSignin} onApplyClick={openSignup}
+      <Footer goHome={goHome} goCategory={goCategory} departments={departments} onLoginClick={openSignin} onApplyClick={openSignup}
               onNewArrivals={() => goHomeSection('new-arrivals')} onBestsellers={() => goHomeSection('bestsellers')} />
 
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} items={cartItems} total={cartTotal}
-                  addToCart={addToCart} decCart={decCart} removeCart={removeCart} goQuote={goQuote} user={user} onLoginClick={openCartSignin} />
+                  addLine={addLine} decLine={decLine} removeLine={removeLine} goQuote={goQuote} goProduct={goProduct}
+                  isApprovedBuyer={isApprovedBuyer} onLoginClick={openCartSignin} />
       {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} onApply={() => { setHelpOpen(false); openSignup(); }} />}
       {loginOpen && <AuthModal open initialMode={loginMode} onClose={() => setLoginOpen(false)} />}
     </div>
@@ -260,7 +289,7 @@ function AgeGate({ onYes, onNo, tooYoung }) {
 // =============================================================================
 // HEADER
 // =============================================================================
-function Header({ cartCount, onCart, goHome, goCategory, goProduct, onNewArrivals, onBestsellers, user, isAdmin, onAccountClick, onAdminClick, onLoginClick, onSignupClick, onLogout, onHelp, onReorder }) {
+function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, departments, onNewArrivals, onBestsellers, user, isAdmin, onAccountClick, onAdminClick, onLoginClick, onSignupClick, onLogout, onHelp, onReorder }) {
   const [megaOpen, setMegaOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [resultsOpen, setResultsOpen] = useState(false);
@@ -279,7 +308,7 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, onNewArrival
     return () => document.removeEventListener('click', onDoc);
   }, []);
 
-  const hits = useMemo(() => getSearchMatches(query), [query]);
+  const hits = useMemo(() => getSearchMatches(products, query), [products, query]);
   const runNav = (action) => {
     setMegaOpen(false);
     setResultsOpen(false);
@@ -304,7 +333,7 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, onNewArrival
           <span>Alabama</span><small>WHOLESALE INC.</small>
         </button>
         <form className="aw-search" role="search" onSubmit={submitSearch}>
-          <input type="search" value={query} placeholder="Search 368 SKUs — cigars, disposables, candy, drinks…"
+          <input type="search" value={query} placeholder={`Search ${products.length} SKUs — cigars, disposables, candy, drinks…`}
                  autoComplete="off" aria-label="Search products"
                  onChange={(e) => { setQuery(e.target.value); setResultsOpen(true); }}
                  onFocus={() => { setMegaOpen(false); if (query.trim().length >= 2) setResultsOpen(true); }} />
@@ -361,7 +390,7 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, onNewArrival
               <button className="aw-menu-close" type="button" aria-label="Close categories" onClick={() => setMegaOpen(false)}>×</button>
             </div>
             <div className="aw-menu-grid">
-              {DEPARTMENTS.map((c, i) => (
+              {departments.map((c, i) => (
                 <nav className="aw-department" key={c.key} aria-label={c.label}>
                   <h3><span>{String(i + 1).padStart(2, '0')}</span>{c.label}</h3>
                   {c.subs.slice(0, 3).map(s => (
@@ -376,7 +405,7 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, onNewArrival
             </div>
             <div className="aw-menu-footer">
               <button type="button" onClick={() => pickCategory(NAV_ORDER[0], null)}>View full catalog <span aria-hidden="true">↗</span></button>
-              <span>8 departments · 368 SKUs</span>
+              <span>{departments.length} departments · {products.length} SKUs</span>
             </div>
           </section>
         )}
@@ -398,9 +427,9 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, onNewArrival
 // HOME
 // =============================================================================
 function HomePage(props) {
-  const { goCategory, goProduct } = props;
-  const newArrivals = NEW_ARRIVALS_IDS.map(id => PRODUCTS.find(p => p.id === id)).filter(Boolean).slice(0, 8);
-  const bestsellers = PRODUCTS.filter(p => p.tag === 'BESTSELLER').slice(0, 8);
+  const { goCategory, goProduct, products, departments } = props;
+  const newArrivals = NEW_ARRIVALS_IDS.map(id => products.find(p => Number(p.id) === id)).filter(Boolean).slice(0, 8);
+  const bestsellers = products.filter(p => p.tag === 'BESTSELLER').slice(0, 8);
 
   return (
     <>
@@ -418,7 +447,7 @@ function HomePage(props) {
           <button className="button" type="button" onClick={props.onApplyClick}>Apply for account <span aria-hidden="true">↗</span></button>
           <button className="text-link" type="button" onClick={() => goCategory('TOBACCO')}>Browse the catalog</button>
           <div className="hero-stats">
-            <div><b>368</b><span>SKUs stocked</span></div>
+            <div><b>{products.length}</b><span>SKUs stocked</span></div>
             <div><b>$1.5K</b><span>free-delivery min</span></div>
             <div><b>Net-30</b><span>terms available</span></div>
           </div>
@@ -426,7 +455,7 @@ function HomePage(props) {
       </section>
 
       <div className="cat-strip" aria-label="Departments">
-        {DEPARTMENTS.map(c => (
+        {departments.map(c => (
           <button className="cat-chip" key={c.key} type="button" onClick={() => goCategory(c.key)} aria-label={`Browse ${c.label}`}>
             <span className="glyph">{String(c.count).padStart(2, '0')}</span>
             <b>{c.label}</b><span>{c.subs.length} lines</span>
@@ -475,8 +504,8 @@ function HomePage(props) {
       <section className="section" id="catalog">
         <div className="section-head"><div><p className="eyebrow">FULL ASSORTMENT / 03</p><h2>Shop by department</h2></div></div>
         <div className="card-grid">
-          {DEPARTMENTS.map(c => {
-            const preview = PRODUCTS.find(p => p.cat === c.key && p.img);
+          {departments.map(c => {
+            const preview = products.find(p => p.cat === c.key && p.img);
             return (
               <button className="content-card" key={c.key} type="button" onClick={() => goCategory(c.key)}>
                 <div className="card-block">
@@ -511,8 +540,15 @@ function HomePage(props) {
 // =============================================================================
 // PRODUCT CARD
 // =============================================================================
-function ProductCard({ p, user, profile, cart, addToCart, decCart, goProduct, onLoginClick }) {
-  const qty = cart[p.id] || 0;
+function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLine, goProduct, onLoginClick }) {
+  const variants = variantList(p);
+  const choiceRequired = requiresVariantChoice(p);
+  const onlyVariant = variants.length === 1 ? variants[0] : null;
+  const key = lineKey(p.id, onlyVariant);
+  const qty = choiceRequired
+    ? Object.entries(cart).reduce((sum, [k, q]) => (Number(String(k).split('::')[0]) === Number(p.id) ? sum + Number(q) : sum), 0)
+    : (Number(cart[key]) || 0);
+  const price = priceForProfile(p.price, profile);
   return (
     <article className="content-card">
       <button type="button" onClick={() => goProduct(p.id)} style={{ all: 'unset', cursor: 'pointer', display: 'block' }} aria-label={`${p.name} details`}>
@@ -526,19 +562,23 @@ function ProductCard({ p, user, profile, cart, addToCart, decCart, goProduct, on
         <p className="card-detail">{p.brand}{p.flavors ? ` · ${p.flavors} variants` : ''} · {p.sku}</p>
       </button>
       <span className="card-meta">
-        {user ? (
-          <span>{money(priceForProfile(p.price, profile))}</span>
+        {isApprovedBuyer && price != null ? (
+          <span>{money(price)}</span>
+        ) : profile ? (
+          <span className="lock">Pricing after approval</span>
         ) : (
           <button className="lock price-login" type="button" onClick={onLoginClick}>LOCKED · Sign in for pricing</button>
         )}
-        {qty > 0 ? (
+        {choiceRequired ? (
+          <button className="card-add" type="button" onClick={() => goProduct(p.id)}>{qty > 0 ? `Choose · ${qty}` : 'Choose'}</button>
+        ) : qty > 0 ? (
           <span className="card-stepper" onClick={(e) => e.stopPropagation()}>
-            <button type="button" onClick={() => decCart(p.id)} aria-label="Decrease quantity">−</button>
+            <button type="button" onClick={() => decLine(key)} aria-label="Decrease quantity">−</button>
             <b>{qty}</b>
-            <button type="button" onClick={() => addToCart(p.id)} aria-label="Increase quantity">+</button>
+            <button type="button" onClick={() => addLine(p.id, onlyVariant)} aria-label="Increase quantity">+</button>
           </span>
         ) : (
-          <button className="card-add" type="button" onClick={() => addToCart(p.id)}>{user ? 'ADD +' : 'QUOTE +'}</button>
+          <button className="card-add" type="button" onClick={() => addLine(p.id, onlyVariant)}>{isApprovedBuyer ? 'ADD +' : 'QUOTE +'}</button>
         )}
       </span>
     </article>
@@ -561,8 +601,8 @@ function CategoryPage({ category, sub, ...props }) {
     setSort('featured');
   }, [category]);
 
-  const cat = DEPARTMENTS.find(c => c.key === category);
-  const inCategory = PRODUCTS.filter(p => p.cat === category);
+  const cat = props.departments.find(c => c.key === category);
+  const inCategory = props.products.filter(p => p.cat === category);
   const activeSub = sub || null;
   const tagOptions = [
     ['Bestsellers', 'BESTSELLER'],
@@ -581,8 +621,8 @@ function CategoryPage({ category, sub, ...props }) {
   if (sort === 'name-asc') items = [...items].sort((a, b) => a.name.localeCompare(b.name));
   if (sort === 'name-desc') items = [...items].sort((a, b) => b.name.localeCompare(a.name));
   if (sort === 'variants') items = [...items].sort((a, b) => b.flavors - a.flavors);
-  if (sort === 'price-low' && props.user) items = [...items].sort((a, b) => a.price - b.price);
-  if (sort === 'price-high' && props.user) items = [...items].sort((a, b) => b.price - a.price);
+  if (sort === 'price-low' && props.isApprovedBuyer) items = [...items].sort((a, b) => a.price - b.price);
+  if (sort === 'price-high' && props.isApprovedBuyer) items = [...items].sort((a, b) => b.price - a.price);
 
   const toggleTag = (tag) => setTagFilter(current => current.includes(tag) ? current.filter(t => t !== tag) : [...current, tag]);
   const clearFilters = () => {
@@ -611,7 +651,7 @@ function CategoryPage({ category, sub, ...props }) {
         </div>
         <p className="eyebrow">DEPARTMENT · {String(cat.count).padStart(2, '0')} SKUs</p>
         <h1>{catLabel(category)}</h1>
-        <p>Wholesale {catLabel(category).toLowerCase()} for licensed retail accounts. {props.user ? 'Your tier pricing is shown on each card.' : 'Sign in to see your wholesale pricing.'}</p>
+        <p>Wholesale {catLabel(category).toLowerCase()} for licensed retail accounts. {props.isApprovedBuyer ? 'Your tier pricing is shown on each card.' : props.profile ? 'Pricing unlocks after your account is approved.' : 'Sign in to see your wholesale pricing.'}</p>
         <div className="sub-pills" aria-label={`${catLabel(category)} subcategories`}>
           <button className={`sub-pill ${!activeSub ? 'active' : ''}`} type="button" onClick={() => props.goCategory(category, null)}>All ({cat.count})</button>
           {cat.subs.map(s => {
@@ -629,8 +669,8 @@ function CategoryPage({ category, sub, ...props }) {
             <option value="name-asc">Name: A to Z</option>
             <option value="name-desc">Name: Z to A</option>
             <option value="variants">Most variants</option>
-            {props.user && <option value="price-low">Price: Low to High</option>}
-            {props.user && <option value="price-high">Price: High to Low</option>}
+            {props.isApprovedBuyer && <option value="price-low">Price: Low to High</option>}
+            {props.isApprovedBuyer && <option value="price-high">Price: High to Low</option>}
           </select>
         </label>
       </div>
@@ -654,7 +694,8 @@ function CategoryPage({ category, sub, ...props }) {
             <legend>Variants</legend>
             <label><input type="checkbox" checked={hasVariants} onChange={(e) => setHasVariants(e.target.checked)} /> <span>Has flavors or variants</span></label>
           </fieldset>
-          {!props.user && <button className="filter-signin" type="button" onClick={props.onLoginClick}><b>Wholesale pricing is locked</b><span>Sign in to see your account pricing.</span></button>}
+          {!props.profile && <button className="filter-signin" type="button" onClick={props.onLoginClick}><b>Wholesale pricing is locked</b><span>Sign in to see your account pricing.</span></button>}
+          {props.profile && !props.isApprovedBuyer && <p className="filter-signin"><b>Pricing after approval</b><span>Your account is not approved for trade pricing yet.</span></p>}
         </aside>
 
         <div>
@@ -678,10 +719,16 @@ function CategoryPage({ category, sub, ...props }) {
 // =============================================================================
 // PRODUCT PAGE
 // =============================================================================
-function ProductPage({ productId, user, profile, cart, addToCart, decCart, goProduct, goHome, goCategory, onLoginClick, onApplyClick }) {
+function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLine, products, goProduct, goHome, goCategory, onLoginClick, onApplyClick, onAccountClick }) {
   const [desiredQty, setDesiredQty] = useState(1);
-  useEffect(() => setDesiredQty(1), [productId]);
-  const p = PRODUCTS.find(x => x.id === productId);
+  const [chosenVariant, setChosenVariant] = useState(null);
+  const [variantError, setVariantError] = useState(false);
+  useEffect(() => {
+    setDesiredQty(1);
+    setChosenVariant(null);
+    setVariantError(false);
+  }, [productId]);
+  const p = products.find(x => Number(x.id) === Number(productId));
   if (!p) {
     return (
       <section className="page-head">
@@ -690,11 +737,19 @@ function ProductPage({ productId, user, profile, cart, addToCart, decCart, goPro
       </section>
     );
   }
-  const qty = cart[p.id] || 0;
-  const related = PRODUCTS.filter(x => x.sub === p.sub && x.id !== p.id).slice(0, 4);
+  const variants = variantList(p);
+  const choiceRequired = requiresVariantChoice(p);
+  const selected = choiceRequired ? chosenVariant : (variants.length === 1 ? variants[0] : null);
+  const key = lineKey(p.id, selected);
+  const qty = cart[key] || 0;
+  const related = products.filter(x => x.sub === p.sub && Number(x.id) !== Number(p.id)).slice(0, 4);
   const price = priceForProfile(p.price, profile);
   const handleAdd = () => {
-    addToCart(p.id, desiredQty);
+    if (choiceRequired && !chosenVariant) {
+      setVariantError(true);
+      return;
+    }
+    addLine(p.id, selected, desiredQty);
     setDesiredQty(1);
   };
 
@@ -716,11 +771,21 @@ function ProductPage({ productId, user, profile, cart, addToCart, decCart, goPro
           <p className="pd-brand">{p.brand} · {p.sub}</p>
           <h1>{p.name}</h1>
           <p className="pd-desc">Wholesale {p.sub.toLowerCase()} from {p.brand}. SKU {p.sku}. Supplied to licensed retail businesses for lawful resale — order by 2 PM Central for next-day delivery on our trucks across AL, MS and GA.</p>
-          {p.variants?.length > 0 && (
-            <div className="variant-chips">{p.variants.slice(0, 12).map(v => <span key={v}>{v}</span>)}</div>
+          {variants.length > 0 && (
+            <div className="variant-chips" role="group" aria-label={choiceRequired ? 'Choose a variant' : 'Variant'}>
+              {variants.map(v => (
+                <button key={v} type="button" aria-pressed={selected === v} onClick={() => { setChosenVariant(v); setVariantError(false); }}>{v}</button>
+              ))}
+            </div>
           )}
+          {choiceRequired && <p className="in-cart-note">Choose one variant. Each variant is quoted on its own line.</p>}
+          {variantError && <p className="form-error">Select a variant before adding this product.</p>}
           <div className="pd-price">
-            {user ? <><b>{money(price)}</b><span>Wholesale unit price · {p.sku}</span></> : <><b>Sign in</b><span>Wholesale pricing is visible to approved trade accounts</span></>}
+            {isApprovedBuyer && price != null
+              ? <><b>{money(price)}</b><span>Wholesale unit price · {variantSku(p.sku, selected)}</span></>
+              : profile
+              ? <><b>Pending</b><span>Pricing unlocks after your account is approved</span></>
+              : <><b>Sign in</b><span>Wholesale pricing is visible to approved trade accounts</span></>}
           </div>
           <div className="qty-row">
             <div className="qty-stepper" aria-label="Quantity to add">
@@ -728,13 +793,18 @@ function ProductPage({ productId, user, profile, cart, addToCart, decCart, goPro
               <b>{desiredQty}</b>
               <button type="button" onClick={() => setDesiredQty(q => q + 1)} aria-label="Increase quantity">+</button>
             </div>
-            <button className="button" type="button" onClick={handleAdd}>{user ? 'Add to order' : 'Add to quote'} <span aria-hidden="true">↗</span></button>
+            <button className="button" type="button" onClick={handleAdd} disabled={choiceRequired && !chosenVariant}>{isApprovedBuyer ? 'Add to order' : 'Add to quote'} <span aria-hidden="true">↗</span></button>
           </div>
-          {qty > 0 && <p className="in-cart-note">Already in {user ? 'order' : 'quote'}: <strong>{qty}</strong></p>}
-          {!user && (
+          {qty > 0 && <p className="in-cart-note">Already in {isApprovedBuyer ? 'order' : 'quote'}: <strong>{qty}</strong>{selected ? ` · ${selected}` : ''}</p>}
+          {!profile && (
             <div className="dialog-actions compact-actions">
               <button className="text-link" type="button" onClick={onLoginClick}>Sign in for pricing</button>
               <button className="text-link" type="button" onClick={onApplyClick}>Apply for account</button>
+            </div>
+          )}
+          {profile && !isApprovedBuyer && (
+            <div className="dialog-actions compact-actions">
+              <button className="text-link" type="button" onClick={onAccountClick}>View approval status</button>
             </div>
           )}
         </div>
@@ -746,7 +816,7 @@ function ProductPage({ productId, user, profile, cart, addToCart, decCart, goPro
             <button type="button" onClick={() => goCategory(p.cat)}>View department <span aria-hidden="true">↗</span></button>
           </div>
           <div className="card-grid">
-            {related.map(r => <ProductCard key={r.id} p={r} user={user} profile={profile} cart={cart} addToCart={addToCart} decCart={decCart} goProduct={goProduct} onLoginClick={onLoginClick} />)}
+            {related.map(r => <ProductCard key={r.id} p={r} profile={profile} isApprovedBuyer={isApprovedBuyer} cart={cart} addLine={addLine} decLine={decLine} goProduct={goProduct} onLoginClick={onLoginClick} />)}
           </div>
         </section>
       )}
@@ -755,37 +825,45 @@ function ProductPage({ productId, user, profile, cart, addToCart, decCart, goPro
 }
 
 // =============================================================================
-// QUOTE / CHECKOUT PAGE (Supabase + Netlify Forms submit, logic unchanged)
+// QUOTE / CHECKOUT — saved only by submit_quote, which prices the lines
 // =============================================================================
-function QuotePage({ items, total, addToCart, decCart, removeCart, clearCart, goHome, user, profile }) {
+function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHome, goProduct, profile, isApprovedBuyer, isBackendConfigured }) {
   const [step, setStep] = useState('review');
   const [data, setData] = useState({
-    business: user?.business || '', contact: user?.name || '', email: user?.email || '', phone: '', notes: '',
-    delivery: 'delivery', preferredDate: ''
+    business: profile?.business || '', contact: profile?.name || '', email: profile?.email || '', phone: '',
+    notes: '', delivery: 'delivery', preferredDate: '',
+    shipStreet: '', shipCity: '', shipState: '', shipZip: '',
   });
   const set = k => e => setData({ ...data, [k]: e.target.value });
   const [refNum] = useState(`ALW-Q-${Math.floor(Math.random() * 90000) + 10000}`);
+  const [receipt, setReceipt] = useState(null);
   const [submitError, setSubmitError] = useState(null);
   const [sending, setSending] = useState(false);
   const totalUnits = items.reduce((s, i) => s + i.qty, 0);
+  const needsVariant = items.some(it => it.needsVariant);
 
   const handleQuoteSubmit = async (e) => {
     e.preventDefault();
+    if (!isBackendConfigured) {
+      setSubmitError(`Quote requests can’t be saved right now. Call ${COMPANY.phone} or email ${COMPANY.email} and the trade desk will write it up with you.`);
+      return;
+    }
+    if (needsVariant) {
+      setSubmitError('Choose a variant for every product that has more than one.');
+      return;
+    }
     setSending(true);
     setSubmitError(null);
-    const itemsText = items.map(it => `${it.qty} × ${it.name} (${it.sku})${user ? ` @ $${it.price.toFixed(2)}` : ''}`).join('\n');
-    let supaOk = false;
     try {
-      const r = await submitOrder({ profile, refNum, formData: data, items, totalUnits, subtotal: user ? total : null });
-      supaOk = r.source === 'supabase' && r.ok;
-    } catch (err) { console.warn('Supabase order submit failed, falling back to Netlify Forms', err); }
-    try {
-      const res = await submitNetlifyForm('quote', { ...data, refNum, accountType: user ? 'signed-in' : 'guest', items: itemsText, totalUnits, subtotal: user ? total.toFixed(2) : 'pending' });
-      if (!supaOk && !res.ok) throw new Error(`Submission failed (${res.status})`);
-      setStep('submitted'); window.scrollTo(0, 0);
+      const r = await submitOrder({ refNum, formData: data, items });
+      if (!r?.ok || !r.order?.id) throw new Error('The quote was not saved.');
+      setReceipt(r.order);
+      setStep('submitted');
+      window.scrollTo(0, 0);
     } catch (err) {
-      if (supaOk) { setStep('submitted'); window.scrollTo(0, 0); }
-      else setSubmitError(`We couldn't reach our server. Please call ${COMPANY.phone} or email ${COMPANY.email} and reference ${refNum}.`);
+      setSubmitError(err?.code === 'unavailable'
+        ? `Quote requests can’t be saved right now. Call ${COMPANY.phone} or email ${COMPANY.email} and the trade desk will write it up with you.`
+        : `We couldn’t save this quote. Please call ${COMPANY.phone} or email ${COMPANY.email} and reference ${refNum}.`);
     } finally { setSending(false); }
   };
 
@@ -802,12 +880,12 @@ function QuotePage({ items, total, addToCart, decCart, removeCart, clearCart, go
   if (step === 'submitted') {
     return (
       <section className="page-head" style={{ textAlign: 'center', padding: '60px 0' }}>
-        <p className="eyebrow">{user ? 'ORDER RECEIVED' : 'QUOTE RECEIVED'}</p>
+        <p className="eyebrow">{isApprovedBuyer ? 'ORDER RECEIVED' : 'QUOTE RECEIVED'}</p>
         <h1>Thank you, {data.contact || 'partner'}.</h1>
         <p style={{ margin: '0 auto 14px' }}>
-          {user ? 'Your order has been placed.' : 'Your quote request has been submitted.'} A trade desk rep will reach out within one business day at <strong style={{ color: 'var(--purple)' }}>{data.phone || data.email}</strong> to confirm details.
+          {isApprovedBuyer ? 'Your order has been saved.' : 'Your quote request has been saved.'} A trade desk rep will reach out within one business day at <strong style={{ color: 'var(--purple)' }}>{data.phone || data.email}</strong> to confirm details.
         </p>
-        <p className="result-note" style={{ fontSize: 13 }}>Reference number: <strong>{refNum}</strong></p>
+        <p className="result-note" style={{ fontSize: 13 }}>Reference number: <strong>{receipt?.ref_num || refNum}</strong></p>
         <div className="dialog-actions" style={{ justifyContent: 'center' }}>
           <a className="button ghost" href={`tel:${COMPANY.phoneRaw}`}>Call to discuss</a>
           <button className="button" onClick={() => { clearCart(); goHome(); }}>Back to home <span aria-hidden="true">↗</span></button>
@@ -819,28 +897,33 @@ function QuotePage({ items, total, addToCart, decCart, removeCart, clearCart, go
   return (
     <section>
       <div className="page-head">
-        <div className="crumbs"><button type="button" onClick={goHome}>Home</button><span aria-hidden="true">/</span><span>{user ? 'Checkout' : 'Request Quote'}</span></div>
-        <p className="eyebrow">{user ? 'CHECKOUT' : 'QUOTE REQUEST'}</p>
-        <h1>{user ? 'Place your order' : 'Request your quote'}</h1>
+        <div className="crumbs"><button type="button" onClick={goHome}>Home</button><span aria-hidden="true">/</span><span>{isApprovedBuyer ? 'Checkout' : 'Request Quote'}</span></div>
+        <p className="eyebrow">{isApprovedBuyer ? 'CHECKOUT' : 'QUOTE REQUEST'}</p>
+        <h1>{isApprovedBuyer ? 'Place your order' : 'Request your quote'}</h1>
         <p>Review your items and submit. A trade desk rep will confirm pricing, availability, freight, and delivery within one business day.</p>
       </div>
       <div className="checkout-grid">
         <div>
           <div className="card-grid" style={{ gridTemplateColumns: '1fr' }}>
             {items.map(it => (
-              <div key={it.id} className="drawer-line" style={{ border: '1px solid var(--line)', padding: 12 }}>
+              <div key={it.lineKey} className="drawer-line" style={{ border: '1px solid var(--line)', padding: 12 }}>
                 <span className="thumb">{it.img ? <img src={it.img} alt="" /> : initials(it.name)}</span>
                 <span className="info">
                   <b>{it.name}</b>
-                  <small>{it.sku}{user && ` · ${money(it.price)} each`}</small>
+                  <small>{it.sku}{isApprovedBuyer && it.price != null ? ` · ${money(it.price)} each` : ''}</small>
+                  {it.needsVariant && <small>Choose a variant before submitting.</small>}
                 </span>
-                <span className="qty">
-                  <button type="button" onClick={() => decCart(it.id)} aria-label="Decrease">−</button>
-                  <b>{it.qty}</b>
-                  <button type="button" onClick={() => addToCart(it.id)} aria-label="Increase">+</button>
-                </span>
-                {user && <b style={{ color: 'var(--purple)', minWidth: 64, textAlign: 'right' }}>{money(it.qty * it.price)}</b>}
-                <button className="text-link" type="button" onClick={() => removeCart(it.id)}>Remove</button>
+                {it.needsVariant ? (
+                  <button className="text-link" type="button" onClick={() => goProduct(it.productId)}>Choose variant</button>
+                ) : (
+                  <span className="qty">
+                    <button type="button" onClick={() => decLine(it.lineKey)} aria-label="Decrease">−</button>
+                    <b>{it.qty}</b>
+                    <button type="button" onClick={() => addLine(it.productId, it.variant)} aria-label="Increase">+</button>
+                  </span>
+                )}
+                {isApprovedBuyer && it.price != null && <b style={{ color: 'var(--purple)', minWidth: 64, textAlign: 'right' }}>{money(it.qty * it.price)}</b>}
+                <button className="text-link" type="button" onClick={() => removeLine(it.lineKey)}>Remove</button>
               </div>
             ))}
           </div>
@@ -852,6 +935,10 @@ function QuotePage({ items, total, addToCart, decCart, removeCart, clearCart, go
             <div><label>Contact</label><input value={data.contact} onChange={set('contact')} required /></div>
             <div><label>Email</label><input type="email" value={data.email} onChange={set('email')} required /></div>
             <div><label>Phone</label><input type="tel" value={data.phone} onChange={set('phone')} required /></div>
+            <div className="full"><label htmlFor="ship-street">Ship-to street</label><input id="ship-street" value={data.shipStreet} onChange={set('shipStreet')} required autoComplete="street-address" /></div>
+            <div><label htmlFor="ship-city">City</label><input id="ship-city" value={data.shipCity} onChange={set('shipCity')} required autoComplete="address-level2" /></div>
+            <div><label htmlFor="ship-state">State</label><input id="ship-state" value={data.shipState} onChange={set('shipState')} required autoComplete="address-level1" /></div>
+            <div><label htmlFor="ship-zip">ZIP</label><input id="ship-zip" value={data.shipZip} onChange={set('shipZip')} required autoComplete="postal-code" inputMode="numeric" /></div>
             <div><label>Delivery method</label>
               <select value={data.delivery} onChange={set('delivery')}>
                 <option value="delivery">Next-day delivery</option>
@@ -863,11 +950,13 @@ function QuotePage({ items, total, addToCart, decCart, removeCart, clearCart, go
           </div>
           <div className="drawer-total" style={{ marginTop: 18 }}>
             <span>{totalUnits} units</span>
-            <span>{user ? money(total) : 'Pricing after sign-in'}</span>
+            <span>{isApprovedBuyer ? money(total) : (profile ? 'Pricing after approval' : 'Pricing after sign-in')}</span>
           </div>
+          {!isBackendConfigured && <p className="form-error">Quote requests can’t be saved right now. Call {COMPANY.phone} or email {COMPANY.email} and the trade desk will write it up with you.</p>}
+          {needsVariant && <p className="form-error">Choose a variant for every product that has more than one.</p>}
           {submitError && <p className="form-error">{submitError}</p>}
-          <button className="button wide" type="submit" disabled={sending}>
-            {sending ? 'Sending…' : (user ? 'Submit order' : 'Submit quote request')} <span aria-hidden="true">↗</span></button>
+          <button className="button wide" type="submit" disabled={sending || !isBackendConfigured || needsVariant}>
+            {sending ? 'Sending…' : (isApprovedBuyer ? 'Submit order' : 'Submit quote request')} <span aria-hidden="true">↗</span></button>
           <p className="fine">Orders over $1,500 qualify for free delivery in AL, MS &amp; GA. Tobacco products supplied to licensed retailers only — 21+.</p>
         </form>
       </div>
@@ -878,7 +967,7 @@ function QuotePage({ items, total, addToCart, decCart, removeCart, clearCart, go
 // =============================================================================
 // FOOTER / DIALOGS / DRAWER
 // =============================================================================
-function Footer({ goHome, goCategory, onLoginClick, onApplyClick, onNewArrivals, onBestsellers }) {
+function Footer({ goHome, goCategory, departments, onLoginClick, onApplyClick, onNewArrivals, onBestsellers }) {
   return (
     <footer className="footer-main">
       <div className="container">
@@ -889,7 +978,7 @@ function Footer({ goHome, goCategory, onLoginClick, onApplyClick, onNewArrivals,
           </div>
           <div>
             <h4>Departments</h4>
-            {DEPARTMENTS.map(c => <button key={c.key} type="button" onClick={() => goCategory(c.key)}>{c.label} ({c.count})</button>)}
+            {departments.map(c => <button key={c.key} type="button" onClick={() => goCategory(c.key)}>{c.label} ({c.count})</button>)}
           </div>
           <div>
             <h4>Account</h4>
@@ -941,7 +1030,7 @@ function HelpDialog({ onClose, onApply }) {
   );
 }
 
-function CartDrawer({ open, onClose, items, total, addToCart, decCart, removeCart, goQuote, user, onLoginClick }) {
+function CartDrawer({ open, onClose, items, total, addLine, decLine, removeLine, goQuote, goProduct, isApprovedBuyer, onLoginClick }) {
   if (!open) return null;
   return (
     <>
@@ -954,28 +1043,32 @@ function CartDrawer({ open, onClose, items, total, addToCart, decCart, removeCar
         <div className="drawer-body">
           {items.length === 0 && <p className="empty-note">Your cart is empty.<br />Browse the catalog and add items to build an order.</p>}
           {items.map(it => (
-            <div className="drawer-line" key={it.id}>
+            <div className="drawer-line" key={it.lineKey}>
               <span className="thumb">{it.img ? <img src={it.img} alt="" /> : initials(it.name)}</span>
               <span className="info">
                 <b>{it.name}</b>
-                <small>{it.sku}{user && ` · ${money(it.price)}`}</small>
+                <small>{it.sku}{isApprovedBuyer && it.price != null ? ` · ${money(it.price)}` : ''}{it.needsVariant ? ' · Choose a variant' : ''}</small>
               </span>
-              <span className="qty">
-                <button type="button" onClick={() => decCart(it.id)} aria-label="Decrease">−</button>
-                <b>{it.qty}</b>
-                <button type="button" onClick={() => addToCart(it.id)} aria-label="Increase">+</button>
-              </span>
-              <button className="text-link" type="button" onClick={() => removeCart(it.id)} aria-label={`Remove ${it.name}`}>×</button>
+              {it.needsVariant ? (
+                <button className="text-link" type="button" onClick={() => { onClose(); goProduct(it.productId); }}>Choose</button>
+              ) : (
+                <span className="qty">
+                  <button type="button" onClick={() => decLine(it.lineKey)} aria-label="Decrease">−</button>
+                  <b>{it.qty}</b>
+                  <button type="button" onClick={() => addLine(it.productId, it.variant)} aria-label="Increase">+</button>
+                </span>
+              )}
+              <button className="text-link" type="button" onClick={() => removeLine(it.lineKey)} aria-label={`Remove ${it.name}`}>×</button>
             </div>
           ))}
         </div>
         <div className="drawer-foot">
           <div className="drawer-total">
             <span>Estimated total</span>
-            <span>{user ? money(total) : 'Sign in for pricing'}</span>
+            <span>{isApprovedBuyer ? money(total) : 'Sign in for pricing'}</span>
           </div>
           {items.length > 0 && (
-            user
+            isApprovedBuyer
               ? <button className="button wide" type="button" onClick={goQuote}>Checkout <span aria-hidden="true">↗</span></button>
               : <>
                   <button className="button wide" type="button" onClick={goQuote}>Request quote <span aria-hidden="true">↗</span></button>

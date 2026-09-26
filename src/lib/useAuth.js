@@ -38,7 +38,7 @@ export function useAuth() {
   }, [session?.user?.id]);
 
   const signUp = useCallback(async ({ email, password, name, business, phone, license_no, business_type, state, expected_volume }) => {
-    if (!supabase) throw new Error('Backend not configured');
+    if (!supabase) throw new Error('Account access is temporarily unavailable. Please call or email the trade desk.');
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -51,7 +51,7 @@ export function useAuth() {
   }, []);
 
   const signIn = useCallback(async ({ email, password }) => {
-    if (!supabase) throw new Error('Backend not configured');
+    if (!supabase) throw new Error('Account access is temporarily unavailable. Please call or email the trade desk.');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
   }, []);

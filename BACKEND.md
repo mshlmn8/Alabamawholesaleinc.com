@@ -20,16 +20,19 @@ In the Supabase dashboard, open **SQL Editor** and run these files in order:
 ```
 supabase/migrations/20260517000000_initial_schema.sql
 supabase/migrations/20260517000001_rls_policies.sql
+supabase/migrations/20260925120000_launch_order_boundaries.sql
 supabase/seed/products.sql
 ```
 
 The schema creates four tables — `profiles`, `products`, `orders`,
 `order_items` — plus a `pricing_tiers` lookup. RLS is enabled on all four.
 
-A trigger on `auth.users` auto-creates a `profiles` row on signup. **The very
-first user to sign up is promoted to `admin` / `approved`** so you can log
-into the admin dashboard. Every subsequent signup starts as `customer` /
-`pending` and must be approved from the Admin → Accounts tab.
+A trigger on `auth.users` auto-creates a `profiles` row on signup. **Every
+signup starts as `customer` / `pending`.** Public signup never creates an
+administrator. After the owner has confirmed their email, open
+`supabase/seed/provision_owner.sql`, replace the placeholder email, and run
+that statement in the SQL editor. Later accounts are approved from the
+Admin → Accounts tab.
 
 ## 3. Wire the env vars locally
 
@@ -57,8 +60,8 @@ Trigger a redeploy after saving.
    (You can disable email confirmation in Supabase → Authentication →
    Providers → Email if you'd rather skip it for internal testing.)
 3. Click the confirmation link, then sign in.
-4. Because you're the first user, the trigger promoted you to `admin`. You
-   should see an orange **ADMIN** link in the header utility bar.
+4. Run `supabase/seed/provision_owner.sql` for that email. You should then see
+   an **Admin** link in the header.
 5. Open `#/admin`. Three tabs:
    - **Orders** — every quote submitted via the storefront, with status dropdown.
    - **Accounts** — every trade account; flip `pending → approved`, change
@@ -75,9 +78,10 @@ Trigger a redeploy after saving.
 | silver    | 5%       |
 | gold      | 10%      |
 
-A signed-in customer sees `listPrice × (1 - tier.discount)` on every product
-card, in the cart drawer, and on the quote page. The discounted prices are
-also what gets written to `order_items.unit_price` when they submit a quote.
+An **approved** account sees `listPrice × (1 - tier.discount)` on product
+cards, in the cart drawer, and on the quote page. Pending and suspended
+profiles do not. The browser does not choose the saved price: `submit_quote`
+reads `products.price` and `pricing_tiers` and writes `order_items.unit_price`.
 
 To add new tiers: insert a row in `pricing_tiers` and add the discount to
 `TIER_DISCOUNT` in `src/App.jsx`.
@@ -88,8 +92,10 @@ To add new tiers: insert a row in `pricing_tiers` and add the discount to
   Users cannot self-promote (the policy explicitly blocks changing role,
   status, or pricing_tier in self-updates).
 - **products**: anyone reads `active = true`; admins read/write everything.
-- **orders / order_items**: a user reads their own orders; guests can insert
-  (anonymous quotes are stored with `user_id = null`); admins read/update all.
+- **orders / order_items**: a user reads their own orders; admins read and
+  update all. Customers and guests do not insert rows directly. `submit_quote`
+  saves the header and lines together, sets `user_id` from the session, and
+  calculates prices. Guest quotes are stored with `user_id` null.
 - **pricing_tiers**: world-readable; admin-writable.
 
 ## Resetting
@@ -97,7 +103,7 @@ To add new tiers: insert a row in `pricing_tiers` and add the discount to
 ```sql
 drop schema public cascade;
 create schema public;
--- then re-run the three SQL files
+-- then re-run the migration files and supabase/seed/products.sql
 ```
 
 `auth.users` lives in a separate schema and is preserved — you'll want to

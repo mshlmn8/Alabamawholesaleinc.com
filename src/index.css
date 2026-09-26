@@ -263,7 +263,19 @@ h2 { font-size: 35px; margin-bottom: 0; }
 .pd-price b { font: 700 34px/1 var(--display); color: var(--purple); }
 .pd-price span { display: block; font-size: 10px; letter-spacing: 1.4px; color: var(--muted); text-transform: uppercase; margin-top: 6px; }
 .variant-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 22px; }
-.variant-chips span { border: 1px solid var(--line); background: var(--paper); font-size: 11px; padding: 6px 12px; }
+.variant-chips button {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 11px;
+  padding: 6px 12px;
+  border-radius: 2px;
+}
+.variant-chips button[aria-pressed="true"] {
+  border-color: var(--purple);
+  background: var(--purple);
+  color: #fff;
+}
 .qty-row { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
 .qty-stepper { display: flex; align-items: center; border: 1px solid var(--line); }
 .qty-stepper button { width: 44px; height: 46px; font-size: 18px; background: #fff; border: 0; color: var(--purple); }

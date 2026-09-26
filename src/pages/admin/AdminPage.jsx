@@ -108,6 +108,7 @@ function OrdersTab() {
               <div style={{ ...mono, fontWeight: 700, color: C.navy }} className="text-xs uppercase">{o.ref_num}</div>
               <div className="text-[11px]" style={{ color: C.muted }}>
                 {new Date(o.created_at).toLocaleString()} · {o.business} · {o.contact} · {o.email} · {o.phone}
+                {o.ship_street && <span> · Ship to {o.ship_street}, {o.ship_city} {o.ship_state} {o.ship_zip}</span>}
                 {o.profiles?.pricing_tier && <span> · tier: <b>{o.profiles.pricing_tier}</b></span>}
               </div>
             </div>
