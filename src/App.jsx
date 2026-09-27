@@ -6,7 +6,7 @@ import { NAV_ORDER, NEW_ARRIVALS_IDS } from './data/products.js';
 import { useAuth } from './lib/useAuth.js';
 import { useCatalog } from './lib/useCatalog.js';
 import { submitOrder } from './lib/orders.js';
-import { lineKey, variantList, variantSku, requiresVariantChoice, resolveCartItems, normalizeCart } from './lib/lines.js';
+import { lineKey, variantList, variantSku, variantCountLabel, requiresVariantChoice, resolveCartItems, normalizeCart } from './lib/lines.js';
 import { useMediaQuery } from './lib/useMediaQuery.js';
 import { heroImage, SIZES } from './lib/images.js';
 import { Picture } from './components/Picture.jsx';
@@ -818,7 +818,7 @@ function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLine, goPr
         </div>
         <p className="card-kicker">{p.sub}</p>
         <h3>{p.name}</h3>
-        <p className="card-detail">{p.brand}{p.flavors ? ` · ${p.flavors} variants` : ''} · {p.sku}</p>
+        <p className="card-detail">{p.brand}{variants.length > 0 ? <>{' · '}<span className="variant-count">{variantCountLabel(variants.length)}</span></> : ''}{` · ${p.sku}`}</p>
       </button>
       <span className="card-meta card-actions">
         {isApprovedBuyer && price != null ? (
@@ -1094,6 +1094,7 @@ function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLi
         <div className="pd-info">
           <p className="pd-brand">{p.brand} · {p.sub}</p>
           <h1>{p.name}</h1>
+          {variants.length > 0 && <p className="card-detail variant-count">{variantCountLabel(variants.length)}</p>}
           <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()} from ${p.brand}.`}</p>
           {p.sellUnit && <p className="pd-unit">Sold by the {p.sellUnit} — quantity 1 is one {p.sellUnit}.</p>}
           <p className="pd-desc pd-fine">SKU {p.sku}. Supplied to licensed retail businesses for lawful resale. Next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA. Will-call is pickup at the Birmingham warehouse during business hours.</p>

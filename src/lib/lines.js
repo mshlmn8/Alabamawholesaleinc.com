@@ -28,6 +28,13 @@ export function requiresVariantChoice(product) {
   return variantList(product).length > 1;
 }
 
+// One string, whole word: "1 variant" or "8 variants". Never append a lone "s".
+export function variantCountLabel(count) {
+  const n = Math.trunc(Number(count));
+  if (!Number.isFinite(n) || n < 1) return '';
+  return `${n} ${n === 1 ? 'variant' : 'variants'}`;
+}
+
 export function variantSku(sku, variantLabel) {
   if (!variantLabel) return sku;
   const suffix = String(variantLabel).trim().toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '');
