@@ -26,18 +26,18 @@ Photos added for catalog rows that had no `img`. Each file is the retail packsho
 | 272 | Jumex (mango nectar, 11.3 oz can, UPC 076406021801) | `p272-jumex.jpg` | https://www.kroger.com/product/images/xlarge/front/0007640602180 | retailer (Kroger) | 2026-09-27 |
 | 346 | Monster Java (Mean Bean, 15 oz, UPC 070847831037) | `p346-monster-java.jpg` | https://i5.walmartimages.com/asr/284f9ec5-c719-41ab-a3a3-66c3d8c938c7_1.e96ba0f3da7d17c5aee4a33d79a73f67.jpeg | retailer (Walmart) — re-encoded from 2495 px | 2026-09-27 |
 | 360 | Bug Juice (Blue Banana) | `p360-bug-juice.png` | https://bugjuice.com/wp-content/uploads/Bug-Juice-Blue-Banana-1-457x1200.png | manufacturer (bugjuice.com) | 2026-09-27 |
+| 139 | Vinut (Mango juice with pulp, 16.57 fl oz can) | `p139-vinut.png` | https://vinutusa.com/wp-content/uploads/2023/12/Mango-490ml-with-Pulp.png | manufacturer (Vinut USA) | 2026-09-27 |
+| 141 | Tropical Fantasy Aloe Vera (Mango, UPC 089087157210) | `p141-tropical-fantasy-aloe.jpg` | https://wholesale.cstoremaster.com/drink/soda/tropical-fantasy-aloe-btl-22-5oz-mango.html | retailer — 1200 px bottle re-encoded to JPEG q85 | 2026-09-27 |
+| 269 | Airheads soda (orange, blue raspberry, watermelon, strawberry 12 oz cans) | `p269-airheads-soda.jpg` | https://wingsmart.co.uk/products/airheads-soda-355ml-mixed-flavours | retailer | 2026-09-27 |
 
 Identification:
 - #232 `Alani` → `Alani Nu` is correct. Cherry Slush, Blue Slush, and Sherbet Swirl are current 12 oz cans (Sherbet on the row is Sherbet Swirl). Photo is Cherry Slush. Source: https://www.alaninu.com/products/energy-drink-cherry-slush
 
 Skipped:
-- #87 Old Tyme soda — oldtyme.com returned 403, and the only confirmed packshot was an orange 20 oz bottle, which is not one of the listed flavors.
+- #87 Old Tyme soda — oldtyme.com and the Exotic Pop listing returned 403. No packshot of a listed flavor (fruit punch, blue, mango, pineapple, grape, purple passion, pina colada, strawberry kiwi) at least 600 px was saved. An orange bottle is still the wrong flavor.
 - #90 Plastic T-shirt bags — brand `Assorted`; bag photos found carry a printer or store mark.
 - #92 Register paper rolls — brand `Assorted`; roll photos found are branded or are not a plain register roll.
 - #93 6pk beer carriers — brand `Assorted`; carrier photos found are printed for a brewery.
 - #95 Trash can liners — brand `Assorted`; box and bag photos found carry a maker's mark.
-- #139 Vinut — the only barcode hit was a sparkling mango SKU with no packshot large enough, not the canned juice line (watermelon, pineapple, mango, and the rest).
-- #141 Tropical Fantasy Aloe Vera — tropicalfantasy.com bottle renders are 166 px on the long side, under the 600 px minimum.
 - #212 Ice bags — brand `Assorted`; every ice-bag photo found is printed with a brand.
-- #269 Airheads soda — no current retail packshot of an Airheads soda in the listed colors.
-- #94 Beer ringers was not given a photo: unbranded ring photos on Wikimedia are CC BY-SA, which this catalog does not carry.
+- #94 Beer ringers — brand `Assorted`. A second pass still found no commercial unbranded ring-carrier packshot. Wikimedia ring photos are CC BY-SA and were not used.
