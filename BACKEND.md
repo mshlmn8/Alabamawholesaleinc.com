@@ -21,8 +21,16 @@ In the Supabase dashboard, open **SQL Editor** and run these files in order:
 supabase/migrations/20260517000000_initial_schema.sql
 supabase/migrations/20260517000001_rls_policies.sql
 supabase/migrations/20260925120000_launch_order_boundaries.sql
+supabase/migrations/20260927000000_application_fields.sql
+supabase/migrations/20260927120000_product_copy.sql
 supabase/seed/products.sql
 ```
+
+`supabase/seed/products.sql` is generated from `src/data/products.js` by
+`npm run seed`; re-run it and re-apply the file whenever the catalog changes so
+the live rows keep the same ids, SKUs, names, variants, photos, descriptions
+and sell units. Re-applying is safe: rows are updated in place and an admin's
+`active = false` is kept.
 
 The schema creates four tables — `profiles`, `products`, `orders`,
 `order_items` — plus a `pricing_tiers` lookup. RLS is enabled on all four.
@@ -52,6 +60,10 @@ In your Netlify site → **Site configuration → Environment variables**, add:
 | `VITE_SUPABASE_ANON_KEY`  | All       |
 
 Trigger a redeploy after saving.
+
+Password-reset emails link back to the site root. Under **Authentication →
+URL Configuration**, set the Site URL to the production domain and add
+`http://localhost:3000/` to the redirect allow list for local testing.
 
 ## 5. First-run sanity check
 

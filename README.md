@@ -2,7 +2,7 @@
 
 Editorial wholesale storefront for licensed retailers. 368 SKUs across 8 departments — tobacco, novelties, merchandise, candies, food stuff, grocery, motor oil, drinks & bags — shipping from Birmingham.
 
-The public pages use the 2A editorial system: Barlow Condensed and DM Sans (bundled in `src/fonts/`), purple / cream / orange, and plain CSS in `src/index.css`. Home, catalog, product, quote, cart, and the sign-in chrome all use that system. Account (`#/account`) and admin (`#/admin`) still use the previous Tailwind layout, Lucide icons, and the `C`, `body`, `display`, and `mono` tokens in `src/data/theme.js`.
+Every page uses the 2A editorial system: Barlow Condensed and DM Sans (bundled in `src/fonts/`), purple / cream / orange, and plain CSS in `src/index.css`. Home, catalog, product, quote, cart, the sign-in dialog, the support pages, account (`#/account`) and admin (`#/admin`) all share it; Tailwind stays in the build only for its preflight reset.
 
 ## Pages
 
@@ -60,7 +60,7 @@ Storefront layout lives in **`src/App.jsx`**. Product photos live in **`src/asse
 | Top ticker | `ANNOUNCEMENTS` in `src/data/content.js` |
 | Departments and sub-lines | `NAV_CATEGORIES` in `src/data/products.js` |
 | The 368 products | `PRODUCTS` in `src/data/products.js` |
-| Account and admin colors | `C`, `body`, `display`, and `mono` in `src/data/theme.js` |
+| Account and admin styles | the `account / admin` block in `src/index.css` |
 
 `SHOP_CATS`, `BRANDS`, `TRUST`, `FAQS`, and `WELCOME_OFFERS` in `src/data/content.js` are leftover from the previous layout. The editorial pages do not render them.
 
