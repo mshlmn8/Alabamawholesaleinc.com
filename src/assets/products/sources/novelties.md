@@ -25,3 +25,6 @@ Photos added to `src/assets/products/` for Novelties rows that had none. Each wa
 | 309 | Water bongs | `p309-water-bongs.webp` | https://hswsupply.com/8-assorted-mini-beaker-water-pipe-with-14m-bowl-hs-wholesale/ | retailer | 2026-09-27 |
 | 312 | Stoned blue lotus gummies bags | `p312-stoned-blue-lotus-gummies.webp` | https://pureleafkratom.com/products/stoned-blue-lotus-white-lotus-gummies-blue-raspberry-1000mg.html | retailer | 2026-09-27 |
 | 314 | Coco Nara hookah charcoal | `p314-coco-nara-hookah-charcoal.webp` | https://www.coconaraonline.com/products/coco-nara-hookah-charcoal-coal-120pcs-flat | retailer | 2026-09-27 |
+| 310 | Geek Bar Mate 60K kit (device + pod) | `p310-geek-bar-mate-60k.webp` | https://juicefly.com/product/geek-bar-mate-60k-kit-battery-pod/ | retailer | 2026-09-27 |
+| 311 | Geek Bar Mate 60K pods (identified; photo not added) | — | https://juicefly.com/product/geek-bar-mate-60k-kit-battery-pod/ | retailer | 2026-09-27 |
+| 219 | Happy valentines jar (not identified; two candidates) | — | https://branexwholesale.com/product/happy-valentine-glass-rose-4-small-24-count | retailer | 2026-09-27 |
