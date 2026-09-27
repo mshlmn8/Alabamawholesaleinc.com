@@ -120,7 +120,7 @@ export const CATALOG = [
     description: "Pop-Tarts toaster pastries in counter displays. Three flavors: Strawberry, S'mores and Brown sugar cinnamon." },
   { id:  50, name: "Cloverhill pastries", brand: "Cloverhill", cat: "FOOD STUFF", sub: "Quick Meals", sku: "AW-CLOVER-HILL", sellUnit: "", flavors: 2, variants: ["Big Texas", "Honey bun"], img: "p50-cloverhill-pastries.jpg", tag: null, price: 44.94,
     description: "Cloverhill bakery pastries. Two flavors: Big Texas and Honey bun." },
-  { id:  51, name: "Cereal cups", brand: "Assorted", cat: "FOOD STUFF", sub: "Quick Meals", sku: "AW-CEREAL-CUPS", sellUnit: "", flavors: 4, variants: ["Frosted Flakes", "Apple jack", "Froot Loops", "Corn Pops"], img: "cereal_cups.jpg", tag: null, price: 30,
+  { id:  51, name: "Cereal cups", brand: "Assorted", cat: "FOOD STUFF", sub: "Quick Meals", sku: "AW-CEREAL-CUPS", sellUnit: "", flavors: 4, variants: ["Frosted Flakes", "Apple jack", "Froot Loops", "Corn Pops"], img: "p51-cereal-cups.jpg", tag: null, price: 30,
     description: "Single-serve cereal cups. Four flavors: Frosted Flakes, Apple jack, Froot Loops and Corn Pops." },
   { id:  52, name: "Gurley's candy bags", brand: "Gurley's", cat: "CANDIES", sub: "Bags", sku: "AW-GURLEYS", sellUnit: "", flavors: 4, variants: ["Butter flies", "Circus peanuts", "Watermelon rings", "Gummy worms"], img: "p52-gurleys-candy-bags.jpg", tag: null, price: 21.31,
     description: "Gurley's candy peg bags. Four flavors: Butter flies, Circus peanuts, Watermelon rings and Gummy worms." },
