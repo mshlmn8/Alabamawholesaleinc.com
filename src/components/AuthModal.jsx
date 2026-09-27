@@ -14,6 +14,15 @@ const STATES = ['AL','GA','MS','TN','FL','LA','SC','NC','KY','Other'];
 const BUSINESS_TYPES = ['Convenience Store','Smoke Shop','Vape Shop','Liquor Store','Grocery / Bodega','Auto Parts','Hookah Lounge','Other'];
 const VOLUMES = ['Under $5K','$5K — $15K','$15K — $50K','$50K — $100K','$100K+'];
 
+// A network failure is a service problem, not something the customer typed
+// wrong, so it gets the same customer-facing copy as an unconfigured backend.
+const NETWORK_ERROR = /fetch|network|load failed/i;
+const describeError = (err, what, fallback) => (
+  NETWORK_ERROR.test(err?.message || '')
+    ? `${what} is unavailable right now. Call ${COMPANY.phone} or email ${COMPANY.email} and a trade rep will help you.`
+    : (err?.message || fallback)
+);
+
 const EMPTY_SIGNUP = {
   email: '', password: '', name: '', business: '', phone: '',
   ein: '', license_no: '', resale_cert_no: '',
@@ -83,7 +92,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
     e.preventDefault();
     setSubmitting(true); setError(null);
     try { await signIn(signin); setMode('checking'); }
-    catch (err) { setError(err.message || 'Sign-in failed'); }
+    catch (err) { setError(describeError(err, 'Account sign-in', 'Sign-in failed')); }
     finally { setSubmitting(false); }
   };
 
@@ -97,7 +106,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
       // account is signed in and already pending review.
       setMode(data?.session ? 'status' : 'sent');
     }
-    catch (err) { setError(err.message || 'Sign-up failed'); }
+    catch (err) { setError(describeError(err, 'The online application', 'Sign-up failed')); }
     finally { setSubmitting(false); }
   };
 
@@ -105,7 +114,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
     e.preventDefault();
     setSubmitting(true); setError(null);
     try { await resetPassword(resetEmail); setMode('reset-sent'); }
-    catch (err) { setError(err.message || 'We couldn’t send the reset link'); }
+    catch (err) { setError(describeError(err, 'Password reset', 'We couldn’t send the reset link')); }
     finally { setSubmitting(false); }
   };
 

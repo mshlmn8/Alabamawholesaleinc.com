@@ -3,6 +3,7 @@
 // directly at #/reset-password by a signed-in account.
 
 import React, { useState } from 'react';
+import { COMPANY } from '../../data/content.js';
 import { ServiceUnavailable } from '../../components/ServiceUnavailable.jsx';
 import { PageHead, CallOrEmail } from './SupportShell.jsx';
 
@@ -23,7 +24,11 @@ export function ResetPasswordPage({ goHome, navigate, auth, onRequestReset, onLo
     if (password !== confirm) { setError('The two passwords don’t match.'); return; }
     setSaving(true);
     try { await updatePassword(password); setDone(true); }
-    catch (err) { setError(err.message || 'We couldn’t update the password.'); }
+    catch (err) {
+      setError(/fetch|network|load failed/i.test(err?.message || '')
+        ? `Password reset is unavailable right now. Call ${COMPANY.phone} or email ${COMPANY.email} and a trade rep will help you.`
+        : (err?.message || 'We couldn’t update the password.'));
+    }
     finally { setSaving(false); }
   };
 
