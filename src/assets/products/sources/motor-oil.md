@@ -9,3 +9,6 @@ Photos added for catalog rows that had no `img`. Each file is the retail packsho
 
 Skipped:
 - #100 Cheap antifreeze — brand is `Assorted`; every antifreeze jug packshot carries a maker's label, so no unbranded photo qualifies.
+
+Identification (this pass):
+- #355 Gold Band is Warren Oil's Gold Band line. The only variant, Type A, is GOLD BAND Type A automatic transmission fluid (an economy red ATF, not for Dexron/Mercon applications). The existing photo `gold_band.jpg` is the Gold Band SAE 30 non-detergent lube oil jug, a different product in the same line. Name left as `Gold Band`; the photo was not replaced. Sources: https://www.warrenoil.com/ourproducts/GOLDBANDTypeA and https://www.warrenoil.com/ourproducts/GOLDBAND30WLubeOil

@@ -14,5 +14,11 @@ Notes:
 - #361 was a guessed name (`Dominoes sugar` → `Domino sugar`). The search confirms Domino (Domino Foods, since 1901) is the only sugar brand by that name and its Small/Big bags are the 2 lb and 4 lb; photo added on that basis — owner to confirm.
 
 Skipped:
-- #295 Snack wraps — product not identified (see catalog-status "needing owner input"); `img` left empty.
+- #295 Snack wraps — product not identified (see below); `img` left empty.
 - #353 Instant coffee — brand is `Assorted`; every instant-coffee packshot carries a maker's label, so no unbranded photo qualifies.
+
+Identification (this pass):
+- #361 Domino sugar stands. Domino Foods' Premium Pure Cane Granulated sugar is the only sugar sold under that name; Small/Big are the 2 lb and 4 lb bags. The earlier rename from `Dominoes sugar` is correct. Source: https://www.dominosugar.com/ and the Target listing in the table above.
+- #350 Uncle Al's and #351 Uncle Al's cookies are the same cookie line, not two products to merge or delete. Wholesale lists Uncle Al's Cookies as 5 oz bags (12 per case) in many flavors, and Lemon Ice is one of those flavors (UPC 688149230030). #351 is that Lemon Ice variety. #350 has no flavor and already uses the same Lemon Ice box photo, so it is the same cookies listed without a flavor. Uncle Al's also sells stage planks and sugar wafers, which these two rows do not name. Rows left as they are. Sources: https://branexwholesale.com/product/uncle-als-cookies-5-oz-pack-of-12 and https://metroatlantawholesale.com/product/uncle-als-cookies-5-oz/
+- #295 Snack wraps (40ct / 12ct) is still two candidates, so the name stays `Snack wraps` / `Assorted`. One is plastic snack bags sold as a 40-count box and a 12-count box (Ziploc snack bags are packed 40 per box, 12 boxes per case — the counts match, but the row sits under Chips & Crackers). The other is flour-tortilla or sandwich wraps, usually a 12-count pack, not a 40-count. No photo added.
+- #51 Cereal cups already has `cereal_cups.jpg`. The variants are Kellogg's (Frosted Flakes, Apple Jacks, Froot Loops, Corn Pops). The photo is General Mills single-serve cups (Cheerios, Honey Nut Cheerios, Cinnamon Toast Crunch, Lucky Charms). Variants were not changed.
