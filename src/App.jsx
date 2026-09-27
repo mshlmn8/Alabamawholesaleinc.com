@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 
 import { IMG } from './data/theme.js';
-import { COMPANY, ANNOUNCEMENTS, STORAGE } from './data/content.js';
+import { COMPANY, ANNOUNCEMENTS, STORAGE, HERO_SLIDES } from './data/content.js';
 import { NAV_ORDER, NEW_ARRIVALS_IDS } from './data/products.js';
 import { useAuth } from './lib/useAuth.js';
 import { useCatalog } from './lib/useCatalog.js';
@@ -330,7 +330,7 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, de
       </div>
       <div className="aw-masthead">
         <button className="aw-logo" onClick={() => runNav(goHome)} aria-label="Alabama Wholesale home">
-          <span>Alabama</span><small>WHOLESALE INC.</small>
+          <img src={IMG.logo} alt="" />
         </button>
         <form className="aw-search" role="search" onSubmit={submitSearch}>
           <input type="search" value={query} placeholder={`Search ${products.length} SKUs — cigars, disposables, candy, drinks…`}
@@ -426,6 +426,76 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, de
 // =============================================================================
 // HOME
 // =============================================================================
+function HeroCarousel({ slides }) {
+  const media = slides.filter(slide => slide.img || slide.videoUrl);
+  const count = media.length;
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const videoRef = useRef(null);
+  const safeIndex = count ? index % count : 0;
+  const active = media[safeIndex];
+
+  const go = (delta) => setIndex(i => (i + delta + count) % count);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !active?.videoUrl) return undefined;
+    if (paused) {
+      video.pause();
+      return undefined;
+    }
+    const play = video.play();
+    if (play?.catch) play.catch(() => {});
+    const onEnded = () => setIndex(i => (i + 1) % count);
+    video.addEventListener('ended', onEnded);
+    return () => {
+      video.removeEventListener('ended', onEnded);
+      video.pause();
+    };
+  }, [active, paused, count]);
+
+  useEffect(() => {
+    if (paused || count < 2 || active?.videoUrl) return undefined;
+    const id = window.setInterval(() => setIndex(i => (i + 1) % count), 4500);
+    return () => window.clearInterval(id);
+  }, [paused, count, active]);
+
+  if (!active) return null;
+
+  return (
+    <section className="home-carousel" aria-roledescription="carousel" aria-label="Featured photos and videos">
+      <div className="home-carousel-stage">
+        {media.map((slide, i) => {
+          const isActive = i === safeIndex;
+          return (
+            <div key={`${slide.img || ''}-${slide.videoUrl || i}`} className={`home-carousel-slide${isActive ? ' is-active' : ''}`} aria-hidden={!isActive}>
+              {slide.videoUrl ? (
+                <video
+                  ref={isActive ? videoRef : null}
+                  src={isActive ? slide.videoUrl : undefined}
+                  poster={slide.img || undefined}
+                  muted
+                  playsInline
+                  preload="metadata"
+                  aria-label={slide.title || 'Featured video'}
+                />
+              ) : (
+                <img src={slide.img} alt={isActive ? (slide.title || '') : ''} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="home-carousel-controls">
+        <p aria-live="polite">Slide {safeIndex + 1} of {count}</p>
+        <button type="button" onClick={() => go(-1)} aria-label="Previous slide">Previous</button>
+        <button type="button" aria-pressed={paused} onClick={() => setPaused(value => !value)}>{paused ? 'Play' : 'Pause'}</button>
+        <button type="button" onClick={() => go(1)} aria-label="Next slide">Next</button>
+      </div>
+    </section>
+  );
+}
+
 function HomePage(props) {
   const { goCategory, goProduct, products, departments } = props;
   const newArrivals = NEW_ARRIVALS_IDS.map(id => products.find(p => Number(p.id) === id)).filter(Boolean).slice(0, 8);
@@ -433,35 +503,7 @@ function HomePage(props) {
 
   return (
     <>
-      <section className="hero-split" aria-label="Hero">
-        <div className="hero-media">
-          <img src={IMG.hero_vape} alt="Assorted wholesale products on the Alabama Wholesale warehouse floor" loading="eager" />
-          <span className="hero-media-shade" aria-hidden="true"></span>
-          <span className="block-label">BIRMINGHAM WAREHOUSE → YOUR STORE</span>
-          <span className="block-foot">NEXT-DAY ON OUR ROUTES · AL · MS · GA</span>
-        </div>
-        <div className="hero-copy">
-          <p className="eyebrow">WHOLESALE DISTRIBUTOR / EST. BIRMINGHAM</p>
-          <h1>Stock your store.<br /><em>Next-day.</em></h1>
-          <p>Tobacco, disposables, smoke-shop accessories, candy, drinks and more — delivered on our own trucks to licensed retail accounts on our delivery routes in Alabama, Mississippi and Georgia.</p>
-          <button className="button" type="button" onClick={props.onApplyClick}>Apply for account <span aria-hidden="true">↗</span></button>
-          <button className="text-link" type="button" onClick={() => goCategory('TOBACCO')}>Browse the catalog</button>
-          <div className="hero-stats">
-            <div><b>{products.length}</b><span>SKUs stocked</span></div>
-            <div><b>$1.5K</b><span>free-delivery min</span></div>
-            <div><b>Net-30</b><span>terms available</span></div>
-          </div>
-        </div>
-      </section>
-
-      <div className="cat-strip" aria-label="Departments">
-        {departments.map(c => (
-          <button className="cat-chip" key={c.key} type="button" onClick={() => goCategory(c.key)} aria-label={`Browse ${c.label}`}>
-            <span className="glyph">{String(c.count).padStart(2, '0')}</span>
-            <b>{c.label}</b><span>{c.subs.length} lines</span>
-          </button>
-        ))}
-      </div>
+      <HeroCarousel slides={HERO_SLIDES} />
 
       <section className="section" id="new-arrivals">
         <div className="section-head">
@@ -523,14 +565,26 @@ function HomePage(props) {
       </section>
 
       <section className="section" id="apply">
-        <div className="section-head"><div><p className="eyebrow">OPEN AN ACCOUNT / 04</p><h2>Become a retail account</h2></div></div>
-        <div className="services" style={{ marginTop: 0 }}>
-          <div className="service"><span>A</span><h3>1 · Apply online</h3><p>Tell us about your store — business name, EIN, state retail tobacco license number and resale certificate. Takes about five minutes.</p></div>
-          <div className="service"><span>B</span><h3>2 · We verify</h3><p>Our team checks your license with the state and approves most accounts within one business day. You'll get price-list access by email.</p></div>
-          <div className="service"><span>C</span><h3>3 · Order &amp; receive</h3><p>Order online or by phone before 2 PM for next-day delivery on our trucks when the stop is on a delivery route, or same-day will-call at the Birmingham warehouse.</p></div>
-        </div>
-        <div style={{ marginTop: 26, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-          <button className="button" type="button" onClick={props.onApplyClick}>Start application <span aria-hidden="true">↗</span></button>
+        <div className="apply-panel">
+          <div className="apply-intro">
+            <p className="eyebrow">OPEN AN ACCOUNT / 04</p>
+            <h2>Become a retail account</h2>
+            <button className="button" type="button" onClick={props.onApplyClick}>Start application <span aria-hidden="true">↗</span></button>
+          </div>
+          <ol className="apply-steps">
+            <li>
+              <h3>Apply online</h3>
+              <p>Tell us about your store — business name, EIN, state retail tobacco license number and resale certificate. Takes about five minutes.</p>
+            </li>
+            <li>
+              <h3>We verify</h3>
+              <p>Our team checks your license with the state and approves most accounts within one business day. You'll get price-list access by email.</p>
+            </li>
+            <li>
+              <h3>Order &amp; receive</h3>
+              <p>Order online or by phone before 2 PM for next-day delivery on our trucks when the stop is on a delivery route, or same-day will-call at the Birmingham warehouse.</p>
+            </li>
+          </ol>
         </div>
       </section>
     </>
