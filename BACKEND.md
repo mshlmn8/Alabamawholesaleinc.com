@@ -21,6 +21,7 @@ In the Supabase dashboard, open **SQL Editor** and run these files in order:
 supabase/migrations/20260517000000_initial_schema.sql
 supabase/migrations/20260517000001_rls_policies.sql
 supabase/migrations/20260925120000_launch_order_boundaries.sql
+supabase/migrations/20260927000000_application_fields.sql
 supabase/seed/products.sql
 ```
 
@@ -52,6 +53,10 @@ In your Netlify site → **Site configuration → Environment variables**, add:
 | `VITE_SUPABASE_ANON_KEY`  | All       |
 
 Trigger a redeploy after saving.
+
+Password-reset emails link back to the site root. Under **Authentication →
+URL Configuration**, set the Site URL to the production domain and add
+`http://localhost:3000/` to the redirect allow list for local testing.
 
 ## 5. First-run sanity check
 
