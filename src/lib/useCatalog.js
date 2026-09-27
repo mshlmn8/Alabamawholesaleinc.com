@@ -4,19 +4,10 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from './supabase.js';
+import { productImage } from './images.js';
 import { PRODUCTS as STATIC_PRODUCTS } from '../data/products.js';
 
-// productImages is the same glob used by static products — reuse it so admin-
-// uploaded images and seed images resolve identically.
-const productImages = import.meta.glob(
-  '../assets/products/*.{webp,jpg,jpeg,png,avif}',
-  { eager: true, query: '?url', import: 'default' }
-);
-const resolveImg = (filename) => {
-  if (!filename) return null;
-  if (filename.startsWith('http')) return filename;  // remote URL (e.g. Supabase Storage)
-  return productImages[`../assets/products/${filename}`] || null;
-};
+const STATIC_BY_ID = new Map(STATIC_PRODUCTS.map((p) => [Number(p.id), p]));
 
 export function useCatalog() {
   const [products, setProducts] = useState(STATIC_PRODUCTS);
@@ -29,11 +20,19 @@ export function useCatalog() {
       .order('id', { ascending: true })
       .then(({ data, error }) => {
         if (cancelled || error || !data?.length) return;
-        const hydrated = data.map(p => ({
-          ...p,
-          variants: Array.isArray(p.variants) ? p.variants : [],
-          img: resolveImg(p.img),
-        }));
+        const hydrated = data.map(p => {
+          // The products table has no description or sell-unit columns yet, so
+          // the static catalog's copy fills them in for matching ids.
+          const local = STATIC_BY_ID.get(Number(p.id));
+          return {
+            ...p,
+            variants: Array.isArray(p.variants) ? p.variants : [],
+            description: p.description || local?.description || '',
+            sellUnit: p.sell_unit || p.sellUnit || local?.sellUnit || '',
+            // img is a filename in src/assets/products, or a full URL (e.g. Supabase Storage)
+            ...productImage(p.img),
+          };
+        });
         setProducts(hydrated);
         setSource('live');
       });

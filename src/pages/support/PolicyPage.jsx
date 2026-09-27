@@ -149,6 +149,7 @@ const POLICIES = {
 };
 
 export const POLICY_TITLES = Object.fromEntries(Object.entries(POLICIES).map(([k, v]) => [k, v.title]));
+export const POLICY_INTROS = Object.fromEntries(Object.entries(POLICIES).map(([k, v]) => [k, v.intro]));
 
 export function PolicyPage({ kind, goHome, navigate }) {
   const policy = POLICIES[kind];

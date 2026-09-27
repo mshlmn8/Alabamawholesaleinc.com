@@ -187,6 +187,10 @@ p > .text-link { min-height: 0; }
 .block-label { position: absolute; top: 24px; left: 24px; font-size: var(--text-xs); font-weight: 600; letter-spacing: 1.8px; color: #655d68; z-index: 2; }
 .block-foot { position: absolute; bottom: 24px; left: 24px; font-size: var(--text-xs); letter-spacing: 1.3px; color: #655d68; z-index: 2; }
 
+/* Responsive <picture> wrappers take no box of their own, so the existing
+   img rules (absolute fill, object-fit) keep applying to the photo. */
+.card-block picture, .pd-media picture, .home-carousel-slide picture, .editorial-card picture { display: contents; }
+
 /* ============================ sections / cards ============================ */
 .section { padding-top: var(--section-gap); }
 .section-head { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 20px; }
@@ -310,6 +314,8 @@ p > .text-link { min-height: 0; }
 .pd-info h1 { color: var(--purple); font-size: clamp(38px, 4vw, 56px); margin-bottom: 8px; }
 .pd-info .pd-brand { font-size: var(--text-xs); font-weight: 700; letter-spacing: 1.6px; color: var(--orange-dark); text-transform: uppercase; margin: 0 0 16px; }
 .pd-info .pd-desc { color: var(--muted); font-size: var(--text-md); line-height: 1.7; max-width: 480px; }
+.pd-info .pd-unit { margin: 0 0 14px; padding: 8px 12px; max-width: 480px; border-left: 3px solid var(--orange); background: var(--paper); color: var(--ink); font-size: var(--text-sm); font-weight: 600; }
+.pd-info .pd-fine { font-size: var(--text-xs); }
 .pd-price { margin: 22px 0; padding: 18px 0; border-block: 1px solid var(--line); }
 .pd-price b { font: 700 34px/1 var(--display); color: var(--purple); }
 .pd-price span { display: block; font-size: var(--text-xs); letter-spacing: 1.4px; color: var(--muted); text-transform: uppercase; margin-top: 6px; }

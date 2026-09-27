@@ -8,6 +8,8 @@ import { useCatalog } from './lib/useCatalog.js';
 import { submitOrder } from './lib/orders.js';
 import { lineKey, variantList, variantSku, requiresVariantChoice, resolveCartItems, normalizeCart } from './lib/lines.js';
 import { useMediaQuery } from './lib/useMediaQuery.js';
+import { heroImage, SIZES } from './lib/images.js';
+import { Picture } from './components/Picture.jsx';
 import { AuthModal } from './components/AuthModal.jsx';
 import { ModalLayer } from './components/ModalLayer.jsx';
 import { AccountPage } from './pages/account/AccountPage.jsx';
@@ -15,7 +17,7 @@ import { AdminPage } from './pages/admin/AdminPage.jsx';
 import { CatalogIndexPage } from './pages/support/CatalogIndexPage.jsx';
 import { ContactPage } from './pages/support/ContactPage.jsx';
 import { DeliveryPage } from './pages/support/DeliveryPage.jsx';
-import { PolicyPage, POLICY_TITLES } from './pages/support/PolicyPage.jsx';
+import { PolicyPage, POLICY_TITLES, POLICY_INTROS } from './pages/support/PolicyPage.jsx';
 import { ApplyPage } from './pages/support/ApplyPage.jsx';
 import { ResetPasswordPage } from './pages/support/ResetPasswordPage.jsx';
 
@@ -74,6 +76,48 @@ const TICKER_TEXT = ANNOUNCEMENTS.join('  ·  ') + '  ·  ';
 // Below this width the header collapses to menu/logo/account/cart + search and
 // category filters move into a drawer.
 const MOBILE_QUERY = '(max-width: 850px)';
+
+// Per-page <title> and description. Every hash route shares one URL, so the
+// canonical link and og:url stay on the homepage while title, description
+// and the og:title/og:description pair follow the page being viewed.
+const HOME_DESCRIPTION = 'Wholesale tobacco, vapes, candy, drinks, grocery and motor oil for licensed retailers. Next-day delivery on our routes in Alabama, Mississippi and Georgia from our Birmingham warehouse.';
+const clip = (text, max = 155) => {
+  const t = String(text || '').replace(/\s+/g, ' ').trim();
+  if (t.length <= max) return t;
+  return `${t.slice(0, max - 1).replace(/[\s,;:—-]+\S*$/, '')}…`;
+};
+function pageMeta(route, products, departments, searchTerm) {
+  const site = COMPANY.name;
+  if (searchTerm) {
+    return { title: `Search “${searchTerm}” · ${site}`, description: `Search results for “${searchTerm}” across ${products.length} wholesale SKUs at ${site}, Birmingham, AL.` };
+  }
+  if (route.page === 'category') {
+    const dept = departments.find(d => d.key === route.category);
+    const label = catLabel(route.category);
+    if (!dept) return { title: `Department not found · ${site}`, description: HOME_DESCRIPTION };
+    const scope = route.sub ? `${route.sub} · ${label}` : label;
+    const lines = dept.subs.slice(0, 4).join(', ') + (dept.subs.length > 4 ? ' and more' : '');
+    return { title: `${scope} · Wholesale Catalog · ${site}`, description: clip(`Wholesale ${label.toLowerCase()} for licensed retailers — ${dept.count} SKUs across ${lines}. Sign in for account pricing.`) };
+  }
+  if (route.page === 'product') {
+    const p = products.find(x => Number(x.id) === route.productId);
+    if (!p) return { title: `Product not found · ${site}`, description: HOME_DESCRIPTION };
+    return { title: `${p.name} · ${p.brand} · ${site}`, description: clip(p.description || `${p.name} — wholesale ${p.sub.toLowerCase()} from ${p.brand}. SKU ${p.sku}.`) };
+  }
+  if (route.page === 'quote') return { title: `Checkout · ${site}`, description: `Review your items and submit a wholesale quote or order to ${site}.` };
+  if (route.page === 'account') return { title: `My Account · ${site}`, description: `Your ${site} trade account: order history, reorders and quick entry by SKU.` };
+  if (route.page === 'admin') return { title: `Admin · ${site}`, description: `Catalog and account administration for ${site}.` };
+  return { title: `${site} · Wholesale Distributor — Birmingham, AL`, description: HOME_DESCRIPTION };
+}
+function setMeta(attr, key, content) {
+  let el = document.head.querySelector(`meta[${attr}="${key}"]`);
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute(attr, key);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', content);
+}
 
 function departmentsFor(products) {
   const known = new Set(NAV_ORDER);
@@ -141,30 +185,17 @@ export default function App() {
     return () => { window.removeEventListener('popstate', onPop); window.removeEventListener('hashchange', onPop); };
   }, []);
 
+  // Header search reports its live query so the tab title follows it.
+  const [searchTerm, setSearchTerm] = useState('');
   useEffect(() => {
-    const titles = {
-      home: `${COMPANY.name} · Wholesale Distributor — Birmingham, AL`,
-      quote: `Checkout · ${COMPANY.name}`,
-      account: `My Account · ${COMPANY.name}`,
-      admin: `Admin · ${COMPANY.name}`,
-      catalog: `All Products · Wholesale Catalog · ${COMPANY.name}`,
-      contact: `Contact & Visit · ${COMPANY.name}`,
-      delivery: `Delivery & Service Area · ${COMPANY.name}`,
-      shipping: `${POLICY_TITLES.shipping} · ${COMPANY.name}`,
-      returns: `${POLICY_TITLES.returns} · ${COMPANY.name}`,
-      privacy: `${POLICY_TITLES.privacy} · ${COMPANY.name}`,
-      terms: `${POLICY_TITLES.terms} · ${COMPANY.name}`,
-      apply: `Apply for a Trade Account · ${COMPANY.name}`,
-      'reset-password': `Reset Password · ${COMPANY.name}`,
-    };
-    let title = titles[accountLinkPage ? 'reset-password' : route.page] || titles.home;
-    if (route.page === 'category') title = `${catLabel(route.category)} · Wholesale Catalog · ${COMPANY.name}`;
-    if (route.page === 'product') {
-      const p = products.find(x => Number(x.id) === route.productId);
-      if (p) title = `${p.name} · ${p.brand} · ${COMPANY.name}`;
-    }
+    // A recovery/expired account link shows the reset page whatever the hash says.
+    const shown = accountLinkPage ? { page: 'reset-password' } : route;
+    const { title, description } = pageMeta(shown, products, departments, searchTerm);
     document.title = title;
-  }, [route, products, accountLinkPage]);
+    setMeta('name', 'description', description);
+    setMeta('property', 'og:title', title);
+    setMeta('property', 'og:description', description);
+  }, [route, products, departments, searchTerm, accountLinkPage]);
 
   const navigate = (next, { scroll = true } = {}) => {
     window.history.pushState(null, '', routeToHash(next));
@@ -271,6 +302,7 @@ export default function App() {
         onAdminClick={() => navigate({ page: 'admin' })}
         onLoginClick={openSignin} onSignupClick={openSignup} onLogout={handleLogout}
         onHelp={() => setHelpOpen(true)} onReorder={() => navigate({ page: 'account' })} onCatalog={goCatalog}
+        onSearchChange={setSearchTerm}
       />
 
       <main className="container">
@@ -348,7 +380,7 @@ function AgeGate({ onYes, onNo, tooYoung }) {
 // =============================================================================
 // HEADER
 // =============================================================================
-function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, departments, onNewArrivals, onBestsellers, user, isAdmin, onAccountClick, onAdminClick, onLoginClick, onSignupClick, onLogout, onHelp, onReorder, onCatalog }) {
+function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, departments, onNewArrivals, onBestsellers, user, isAdmin, onAccountClick, onAdminClick, onLoginClick, onSignupClick, onLogout, onHelp, onReorder, onCatalog, onSearchChange }) {
   const [megaOpen, setMegaOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -381,6 +413,9 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, de
   }, []);
 
   const hits = useMemo(() => getSearchMatches(products, query), [products, query]);
+  useEffect(() => {
+    onSearchChange?.(resultsOpen && query.trim().length >= 2 ? query.trim() : '');
+  }, [query, resultsOpen, onSearchChange]);
   const runNav = (action) => {
     setMegaOpen(false);
     setMenuOpen(false);
@@ -617,6 +652,8 @@ function HeroCarousel({ slides }) {
   return (
     <section className="home-carousel" role="region" aria-roledescription="carousel" aria-label="Featured photos and videos">
       <div className="home-carousel-stage">
+        {/* Photos render at their own pixel size (never enlarged). The first slide is
+            the page's largest image, so it loads eagerly at high priority. */}
         {media.map((slide, i) => {
           const isActive = i === safeIndex;
           return (
@@ -631,6 +668,10 @@ function HeroCarousel({ slides }) {
                   preload="metadata"
                   aria-label={slide.title || 'Featured video'}
                 />
+              ) : slide.picture ? (
+                <Picture picture={slide.picture} alt={isActive ? (slide.title || '') : ''}
+                         sizes={`(max-width: 600px) 100vw, ${slide.picture.width || 720}px`}
+                         priority={i === 0} loading={i === 0 ? 'eager' : 'lazy'} />
               ) : (
                 <img src={slide.img} alt={isActive ? (slide.title || '') : ''} />
               )}
@@ -647,6 +688,8 @@ function HeroCarousel({ slides }) {
     </section>
   );
 }
+
+const EDITORIAL_BG = heroImage('hero_candy.jpg');
 
 function HomePage(props) {
   const { goCategory, goCatalog, products, departments } = props;
@@ -669,7 +712,7 @@ function HomePage(props) {
 
       <section className="editorials" aria-label="Collections">
         <button className="editorial-card cream" type="button" onClick={() => goCategory('NOVELTIES')}>
-          <img className="bg" src={IMG.hero_candy} alt="" aria-hidden="true" loading="lazy" />
+          <Picture className="bg" picture={EDITORIAL_BG.picture} alt="" aria-hidden="true" sizes={SIZES.editorial} />
           <span className="block-label">COLLECTION / 01</span>
           <div><p className="eyebrow">EXOTICS &amp; NOVELTIES</p><h2>Disposables, detox,<br />kratom &amp; more.</h2><span className="text-link">Browse novelties</span><span className="arrow" aria-hidden="true">↗</span></div>
         </button>
@@ -707,7 +750,7 @@ function HomePage(props) {
               <button className="content-card" key={c.key} type="button" onClick={() => goCategory(c.key)}>
                 <div className="card-block">
                   <span className="block-label">DEPARTMENT</span>
-                  {preview?.img ? <img src={preview.img} alt="" loading="lazy" /> : <span className="card-initials">{String(c.count).padStart(2, '0')}</span>}
+                  {preview?.picture ? <Picture picture={preview.picture} alt="" sizes={SIZES.card} /> : <span className="card-initials">{String(c.count).padStart(2, '0')}</span>}
                 </div>
                 <p className="card-kicker">{c.subs.length} PRODUCT LINES · {c.count} SKUs</p>
                 <h3>{c.label}</h3>
@@ -764,7 +807,7 @@ function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLine, goPr
         <div className="card-block">
           <span className="block-label">{p.cat}</span>
           {p.tag && <span className={`card-tag ${p.tag === 'NEW' ? 'new' : ''}`}>{p.tag}</span>}
-          {p.img ? <img src={p.img} alt={p.name} loading="lazy" /> : <span className="card-initials" aria-hidden="true">{initials(p.name)}</span>}
+          {p.picture ? <Picture picture={p.picture} alt={p.name} sizes={SIZES.card} /> : <span className="card-initials" aria-hidden="true">{initials(p.name)}</span>}
         </div>
         <p className="card-kicker">{p.sub}</p>
         <h3>{p.name}</h3>
@@ -1039,12 +1082,14 @@ function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLi
       <div className="pd-grid">
         <div className="pd-media">
           {p.tag && <span className={`card-tag ${p.tag === 'NEW' ? 'new' : ''}`}>{p.tag}</span>}
-          {p.img ? <img src={p.img} alt={p.name} /> : <span className="card-initials" aria-hidden="true">{initials(p.name)}</span>}
+          {p.picture ? <Picture picture={p.picture} alt={p.name} sizes={SIZES.detail} priority /> : <span className="card-initials" aria-hidden="true">{initials(p.name)}</span>}
         </div>
         <div className="pd-info">
           <p className="pd-brand">{p.brand} · {p.sub}</p>
           <h1>{p.name}</h1>
-          <p className="pd-desc">Wholesale {p.sub.toLowerCase()} from {p.brand}. SKU {p.sku}. Supplied to licensed retail businesses for lawful resale — order by 2 PM Central for next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA.</p>
+          <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()} from ${p.brand}.`}</p>
+          {p.sellUnit && <p className="pd-unit">Sold by the {p.sellUnit} — quantity 1 is one {p.sellUnit}.</p>}
+          <p className="pd-desc pd-fine">SKU {p.sku}. Supplied to licensed retail businesses for lawful resale — order by 2 PM Central for next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA.</p>
           {variants.length > 0 && (
             <div className="variant-chips" role="group" aria-label={choiceRequired ? 'Choose a variant' : 'Variant'}>
               {variants.map(v => (
