@@ -22,8 +22,15 @@ supabase/migrations/20260517000000_initial_schema.sql
 supabase/migrations/20260517000001_rls_policies.sql
 supabase/migrations/20260925120000_launch_order_boundaries.sql
 supabase/migrations/20260927000000_application_fields.sql
+supabase/migrations/20260927120000_product_copy.sql
 supabase/seed/products.sql
 ```
+
+`supabase/seed/products.sql` is generated from `src/data/products.js` by
+`npm run seed`; re-run it and re-apply the file whenever the catalog changes so
+the live rows keep the same ids, SKUs, names, variants, photos, descriptions
+and sell units. Re-applying is safe: rows are updated in place and an admin's
+`active = false` is kept.
 
 The schema creates four tables — `profiles`, `products`, `orders`,
 `order_items` — plus a `pricing_tiers` lookup. RLS is enabled on all four.

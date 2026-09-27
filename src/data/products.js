@@ -17,7 +17,9 @@ import { productImage } from '../lib/images.js';
 
 export const NAV_ORDER = ['TOBACCO', 'NOVELTIES', 'MERCHANDISE', 'CANDIES', 'FOOD STUFF', 'GROCERY', 'MOTOR OIL', 'DRINKS & BAGS'];
 
-const CATALOG = [
+// Raw rows with photo filenames. The storefront uses PRODUCTS below;
+// scripts/build-seed.mjs writes these rows to supabase/seed/products.sql.
+export const CATALOG = [
   { id:   1, name: "Swisher Sweets cigarillos", brand: "Swisher Sweets", cat: "TOBACCO", sub: "Cigars & Cigarillos", sku: "AW-SS", sellUnit: "", flavors: 8, variants: ["Diamond", "Red", "Green", "White grape", "Silver", "Grape", "Mango blaze", "Cookies & cream"], img: "ss_cigarillos.avif", tag: null, price: 41.76,
     description: "Swisher Sweets cigarillos in resealable foil pouches, from the cigar and cigarillo line in our Tobacco department. Eight varieties: Diamond, Red, Green, White grape, Silver, Grape, Mango blaze and Cookies & cream." },
   { id:   2, name: "White Owl cigarillos", brand: "White Owl", cat: "TOBACCO", sub: "Cigars & Cigarillos", sku: "AW-WO", sellUnit: "", flavors: 8, variants: ["Silver", "Platinum", "Red sweet", "Green sweet", "Black sweet", "Emerald", "White grape", "Swirl Triple grape"], img: "wo_cigarillos.jpg", tag: null, price: 84.34,
