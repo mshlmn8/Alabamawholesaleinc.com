@@ -6,6 +6,7 @@
   "description": "Alabama Wholesale Inc — wholesale retail catalog website",
   "scripts": {
     "images": "node scripts/build-images.mjs",
+    "seed": "node scripts/build-seed.mjs",
     "predev": "npm run images",
     "dev": "vite",
     "prebuild": "npm run images",
