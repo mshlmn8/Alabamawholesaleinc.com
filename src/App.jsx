@@ -63,6 +63,48 @@ const getSearchMatches = (products, query, limit = 10) => {
 
 const TICKER_TEXT = ANNOUNCEMENTS.join('  ·  ') + '  ·  ';
 
+// Per-page <title> and description. Every hash route shares one URL, so the
+// canonical link and og:url stay on the homepage while title, description
+// and the og:title/og:description pair follow the page being viewed.
+const HOME_DESCRIPTION = 'Wholesale tobacco, vapes, candy, drinks, grocery and motor oil for licensed retailers. Next-day delivery on our routes in Alabama, Mississippi and Georgia from our Birmingham warehouse.';
+const clip = (text, max = 155) => {
+  const t = String(text || '').replace(/\s+/g, ' ').trim();
+  if (t.length <= max) return t;
+  return `${t.slice(0, max - 1).replace(/[\s,;:—-]+\S*$/, '')}…`;
+};
+function pageMeta(route, products, departments, searchTerm) {
+  const site = COMPANY.name;
+  if (searchTerm) {
+    return { title: `Search “${searchTerm}” · ${site}`, description: `Search results for “${searchTerm}” across ${products.length} wholesale SKUs at ${site}, Birmingham, AL.` };
+  }
+  if (route.page === 'category') {
+    const dept = departments.find(d => d.key === route.category);
+    const label = catLabel(route.category);
+    if (!dept) return { title: `Department not found · ${site}`, description: HOME_DESCRIPTION };
+    const scope = route.sub ? `${route.sub} · ${label}` : label;
+    const lines = dept.subs.slice(0, 4).join(', ') + (dept.subs.length > 4 ? ' and more' : '');
+    return { title: `${scope} · Wholesale Catalog · ${site}`, description: clip(`Wholesale ${label.toLowerCase()} for licensed retailers — ${dept.count} SKUs across ${lines}. Sign in for account pricing.`) };
+  }
+  if (route.page === 'product') {
+    const p = products.find(x => Number(x.id) === route.productId);
+    if (!p) return { title: `Product not found · ${site}`, description: HOME_DESCRIPTION };
+    return { title: `${p.name} · ${p.brand} · ${site}`, description: clip(p.description || `${p.name} — wholesale ${p.sub.toLowerCase()} from ${p.brand}. SKU ${p.sku}.`) };
+  }
+  if (route.page === 'quote') return { title: `Checkout · ${site}`, description: `Review your items and submit a wholesale quote or order to ${site}.` };
+  if (route.page === 'account') return { title: `My Account · ${site}`, description: `Your ${site} trade account: order history, reorders and quick entry by SKU.` };
+  if (route.page === 'admin') return { title: `Admin · ${site}`, description: `Catalog and account administration for ${site}.` };
+  return { title: `${site} · Wholesale Distributor — Birmingham, AL`, description: HOME_DESCRIPTION };
+}
+function setMeta(attr, key, content) {
+  let el = document.head.querySelector(`meta[${attr}="${key}"]`);
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute(attr, key);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', content);
+}
+
 function departmentsFor(products) {
   const known = new Set(NAV_ORDER);
   const extras = [];
@@ -125,21 +167,15 @@ export default function App() {
     return () => { window.removeEventListener('popstate', onPop); window.removeEventListener('hashchange', onPop); };
   }, []);
 
+  // Header search reports its live query so the tab title follows it.
+  const [searchTerm, setSearchTerm] = useState('');
   useEffect(() => {
-    const titles = {
-      home: `${COMPANY.name} · Wholesale Distributor — Birmingham, AL`,
-      quote: `Checkout · ${COMPANY.name}`,
-      account: `My Account · ${COMPANY.name}`,
-      admin: `Admin · ${COMPANY.name}`,
-    };
-    let title = titles[route.page] || titles.home;
-    if (route.page === 'category') title = `${catLabel(route.category)} · Wholesale Catalog · ${COMPANY.name}`;
-    if (route.page === 'product') {
-      const p = products.find(x => Number(x.id) === route.productId);
-      if (p) title = `${p.name} · ${p.brand} · ${COMPANY.name}`;
-    }
+    const { title, description } = pageMeta(route, products, departments, searchTerm);
     document.title = title;
-  }, [route, products]);
+    setMeta('name', 'description', description);
+    setMeta('property', 'og:title', title);
+    setMeta('property', 'og:description', description);
+  }, [route, products, departments, searchTerm]);
 
   const navigate = (next, { scroll = true } = {}) => {
     window.history.pushState(null, '', routeToHash(next));
@@ -248,6 +284,7 @@ export default function App() {
         onAdminClick={() => navigate({ page: 'admin' })}
         onLoginClick={openSignin} onSignupClick={openSignup} onLogout={handleLogout}
         onHelp={() => setHelpOpen(true)} onReorder={() => navigate({ page: 'account' })}
+        onSearchChange={setSearchTerm}
       />
 
       <main className="container">
@@ -309,7 +346,7 @@ function AgeGate({ onYes, onNo, tooYoung }) {
 // =============================================================================
 // HEADER
 // =============================================================================
-function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, departments, onNewArrivals, onBestsellers, user, isAdmin, onAccountClick, onAdminClick, onLoginClick, onSignupClick, onLogout, onHelp, onReorder }) {
+function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, departments, onNewArrivals, onBestsellers, user, isAdmin, onAccountClick, onAdminClick, onLoginClick, onSignupClick, onLogout, onHelp, onReorder, onSearchChange }) {
   const [megaOpen, setMegaOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [resultsOpen, setResultsOpen] = useState(false);
@@ -329,6 +366,9 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, de
   }, []);
 
   const hits = useMemo(() => getSearchMatches(products, query), [products, query]);
+  useEffect(() => {
+    onSearchChange?.(resultsOpen && query.trim().length >= 2 ? query.trim() : '');
+  }, [query, resultsOpen, onSearchChange]);
   const runNav = (action) => {
     setMegaOpen(false);
     setResultsOpen(false);
