@@ -316,14 +316,16 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, de
   const [resultsOpen, setResultsOpen] = useState(false);
   const isMobile = useMediaQuery(MOBILE_QUERY);
   const categoryToggleRef = useRef(null);
+  const megaOpenRef = useRef(false);
+  useEffect(() => { megaOpenRef.current = megaOpen; }, [megaOpen]);
 
   useEffect(() => {
     const onKey = (e) => {
       if (e.key !== 'Escape') return;
-      setMegaOpen(open => {
-        if (open) categoryToggleRef.current?.focus();
-        return false;
-      });
+      if (megaOpenRef.current) {
+        setMegaOpen(false);
+        categoryToggleRef.current?.focus();
+      }
       setResultsOpen(false);
     };
     window.addEventListener('keydown', onKey);
