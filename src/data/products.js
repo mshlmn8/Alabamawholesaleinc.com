@@ -684,7 +684,7 @@ export const CATALOG = [
     description: "Panasonic batteries in carded packs. Stocked in one variety: AAA2." },
   { id: 332, name: "Black Tiger Honey", brand: "Black Tiger", cat: "MERCHANDISE", sub: "Honey & Energy", sku: "AW-BLACK-TIGER-HO", sellUnit: "", flavors: 2, variants: ["Flat box", "Round box"], img: "black_tiger_honey.jpg", tag: "PREMIUM", price: 8.28,
     description: "Black Tiger Honey sachets with ashwagandha. Two flavors: Flat box and Round box." },
-  { id: 333, name: "Gain dish liquid", brand: "Gain", cat: "GROCERY", sub: "Laundry & Detergent", sku: "AW-GAIN-DISHWASHE", sellUnit: "", flavors: 0, variants: [], img: "gain.jpg", tag: null, price: 7.83,
+  { id: 333, name: "Gain dish liquid", brand: "Gain", cat: "GROCERY", sub: "Laundry & Detergent", sku: "AW-GAIN-DISHWASHE", sellUnit: "", flavors: 0, variants: [], img: "p333-gain-dish-liquid.jpg", tag: null, price: 7.83,
     description: "Gain dish liquid, from the laundry and detergent line in our Grocery department." },
   { id: 334, name: "Bandaids", brand: "Assorted", cat: "MERCHANDISE", sub: "OTC & Health", sku: "AW-BANDAIDS", sellUnit: "", flavors: 0, variants: [], img: "p334-bandaids.jpg", tag: null, price: 29.74,
     description: "Adhesive bandages, from the OTC and health line in our Merchandise department." },
