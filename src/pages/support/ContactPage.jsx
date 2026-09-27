@@ -47,7 +47,7 @@ export function ContactPage({ goHome, navigate, onApplyClick }) {
               <div key={row.days}><dt>{row.days}</dt><dd>{row.time}</dd></div>
             ))}
           </dl>
-          <p className="support-note">All times Central. Holiday hours can differ — call ahead if you are making a special trip.</p>
+          <p className="support-note">Holiday hours can differ — call ahead if you are making a special trip.</p>
         </section>
 
         <section className="support-block" aria-labelledby="willcall-title">
@@ -57,7 +57,7 @@ export function ContactPage({ goHome, navigate, onApplyClick }) {
           <p>Prefer delivery? We run our own trucks on routes in Alabama, Mississippi and Georgia.</p>
           <div className="dialog-actions compact-actions">
             <button className="text-link" type="button" onClick={() => navigate({ page: 'delivery' })}>Delivery &amp; service area</button>
-            <button className="text-link" type="button" onClick={() => navigate({ page: 'shipping' })}>Shipping &amp; delivery policy</button>
+            <button className="text-link" type="button" onClick={() => navigate({ page: 'shipping' })}>Delivery policy</button>
           </div>
         </section>
       </div>

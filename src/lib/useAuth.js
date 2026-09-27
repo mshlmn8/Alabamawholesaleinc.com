@@ -87,7 +87,7 @@ export function useAuth() {
     setProfile(null);
   }, []);
 
-  // The reset link returns to the site root; the storefront recognises the
+  // The reset link lands on the site root; the storefront recognises the
   // recovery fragment and shows the new-password page. The root URL must be
   // listed under Supabase → Authentication → URL Configuration.
   const resetPassword = useCallback(async (email) => {

@@ -18,5 +18,5 @@ export const DELIVERY_STATES = [
 
 export const OTHER_STATES = [
   ['AR', 'Arkansas'], ['FL', 'Florida'], ['KY', 'Kentucky'], ['LA', 'Louisiana'], ['NC', 'North Carolina'],
-  ['SC', 'South Carolina'], ['TN', 'Tennessee'], ['TX', 'Texas'], ['VA', 'Virginia'], ['XX', 'Another state'],
+  ['SC', 'South Carolina'], ['TX', 'Texas'], ['VA', 'Virginia'], ['XX', 'Another state'],
 ].map(([code, name]) => ({ code, name }));

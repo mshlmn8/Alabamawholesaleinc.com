@@ -106,7 +106,7 @@ function OrdersTab() {
                 <b className="order-ref">{o.ref_num}</b>
                 <small>
                   {new Date(o.created_at).toLocaleString()} · {o.business} · {o.contact} · {o.email} · {o.phone}
-                  {o.ship_street && <span> · Ship to {o.ship_street}, {o.ship_city} {o.ship_state} {o.ship_zip}</span>}
+                  {o.ship_street && <span> · Deliver to {o.ship_street}, {o.ship_city} {o.ship_state} {o.ship_zip}</span>}
                   {o.profiles?.pricing_tier && <span> · tier: <b>{o.profiles.pricing_tier}</b></span>}
                 </small>
               </div>

@@ -455,7 +455,7 @@ export const CATALOG = [
   { id: 217, name: "Champ Detox drink", brand: "Champ", cat: "NOVELTIES", sub: "Detox", sku: "AW-DETOX-CHAMP", sellUnit: "", flavors: 6, variants: ["Blueberry", "Fruit punch", "Lemon lime", "Açaí berry", "Kiwi strawberry", "Grape"], img: "detox_champ.jpg", tag: null, price: 118.98,
     description: "Champ Detox drinks. Six flavors: Blueberry, Fruit punch, Lemon lime, Açaí berry, Kiwi strawberry and Grape." },
   { id: 218, name: "Herbal Clean QCarbo16", brand: "Herbal Clean", cat: "NOVELTIES", sub: "Detox", sku: "AW-Q-CARBO-16", sellUnit: "", flavors: 4, variants: ["Grape", "Red", "Strawberry mango", "Orange"], img: "p_qcarbo.jpg", tag: "BESTSELLER", price: 46.26,
-    description: "Herbal Clean QCarbo16 same-day detox drink, 16 oz. Four flavors: Grape, Red, Strawberry mango and Orange." },
+    description: "Herbal Clean QCarbo16 detox drink, 16 oz. Four flavors: Grape, Red, Strawberry mango and Orange." },
   { id: 219, name: "Happy valentines jar", brand: "Happy", cat: "NOVELTIES", sub: "Wellness Pills", sku: "AW-HAPPY-VALENTIN", sellUnit: "", flavors: 3, variants: ["4 inch", "6 inch", "Colored"], img: null, tag: null, price: 95.75,
     description: "Happy valentines jar from the wellness pill line in our Novelties department. Three varieties: 4 inch, 6 inch and Colored." },
   { id: 220, name: "Scales", brand: "Assorted", cat: "NOVELTIES", sub: "Smoke Accessories", sku: "AW-SCALES", sellUnit: "", flavors: 3, variants: ["Big", "Medium", "Small"], img: null, tag: null, price: 54.34,
