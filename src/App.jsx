@@ -267,7 +267,7 @@ export default function App() {
 
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} items={cartItems} total={cartTotal}
                   addLine={addLine} decLine={decLine} removeLine={removeLine} goQuote={goQuote} goProduct={goProduct}
-                  isApprovedBuyer={isApprovedBuyer} onLoginClick={openCartSignin} />
+                  profile={profile} isApprovedBuyer={isApprovedBuyer} onLoginClick={openCartSignin} />
       {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} onApply={() => { setHelpOpen(false); openSignup(); }} />}
       {loginOpen && (
         <ModalLayer onClose={() => setLoginOpen(false)}>
@@ -1270,8 +1270,11 @@ function HelpDialog({ onClose, onApply }) {
   );
 }
 
-function CartDrawer({ open, onClose, items, total, addLine, decLine, removeLine, goQuote, goProduct, isApprovedBuyer, onLoginClick }) {
+function CartDrawer({ open, onClose, items, total, addLine, decLine, removeLine, goQuote, goProduct, profile, isApprovedBuyer, onLoginClick }) {
   if (!open) return null;
+  // Guests are asked to sign in; signed-in buyers who are not approved yet are
+  // told pricing is waiting on approval instead.
+  const pendingBuyer = Boolean(profile) && !isApprovedBuyer;
   return (
     <ModalLayer onClose={onClose}>
       <div className="overlay overlay-soft" onClick={onClose} />
@@ -1309,14 +1312,16 @@ function CartDrawer({ open, onClose, items, total, addLine, decLine, removeLine,
         <div className="drawer-foot">
           <div className="drawer-total">
             <span>Estimated total</span>
-            <span>{isApprovedBuyer ? money(total) : 'Sign in for pricing'}</span>
+            {isApprovedBuyer
+              ? <span>{money(total)}</span>
+              : <span className="drawer-total-note">{pendingBuyer ? 'Pricing unlocks when your account is approved' : 'Sign in for pricing'}</span>}
           </div>
           {items.length > 0 && (
             isApprovedBuyer
               ? <button className="button wide" type="button" onClick={goQuote}>Checkout <span aria-hidden="true">↗</span></button>
               : <>
                   <button className="button wide" type="button" onClick={goQuote}>Request quote <span aria-hidden="true">↗</span></button>
-                  <button className="drawer-signin text-link" type="button" onClick={onLoginClick}>Sign in for account pricing</button>
+                  {!pendingBuyer && <button className="drawer-signin text-link" type="button" onClick={onLoginClick}>Sign in for account pricing</button>}
                 </>
           )}
           <p className="fine drawer-fine">Free delivery over $1,500 applies on a delivery route in AL, MS &amp; GA. Orders placed before 2 PM ship next-day on our trucks when the stop is on a route.</p>
