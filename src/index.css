@@ -788,3 +788,25 @@ address.info-lead-small { font-style: normal; }
   .hours-list dd { text-align: left; }
   .footer-policies { justify-content: flex-start; }
 }
+
+/* optional license and resale proof — application dialog and #/apply */
+.doc-uploads { grid-column: 1 / -1; margin: 8px 0 0; padding: 16px 0 0; border: 0; border-top: 1px solid var(--line); min-inline-size: 0; }
+.doc-uploads legend { padding: 0; font-size: var(--text-xs); font-weight: 700; letter-spacing: 1.2px; color: var(--purple); text-transform: uppercase; }
+.doc-uploads-note { max-width: 62ch; margin: 8px 0 4px; font-size: var(--text-sm); line-height: 1.6; color: var(--muted); }
+.doc-uploads-note a, .doc-panel a, .doc-admin a { color: var(--purple); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.doc-upload { margin-top: 14px; }
+.doc-upload label { display: block; margin-bottom: 6px; font-size: var(--text-xs); font-weight: 700; letter-spacing: 1.2px; color: var(--purple); text-transform: uppercase; }
+.doc-upload .optional { margin-left: 8px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); }
+.form-grid input.doc-file, .doc-file { width: 100%; height: auto; min-height: var(--tap); padding: 10px 12px; border: 1px solid #dcd5cc; border-radius: 2px; background: #f8f6f2; color: var(--ink); font-size: var(--text-sm); line-height: 1.4; }
+.doc-file:disabled, fieldset:disabled .doc-file { opacity: 0.6; cursor: not-allowed; }
+.doc-upload .field-hint { font-size: var(--text-xs); }
+.doc-status { margin: 6px 0 0; font-size: var(--text-sm); line-height: 1.5; color: var(--ink); }
+.doc-status.is-missing { color: var(--muted); }
+.doc-panel { margin-top: 22px; padding: 28px; background: var(--paper); border: 1px solid var(--line); border-top: 4px solid var(--orange); }
+.doc-panel .eyebrow { color: var(--orange-dark); margin-bottom: 8px; }
+.doc-panel h2 { margin: 0 0 8px; font-size: 30px; }
+.doc-panel .doc-uploads { margin-top: 0; padding-top: 0; border-top: 0; }
+.doc-panel .doc-file { background: #fff; }
+.doc-admin { list-style: none; margin: 0; padding: 0; min-width: 220px; }
+.doc-admin li { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; padding: 3px 0; font-size: var(--text-sm); }
+.doc-admin .text-link { min-height: 0; font-size: var(--text-sm); }

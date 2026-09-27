@@ -3,6 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
+import { DOCUMENT_TYPES, createDocumentViewUrl, listAllProfileDocuments } from '../../lib/documents.js';
 
 const TABS = [
   { id: 'orders', label: 'Orders' },
@@ -133,10 +134,42 @@ function OrdersTab() {
 
 function AccountsTab() {
   const [profiles, setProfiles] = useState(null);
+  const [documents, setDocuments] = useState([]);
+  const [signedUrls, setSignedUrls] = useState({});
+  const [viewError, setViewError] = useState(null);
   const reload = () => {
     supabase.from('profiles').select('*').order('created_at', { ascending: false }).then(({ data }) => setProfiles(data || []));
+    listAllProfileDocuments().then(setDocuments).catch(() => setDocuments([]));
   };
   useEffect(reload, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const next = {};
+      for (const row of documents) {
+        try {
+          next[`${row.profile_id}:${row.document_type}`] = await createDocumentViewUrl(row.storage_path);
+        } catch {
+          next[`${row.profile_id}:${row.document_type}`] = null;
+        }
+      }
+      if (!cancelled) setSignedUrls(next);
+    })();
+    return () => { cancelled = true; };
+  }, [documents]);
+
+  const viewDocument = async (row, profile, label) => {
+    setViewError(null);
+    try {
+      const url = await createDocumentViewUrl(row.storage_path);
+      if (!url) throw new Error('Could not open that file.');
+      setSignedUrls(prev => ({ ...prev, [`${row.profile_id}:${row.document_type}`]: url }));
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch {
+      setViewError(`Couldn’t open the ${label.toLowerCase()} for ${profile.business || profile.name}.`);
+    }
+  };
 
   const updateProfile = async (id, patch) => {
     await supabase.from('profiles').update(patch).eq('id', id);
@@ -147,10 +180,11 @@ function AccountsTab() {
 
   return (
     <div className="table-scroll">
+      {viewError && <p className="form-error" role="alert">{viewError}</p>}
       <table className="aw-table">
         <thead>
           <tr>
-            {['Business', 'Contact', 'Email', 'Status', 'Tier', 'Role', 'Actions'].map(h => (
+            {['Business', 'Contact', 'Email', 'Status', 'Tier', 'Role', 'Documents', 'Actions'].map(h => (
               <th key={h}>{h}</th>
             ))}
           </tr>
@@ -180,6 +214,36 @@ function AccountsTab() {
                   <option value="customer">customer</option>
                   <option value="admin">admin</option>
                 </select>
+              </td>
+              <td>
+                {p.status === 'pending' ? (
+                  <ul className="doc-admin">
+                    {DOCUMENT_TYPES.map(doc => {
+                      const row = documents.find(item => item.profile_id === p.id && item.document_type === doc.id);
+                      return (
+                        <li key={doc.id}>
+                          <span>{doc.label}</span>
+                          {row ? (
+                            <>
+                              <span>On file</span>
+                              {signedUrls[`${p.id}:${doc.id}`] ? (
+                                <a href={signedUrls[`${p.id}:${doc.id}`]} target="_blank" rel="noopener noreferrer">
+                                  View<span className="sr-only"> {doc.label} for {p.business || p.name}</span>
+                                </a>
+                              ) : (
+                                <button type="button" className="text-link" onClick={() => viewDocument(row, p, doc.label)}>
+                                  View<span className="sr-only"> {doc.label} for {p.business || p.name}</span>
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            <span className="muted">Not on file</span>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : '—'}
               </td>
               <td>
                 {p.status === 'pending' && (

@@ -5,6 +5,7 @@ import React from 'react';
 import { COMPANY } from '../../data/content.js';
 import { APPLICATION_CHECKLIST } from '../../data/onboarding.js';
 import { ServiceUnavailable } from '../../components/ServiceUnavailable.jsx';
+import { ApplicationDocuments } from '../../components/DocumentUploads.jsx';
 import { PageHead, ContactStrip, CallOrEmail } from './SupportShell.jsx';
 
 export function ApplyPage({ goHome, navigate, profile, isBackendConfigured, onApplyClick, onLoginClick, onResetClick }) {
@@ -17,6 +18,8 @@ export function ApplyPage({ goHome, navigate, profile, isBackendConfigured, onAp
       </PageHead>
 
       {profile && <StatusPanel profile={profile} navigate={navigate} />}
+
+      {profile?.status === 'pending' && <ApplicationDocuments disabled={!isBackendConfigured} />}
 
       {!isBackendConfigured && <ServiceUnavailable what="The online application" className="form-error support-alert" />}
 

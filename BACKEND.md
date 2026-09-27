@@ -23,6 +23,7 @@ supabase/migrations/20260517000001_rls_policies.sql
 supabase/migrations/20260925120000_launch_order_boundaries.sql
 supabase/migrations/20260927000000_application_fields.sql
 supabase/migrations/20260927120000_product_copy.sql
+supabase/migrations/20260927180000_application_documents.sql
 supabase/seed/products.sql
 ```
 
@@ -32,8 +33,17 @@ the live rows keep the same ids, SKUs, names, variants, photos, descriptions
 and sell units. Re-applying is safe: rows are updated in place and an admin's
 `active = false` is kept.
 
-The schema creates four tables — `profiles`, `products`, `orders`,
-`order_items` — plus a `pricing_tiers` lookup. RLS is enabled on all four.
+The first migration creates four tables — `profiles`, `products`, `orders`,
+`order_items` — plus a `pricing_tiers` lookup. Later migrations add the
+application columns and `profile_documents`. RLS is enabled on all of them.
+
+`20260927180000_application_documents.sql` also creates a **private** Storage
+bucket named `application-documents` (PDF, JPG, PNG, and HEIC, 10 MB maximum).
+Confirm in **Storage** that the bucket is not public. No extra environment
+variables. Applicants may upload a state retail tobacco license and a resale
+certificate from the application form once they have a session, or later from
+`#/apply` while the account is pending. The license number and resale
+certificate number stay required. Proof can also be emailed to the trade desk.
 
 A trigger on `auth.users` auto-creates a `profiles` row on signup. **Every
 signup starts as `customer` / `pending`.** Public signup never creates an
@@ -109,6 +119,12 @@ To add new tiers: insert a row in `pricing_tiers` and add the discount to
   saves the header and lines together, sets `user_id` from the session, and
   calculates prices. Guest quotes are stored with `user_id` null.
 - **pricing_tiers**: world-readable; admin-writable.
+- **profile_documents**: a user reads, inserts, and replaces only their own
+  rows (one tobacco license and one resale certificate). Admins read every row.
+- **storage `application-documents`**: private. Object paths are
+  `{user id}/{document type}/{filename}`. A user can upload, read, replace,
+  and delete only inside their own folder. Admins can read every object, which
+  is what the Accounts tab uses to mint a signed View link.
 
 ## Resetting
 
