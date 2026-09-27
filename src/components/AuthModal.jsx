@@ -5,7 +5,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/useAuth.js';
-import { useDialogFocus } from '../lib/useDialogFocus.js';
 import { COMPANY } from '../data/content.js';
 import { APPLICATION_CHECKLIST } from '../data/onboarding.js';
 import { ServiceUnavailable } from './ServiceUnavailable.jsx';
@@ -54,11 +53,11 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
   const [signin, setSignin] = useState({ email: '', password: '' });
   const [resetEmail, setResetEmail] = useState('');
   const [signup, setSignup] = useState(EMPTY_SIGNUP);
-  const dialogRef = useRef(null);
   const titleRef = useRef(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
-  useDialogFocus(dialogRef, { active: open });
+  // Focus trap, inert background, Escape and focus restore come from the
+  // ModalLayer this dialog is rendered in; data-autofocus marks the first field.
 
   // Each step swaps the dialog content, so move focus to the new heading.
   const initialModeRef = useRef(mode);
@@ -143,7 +142,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
 
   return (
     <div className="overlay" onClick={onClose}>
-      <div className="dialog scale-in" role="dialog" aria-modal="true" aria-labelledby="auth-title" tabIndex={-1} ref={dialogRef} onClick={(e) => e.stopPropagation()}>
+      <div className="dialog scale-in" role="dialog" aria-modal="true" aria-labelledby="auth-title" onClick={(e) => e.stopPropagation()}>
         <div className="dialog-top">
           <p className="eyebrow">TRADE ACCOUNT</p>
           <button className="dialog-close" type="button" onClick={onClose} aria-label="Close">×</button>

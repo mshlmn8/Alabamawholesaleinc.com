@@ -7,7 +7,9 @@ import { useAuth } from './lib/useAuth.js';
 import { useCatalog } from './lib/useCatalog.js';
 import { submitOrder } from './lib/orders.js';
 import { lineKey, variantList, variantSku, requiresVariantChoice, resolveCartItems, normalizeCart } from './lib/lines.js';
+import { useMediaQuery } from './lib/useMediaQuery.js';
 import { AuthModal } from './components/AuthModal.jsx';
+import { ModalLayer } from './components/ModalLayer.jsx';
 import { AccountPage } from './pages/account/AccountPage.jsx';
 import { AdminPage } from './pages/admin/AdminPage.jsx';
 import { CatalogIndexPage } from './pages/support/CatalogIndexPage.jsx';
@@ -69,6 +71,9 @@ const getSearchMatches = (products, query, limit = 10) => {
 };
 
 const TICKER_TEXT = ANNOUNCEMENTS.join('  ·  ') + '  ·  ';
+// Below this width the header collapses to menu/logo/account/cart + search and
+// category filters move into a drawer.
+const MOBILE_QUERY = '(max-width: 850px)';
 
 function departmentsFor(products) {
   const known = new Set(NAV_ORDER);
@@ -180,16 +185,8 @@ export default function App() {
   };
 
   useEffect(() => { safeWriteJson(STORAGE.cart, cart); }, [cart]);
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') { setCartOpen(false); setLoginOpen(false); setHelpOpen(false); } };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
-  useEffect(() => {
-    const locked = cartOpen || loginOpen || helpOpen;
-    document.body.style.overflow = locked ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
-  }, [cartOpen, loginOpen, helpOpen]);
+  // Escape handling, body scroll lock and the inert background live in
+  // ModalLayer so every dialog (including the auth modal) behaves the same.
 
   useEffect(() => {
     setCart(current => normalizeCart(current, products));
@@ -258,6 +255,7 @@ export default function App() {
       <div className="trade-bar">
         <div className="container">
           <div className="ticker" aria-hidden="true"><span>{TICKER_TEXT + TICKER_TEXT + TICKER_TEXT + TICKER_TEXT}</span></div>
+          <a className="trade-call" href={`tel:${COMPANY.phoneRaw}`}>Call {COMPANY.phone}</a>
           <button type="button" onClick={openSignup}>Apply for a trade account ↗</button>
         </div>
       </div>
@@ -308,9 +306,13 @@ export default function App() {
 
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} items={cartItems} total={cartTotal}
                   addLine={addLine} decLine={decLine} removeLine={removeLine} goQuote={goQuote} goProduct={goProduct}
-                  isApprovedBuyer={isApprovedBuyer} onLoginClick={openCartSignin} />
+                  profile={profile} isApprovedBuyer={isApprovedBuyer} onLoginClick={openCartSignin} />
       {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} onApply={() => { setHelpOpen(false); openSignup(); }} />}
-      {loginOpen && <AuthModal open initialMode={loginMode} onClose={() => setLoginOpen(false)} onNavigate={navigate} />}
+      {loginOpen && (
+        <ModalLayer onClose={() => setLoginOpen(false)}>
+          <AuthModal open initialMode={loginMode} onClose={() => setLoginOpen(false)} onNavigate={navigate} />
+        </ModalLayer>
+      )}
     </div>
   );
 }
@@ -348,14 +350,27 @@ function AgeGate({ onYes, onNo, tooYoung }) {
 // =============================================================================
 function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, departments, onNewArrivals, onBestsellers, user, isAdmin, onAccountClick, onAdminClick, onLoginClick, onSignupClick, onLogout, onHelp, onReorder, onCatalog }) {
   const [megaOpen, setMegaOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [resultsOpen, setResultsOpen] = useState(false);
+  const isMobile = useMediaQuery(MOBILE_QUERY);
+  const categoryToggleRef = useRef(null);
+  const megaOpenRef = useRef(false);
+  useEffect(() => { megaOpenRef.current = megaOpen; }, [megaOpen]);
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') { setMegaOpen(false); setResultsOpen(false); } };
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      if (megaOpenRef.current) {
+        setMegaOpen(false);
+        categoryToggleRef.current?.focus();
+      }
+      setResultsOpen(false);
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+  useEffect(() => { if (!isMobile) setMenuOpen(false); }, [isMobile]);
   useEffect(() => {
     const onDoc = (e) => {
       if (!e.target.closest('.aw-navigation')) setMegaOpen(false);
@@ -368,8 +383,13 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, de
   const hits = useMemo(() => getSearchMatches(products, query), [products, query]);
   const runNav = (action) => {
     setMegaOpen(false);
+    setMenuOpen(false);
     setResultsOpen(false);
     action();
+  };
+  const closeMega = () => {
+    setMegaOpen(false);
+    categoryToggleRef.current?.focus();
   };
 
   const submitSearch = (e) => {
@@ -386,6 +406,11 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, de
         <span>{COMPANY.addressShort} · <a href={`tel:${COMPANY.phoneRaw}`}>{COMPANY.phone}</a></span>
       </div>
       <div className="aw-masthead">
+        <button className="aw-menu-toggle" type="button" aria-label="Menu" aria-expanded={menuOpen} aria-controls={menuOpen ? 'aw-mobile-menu' : undefined}
+                onClick={() => { setResultsOpen(false); setMenuOpen(true); }}>
+          <span className="aw-menu-bars" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span>Menu</span>
+        </button>
         <button className="aw-logo" onClick={() => runNav(goHome)} aria-label="Alabama Wholesale home">
           <img src={IMG.logo} alt="" />
         </button>
@@ -398,7 +423,7 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, de
           {resultsOpen && query.trim().length >= 2 && (
             <div className="aw-search-results">
               <div className="aw-search-heading">
-                <p>{hits.length ? `${hits.length} result${hits.length > 1 ? 's' : ''}` : 'No matches'}</p>
+                <p role="status">{hits.length ? `${hits.length} result${hits.length > 1 ? 's' : ''}` : 'No matches'}</p>
                 <button type="button" aria-label="Close search results" onClick={() => setResultsOpen(false)}>×</button>
               </div>
               <div className="aw-search-list">
@@ -416,16 +441,16 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, de
         <div className="aw-account-actions">
           {user ? (
             <>
-              <button className="aw-signin" type="button" onClick={() => runNav(onAccountClick)}>{user.business || user.name || 'My Account'}</button>
-              {isAdmin && <button className="aw-signin" type="button" onClick={() => runNav(onAdminClick)}>Admin</button>}
+              <button className="aw-signin aw-account-name" type="button" onClick={() => runNav(onAccountClick)}>{user.business || user.name || 'My Account'}</button>
+              {isAdmin && <button className="aw-signin aw-desktop-only" type="button" onClick={() => runNav(onAdminClick)}>Admin</button>}
               <span className="aw-account-or">·</span>
-              <button className="aw-signin" type="button" onClick={() => runNav(onLogout)}>Sign Out</button>
+              <button className="aw-signin aw-desktop-only" type="button" onClick={() => runNav(onLogout)}>Sign Out</button>
             </>
           ) : (
             <>
               <button className="aw-signin" type="button" onClick={() => runNav(onLoginClick)}>Sign In</button>
               <span className="aw-account-or">or</span>
-              <button className="aw-signup" type="button" onClick={() => runNav(onSignupClick)}>Sign Up <span aria-hidden="true">↗</span></button>
+              <button className="aw-signup aw-desktop-only" type="button" onClick={() => runNav(onSignupClick)}>Sign Up <span aria-hidden="true">↗</span></button>
             </>
           )}
           <button className="aw-cart-btn" type="button" onClick={() => runNav(onCart)} aria-label={`Cart, ${cartCount} items`}>
@@ -435,8 +460,21 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, de
         </div>
       </div>
 
+      {menuOpen && isMobile && (
+        <MobileMenu
+          onClose={() => setMenuOpen(false)} departments={departments} products={products} user={user} isAdmin={isAdmin}
+          pickCategory={pickCategory}
+          go={{
+            newArrivals: () => runNav(onNewArrivals), bestsellers: () => runNav(onBestsellers), exotics: () => runNav(() => goCategory('NOVELTIES')),
+            account: () => runNav(onAccountClick), admin: () => runNav(onAdminClick), logout: () => runNav(onLogout),
+            signin: () => runNav(onLoginClick), signup: () => runNav(onSignupClick), reorder: () => runNav(onReorder), help: () => runNav(onHelp),
+            catalog: () => runNav(onCatalog),
+          }}
+        />
+      )}
+
       <div className="aw-navigation">
-        <button className="aw-category-toggle" type="button" aria-expanded={megaOpen} aria-controls="aw-mega-menu"
+        <button className="aw-category-toggle" type="button" aria-expanded={megaOpen} aria-controls="aw-mega-menu" ref={categoryToggleRef}
                 onClick={() => { setResultsOpen(false); setMegaOpen(o => !o); }}>
           <span className="grid-symbol" aria-hidden="true">⊞</span>Categories <span className="aw-chevron" aria-hidden="true">⌄</span>
         </button>
@@ -444,7 +482,7 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, de
           <section className="aw-mega-menu" id="aw-mega-menu" aria-labelledby="aw-menu-heading">
             <div className="aw-menu-heading">
               <div><p className="eyebrow">WHOLESALE CATALOG</p><h2 id="aw-menu-heading">Browse by department.</h2></div>
-              <button className="aw-menu-close" type="button" aria-label="Close categories" onClick={() => setMegaOpen(false)}>×</button>
+              <button className="aw-menu-close" type="button" aria-label="Close categories" onClick={closeMega}>×</button>
             </div>
             <div className="aw-menu-grid">
               {departments.map((c, i) => (
@@ -477,6 +515,63 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, de
         </div>
       </div>
     </header>
+  );
+}
+
+// Phone/tablet menu: departments plus everything the desktop navigation rows,
+// utility bar and account actions show, in one drawer.
+function MobileMenu({ onClose, departments, products, user, isAdmin, pickCategory, go }) {
+  return (
+    <ModalLayer onClose={onClose} className="aw-menu-layer">
+      <div className="overlay" onClick={onClose} />
+      <aside className="drawer drawer-left" role="dialog" aria-modal="true" aria-labelledby="aw-mobile-menu-title" id="aw-mobile-menu">
+        <div className="drawer-head">
+          <h2 id="aw-mobile-menu-title">Menu</h2>
+          <button className="dialog-close" type="button" onClick={onClose} aria-label="Close menu">×</button>
+        </div>
+        <div className="drawer-body menu-body">
+          <nav className="menu-group" aria-label="Departments">
+            <h3>Departments</h3>
+            {departments.map((c, i) => (
+              <button key={c.key} type="button" onClick={() => pickCategory(c.key, null)}>
+                <span><span className="menu-index" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>{c.label}</span>
+                <span className="menu-count">{c.count}</span>
+              </button>
+            ))}
+            <button type="button" className="menu-highlight" onClick={go.catalog}>View full catalog <span aria-hidden="true">↗</span></button>
+          </nav>
+          <nav className="menu-group" aria-label="Discover">
+            <h3>Discover</h3>
+            <button type="button" onClick={go.newArrivals}><span><span className="aw-new-dot" aria-hidden="true"></span>New Arrivals</span></button>
+            <button type="button" onClick={go.bestsellers}>Bestsellers</button>
+            <button type="button" className="menu-highlight" onClick={go.exotics}>Exotics <span aria-hidden="true">↗</span></button>
+          </nav>
+          <nav className="menu-group" aria-label="Account and help">
+            <h3>Account</h3>
+            {user ? (
+              <>
+                <button type="button" onClick={go.account}>{user.business || user.name || 'My Account'}</button>
+                {isAdmin && <button type="button" onClick={go.admin}>Admin</button>}
+                <button type="button" onClick={go.reorder}>Quick Reorder</button>
+                <button type="button" onClick={go.logout}>Sign Out</button>
+              </>
+            ) : (
+              <>
+                <button type="button" onClick={go.signin}>Sign In</button>
+                <button type="button" onClick={go.signup}>Sign Up <span aria-hidden="true">↗</span></button>
+                <button type="button" onClick={go.reorder}>Quick Reorder</button>
+              </>
+            )}
+            <button type="button" onClick={go.help}>Help</button>
+          </nav>
+          <div className="menu-contact">
+            <p>{COMPANY.addressShort}<br />{departments.length} departments · {products.length} SKUs</p>
+            <a className="button ghost" href={`tel:${COMPANY.phoneRaw}`}>Call {COMPANY.phone}</a>
+            {!user && <button className="button" type="button" onClick={go.signup}>Apply for a trade account <span aria-hidden="true">↗</span></button>}
+          </div>
+        </div>
+      </aside>
+    </ModalLayer>
   );
 }
 
@@ -520,7 +615,7 @@ function HeroCarousel({ slides }) {
   if (!active) return null;
 
   return (
-    <section className="home-carousel" aria-roledescription="carousel" aria-label="Featured photos and videos">
+    <section className="home-carousel" role="region" aria-roledescription="carousel" aria-label="Featured photos and videos">
       <div className="home-carousel-stage">
         {media.map((slide, i) => {
           const isActive = i === safeIndex;
@@ -665,7 +760,7 @@ function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLine, goPr
   const price = priceForProfile(p.price, profile);
   return (
     <article className="content-card">
-      <button type="button" onClick={() => goProduct(p.id)} style={{ all: 'unset', cursor: 'pointer', display: 'block' }} aria-label={`${p.name} details`}>
+      <button type="button" className="card-link" onClick={() => goProduct(p.id)} aria-label={`${p.name} details`}>
         <div className="card-block">
           <span className="block-label">{p.cat}</span>
           {p.tag && <span className={`card-tag ${p.tag === 'NEW' ? 'new' : ''}`}>{p.tag}</span>}
@@ -675,7 +770,7 @@ function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLine, goPr
         <h3>{p.name}</h3>
         <p className="card-detail">{p.brand}{p.flavors ? ` · ${p.flavors} variants` : ''} · {p.sku}</p>
       </button>
-      <span className="card-meta">
+      <span className="card-meta card-actions">
         {isApprovedBuyer && price != null ? (
           <span>{money(price)}</span>
         ) : profile ? (
@@ -686,9 +781,9 @@ function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLine, goPr
         {choiceRequired ? (
           <button className="card-add" type="button" onClick={() => goProduct(p.id)}>{qty > 0 ? `Choose · ${qty}` : 'Choose'}</button>
         ) : qty > 0 ? (
-          <span className="card-stepper" onClick={(e) => e.stopPropagation()}>
+          <span className="card-stepper" role="group" aria-label={`${p.name} quantity`}>
             <button type="button" onClick={() => decLine(key)} aria-label="Decrease quantity">−</button>
-            <b>{qty}</b>
+            <b aria-live="polite">{qty}</b>
             <button type="button" onClick={() => addLine(p.id, onlyVariant)} aria-label="Increase quantity">+</button>
           </span>
         ) : (
@@ -707,12 +802,15 @@ function CategoryPage({ category, sub, ...props }) {
   const [hasVariants, setHasVariants] = useState(false);
   const [searchQ, setSearchQ] = useState('');
   const [sort, setSort] = useState('featured');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const isMobile = useMediaQuery(MOBILE_QUERY);
 
   useEffect(() => {
     setTagFilter([]);
     setHasVariants(false);
     setSearchQ('');
     setSort('featured');
+    setFiltersOpen(false);
   }, [category]);
 
   const cat = props.departments.find(c => c.key === category);
@@ -756,6 +854,50 @@ function CategoryPage({ category, sub, ...props }) {
     );
   }
 
+  const chips = [];
+  if (activeSub) chips.push({ key: 'sub', label: activeSub, remove: () => props.goCategory(category, null) });
+  tagFilter.forEach(tag => chips.push({ key: `tag-${tag}`, label: tagOptions.find(([, t]) => t === tag)?.[0] || tag, remove: () => toggleTag(tag) }));
+  if (hasVariants) chips.push({ key: 'variants', label: 'Has variants', remove: () => setHasVariants(false) });
+  if (query) chips.push({ key: 'query', label: `“${searchQ.trim()}”`, remove: () => setSearchQ('') });
+
+  const resultNote = (
+    <p className="result-note" role="status">
+      Showing <strong>{items.length}</strong> of {inCategory.length} item{inCategory.length === 1 ? '' : 's'}{activeSub ? ` in ${activeSub}` : ''}
+    </p>
+  );
+  const sortControl = (
+    <label className="category-sort" htmlFor="category-sort">Sort by
+      <select id="category-sort" value={sort} onChange={(e) => setSort(e.target.value)}>
+        <option value="featured">Featured</option>
+        <option value="name-asc">Name: A to Z</option>
+        <option value="name-desc">Name: Z to A</option>
+        <option value="variants">Most variants</option>
+        {props.isApprovedBuyer && <option value="price-low">Price: Low to High</option>}
+        {props.isApprovedBuyer && <option value="price-high">Price: High to Low</option>}
+      </select>
+    </label>
+  );
+  const filterPanel = (
+    <div className="filter-panel">
+      <label className="filter-search" htmlFor="category-search">Search in {catLabel(category)}
+        <input id="category-search" type="search" value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Item, brand, SKU, variant…" autoComplete="off" />
+      </label>
+      <fieldset>
+        <legend>Featured</legend>
+        {tagOptions.map(([label, tag]) => (
+          <label key={tag}><input type="checkbox" checked={tagFilter.includes(tag)} onChange={() => toggleTag(tag)} /> <span>{label}</span></label>
+        ))}
+      </fieldset>
+      <fieldset>
+        <legend>Variants</legend>
+        <label><input type="checkbox" checked={hasVariants} onChange={(e) => setHasVariants(e.target.checked)} /> <span>Has flavors or variants</span></label>
+      </fieldset>
+      {!props.profile && <button className="filter-signin" type="button" onClick={props.onLoginClick}><b>Wholesale pricing is locked</b><span>Sign in to see your account pricing.</span></button>}
+      {props.profile && !props.isApprovedBuyer && <p className="filter-signin"><b>Pricing after approval</b><span>Your account is not approved for trade pricing yet.</span></p>}
+    </div>
+  );
+  const closeFilters = () => setFiltersOpen(false);
+
   return (
     <section>
       <div className="page-head">
@@ -766,51 +908,69 @@ function CategoryPage({ category, sub, ...props }) {
         <p className="eyebrow">DEPARTMENT · {String(cat.count).padStart(2, '0')} SKUs</p>
         <h1>{catLabel(category)}</h1>
         <p>Wholesale {catLabel(category).toLowerCase()} for licensed retail accounts. {props.isApprovedBuyer ? 'Your tier pricing is shown on each card.' : props.profile ? 'Pricing unlocks after your account is approved.' : 'Sign in to see your wholesale pricing.'}</p>
-        <div className="sub-pills" aria-label={`${catLabel(category)} subcategories`}>
-          <button className={`sub-pill ${!activeSub ? 'active' : ''}`} type="button" onClick={() => props.goCategory(category, null)}>All ({cat.count})</button>
+        <div className="sub-pills" role="group" aria-label={`${catLabel(category)} subcategories`}>
+          <button className={`sub-pill ${!activeSub ? 'active' : ''}`} type="button" aria-pressed={!activeSub} onClick={() => props.goCategory(category, null)}>All ({cat.count})</button>
           {cat.subs.map(s => {
             const count = inCategory.filter(p => p.sub === s).length;
-            return <button key={s} className={`sub-pill ${activeSub === s ? 'active' : ''}`} type="button" onClick={() => props.goCategory(category, s)}>{s} ({count})</button>;
+            return <button key={s} className={`sub-pill ${activeSub === s ? 'active' : ''}`} type="button" aria-pressed={activeSub === s} onClick={() => props.goCategory(category, s)}>{s} ({count})</button>;
           })}
         </div>
       </div>
 
       <div className="category-toolbar">
-        <p className="result-note">Showing <strong>{items.length}</strong> of {inCategory.length} item{inCategory.length === 1 ? '' : 's'}{activeSub ? ` in ${activeSub}` : ''}</p>
-        <label className="category-sort">Sort by
-          <select value={sort} onChange={(e) => setSort(e.target.value)}>
-            <option value="featured">Featured</option>
-            <option value="name-asc">Name: A to Z</option>
-            <option value="name-desc">Name: Z to A</option>
-            <option value="variants">Most variants</option>
-            {props.isApprovedBuyer && <option value="price-low">Price: Low to High</option>}
-            {props.isApprovedBuyer && <option value="price-high">Price: High to Low</option>}
-          </select>
-        </label>
+        <div className="toolbar-row">
+          {isMobile && (
+            <button className="filter-toggle" type="button" aria-expanded={filtersOpen} aria-controls={filtersOpen ? 'aw-filter-drawer' : undefined} onClick={() => setFiltersOpen(true)}>
+              <span className="filter-icon" aria-hidden="true"></span>
+              Filter &amp; Sort
+              {activeFilterCount > 0 && <span className="filter-count"><span className="sr-only">, </span>{activeFilterCount}<span className="sr-only"> active</span></span>}
+            </button>
+          )}
+          {resultNote}
+          {!isMobile && sortControl}
+        </div>
+        {chips.length > 0 && (
+          <ul className="active-filters" aria-label="Active filters">
+            {chips.map(c => (
+              <li key={c.key}><button type="button" onClick={c.remove} aria-label={`Remove filter ${c.label}`}>{c.label} <span aria-hidden="true">×</span></button></li>
+            ))}
+            <li><button className="text-link" type="button" onClick={clearFilters}>Clear all</button></li>
+          </ul>
+        )}
       </div>
 
-      <div className="catalog-layout">
-        <aside className="category-filters" aria-label="Product filters">
-          <div className="filter-heading">
-            <h2>Filters</h2>
-            {activeFilterCount > 0 && <button className="text-link" type="button" onClick={clearFilters}>Clear all ({activeFilterCount})</button>}
-          </div>
-          <label className="filter-search">Search in {catLabel(category)}
-            <input type="search" value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Item, brand, SKU, variant…" />
-          </label>
-          <fieldset>
-            <legend>Featured</legend>
-            {tagOptions.map(([label, tag]) => (
-              <label key={tag}><input type="checkbox" checked={tagFilter.includes(tag)} onChange={() => toggleTag(tag)} /> <span>{label}</span></label>
-            ))}
-          </fieldset>
-          <fieldset>
-            <legend>Variants</legend>
-            <label><input type="checkbox" checked={hasVariants} onChange={(e) => setHasVariants(e.target.checked)} /> <span>Has flavors or variants</span></label>
-          </fieldset>
-          {!props.profile && <button className="filter-signin" type="button" onClick={props.onLoginClick}><b>Wholesale pricing is locked</b><span>Sign in to see your account pricing.</span></button>}
-          {props.profile && !props.isApprovedBuyer && <p className="filter-signin"><b>Pricing after approval</b><span>Your account is not approved for trade pricing yet.</span></p>}
-        </aside>
+      {isMobile && filtersOpen && (
+        <ModalLayer onClose={closeFilters} className="aw-filter-layer">
+          <div className="overlay" onClick={closeFilters} />
+          <aside className="drawer filter-drawer" role="dialog" aria-modal="true" aria-labelledby="aw-filter-title" id="aw-filter-drawer">
+            <div className="drawer-head">
+              <h2 id="aw-filter-title">Filter &amp; Sort</h2>
+              <button className="dialog-close" type="button" onClick={closeFilters} aria-label="Close filters">×</button>
+            </div>
+            <div className="drawer-body filter-drawer-body">
+              {sortControl}
+              {filterPanel}
+            </div>
+            <div className="drawer-foot">
+              <div className="drawer-actions">
+                {activeFilterCount > 0 && <button className="text-link" type="button" onClick={clearFilters}>Clear all ({activeFilterCount})</button>}
+                <button className="button" type="button" onClick={closeFilters}>Show {items.length} item{items.length === 1 ? '' : 's'} <span aria-hidden="true">↗</span></button>
+              </div>
+            </div>
+          </aside>
+        </ModalLayer>
+      )}
+
+      <div className={`catalog-layout${isMobile ? ' is-stacked' : ''}`}>
+        {!isMobile && (
+          <aside className="category-filters" aria-label="Product filters">
+            <div className="filter-heading">
+              <h2>Filters</h2>
+              {activeFilterCount > 0 && <button className="text-link" type="button" onClick={clearFilters}>Clear all ({activeFilterCount})</button>}
+            </div>
+            {filterPanel}
+          </aside>
+        )}
 
         <div>
           {items.length > 0 ? (
@@ -893,7 +1053,7 @@ function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLi
             </div>
           )}
           {choiceRequired && <p className="in-cart-note">Choose one variant. Each variant is quoted on its own line.</p>}
-          {variantError && <p className="form-error">Select a variant before adding this product.</p>}
+          {variantError && <p className="form-error" role="alert">Select a variant before adding this product.</p>}
           <div className="pd-price">
             {isApprovedBuyer && price != null
               ? <><b>{money(price)}</b><span>Wholesale unit price · {variantSku(p.sku, selected)}</span></>
@@ -902,9 +1062,9 @@ function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLi
               : <><b>Sign in</b><span>Wholesale pricing is visible to approved trade accounts</span></>}
           </div>
           <div className="qty-row">
-            <div className="qty-stepper" aria-label="Quantity to add">
+            <div className="qty-stepper" role="group" aria-label="Quantity to add">
               <button type="button" onClick={() => setDesiredQty(q => Math.max(1, q - 1))} aria-label="Decrease quantity">−</button>
-              <b>{desiredQty}</b>
+              <b aria-live="polite">{desiredQty}</b>
               <button type="button" onClick={() => setDesiredQty(q => q + 1)} aria-label="Increase quantity">+</button>
             </div>
             <button className="button" type="button" onClick={handleAdd} disabled={choiceRequired && !chosenVariant}>{isApprovedBuyer ? 'Add to order' : 'Add to quote'} <span aria-hidden="true">↗</span></button>
@@ -1026,9 +1186,9 @@ function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHo
       </div>
       <div className="checkout-grid">
         <div>
-          <div className="card-grid" style={{ gridTemplateColumns: '1fr' }}>
+          <ul className="checkout-lines" aria-label="Items in this request">
             {items.map(it => (
-              <div key={it.lineKey} className="drawer-line" style={{ border: '1px solid var(--line)', padding: 12 }}>
+              <li key={it.lineKey} className="drawer-line checkout-line">
                 <span className="thumb">{it.img ? <img src={it.img} alt="" /> : initials(it.name)}</span>
                 <span className="info">
                   <b>{it.name}</b>
@@ -1036,47 +1196,48 @@ function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHo
                   {it.needsVariant && <small>Choose a variant before submitting.</small>}
                 </span>
                 {it.needsVariant ? (
-                  <button className="text-link" type="button" onClick={() => goProduct(it.productId)}>Choose variant</button>
+                  <button className="text-link choose" type="button" onClick={() => goProduct(it.productId)}>Choose variant</button>
                 ) : (
-                  <span className="qty">
-                    <button type="button" onClick={() => decLine(it.lineKey)} aria-label="Decrease">−</button>
-                    <b>{it.qty}</b>
-                    <button type="button" onClick={() => addLine(it.productId, it.variant)} aria-label="Increase">+</button>
+                  <span className="qty" role="group" aria-label={`${it.name} quantity`}>
+                    <button type="button" onClick={() => decLine(it.lineKey)} aria-label="Decrease quantity">−</button>
+                    <b aria-live="polite">{it.qty}</b>
+                    <button type="button" onClick={() => addLine(it.productId, it.variant)} aria-label="Increase quantity">+</button>
                   </span>
                 )}
-                {isApprovedBuyer && it.price != null && <b style={{ color: 'var(--purple)', minWidth: 64, textAlign: 'right' }}>{money(it.qty * it.price)}</b>}
-                <button className="text-link" type="button" onClick={() => removeLine(it.lineKey)}>Remove</button>
-              </div>
+                {isApprovedBuyer && it.price != null && <b className="line-total">{money(it.qty * it.price)}</b>}
+                <button className="drawer-remove" type="button" onClick={() => removeLine(it.lineKey)} aria-label={`Remove ${it.name}`}><span aria-hidden="true">×</span></button>
+              </li>
             ))}
-          </div>
-          <button className="text-link" style={{ marginTop: 14 }} type="button" onClick={clearCart}>Clear all items</button>
+          </ul>
+          <button className="text-link checkout-clear" type="button" onClick={clearCart}>Clear all items</button>
         </div>
-        <form onSubmit={handleQuoteSubmit}>
-          <div className="form-grid" style={{ marginTop: 0 }}>
-            <div><label>Business</label><input value={data.business} onChange={set('business')} required /></div>
-            <div><label>Contact</label><input value={data.contact} onChange={set('contact')} required /></div>
-            <div><label>Email</label><input type="email" value={data.email} onChange={set('email')} required /></div>
-            <div><label>Phone</label><input type="tel" value={data.phone} onChange={set('phone')} required /></div>
-            <div className="full"><label htmlFor="ship-street">Ship-to street</label><input id="ship-street" value={data.shipStreet} onChange={set('shipStreet')} required autoComplete="street-address" /></div>
-            <div><label htmlFor="ship-city">City</label><input id="ship-city" value={data.shipCity} onChange={set('shipCity')} required autoComplete="address-level2" /></div>
-            <div><label htmlFor="ship-state">State</label><input id="ship-state" value={data.shipState} onChange={set('shipState')} required autoComplete="address-level1" /></div>
-            <div><label htmlFor="ship-zip">ZIP</label><input id="ship-zip" value={data.shipZip} onChange={set('shipZip')} required autoComplete="postal-code" inputMode="numeric" /></div>
-            <div><label>Delivery method</label>
-              <select value={data.delivery} onChange={set('delivery')}>
+        <form onSubmit={handleQuoteSubmit} aria-labelledby="quote-form-title">
+          <h2 id="quote-form-title" className="checkout-form-title">Your details</h2>
+          <div className="form-grid checkout-form-grid">
+            <div><label htmlFor="quote-business">Business</label><input id="quote-business" name="business" value={data.business} onChange={set('business')} required autoComplete="organization" /></div>
+            <div><label htmlFor="quote-contact">Contact</label><input id="quote-contact" name="contact" value={data.contact} onChange={set('contact')} required autoComplete="name" /></div>
+            <div><label htmlFor="quote-email">Email</label><input id="quote-email" name="email" type="email" value={data.email} onChange={set('email')} required autoComplete="email" inputMode="email" /></div>
+            <div><label htmlFor="quote-phone">Phone</label><input id="quote-phone" name="phone" type="tel" value={data.phone} onChange={set('phone')} required autoComplete="tel" inputMode="tel" /></div>
+            <div className="full"><label htmlFor="ship-street">Ship-to street</label><input id="ship-street" name="shipStreet" value={data.shipStreet} onChange={set('shipStreet')} required autoComplete="street-address" /></div>
+            <div><label htmlFor="ship-city">City</label><input id="ship-city" name="shipCity" value={data.shipCity} onChange={set('shipCity')} required autoComplete="address-level2" /></div>
+            <div><label htmlFor="ship-state">State</label><input id="ship-state" name="shipState" value={data.shipState} onChange={set('shipState')} required autoComplete="address-level1" /></div>
+            <div><label htmlFor="ship-zip">ZIP</label><input id="ship-zip" name="shipZip" value={data.shipZip} onChange={set('shipZip')} required autoComplete="postal-code" inputMode="numeric" /></div>
+            <div><label htmlFor="quote-delivery">Delivery method</label>
+              <select id="quote-delivery" name="delivery" value={data.delivery} onChange={set('delivery')}>
                 <option value="delivery">Next-day delivery (on route)</option>
                 <option value="willcall">Same-day will-call</option>
               </select>
             </div>
-            <div><label>Preferred date</label><input type="date" value={data.preferredDate} onChange={set('preferredDate')} /></div>
-            <div className="full"><label>Notes</label><input value={data.notes} onChange={set('notes')} placeholder="Dock hours, pallet needs, substitutions…" /></div>
+            <div><label htmlFor="quote-date">Preferred date</label><input id="quote-date" name="preferredDate" type="date" value={data.preferredDate} onChange={set('preferredDate')} autoComplete="off" /></div>
+            <div className="full"><label htmlFor="quote-notes">Notes</label><input id="quote-notes" name="notes" value={data.notes} onChange={set('notes')} placeholder="Dock hours, pallet needs, substitutions…" autoComplete="off" /></div>
           </div>
-          <div className="drawer-total" style={{ marginTop: 18 }}>
+          <div className="drawer-total checkout-total">
             <span>{totalUnits} units</span>
             <span>{isApprovedBuyer ? money(total) : (profile ? 'Pricing after approval' : 'Pricing after sign-in')}</span>
           </div>
-          {!isBackendConfigured && <p className="form-error"><TradeDeskContact before="Quote requests can’t be saved right now. Call" after=" and the trade desk will write it up with you." /></p>}
-          {needsVariant && <p className="form-error">Choose a variant for every product that has more than one.</p>}
-          {submitError && <p className="form-error">{typeof submitError === 'string' ? submitError : <TradeDeskContact before={submitError.before} after={submitError.after} />}</p>}
+          {!isBackendConfigured && <p className="form-error" role="status"><TradeDeskContact before="Quote requests can’t be saved right now. Call" after=" and the trade desk will write it up with you." /></p>}
+          {needsVariant && <p className="form-error" role="alert">Choose a variant for every product that has more than one.</p>}
+          {submitError && <p className="form-error" role="alert">{typeof submitError === 'string' ? submitError : <TradeDeskContact before={submitError.before} after={submitError.after} />}</p>}
           <button className="button wide" type="submit" disabled={sending || !isBackendConfigured || needsVariant}>
             {sending ? 'Sending…' : (isApprovedBuyer ? 'Submit order' : 'Submit quote request')} <span aria-hidden="true">↗</span></button>
           <p className="fine">Orders over $1,500 qualify for free delivery on a delivery route in AL, MS &amp; GA. Tobacco products supplied to licensed retailers only — 21+.</p>
@@ -1140,76 +1301,87 @@ function Footer({ goHome, goCategory, departments, onLoginClick, onApplyClick, o
 
 function HelpDialog({ onClose, onApply }) {
   return (
-    <div className="overlay" onClick={onClose}>
-      <div className="dialog scale-in" role="dialog" aria-modal="true" aria-labelledby="help-title" onClick={(e) => e.stopPropagation()}>
-        <div className="dialog-top"><p className="eyebrow">ACCOUNT SERVICE</p><button className="dialog-close" onClick={onClose} aria-label="Close">×</button></div>
-        <p className="kicker">WE ANSWER FAST</p>
-        <h2 id="help-title">Talk to the warehouse</h2>
-        <p className="desc">Real people, same building as the inventory. Call, email or stop by will-call.</p>
-        <div className="form-grid">
-          <div><label>Phone</label><p style={{ margin: 0 }}><a href={`tel:${COMPANY.phoneRaw}`}>{COMPANY.phone}</a></p></div>
-          <div><label>Email</label><p style={{ margin: 0 }}><a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a></p></div>
-          <div><label>Hours</label><p style={{ margin: 0 }}>{COMPANY.hoursLine1} · {COMPANY.hoursLine2}</p></div>
-          <div><label>Will-call</label><p style={{ margin: 0 }}>{COMPANY.addressShort}</p></div>
+    <ModalLayer onClose={onClose}>
+      <div className="overlay" onClick={onClose}>
+        <div className="dialog scale-in" role="dialog" aria-modal="true" aria-labelledby="help-title" onClick={(e) => e.stopPropagation()}>
+          <div className="dialog-top"><p className="eyebrow">ACCOUNT SERVICE</p><button className="dialog-close" onClick={onClose} aria-label="Close">×</button></div>
+          <p className="kicker">WE ANSWER FAST</p>
+          <h2 id="help-title">Talk to the warehouse</h2>
+          <p className="desc">Real people, same building as the inventory. Call, email or stop by will-call.</p>
+          <dl className="contact-grid">
+            <div><dt>Phone</dt><dd><a href={`tel:${COMPANY.phoneRaw}`}>{COMPANY.phone}</a></dd></div>
+            <div><dt>Email</dt><dd><a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a></dd></div>
+            <div><dt>Hours</dt><dd>{COMPANY.hoursLine1} · {COMPANY.hoursLine2}</dd></div>
+            <div><dt>Will-call</dt><dd>{COMPANY.addressShort}</dd></div>
+          </dl>
+          <div className="dialog-actions">
+            <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Call now <span aria-hidden="true">↗</span></a>
+            <button className="text-link" type="button" onClick={onApply}>Apply for an account</button>
+          </div>
+          <p className="fine">Ordering before 2 PM Central gets next-day delivery on our own trucks when the stop is on a delivery route in AL, MS and GA.</p>
         </div>
-        <div className="dialog-actions">
-          <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Call now <span aria-hidden="true">↗</span></a>
-          <button className="text-link" type="button" onClick={onApply}>Apply for an account</button>
-        </div>
-        <p className="fine">Ordering before 2 PM Central gets next-day delivery on our own trucks when the stop is on a delivery route in AL, MS and GA.</p>
       </div>
-    </div>
+    </ModalLayer>
   );
 }
 
-function CartDrawer({ open, onClose, items, total, addLine, decLine, removeLine, goQuote, goProduct, isApprovedBuyer, onLoginClick }) {
+function CartDrawer({ open, onClose, items, total, addLine, decLine, removeLine, goQuote, goProduct, profile, isApprovedBuyer, onLoginClick }) {
   if (!open) return null;
+  // Guests are asked to sign in; signed-in buyers who are not approved yet are
+  // told pricing is waiting on approval instead.
+  const pendingBuyer = Boolean(profile) && !isApprovedBuyer;
   return (
-    <>
-      <div className="overlay" style={{ background: '#170e2977' }} onClick={onClose} />
-      <aside className="drawer" role="dialog" aria-modal="true" aria-label="Cart">
+    <ModalLayer onClose={onClose}>
+      <div className="overlay overlay-soft" onClick={onClose} />
+      <aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title">
         <div className="drawer-head">
-          <h2>Your order</h2>
+          <h2 id="cart-title">Your order</h2>
           <button className="dialog-close" onClick={onClose} aria-label="Close cart">×</button>
         </div>
         <div className="drawer-body">
           {items.length === 0 && <p className="empty-note">Your cart is empty.<br />Browse the catalog and add items to build an order.</p>}
-          {items.map(it => (
-            <div className="drawer-line" key={it.lineKey}>
-              <span className="thumb">{it.img ? <img src={it.img} alt="" /> : initials(it.name)}</span>
-              <span className="info">
-                <b>{it.name}</b>
-                <small>{it.sku}{isApprovedBuyer && it.price != null ? ` · ${money(it.price)}` : ''}{it.needsVariant ? ' · Choose a variant' : ''}</small>
-              </span>
-              {it.needsVariant ? (
-                <button className="text-link" type="button" onClick={() => { onClose(); goProduct(it.productId); }}>Choose</button>
-              ) : (
-                <span className="qty">
-                  <button type="button" onClick={() => decLine(it.lineKey)} aria-label="Decrease">−</button>
-                  <b>{it.qty}</b>
-                  <button type="button" onClick={() => addLine(it.productId, it.variant)} aria-label="Increase">+</button>
-                </span>
-              )}
-              <button className="text-link" type="button" onClick={() => removeLine(it.lineKey)} aria-label={`Remove ${it.name}`}>×</button>
-            </div>
-          ))}
+          {items.length > 0 && (
+            <ul className="drawer-lines" aria-label="Items in your order">
+              {items.map(it => (
+                <li className="drawer-line" key={it.lineKey}>
+                  <span className="thumb">{it.img ? <img src={it.img} alt="" /> : initials(it.name)}</span>
+                  <span className="info">
+                    <b>{it.name}</b>
+                    <small>{it.sku}{isApprovedBuyer && it.price != null ? ` · ${money(it.price)}` : ''}{it.needsVariant ? ' · Choose a variant' : ''}</small>
+                  </span>
+                  {it.needsVariant ? (
+                    <button className="text-link choose" type="button" onClick={() => { onClose(); goProduct(it.productId); }}>Choose variant</button>
+                  ) : (
+                    <span className="qty" role="group" aria-label={`${it.name} quantity`}>
+                      <button type="button" onClick={() => decLine(it.lineKey)} aria-label="Decrease quantity">−</button>
+                      <b aria-live="polite">{it.qty}</b>
+                      <button type="button" onClick={() => addLine(it.productId, it.variant)} aria-label="Increase quantity">+</button>
+                    </span>
+                  )}
+                  <button className="drawer-remove" type="button" onClick={() => removeLine(it.lineKey)} aria-label={`Remove ${it.name}`}><span aria-hidden="true">×</span></button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         <div className="drawer-foot">
           <div className="drawer-total">
             <span>Estimated total</span>
-            <span>{isApprovedBuyer ? money(total) : 'Sign in for pricing'}</span>
+            {isApprovedBuyer
+              ? <span>{money(total)}</span>
+              : <span className="drawer-total-note">{pendingBuyer ? 'Pricing unlocks when your account is approved' : 'Sign in for pricing'}</span>}
           </div>
           {items.length > 0 && (
             isApprovedBuyer
               ? <button className="button wide" type="button" onClick={goQuote}>Checkout <span aria-hidden="true">↗</span></button>
               : <>
                   <button className="button wide" type="button" onClick={goQuote}>Request quote <span aria-hidden="true">↗</span></button>
-                  <button className="drawer-signin text-link" type="button" onClick={onLoginClick}>Sign in for account pricing</button>
+                  {!pendingBuyer && <button className="drawer-signin text-link" type="button" onClick={onLoginClick}>Sign in for account pricing</button>}
                 </>
           )}
-          <p className="fine" style={{ borderTop: 0, marginTop: 12, paddingTop: 0 }}>Free delivery over $1,500 applies on a delivery route in AL, MS &amp; GA. Orders placed before 2 PM ship next-day on our trucks when the stop is on a route.</p>
+          <p className="fine drawer-fine">Free delivery over $1,500 applies on a delivery route in AL, MS &amp; GA. Orders placed before 2 PM ship next-day on our trucks when the stop is on a route.</p>
         </div>
       </aside>
-    </>
+    </ModalLayer>
   );
 }
