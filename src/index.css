@@ -261,6 +261,8 @@ h2 { font-size: 35px; margin-bottom: 0; }
 .pd-info h1 { color: var(--purple); font-size: clamp(38px, 4vw, 56px); margin-bottom: 8px; }
 .pd-info .pd-brand { font-size: 11px; font-weight: 700; letter-spacing: 1.6px; color: var(--orange-dark); text-transform: uppercase; margin: 0 0 16px; }
 .pd-info .pd-desc { color: var(--muted); font-size: 13px; line-height: 1.8; max-width: 480px; }
+.pd-info .pd-unit { margin: 0 0 14px; padding: 8px 12px; max-width: 480px; border-left: 3px solid var(--orange); background: var(--paper); color: var(--ink); font-size: 12px; font-weight: 600; }
+.pd-info .pd-fine { font-size: 11px; }
 .pd-price { margin: 22px 0; padding: 18px 0; border-block: 1px solid var(--line); }
 .pd-price b { font: 700 34px/1 var(--display); color: var(--purple); }
 .pd-price span { display: block; font-size: 10px; letter-spacing: 1.4px; color: var(--muted); text-transform: uppercase; margin-top: 6px; }

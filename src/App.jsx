@@ -852,7 +852,9 @@ function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLi
         <div className="pd-info">
           <p className="pd-brand">{p.brand} · {p.sub}</p>
           <h1>{p.name}</h1>
-          <p className="pd-desc">Wholesale {p.sub.toLowerCase()} from {p.brand}. SKU {p.sku}. Supplied to licensed retail businesses for lawful resale — order by 2 PM Central for next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA.</p>
+          <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()} from ${p.brand}.`}</p>
+          {p.sellUnit && <p className="pd-unit">Sold by the {p.sellUnit} — quantity 1 is one {p.sellUnit}.</p>}
+          <p className="pd-desc pd-fine">SKU {p.sku}. Supplied to licensed retail businesses for lawful resale — order by 2 PM Central for next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA.</p>
           {variants.length > 0 && (
             <div className="variant-chips" role="group" aria-label={choiceRequired ? 'Choose a variant' : 'Variant'}>
               {variants.map(v => (
