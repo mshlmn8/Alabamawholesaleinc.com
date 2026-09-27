@@ -3,13 +3,14 @@
 // always points the customer to the trade desk to confirm their stop.
 
 import React, { useState } from 'react';
-import { COMPANY, FREE_DELIVERY_THRESHOLD } from '../../data/content.js';
+import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../../data/content.js';
 import { DELIVERY_STATES, OTHER_STATES } from '../../data/onboarding.js';
 import { PageHead, ContactStrip, PhoneLink } from './SupportShell.jsx';
 
 const ROUTE_STATE_NAMES = DELIVERY_STATES.map(s => s.name);
 const routeStates = `${ROUTE_STATE_NAMES.slice(0, -1).join(', ')} and ${ROUTE_STATE_NAMES[ROUTE_STATE_NAMES.length - 1]}`;
 const money = (n) => `$${Number(n).toLocaleString('en-US')}`;
+const moneyExact = (n) => `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export function DeliveryPage({ goHome, navigate }) {
   const [stateCode, setStateCode] = useState('');
@@ -31,14 +32,13 @@ export function DeliveryPage({ goHome, navigate }) {
         <article className="info-card">
           <p className="eyebrow">02 · WILL-CALL</p>
           <h2>Pick up in Birmingham</h2>
-          <p>Order ahead and collect at {COMPANY.addressLine1}, {COMPANY.addressLine2}. {COMPANY.hoursLine1}, {COMPANY.hoursLine2}.</p>
+          <p>Will-call is pickup at {COMPANY.addressLine1}, {COMPANY.addressLine2} during business hours. {COMPANY.hoursLine1}, {COMPANY.hoursLine2}.</p>
           <button className="text-link" type="button" onClick={() => navigate({ page: 'contact' })}>Contact &amp; visit</button>
         </article>
         <article className="info-card">
-          <p className="eyebrow">03 · NOT ON A ROUTE?</p>
-          <h2>Call the trade desk</h2>
-          <p>Routes don’t reach every address. A trade rep can tell you whether a route passes your store and what your options are.</p>
-          <a className="button ghost" href={`tel:${COMPANY.phoneRaw}`}>Call {COMPANY.phone}</a>
+          <p className="eyebrow">03 · MINIMUM ORDER</p>
+          <h2>{moneyExact(ORDER_MINIMUM)} minimum</h2>
+          <p>The minimum order is {moneyExact(ORDER_MINIMUM)}.</p>
         </article>
       </div>
 
@@ -67,10 +67,7 @@ export function DeliveryPage({ goHome, navigate }) {
               </>
             )}
             {otherState && (
-              <>
-                <b>Our delivery routes run in {routeStates}.</b>
-                <span>Call <PhoneLink /> to talk about options for a store in {otherState.code === 'XX' ? 'your state' : otherState.name}, including will-call pickup in Birmingham.</span>
-              </>
+              <b>Delivery is currently on routes in Alabama, Mississippi, and Georgia.</b>
             )}
           </div>
         </form>
@@ -83,7 +80,7 @@ export function DeliveryPage({ goHome, navigate }) {
           <ol className="next-steps">
             <li><b>Place your order.</b><span>Online with your trade account, or by phone with the trade desk.</span></li>
             <li><b>We confirm the details.</b><span>The trade desk confirms your route, timing and anything specific to your delivery — dock hours, pallets, substitutions.</span></li>
-            <li><b>Our driver delivers.</b><span>Count the cases and check for damage while the driver is there. Anything short or damaged, see Returns &amp; damaged goods.</span></li>
+            <li><b>Our driver delivers.</b><span>Count the cases and check for damage while the driver is there.</span></li>
           </ol>
         </section>
         <section className="support-block" aria-labelledby="states-title">
@@ -94,8 +91,7 @@ export function DeliveryPage({ goHome, navigate }) {
           </ul>
           <p className="support-note">Tobacco and vapor products are delivered to the licensed retail business on the account only.</p>
           <div className="dialog-actions compact-actions">
-            <button className="text-link" type="button" onClick={() => navigate({ page: 'shipping' })}>Shipping &amp; delivery policy</button>
-            <button className="text-link" type="button" onClick={() => navigate({ page: 'returns' })}>Returns &amp; damaged goods</button>
+            <button className="text-link" type="button" onClick={() => navigate({ page: 'shipping' })}>Delivery policy</button>
           </div>
         </section>
       </div>

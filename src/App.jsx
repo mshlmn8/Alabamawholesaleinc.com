@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 
 import { IMG } from './data/theme.js';
-import { COMPANY, ANNOUNCEMENTS, STORAGE, HERO_SLIDES } from './data/content.js';
+import { COMPANY, ANNOUNCEMENTS, STORAGE, HERO_SLIDES, ORDER_MINIMUM } from './data/content.js';
 import { NAV_ORDER, NEW_ARRIVALS_IDS } from './data/products.js';
 import { useAuth } from './lib/useAuth.js';
 import { useCatalog } from './lib/useCatalog.js';
@@ -22,7 +22,7 @@ import { ApplyPage } from './pages/support/ApplyPage.jsx';
 import { ResetPasswordPage } from './pages/support/ResetPasswordPage.jsx';
 
 // Static support pages: #/<page> — see src/pages/support/.
-const SUPPORT_PAGES = ['catalog', 'contact', 'delivery', 'shipping', 'returns', 'privacy', 'terms', 'apply', 'reset-password'];
+const SUPPORT_PAGES = ['catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply', 'reset-password'];
 
 // Display-only tier discounts. Saved quotes ignore this and price on the server.
 const TIER_DISCOUNT = { standard: 0, silver: 0.05, gold: 0.10 };
@@ -104,11 +104,11 @@ function pageMeta(route, products, departments, searchTerm) {
     if (!p) return { title: `Product not found · ${site}`, description: HOME_DESCRIPTION };
     return { title: `${p.name} · ${p.brand} · ${site}`, description: clip(p.description || `${p.name} — wholesale ${p.sub.toLowerCase()} from ${p.brand}. SKU ${p.sku}.`) };
   }
-  if (route.page === 'quote') return { title: `Checkout · ${site}`, description: `Review your items and submit a wholesale quote or order to ${site}.` };
+  if (route.page === 'quote') return { title: `Checkout · ${site}`, description: `Review your items and submit a wholesale quote or order to ${site}. Minimum order $500.00.` };
   if (route.page === 'account') return { title: `My Account · ${site}`, description: `Your ${site} trade account: order history, reorders and quick entry by SKU.` };
   if (route.page === 'admin') return { title: `Admin · ${site}`, description: `Catalog and account administration for ${site}.` };
   // Support pages (src/pages/support/).
-  if (route.page === 'catalog') return { title: `All Products · Wholesale Catalog · ${site}`, description: clip(`Every department and product line ${site} stocks — ${products.length} wholesale SKUs for licensed retailers, shipped from Birmingham, AL.`) };
+  if (route.page === 'catalog') return { title: `All Products · Wholesale Catalog · ${site}`, description: clip(`Every department and product line ${site} stocks — ${products.length} wholesale SKUs for licensed retailers, from the Birmingham warehouse.`) };
   if (route.page === 'contact') return { title: `Contact & Visit · ${site}`, description: clip(`Call ${COMPANY.phone}, email ${COMPANY.email}, or visit ${COMPANY.addressShort}. ${COMPANY.hoursLine1}, ${COMPANY.hoursLine2}.`) };
   if (route.page === 'delivery') return { title: `Delivery & Service Area · ${site}`, description: 'Next-day delivery on our own trucks when your stop is on a route in Alabama, Mississippi or Georgia, plus will-call pickup at the Birmingham warehouse.' };
   if (POLICY_TITLES[route.page]) return { title: `${POLICY_TITLES[route.page]} · ${site}`, description: clip(POLICY_INTROS[route.page]) };
@@ -333,7 +333,7 @@ export default function App() {
             {route.page === 'catalog' && <CatalogIndexPage {...shared} />}
             {route.page === 'contact' && <ContactPage {...supportShared} />}
             {route.page === 'delivery' && <DeliveryPage {...supportShared} />}
-            {['shipping', 'returns', 'privacy', 'terms'].includes(route.page) && <PolicyPage kind={route.page} {...supportShared} />}
+            {['shipping', 'privacy', 'terms'].includes(route.page) && <PolicyPage kind={route.page} {...supportShared} />}
             {route.page === 'apply' && <ApplyPage {...supportShared} onApplyClick={openApplication} onResetClick={openReset} />}
             {route.page === 'reset-password' && <ResetPasswordPage {...supportShared} auth={auth} onRequestReset={openReset} />}
           </>
@@ -740,7 +740,7 @@ function HomePage(props) {
       </section>
 
       <section className="services" aria-label="Services">
-        <div className="service"><span>01</span><h3>Next-day delivery, our own trucks</h3><p>We run our own delivery service on routes in Alabama, Mississippi and Georgia. Free delivery on orders over $1,500 when the stop is on a delivery route. Same-day will-call pickup if you order by 11 AM.</p></div>
+        <div className="service"><span>01</span><h3>Next-day delivery, our own trucks</h3><p>We run our own delivery service on routes in Alabama, Mississippi and Georgia. Free delivery on orders over $1,500 when the stop is on a delivery route. Will-call is pickup at the Birmingham warehouse during business hours.</p></div>
         <div className="service"><span>02</span><h3>Net-30 trade terms</h3><p>Approved retail accounts order now and pay on Net-30 terms. Volume discounts up to 18% on pallet quantities across all eight departments.</p></div>
         <div className="service"><span>03</span><h3>Licensed businesses only</h3><p>We verify your state retail tobacco license and resale certificate before your first order. No consumer sales, no exceptions — 21+ trade accounts only.</p></div>
       </section>
@@ -787,7 +787,7 @@ function HomePage(props) {
             </li>
             <li>
               <h3>Order &amp; receive</h3>
-              <p>Order online or by phone before 2 PM for next-day delivery on our trucks when the stop is on a delivery route, or same-day will-call at the Birmingham warehouse.</p>
+              <p>Order online or by phone for next-day delivery on our trucks when the stop is on a delivery route, or will-call pickup at the Birmingham warehouse during business hours.</p>
             </li>
           </ol>
         </div>
@@ -1096,7 +1096,7 @@ function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLi
           <h1>{p.name}</h1>
           <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()} from ${p.brand}.`}</p>
           {p.sellUnit && <p className="pd-unit">Sold by the {p.sellUnit} — quantity 1 is one {p.sellUnit}.</p>}
-          <p className="pd-desc pd-fine">SKU {p.sku}. Supplied to licensed retail businesses for lawful resale — order by 2 PM Central for next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA.</p>
+          <p className="pd-desc pd-fine">SKU {p.sku}. Supplied to licensed retail businesses for lawful resale. Next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA. Will-call is pickup at the Birmingham warehouse during business hours.</p>
           {variants.length > 0 && (
             <div className="variant-chips" role="group" aria-label={choiceRequired ? 'Choose a variant' : 'Variant'}>
               {variants.map(v => (
@@ -1104,6 +1104,7 @@ function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLi
               ))}
             </div>
           )}
+          {variants.length > 1 && <p className="in-cart-note">Flavors and availability change often. The trade desk confirms what is in stock.</p>}
           {choiceRequired && <p className="in-cart-note">Choose one variant. Each variant is quoted on its own line.</p>}
           {variantError && <p className="form-error" role="alert">Select a variant before adding this product.</p>}
           <div className="pd-price">
@@ -1175,6 +1176,7 @@ function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHo
   const [sending, setSending] = useState(false);
   const totalUnits = items.reduce((s, i) => s + i.qty, 0);
   const needsVariant = items.some(it => it.needsVariant);
+  const pricedBelowMinimum = isApprovedBuyer && Number(total) < ORDER_MINIMUM;
 
   const handleQuoteSubmit = async (e) => {
     e.preventDefault();
@@ -1234,7 +1236,7 @@ function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHo
         <div className="crumbs"><button type="button" onClick={goHome}>Home</button><span aria-hidden="true">/</span><span>{isApprovedBuyer ? 'Checkout' : 'Request Quote'}</span></div>
         <p className="eyebrow">{isApprovedBuyer ? 'CHECKOUT' : 'QUOTE REQUEST'}</p>
         <h1>{isApprovedBuyer ? 'Place your order' : 'Request your quote'}</h1>
-        <p>Review your items and submit. A trade desk rep will confirm pricing, availability, freight, and delivery within one business day.</p>
+        <p>Review your items and submit. The minimum order is $500.00. A trade desk rep will confirm pricing, availability and delivery within one business day.</p>
       </div>
       <div className="checkout-grid">
         <div>
@@ -1270,14 +1272,14 @@ function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHo
             <div><label htmlFor="quote-contact">Contact</label><input id="quote-contact" name="contact" value={data.contact} onChange={set('contact')} required autoComplete="name" /></div>
             <div><label htmlFor="quote-email">Email</label><input id="quote-email" name="email" type="email" value={data.email} onChange={set('email')} required autoComplete="email" inputMode="email" /></div>
             <div><label htmlFor="quote-phone">Phone</label><input id="quote-phone" name="phone" type="tel" value={data.phone} onChange={set('phone')} required autoComplete="tel" inputMode="tel" /></div>
-            <div className="full"><label htmlFor="ship-street">Ship-to street</label><input id="ship-street" name="shipStreet" value={data.shipStreet} onChange={set('shipStreet')} required autoComplete="street-address" /></div>
+            <div className="full"><label htmlFor="ship-street">Street</label><input id="ship-street" name="shipStreet" value={data.shipStreet} onChange={set('shipStreet')} required autoComplete="street-address" /></div>
             <div><label htmlFor="ship-city">City</label><input id="ship-city" name="shipCity" value={data.shipCity} onChange={set('shipCity')} required autoComplete="address-level2" /></div>
             <div><label htmlFor="ship-state">State</label><input id="ship-state" name="shipState" value={data.shipState} onChange={set('shipState')} required autoComplete="address-level1" /></div>
             <div><label htmlFor="ship-zip">ZIP</label><input id="ship-zip" name="shipZip" value={data.shipZip} onChange={set('shipZip')} required autoComplete="postal-code" inputMode="numeric" /></div>
             <div><label htmlFor="quote-delivery">Delivery method</label>
               <select id="quote-delivery" name="delivery" value={data.delivery} onChange={set('delivery')}>
                 <option value="delivery">Next-day delivery (on route)</option>
-                <option value="willcall">Same-day will-call</option>
+                <option value="willcall">Will-call pickup</option>
               </select>
             </div>
             <div><label htmlFor="quote-date">Preferred date</label><input id="quote-date" name="preferredDate" type="date" value={data.preferredDate} onChange={set('preferredDate')} autoComplete="off" /></div>
@@ -1287,12 +1289,13 @@ function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHo
             <span>{totalUnits} units</span>
             <span>{isApprovedBuyer ? money(total) : (profile ? 'Pricing after approval' : 'Pricing after sign-in')}</span>
           </div>
+          {pricedBelowMinimum && <p className="notice" role="status">The order minimum is $500.00. You can still submit this order.</p>}
           {!isBackendConfigured && <p className="form-error" role="status"><TradeDeskContact before="Quote requests can’t be saved right now. Call" after=" and the trade desk will write it up with you." /></p>}
           {needsVariant && <p className="form-error" role="alert">Choose a variant for every product that has more than one.</p>}
           {submitError && <p className="form-error" role="alert">{typeof submitError === 'string' ? submitError : <TradeDeskContact before={submitError.before} after={submitError.after} />}</p>}
           <button className="button wide" type="submit" disabled={sending || !isBackendConfigured || needsVariant}>
             {sending ? 'Sending…' : (isApprovedBuyer ? 'Submit order' : 'Submit quote request')} <span aria-hidden="true">↗</span></button>
-          <p className="fine">Orders over $1,500 qualify for free delivery on a delivery route in AL, MS &amp; GA. Tobacco products supplied to licensed retailers only — 21+.</p>
+          <p className="fine">The minimum order is $500.00. Orders over $1,500 qualify for free delivery on a delivery route in AL, MS &amp; GA. Will-call is pickup at the Birmingham warehouse during business hours. Tobacco products supplied to licensed retailers only — 21+.</p>
         </form>
       </div>
     </section>
@@ -1336,8 +1339,7 @@ function Footer({ goHome, goCategory, departments, onLoginClick, onApplyClick, o
         <div className="footer-legal">
           <p>© 2026 Alabama Wholesale Inc. All rights reserved.</p>
           <nav className="footer-policies" aria-label="Customer policies">
-            <button type="button" onClick={() => navigate({ page: 'shipping' })}>Shipping &amp; delivery</button>
-            <button type="button" onClick={() => navigate({ page: 'returns' })}>Returns &amp; damaged goods</button>
+            <button type="button" onClick={() => navigate({ page: 'shipping' })}>Delivery</button>
             <button type="button" onClick={() => navigate({ page: 'privacy' })}>Privacy</button>
             <button type="button" onClick={() => navigate({ page: 'terms' })}>Trade terms</button>
           </nav>
@@ -1370,7 +1372,7 @@ function HelpDialog({ onClose, onApply }) {
             <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Call now <span aria-hidden="true">↗</span></a>
             <button className="text-link" type="button" onClick={onApply}>Apply for an account</button>
           </div>
-          <p className="fine">Ordering before 2 PM Central gets next-day delivery on our own trucks when the stop is on a delivery route in AL, MS and GA.</p>
+          <p className="fine">The minimum order is $500.00. Next-day delivery on our own trucks when the stop is on a delivery route in AL, MS and GA. Will-call is pickup at the Birmingham warehouse during business hours.</p>
         </div>
       </div>
     </ModalLayer>
@@ -1431,7 +1433,7 @@ function CartDrawer({ open, onClose, items, total, addLine, decLine, removeLine,
                   {!pendingBuyer && <button className="drawer-signin text-link" type="button" onClick={onLoginClick}>Sign in for account pricing</button>}
                 </>
           )}
-          <p className="fine drawer-fine">Free delivery over $1,500 applies on a delivery route in AL, MS &amp; GA. Orders placed before 2 PM ship next-day on our trucks when the stop is on a route.</p>
+          <p className="fine drawer-fine">The minimum order is $500.00. Free delivery over $1,500 applies on a delivery route in AL, MS &amp; GA. Will-call is pickup at the Birmingham warehouse during business hours.</p>
         </div>
       </aside>
     </ModalLayer>

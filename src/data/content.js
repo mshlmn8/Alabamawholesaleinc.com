@@ -19,7 +19,7 @@ export const COMPANY = {
 export const ANNOUNCEMENTS = [
   '★ FREE DELIVERY on orders over $1,500 on our delivery routes in Alabama, Mississippi & Georgia',
   '★ NET-30 TERMS available for approved retail accounts',
-  '★ SAME-DAY WILL-CALL · Order by 11AM, pick up the same afternoon',
+  '★ WILL-CALL · Pickup at the Birmingham warehouse during business hours',
   '★ VOLUME DISCOUNTS · Save up to 18% on pallet quantities'
 ];
 
@@ -39,17 +39,17 @@ export const HERO_SLIDES = [
   // For demo, all use images. Replace with your real product videos.
   // heroImage() supplies img (plain URL, used as the video poster) and picture
   // (responsive WebP/JPEG set) from the photo in src/assets.
-  { eyebrow: 'NEW THIS WEEK', title: 'The brands your customers ask for.', sub: 'Tobacco, novelties, candy, beverages, motor oil, household and more — over 368 SKUs ready to ship from our Birmingham warehouse.', cta1: 'Shop Catalog', cta2: 'Apply for Account', ...heroImage('hero_candy.jpg'), videoUrl: null, accent: 'orange', goCat: 'NOVELTIES' },
-  { eyebrow: 'BESTSELLING NOVELTIES', title: 'Geekbar 25K — now in stock.', sub: 'World\'s first 3D curved screen disposable. Full flavor lineup available, ready to ship today.', cta1: 'Shop Novelties', cta2: 'See All Vape', ...heroImage('hero_vape.jpg'), videoUrl: null, accent: 'navy', goCat: 'NOVELTIES' },
+  { eyebrow: 'NEW THIS WEEK', title: 'The brands your customers ask for.', sub: 'Tobacco, novelties, candy, beverages, motor oil, household and more — over 368 SKUs at our Birmingham warehouse.', cta1: 'Shop Catalog', cta2: 'Apply for Account', ...heroImage('hero_candy.jpg'), videoUrl: null, accent: 'orange', goCat: 'NOVELTIES' },
+  { eyebrow: 'BESTSELLING NOVELTIES', title: 'Geekbar 25K — now in stock.', sub: 'World\'s first 3D curved screen disposable. Flavors and availability change often. The trade desk confirms what is in stock.', cta1: 'Shop Novelties', cta2: 'See All Vape', ...heroImage('hero_vape.jpg'), videoUrl: null, accent: 'navy', goCat: 'NOVELTIES' },
   { eyebrow: 'COUNTER ESSENTIALS', title: 'BIC lighters & merchandise.', sub: 'Stock up the counter for less. Volume pricing on Bic, Eagle torches, Lattafa air freshener and more.', cta1: 'Shop Merchandise', cta2: 'View Displays', ...heroImage('hero_lighters.jpg'), videoUrl: null, accent: 'orange', goCat: 'MERCHANDISE' },
-  { eyebrow: 'DRINKS & BEVERAGES', title: 'Gatorade, Monster, Red Bull — by the case.', sub: 'Free delivery on a delivery route within 100 miles of Birmingham on orders over $1,500. Net-30 terms for approved accounts.', cta1: 'Shop Drinks', cta2: 'Get a Quote', ...heroImage('hero_gatorade.jpg'), videoUrl: null, accent: 'navy', goCat: 'DRINKS & BAGS' }
+  { eyebrow: 'DRINKS & BEVERAGES', title: 'Gatorade, Monster, Red Bull — by the case.', sub: 'Free delivery on orders over $1,500 when the stop is on a delivery route in Alabama, Mississippi or Georgia. Net-30 terms for approved accounts.', cta1: 'Shop Drinks', cta2: 'Get a Quote', ...heroImage('hero_gatorade.jpg'), videoUrl: null, accent: 'navy', goCat: 'DRINKS & BAGS' }
 ];
 
 export const BRANDS = ["HERSHEY'S", 'GATORADE', 'BIC', 'WD-40', 'GEEK BAR', 'GAIN', 'STP', 'WHITE OWL', 'TWANGERZ', 'POM POM', 'NEON', 'JOB'];
 
 export const TRUST = [
   { icon: 'ShieldCheck', title: '100% Authentic',        blurb: 'Sourced direct from manufacturers and authorized distributors. Every SKU verified.' },
-  { icon: 'Truck',       title: 'Free Delivery $1,500+', blurb: 'Same-day pickup, or next-day delivery on our routes in Alabama, Georgia & Mississippi.' },
+  { icon: 'Truck',       title: 'Free Delivery $1,500+', blurb: 'Will-call pickup at the Birmingham warehouse during business hours, or next-day delivery on our routes in Alabama, Georgia and Mississippi.' },
   { icon: 'Tag',         title: 'Volume Discounts',      blurb: 'Tiered case and pallet pricing. Save up to 18% on pallet-quantity orders.' },
   { icon: 'Users',       title: 'Family Owned',          blurb: 'Three generations serving Southeast retailers. Real relationships, honest pricing.' }
 ];
@@ -58,19 +58,19 @@ export const FAQS = [
   { q: 'Do I need a business license to order?',
     a: 'Yes. Alabama Wholesale only sells to licensed retailers. You\'ll need a valid retail business license, sales tax / resale certificate, and (for tobacco/vape products) a tobacco permit for your state. We verify all documents during account approval.' },
   { q: 'What is your minimum order?',
-    a: 'There is no minimum order amount once your wholesale account is approved. However, free delivery only applies to orders of $1,500 or more on a delivery route. Smaller orders qualify for will-call pickup or paid freight.' },
+    a: 'The minimum order is $500.00. Free delivery applies to orders of $1,500 or more when the stop is on a delivery route. Will-call is pickup at the Birmingham warehouse during business hours.' },
   { q: 'How long does account approval take?',
     a: 'Most applications are approved within 24 hours. Net-30 terms require credit verification which can add 2–3 business days. You can also call us at (205) 354-4473 to expedite.' },
   { q: 'What areas do you deliver to?',
-    a: 'We deliver on our routes in Alabama, Georgia, Mississippi, Tennessee, and parts of Florida and Louisiana. Free delivery on $1,500+ orders applies on a delivery route within 100 miles of Birmingham. Outside that radius, freight is calculated at order time.' },
+    a: 'We deliver on routes in Alabama, Mississippi and Georgia. Next-day delivery on our own trucks and free delivery on orders over $1,500 apply when the stop is on a delivery route.' },
   { q: 'Can I pick up my order in person?',
-    a: 'Yes. Our Birmingham warehouse offers same-day will-call. Order by 11 AM and your products will be ready to pick up the same afternoon. We\'re located at 613 Graymont Ave N.' },
+    a: 'Yes. Will-call is pickup at the Birmingham warehouse, 613 Graymont Ave N, during business hours: Monday–Friday 7:00 AM–6:00 PM, Saturday–Sunday 8:00 AM–5:30 PM.' },
   { q: 'How does pallet / volume pricing work?',
     a: 'Discounts kick in starting at 5 cases (5%) and scale up to 18% off for 5+ pallet orders. The discount is applied automatically at checkout. Contact your trade rep for custom mixed-pallet pricing.' },
   { q: 'What payment methods do you accept?',
-    a: 'Cash, check, ACH transfer, all major credit cards (Visa, Mastercard, Amex, Discover), and Net-30 terms for approved accounts. Card payments may include a small processing fee on orders over $5,000.' },
-  { q: 'Do you ship out of state?',
-    a: 'For tobacco and vape products, we follow PACT Act and state-by-state regulations. Some products may not be shippable to certain states. Other categories (candy, beverages, household, automotive) ship freely throughout the Southeast.' }
+    a: 'Cash, checks, and electronic wiring and transfers. Net-30 terms for approved accounts.' },
+  { q: 'Do you deliver outside Alabama, Mississippi and Georgia?',
+    a: 'Delivery is currently on routes in Alabama, Mississippi and Georgia.' }
 ];
 
 export const WELCOME_OFFERS = [
@@ -78,7 +78,7 @@ export const WELCOME_OFFERS = [
     type: 'NEW',
     color: '#DB6433',
     title: 'Geekbar Pulse X 25K — In Stock Now',
-    body: 'World-first 3D curved screen disposable. All 12 flavors available, ready to ship today from our Birmingham warehouse.',
+    body: 'World-first 3D curved screen disposable. Flavors and availability change often. The trade desk confirms what is in stock at our Birmingham warehouse.',
     cta: 'Shop Vapes',
     target: 'NOVELTIES'
   },
@@ -108,3 +108,4 @@ export const STORAGE = {
 };
 
 export const FREE_DELIVERY_THRESHOLD = 1500;
+export const ORDER_MINIMUM = 500;

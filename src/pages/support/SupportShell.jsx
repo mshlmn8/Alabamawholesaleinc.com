@@ -7,8 +7,7 @@ import { COMPANY } from '../../data/content.js';
 export const DIRECTIONS_URL = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${COMPANY.addressLine1}, ${COMPANY.addressLine2}`)}`;
 
 export const POLICY_LINKS = [
-  { page: 'shipping', label: 'Shipping & delivery' },
-  { page: 'returns', label: 'Returns & damaged goods' },
+  { page: 'shipping', label: 'Delivery' },
   { page: 'privacy', label: 'Privacy' },
   { page: 'terms', label: 'Trade terms' },
 ];
