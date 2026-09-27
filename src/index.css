@@ -1,6 +1,6 @@
 /* Alabama Wholesale — 2A editorial design system (ported from the approved skeleton).
-   New storefront components use plain CSS; Tailwind remains generated for the
-   existing Account and Admin pages. Fonts are bundled locally. */
+   Storefront, account, and admin use this plain CSS. Tailwind stays in the
+   build for its preflight reset. Fonts are bundled locally. */
 @import url('./fonts/fonts.css');
 @tailwind base;
 @tailwind components;
@@ -286,6 +286,49 @@ h2 { font-size: 35px; margin-bottom: 0; }
 /* ============================ checkout ============================ */
 .checkout-grid { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(300px,1fr); gap: 40px; padding: 0 0 40px; }
 
+/* ============================ account / admin ============================ */
+.account-stats { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 18px; margin: 8px 0 8px; }
+.stat-card { background: var(--paper); border: 1px solid var(--line); padding: 18px 20px; }
+.stat-card span { display: block; font-size: 9px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.stat-card b { font: 700 28px/1 var(--display); color: var(--purple); text-transform: capitalize; }
+.stat-card.ok b { color: #1f7a47; }
+.stat-card.warn b { color: var(--orange-dark); }
+.notice { margin-top: 22px; padding: 14px 16px; background: var(--cream); border: 1px solid var(--orange); color: var(--purple); font-size: 13px; line-height: 1.6; }
+.order-list { display: flex; flex-direction: column; gap: 14px; }
+.order-card { border: 1px solid var(--line); background: #fff; }
+.order-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 16px; background: var(--paper); border-bottom: 1px solid var(--line); }
+.order-ref { display: block; font-size: 12px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--purple); }
+.order-head small { display: block; margin-top: 4px; font-size: 11px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--muted); }
+.order-head select { height: 34px; padding: 0 8px; border: 1px solid var(--line); background: #fff; color: var(--purple); font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+.status-pill { font-size: 9px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #fff; background: var(--purple); padding: 5px 9px; }
+.status-pill.contacted { background: var(--button-orange); }
+.status-pill.fulfilled { background: #1f7a47; }
+.status-pill.cancelled { background: var(--muted); }
+.order-items { list-style: none; margin: 0; padding: 0; }
+.order-items li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #f0ece7; font-size: 13px; }
+.order-items li:last-child { border-bottom: 0; }
+.order-items .sku { color: var(--muted); }
+.order-items .line-total { font-weight: 700; color: var(--purple); white-space: nowrap; }
+.order-notes { margin: 0; padding: 0 16px 14px; font-size: 12px; color: var(--muted); }
+.table-scroll { overflow-x: auto; border: 1px solid var(--line); background: #fff; }
+.aw-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 720px; }
+.aw-table th { text-align: left; font-size: 9px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; color: var(--muted); background: var(--paper); padding: 10px 12px; }
+.aw-table td { padding: 10px 12px; border-top: 1px solid var(--line); vertical-align: middle; }
+.aw-table tr.editing { background: var(--cream); }
+.aw-table .muted { color: var(--muted); font-size: 12px; }
+.aw-table .price { font-weight: 700; color: var(--purple); white-space: nowrap; }
+.aw-table input, .aw-table select { height: 34px; padding: 0 8px; border: 1px solid #d8d1c9; background: #fff; color: var(--ink); font-size: 12px; width: 100%; max-width: 220px; }
+.aw-table input[type="number"] { max-width: 110px; }
+.aw-table input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--button-orange); }
+.inline-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.mini-btn { border: 1px solid var(--purple); background: #fff; color: var(--purple); font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 6px 10px; }
+.mini-btn:hover { background: var(--purple); color: #fff; }
+.mini-btn.primary { background: var(--button-orange); border-color: var(--button-orange); color: #fff; }
+.mini-btn.primary:hover { background: var(--orange-dark); }
+.mini-btn.quiet { border-color: transparent; background: none; color: var(--muted); padding-inline: 6px; }
+.mini-btn.quiet:hover { background: none; color: var(--purple); text-decoration: underline; text-underline-offset: 3px; }
+.admin-search { max-width: 420px; margin-bottom: 8px; }
+
 /* ============================ footer ============================ */
 .footer-main { margin-top: 56px; background: var(--purple); color: #fff; padding: 40px 0 30px; }
 .footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 32px; }
@@ -391,6 +434,7 @@ h2 { font-size: 35px; margin-bottom: 0; }
   .category-filters fieldset { padding: 0 0 0 16px; border-top: 0; border-left: 1px solid var(--line); }
   .filter-signin { grid-column: 1 / -1; margin-top: 0; }
   .checkout-grid { grid-template-columns: 1fr; gap: 26px; }
+  .account-stats { grid-template-columns: 1fr; }
 }
 @media(max-width:600px) {
   .container { width: calc(100% - 32px); }
