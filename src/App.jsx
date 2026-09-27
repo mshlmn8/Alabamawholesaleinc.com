@@ -10,6 +10,15 @@ import { lineKey, variantList, variantSku, requiresVariantChoice, resolveCartIte
 import { AuthModal } from './components/AuthModal.jsx';
 import { AccountPage } from './pages/account/AccountPage.jsx';
 import { AdminPage } from './pages/admin/AdminPage.jsx';
+import { CatalogIndexPage } from './pages/support/CatalogIndexPage.jsx';
+import { ContactPage } from './pages/support/ContactPage.jsx';
+import { DeliveryPage } from './pages/support/DeliveryPage.jsx';
+import { PolicyPage, POLICY_TITLES } from './pages/support/PolicyPage.jsx';
+import { ApplyPage } from './pages/support/ApplyPage.jsx';
+import { ResetPasswordPage } from './pages/support/ResetPasswordPage.jsx';
+
+// Static support pages: #/<page> — see src/pages/support/.
+const SUPPORT_PAGES = ['catalog', 'contact', 'delivery', 'shipping', 'returns', 'privacy', 'terms', 'apply', 'reset-password'];
 
 // Display-only tier discounts. Saved quotes ignore this and price on the server.
 const TIER_DISCOUNT = { standard: 0, silver: 0.05, gold: 0.10 };
@@ -89,6 +98,8 @@ export default function App() {
   const auth = useAuth();
   const { products } = useCatalog();
   const { profile, signOut, isBackendConfigured } = auth;
+  // A password-recovery (or expired) email link takes over the page until it is dismissed.
+  const accountLinkPage = auth.recovery || !!auth.linkError;
   const user = profile ? { id: profile.id, name: profile.name, email: profile.email, business: profile.business } : null;
   const isApprovedBuyer = profile?.status === 'approved';
   const isAdmin = profile?.role === 'admin';
@@ -104,6 +115,7 @@ export default function App() {
     if (section === 'quote') return { page: 'quote' };
     if (section === 'account') return { page: 'account' };
     if (section === 'admin') return { page: 'admin' };
+    if (SUPPORT_PAGES.includes(section)) return { page: section };
     return { page: 'home' };
   };
   const routeToHash = (r) => {
@@ -112,6 +124,7 @@ export default function App() {
     if (r.page === 'quote') return '#/quote';
     if (r.page === 'account') return '#/account';
     if (r.page === 'admin') return '#/admin';
+    if (SUPPORT_PAGES.includes(r.page)) return `#/${r.page}`;
     return '#/';
   };
   const [route, setRoute] = useState(parseHash);
@@ -129,15 +142,24 @@ export default function App() {
       quote: `Checkout · ${COMPANY.name}`,
       account: `My Account · ${COMPANY.name}`,
       admin: `Admin · ${COMPANY.name}`,
+      catalog: `All Products · Wholesale Catalog · ${COMPANY.name}`,
+      contact: `Contact & Visit · ${COMPANY.name}`,
+      delivery: `Delivery & Service Area · ${COMPANY.name}`,
+      shipping: `${POLICY_TITLES.shipping} · ${COMPANY.name}`,
+      returns: `${POLICY_TITLES.returns} · ${COMPANY.name}`,
+      privacy: `${POLICY_TITLES.privacy} · ${COMPANY.name}`,
+      terms: `${POLICY_TITLES.terms} · ${COMPANY.name}`,
+      apply: `Apply for a Trade Account · ${COMPANY.name}`,
+      'reset-password': `Reset Password · ${COMPANY.name}`,
     };
-    let title = titles[route.page] || titles.home;
+    let title = titles[accountLinkPage ? 'reset-password' : route.page] || titles.home;
     if (route.page === 'category') title = `${catLabel(route.category)} · Wholesale Catalog · ${COMPANY.name}`;
     if (route.page === 'product') {
       const p = products.find(x => Number(x.id) === route.productId);
       if (p) title = `${p.name} · ${p.brand} · ${COMPANY.name}`;
     }
     document.title = title;
-  }, [route, products]);
+  }, [route, products, accountLinkPage]);
 
   const navigate = (next, { scroll = true } = {}) => {
     window.history.pushState(null, '', routeToHash(next));
@@ -148,6 +170,7 @@ export default function App() {
   const goProduct = (id) => navigate({ page: 'product', productId: id });
   const goCategory = (cat, sub = null) => navigate({ page: 'category', category: cat, sub });
   const goQuote = () => { setCartOpen(false); navigate({ page: 'quote' }); };
+  const goCatalog = () => navigate({ page: 'catalog' });
   const goHomeSection = (sectionId) => {
     const scrollToSection = () => window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
       document.getElementById(sectionId)?.scrollIntoView({ block: 'start' });
@@ -207,12 +230,15 @@ export default function App() {
   const handleAgeYes = () => { setVerified(true); window.localStorage.setItem(STORAGE.age, 'yes'); };
   const handleLogout = async () => { await signOut(); navigate({ page: 'home' }); };
 
+  // signin | signup (checklist first) | application (straight to the form) | reset
   const openLogin = (mode) => {
     setLoginMode(mode);
     setLoginOpen(true);
   };
   const openSignin = () => openLogin('signin');
   const openSignup = () => openLogin('signup');
+  const openApplication = () => openLogin('application');
+  const openReset = () => openLogin('reset');
   const openCartSignin = () => {
     setCartOpen(false);
     openSignin();
@@ -223,8 +249,9 @@ export default function App() {
   const shared = {
     user, profile, isApprovedBuyer, cart, addLine, decLine, products, departments,
     onLoginClick: openSignin, onApplyClick: openSignup, onAccountClick: () => navigate({ page: 'account' }),
-    goProduct, goCategory, goHome,
+    goProduct, goCategory, goHome, goCatalog,
   };
+  const supportShared = { goHome, navigate, profile, isBackendConfigured, onLoginClick: openSignin, onApplyClick: openSignup };
 
   return (
     <div style={{ minHeight: '100vh', background: '#fff' }}>
@@ -245,33 +272,45 @@ export default function App() {
         onAccountClick={() => navigate({ page: 'account' })}
         onAdminClick={() => navigate({ page: 'admin' })}
         onLoginClick={openSignin} onSignupClick={openSignup} onLogout={handleLogout}
-        onHelp={() => setHelpOpen(true)} onReorder={() => navigate({ page: 'account' })}
+        onHelp={() => setHelpOpen(true)} onReorder={() => navigate({ page: 'account' })} onCatalog={goCatalog}
       />
 
       <main className="container">
-        {route.page === 'home' && <HomePage {...shared} />}
-        {route.page === 'product' && <ProductPage productId={route.productId} {...shared} />}
-        {route.page === 'category' && <CategoryPage category={route.category} sub={route.sub} {...shared} />}
-        {route.page === 'quote' && (
-          <QuotePage items={cartItems} total={cartTotal} addLine={addLine} decLine={decLine} removeLine={removeLine}
-                     clearCart={clearCart} goHome={goHome} goProduct={goProduct} profile={profile}
-                     isApprovedBuyer={isApprovedBuyer} isBackendConfigured={isBackendConfigured} />
+        {accountLinkPage ? (
+          <ResetPasswordPage {...supportShared} auth={auth} onRequestReset={openReset} />
+        ) : (
+          <>
+            {route.page === 'home' && <HomePage {...shared} />}
+            {route.page === 'product' && <ProductPage productId={route.productId} {...shared} />}
+            {route.page === 'category' && <CategoryPage category={route.category} sub={route.sub} {...shared} />}
+            {route.page === 'quote' && (
+              <QuotePage items={cartItems} total={cartTotal} addLine={addLine} decLine={decLine} removeLine={removeLine}
+                         clearCart={clearCart} goHome={goHome} goCatalog={goCatalog} goProduct={goProduct} profile={profile}
+                         isApprovedBuyer={isApprovedBuyer} isBackendConfigured={isBackendConfigured} />
+            )}
+            {route.page === 'account' && (
+              <AccountPage profile={profile} goHome={goHome} onSignIn={openSignin} products={products}
+                           addLines={addLines} onOpenCart={() => setCartOpen(true)} isApprovedBuyer={isApprovedBuyer} />
+            )}
+            {route.page === 'admin' && <AdminPage profile={profile} goHome={goHome} />}
+            {route.page === 'catalog' && <CatalogIndexPage {...shared} />}
+            {route.page === 'contact' && <ContactPage {...supportShared} />}
+            {route.page === 'delivery' && <DeliveryPage {...supportShared} />}
+            {['shipping', 'returns', 'privacy', 'terms'].includes(route.page) && <PolicyPage kind={route.page} {...supportShared} />}
+            {route.page === 'apply' && <ApplyPage {...supportShared} onApplyClick={openApplication} onResetClick={openReset} />}
+            {route.page === 'reset-password' && <ResetPasswordPage {...supportShared} auth={auth} onRequestReset={openReset} />}
+          </>
         )}
-        {route.page === 'account' && (
-          <AccountPage profile={profile} goHome={goHome} onSignIn={openSignin} products={products}
-                       addLines={addLines} onOpenCart={() => setCartOpen(true)} isApprovedBuyer={isApprovedBuyer} />
-        )}
-        {route.page === 'admin' && <AdminPage profile={profile} goHome={goHome} />}
       </main>
 
       <Footer goHome={goHome} goCategory={goCategory} departments={departments} onLoginClick={openSignin} onApplyClick={openSignup}
-              onNewArrivals={() => goHomeSection('new-arrivals')} onBestsellers={() => goHomeSection('bestsellers')} />
+              onNewArrivals={() => goHomeSection('new-arrivals')} onBestsellers={() => goHomeSection('bestsellers')} navigate={navigate} />
 
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} items={cartItems} total={cartTotal}
                   addLine={addLine} decLine={decLine} removeLine={removeLine} goQuote={goQuote} goProduct={goProduct}
                   isApprovedBuyer={isApprovedBuyer} onLoginClick={openCartSignin} />
       {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} onApply={() => { setHelpOpen(false); openSignup(); }} />}
-      {loginOpen && <AuthModal open initialMode={loginMode} onClose={() => setLoginOpen(false)} />}
+      {loginOpen && <AuthModal open initialMode={loginMode} onClose={() => setLoginOpen(false)} onNavigate={navigate} />}
     </div>
   );
 }
@@ -307,7 +346,7 @@ function AgeGate({ onYes, onNo, tooYoung }) {
 // =============================================================================
 // HEADER
 // =============================================================================
-function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, departments, onNewArrivals, onBestsellers, user, isAdmin, onAccountClick, onAdminClick, onLoginClick, onSignupClick, onLogout, onHelp, onReorder }) {
+function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, departments, onNewArrivals, onBestsellers, user, isAdmin, onAccountClick, onAdminClick, onLoginClick, onSignupClick, onLogout, onHelp, onReorder, onCatalog }) {
   const [megaOpen, setMegaOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [resultsOpen, setResultsOpen] = useState(false);
@@ -422,7 +461,7 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, de
               </button>
             </div>
             <div className="aw-menu-footer">
-              <button type="button" onClick={() => pickCategory(NAV_ORDER[0], null)}>View full catalog <span aria-hidden="true">↗</span></button>
+              <button type="button" onClick={() => runNav(onCatalog)}>View full catalog <span aria-hidden="true">↗</span></button>
               <span>{departments.length} departments · {products.length} SKUs</span>
             </div>
           </section>
@@ -515,7 +554,7 @@ function HeroCarousel({ slides }) {
 }
 
 function HomePage(props) {
-  const { goCategory, goProduct, products, departments } = props;
+  const { goCategory, goCatalog, products, departments } = props;
   const newArrivals = NEW_ARRIVALS_IDS.map(id => products.find(p => Number(p.id) === id)).filter(Boolean).slice(0, 8);
   const bestsellers = products.filter(p => p.tag === 'BESTSELLER').slice(0, 8);
 
@@ -562,7 +601,10 @@ function HomePage(props) {
       </section>
 
       <section className="section" id="catalog">
-        <div className="section-head"><div><p className="eyebrow">FULL ASSORTMENT / 03</p><h2>Shop by department</h2></div></div>
+        <div className="section-head">
+          <div><p className="eyebrow">FULL ASSORTMENT / 03</p><h2>Shop by department</h2></div>
+          <button type="button" onClick={goCatalog}>Browse the catalog <span aria-hidden="true">↗</span></button>
+        </div>
         <div className="card-grid">
           {departments.map(c => {
             const preview = products.find(p => p.cat === c.key && p.img);
@@ -907,7 +949,7 @@ function TradeDeskContact({ before, after }) {
   );
 }
 
-function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHome, goProduct, profile, isApprovedBuyer, isBackendConfigured }) {
+function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHome, goCatalog, goProduct, profile, isApprovedBuyer, isBackendConfigured }) {
   const [step, setStep] = useState('review');
   const [data, setData] = useState({
     business: profile?.business || '', contact: profile?.name || '', email: profile?.email || '', phone: '',
@@ -952,7 +994,7 @@ function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHo
       <section className="page-head" style={{ textAlign: 'center', padding: '60px 0' }}>
         <h1>Your cart is empty</h1>
         <p style={{ margin: '0 auto 20px' }}>Add products, then come back to checkout.</p>
-        <button className="button" onClick={goHome}>Browse catalog <span aria-hidden="true">↗</span></button>
+        <button className="button" onClick={goCatalog}>Browse catalog <span aria-hidden="true">↗</span></button>
       </section>
     );
   }
@@ -1047,7 +1089,7 @@ function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHo
 // =============================================================================
 // FOOTER / DIALOGS / DRAWER
 // =============================================================================
-function Footer({ goHome, goCategory, departments, onLoginClick, onApplyClick, onNewArrivals, onBestsellers }) {
+function Footer({ goHome, goCategory, departments, onLoginClick, onApplyClick, onNewArrivals, onBestsellers, navigate }) {
   return (
     <footer className="footer-main">
       <div className="container">
@@ -1058,12 +1100,16 @@ function Footer({ goHome, goCategory, departments, onLoginClick, onApplyClick, o
           </div>
           <div>
             <h4>Departments</h4>
+            <button type="button" onClick={() => navigate({ page: 'catalog' })}>All products</button>
             {departments.map(c => <button key={c.key} type="button" onClick={() => goCategory(c.key)}>{c.label} ({c.count})</button>)}
           </div>
           <div>
-            <h4>Account</h4>
+            <h4>Account &amp; help</h4>
             <button type="button" onClick={onApplyClick}>Apply for account</button>
+            <button type="button" onClick={() => navigate({ page: 'apply' })}>Application checklist</button>
             <button type="button" onClick={onLoginClick}>Sign in</button>
+            <button type="button" onClick={() => navigate({ page: 'contact' })}>Contact &amp; visit</button>
+            <button type="button" onClick={() => navigate({ page: 'delivery' })}>Delivery &amp; service area</button>
             <button type="button" onClick={onNewArrivals}>New arrivals</button>
             <button type="button" onClick={onBestsellers}>Bestsellers</button>
           </div>
@@ -1076,6 +1122,12 @@ function Footer({ goHome, goCategory, departments, onLoginClick, onApplyClick, o
         </div>
         <div className="footer-legal">
           <p>© 2026 Alabama Wholesale Inc. All rights reserved.</p>
+          <nav className="footer-policies" aria-label="Customer policies">
+            <button type="button" onClick={() => navigate({ page: 'shipping' })}>Shipping &amp; delivery</button>
+            <button type="button" onClick={() => navigate({ page: 'returns' })}>Returns &amp; damaged goods</button>
+            <button type="button" onClick={() => navigate({ page: 'privacy' })}>Privacy</button>
+            <button type="button" onClick={() => navigate({ page: 'terms' })}>Trade terms</button>
+          </nav>
           <p>Sales to licensed retail businesses only · 21+ · No consumer orders</p>
         </div>
       </div>
