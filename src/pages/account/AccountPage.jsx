@@ -1,7 +1,10 @@
-// Trade-account dashboard: profile summary + order history.
+// Trade-account dashboard: profile summary, quick reorder by SKU, and order
+// history with a Reorder action per order.
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
+import { linesFromOrder } from '../../lib/lines.js';
+import { QuickReorder } from './QuickReorder.jsx';
 
 const STATUS_CLASS = {
   new: '',
@@ -17,15 +20,18 @@ const STATUS_LABEL = {
   cancelled: 'Cancelled',
 };
 
-export function AccountPage({ profile, goHome, onSignIn }) {
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+export function AccountPage({ profile, goHome, onSignIn, products = [], addLines, onOpenCart, isApprovedBuyer }) {
   const [orders, setOrders] = useState(null);
   const [error, setError] = useState(null);
+  const [reorderNote, setReorderNote] = useState(null);
 
   useEffect(() => {
     if (!supabase || !profile) return;
     supabase
       .from('orders')
-      .select('id, ref_num, status, total_units, subtotal, created_at, order_items(id, product_name, sku, qty, unit_price)')
+      .select('id, ref_num, status, total_units, subtotal, created_at, order_items(id, product_id, variant, product_name, sku, qty, unit_price)')
       .eq('user_id', profile.id)
       .order('created_at', { ascending: false })
       .then(({ data, error }) => {
@@ -50,6 +56,19 @@ export function AccountPage({ profile, goHome, onSignIn }) {
   }
 
   const statusTone = profile.status === 'approved' ? 'ok' : 'warn';
+  const target = isApprovedBuyer ? 'order' : 'quote';
+
+  const reorder = (order) => {
+    const { lines, unavailable, needsVariant } = linesFromOrder(order, products);
+    if (lines.length && addLines) addLines(lines);
+    setReorderNote({
+      orderId: order.id,
+      lines: lines.length,
+      units: lines.reduce((sum, line) => sum + line.qty, 0),
+      unavailable,
+      needsVariant,
+    });
+  };
 
   return (
     <section>
@@ -74,6 +93,16 @@ export function AccountPage({ profile, goHome, onSignIn }) {
         <p className="notice">Your account is awaiting approval. A trade rep will verify your retail license and activate pricing within one business day.</p>
       )}
 
+      <section className="section" id="quick-reorder">
+        <div className="section-head">
+          <div>
+            <p className="eyebrow">QUICK REORDER</p>
+            <h2>Reorder by SKU</h2>
+          </div>
+        </div>
+        <QuickReorder products={products} addLines={addLines} onOpenCart={onOpenCart} isApprovedBuyer={isApprovedBuyer} />
+      </section>
+
       <section className="section">
         <div className="section-head">
           <div>
@@ -87,7 +116,7 @@ export function AccountPage({ profile, goHome, onSignIn }) {
         {orders && orders.length === 0 && (
           <div className="empty-results">
             <h2>No orders yet</h2>
-            <p>Orders you place will show up here.</p>
+            <p>Orders you place will show up here, each with a one-click Reorder.</p>
           </div>
         )}
         {orders && orders.length > 0 && (
@@ -95,6 +124,7 @@ export function AccountPage({ profile, goHome, onSignIn }) {
             {orders.map(o => {
               const label = STATUS_LABEL[o.status] || STATUS_LABEL.new;
               const tone = STATUS_CLASS[o.status] || '';
+              const note = reorderNote?.orderId === o.id ? reorderNote : null;
               return (
                 <article className="order-card" key={o.id}>
                   <div className="order-head">
@@ -105,7 +135,12 @@ export function AccountPage({ profile, goHome, onSignIn }) {
                         {o.subtotal != null && ` · $${Number(o.subtotal).toFixed(2)}`}
                       </small>
                     </div>
-                    <span className={`status-pill ${tone}`}>{label}</span>
+                    <div className="order-actions">
+                      <span className={`status-pill ${tone}`}>{label}</span>
+                      <button className="mini-btn" type="button" onClick={() => reorder(o)} disabled={!(o.order_items || []).length}>
+                        Reorder
+                      </button>
+                    </div>
                   </div>
                   <ul className="order-items">
                     {(o.order_items || []).map(it => (
@@ -117,6 +152,18 @@ export function AccountPage({ profile, goHome, onSignIn }) {
                       </li>
                     ))}
                   </ul>
+                  {note && (
+                    <div className="order-foot" role="status">
+                      <p>
+                        {note.lines > 0
+                          ? `Added ${plural(note.lines, 'line')} (${plural(note.units, 'unit')}) to your ${target}.`
+                          : 'None of these items are available right now.'}
+                        {note.needsVariant > 0 && ` ${plural(note.needsVariant, 'line')} need${note.needsVariant === 1 ? 's' : ''} a variant choice in the cart.`}
+                        {note.unavailable.length > 0 && ` No longer available: ${note.unavailable.join(', ')}.`}
+                      </p>
+                      {note.lines > 0 && <button className="mini-btn primary" type="button" onClick={onOpenCart}>Review cart</button>}
+                    </div>
+                  )}
                 </article>
               );
             })}

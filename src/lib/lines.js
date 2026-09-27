@@ -40,6 +40,89 @@ export function canonicalVariant(product, slugOrLabel) {
   return variantList(product).find((label) => variantSlug(label) === needle) || null;
 }
 
+export function normalizeSku(value) {
+  return String(value ?? '').trim().toUpperCase().replace(/\s+/g, '-');
+}
+
+// Resolves a typed SKU against the catalog. Exact product codes win; otherwise
+// BASE-SUFFIX is read as a variant SKU when the suffix names one of the base
+// product's variants. `choice` carries the buyer's answers when a code is
+// ambiguous: the catalog has a few duplicate SKUs, and a bare SKU of a
+// multi-variant product still needs a variant.
+export function resolveSkuLine(products, sku, choice = {}) {
+  const code = normalizeSku(sku);
+  if (!code) return { status: 'empty', code };
+  const active = products.filter((p) => p.active !== false);
+
+  let candidates = active
+    .filter((p) => normalizeSku(p.sku) === code)
+    .map((product) => ({ product, variant: null }));
+  if (candidates.length === 0) {
+    const hits = [];
+    for (const product of active) {
+      const base = normalizeSku(product.sku);
+      if (!code.startsWith(`${base}-`)) continue;
+      const variant = canonicalVariant(product, code.slice(base.length + 1));
+      if (variant) hits.push({ product, variant });
+    }
+    // AW-SS-MINI-RED belongs to AW-SS-MINI, not to AW-SS with a "mini-red" variant.
+    const longest = Math.max(0, ...hits.map((h) => normalizeSku(h.product.sku).length));
+    candidates = hits.filter((h) => normalizeSku(h.product.sku).length === longest);
+  }
+  if (candidates.length === 0) return { status: 'not-found', code };
+
+  let pick = candidates[0];
+  if (candidates.length > 1) {
+    pick = candidates.find((c) => Number(c.product.id) === Number(choice.productId));
+    if (!pick) return { status: 'choose-product', code, candidates };
+  }
+
+  const variants = variantList(pick.product);
+  let variant = pick.variant || (variants.length === 1 ? variants[0] : null);
+  if (!variant && variants.length > 1) {
+    variant = canonicalVariant(pick.product, choice.variant);
+    if (!variant) return { status: 'choose-variant', code, product: pick.product, variants };
+  }
+  return { status: 'ok', code, product: pick.product, variant };
+}
+
+// Maps a saved order's lines back onto the current catalog. Products that are
+// gone are reported by name. A multi-variant product whose saved variant no
+// longer matches comes back as a bare line so the buyer chooses again in the
+// cart, the same way an unfinished product-page add is handled.
+export function linesFromOrder(order, products) {
+  const lines = [];
+  const unavailable = [];
+  let needsVariant = 0;
+  for (const item of order?.order_items || []) {
+    const qty = Math.floor(Number(item.qty));
+    if (!(qty > 0)) continue;
+    let product = products.find((p) => Number(p.id) === Number(item.product_id)) || null;
+    if (product?.active === false) product = null;
+    let variant = null;
+    if (product) {
+      variant = canonicalVariant(product, item.variant);
+      if (!variant) {
+        const base = normalizeSku(product.sku);
+        const code = normalizeSku(item.sku);
+        if (code.startsWith(`${base}-`)) variant = canonicalVariant(product, code.slice(base.length + 1));
+      }
+    } else if (item.product_id == null) {
+      const res = resolveSkuLine(products, item.sku);
+      if (res.status === 'ok') ({ product, variant } = res);
+    }
+    if (!product) {
+      unavailable.push(item.product_name || item.sku || 'Unknown item');
+      continue;
+    }
+    const variants = variantList(product);
+    if (!variant && variants.length === 1) variant = variants[0];
+    if (!variant && variants.length > 1) needsVariant += 1;
+    lines.push({ productId: product.id, variant, qty });
+  }
+  return { lines, unavailable, needsVariant };
+}
+
 export function normalizeCart(cart, products) {
   const source = cart && typeof cart === 'object' ? cart : {};
   const next = {};

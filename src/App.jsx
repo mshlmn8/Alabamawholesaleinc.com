@@ -185,6 +185,21 @@ export default function App() {
     const key = lineKey(product.id, variant || null);
     setCart(c => ({ ...c, [key]: (Number(c[key]) || 0) + n }));
   };
+  // Batch add for reorders. Unlike addLine, a multi-variant product without a
+  // variant is kept as a bare line so the buyer can choose it in the cart.
+  const addLines = (lines) => {
+    setCart(c => {
+      const next = { ...c };
+      for (const line of lines || []) {
+        const product = products.find(p => Number(p.id) === Number(line.productId));
+        const n = Math.floor(Number(line.qty));
+        if (!product || product.active === false || !(n > 0)) continue;
+        const key = lineKey(product.id, line.variant || null);
+        next[key] = (Number(next[key]) || 0) + n;
+      }
+      return next;
+    });
+  };
   const decLine = (key) => setCart(c => { const next = { ...c }; const v = (Number(next[key]) || 0) - 1; if (v <= 0) delete next[key]; else next[key] = v; return next; });
   const removeLine = (key) => setCart(c => { const n = { ...c }; delete n[key]; return n; });
   const clearCart = () => setCart({});
@@ -242,7 +257,10 @@ export default function App() {
                      clearCart={clearCart} goHome={goHome} goProduct={goProduct} profile={profile}
                      isApprovedBuyer={isApprovedBuyer} isBackendConfigured={isBackendConfigured} />
         )}
-        {route.page === 'account' && <AccountPage profile={profile} goHome={goHome} onSignIn={openSignin} />}
+        {route.page === 'account' && (
+          <AccountPage profile={profile} goHome={goHome} onSignIn={openSignin} products={products}
+                       addLines={addLines} onOpenCart={() => setCartOpen(true)} isApprovedBuyer={isApprovedBuyer} />
+        )}
         {route.page === 'admin' && <AdminPage profile={profile} goHome={goHome} />}
       </main>
 
