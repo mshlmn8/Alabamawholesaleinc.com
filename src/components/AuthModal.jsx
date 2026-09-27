@@ -7,7 +7,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/useAuth.js';
 import { COMPANY } from '../data/content.js';
 import { APPLICATION_CHECKLIST } from '../data/onboarding.js';
+import { DOCUMENT_TYPES, documentErrorMessage, uploadSelectedProof } from '../lib/documents.js';
 import { ServiceUnavailable } from './ServiceUnavailable.jsx';
+import { DocumentUploads } from './DocumentUploads.jsx';
 
 const STATES = ['AL','GA','MS','TN','FL','LA','SC','NC','KY','Other'];
 const BUSINESS_TYPES = ['Convenience Store','Smoke Shop','Vape Shop','Liquor Store','Grocery / Bodega','Auto Parts','Hookah Lounge','Other'];
@@ -53,6 +55,9 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
   const [signin, setSignin] = useState({ email: '', password: '' });
   const [resetEmail, setResetEmail] = useState('');
   const [signup, setSignup] = useState(EMPTY_SIGNUP);
+  const [proof, setProof] = useState({});
+  const [proofErrors, setProofErrors] = useState({});
+  const [proofWaiting, setProofWaiting] = useState(false);
   const titleRef = useRef(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -95,15 +100,27 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
     finally { setSubmitting(false); }
   };
 
+  const onProof = (type, file, problem) => {
+    setProofErrors(prev => ({ ...prev, [type]: problem }));
+    setProof(prev => ({ ...prev, [type]: file }));
+  };
+
   const handleSignup = async (e) => {
     e.preventDefault();
     setSubmitting(true); setError(null);
     try {
       const data = await signUp(signup);
+      const chosen = DOCUMENT_TYPES.some(doc => proof[doc.id]);
+      let uploadError = null;
+      // Email confirmation leaves no session. Hold the files and do not call storage.
+      if (data?.session && chosen) {
+        try { await uploadSelectedProof(data.session, proof); }
+        catch (err) { uploadError = documentErrorMessage(err); }
+      }
+      setProofWaiting(chosen && !data?.session);
       setAfterSignup(true);
-      // With email confirmation on there is no session yet; otherwise the new
-      // account is signed in and already pending review.
       setMode(data?.session ? 'status' : 'sent');
+      if (uploadError) setError(uploadError);
     }
     catch (err) { setError(describeError(err, 'The online application', 'Sign-up failed')); }
     finally { setSubmitting(false); }
@@ -243,6 +260,12 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
               <Field id="aw-su-resale" label="Resale certificate #" hint="Sales tax resale or exemption certificate.">
                 <input id="aw-su-resale" name="resale_cert_no" value={signup.resale_cert_no} onChange={setU('resale_cert_no')} required autoComplete="off" aria-describedby="aw-su-resale-hint" />
               </Field>
+              <DocumentUploads
+                disabled={submitting || !isBackendConfigured}
+                files={proof}
+                errors={proofErrors}
+                onPick={onProof}
+              />
               <Field id="aw-su-volume" label="Expected monthly volume" full>
                 <select id="aw-su-volume" name="expected_volume" value={signup.expected_volume} onChange={setU('expected_volume')} autoComplete="off">{VOLUMES.map(o => <option key={o}>{o}</option>)}</select>
               </Field>
@@ -264,6 +287,10 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
               <li><b>We review your application.</b><span>A trade rep checks your EIN, state retail tobacco license and resale certificate.</span></li>
               <li><b>You hear from us.</b><span>We’ll contact you at {signup.email} or {signup.phone} when your account is approved. Wholesale pricing and ordering unlock then.</span></li>
             </ol>
+            {proofWaiting && (
+              <p className="checklist-note">Your files stay on this device until you are signed in. After you confirm your email, upload them from your application status, or send proof later to <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.</p>
+            )}
+            {error && <p className="form-error" role="alert">{error}</p>}
             <div className="dialog-actions">
               <button className="button" type="button" onClick={onClose} data-autofocus>Done <span aria-hidden="true">↗</span></button>
               <button className="text-link" type="button" onClick={() => switchMode('signin')}>Sign in</button>
@@ -273,6 +300,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
 
         {mode === 'status' && (
           <>
+            {error && <p className="form-error" role="alert">{error}</p>}
             {status !== 'suspended' && (
               <>
                 <h3 className="checklist-heading">While you wait</h3>
