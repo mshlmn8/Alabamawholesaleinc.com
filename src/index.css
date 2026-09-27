@@ -153,6 +153,10 @@ h2 { font-size: 35px; margin-bottom: 0; }
 .block-label { position: absolute; top: 24px; left: 24px; font-size: 9px; font-weight: 600; letter-spacing: 1.8px; color: #655d68; z-index: 2; }
 .block-foot { position: absolute; bottom: 24px; left: 24px; font-size: 9px; letter-spacing: 1.3px; color: #655d68; z-index: 2; }
 
+/* Responsive <picture> wrappers take no box of their own, so the existing
+   img rules (absolute fill, object-fit) keep applying to the photo. */
+.card-block picture, .pd-media picture, .home-carousel-slide picture, .editorial-card picture { display: contents; }
+
 /* ============================ sections / cards ============================ */
 .section { padding-top: 45px; }
 .section-head { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 21px; }

@@ -7,6 +7,8 @@ import { useAuth } from './lib/useAuth.js';
 import { useCatalog } from './lib/useCatalog.js';
 import { submitOrder } from './lib/orders.js';
 import { lineKey, variantList, variantSku, requiresVariantChoice, resolveCartItems, normalizeCart } from './lib/lines.js';
+import { heroImage, SIZES } from './lib/images.js';
+import { Picture } from './components/Picture.jsx';
 import { AuthModal } from './components/AuthModal.jsx';
 import { AccountPage } from './pages/account/AccountPage.jsx';
 import { AdminPage } from './pages/admin/AdminPage.jsx';
@@ -483,6 +485,8 @@ function HeroCarousel({ slides }) {
   return (
     <section className="home-carousel" aria-roledescription="carousel" aria-label="Featured photos and videos">
       <div className="home-carousel-stage">
+        {/* Photos render at their own pixel size (never enlarged). The first slide is
+            the page's largest image, so it loads eagerly at high priority. */}
         {media.map((slide, i) => {
           const isActive = i === safeIndex;
           return (
@@ -497,6 +501,10 @@ function HeroCarousel({ slides }) {
                   preload="metadata"
                   aria-label={slide.title || 'Featured video'}
                 />
+              ) : slide.picture ? (
+                <Picture picture={slide.picture} alt={isActive ? (slide.title || '') : ''}
+                         sizes={`(max-width: 600px) 100vw, ${slide.picture.width || 720}px`}
+                         priority={i === 0} loading={i === 0 ? 'eager' : 'lazy'} />
               ) : (
                 <img src={slide.img} alt={isActive ? (slide.title || '') : ''} />
               )}
@@ -513,6 +521,8 @@ function HeroCarousel({ slides }) {
     </section>
   );
 }
+
+const EDITORIAL_BG = heroImage('hero_candy.jpg');
 
 function HomePage(props) {
   const { goCategory, goProduct, products, departments } = props;
@@ -535,7 +545,7 @@ function HomePage(props) {
 
       <section className="editorials" aria-label="Collections">
         <button className="editorial-card cream" type="button" onClick={() => goCategory('NOVELTIES')}>
-          <img className="bg" src={IMG.hero_candy} alt="" aria-hidden="true" loading="lazy" />
+          <Picture className="bg" picture={EDITORIAL_BG.picture} alt="" aria-hidden="true" sizes={SIZES.editorial} />
           <span className="block-label">COLLECTION / 01</span>
           <div><p className="eyebrow">EXOTICS &amp; NOVELTIES</p><h2>Disposables, detox,<br />kratom &amp; more.</h2><span className="text-link">Browse novelties</span><span className="arrow" aria-hidden="true">↗</span></div>
         </button>
@@ -570,7 +580,7 @@ function HomePage(props) {
               <button className="content-card" key={c.key} type="button" onClick={() => goCategory(c.key)}>
                 <div className="card-block">
                   <span className="block-label">DEPARTMENT</span>
-                  {preview?.img ? <img src={preview.img} alt="" loading="lazy" /> : <span className="card-initials">{String(c.count).padStart(2, '0')}</span>}
+                  {preview?.picture ? <Picture picture={preview.picture} alt="" sizes={SIZES.card} /> : <span className="card-initials">{String(c.count).padStart(2, '0')}</span>}
                 </div>
                 <p className="card-kicker">{c.subs.length} PRODUCT LINES · {c.count} SKUs</p>
                 <h3>{c.label}</h3>
@@ -627,7 +637,7 @@ function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLine, goPr
         <div className="card-block">
           <span className="block-label">{p.cat}</span>
           {p.tag && <span className={`card-tag ${p.tag === 'NEW' ? 'new' : ''}`}>{p.tag}</span>}
-          {p.img ? <img src={p.img} alt={p.name} loading="lazy" /> : <span className="card-initials" aria-hidden="true">{initials(p.name)}</span>}
+          {p.picture ? <Picture picture={p.picture} alt={p.name} sizes={SIZES.card} /> : <span className="card-initials" aria-hidden="true">{initials(p.name)}</span>}
         </div>
         <p className="card-kicker">{p.sub}</p>
         <h3>{p.name}</h3>
@@ -837,7 +847,7 @@ function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLi
       <div className="pd-grid">
         <div className="pd-media">
           {p.tag && <span className={`card-tag ${p.tag === 'NEW' ? 'new' : ''}`}>{p.tag}</span>}
-          {p.img ? <img src={p.img} alt={p.name} /> : <span className="card-initials" aria-hidden="true">{initials(p.name)}</span>}
+          {p.picture ? <Picture picture={p.picture} alt={p.name} sizes={SIZES.detail} priority /> : <span className="card-initials" aria-hidden="true">{initials(p.name)}</span>}
         </div>
         <div className="pd-info">
           <p className="pd-brand">{p.brand} · {p.sub}</p>

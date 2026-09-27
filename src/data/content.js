@@ -1,7 +1,7 @@
 // Storefront content: company info, marketing copy, hero slides, FAQs, and
 // welcome-popup offers. PRODUCTS lives in ./products.js.
 
-import { IMG } from './theme.js';
+import { heroImage } from '../lib/images.js';
 
 export const COMPANY = {
   name: 'Alabama Wholesale Inc',
@@ -37,10 +37,12 @@ export const SHOP_CATS = [
 export const HERO_SLIDES = [
   // To use video: set videoUrl to a public MP4 URL (or leave null for image)
   // For demo, all use images. Replace with your real product videos.
-  { eyebrow: 'NEW THIS WEEK', title: 'The brands your customers ask for.', sub: 'Tobacco, novelties, candy, beverages, motor oil, household and more — over 368 SKUs ready to ship from our Birmingham warehouse.', cta1: 'Shop Catalog', cta2: 'Apply for Account', img: IMG.hero_candy, videoUrl: null, accent: 'orange', goCat: 'NOVELTIES' },
-  { eyebrow: 'BESTSELLING NOVELTIES', title: 'Geekbar 25K — now in stock.', sub: 'World\'s first 3D curved screen disposable. Full flavor lineup available, ready to ship today.', cta1: 'Shop Novelties', cta2: 'See All Vape', img: IMG.hero_vape, videoUrl: null, accent: 'navy', goCat: 'NOVELTIES' },
-  { eyebrow: 'COUNTER ESSENTIALS', title: 'BIC lighters & merchandise.', sub: 'Stock up the counter for less. Volume pricing on Bic, Eagle torches, Lattafa air freshener and more.', cta1: 'Shop Merchandise', cta2: 'View Displays', img: IMG.hero_lighters, videoUrl: null, accent: 'orange', goCat: 'MERCHANDISE' },
-  { eyebrow: 'DRINKS & BEVERAGES', title: 'Gatorade, Monster, Red Bull — by the case.', sub: 'Free delivery on a delivery route within 100 miles of Birmingham on orders over $1,500. Net-30 terms for approved accounts.', cta1: 'Shop Drinks', cta2: 'Get a Quote', img: IMG.hero_gatorade, videoUrl: null, accent: 'navy', goCat: 'DRINKS & BAGS' }
+  // heroImage() supplies img (plain URL, used as the video poster) and picture
+  // (responsive WebP/JPEG set) from the photo in src/assets.
+  { eyebrow: 'NEW THIS WEEK', title: 'The brands your customers ask for.', sub: 'Tobacco, novelties, candy, beverages, motor oil, household and more — over 368 SKUs ready to ship from our Birmingham warehouse.', cta1: 'Shop Catalog', cta2: 'Apply for Account', ...heroImage('hero_candy.jpg'), videoUrl: null, accent: 'orange', goCat: 'NOVELTIES' },
+  { eyebrow: 'BESTSELLING NOVELTIES', title: 'Geekbar 25K — now in stock.', sub: 'World\'s first 3D curved screen disposable. Full flavor lineup available, ready to ship today.', cta1: 'Shop Novelties', cta2: 'See All Vape', ...heroImage('hero_vape.jpg'), videoUrl: null, accent: 'navy', goCat: 'NOVELTIES' },
+  { eyebrow: 'COUNTER ESSENTIALS', title: 'BIC lighters & merchandise.', sub: 'Stock up the counter for less. Volume pricing on Bic, Eagle torches, Lattafa air freshener and more.', cta1: 'Shop Merchandise', cta2: 'View Displays', ...heroImage('hero_lighters.jpg'), videoUrl: null, accent: 'orange', goCat: 'MERCHANDISE' },
+  { eyebrow: 'DRINKS & BEVERAGES', title: 'Gatorade, Monster, Red Bull — by the case.', sub: 'Free delivery on a delivery route within 100 miles of Birmingham on orders over $1,500. Net-30 terms for approved accounts.', cta1: 'Shop Drinks', cta2: 'Get a Quote', ...heroImage('hero_gatorade.jpg'), videoUrl: null, accent: 'navy', goCat: 'DRINKS & BAGS' }
 ];
 
 export const BRANDS = ["HERSHEY'S", 'GATORADE', 'BIC', 'WD-40', 'GEEK BAR', 'GAIN', 'STP', 'WHITE OWL', 'TWANGERZ', 'POM POM', 'NEON', 'JOB'];

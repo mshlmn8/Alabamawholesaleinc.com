@@ -49,19 +49,24 @@ Output goes to `dist/`. See [NETLIFY-DEPLOY.md](NETLIFY-DEPLOY.md) for the Netli
 
 ## Customize
 
-Storefront layout lives in **`src/App.jsx`**. Product photos live in **`src/assets/`** and are resolved from `src/data/products.js`.
+Storefront layout lives in **`src/App.jsx`**. Product photos live in **`src/assets/products/`** and hero photos in **`src/assets/`**; each product row in `src/data/products.js` names its photo file.
 
 | What | Where |
 | ---- | ----- |
 | Editorial colors and type | `src/index.css` (`--purple`, `--orange`, `--cream`, `--display`, `--body`) |
-| Logo and hero photos | `IMG` in `src/data/theme.js` |
+| Logo | `IMG` in `src/data/theme.js` |
+| Hero photos | `HERO_SLIDES` in `src/data/content.js` |
 | Address, phone, hours, email | `COMPANY` in `src/data/content.js` |
 | Top ticker | `ANNOUNCEMENTS` in `src/data/content.js` |
 | Departments and sub-lines | `NAV_CATEGORIES` in `src/data/products.js` |
 | The 368 products | `PRODUCTS` in `src/data/products.js` |
 | Account and admin colors | `C`, `body`, `display`, and `mono` in `src/data/theme.js` |
 
-`SHOP_CATS`, `HERO_SLIDES`, `BRANDS`, `TRUST`, `FAQS`, and `WELCOME_OFFERS` in `src/data/content.js` are leftover from the previous layout. The editorial pages do not render them.
+`SHOP_CATS`, `BRANDS`, `TRUST`, `FAQS`, and `WELCOME_OFFERS` in `src/data/content.js` are leftover from the previous layout. The editorial pages do not render them.
+
+### Images
+
+`npm run images` (run automatically before `dev` and `build`) renders every photo in `src/assets/products/` and `src/assets/hero_*.jpg` into WebP and JPEG card/detail sizes under `src/assets/generated/`, and builds the favicon set and `og.jpg` share image in `public/` from `src/assets/logo.jpg`. Those outputs are gitignored; only the original photos are committed. Drop a new photo into `src/assets/products/`, reference its filename in `products.js`, and the next dev/build run picks it up.
 
 ## Stack
 
