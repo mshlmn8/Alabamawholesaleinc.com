@@ -60,7 +60,7 @@ function DocumentFields({
           <div className="doc-upload" key={doc.id}>
             <label htmlFor={id}>
               {doc.label}
-              <span className="optional">Optional</span>
+              <span className="optional"> Optional</span>
             </label>
             <input
               id={id}
