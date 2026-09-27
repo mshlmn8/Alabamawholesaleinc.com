@@ -104,6 +104,7 @@ export function ModalLayer({ onClose, initialFocus, className = '', children }) 
       fallbackOpener: fromLayer ? (below?.activeAtOpen || below?.fallbackOpener || null) : null,
       onClose,
       container: null,
+      lastInside: null,
     };
   });
   entry.onClose = onClose;
@@ -116,7 +117,10 @@ export function ModalLayer({ onClose, initialFocus, className = '', children }) 
     syncBackground();
 
     const preferred = initialFocus?.current;
-    if (preferred && container.contains(preferred)) {
+    if (entry.lastInside && container.contains(entry.lastInside)) {
+      // Re-run of the effect (StrictMode, HMR): keep what the user had focused.
+      entry.lastInside.focus({ preventScroll: true });
+    } else if (preferred && container.contains(preferred)) {
       preferred.focus({ preventScroll: true });
     } else if (!container.contains(document.activeElement)) {
       const first = focusables(container)[0];
@@ -124,10 +128,15 @@ export function ModalLayer({ onClose, initialFocus, className = '', children }) 
     }
 
     return () => {
+      const active = document.activeElement;
+      entry.lastInside = container.contains(active) ? active : null;
       const i = stack.indexOf(entry);
       if (i !== -1) stack.splice(i, 1);
       syncBackground();
-      restoreFocus(entry);
+      // If another layer opened in the same commit (cart -> sign in) it already
+      // holds focus; leave it there instead of pulling focus back to the page.
+      const heldByAnotherLayer = portalRoot && portalRoot.contains(active) && !container.contains(active);
+      if (!heldByAnotherLayer) restoreFocus(entry);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
