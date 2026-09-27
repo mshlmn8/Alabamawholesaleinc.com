@@ -4,6 +4,7 @@
 
 import React from 'react';
 import { PageHead } from './SupportShell.jsx';
+import { variantCountLabel, variantList } from '../../lib/lines.js';
 
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
@@ -45,14 +46,17 @@ export function CatalogIndexPage({ goHome, goCategory, goProduct, products, depa
               <details className="sku-details">
                 <summary>All {d.count} {d.label} SKUs</summary>
                 <ul className="sku-list">
-                  {rows.map(p => (
-                    <li key={p.id}>
-                      <button type="button" onClick={() => goProduct(p.id)}>
-                        <b>{p.name}</b>
-                        <small>{p.brand} · {p.sub} · {p.sku}{p.flavors ? ` · ${p.flavors} variants` : ''}</small>
-                      </button>
-                    </li>
-                  ))}
+                  {rows.map(p => {
+                    const variantCount = variantList(p).length;
+                    return (
+                      <li key={p.id}>
+                        <button type="button" onClick={() => goProduct(p.id)}>
+                          <b>{p.name}</b>
+                          <small>{p.brand} · {p.sub} · {p.sku}{variantCount > 0 ? <>{' · '}<span className="variant-count">{variantCountLabel(variantCount)}</span></> : ''}</small>
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               </details>
             </section>
