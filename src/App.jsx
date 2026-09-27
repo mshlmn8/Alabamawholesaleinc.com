@@ -725,7 +725,7 @@ function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLine, goPr
         <h3>{p.name}</h3>
         <p className="card-detail">{p.brand}{p.flavors ? ` · ${p.flavors} variants` : ''} · {p.sku}</p>
       </button>
-      <span className="card-meta">
+      <span className="card-meta card-actions">
         {isApprovedBuyer && price != null ? (
           <span>{money(price)}</span>
         ) : profile ? (
