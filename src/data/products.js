@@ -728,7 +728,7 @@ export const CATALOG = [
     description: "Instant coffee from the coffee line in our Food Stuff department. Two sizes: Small and Big." },
   { id: 354, name: "Folgers coffee", brand: "Folgers", cat: "FOOD STUFF", sub: "Coffee", sku: "AW-FOLGERS-COFFEE", sellUnit: "", flavors: 1, variants: ["Small"], img: "p354-folgers-coffee.jpg", tag: null, price: 39.69,
     description: "Folgers coffee from the coffee line in our Food Stuff department. Stocked in one variety: Small." },
-  { id: 355, name: "Gold Band", brand: "Gold Band", cat: "MOTOR OIL", sub: "Motor Oil", sku: "AW-GOLD-BAND", sellUnit: "", flavors: 1, variants: ["Type A"], img: "gold_band.jpg", tag: null, price: 48.28,
+  { id: 355, name: "Gold Band", brand: "Gold Band", cat: "MOTOR OIL", sub: "Motor Oil", sku: "AW-GOLD-BAND", sellUnit: "", flavors: 1, variants: ["Type A"], img: "p355-gold-band-type-a.jpg", tag: null, price: 48.28,
     description: "Gold Band automotive lubricants. Stocked in one variety: Type A." },
   { id: 356, name: "Gas cans", brand: "Assorted", cat: "MOTOR OIL", sub: "Auto Accessories", sku: "AW-GAS-CANS", sellUnit: "", flavors: 3, variants: ["1 gal", "2gal", "5 gal"], img: "p356-gas-cans.webp", tag: null, price: 30.1,
     description: "Gas cans from the auto accessory line in our Motor Oil department. Three sizes: 1 gal, 2gal and 5 gal." },
