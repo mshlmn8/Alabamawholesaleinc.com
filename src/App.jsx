@@ -37,10 +37,9 @@ const CAT_LABEL = {
   'GROCERY': 'Grocery', 'MOTOR OIL': 'Motor Oil'
 };
 const catLabel = (c) => CAT_LABEL[c] || c;
-const initials = (name) => {
-  const p = String(name).split(/\s+/).filter(Boolean);
-  return ((p[0]?.[0] || '?') + (p[1]?.[0] || '')).toUpperCase();
-};
+function PhotoSoon() {
+  return <span className="photo-soon">Photo coming soon</span>;
+}
 const money = (n) => `$${Number(n).toFixed(2)}`;
 
 const safeReadJson = (key, fallback) => {
@@ -472,7 +471,7 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, de
                 {hits.length === 0 && <p>Try a brand (Geekbar, Backwoods, BIC) or a line ("energy drinks", "wraps").</p>}
                 {hits.map(p => (
                   <button key={p.id} type="button" onClick={() => pickResult(p.id)}>
-                    <span className="sr-thumb">{p.img ? <img src={p.img} alt="" loading="lazy" /> : initials(p.name)}</span>
+                    <span className="sr-thumb">{p.img ? <img src={p.img} alt="" loading="lazy" /> : <PhotoSoon />}</span>
                     <span><strong>{p.name}</strong><small>{catLabel(p.cat)} · {p.sub} · {p.sku}</small></span>
                   </button>
                 ))}
@@ -687,7 +686,7 @@ function HeroCarousel({ slides }) {
         })}
       </div>
       <div className="home-carousel-controls">
-        <p aria-live="polite">Slide {safeIndex + 1} of {count}</p>
+        <p aria-live="polite">{active.title}. Slide {safeIndex + 1} of {count}</p>
         <button type="button" onClick={() => go(-1)} aria-label="Previous slide">Previous</button>
         <button type="button" aria-pressed={paused} onClick={() => setPaused(value => !value)}>{paused ? 'Play' : 'Pause'}</button>
         <button type="button" onClick={() => go(1)} aria-label="Next slide">Next</button>
@@ -814,7 +813,7 @@ function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLine, goPr
         <div className="card-block">
           <span className="block-label">{p.cat}</span>
           {p.tag && <span className={`card-tag ${p.tag === 'NEW' ? 'new' : ''}`}>{p.tag}</span>}
-          {p.picture ? <Picture picture={p.picture} alt={p.name} sizes={SIZES.card} /> : <span className="card-initials" aria-hidden="true">{initials(p.name)}</span>}
+          {p.picture ? <Picture picture={p.picture} alt={p.name} sizes={SIZES.card} /> : <PhotoSoon />}
         </div>
         <p className="card-kicker">{p.sub}</p>
         <h3>{p.name}</h3>
@@ -1089,7 +1088,7 @@ function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLi
       <div className="pd-grid">
         <div className="pd-media">
           {p.tag && <span className={`card-tag ${p.tag === 'NEW' ? 'new' : ''}`}>{p.tag}</span>}
-          {p.picture ? <Picture picture={p.picture} alt={p.name} sizes={SIZES.detail} priority /> : <span className="card-initials" aria-hidden="true">{initials(p.name)}</span>}
+          {p.picture ? <Picture picture={p.picture} alt={p.name} sizes={SIZES.detail} priority /> : <PhotoSoon />}
         </div>
         <div className="pd-info">
           <p className="pd-brand">{p.brand} · {p.sub}</p>
@@ -1243,7 +1242,7 @@ function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHo
           <ul className="checkout-lines" aria-label="Items in this request">
             {items.map(it => (
               <li key={it.lineKey} className="drawer-line checkout-line">
-                <span className="thumb">{it.img ? <img src={it.img} alt="" /> : initials(it.name)}</span>
+                <span className="thumb">{it.img ? <img src={it.img} alt="" /> : <PhotoSoon />}</span>
                 <span className="info">
                   <b>{it.name}</b>
                   <small>{it.sku}{isApprovedBuyer && it.price != null ? ` · ${money(it.price)} each` : ''}</small>
@@ -1398,7 +1397,7 @@ function CartDrawer({ open, onClose, items, total, addLine, decLine, removeLine,
             <ul className="drawer-lines" aria-label="Items in your order">
               {items.map(it => (
                 <li className="drawer-line" key={it.lineKey}>
-                  <span className="thumb">{it.img ? <img src={it.img} alt="" /> : initials(it.name)}</span>
+                  <span className="thumb">{it.img ? <img src={it.img} alt="" /> : <PhotoSoon />}</span>
                   <span className="info">
                     <b>{it.name}</b>
                     <small>{it.sku}{isApprovedBuyer && it.price != null ? ` · ${money(it.price)}` : ''}{it.needsVariant ? ' · Choose a variant' : ''}</small>

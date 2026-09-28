@@ -2,7 +2,8 @@
 // hours, and will-call pickup. Facts come from COMPANY in data/content.js.
 
 import React from 'react';
-import { COMPANY } from '../../data/content.js';
+import { COMPANY, WAREHOUSE_GALLERY } from '../../data/content.js';
+import { Picture } from '../../components/Picture.jsx';
 import { PageHead, DIRECTIONS_URL } from './SupportShell.jsx';
 
 const HOURS = [
@@ -37,6 +38,21 @@ export function ContactPage({ goHome, navigate, onApplyClick }) {
           <a className="button ghost" href={DIRECTIONS_URL} target="_blank" rel="noopener noreferrer">Get directions <span aria-hidden="true">↗</span></a>
         </article>
       </div>
+
+      <section className="visit-photos" aria-labelledby="warehouse-photos-title">
+        <p className="eyebrow">THE WAREHOUSE</p>
+        <h2 id="warehouse-photos-title">Graymont Ave, the trucks, and the floor</h2>
+        <div className="visit-gallery">
+          {WAREHOUSE_GALLERY.map(photo => (
+            <figure key={photo.title}>
+              <div className="visit-frame">
+                <Picture picture={photo.picture} alt={photo.title} sizes="(max-width: 600px) 100vw, (max-width: 900px) 50vw, 400px" />
+              </div>
+              <figcaption>{photo.title}</figcaption>
+            </figure>
+          ))}
+        </div>
+      </section>
 
       <div className="support-columns">
         <section className="support-block" aria-labelledby="hours-title">
