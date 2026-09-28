@@ -609,7 +609,7 @@ export const CATALOG = [
   { id: 294, name: "PIK nicotine pouches 16mg", brand: "PIK", cat: "TOBACCO", sub: "Pouches & ZYN", sku: "AW-PIK-16MG", sellUnit: "", flavors: 1, variants: ["Wintergreen"], img: "pik_16mg.jpg", tag: null, price: 81.76,
     description: "PIK 16mg nicotine pouches, 20 per can. Stocked in one variety: Wintergreen." },
   { id: 295, name: "Snack wraps", brand: "Assorted", cat: "FOOD STUFF", sub: "Chips & Crackers", sku: "AW-SNACK-WRAPS", sellUnit: "", flavors: 2, variants: ["40ct", "12ct"], img: null, tag: null, price: 45.95,
-    description: "Snack wraps, a chips brand. Two sizes: 40ct and 12ct. Not storage bags and not tortillas. Flavors vary by availability." },
+    description: "Snack wraps, a chips brand. Two sizes: 40ct and 12ct. Flavors vary by availability." },
   { id: 296, name: "Jelly holes pre rolls", brand: "Jelly Holes", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-JELLY-HOLES-PR", sellUnit: "", flavors: 1, variants: ["Dirty girl"], img: "p296-jelly-holes-pre-rolls.jpg", tag: null, price: 112.92,
     description: "Jelly holes pre rolls from the mushroom product line in our Novelties department. Stocked in one variety: Dirty girl." },
   { id: 297, name: "Toothbrushes", brand: "Assorted", cat: "GROCERY", sub: "Personal Care", sku: "AW-TOOTHBRUSHES", sellUnit: "", flavors: 0, variants: [], img: null, tag: null, price: 27.79,
