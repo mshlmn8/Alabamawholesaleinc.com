@@ -1,18 +1,51 @@
 # Netlify deploy notes
 
-## Easiest drag-and-drop deploy
-Use the static ZIP named `alabama-wholesale-netlify-drop.zip`. It contains only the already-built `dist` output, so Netlify does not run `npm install`.
+The site deploys only from Git. Netlify installs and builds every push itself,
+so each deploy runs the environment check and the image and site build, and
+every deploy maps to a commit.
 
-## Source deploy
-This source package includes:
+## Site settings
 
-- `netlify.toml` with `npm run build` and `publish = "dist"`. The build fails unless `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set (see BACKEND.md section 4)
-- `.nvmrc` and `NODE_VERSION = "24"` pin Node 24 LTS (supported to April 2028)
-- `.npmrc` pointing to the public npm registry
-- a cleaned `package-lock.json` whose tarball URLs point to `registry.npmjs.org`, not the internal build registry used in the ChatGPT sandbox
+Link the Netlify site to the GitHub repository (**Site configuration → Build &
+deploy → Continuous deployment**):
 
-Deploy settings:
+- Production branch: `main`
+- Base directory: leave blank (the files are at the repo root)
+- Build command: `npm run build` (also set in `netlify.toml`)
+- Publish directory: `dist` (also set in `netlify.toml`)
+- Node version: from `netlify.toml` (`NODE_VERSION = "24"`, the same major as
+  `.nvmrc`). `.nvmrc` and `NODE_VERSION = "24"` pin Node 24 LTS (supported to
+  April 2028); `.npmrc` sets `engine-strict`, so an install on the wrong Node
+  version fails instead of warning.
 
-- Build command: `npm run build`
-- Publish directory: `dist`
-- Base directory: leave blank if these files are at the repo root
+`netlify.toml` also sets `NPM_FLAGS = "--no-fund"` (npm audit stays on) and the
+`/* → /index.html` fallback the single-page app needs.
+
+## Environment variables, migrations and releases
+
+The build fails unless `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set
+in the Netlify environment (scope "All", so deploy previews get them too).
+[BACKEND.md](BACKEND.md) covers the variables and the Supabase auth URL
+settings (section 4), the database migrations (section 2) and the first-run
+sanity check (section 5).
+
+## Netlify Forms
+
+The site uses no Netlify Forms: quotes go to Supabase's `submit_quote`
+function and applications to Supabase Auth. If the Netlify dashboard (**Forms**)
+still lists `apply`, `quote` or `newsletter` forms from earlier deploys, delete
+them and turn off form detection so nothing can post to them.
+
+## Do not drag and drop `dist/`
+
+Do not drag-and-drop `dist/` (or a ZIP of it) onto Netlify: it bypasses the
+build, the environment check and version tracking, and a local `dist/` is
+easily stale or built without the backend settings.
+
+To look at a production build locally instead, rebuild it first:
+
+```bash
+rm -rf dist
+npm run build
+npm run preview
+```

@@ -23,7 +23,7 @@ Also on the storefront:
 - Header search across name, brand, department, SKU, and variants
 - Category menu for the eight departments
 - Cart drawer. Cart contents persist in `localStorage`. Escape closes the cart, sign-in, and help overlays and unlocks page scrolling
-- Signed-in orders go to Supabase; if that fails, the quote form falls back to Netlify Forms
+- Quote requests and orders are saved by the `submit_quote` function in Supabase, which prices the lines on the server. If saving fails, the quote page shows an error with the trade desk's phone number and email; there is no other fallback
 - Trade sign-in and account applications through Supabase Auth
 
 Prices stay hidden until someone is signed in. Approved accounts see tier pricing (standard, silver, gold).
@@ -56,7 +56,7 @@ GitHub Actions (`.github/workflows/ci.yml`) runs all four, plus `npm audit --omi
 npm run build
 ```
 
-Output goes to `dist/`. See [NETLIFY-DEPLOY.md](NETLIFY-DEPLOY.md) for the Netlify source deploy. A drag-and-drop deploy is `npm run build`, then drop `dist/` on https://app.netlify.com/drop.
+Output goes to `dist/`; `npm run preview` serves it locally. The build fails without `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (see [BACKEND.md](BACKEND.md)). The site deploys from Git through Netlify; see [NETLIFY-DEPLOY.md](NETLIFY-DEPLOY.md). Do not drag and drop `dist/` onto Netlify.
 
 ## Customize
 
@@ -84,11 +84,10 @@ Storefront layout lives in **`src/App.jsx`**. Product photos live in **`src/asse
 - React 18
 - Vite 7
 - Plain CSS for the editorial storefront
-- Tailwind CSS 3, still generated for Account, Admin, and the preflight reset
-- Lucide React, still used by Account and Admin
-- Supabase (Postgres + Auth + RLS) — optional; see [BACKEND.md](BACKEND.md)
+- Tailwind CSS 3, kept in the build only for its preflight reset (Account and Admin use the plain CSS too)
+- Supabase (Postgres + Auth + RLS); see [BACKEND.md](BACKEND.md)
 
-Without `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, the catalog still builds and browses. Trade accounts, order history, and the admin dashboard need those keys. See [BACKEND.md](BACKEND.md).
+Without `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, `npm run dev` still serves the catalog, but trade accounts, quotes, order history and the admin dashboard are off, and `npm run build` stops with an error (set `ALLOW_NO_BACKEND=1` to build a static-only preview on purpose). See [BACKEND.md](BACKEND.md).
 
 ## License
 

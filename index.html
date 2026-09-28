@@ -56,40 +56,6 @@
     </script>
   </head>
   <body>
-    <!-- Static form definitions for Netlify Forms. The build-time HTML parser
-         registers these by name; the live React forms POST to "/" with matching
-         field names. Hidden from users via display:none. -->
-    <form name="apply" data-netlify="true" netlify-honeypot="bot-field" hidden>
-      <input type="text" name="business" />
-      <input type="text" name="contact" />
-      <input type="email" name="email" />
-      <input type="tel" name="phone" />
-      <input type="text" name="type" />
-      <input type="text" name="license" />
-      <input type="text" name="state" />
-      <input type="text" name="volume" />
-      <input type="text" name="bot-field" />
-    </form>
-    <form name="quote" data-netlify="true" netlify-honeypot="bot-field" hidden>
-      <input type="text" name="business" />
-      <input type="text" name="contact" />
-      <input type="email" name="email" />
-      <input type="tel" name="phone" />
-      <input type="text" name="delivery" />
-      <input type="date" name="preferredDate" />
-      <textarea name="notes"></textarea>
-      <input type="text" name="refNum" />
-      <input type="text" name="accountType" />
-      <textarea name="items"></textarea>
-      <input type="number" name="totalUnits" />
-      <input type="text" name="subtotal" />
-      <input type="text" name="bot-field" />
-    </form>
-    <form name="newsletter" data-netlify="true" netlify-honeypot="bot-field" hidden>
-      <input type="email" name="email" />
-      <input type="text" name="bot-field" />
-    </form>
-
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
