@@ -5,9 +5,9 @@ import { heroImage } from '../lib/images.js';
 
 export const COMPANY = {
   name: 'Alabama Wholesale Inc',
-  phone: '(205) 354-4473',
-  phoneRaw: '+12053544473',
-  whatsapp: '12053544473',
+  phone: '(205) 458-4788',
+  phoneRaw: '+12054584788',
+  whatsapp: '12054584788',
   email: 'Alabamawholesaleinc@gmail.com',
   addressShort: '613 Graymont Ave N, Birmingham AL 35203',
   addressLine1: '613 Graymont Ave N',
@@ -34,15 +34,52 @@ export const SHOP_CATS = [
   { name: 'DRINKS & BAGS', count: 44, color: ['#1F2A4A', '#0EA5E9'], icon: 'drink' }
 ];
 
+// Owner photos of the Birmingham warehouse. heroImage() supplies img and picture
+// from src/assets/hero_wh_*.jpg. The homepage carousel is a short reel; the
+// contact page shows the rest. Frames with an identifiable person are omitted.
+const warehousePhoto = (file, title) => ({ title, videoUrl: null, ...heroImage(file) });
+
 export const HERO_SLIDES = [
-  // To use video: set videoUrl to a public MP4 URL (or leave null for image)
-  // For demo, all use images. Replace with your real product videos.
-  // heroImage() supplies img (plain URL, used as the video poster) and picture
-  // (responsive WebP/JPEG set) from the photo in src/assets.
-  { eyebrow: 'NEW THIS WEEK', title: 'The brands your customers ask for.', sub: 'Tobacco, novelties, candy, beverages, motor oil, household and more — over 368 SKUs at our Birmingham warehouse.', cta1: 'Shop Catalog', cta2: 'Apply for Account', ...heroImage('hero_candy.jpg'), videoUrl: null, accent: 'orange', goCat: 'NOVELTIES' },
-  { eyebrow: 'BESTSELLING NOVELTIES', title: 'Geekbar 25K — now in stock.', sub: 'World\'s first 3D curved screen disposable. Flavors and availability change often. The trade desk confirms what is in stock.', cta1: 'Shop Novelties', cta2: 'See All Vape', ...heroImage('hero_vape.jpg'), videoUrl: null, accent: 'navy', goCat: 'NOVELTIES' },
-  { eyebrow: 'COUNTER ESSENTIALS', title: 'BIC lighters & merchandise.', sub: 'Stock up the counter for less. Volume pricing on Bic, Eagle torches, Lattafa air freshener and more.', cta1: 'Shop Merchandise', cta2: 'View Displays', ...heroImage('hero_lighters.jpg'), videoUrl: null, accent: 'orange', goCat: 'MERCHANDISE' },
-  { eyebrow: 'DRINKS & BEVERAGES', title: 'Gatorade, Monster, Red Bull — by the case.', sub: 'Free delivery on orders over $1,500 when the stop is on a delivery route in Alabama, Mississippi or Georgia. Net-30 terms for approved accounts.', cta1: 'Shop Drinks', cta2: 'Get a Quote', ...heroImage('hero_gatorade.jpg'), videoUrl: null, accent: 'navy', goCat: 'DRINKS & BAGS' }
+  warehousePhoto('hero_wh_sign.jpg', 'Warehouse sign'),
+  warehousePhoto('hero_wh_truck.jpg', 'Delivery truck'),
+  warehousePhoto('hero_wh_graymont.jpg', 'Graymont Ave N'),
+  warehousePhoto('hero_wh_aisle.jpg', 'Warehouse aisle'),
+  warehousePhoto('hero_wh_cooler.jpg', 'Drink coolers'),
+  warehousePhoto('hero_wh_chips.jpg', 'Chip aisle'),
+  warehousePhoto('hero_wh_candy.jpg', 'Candy aisle'),
+  warehousePhoto('hero_wh_floor.jpg', 'Snack aisle'),
+];
+
+export const WAREHOUSE_GALLERY = [
+  warehousePhoto('hero_wh_truck_front.jpg', 'Delivery truck at the warehouse'),
+  warehousePhoto('hero_wh_truck_door.jpg', 'Alabama Wholesale truck'),
+  warehousePhoto('hero_wh_truck_cab.jpg', 'Truck parked at the warehouse'),
+  warehousePhoto('hero_wh_truck_lot.jpg', 'Truck in the warehouse lot'),
+  warehousePhoto('hero_wh_truck_side.jpg', 'Truck beside the warehouse'),
+  warehousePhoto('hero_wh_aisle_cases.jpg', 'Cases along a warehouse aisle'),
+  warehousePhoto('hero_wh_aisle_long.jpg', 'Long warehouse aisle'),
+  warehousePhoto('hero_wh_aisle_snacks.jpg', 'Snack aisle'),
+  warehousePhoto('hero_wh_aisle_end.jpg', 'End of a warehouse aisle'),
+  warehousePhoto('hero_wh_snacks.jpg', 'Snack shelves'),
+  warehousePhoto('hero_wh_candy_rack.jpg', 'Candy rack'),
+  warehousePhoto('hero_wh_drinks.jpg', 'Drink shelves'),
+  warehousePhoto('hero_wh_candy_boxes.jpg', 'Candy boxes'),
+  warehousePhoto('hero_wh_endcap.jpg', 'Warehouse endcap'),
+  warehousePhoto('hero_wh_candy_bags.jpg', 'Bagged candy'),
+  warehousePhoto('hero_wh_household.jpg', 'Household aisle'),
+  warehousePhoto('hero_wh_juice.jpg', 'Juice and drink aisle'),
+  warehousePhoto('hero_wh_gummies.jpg', 'Gummy candy'),
+  warehousePhoto('hero_wh_candy_wall.jpg', 'Candy wall'),
+  warehousePhoto('hero_wh_chips_close.jpg', 'Chip bags'),
+  warehousePhoto('hero_wh_counter.jpg', 'Counter snacks'),
+  warehousePhoto('hero_wh_truck_parked.jpg', 'Truck parked outside'),
+  warehousePhoto('hero_wh_counter_display.jpg', 'Counter display'),
+  warehousePhoto('hero_wh_truck_gate.jpg', 'Truck near the gate'),
+  warehousePhoto('hero_wh_truck_row.jpg', 'Trucks at the warehouse'),
+  warehousePhoto('hero_wh_aisle_far.jpg', 'Far warehouse aisle'),
+  warehousePhoto('hero_wh_aisle_back.jpg', 'Back warehouse aisle'),
+  warehousePhoto('hero_wh_aisle_near.jpg', 'Near warehouse aisle'),
+  warehousePhoto('hero_wh_aisle_center.jpg', 'Center warehouse aisle'),
 ];
 
 export const BRANDS = ["HERSHEY'S", 'GATORADE', 'BIC', 'WD-40', 'GEEK BAR', 'GAIN', 'STP', 'WHITE OWL', 'TWANGERZ', 'POM POM', 'NEON', 'JOB'];
@@ -60,7 +97,7 @@ export const FAQS = [
   { q: 'What is your minimum order?',
     a: 'The minimum order is $500.00. Free delivery applies to orders of $1,500 or more when the stop is on a delivery route. Will-call is pickup at the Birmingham warehouse during business hours.' },
   { q: 'How long does account approval take?',
-    a: 'Most applications are approved within 24 hours. Net-30 terms require credit verification which can add 2–3 business days. You can also call us at (205) 354-4473 to expedite.' },
+    a: 'Most applications are approved within 24 hours. Net-30 terms require credit verification which can add 2–3 business days. You can also call us at (205) 458-4788 to expedite.' },
   { q: 'What areas do you deliver to?',
     a: 'We deliver on routes in Alabama, Mississippi and Georgia. Next-day delivery on our own trucks and free delivery on orders over $1,500 apply when the stop is on a delivery route.' },
   { q: 'Can I pick up my order in person?',
