@@ -30,7 +30,7 @@ Prices stay hidden until someone is signed in. Approved accounts see tier pricin
 
 ## Run locally
 
-You need **Node.js 20+** installed (matches `.nvmrc` and the Netlify build env). From this folder:
+You need **Node.js 24** (the version in `.nvmrc`, which the Netlify build and CI also use; `nvm use` picks it up). `.npmrc` sets `engine-strict`, so npm refuses to install on an unsupported Node version. From this folder:
 
 ```bash
 npm install
@@ -71,7 +71,7 @@ Storefront layout lives in **`src/App.jsx`**. Product photos live in **`src/asse
 ## Stack
 
 - React 18
-- Vite 5
+- Vite 7
 - Plain CSS for the editorial storefront
 - Tailwind CSS 3, still generated for Account, Admin, and the preflight reset
 - Lucide React, still used by Account and Admin
