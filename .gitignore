@@ -5,7 +5,8 @@ dist-ssr
 *.log
 .DS_Store
 .env
-.env.local
+.env.*
+!.env.example
 
 # Rendered by scripts/build-images.mjs before dev/build — never committed.
 src/assets/generated/

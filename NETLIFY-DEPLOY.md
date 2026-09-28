@@ -6,7 +6,7 @@ Use the static ZIP named `alabama-wholesale-netlify-drop.zip`. It contains only 
 ## Source deploy
 This source package includes:
 
-- `netlify.toml` with `npm run build` and `publish = "dist"`
+- `netlify.toml` with `npm run build` and `publish = "dist"`. The build fails unless `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set (see BACKEND.md section 4)
 - `.nvmrc` and `NODE_VERSION = "24"` pin Node 24 LTS (supported to April 2028)
 - `.npmrc` pointing to the public npm registry
 - a cleaned `package-lock.json` whose tarball URLs point to `registry.npmjs.org`, not the internal build registry used in the ChatGPT sandbox

@@ -3,8 +3,10 @@
 The storefront is a static React app deployed to Netlify. Real trade accounts,
 order history, and the admin dashboard run on Supabase (Postgres + Auth + RLS).
 
-When `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are unset the site falls
-back to its old static-only behavior — useful for previews, broken in prod.
+When `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are unset the dev server
+falls back to its old static-only behavior (catalog only, no sign-in, quotes or
+admin). A production build (`npm run build`) refuses to run without them; see
+section 4.
 
 ## 1. Create a Supabase project
 
@@ -70,6 +72,12 @@ In your Netlify site → **Site configuration → Environment variables**, add:
 | `VITE_SUPABASE_ANON_KEY`  | All       |
 
 Trigger a redeploy after saving.
+
+`npm run build` now fails when either variable is missing, or when
+`VITE_SUPABASE_URL` is not an `https://<project-ref>.supabase.co` URL, so a
+deploy can no longer ship a storefront with sign-in, applications and quotes
+silently disabled. To build a static-only preview on purpose, set
+`ALLOW_NO_BACKEND=1` for that build only; never set it on the production site.
 
 Password-reset emails link back to the site root. Under **Authentication →
 URL Configuration**, set the Site URL to the production domain and add
