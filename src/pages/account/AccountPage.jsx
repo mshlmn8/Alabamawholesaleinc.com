@@ -1,7 +1,7 @@
 // Trade-account dashboard: profile summary, quick reorder by SKU, and order
 // history with a Reorder action per order.
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { linesFromOrder } from '../../lib/lines.js';
 import { QuickReorder } from './QuickReorder.jsx';
@@ -27,18 +27,19 @@ export function AccountPage({ profile, goHome, onSignIn, products = [], addLines
   const [error, setError] = useState(null);
   const [reorderNote, setReorderNote] = useState(null);
 
+  const profileId = profile?.id;
   useEffect(() => {
-    if (!supabase || !profile) return;
+    if (!supabase || !profileId) return;
     supabase
       .from('orders')
       .select('id, ref_num, status, total_units, subtotal, created_at, order_items(id, product_id, variant, product_name, sku, qty, unit_price)')
-      .eq('user_id', profile.id)
+      .eq('user_id', profileId)
       .order('created_at', { ascending: false })
       .then(({ data, error }) => {
         if (error) setError(error.message);
         else setOrders(data || []);
       });
-  }, [profile?.id]);
+  }, [profileId]);
 
   if (!profile) {
     return (

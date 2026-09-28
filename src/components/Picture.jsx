@@ -1,5 +1,3 @@
-import React from 'react';
-
 // Responsive <picture> for an images.js picture object: WebP sources with a
 // JPEG fallback, real width/height, lazy by default. `priority` marks the
 // likely largest visible image (hero, product photo) as eager/high priority.

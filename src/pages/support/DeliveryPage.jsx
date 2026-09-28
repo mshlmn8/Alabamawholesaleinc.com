@@ -2,7 +2,7 @@
 // Georgia, will-call at the Birmingham warehouse, and a state-level check that
 // always points the customer to the trade desk to confirm their stop.
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../../data/content.js';
 import { DELIVERY_STATES, OTHER_STATES } from '../../data/onboarding.js';
 import { PageHead, ContactStrip, PhoneLink } from './SupportShell.jsx';

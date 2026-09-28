@@ -31,7 +31,8 @@ export function useAuth() {
   const [linkError, setLinkError] = useState(OPENED_LINK_ERROR);
 
   useEffect(() => {
-    if (!supabase) { setLoading(false); return; }
+    // Without a backend, loading already starts false (isBackendConfigured).
+    if (!supabase) return;
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setLoading(false);
@@ -43,22 +44,25 @@ export function useAuth() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  const userId = session?.user?.id;
   useEffect(() => {
-    if (!supabase || !session?.user) { setProfile(null); setProfileFor(null); return; }
+    // Signing out clears the profile. The AuthProvider rework (AW-187) replaces this.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!supabase || !userId) { setProfile(null); setProfileFor(null); return; }
     let cancelled = false;
     supabase
       .from('profiles')
       .select('*')
-      .eq('id', session.user.id)
+      .eq('id', userId)
       .single()
       .then(({ data, error }) => {
         if (cancelled) return;
         if (error) console.warn('profile load failed', error);
         setProfile(data || null);
-        setProfileFor(session.user.id);
+        setProfileFor(userId);
       });
     return () => { cancelled = true; };
-  }, [session?.user?.id]);
+  }, [userId]);
   // True once the profile fetch for the current session has finished (even if it failed).
   const profileReady = !!session?.user && profileFor === session.user.id;
 

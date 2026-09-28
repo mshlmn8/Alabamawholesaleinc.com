@@ -33,6 +33,14 @@ export default defineConfig(({ command, mode }) => {
           }
         }
       }
+    },
+    // Vitest (npm test). Playwright specs live in tests/smoke and are not
+    // unit tests.
+    test: {
+      environment: 'jsdom',
+      include: ['src/**/*.test.{js,jsx}', 'scripts/**/*.test.{js,mjs}'],
+      setupFiles: ['src/test/setup.js'],
+      restoreMocks: true
     }
   };
 });

@@ -3,7 +3,7 @@
 // is created as a pending customer. Owner access is a separate admin step, not
 // part of public signup.
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/useAuth.js';
 import { COMPANY } from '../data/content.js';
 import { APPLICATION_CHECKLIST } from '../data/onboarding.js';
@@ -60,7 +60,8 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
   const [proofWaiting, setProofWaiting] = useState(false);
   const titleRef = useRef(null);
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  // Keep the latest onClose for the timers and effects below.
+  useLayoutEffect(() => { onCloseRef.current = onClose; });
   // Focus trap, inert background, Escape and focus restore come from the
   // ModalLayer this dialog is rendered in; data-autofocus marks the first field.
 
@@ -75,6 +76,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
   // instead of the dialog silently closing.
   useEffect(() => {
     if (mode !== 'checking' || loading || !session || !profileReady) return undefined;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the profile arrives asynchronously after sign-in
     if (profile && profile.status !== 'approved') { setMode('status'); return undefined; }
     onCloseRef.current();
     return undefined;
@@ -158,7 +160,11 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
   const unavailableWhat = { signin: 'Account sign-in', checking: 'Account sign-in', checklist: 'The online application', signup: 'The online application', reset: 'Password reset' }[mode];
 
   return (
+    // Backdrop click is a mouse shortcut; Escape (ModalLayer) and the Close button are the keyboard paths.
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
     <div className="overlay" onClick={onClose}>
+      {/* Keeps clicks inside the dialog from reaching the backdrop. */}
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
       <div className="dialog scale-in" role="dialog" aria-modal="true" aria-labelledby="auth-title" onClick={(e) => e.stopPropagation()}>
         <div className="dialog-top">
           <p className="eyebrow">TRADE ACCOUNT</p>

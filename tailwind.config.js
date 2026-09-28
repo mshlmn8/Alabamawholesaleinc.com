@@ -1,6 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  // Test files are not UI: keep words in them from turning into utilities.
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}', '!./src/**/*.test.{js,jsx}', '!./src/test/**'],
   theme: {
     extend: {
       fontFamily: {

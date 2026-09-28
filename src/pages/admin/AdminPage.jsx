@@ -1,7 +1,7 @@
 // Admin dashboard: orders, account approvals, product catalog edits.
 // All write paths use the row-level-security policies in 20260517000001_rls_policies.sql.
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { DOCUMENT_TYPES, createDocumentViewUrl, listAllProfileDocuments } from '../../lib/documents.js';
 

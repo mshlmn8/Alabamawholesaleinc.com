@@ -3,7 +3,7 @@
 // or a bare SKU of a multi-variant product) asks for one more choice before
 // its line can be added.
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { resolveSkuLine, variantSku } from '../../lib/lines.js';
 
 const START_ROWS = 3;

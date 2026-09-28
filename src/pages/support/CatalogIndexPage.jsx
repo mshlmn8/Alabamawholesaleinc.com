@@ -2,7 +2,6 @@
 // expandable list of every SKU in each department. The "Browse the catalog"
 // destination.
 
-import React from 'react';
 import { PageHead } from './SupportShell.jsx';
 
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-');

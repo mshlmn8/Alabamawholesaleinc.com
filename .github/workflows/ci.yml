@@ -1,0 +1,77 @@
+# Lint, unit tests, migration checks, the production build and the Playwright
+# smoke test on every push to main and every pull request (AW-209).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      # Placeholder backend settings, for this job only: production builds
+      # refuse to run without them (AW-053). They point at no real project,
+      # and the smoke test aborts every request that leaves the preview server.
+      VITE_SUPABASE_URL: https://ci-placeholder.supabase.co
+      VITE_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Audit shipped dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Migration checks (PGlite)
+        run: npm run test:db
+
+      - name: Production build refuses missing backend settings
+        run: |
+          if out=$(VITE_SUPABASE_URL= VITE_SUPABASE_ANON_KEY= npx vite build --outDir "$RUNNER_TEMP/no-backend" 2>&1); then
+            echo "::error::vite build succeeded without VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY"
+            exit 1
+          fi
+          echo "$out" | grep -q "Production build stopped" || { echo "$out"; exit 1; }
+
+      - name: Build
+        run: npm run build
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke test
+        run: npm run test:e2e
+        env:
+          # Serve the dist/ built above instead of building again.
+          SMOKE_SKIP_BUILD: '1'
+
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore

@@ -1,7 +1,6 @@
 // Trade account application page: the "what you'll need" checklist, how the
 // process works, and — for a signed-in applicant — the current approval status.
 
-import React from 'react';
 import { COMPANY } from '../../data/content.js';
 import { APPLICATION_CHECKLIST } from '../../data/onboarding.js';
 import { ServiceUnavailable } from '../../components/ServiceUnavailable.jsx';

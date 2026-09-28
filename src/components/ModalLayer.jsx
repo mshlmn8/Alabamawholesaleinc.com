@@ -4,7 +4,7 @@
 // owns Escape, keeps Tab inside itself, receives focus on open and hands focus
 // back to the element that opened it on close.
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 const FOCUSABLE = [
@@ -90,26 +90,33 @@ function restoreFocus(entry) {
   }
 }
 
+// Captured during the first render, before any autoFocus inside the layer
+// moves focus. If the layer opens from inside another layer (cart -> sign in),
+// remember that layer's opener too in case it closes at the same time.
+function createEntry(onClose) {
+  const active = document.activeElement;
+  const fromLayer = portalRoot && portalRoot.contains(active);
+  const below = stack[stack.length - 1];
+  return {
+    activeAtOpen: active,
+    fallbackOpener: fromLayer ? (below?.activeAtOpen || below?.fallbackOpener || null) : null,
+    onClose,
+    container: null,
+    lastInside: null,
+  };
+}
+
 export function ModalLayer({ onClose, initialFocus, className = '', children }) {
   const ref = useRef(null);
-  // Captured during the first render, before any autoFocus inside the layer
-  // moves focus. If the layer opens from inside another layer (cart -> sign
-  // in), remember that layer's opener too in case it closes at the same time.
-  const [entry] = useState(() => {
-    const active = document.activeElement;
-    const fromLayer = portalRoot && portalRoot.contains(active);
-    const below = stack[stack.length - 1];
-    return {
-      activeAtOpen: active,
-      fallbackOpener: fromLayer ? (below?.activeAtOpen || below?.fallbackOpener || null) : null,
-      onClose,
-      container: null,
-      lastInside: null,
-    };
-  });
-  entry.onClose = onClose;
+  // This layer's record on the module-level stack; mutable on purpose, so it
+  // lives in a ref that is created once, on the first render.
+  const entryRef = useRef(null);
+  if (entryRef.current === null) entryRef.current = createEntry(onClose);
+  // Escape always calls the latest onClose.
+  useLayoutEffect(() => { entryRef.current.onClose = onClose; });
 
   useEffect(() => {
+    const entry = entryRef.current;
     const container = ref.current;
     entry.container = container;
     stack.push(entry);

@@ -2,7 +2,7 @@
 // files can be added now or emailed later. Controls stay disabled when the
 // account backend is not configured.
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { COMPANY } from '../data/content.js';
 import { useAuth } from '../lib/useAuth.js';
 import {

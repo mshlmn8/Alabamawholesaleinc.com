@@ -2,7 +2,6 @@
 // not reachable. Shared by the sign-in dialog and the account pages so the
 // wording stays identical everywhere.
 
-import React from 'react';
 import { COMPANY } from '../data/content.js';
 
 export function ServiceUnavailable({ what = 'Account sign-in', className = 'form-error', role = 'status' }) {

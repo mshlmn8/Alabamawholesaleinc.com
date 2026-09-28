@@ -1,6 +1,5 @@
 // Customer policy pages: delivery, privacy, and trade terms.
 
-import React from 'react';
 import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../../data/content.js';
 import { PageHead, PolicyNav, ContactStrip, CallOrEmail, PhoneLink, EmailLink, POLICY_LINKS } from './SupportShell.jsx';
 
@@ -113,6 +112,9 @@ export function PolicyPage({ kind, goHome, navigate }) {
       </PageHead>
       <div className="policy-layout">
         <PolicyNav current={kind} navigate={navigate} />
+        {/* Delegated handler for the [data-nav] cross-links in the policy text, which are
+            real buttons, so keyboard activation bubbles here too. */}
+        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
         <article className="policy-body" onClick={onBodyClick}>
           {policy.sections.map((section, i) => (
             <section key={section.heading} aria-labelledby={`policy-${kind}-${i}`}>

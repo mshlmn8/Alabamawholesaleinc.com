@@ -39,6 +39,17 @@ npm run dev
 
 Then open http://localhost:3000
 
+## Checks
+
+| Command | What it runs |
+| ------- | ------------ |
+| `npm run lint` | ESLint (flat config in `eslint.config.js`: React, React Hooks, jsx-a11y); warnings fail it |
+| `npm test` | Vitest unit and component tests (`src/**/*.test.{js,jsx}`, `scripts/**/*.test.mjs`, jsdom) |
+| `npm run test:db` | Replays `supabase/migrations` and the seed in an in-memory Postgres (PGlite) and runs the assertions in `supabase/tests/*.sql` |
+| `npm run test:e2e` | Builds the site and runs the Playwright smoke test in `tests/smoke` against `vite preview` (run `npx playwright install chromium` once first) |
+
+GitHub Actions (`.github/workflows/ci.yml`) runs all four, plus `npm audit --omit=dev --audit-level=high` and a check that the production build refuses to run without the Supabase settings. Dependabot (`.github/dependabot.yml`) opens weekly update PRs.
+
 ## Build for production
 
 ```bash

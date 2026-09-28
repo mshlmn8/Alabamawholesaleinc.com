@@ -1,7 +1,6 @@
 // Shared pieces for the customer support pages (contact, delivery, policies,
 // application, password reset). Same editorial system as the storefront.
 
-import React from 'react';
 import { COMPANY } from '../../data/content.js';
 
 export const DIRECTIONS_URL = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${COMPANY.addressLine1}, ${COMPANY.addressLine2}`)}`;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 
 import { IMG } from './data/theme.js';
 import { COMPANY, ANNOUNCEMENTS, STORAGE, HERO_SLIDES, ORDER_MINIMUM } from './data/content.js';
@@ -8,6 +8,7 @@ import { useCatalog } from './lib/useCatalog.js';
 import { submitOrder } from './lib/orders.js';
 import { lineKey, variantList, variantSku, requiresVariantChoice, resolveCartItems, normalizeCart } from './lib/lines.js';
 import { useMediaQuery } from './lib/useMediaQuery.js';
+import { priceForProfile } from './lib/pricing.js';
 import { heroImage, SIZES } from './lib/images.js';
 import { Picture } from './components/Picture.jsx';
 import { AuthModal } from './components/AuthModal.jsx';
@@ -23,13 +24,6 @@ import { ResetPasswordPage } from './pages/support/ResetPasswordPage.jsx';
 
 // Static support pages: #/<page> — see src/pages/support/.
 const SUPPORT_PAGES = ['catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply', 'reset-password'];
-
-// Display-only tier discounts. Saved quotes ignore this and price on the server.
-const TIER_DISCOUNT = { standard: 0, silver: 0.05, gold: 0.10 };
-const priceForProfile = (listPrice, profile) => {
-  if (profile?.status !== 'approved' || listPrice == null) return null;
-  return Number(listPrice) * (1 - (TIER_DISCOUNT[profile.pricing_tier] || 0));
-};
 
 const CAT_LABEL = {
   'TOBACCO': 'Tobacco', 'NOVELTIES': 'Novelties & Vapes', 'MERCHANDISE': 'Merchandise',
@@ -47,7 +41,9 @@ const safeReadJson = (key, fallback) => {
   try { const raw = window.localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
   catch { return fallback; }
 };
-const safeWriteJson = (key, value) => { try { window.localStorage.setItem(key, JSON.stringify(value)); } catch {} };
+const safeWriteJson = (key, value) => {
+  try { window.localStorage.setItem(key, JSON.stringify(value)); } catch { /* storage full or blocked: keep the in-memory value */ }
+};
 
 const productText = (p) => `${p.name} ${p.brand} ${p.cat} ${p.sub} ${p.sku} ${(p.variants || []).join(' ')}`.toLowerCase();
 const getSearchMatches = (products, query, limit = 10) => {
@@ -227,6 +223,9 @@ export default function App() {
   // ModalLayer so every dialog (including the auth modal) behaves the same.
 
   useEffect(() => {
+    // Re-keys stored lines once the live catalog arrives. Moves into the cart
+    // storage module in Phase 1 Part B (AW-045).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCart(current => normalizeCart(current, products));
   }, [products]);
 
@@ -375,7 +374,7 @@ function AgeGate({ onYes, onNo, tooYoung }) {
           </>
         ) : (
           <>
-            <h1>We're sorry —</h1>
+            <h1>We&apos;re sorry —</h1>
             <p>You must be 21 years or older to enter this site.</p>
           </>
         )}
@@ -409,6 +408,7 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, de
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- close the phone menu when the layout switches to desktop
   useEffect(() => { if (!isMobile) setMenuOpen(false); }, [isMobile]);
   useEffect(() => {
     const onDoc = (e) => {
@@ -469,7 +469,7 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, de
                 <button type="button" aria-label="Close search results" onClick={() => setResultsOpen(false)}>×</button>
               </div>
               <div className="aw-search-list">
-                {hits.length === 0 && <p>Try a brand (Geekbar, Backwoods, BIC) or a line ("energy drinks", "wraps").</p>}
+                {hits.length === 0 && <p>Try a brand (Geekbar, Backwoods, BIC) or a line (&quot;energy drinks&quot;, &quot;wraps&quot;).</p>}
                 {hits.map(p => (
                   <button key={p.id} type="button" onClick={() => pickResult(p.id)}>
                     <span className="sr-thumb">{p.img ? <img src={p.img} alt="" loading="lazy" /> : initials(p.name)}</span>
@@ -565,7 +565,7 @@ function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, de
 function MobileMenu({ onClose, departments, products, user, isAdmin, pickCategory, go }) {
   return (
     <ModalLayer onClose={onClose} className="aw-menu-layer">
-      <div className="overlay" onClick={onClose} />
+      <div className="overlay" aria-hidden="true" onClick={onClose} />
       <aside className="drawer drawer-left" role="dialog" aria-modal="true" aria-labelledby="aw-mobile-menu-title" id="aw-mobile-menu">
         <div className="drawer-head">
           <h2 id="aw-mobile-menu-title">Menu</h2>
@@ -657,7 +657,7 @@ function HeroCarousel({ slides }) {
   if (!active) return null;
 
   return (
-    <section className="home-carousel" role="region" aria-roledescription="carousel" aria-label="Featured photos and videos">
+    <section className="home-carousel" aria-roledescription="carousel" aria-label="Featured photos and videos">
       <div className="home-carousel-stage">
         {/* Photos render at their own pixel size (never enlarged). The first slide is
             the page's largest image, so it loads eagerly at high priority. */}
@@ -783,7 +783,7 @@ function HomePage(props) {
             </li>
             <li>
               <h3>We verify</h3>
-              <p>Our team checks your license with the state and approves most accounts within one business day. You'll get price-list access by email.</p>
+              <p>Our team checks your license with the state and approves most accounts within one business day. You&apos;ll get price-list access by email.</p>
             </li>
             <li>
               <h3>Order &amp; receive</h3>
@@ -855,7 +855,10 @@ function CategoryPage({ category, sub, ...props }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const isMobile = useMediaQuery(MOBILE_QUERY);
 
+  // Resets the filters when the department changes. AW-228 replaces this by
+  // keying CategoryPage on the department.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTagFilter([]);
     setHasVariants(false);
     setSearchQ('');
@@ -899,7 +902,7 @@ function CategoryPage({ category, sub, ...props }) {
     return (
       <section className="page-head">
         <h1>Department not found</h1>
-        <p>That department doesn't exist. <button className="text-link" onClick={props.goHome}>Back to home</button></p>
+        <p>That department doesn&apos;t exist. <button className="text-link" onClick={props.goHome}>Back to home</button></p>
       </section>
     );
   }
@@ -991,7 +994,7 @@ function CategoryPage({ category, sub, ...props }) {
 
       {isMobile && filtersOpen && (
         <ModalLayer onClose={closeFilters} className="aw-filter-layer">
-          <div className="overlay" onClick={closeFilters} />
+          <div className="overlay" aria-hidden="true" onClick={closeFilters} />
           <aside className="drawer filter-drawer" role="dialog" aria-modal="true" aria-labelledby="aw-filter-title" id="aw-filter-drawer">
             <div className="drawer-head">
               <h2 id="aw-filter-title">Filter &amp; Sort</h2>
@@ -1047,7 +1050,9 @@ function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLi
   const [desiredQty, setDesiredQty] = useState(1);
   const [chosenVariant, setChosenVariant] = useState(null);
   const [variantError, setVariantError] = useState(false);
+  // Resets the picker when another product opens in the same page instance.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDesiredQty(1);
     setChosenVariant(null);
     setVariantError(false);
@@ -1170,7 +1175,7 @@ function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHo
     shipStreet: '', shipCity: '', shipState: '', shipZip: '',
   });
   const set = k => e => setData({ ...data, [k]: e.target.value });
-  const [refNum] = useState(`ALW-Q-${Math.floor(Math.random() * 90000) + 10000}`);
+  const [refNum] = useState(() => `ALW-Q-${Math.floor(Math.random() * 90000) + 10000}`);
   const [receipt, setReceipt] = useState(null);
   const [submitError, setSubmitError] = useState(null);
   const [sending, setSending] = useState(false);
@@ -1305,7 +1310,7 @@ function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHo
 // =============================================================================
 // FOOTER / DIALOGS / DRAWER
 // =============================================================================
-function Footer({ goHome, goCategory, departments, onLoginClick, onApplyClick, onNewArrivals, onBestsellers, navigate }) {
+function Footer({ goCategory, departments, onLoginClick, onApplyClick, onNewArrivals, onBestsellers, navigate }) {
   return (
     <footer className="footer-main">
       <div className="container">
@@ -1356,7 +1361,11 @@ function Footer({ goHome, goCategory, departments, onLoginClick, onApplyClick, o
 function HelpDialog({ onClose, onApply }) {
   return (
     <ModalLayer onClose={onClose}>
+      {/* Backdrop click is a mouse shortcut; Escape (ModalLayer) and the Close button are the keyboard paths. */}
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div className="overlay" onClick={onClose}>
+        {/* Keeps clicks inside the dialog from reaching the backdrop. */}
+        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
         <div className="dialog scale-in" role="dialog" aria-modal="true" aria-labelledby="help-title" onClick={(e) => e.stopPropagation()}>
           <div className="dialog-top"><p className="eyebrow">ACCOUNT SERVICE</p><button className="dialog-close" onClick={onClose} aria-label="Close">×</button></div>
           <p className="kicker">WE ANSWER FAST</p>
@@ -1386,7 +1395,7 @@ function CartDrawer({ open, onClose, items, total, addLine, decLine, removeLine,
   const pendingBuyer = Boolean(profile) && !isApprovedBuyer;
   return (
     <ModalLayer onClose={onClose}>
-      <div className="overlay overlay-soft" onClick={onClose} />
+      <div className="overlay overlay-soft" aria-hidden="true" onClick={onClose} />
       <aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title">
         <div className="drawer-head">
           <h2 id="cart-title">Your order</h2>

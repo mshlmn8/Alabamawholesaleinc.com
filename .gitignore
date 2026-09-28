@@ -4,6 +4,12 @@ dist-ssr
 .vite
 *.log
 .DS_Store
+
+# Test output (Playwright traces and reports, coverage).
+test-results/
+playwright-report/
+blob-report/
+coverage/
 .env
 .env.*
 !.env.example

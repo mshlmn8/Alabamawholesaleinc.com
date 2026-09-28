@@ -29,6 +29,13 @@ supabase/migrations/20260927180000_application_documents.sql
 supabase/seed/products.sql
 ```
 
+Before applying a new migration, run `npm run test:db`. It replays every
+migration and the seed in an in-memory Postgres with stubbed Supabase `auth`
+and `storage` schemas, then runs the RLS and function assertions in
+`supabase/tests/*.sql` (see `scripts/check-migrations.mjs` for the helpers).
+CI runs it on every pull request. Add a test file there with each new
+migration.
+
 `supabase/seed/products.sql` is generated from `src/data/products.js` by
 `npm run seed`; re-run it and re-apply the file whenever the catalog changes so
 the live rows keep the same ids, SKUs, names, variants, photos, descriptions
@@ -114,7 +121,7 @@ profiles do not. The browser does not choose the saved price: `submit_quote`
 reads `products.price` and `pricing_tiers` and writes `order_items.unit_price`.
 
 To add new tiers: insert a row in `pricing_tiers` and add the discount to
-`TIER_DISCOUNT` in `src/App.jsx`.
+`TIER_DISCOUNT` in `src/lib/pricing.js`.
 
 ## Row-level security summary
 

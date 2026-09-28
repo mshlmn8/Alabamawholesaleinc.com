@@ -2,12 +2,12 @@
 // storefront recognises the recovery fragment and shows this page), or
 // directly at #/reset-password by a signed-in account.
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { COMPANY } from '../../data/content.js';
 import { ServiceUnavailable } from '../../components/ServiceUnavailable.jsx';
 import { PageHead, CallOrEmail } from './SupportShell.jsx';
 
-export function ResetPasswordPage({ goHome, navigate, auth, onRequestReset, onLoginClick }) {
+export function ResetPasswordPage({ navigate, auth, onRequestReset, onLoginClick }) {
   const { session, loading, recovery, linkError, updatePassword, clearRecovery, isBackendConfigured } = auth;
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');

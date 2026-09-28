@@ -1,7 +1,6 @@
 // Contact & visit: click-to-call, email, warehouse address with directions,
 // hours, and will-call pickup. Facts come from COMPANY in data/content.js.
 
-import React from 'react';
 import { COMPANY } from '../../data/content.js';
 import { PageHead, DIRECTIONS_URL } from './SupportShell.jsx';
 
