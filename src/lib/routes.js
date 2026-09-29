@@ -133,27 +133,40 @@ const productIdOf = (id) => (/^\d{1,9}$/.test(String(id)) ? Number(id) : null);
 // (department and line keys as the catalog spells them, numeric product ids)
 // or a not-found route. Unknown things are never echoed into headings,
 // breadcrumbs or titles.
+//
+// A not-found route for an address that cannot name anything in any catalog
+// (/product/abc, /product/0, /product with no id, /category with no key)
+// carries malformed: true. Only the other ones (/product/99999, an unknown
+// department or line) may still turn up in the live catalog, so only they
+// wait for it (App.jsx, AW-204); a malformed one is "not found" at once
+// (AW-188).
 export function resolveRoute(raw, { departments = [], products = [] } = {}) {
   if (raw.page === 'category') {
     const slug = slugify(raw.dept);
-    const dept = slug ? departments.find((d) => slugify(d.key) === slug) : null;
+    if (!slug) return { page: 'not-found', kind: 'department', malformed: true };
+    const dept = departments.find((d) => slugify(d.key) === slug);
     if (!dept) return { page: 'not-found', kind: 'department' };
     let sub = null;
     if (raw.sub != null) {
       const subSlug = slugify(raw.sub);
-      sub = subSlug ? dept.subs.find((s) => slugify(s) === subSlug) || null : null;
+      if (!subSlug) return { page: 'not-found', kind: 'line', category: dept.key, malformed: true };
+      sub = dept.subs.find((s) => slugify(s) === subSlug) || null;
       if (!sub) return { page: 'not-found', kind: 'line', category: dept.key };
     }
     return { page: 'category', category: dept.key, sub, query: raw.query || EMPTY_CATEGORY_QUERY };
   }
   if (raw.page === 'product') {
     const productId = productIdOf(raw.id);
-    if (productId === null || productId < 1 || !products.some((p) => Number(p.id) === productId)) {
-      return { page: 'not-found', kind: 'product' };
-    }
+    if (productId === null || productId < 1) return { page: 'not-found', kind: 'product', malformed: true };
+    if (!products.some((p) => Number(p.id) === productId)) return { page: 'not-found', kind: 'product' };
     return { page: 'product', productId };
   }
-  if (raw.page === 'not-found') return { page: 'not-found', kind: raw.kind || 'page' };
+  if (raw.page === 'not-found') {
+    const kind = raw.kind || 'page';
+    // parseUrl gives a product or department kind only to an address that
+    // is missing its id or key.
+    return kind === 'page' ? { page: 'not-found', kind } : { page: 'not-found', kind, malformed: true };
+  }
   return raw;
 }
 

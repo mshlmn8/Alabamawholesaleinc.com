@@ -108,9 +108,20 @@ describe('resolveRoute (AW-188)', () => {
   it('never invents departments, lines or products', () => {
     expect(resolve('/category/nope')).toEqual({ page: 'not-found', kind: 'department' });
     expect(resolve('/category/tobacco/nonexistent-line')).toEqual({ page: 'not-found', kind: 'line', category: 'TOBACCO' });
-    for (const id of ['0', '99999', 'abc', '-1', '1.5', '1abc', ' ', '1e2', '0x10']) {
-      expect(resolve(`/product/${encodeURIComponent(id)}`)).toEqual({ page: 'not-found', kind: 'product' });
+    expect(resolve('/product/99999')).toEqual({ page: 'not-found', kind: 'product' });
+    for (const id of ['0', 'abc', '-1', '1.5', '1abc', ' ', '1e2', '0x10']) {
+      expect(resolve(`/product/${encodeURIComponent(id)}`)).toEqual({ page: 'not-found', kind: 'product', malformed: true });
     }
+  });
+
+  it('marks addresses that no catalog could match as malformed (AW-188, AW-204)', () => {
+    // These never wait for the live catalog: they are not found at once.
+    expect(resolve('/product')).toEqual({ page: 'not-found', kind: 'product', malformed: true });
+    expect(resolve('/category')).toEqual({ page: 'not-found', kind: 'department', malformed: true });
+    expect(resolve('/category/%20')).toEqual({ page: 'not-found', kind: 'department', malformed: true });
+    expect(resolve('/category/tobacco/---')).toEqual({ page: 'not-found', kind: 'line', category: 'TOBACCO', malformed: true });
+    expect(resolve('/nowhere')).toEqual({ page: 'not-found', kind: 'page' });
+    expect(resolve('/product/1/2')).toEqual({ page: 'not-found', kind: 'page' });
   });
 
   it('reads product ids as numbers, so /product/01 is product 1', () => {

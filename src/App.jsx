@@ -105,7 +105,8 @@ export default function App() {
   // A product, department or line that isn't in the bundled catalog may be in
   // the live one (AW-204): until that is on screen the page says it is
   // loading, or that the catalog didn't load, instead of "not found".
-  const catalogPending = found.page === 'not-found' && CATALOG_KINDS.includes(found.kind) && !catalog.settled;
+  // An address that can't name anything (/product/abc) is not found at once.
+  const catalogPending = found.page === 'not-found' && CATALOG_KINDS.includes(found.kind) && !found.malformed && !catalog.settled;
   const pendingAs = catalogPending ? (catalog.status === 'loading' ? 'loading' : 'error') : null;
   const route = useMemo(() => (pendingAs ? { ...found, catalog: pendingAs } : found), [found, pendingAs]);
   useLayoutEffect(() => {

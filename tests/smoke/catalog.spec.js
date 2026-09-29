@@ -94,6 +94,21 @@ test('a product only the live catalog has shows "Loading product…", not "not f
   expect(errors).toEqual([]);
 });
 
+test('an address that cannot name a product is "not found" at once, also while the catalog loads (AW-188)', async ({ page }) => {
+  const errors = trackErrors(page);
+  let fail = false;
+  await catalog(page, () => (fail ? { fail } : { delay: 3000 }));
+  for (const url of ['/product/abc', '/product/0', '/product', '/category']) {
+    await page.goto(url);
+    await expect(page.getByRole('heading', { level: 1, name: /not found$/ })).toBeVisible({ timeout: 1000 });
+  }
+  // Nor does a failed catalog load turn it into "couldn't load".
+  fail = true;
+  await page.goto('/product/abc');
+  await expect(page.getByRole('heading', { level: 1, name: 'Product not found' })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test('reached from another page, the product takes focus from the loading view (AW-204, AW-041)', async ({ page }) => {
   const errors = trackErrors(page);
   await catalog(page, () => ({ rows: [...seedRows(), EXTRA], delay: 1500 }));
