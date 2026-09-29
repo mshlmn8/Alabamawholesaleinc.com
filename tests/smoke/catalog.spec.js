@@ -29,7 +29,7 @@ function trackErrors(page) {
 // A product the bundled catalog doesn't have (test values).
 const EXTRA = {
   id: 9001, name: 'Catalog test product', brand: 'Test Brand', cat: 'TOBACCO', sub: 'Cigars & Cigarillos', sku: 'AW-TEST-9001',
-  flavors: 0, variants: [], img: null, tag: null, price: 12.5, active: true, description: 'Only in the live catalog.', sell_unit: '',
+  flavors: 0, variants: [], img: null, tag: null, active: true, description: 'Only in the live catalog.', sell_unit: '',
 };
 
 // Answers the products request with `answer()`: 'fail' (a server error),

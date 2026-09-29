@@ -5,18 +5,25 @@
 // savedQty is this product's quantity on the list of lines from an older
 // cart that still need a variant (AW-354): it fills in the quantity, and
 // adding a variant uses it up.
+//
+// The price is the signed-in buyer's, from priceOf(productId, variant) (App,
+// src/lib/prices.jsx); products carry none (AW-003).
 
 import { useState } from 'react';
 import { lineKey, variantList, variantSku, requiresVariantChoice } from '../lib/lines.js';
-import { priceForProfile } from '../lib/pricing.js';
-import { catLabel, formatMoney, initials } from '../lib/format.js';
+import { priceLabel } from '../lib/pricing.js';
+import { catLabel, initials } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 import { Picture } from '../components/Picture.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
 
-export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLine, products, onLoginClick, onApplyClick, savedQty = 0 }) {
+const NO_PRICES = () => null;
+
+export function ProductPage({
+  productId, profile, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, products, onLoginClick, onApplyClick, savedQty = 0,
+}) {
   const [desiredQty, setDesiredQty] = useState(() => savedQty || 1);
   // What is left of the saved quantity after each add becomes the next one.
   const [prefilledFrom, setPrefilledFrom] = useState(savedQty);
@@ -36,7 +43,7 @@ export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine
   const key = lineKey(p.id, selected);
   const qty = cart[key] || 0;
   const related = products.filter(x => x.sub === p.sub && Number(x.id) !== Number(p.id)).slice(0, 4);
-  const price = priceForProfile(p.price, profile);
+  const price = isApprovedBuyer ? priceOf(p.id, selected) : null;
   const handleAdd = () => {
     if (choiceRequired && !chosenVariant) {
       setVariantError(true);
@@ -74,8 +81,8 @@ export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine
           {savedQty > 0 && <p className="pd-saved">{`From your last visit: quantity ${savedQty}.${choiceRequired ? ' Choose a variant, then add it.' : ''}`}</p>}
           {variantError && <p className="form-error" role="alert">Select a variant before adding this product.</p>}
           <div className="pd-price">
-            {isApprovedBuyer && price != null
-              ? <><b>{formatMoney(price)}</b><span>{`Wholesale unit price · ${variantSku(p.sku, selected)}`}</span></>
+            {isApprovedBuyer
+              ? <><b>{priceLabel(price, pricesStatus)}</b><span>{`Wholesale unit price · ${variantSku(p.sku, selected)}`}</span></>
               : profile
               ? <><b>Pending</b><span>Pricing unlocks after your account is approved</span></>
               : <><b>Sign in</b><span>Wholesale pricing is visible to approved trade accounts</span></>}
@@ -109,7 +116,7 @@ export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine
             <Link to={department}>View department <span aria-hidden="true">↗</span></Link>
           </div>
           <div className="card-grid">
-            {related.map(r => <ProductCard key={r.id} p={r} profile={profile} isApprovedBuyer={isApprovedBuyer} cart={cart} addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} />)}
+            {related.map(r => <ProductCard key={r.id} p={r} profile={profile} isApprovedBuyer={isApprovedBuyer} priceOf={priceOf} pricesStatus={pricesStatus} cart={cart} addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} />)}
           </div>
         </section>
       )}

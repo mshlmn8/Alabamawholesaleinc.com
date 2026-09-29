@@ -2,6 +2,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { QuotePage } from './QuotePage.jsx';
+import { submitOrder } from '../lib/orders.js';
 
 // submitOrder is the only way out; record what it is asked to send.
 const sent = vi.hoisted(() => []);
@@ -12,7 +13,7 @@ vi.mock('../lib/orders.js', () => ({
   }),
 }));
 
-const ITEMS = [{ lineKey: '14', productId: 14, variant: null, name: 'Kite cigarette tobacco', sku: 'AW-KITE', qty: 2, unitPrice: 10, lineTotal: 20 }];
+const ITEMS = [{ lineKey: '14', productId: 14, variant: null, name: 'Kite cigarette tobacco', sku: 'AW-KITE', qty: 2, price: 10 }];
 const A = { id: 'a', business: 'Alpha Food Mart', name: 'Alice Alpha', email: 'alpha@example.test', phone: '205-000-0001', status: 'approved' };
 const B = { id: 'b', business: 'Bravo Tobacco Outlet', name: 'Bea Bravo', email: 'bravo@example.test', phone: '', status: 'pending' };
 
@@ -138,6 +139,27 @@ describe('QuotePage and a catalog that changed', () => {
     expect(screen.queryByText(/The catalog changed/)).toBeNull();
   });
 
+  it('shows the total the server saved (AW-351)', async () => {
+    sent.length = 0;
+    submitOrder.mockImplementationOnce(async ({ refNum }) => ({ ok: true, order: { id: 'o2', ref_num: refNum, subtotal: 1234.5, total_units: 7 } }));
+    const checkCart = vi.fn(async () => ({ ok: true, items: ITEMS }));
+    render(page({ profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true, pricesStatus: 'ready', checkCart }));
+    fill();
+    await act(async () => { submitForm(); });
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Thank you/));
+    expect(screen.getByText('Saved total: $1,234.50 · 7 units')).toBeTruthy();
+  });
+
+  it('shows no saved total for an unpriced quote', async () => {
+    sent.length = 0;
+    const checkCart = vi.fn(async () => ({ ok: true, items: ITEMS }));
+    render(page({ profile: null, account: 'signed-out', isApprovedBuyer: false, checkCart }));
+    fill();
+    await act(async () => { submitForm(); });
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Thank you/));
+    expect(screen.queryByText(/Saved total/)).toBeNull();
+  });
+
   it('sends nothing when the catalog can’t be checked', async () => {
     sent.length = 0;
     const checkCart = vi.fn(async () => ({ ok: false, error: { kind: 'network' } }));
@@ -150,3 +172,17 @@ describe('QuotePage and a catalog that changed', () => {
   });
 });
 
+describe('QuotePage totals for an approved buyer', () => {
+  it('shows the estimate, or that prices are loading or on request', () => {
+    const view = render(page({ profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true, total: 20, pricesStatus: 'ready' }));
+    const total = () => document.querySelector('.checkout-total').textContent;
+    expect(total()).toBe('2 units$20.00');
+    const unpriced = [{ ...ITEMS[0], price: null }];
+    view.rerender(page({ items: unpriced, profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true, total: 0, pricesStatus: 'loading' }));
+    expect(total()).toBe('2 unitsLoading prices…');
+    // No order-minimum notice while the total isn't known.
+    expect(screen.queryByText(/The order minimum is/)).toBeNull();
+    view.rerender(page({ items: unpriced, profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true, total: 0, pricesStatus: 'ready' }));
+    expect(total()).toBe('2 unitsPrice on request');
+  });
+});

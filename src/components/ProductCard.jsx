@@ -1,14 +1,17 @@
 // Catalog card: photo, name, brand/SKU, the price or pricing lock, and the
-// add/stepper/choose control.
+// add/stepper/choose control. The price is the signed-in buyer's, from
+// priceOf(productId) (App, src/lib/prices.jsx); products carry none (AW-003).
 
 import { lineKey, parseLineKey, variantList, requiresVariantChoice } from '../lib/lines.js';
-import { priceForProfile } from '../lib/pricing.js';
-import { formatMoney, initials } from '../lib/format.js';
+import { priceLabel } from '../lib/pricing.js';
+import { initials } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { Picture } from './Picture.jsx';
 
-export function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLine, onLoginClick }) {
+const NO_PRICES = () => null;
+
+export function ProductCard({ p, profile, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, onLoginClick }) {
   const productRoute = { page: 'product', productId: p.id };
   const variants = variantList(p);
   const choiceRequired = requiresVariantChoice(p);
@@ -17,7 +20,7 @@ export function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLin
   const qty = choiceRequired
     ? Object.entries(cart).reduce((sum, [k, q]) => (parseLineKey(k).productId === Number(p.id) ? sum + Number(q) : sum), 0)
     : (Number(cart[key]) || 0);
-  const price = priceForProfile(p.price, profile);
+  const price = isApprovedBuyer ? priceOf(p.id, onlyVariant) : null;
   return (
     <article className="content-card">
       <Link className="card-link" to={productRoute} aria-label={`${p.name} details`}>
@@ -31,8 +34,8 @@ export function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLin
         <p className="card-detail">{`${p.brand}${p.flavors ? ` · ${p.flavors} variants` : ''} · ${p.sku}`}</p>
       </Link>
       <span className="card-meta card-actions">
-        {isApprovedBuyer && price != null ? (
-          <span>{formatMoney(price)}</span>
+        {isApprovedBuyer ? (
+          <span>{priceLabel(price, pricesStatus)}</span>
         ) : profile ? (
           <span className="lock">Pricing after approval</span>
         ) : (

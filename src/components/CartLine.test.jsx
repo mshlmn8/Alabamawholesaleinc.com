@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { CartLine } from './CartLine.jsx';
 
-const item = { lineKey: '14', productId: 14, variant: null, needsVariant: false, name: 'Kite', sku: 'AW-KITE', qty: 40, img: null, price: 41.1635 };
+const item = { lineKey: '14', productId: 14, variant: null, needsVariant: false, name: 'Kite', sku: 'AW-KITE', qty: 40, img: null, price: 12.34 };
 const handlers = () => ({ onInc: vi.fn(), onDec: vi.fn(), onRemove: vi.fn(), onChoose: vi.fn() });
 const renderLine = (props) => render(<ul><CartLine {...props} /></ul>);
 
@@ -11,8 +11,8 @@ describe('CartLine', () => {
   it('drawer layout: unit price after the SKU, no line total', () => {
     const h = handlers();
     renderLine({ item, layout: 'drawer', showPrice: true, ...h });
-    expect(screen.getByText('AW-KITE · $41.16')).toBeTruthy();
-    expect(screen.queryByText('$1,646.54')).toBeNull();
+    expect(screen.getByText('AW-KITE · $12.34')).toBeTruthy();
+    expect(screen.queryByText('$493.60')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Increase quantity' }));
     fireEvent.click(screen.getByRole('button', { name: 'Decrease quantity' }));
     fireEvent.click(screen.getByRole('button', { name: 'Remove Kite' }));
@@ -23,8 +23,23 @@ describe('CartLine', () => {
 
   it('checkout layout: "each" price and a line total', () => {
     renderLine({ item, layout: 'checkout', showPrice: true, ...handlers() });
-    expect(screen.getByText('AW-KITE · $41.16 each')).toBeTruthy();
-    expect(screen.getByText('$1,646.54')).toBeTruthy();
+    expect(screen.getByText('AW-KITE · $12.34 each')).toBeTruthy();
+    expect(screen.getByText('$493.60')).toBeTruthy();
+  });
+
+  it('the line total is each x quantity to the cent (AW-077)', () => {
+    // 0.10 x 3 is 0.30000000000000004 in floats.
+    renderLine({ item: { ...item, price: 0.1, qty: 3 }, layout: 'checkout', showPrice: true, ...handlers() });
+    expect(screen.getByText('AW-KITE · $0.10 each')).toBeTruthy();
+    expect(document.querySelector('.line-total').textContent).toBe('$0.30');
+  });
+
+  it('says why an approved buyer’s line has no price', () => {
+    const view = renderLine({ item: { ...item, price: null }, layout: 'checkout', showPrice: true, pricesStatus: 'loading', ...handlers() });
+    expect(screen.getByText('AW-KITE · Loading price…')).toBeTruthy();
+    expect(document.querySelector('.line-total')).toBeNull();
+    view.rerender(<ul><CartLine item={{ ...item, price: null }} layout="drawer" showPrice pricesStatus="ready" {...handlers()} /></ul>);
+    expect(screen.getByText('AW-KITE · Price on request')).toBeTruthy();
   });
 
   it('hides prices when showPrice is off', () => {

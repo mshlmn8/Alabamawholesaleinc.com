@@ -39,7 +39,8 @@
 //
 // The query pages through the table in CATALOG_PAGE_SIZE ranges, so the
 // catalog is never cut off at PostgREST's row limit, and asks only for the
-// columns the storefront uses.
+// columns the storefront uses. The catalog has no prices (AW-003): approved
+// buyers' prices come from src/lib/prices.jsx.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase as defaultClient } from './supabase.js';
@@ -61,19 +62,34 @@ export const CATALOG_TIMEOUT_MS = 15000;
 export const CATALOG_PAGE_SIZE = 1000;
 const MAX_PAGES = 50;
 
-// The columns the storefront reads. updated_at is left out. price is still
-// read here until prices move behind the server (Phase 2, AW-003): remove it
-// from this list then.
-export const CATALOG_COLUMNS = 'id,name,brand,cat,sub,sku,flavors,variants,img,tag,price,active,description,sell_unit';
+// The columns the storefront reads. updated_at is left out, and so is price:
+// from supabase/migrations/20260928120000_price_boundary.sql guests and
+// signed-in accounts can't read it (a select naming it, or select('*'), fails
+// with 42501), and nothing but my_prices() hands prices out. A column added to
+// products needs its own `grant select (<column>)` in that migration's style
+// before it can be listed here.
+// TODO(owner): What is the real wholesale list price of each of the 368 SKUs? The prices in the database are placeholders; load the real ones through Admin -> Products or a private SQL file under supabase/private/ (BACKEND.md, "Loading your list prices"). (AW-002)
+export const CATALOG_COLUMNS = 'id,name,brand,cat,sub,sku,flavors,variants,img,tag,active,description,sell_unit';
+// Every database since 20260927120000_product_copy.sql has these (the
+// Phase 1 list without price).
+export const CATALOG_BASE_COLUMNS = 'id,name,brand,cat,sub,sku,flavors,variants,img,tag,active,description,sell_unit';
+// What a load tries, in order, while the database answers 42703 (a column
+// it doesn't have, i.e. a missing migration). '*' works only on a database
+// from before 20260928120000, where every column is readable.
+export const CATALOG_COLUMN_FALLBACKS = [...new Set([CATALOG_COLUMNS, CATALOG_BASE_COLUMNS, '*'])];
 
 const STATIC_BY_ID = new Map(STATIC_PRODUCTS.map((p) => [Number(p.id), p]));
 
 // Live rows in the shape the storefront uses. Rows saved before the product
 // copy columns were filled (supabase/migrations/20260927120000_product_copy.sql
 // adds them with '' as the default) take the bundled copy's description and
-// sell unit for the same id.
+// sell unit for the same id. A price that came along (select('*') on a
+// database from before 20260928120000) is dropped: prices come only from
+// usePrices().
 export function hydrateProducts(rows, bundled = STATIC_BY_ID) {
-  return rows.map((p) => {
+  return rows.map((row) => {
+    const p = { ...row };
+    delete p.price;
     const local = bundled.get(Number(p.id));
     return {
       ...p,
@@ -118,14 +134,18 @@ function failure(err, timedOut) {
 
 // One load of the live catalog: { ok: true, rows } or { ok: false, error }.
 // Gives up after timeoutMs. A table without one of CATALOG_COLUMNS (a
-// database that is missing a migration) is read with select('*') instead.
-export async function loadCatalog(client, { timeoutMs = CATALOG_TIMEOUT_MS } = {}) {
+// database that is missing a migration) is read with the next column list in
+// CATALOG_COLUMN_FALLBACKS instead.
+export async function loadCatalog(client, { timeoutMs = CATALOG_TIMEOUT_MS, fallbacks = CATALOG_COLUMN_FALLBACKS } = {}) {
   const controller = typeof AbortController === 'function' ? new AbortController() : null;
   const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : 0;
   const signal = controller?.signal || null;
   try {
-    let result = await fetchCatalogRows(client, { signal });
-    if (result.error?.code === '42703') result = await fetchCatalogRows(client, { signal, columns: '*' });
+    let result = null;
+    for (const columns of fallbacks) {
+      result = await fetchCatalogRows(client, { signal, columns });
+      if (result.error?.code !== '42703') break;
+    }
     if (result.error) return { ok: false, error: failure(result.error, !!signal?.aborted) };
     if (!result.rows.length) return { ok: false, error: { kind: 'empty', message: 'The live catalog has no active products.' } };
     return { ok: true, rows: result.rows };

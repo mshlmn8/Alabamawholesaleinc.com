@@ -1,5 +1,5 @@
 // The useCart hook over cart storage (AW-045, AW-046, AW-189, AW-354, AW-083).
-// Fixtures carry test prices only.
+// Products carry no prices (AW-003); the test prices come from priceOf.
 import { StrictMode } from 'react';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,10 +7,12 @@ import { useCart } from './cart.js';
 import { GUEST, OLD_CART_KEY, cartKey, legacyListKey, resetCartStoreForTests } from './cartStorage.js';
 
 const P = [
-  { id: 1, sku: 'AW-SS', name: 'Cigarillos', variants: ['Diamond', 'Red'], price: 10 },
-  { id: 14, sku: 'AW-KITE', name: 'Kite', variants: [], price: 20 },
-  { id: 20, sku: 'AW-ONE', name: 'One', variants: ['Only'], price: 5 },
+  { id: 1, sku: 'AW-SS', name: 'Cigarillos', variants: ['Diamond', 'Red'] },
+  { id: 14, sku: 'AW-KITE', name: 'Kite', variants: [] },
+  { id: 20, sku: 'AW-ONE', name: 'One', variants: ['Only'] },
 ];
+const pricesFrom = (table) => (id) => table[id] ?? null;
+const PRICE_OF = pricesFrom({ 1: 10, 14: 20, 20: 5 });
 const A = '11111111-2222-4333-8444-555555555555';
 const B = '99999999-8888-4777-8666-555555555555';
 
@@ -98,10 +100,13 @@ describe('useCart', () => {
     expect(stored(cartKey(GUEST))).toEqual({ 14: 1, '20::only': 1 });
   });
 
-  it('prices lines for approved accounts and never prices unavailable lines', () => {
+  it('prices lines through priceOf and never prices unavailable lines', () => {
     store(cartKey(A), { 14: 2, 999: 1 });
-    const profile = { status: 'approved', pricing_tier: 'standard' };
-    const { result } = renderHook(() => useTestCart({ owner: A, profile }));
+    const { result, rerender } = renderHook((props) => useTestCart(props), { initialProps: { owner: A } });
+    expect(result.current.items.map((i) => i.price)).toEqual([null, null]);
+    expect(result.current.total).toBe(0);
+    // The buyer's prices arrive.
+    rerender({ owner: A, priceOf: PRICE_OF });
     expect(result.current.items.map((i) => i.price)).toEqual([20, null]);
     expect(result.current.total).toBe(40);
   });
@@ -133,14 +138,16 @@ describe('useCart', () => {
     expect(result.current.count).toBe(0);
   });
 
-  it('prices the stored cart against a catalog loaded again (AW-191)', () => {
-    const { result } = renderHook(() => useTestCart({ owner: GUEST, profile: { status: 'approved', pricing_tier: 'standard' } }));
+  it('prices the stored cart against a catalog and prices loaded again (AW-191)', () => {
+    const { result } = renderHook(() => useTestCart({ owner: GUEST, priceOf: PRICE_OF }));
     act(() => result.current.addLine(14, null, 2));
     // Another tab added a line the page has not drawn yet.
     window.localStorage.setItem(cartKey(GUEST), JSON.stringify({ 14: 2, '20::only': 1 }));
-    const next = P.filter(p => p.id !== 20).map(p => (p.id === 14 ? { ...p, price: 25 } : p));
-    const items = result.current.itemsFor(next);
+    const next = P.filter(p => p.id !== 20);
+    const items = result.current.itemsFor(next, pricesFrom({ 14: 25 }));
     expect(items.map(i => [i.lineKey, i.qty, i.price, i.unavailable])).toEqual([['14', 2, 25, null], ['20::only', 1, null, 'product']]);
+    // Without new prices, the ones on screen are used.
+    expect(result.current.itemsFor(P).map(i => i.price)).toEqual([20, 5]);
   });
 });
 

@@ -3,7 +3,7 @@
 // older cart that still need a variant (AW-354) and lines that can no longer
 // be ordered (AW-083).
 
-import { formatMoney } from '../lib/format.js';
+import { totalLabel } from '../lib/pricing.js';
 import { Link } from '../lib/router.js';
 import { ModalLayer } from './ModalLayer.jsx';
 import { CartLine } from './CartLine.jsx';
@@ -11,7 +11,7 @@ import { SavedLinesNotice, UnavailableNotice } from './CartNotices.jsx';
 
 export function CartDrawer({
   open, onClose, items, total, addLine, decLine, removeLine, removeLines, legacy = [], onDismissLegacy,
-  profile, isApprovedBuyer, onLoginClick,
+  profile, isApprovedBuyer, pricesStatus = 'ready', onLoginClick,
 }) {
   if (!open) return null;
   const unavailable = items.filter(it => it.unavailable);
@@ -33,7 +33,7 @@ export function CartDrawer({
           {items.length > 0 && (
             <ul className="drawer-lines" aria-label="Items in your order">
               {items.map(it => (
-                <CartLine key={it.lineKey} item={it} layout="drawer" showPrice={isApprovedBuyer}
+                <CartLine key={it.lineKey} item={it} layout="drawer" showPrice={isApprovedBuyer} pricesStatus={pricesStatus}
                           onInc={() => addLine(it.productId, it.variant)} onDec={() => decLine(it.lineKey)}
                           onRemove={() => removeLine(it.lineKey)} onChoose={onClose} />
               ))}
@@ -44,7 +44,7 @@ export function CartDrawer({
           <div className="drawer-total">
             <span>Estimated total</span>
             {isApprovedBuyer
-              ? <span>{formatMoney(total)}</span>
+              ? <span>{totalLabel(items, total, pricesStatus)}</span>
               : <span className="drawer-total-note">{pendingBuyer ? 'Pricing unlocks when your account is approved' : 'Sign in for pricing'}</span>}
           </div>
           {items.length > 0 && (

@@ -171,17 +171,16 @@ function unavailableLine(key, productId, qty, product, variantLabel, reason) {
     sku: product?.sku || '',
     qty,
     img: product?.img || null,
-    listPrice: null,
   };
 }
 
 // The cart's lines against the catalog, in stored order. Each item is
 // { lineKey, productId, variant, needsVariant, unavailable, name, sku, qty,
-// img, listPrice }:
+// img }. Prices are not part of the catalog (AW-003); cart.js adds them.
 //   needsVariant  a bare line of a product with several variants (a reorder
 //                 that lost its variant); the buyer chooses one
 //   unavailable   null, or 'product' / 'variant' for a line that can no
-//                 longer be ordered (AW-083); listPrice is null
+//                 longer be ordered (AW-083)
 // Options:
 //   settled  false while the live catalog is still loading: lines it may yet
 //            know are left out for now instead of being flagged
@@ -212,7 +211,6 @@ export function resolveCartItems(cart, products, { settled = true, known = [] } 
         sku: product.sku,
         qty: n,
         img: product.img,
-        listPrice: Number(product.price),
       }];
     }
     const variant = slug ? canonicalVariant(product, slug) : (variants.length === 1 ? variants[0] : null);
@@ -231,7 +229,6 @@ export function resolveCartItems(cart, products, { settled = true, known = [] } 
       sku: variantSku(product.sku, variant),
       qty: n,
       img: product.img,
-      listPrice: Number(product.price),
     }];
   });
 }

@@ -1,16 +1,21 @@
-// Cart helpers (AW-330). Fixtures and list prices are test values.
+// Cart helpers (AW-330). Fixtures and prices are test values. Products carry
+// no prices (AW-003): a line's price comes from priceOf(productId, variant).
 import { describe, expect, it } from 'vitest';
 import {
-  addableLineKey, cartChanges, cartCount, cartTotal, decrementLine, deleteLine, describeCartChanges, incrementLine, mergeLines,
+  NO_PRICES, addableLineKey, cartChanges, cartCount, cartTotal, decrementLine, deleteLine, describeCartChanges, incrementLine, mergeLines,
   priceCartItems,
 } from './cart.js';
 
 const P = [
-  { id: 1, sku: 'AW-SS', name: 'Cigarillos', variants: ['Diamond', 'Red'], price: 10 },
-  { id: 14, sku: 'AW-KITE', name: 'Kite', variants: [], price: 20 },
-  { id: 20, sku: 'AW-ONE', name: 'One', variants: ['Only'], price: 5 },
-  { id: 40, sku: 'AW-OFF', name: 'Off', variants: [], active: false, price: 1 },
+  { id: 1, sku: 'AW-SS', name: 'Cigarillos', variants: ['Diamond', 'Red'] },
+  { id: 14, sku: 'AW-KITE', name: 'Kite', variants: [] },
+  { id: 20, sku: 'AW-ONE', name: 'One', variants: ['Only'] },
+  { id: 40, sku: 'AW-OFF', name: 'Off', variants: [], active: false },
 ];
+// An approved buyer's unit prices, by product (and variant).
+const UNIT = { 1: 10, 14: 20, 20: 5, 40: 1 };
+const priceOf = (table) => (id, variant) => (variant && table[`${id}::${variant}`] != null ? table[`${id}::${variant}`] : table[id] ?? null);
+const APPROVED = priceOf(UNIT);
 
 describe('addableLineKey', () => {
   it('keys a line by product and variant', () => {
@@ -56,20 +61,42 @@ describe('line updates', () => {
 });
 
 describe('priceCartItems and cartTotal', () => {
-  it('prices lines for approved accounts only', () => {
+  it('prices lines through priceOf, and not at all without it', () => {
     const cart = { 14: 2, '1::red': 1, 1: 1 };
-    const guest = priceCartItems(cart, P, null);
+    const guest = priceCartItems(cart, P, NO_PRICES);
     expect(guest.every(i => i.price === null)).toBe(true);
+    expect(priceCartItems(cart, P).every(i => i.price === null)).toBe(true);
     expect(cartTotal(guest)).toBe(0);
-    const approved = priceCartItems(cart, P, { status: 'approved', pricing_tier: 'standard' });
+    const approved = priceCartItems(cart, P, APPROVED);
     expect(approved.map(i => [i.lineKey, i.price])).toEqual([['1', 10], ['14', 20], ['1::red', 10]]);
     expect(cartTotal(approved)).toBe(60);
   });
+
+  it('asks priceOf with the line’s variant, so a variant’s own price is used', () => {
+    const cart = { '1::red': 2, '1::diamond': 1 };
+    const items = priceCartItems(cart, P, priceOf({ ...UNIT, '1::Red': 12.5 }));
+    expect(items.map(i => [i.lineKey, i.price])).toEqual([['1::red', 12.5], ['1::diamond', 10]]);
+  });
+
+  it('leaves a product without a price unpriced, and never prices a line that can’t be ordered', () => {
+    const cart = { 14: 2, 40: 1, 20: 1 };
+    const items = priceCartItems(cart, P, priceOf({ 14: 20, 40: 1, 20: null }));
+    expect(items.map(i => [i.lineKey, i.price, i.unavailable])).toEqual([['14', 20, null], ['20::only', null, null], ['40', null, 'product']]);
+    expect(cartTotal(items)).toBe(40);
+  });
+
+  it('adds up in cents, so the total is the saved subtotal (AW-077)', () => {
+    const items = priceCartItems({ 14: 7, 20: 3 }, P, priceOf({ 14: 42.85, 20: 0.1 }));
+    expect(cartTotal(items)).toBe(300.25);
+    const small = priceCartItems({ 14: 1, 20: 1 }, P, priceOf({ 14: 0.1, 20: 0.2 }));
+    expect(cartTotal(small)).toBe(0.3);
+    // Adding the same lines in floats is off by a hair.
+    expect(small.reduce((s, i) => s + i.qty * i.price, 0)).not.toBe(0.3);
+  });
 });
 
-// Checkout loads the catalog again before a submit (AW-191).
+// Checkout loads the catalog and prices again before a submit (AW-191).
 describe('cartChanges and describeCartChanges', () => {
-  const APPROVED = { status: 'approved', pricing_tier: 'standard' };
   const cart = { 14: 2, '1::red': 1, '20::only': 3 };
 
   it('finds nothing when the catalog is the same', () => {
@@ -81,8 +108,8 @@ describe('cartChanges and describeCartChanges', () => {
     const before = priceCartItems(cart, P, APPROVED);
     const next = P
       .filter(p => p.id !== 14)
-      .map(p => (p.id === 1 ? { ...p, variants: ['Diamond', 'Crimson'] } : p.id === 20 ? { ...p, price: 6 } : p));
-    const after = priceCartItems(cart, next, APPROVED, { known: P });
+      .map(p => (p.id === 1 ? { ...p, variants: ['Diamond', 'Crimson'] } : p));
+    const after = priceCartItems(cart, next, priceOf({ ...UNIT, 20: 6 }), { known: P });
     const changes = cartChanges(before, after);
     expect(changes).toEqual([
       { kind: 'unavailable', reason: 'product', name: 'Kite', lineKey: '14' },
@@ -97,8 +124,13 @@ describe('cartChanges and describeCartChanges', () => {
   });
 
   it('ignores prices for accounts that don’t see them', () => {
-    const next = P.map(p => ({ ...p, price: p.price + 1 }));
-    expect(cartChanges(priceCartItems(cart, P, null), priceCartItems(cart, next, null))).toEqual([]);
+    expect(cartChanges(priceCartItems(cart, P, NO_PRICES), priceCartItems(cart, P, NO_PRICES))).toEqual([]);
+  });
+
+  it('compares prices to the cent', () => {
+    const before = priceCartItems(cart, P, priceOf({ ...UNIT, 20: 0.3 }));
+    expect(cartChanges(before, priceCartItems(cart, P, priceOf({ ...UNIT, 20: 0.1 + 0.2 })))).toEqual([]);
+    expect(cartChanges(before, priceCartItems(cart, P, priceOf({ ...UNIT, 20: 0.31 }))).map(c => c.kind)).toEqual(['price']);
   });
 
   it('matches a line whose key changed by product, and reports cart changes from another tab', () => {

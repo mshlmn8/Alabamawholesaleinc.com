@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { DOCUMENT_TYPES, createDocumentViewUrl, listAllProfileDocuments } from '../../lib/documents.js';
 import { formatMoney } from '../../lib/format.js';
+import { MISSING_FUNCTION_CODES, lineTotal } from '../../lib/pricing.js';
 import { Link } from '../../lib/router.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
@@ -16,6 +17,14 @@ const TABS = [
 ];
 
 const ORDER_STATES = ['new', 'contacted', 'fulfilled', 'cancelled'];
+
+// The tiers before pricing_tiers could be read here (AW-351): the options when
+// that table can't be loaded.
+const FALLBACK_TIERS = ['standard', 'silver', 'gold'];
+
+// The product columns the Products tab shows. Not price: admins read list
+// prices through admin_product_prices() (AW-003).
+const ADMIN_PRODUCT_COLUMNS = 'id,name,brand,cat,sub,sku,tag,active';
 
 // onCatalogChange: a product was edited; the storefront loads the catalog
 // again so this tab shows the edit at once (AW-191).
@@ -152,7 +161,7 @@ function OrdersTab() {
               {(o.order_items || []).map(it => (
                 <li key={it.id}>
                   <span><span>{`${it.qty} × ${it.product_name}`}</span> <span className="sku">{`(${it.sku})`}</span></span>
-                  <span className="line-total">{it.unit_price != null ? formatMoney(it.unit_price * it.qty) : '—'}</span>
+                  <span className="line-total">{it.unit_price != null ? formatMoney(lineTotal(it.unit_price, it.qty)) : '—'}</span>
                 </li>
               ))}
             </ul>
@@ -170,11 +179,21 @@ function AccountsTab() {
   const [documents, setDocuments] = useState([]);
   const [signedUrls, setSignedUrls] = useState({});
   const [viewError, setViewError] = useState(null);
+  const [tiers, setTiers] = useState(FALLBACK_TIERS);
   const reload = () => {
     supabase.from('profiles').select('*').order('created_at', { ascending: false }).then(({ data }) => setProfiles(data || []));
     listAllProfileDocuments().then(setDocuments).catch(() => setDocuments([]));
   };
   useEffect(reload, []);
+  // The tier options are the pricing_tiers rows (AW-351): adding a tier is one
+  // row there.
+  useEffect(() => {
+    let cancelled = false;
+    supabase.from('pricing_tiers').select('tier,discount_pct').order('discount_pct', { ascending: true }).then(({ data, error }) => {
+      if (!cancelled && !error && Array.isArray(data) && data.length) setTiers(data.map(t => t.tier));
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -237,9 +256,7 @@ function AccountsTab() {
               </td>
               <td>
                 <select aria-label={`Tier for ${p.business || p.name}`} value={p.pricing_tier} onChange={e => updateProfile(p.id, { pricing_tier: e.target.value })}>
-                  <option value="standard">standard</option>
-                  <option value="silver">silver</option>
-                  <option value="gold">gold</option>
+                  {(tiers.includes(p.pricing_tier) ? tiers : [...tiers, p.pricing_tier]).map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </td>
               <td>
@@ -293,21 +310,69 @@ function AccountsTab() {
   );
 }
 
+// Products and their list prices. Guests and signed-in accounts can't read
+// products.price (AW-003), so the rows are read without it and the prices
+// come from admin_product_prices(), which only admins may call. A database
+// without that function (before 20260928120000) still lets select('*') read
+// the price. A blank price is saved as null: "price on request".
+export async function loadAdminProducts(client) {
+  const [products, prices] = await Promise.all([
+    client.from('products').select(ADMIN_PRODUCT_COLUMNS).order('id'),
+    client.rpc('admin_product_prices', {}, { get: true }),
+  ]);
+  if (prices.error && MISSING_FUNCTION_CODES.includes(prices.error.code)) {
+    const { data, error } = await client.from('products').select('*').order('id');
+    return error ? { rows: null, error } : { rows: data || [], error: null };
+  }
+  const error = products.error || prices.error;
+  if (error) return { rows: null, error };
+  const listed = prices.data || {};
+  return { rows: (products.data || []).map(p => ({ ...p, price: listed[p.id]?.list ?? null })), error: null };
+}
+
+// The price field as typed: '' (no price) or a non-negative amount.
+const priceInput = (price) => (price == null ? '' : String(price));
+function parsePriceInput(text) {
+  const value = String(text).trim();
+  if (value === '') return { ok: true, price: null };
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? { ok: true, price: Math.round(n * 100) / 100 } : { ok: false, price: null };
+}
+
 function ProductsTab({ onCatalogChange }) {
   const [rows, setRows] = useState(null);
+  const [loadError, setLoadError] = useState(null);
   const [editing, setEditing] = useState(null);
+  const [saveError, setSaveError] = useState(null);
   const [search, setSearch] = useState('');
 
   const reload = () => {
-    supabase.from('products').select('*').order('id').then(({ data }) => setRows(data || []));
+    loadAdminProducts(supabase).then(({ rows: next, error }) => {
+      setLoadError(error ? 'The products didn’t load. Reload the page to try again.' : null);
+      if (next) setRows(next);
+      else setRows((current) => current || []);
+    });
   };
   useEffect(reload, []);
 
   const save = async (id, patch) => {
-    await supabase.from('products').update(patch).eq('id', id);
+    setSaveError(null);
+    const { error } = await supabase.from('products').update(patch).eq('id', id);
+    if (error) {
+      setSaveError(`The changes to product ${id} weren’t saved (${error.message || 'unknown error'}). Try again.`);
+      return;
+    }
     setEditing(null);
     reload();
     onCatalogChange?.();
+  };
+  const saveEditing = (id) => {
+    const parsed = parsePriceInput(editing.priceText);
+    if (!parsed.ok) {
+      setSaveError('Enter the price as an amount such as 12.50, or leave it blank for price on request.');
+      return;
+    }
+    save(id, { name: editing.name, brand: editing.brand, price: parsed.price, tag: editing.tag, active: editing.active });
   };
 
   if (!rows) return <p className="result-note">Loading…</p>;
@@ -324,6 +389,8 @@ function ProductsTab({ onCatalogChange }) {
         <input type="search" placeholder="Name, brand, or SKU" value={search} onChange={e => setSearch(e.target.value)} />
       </label>
       <p className="result-note">{`${filtered.length} of ${rows.length} products`}</p>
+      {loadError && <p className="form-error" role="alert">{loadError}</p>}
+      {saveError && <p className="form-error" role="alert">{saveError}</p>}
       <div className="table-scroll">
         <table className="aw-table">
           <thead>
@@ -340,7 +407,7 @@ function ProductsTab({ onCatalogChange }) {
                 <td><input aria-label="Product name" value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} /></td>
                 <td><input aria-label="Brand" value={editing.brand} onChange={e => setEditing({ ...editing, brand: e.target.value })} /></td>
                 <td className="muted">{`${p.cat} / ${p.sub}`}</td>
-                <td><input aria-label="Price" type="number" step="0.01" value={editing.price} onChange={e => setEditing({ ...editing, price: parseFloat(e.target.value) })} /></td>
+                <td><input aria-label="Price" type="number" step="0.01" min="0" value={editing.priceText} onChange={e => setEditing({ ...editing, priceText: e.target.value })} /></td>
                 <td>
                   <select aria-label="Tag" value={editing.tag || ''} onChange={e => setEditing({ ...editing, tag: e.target.value || null })}>
                     <option value="">—</option>
@@ -355,8 +422,8 @@ function ProductsTab({ onCatalogChange }) {
                 </td>
                 <td>
                   <div className="inline-actions">
-                    <button className="mini-btn primary" type="button" onClick={() => save(p.id, { name: editing.name, brand: editing.brand, price: editing.price, tag: editing.tag, active: editing.active })}>Save</button>
-                    <button className="mini-btn quiet" type="button" onClick={() => setEditing(null)}>Cancel</button>
+                    <button className="mini-btn primary" type="button" onClick={() => saveEditing(p.id)}>Save</button>
+                    <button className="mini-btn quiet" type="button" onClick={() => { setEditing(null); setSaveError(null); }}>Cancel</button>
                   </div>
                 </td>
               </tr>
@@ -366,11 +433,11 @@ function ProductsTab({ onCatalogChange }) {
                 <td>{p.name}</td>
                 <td>{p.brand}</td>
                 <td className="muted">{`${p.cat} / ${p.sub}`}</td>
-                <td className="price">{formatMoney(p.price)}</td>
+                <td className="price">{p.price != null ? formatMoney(p.price) : 'On request'}</td>
                 <td>{p.tag || '—'}</td>
                 <td>{p.active ? 'Yes' : 'No'}</td>
                 <td>
-                  <button className="mini-btn" type="button" onClick={() => setEditing({ ...p })}>Edit</button>
+                  <button className="mini-btn" type="button" onClick={() => { setEditing({ ...p, priceText: priceInput(p.price) }); setSaveError(null); }}>Edit</button>
                 </td>
               </tr>
             ))}

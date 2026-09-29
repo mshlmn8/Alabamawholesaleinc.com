@@ -22,6 +22,7 @@ import { COMPANY, ORDER_MINIMUM } from '../data/content.js';
 import { submitOrder } from '../lib/orders.js';
 import { cartChanges, describeCartChanges } from '../lib/cart.js';
 import { formatMoney } from '../lib/format.js';
+import { totalLabel } from '../lib/pricing.js';
 import { Link } from '../lib/router.js';
 import { CallOrEmail } from '../components/ContactLinks.jsx';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
@@ -39,7 +40,7 @@ const itemsSignature = (items) => items.map((it) => `${it.lineKey}|${it.qty}|${i
 export function QuotePage({
   items, total, addLine, decLine, removeLine, removeLines, clearCart, legacy = [], onDismissLegacy,
   profile, account = profile ? 'ready' : 'signed-out', signedIn = !!profile, onSignIn, isApprovedBuyer, isBackendConfigured,
-  checkCart = null,
+  checkCart = null, pricesStatus = 'ready',
 }) {
   const [step, setStep] = useState('review');
   const [data, setData] = useState(() => initialQuoteForm(profile));
@@ -77,7 +78,8 @@ export function QuotePage({
   const orderable = items.filter(it => !it.unavailable);
   const totalUnits = orderable.reduce((s, i) => s + i.qty, 0);
   const needsVariant = items.some(it => it.needsVariant);
-  const pricedBelowMinimum = isApprovedBuyer && Number(total) < ORDER_MINIMUM;
+  // Not while the buyer's prices are still loading (the total is not known yet).
+  const pricedBelowMinimum = isApprovedBuyer && pricesStatus !== 'loading' && Number(total) < ORDER_MINIMUM;
   let submitLabel = isApprovedBuyer ? 'Submit order' : 'Submit quote request';
   if (phase === 'checking') submitLabel = 'Checking the catalog…';
   else if (phase === 'sending') submitLabel = 'Sending…';
@@ -155,6 +157,8 @@ export function QuotePage({
           <span>{asOrder ? 'Your order has been saved.' : 'Your quote request has been saved.'}</span> A trade desk rep will reach out within one business day at <strong style={{ color: 'var(--purple)' }}>{data.phone || data.email}</strong> to confirm details.
         </p>
         <p className="result-note" style={{ fontSize: 13 }}>Reference number: <strong>{receipt?.ref_num || refNum}</strong></p>
+        {/* The total the server saved (AW-351), priced by submit_quote. */}
+        {receipt?.subtotal != null && <p className="result-note">{`Saved total: ${formatMoney(receipt.subtotal)} · ${receipt.total_units} ${Number(receipt.total_units) === 1 ? 'unit' : 'units'}`}</p>}
         <div className="dialog-actions" style={{ justifyContent: 'center' }}>
           <a className="button ghost" href={`tel:${COMPANY.phoneRaw}`}>Call to discuss</a>
           <Link className="button" to="/" onClick={clearCart}>Back to home <span aria-hidden="true">↗</span></Link>
@@ -192,7 +196,7 @@ export function QuotePage({
           <UnavailableNotice items={unavailable} onRemoveAll={removeLines} />
           <ul className="checkout-lines" aria-label="Items in this request">
             {items.map(it => (
-              <CartLine key={it.lineKey} item={it} layout="checkout" showPrice={isApprovedBuyer}
+              <CartLine key={it.lineKey} item={it} layout="checkout" showPrice={isApprovedBuyer} pricesStatus={pricesStatus}
                         onInc={() => addLine(it.productId, it.variant)} onDec={() => decLine(it.lineKey)}
                         onRemove={() => removeLine(it.lineKey)} />
             ))}
@@ -221,7 +225,7 @@ export function QuotePage({
           </div>
           <div className="drawer-total checkout-total">
             <span>{`${totalUnits} ${totalUnits === 1 ? 'unit' : 'units'}`}</span>
-            <span>{isApprovedBuyer ? formatMoney(total) : (signedIn ? 'Pricing after approval' : 'Pricing after sign-in')}</span>
+            <span>{isApprovedBuyer ? totalLabel(items, total, pricesStatus) : (signedIn ? 'Pricing after approval' : 'Pricing after sign-in')}</span>
           </div>
           {pricedBelowMinimum && <p className="notice" role="status">The order minimum is $500.00. You can still submit this order.</p>}
           {!isBackendConfigured && <p className="form-error" role="status"><CallOrEmail before="Quote requests can’t be saved right now. Call" after=" and the trade desk will write it up with you." /></p>}

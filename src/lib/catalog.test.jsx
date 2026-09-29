@@ -1,17 +1,17 @@
 // The catalog provider (AW-204, AW-191): status, errors, paging, refreshes.
-// Rows and prices are test values.
+// Rows are test values. The catalog never asks for or keeps a price (AW-003).
 import { StrictMode, useEffect } from 'react';
 import { act, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  CATALOG_COLUMNS, CATALOG_MAX_AGE_MS, CATALOG_RETRY_MS, CATALOG_SLOW_MS, CatalogProvider, catalogIsStale,
-  fetchCatalogRows, hydrateProducts, loadCatalog, useCatalog,
+  CATALOG_BASE_COLUMNS, CATALOG_COLUMNS, CATALOG_COLUMN_FALLBACKS, CATALOG_MAX_AGE_MS, CATALOG_RETRY_MS, CATALOG_SLOW_MS, CatalogProvider,
+  catalogIsStale, fetchCatalogRows, hydrateProducts, loadCatalog, useCatalog,
 } from './catalog.jsx';
 import { PRODUCTS as BUNDLED } from '../data/products.js';
 
 const row = (id, extra = {}) => ({
   id, name: `Product ${id}`, brand: 'Brand', cat: 'TOBACCO', sub: 'Line', sku: `AW-T${id}`, flavors: 0, variants: [],
-  img: null, tag: null, price: 10, active: true, description: `About ${id}`, sell_unit: '', ...extra,
+  img: null, tag: null, active: true, description: `About ${id}`, sell_unit: '', ...extra,
 });
 const ROWS = [row(1), row(2), row(3), row(4), row(5)];
 
@@ -136,6 +136,21 @@ describe('loadCatalog', () => {
     expect(result.ok).toBe(true);
     expect(client.calls.map((q) => q.columns)).toEqual([CATALOG_COLUMNS, '*']);
   });
+
+  it('never asks for price, and falls back column list by column list, ending with *', async () => {
+    for (const columns of [CATALOG_COLUMNS, CATALOG_BASE_COLUMNS]) expect(columns.split(',')).not.toContain('price');
+    expect(CATALOG_COLUMN_FALLBACKS.at(-1)).toBe('*');
+    expect(new Set(CATALOG_COLUMN_FALLBACKS).size).toBe(CATALOG_COLUMN_FALLBACKS.length);
+    const fallbacks = ['id,name,new_column', 'id,name', '*'];
+    const missing = { data: null, error: { message: 'column products.new_column does not exist', code: '42703' } };
+    const second = fakeClient({ respond: (q, n, serve) => (q.columns === fallbacks[0] ? missing : serve(q)) });
+    expect((await loadCatalog(second, { fallbacks })).ok).toBe(true);
+    expect(second.calls.map((q) => q.columns)).toEqual(['id,name,new_column', 'id,name']);
+    // A revoked column (42501) is an error, not a reason to try select(*).
+    const denied = fakeClient({ respond: () => ({ data: null, error: { message: 'permission denied for table products', code: '42501' } }) });
+    expect((await loadCatalog(denied, { fallbacks })).error.kind).toBe('failed');
+    expect(denied.calls.map((q) => q.columns)).toEqual(['id,name,new_column']);
+  });
 });
 
 describe('hydrateProducts', () => {
@@ -148,6 +163,18 @@ describe('hydrateProducts', () => {
     const [own] = hydrateProducts([row(bundled.id, { sell_unit: '5-pack' })]);
     expect(own.description).toBe(`About ${bundled.id}`);
     expect(own.sellUnit).toBe('5-pack');
+  });
+
+  it('drops a price that came along with select(*) on an older database (AW-003)', () => {
+    const input = row(1, { price: 12.34 });
+    const [p] = hydrateProducts([input]);
+    expect('price' in p).toBe(false);
+    expect(input.price).toBe(12.34);
+  });
+
+  it('the bundled catalog carries no prices (AW-003)', () => {
+    expect(BUNDLED.length).toBeGreaterThan(0);
+    expect(BUNDLED.some((p) => 'price' in p)).toBe(false);
   });
 });
 
@@ -208,7 +235,7 @@ describe('CatalogProvider', () => {
 
   it('reports rows it can’t read as a failed load instead of throwing', async () => {
     // JSON.stringify throws on a BigInt.
-    mount(fakeClient({ rows: [row(1, { price: 10n })] }));
+    mount(fakeClient({ rows: [row(1, { flavors: 10n })] }));
     await waitFor(() => expect(seen.status).toBe('error'));
     expect(seen).toMatchObject({ source: 'static', refreshing: false, error: { kind: 'failed' } });
   });

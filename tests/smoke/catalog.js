@@ -3,7 +3,14 @@
 // from src/data/products.js, so the app sees the same catalog a freshly
 // seeded database would serve. Without it the catalog request fails, and
 // every page shows the "couldn't load the latest catalog" notice.
+//
+// Like the database after 20260928120000_price_boundary.sql, the table has no
+// readable price: a request that names price, or asks for *, is refused with
+// 42501, so a price request shows up as a failed catalog load. Approved
+// buyers' prices come from fulfillMyPrices() instead (obviously synthetic
+// test values, never catalog prices).
 import { readFileSync } from 'node:fs';
+import { tierUnitPrice } from '../../src/lib/pricing.js';
 
 const SEED = new URL('../../supabase/seed/products.sql', import.meta.url);
 
@@ -42,16 +49,37 @@ export function seedRows() {
   return cached.map((r) => ({ ...r }));
 }
 
-// Answers one products request the way PostgREST does: active rows, in id
-// order, the offset/limit page, and the total in Content-Range.
+// Columns guests and signed-in accounts may not read (column privileges).
+export const REVOKED_COLUMNS = ['price'];
+// Every column of public.products the database has.
+const TABLE_COLUMNS = ['id', 'name', 'brand', 'cat', 'sub', 'sku', 'flavors', 'variants', 'img', 'tag', 'price', 'active', 'updated_at', 'description', 'sell_unit'];
+
+const postgrestError = (route, status, code, message) => route.fulfill({
+  status,
+  contentType: 'application/json',
+  headers: { 'access-control-allow-origin': '*' },
+  body: JSON.stringify({ code, message, details: null, hint: null }),
+});
+
+// Answers one products request the way PostgREST does: the columns in
+// select= (42501 for a revoked column or *, 42703 for one the table doesn't
+// have), active rows, in id order, the offset/limit page, and the total in
+// Content-Range.
 export function fulfillProducts(route, rows) {
   const req = route.request();
   if (req.method() !== 'GET') return route.abort();
   const url = new URL(req.url());
+  const columns = (url.searchParams.get('select') || '*').split(',').map((c) => c.trim()).filter(Boolean);
+  if (columns.includes('*') || columns.some((c) => REVOKED_COLUMNS.includes(c))) {
+    return postgrestError(route, 401, '42501', 'permission denied for table products');
+  }
+  const unknown = columns.find((c) => !TABLE_COLUMNS.includes(c));
+  if (unknown) return postgrestError(route, 400, '42703', `column products.${unknown} does not exist`);
   const active = rows.filter((r) => r.active !== false).sort((a, b) => a.id - b.id);
   const offset = Number(url.searchParams.get('offset') || 0);
   const limit = Number(url.searchParams.get('limit') || active.length);
-  const page = active.slice(offset, offset + limit);
+  const page = active.slice(offset, offset + limit)
+    .map((row) => Object.fromEntries(columns.map((c) => [c, row[c] ?? null])));
   return route.fulfill({
     status: 200,
     contentType: 'application/json',
@@ -61,6 +89,33 @@ export function fulfillProducts(route, rows) {
       'content-range': page.length ? `${offset}-${offset + page.length - 1}/${active.length}` : `*/${active.length}`,
     },
     body: JSON.stringify(page),
+  });
+}
+
+// An obviously synthetic list price for a product: 10.10, 11.10, … 19.10 by
+// the id's last digit (every one of them less 5% ends in half a cent, so the
+// rounding is exercised). Ids ending in 7 have none: "price on request".
+export const syntheticListPrice = (id) => (Number(id) % 10 === 7 ? null : (1010 + 100 * (Number(id) % 10)) / 100);
+
+// my_prices() for an approved buyer, the way the database builds it: every
+// active product's list price and the tier's unit price, rounded to cents.
+export function myPricesPayload(rows, { tier = 'silver', label = 'Test silver', discountPct = 5, listPrice = syntheticListPrice } = {}) {
+  const products = {};
+  for (const row of rows) {
+    if (row.active === false) continue;
+    const list = listPrice(row.id);
+    products[row.id] = { list, unit: tierUnitPrice(list, discountPct), variants: {} };
+  }
+  return { tier, tier_label: label, discount_pct: discountPct, products };
+}
+
+// Answers GET/POST /rest/v1/rpc/my_prices with myPricesPayload().
+export function fulfillMyPrices(route, rows = seedRows(), options = {}) {
+  return route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    headers: { 'access-control-allow-origin': '*' },
+    body: JSON.stringify(myPricesPayload(rows, options)),
   });
 }
 

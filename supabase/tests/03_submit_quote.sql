@@ -1,7 +1,8 @@
 -- submit_quote is the only way to create orders. It prices lines on the
 -- server: guests and pending accounts get unpriced lines, approved accounts
--- get list price less their tier discount. No prices appear in this file;
--- expected values are computed from the seeded products and pricing_tiers.
+-- get list price less their tier discount. The seed carries no prices
+-- (20260928120000), so the product used here gets an obviously synthetic
+-- price first; expected values are computed from it and pricing_tiers.
 insert into auth.users (id, email, raw_user_meta_data) values
   ('00000000-0000-4000-8000-0000000003a1', 'pending@example.com', '{"name": "Pending"}'),
   ('00000000-0000-4000-8000-0000000003b1', 'gold@example.com', '{"name": "Gold"}');
@@ -10,9 +11,10 @@ update public.profiles set status = 'approved', pricing_tier = 'gold' where id =
 -- An active product with at most one variant, so no variant choice is needed.
 select set_config('test.product_id', (
   select id::text from public.products
-  where active and jsonb_array_length(variants) <= 1 and price is not null
+  where active and jsonb_array_length(variants) <= 1
   order by id limit 1
 ), false);
+update public.products set price = 12.34 where id = current_setting('test.product_id')::int;
 
 create or replace function pg_temp.quote(ref text) returns jsonb language sql as $$
   select public.submit_quote(ref, 'Store', 'Contact', 'buyer@example.com', '205-555-0100', 'delivery', null, null,
@@ -48,15 +50,19 @@ begin
 end $$;
 select test_reset();
 
+-- Worked out as the superuser: signed-in accounts can't read products.price.
+select set_config('test.gold_unit', (
+  select round(p.price * (1 - t.discount_pct / 100.0), 2)::text
+  from public.products p, public.pricing_tiers t
+  where p.id = current_setting('test.product_id')::int and t.tier = 'gold'
+), false);
+
 select test_login('00000000-0000-4000-8000-0000000003b1');
 do $$
 declare
   r jsonb;
-  expected numeric;
+  expected numeric := current_setting('test.gold_unit')::numeric;
 begin
-  select round(p.price * (1 - t.discount_pct / 100.0), 2) into expected
-  from public.products p, public.pricing_tiers t
-  where p.id = current_setting('test.product_id')::int and t.tier = 'gold';
   r := pg_temp.quote('T-GOLD-1');
   assert (select unit_price from public.order_items) = expected, 'approved lines are priced from the catalog and tier';
   assert (r->>'subtotal')::numeric = expected * 2, 'the subtotal is unit price times quantity';

@@ -60,7 +60,9 @@ describe('stored carts', () => {
       ['999', 'product', 'Old product', 'AW-OLD', 2],
       ['1::purple', 'variant', 'Cigarillos — Purple', 'AW-SS', 3],
     ]);
-    expect(items.filter((i) => i.unavailable).every((i) => i.listPrice === null && !i.needsVariant)).toBe(true);
+    expect(items.filter((i) => i.unavailable).every((i) => !i.needsVariant)).toBe(true);
+    // The catalog carries no prices (AW-003), so neither do resolved lines.
+    expect(items.every((i) => !('price' in i) && !('listPrice' in i))).toBe(true);
     expect(resolveCartItems({ 12345: 1 }, P)[0]).toMatchObject({ name: 'Product #12345', sku: '', unavailable: 'product' });
     // While the live catalog loads, lines it may still know wait.
     expect(resolveCartItems(cart, P, { settled: false }).map((i) => i.lineKey)).toEqual(['14']);

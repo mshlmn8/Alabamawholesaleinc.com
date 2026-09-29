@@ -6,6 +6,7 @@ import { installDomGuards } from './lib/domGuard.js';
 import { takeAuthLink } from './lib/authLink.js';
 import { AuthProvider } from './lib/auth.jsx';
 import { CatalogProvider } from './lib/catalog.jsx';
+import { PricesProvider } from './lib/prices.jsx';
 import { redirectLegacyHash } from './lib/router.js';
 import './index.css';
 
@@ -25,7 +26,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <ErrorBoundary fullPage>
       <AuthProvider link={authLink}>
         <CatalogProvider>
-          <App />
+          {/* An approved buyer's prices (AW-003): after the account and the catalog. */}
+          <PricesProvider>
+            <App />
+          </PricesProvider>
         </CatalogProvider>
       </AuthProvider>
     </ErrorBoundary>

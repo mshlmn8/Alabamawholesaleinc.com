@@ -1,14 +1,15 @@
-// Department page filters live in the URL (AW-008, AW-327, AW-228).
+// Department page filters live in the URL (AW-008, AW-327, AW-228). Products
+// carry no prices (AW-003); price sorts use the buyer's prices (test values).
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { navigate, resolveRoute, useRoute } from '../lib/router.js';
 import { CategoryPage } from './CategoryPage.jsx';
 
 const products = [
-  { id: 1, name: 'Kite tobacco', brand: 'Kite', cat: 'TOBACCO', sub: 'Cigarettes', sku: 'AW-KITE', flavors: 0, variants: [], tag: 'NEW', price: 10 },
-  { id: 2, name: 'Swisher Sweets', brand: 'Swisher', cat: 'TOBACCO', sub: 'Cigars', sku: 'AW-SS', flavors: 2, variants: ['Grape', 'Diamond'], tag: 'BESTSELLER', price: 20 },
-  { id: 3, name: 'Backwoods', brand: 'Backwoods', cat: 'TOBACCO', sub: 'Cigars', sku: 'AW-BW', flavors: 0, variants: [], tag: null, price: 30 },
-  { id: 4, name: 'Snickers', brand: 'Snickers', cat: 'CANDIES', sub: 'Chocolate', sku: 'AW-SN', flavors: 0, variants: [], tag: 'NEW', price: 5 },
+  { id: 1, name: 'Kite tobacco', brand: 'Kite', cat: 'TOBACCO', sub: 'Cigarettes', sku: 'AW-KITE', flavors: 0, variants: [], tag: 'NEW' },
+  { id: 2, name: 'Swisher Sweets', brand: 'Swisher', cat: 'TOBACCO', sub: 'Cigars', sku: 'AW-SS', flavors: 2, variants: ['Grape', 'Diamond'], tag: 'BESTSELLER' },
+  { id: 3, name: 'Backwoods', brand: 'Backwoods', cat: 'TOBACCO', sub: 'Cigars', sku: 'AW-BW', flavors: 0, variants: [], tag: null },
+  { id: 4, name: 'Snickers', brand: 'Snickers', cat: 'CANDIES', sub: 'Chocolate', sku: 'AW-SN', flavors: 0, variants: [], tag: 'NEW' },
 ];
 const departments = [
   { key: 'TOBACCO', label: 'Tobacco', subs: ['Cigarettes', 'Cigars'], count: 3 },
@@ -16,16 +17,22 @@ const departments = [
 ];
 
 // App's wiring: the URL resolved against the catalog, the page keyed by department.
-function Harness() {
+function Harness({ buyer = null }) {
   const { raw } = useRoute();
   const route = resolveRoute(raw, { departments, products });
   if (route.page !== 'category') return <p>{route.page}</p>;
   return (
     <CategoryPage key={route.category} category={route.category} sub={route.sub} query={route.query}
-                  products={products} departments={departments} profile={null} isApprovedBuyer={false}
+                  products={products} departments={departments} profile={buyer?.profile || null} isApprovedBuyer={!!buyer}
+                  priceOf={buyer?.priceOf} pricesStatus={buyer?.status}
                   cart={{}} addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} />
   );
 }
+// An approved buyer; product 2 has no price (price on request).
+const UNIT = { 1: 20.5, 2: null, 3: 3.25 };
+const BUYER = { profile: { id: 'b', status: 'approved' }, priceOf: (id) => UNIT[id] ?? null, status: 'ready' };
+const cardNames = () => [...document.querySelectorAll('.content-card h3')].map((h) => h.textContent);
+const cardPrices = () => [...document.querySelectorAll('.card-meta > span:first-child')].map((el) => el.textContent);
 
 const url = () => window.location.pathname + window.location.search;
 const note = () => screen.getByRole('status').textContent;
@@ -81,6 +88,28 @@ describe('CategoryPage', () => {
     });
     expect(screen.getByRole('searchbox', { name: 'Search in Tobacco' }).value).toBe('swisher');
     expect(note()).toBe('Showing 1 of 3 items');
+  });
+
+  it('sorts by the buyer’s prices, products without one last (AW-003)', () => {
+    act(() => navigate('/category/tobacco?sort=price-low', { replace: true }));
+    const view = render(<Harness buyer={BUYER} />);
+    expect(cardNames()).toEqual(['Backwoods', 'Kite tobacco', 'Swisher Sweets']);
+    expect(cardPrices()).toEqual(['$3.25', '$20.50', 'Price on request']);
+    act(() => navigate('/category/tobacco?sort=price-high', { replace: true }));
+    expect(cardNames()).toEqual(['Kite tobacco', 'Backwoods', 'Swisher Sweets']);
+    // While the prices load, every card says so and the catalog order stays.
+    view.rerender(<Harness buyer={{ ...BUYER, priceOf: () => null, status: 'loading' }} />);
+    expect(cardNames()).toEqual(['Kite tobacco', 'Swisher Sweets', 'Backwoods']);
+    expect(cardPrices()).toEqual(['Loading price…', 'Loading price…', 'Loading price…']);
+  });
+
+  it('offers no price sort, and shows no price, to guests', () => {
+    act(() => navigate('/category/tobacco?sort=price-low', { replace: true }));
+    render(<Harness />);
+    expect(screen.getByLabelText('Sort by').value).toBe('featured');
+    expect(screen.queryByRole('option', { name: /Price/ })).toBeNull();
+    expect(cardNames()).toEqual(['Kite tobacco', 'Swisher Sweets', 'Backwoods']);
+    expect(screen.queryByText(/\$/)).toBeNull();
   });
 
   it('starts another department without the old filters (AW-228)', () => {

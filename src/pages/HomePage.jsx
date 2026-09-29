@@ -13,9 +13,9 @@ const EDITORIAL_BG = heroImage('hero_candy.jpg');
 
 const dept = (category) => ({ page: 'category', category });
 
-export function HomePage({ products, departments, profile, isApprovedBuyer, cart, addLine, decLine, onLoginClick, onApplyClick }) {
+export function HomePage({ products, departments, profile, isApprovedBuyer, priceOf, pricesStatus, cart, addLine, decLine, onLoginClick, onApplyClick }) {
   const card = (p) => (
-    <ProductCard key={p.id} p={p} profile={profile} isApprovedBuyer={isApprovedBuyer} cart={cart}
+    <ProductCard key={p.id} p={p} profile={profile} isApprovedBuyer={isApprovedBuyer} priceOf={priceOf} pricesStatus={pricesStatus} cart={cart}
                  addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} />
   );
   const newArrivals = NEW_ARRIVALS_IDS.map(id => products.find(p => Number(p.id) === id)).filter(Boolean).slice(0, 8);
