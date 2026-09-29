@@ -2,9 +2,15 @@
 // and password-reset screens on the 2A dialog shell. On sign-up a profile row
 // is created as a pending customer. Owner access is a separate admin step, not
 // part of public signup.
+//
+// After a sign-in the dialog waits for the account's profile: a pending or
+// suspended account sees its status, an approved one closes the dialog, and a
+// profile that does not load gets a message with Try again and Sign out
+// instead of a silent close (AW-089). A sign-in finished in another tab
+// closes the password form here too (AW-335).
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { useAuth } from '../lib/useAuth.js';
+import { useAuth } from '../lib/auth.jsx';
 import { COMPANY } from '../data/content.js';
 import { describeError } from '../lib/errors.js';
 import { Link } from '../lib/router.js';
@@ -17,6 +23,15 @@ import { DocumentUploads } from './DocumentUploads.jsx';
 const STATES = ['AL','GA','MS','TN','FL','LA','SC','NC','KY','Other'];
 const BUSINESS_TYPES = ['Convenience Store','Smoke Shop','Vape Shop','Liquor Store','Grocery / Bodega','Auto Parts','Hookah Lounge','Other'];
 const VOLUMES = ['Under $5K','$5K — $15K','$15K — $50K','$50K — $100K','$100K+'];
+
+// How long "Signing you in…" waits for the account before saying so.
+export const CHECKING_TIMEOUT_MS = 10000;
+// Screens that ask a signed-out visitor for something. When a session appears
+// while one is open (a sign-in in another tab), the dialog moves on. The
+// application form and checklist are left alone, so typed answers stay.
+const SIGNED_OUT_MODES = ['signin', 'reset', 'reset-sent', 'unconfirmed'];
+
+const isUnconfirmedEmail = (err) => err?.code === 'email_not_confirmed' || /email not confirmed/i.test(err?.message || '');
 
 const EMPTY_SIGNUP = {
   email: '', password: '', name: '', business: '', phone: '',
@@ -34,9 +49,13 @@ function Field({ id, label, hint, full = false, children }) {
   );
 }
 
-export function AuthModal({ open, initialMode = 'signin', onClose }) {
-  const { signIn, signUp, resetPassword, session, profile, profileReady, loading, isBackendConfigured } = useAuth();
-  // signin | checklist | signup | sent | status | checking | reset | reset-sent
+export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, signingOut = false }) {
+  const {
+    signIn, signUp, resetPassword, resendConfirmation, refreshProfile,
+    session, profile, profileReady, profileRefreshing, loading, isBackendConfigured,
+  } = useAuth();
+  // signin | checklist | signup | sent | status | checking | profile-error
+  // | reset | reset-sent | unconfirmed
   // initialMode 'signup' starts at the checklist; 'application' skips straight to the form.
   const [mode, setMode] = useState(initialMode === 'signup' ? 'checklist' : initialMode === 'application' ? 'signup' : initialMode);
   const [afterSignup, setAfterSignup] = useState(false);
@@ -48,6 +67,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose }) {
   const [proof, setProof] = useState({});
   const [proofErrors, setProofErrors] = useState({});
   const [proofWaiting, setProofWaiting] = useState(false);
+  const [resent, setResent] = useState(false);
   const titleRef = useRef(null);
   const onCloseRef = useRef(onClose);
   // Keep the latest onClose for the timers and effects below.
@@ -62,18 +82,27 @@ export function AuthModal({ open, initialMode = 'signin', onClose }) {
     titleRef.current?.focus({ preventScroll: true });
   }, [mode]);
 
-  // After sign-in, wait for the profile so a pending account sees its status
-  // instead of the dialog silently closing.
+  // The session the dialog was opened with, once auth has loaded (AW-335).
+  const userId = session?.user?.id ?? null;
+  const [openedWith, setOpenedWith] = useState(loading ? undefined : userId);
+  if (openedWith === undefined && !loading) setOpenedWith(userId);
+  const signedInMeanwhile = openedWith === null && userId !== null && SIGNED_OUT_MODES.includes(mode);
+
+  // After a sign-in (here or in another tab), wait for the account's profile.
+  const waiting = mode === 'checking' || signedInMeanwhile;
+  const settled = waiting && !loading && !!session && profileReady && !profileRefreshing;
+  if (settled && profile && profile.status !== 'approved') setMode('status');
+  else if (settled && !profile) setMode('profile-error');
+  else if (mode === 'profile-error' && !loading && !session) setMode('signin');
+  const approved = settled && profile?.status === 'approved';
   useEffect(() => {
-    if (mode !== 'checking' || loading || !session || !profileReady) return undefined;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- the profile arrives asynchronously after sign-in
-    if (profile && profile.status !== 'approved') { setMode('status'); return undefined; }
-    onCloseRef.current();
-    return undefined;
-  }, [mode, loading, session, profileReady, profile]);
+    if (approved) onCloseRef.current();
+  }, [approved]);
+  // A profile that takes too long gets the same message as one that failed,
+  // instead of the dialog closing on its own.
   useEffect(() => {
     if (mode !== 'checking') return undefined;
-    const id = window.setTimeout(() => onCloseRef.current(), 10000);
+    const id = window.setTimeout(() => setMode('profile-error'), CHECKING_TIMEOUT_MS);
     return () => window.clearTimeout(id);
   }, [mode]);
 
@@ -87,8 +116,25 @@ export function AuthModal({ open, initialMode = 'signin', onClose }) {
     e.preventDefault();
     setSubmitting(true); setError(null);
     try { await signIn(signin); setMode('checking'); }
-    catch (err) { setError(describeError(err, 'Account sign-in', 'Sign-in failed')); }
+    catch (err) {
+      // An account whose confirmation link expired (AW-015) can ask for a new one.
+      if (isUnconfirmedEmail(err)) { setResent(false); setMode('unconfirmed'); }
+      else setError(describeError(err, 'Account sign-in', 'Sign-in failed'));
+    }
     finally { setSubmitting(false); }
+  };
+
+  const handleResend = async () => {
+    setSubmitting(true); setError(null);
+    try { await resendConfirmation(signin.email); setResent(true); }
+    catch (err) { setError(describeError(err, 'Email confirmation', 'We couldn’t send a new confirmation link')); }
+    finally { setSubmitting(false); }
+  };
+
+  const retryProfile = () => {
+    setError(null);
+    setMode('checking');
+    refreshProfile();
   };
 
   const onProof = (type, file, problem) => {
@@ -133,8 +179,10 @@ export function AuthModal({ open, initialMode = 'signin', onClose }) {
     sent: 'CONFIRM YOUR EMAIL',
     status: status === 'suspended' ? 'ACCOUNT ON HOLD' : 'APPLICATION UNDER REVIEW',
     checking: 'EXISTING ACCOUNTS',
+    'profile-error': 'EXISTING ACCOUNTS',
     reset: 'PASSWORD HELP',
     'reset-sent': 'PASSWORD HELP',
+    unconfirmed: 'CONFIRM YOUR EMAIL',
   }[mode];
   const title = {
     signin: 'Sign in',
@@ -143,8 +191,10 @@ export function AuthModal({ open, initialMode = 'signin', onClose }) {
     sent: 'Check your inbox',
     status: status === 'suspended' ? 'Your account needs attention' : 'Your account is pending approval',
     checking: 'Signing you in…',
+    'profile-error': 'We couldn’t load your account',
     reset: 'Reset your password',
     'reset-sent': 'Check your inbox',
+    unconfirmed: 'Confirm your email first',
   }[mode];
   // One string, so Google Translate cannot strand a piece of it (AW-039).
   const applicantName = profile?.name || signup.name;
@@ -152,7 +202,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose }) {
   const statusMessage = `${afterSignup ? 'Thanks' : 'Welcome back'}${applicantName ? `, ${applicantName}` : ''}. `
     + `${applicantBusiness ? `We have the application for ${applicantBusiness}. ` : ''}`
     + `A trade rep is reviewing your license information and will contact you at ${profile?.email || signup.email} when your account is approved. Wholesale pricing and ordering unlock at that point.`;
-  const unavailableWhat = { signin: 'Account sign-in', checking: 'Account sign-in', checklist: 'The online application', signup: 'The online application', reset: 'Password reset' }[mode];
+  const unavailableWhat = { signin: 'Account sign-in', checking: 'Account sign-in', checklist: 'The online application', signup: 'The online application', reset: 'Password reset', unconfirmed: 'Email confirmation' }[mode];
 
   return (
     // Backdrop click is a mouse shortcut; Escape (ModalLayer) and the Close button are the keyboard paths.
@@ -173,6 +223,12 @@ export function AuthModal({ open, initialMode = 'signin', onClose }) {
         {mode === 'signup' && <p className="desc">Alabama Wholesale sells exclusively to licensed retail businesses. Most applications are approved within one business day. Net-30 terms available with credit verification.</p>}
         {mode === 'sent' && <p className="desc">{`We sent a confirmation link to ${signup.email}. Click it to activate your account — a trade rep will verify your license within one business day.`}</p>}
         {mode === 'checking' && <p className="desc" aria-live="polite">One moment while we load your account.</p>}
+        {mode === 'profile-error' && <p className="desc">We signed you in but couldn’t load your account. <CallOrEmail before="Try again, or call" after=" and a trade rep will help you." /></p>}
+        {mode === 'unconfirmed' && (
+          <p className="desc">{resent
+            ? `We sent a new confirmation link to ${signin.email}. Open it on this device, then sign in. If it doesn’t arrive within a few minutes, check your spam folder.`
+            : `${signin.email} isn’t confirmed yet. Open the confirmation link we emailed when you applied, or send a new one. Links work once and expire after a while.`}</p>
+        )}
         {mode === 'reset' && <p className="desc">Enter the business email on your account and we’ll send a link to choose a new password.</p>}
         {mode === 'reset-sent' && <p className="desc">{`If an account exists for ${resetEmail}, a password reset link is on its way. The link works once — if it doesn’t arrive within a few minutes, check your spam folder or call us.`}</p>}
         {mode === 'status' && (
@@ -206,6 +262,30 @@ export function AuthModal({ open, initialMode = 'signin', onClose }) {
           <div className="dialog-actions">
             <button className="text-link" type="button" onClick={onClose}>Continue browsing</button>
           </div>
+        )}
+
+        {mode === 'profile-error' && (
+          <div className="dialog-actions">
+            <button className="button" type="button" onClick={retryProfile} data-autofocus>Try again <span aria-hidden="true">↗</span></button>
+            {onSignOut && (
+              <button className="text-link" type="button" onClick={onSignOut} disabled={signingOut}><span>{signingOut ? 'Signing out…' : 'Sign out'}</span></button>
+            )}
+            <button className="text-link" type="button" onClick={onClose}>Continue browsing</button>
+          </div>
+        )}
+
+        {mode === 'unconfirmed' && (
+          <>
+            <p className="form-error" role="alert">{error}</p>
+            <div className="dialog-actions">
+              {!resent && (
+                <button className="button" type="button" onClick={handleResend} disabled={submitting || !isBackendConfigured} data-autofocus>
+                  <span>{submitting ? 'Sending…' : 'Send a new confirmation link'}</span> <span aria-hidden="true">↗</span>
+                </button>
+              )}
+              <button className="text-link" type="button" onClick={() => switchMode('signin')}>Back to sign in</button>
+            </div>
+          </>
         )}
 
         {mode === 'checklist' && (

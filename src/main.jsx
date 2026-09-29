@@ -3,21 +3,28 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import { ErrorBoundary } from './components/ErrorBoundary.jsx';
 import { installDomGuards } from './lib/domGuard.js';
+import { takeAuthLink } from './lib/authLink.js';
+import { AuthProvider } from './lib/auth.jsx';
 import { redirectLegacyHash } from './lib/router.js';
 import './index.css';
 
 // Before React touches the DOM: translated pages must not crash it (AW-039).
 installDomGuards();
 
-// Old '#/…' links become their path (AW-043). By now useAuth has read any
-// Supabase '#access_token=…' or '#error=…' fragment at import time, and those
-// fragments are never rewritten anyway: they do not start with '/'.
+// A Supabase email link ('#access_token=…', '#error=…') is read and removed
+// from the address first (AW-015), so neither the legacy redirect below nor
+// the router ever sees its tokens. A recovery link becomes /reset-password.
+const authLink = takeAuthLink();
+
+// Old '#/…' links become their path (AW-043).
 redirectLegacyHash();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary fullPage>
-      <App />
+      <AuthProvider link={authLink}>
+        <App />
+      </AuthProvider>
     </ErrorBoundary>
   </React.StrictMode>
 );

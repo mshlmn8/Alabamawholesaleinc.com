@@ -14,7 +14,7 @@ import { catLabel, initials } from '../lib/format.js';
 import { Link, navigate, useLocation } from '../lib/router.js';
 import { MobileMenu } from './MobileMenu.jsx';
 
-export function Header({ cartCount, onCart, products, departments, user, isAdmin, onLoginClick, onSignupClick, onLogout, onHelp }) {
+export function Header({ cartCount, onCart, products, departments, user, isAdmin, onLoginClick, onSignupClick, onLogout, signingOut = false, onHelp }) {
   const [megaOpen, setMegaOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -32,6 +32,13 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
     setSeenLocation(location);
     setMegaOpen(false);
     setResultsOpen(false);
+  }
+  // The phone menu stays open while Sign Out runs, so its button can say
+  // "Signing out…" (AW-336), and closes when it has finished.
+  const [wasSigningOut, setWasSigningOut] = useState(signingOut);
+  if (wasSigningOut !== signingOut) {
+    setWasSigningOut(signingOut);
+    if (!signingOut) setMenuOpen(false);
   }
 
   useEffect(() => {
@@ -128,7 +135,9 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
               <Link className="aw-signin aw-account-name" to="/account" onClick={closeMenus}>{user.business || user.name || 'My Account'}</Link>
               {isAdmin && <Link className="aw-signin aw-desktop-only" to="/admin" onClick={closeMenus}>Admin</Link>}
               <span className="aw-account-or">·</span>
-              <button className="aw-signin aw-desktop-only" type="button" onClick={() => runNav(onLogout)}>Sign Out</button>
+              <button className="aw-signin aw-desktop-only" type="button" onClick={() => runNav(onLogout)} disabled={signingOut}>
+                <span>{signingOut ? 'Signing out…' : 'Sign Out'}</span>
+              </button>
             </>
           ) : (
             <>
@@ -147,8 +156,9 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
       {menuOpen && isMobile && (
         <MobileMenu
           onClose={() => setMenuOpen(false)} onFollowLink={closeMenus} departments={departments} products={products} user={user} isAdmin={isAdmin}
+          signingOut={signingOut}
           go={{
-            logout: () => runNav(onLogout), signin: () => runNav(onLoginClick), signup: () => runNav(onSignupClick), help: () => runNav(onHelp),
+            logout: () => onLogout(), signin: () => runNav(onLoginClick), signup: () => runNav(onSignupClick), help: () => runNav(onHelp),
           }}
         />
       )}

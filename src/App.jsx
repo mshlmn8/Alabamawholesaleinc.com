@@ -3,16 +3,20 @@
 // src/components/ and src/lib/. URLs, links and page-change behaviour live in
 // src/lib/router.js and src/lib/routes.js. The age gate is a layer over the
 // page, not a replacement for it (AW-044); its state is in src/lib/ageGate.js.
+// The session and profile come from the AuthProvider (src/lib/auth.jsx,
+// AW-187), mounted in main.jsx.
 
 import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 
-import { useAuth } from './lib/useAuth.js';
+import { useAuth } from './lib/auth.jsx';
 import { useCatalog } from './lib/useCatalog.js';
 import { useCart } from './lib/cart.js';
 import { focusPageHeading, navigate, pathFor, resolveRoute, routeKey, useNavigationEffects, useRoute } from './lib/router.js';
+import { pageKeyFor } from './lib/routes.js';
 import { confirmAge, declineAge, endAgeConfirmationOnSignOut, reconsiderAge, useAgeGate } from './lib/ageGate.js';
 import { pageMeta, applyPageMeta } from './lib/meta.js';
 import { departmentsFor } from './lib/departments.js';
+import { accountNotices, signOutMessage } from './lib/accountNotices.js';
 import { AgeGate } from './components/AgeGate.jsx';
 import { TradeBar } from './components/TradeBar.jsx';
 import { Header } from './components/Header.jsx';
@@ -22,6 +26,7 @@ import { HelpDialog } from './components/HelpDialog.jsx';
 import { AuthModal } from './components/AuthModal.jsx';
 import { ModalLayer } from './components/ModalLayer.jsx';
 import { ErrorBoundary } from './components/ErrorBoundary.jsx';
+import { SiteNotices } from './components/SiteNotices.jsx';
 import { HomePage } from './pages/HomePage.jsx';
 import { CategoryPage } from './pages/CategoryPage.jsx';
 import { ProductPage } from './pages/ProductPage.jsx';
@@ -37,6 +42,9 @@ import { ApplyPage } from './pages/support/ApplyPage.jsx';
 import { ResetPasswordPage } from './pages/support/ResetPasswordPage.jsx';
 
 const SEARCH_NOT_READY = { page: 'not-found', kind: 'page' };
+// Sign Out leads home, and its notice shows there.
+const SIGNED_OUT_PAGE = '/';
+const SIGNED_OUT_PAGE_KEY = pageKeyFor({ pathname: SIGNED_OUT_PAGE });
 
 export default function App() {
   const age = useAgeGate();
@@ -45,13 +53,15 @@ export default function App() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [loginMode, setLoginMode] = useState('signin');
   const [helpOpen, setHelpOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutNotice, setSignOutNotice] = useState(null); // { text, pageKey }
 
   const auth = useAuth();
   const { products } = useCatalog();
-  const { profile, signOut, isBackendConfigured } = auth;
-  // A password-recovery (or expired) email link takes over the page until it is dismissed.
-  const accountLinkPage = auth.recovery || !!auth.linkError;
-  const user = profile ? { id: profile.id, name: profile.name, email: profile.email, business: profile.business } : null;
+  const { session, profile, account, signOut, refreshProfile, dismissLink, isBackendConfigured } = auth;
+  // Signed in whenever there is a session, also before (or without) its
+  // profile, so Sign Out is always within reach (AW-089).
+  const user = session ? { name: profile?.name || '', business: profile?.business || '' } : null;
   const isApprovedBuyer = profile?.status === 'approved';
   const isAdmin = profile?.role === 'admin';
   const departments = useMemo(() => departmentsFor(products), [products]);
@@ -73,10 +83,8 @@ export default function App() {
   }, [canonicalPath, location]);
 
   useEffect(() => {
-    // A recovery/expired account link shows the reset page whatever the URL says.
-    const shown = accountLinkPage ? { page: 'reset-password' } : route;
-    applyPageMeta(pageMeta(shown, products, departments));
-  }, [route, products, departments, accountLinkPage]);
+    applyPageMeta(pageMeta(route, products, departments));
+  }, [route, products, departments]);
   // Scroll, focus and announcement on page changes (after the title is set).
   useNavigationEffects();
 
@@ -88,18 +96,42 @@ export default function App() {
     wasGated.current = gated;
   }, [gated]);
 
+  // The sign-out notice belongs to the page Sign Out led to (AW-336).
+  if (signOutNotice && signOutNotice.pageKey !== location.pageKey) setSignOutNotice(null);
+  // Moving to another page ends the notice about the email link the site was
+  // opened with (AW-015).
+  const lastPageKey = useRef(location.pageKey);
+  useEffect(() => {
+    if (lastPageKey.current === location.pageKey) return;
+    lastPageKey.current = location.pageKey;
+    dismissLink();
+  }, [location.pageKey, dismissLink]);
+
   // Escape handling, body scroll lock, the inert background and Back-to-close
   // live in ModalLayer so every dialog (including the auth modal) behaves the same.
 
-  const handleLogout = async () => {
+  // Sign Out (AW-336, AW-047, AW-337): the buttons say "Signing out…" until
+  // it finishes, the session is cleared on this computer even when Supabase
+  // cannot be reached, and a notice on the home page says how it went.
+  // scope 'global' is "Sign out of all devices" on /account.
+  const handleLogout = async ({ scope = 'local' } = {}) => {
+    if (signingOut) return;
+    setSigningOut(true);
+    let result = { ok: false, scope };
     try {
-      await signOut();
-      navigate('/');
+      result = await signOut({ scope });
+    } catch {
+      // signOut clears the saved session itself; report it as unconfirmed.
     } finally {
-      // The next person on a shared computer is asked their age again (AW-340).
-      endAgeConfirmationOnSignOut();
+      setSigningOut(false);
     }
+    navigate(SIGNED_OUT_PAGE);
+    setLoginOpen(false);
+    setSignOutNotice({ text: signOutMessage(result), pageKey: SIGNED_OUT_PAGE_KEY });
+    // The next person on a shared computer is asked their age again (AW-340).
+    endAgeConfirmationOnSignOut();
   };
+  const signOutHere = () => handleLogout();
 
   // signin | signup (checklist first) | application (straight to the form) | reset
   const openLogin = (mode) => {
@@ -115,15 +147,39 @@ export default function App() {
     openSignin();
   };
 
+  const notices = accountNotices({
+    linkError: auth.linkError,
+    linkConfirmed: auth.linkConfirmed,
+    sessionEnded: auth.sessionEnded,
+    connectionProblem: auth.connectionProblem,
+    account,
+    routePage: route.page,
+    signOutText: signOutNotice?.text || null,
+    signingOut,
+    retrying: auth.profileRefreshing,
+  }, {
+    signIn: openSignin,
+    requestReset: openReset,
+    signOutHere,
+    retryProfile: refreshProfile,
+    dismissLink,
+    dismissSessionEnded: auth.dismissSessionEnded,
+    dismissConnectionProblem: auth.dismissConnectionProblem,
+    dismissSignOut: () => setSignOutNotice(null),
+  });
+
   // Product cards need the account, the cart and the add/step actions.
   const cardProps = {
     profile, isApprovedBuyer, cart: cart.cart, addLine: cart.addLine, decLine: cart.decLine, onLoginClick: openSignin,
   };
+  // Account pages wait for the session and profile instead of flashing a
+  // signed-out view (AW-186), and offer a retry when the profile fails (AW-089).
+  const accountProps = {
+    profile, account, onSignIn: openSignin, onRetry: refreshProfile, retrying: auth.profileRefreshing,
+    onSignOut: signOutHere, signingOut,
+  };
 
   const renderRoute = () => {
-    if (accountLinkPage) {
-      return <ResetPasswordPage key="account-link" auth={auth} onRequestReset={openReset} onLoginClick={openSignin} />;
-    }
     switch (route.page) {
       case 'home':
         return <HomePage products={products} departments={departments} {...cardProps} onApplyClick={openSignup} />;
@@ -138,15 +194,18 @@ export default function App() {
       case 'quote':
         return (
           <QuotePage items={cart.items} total={cart.total} addLine={cart.addLine} decLine={cart.decLine} removeLine={cart.removeLine}
-                     clearCart={cart.clearCart} profile={profile} isApprovedBuyer={isApprovedBuyer} isBackendConfigured={isBackendConfigured} />
+                     clearCart={cart.clearCart} profile={profile} account={account} signedIn={!!session} onSignIn={openSignin}
+                     isApprovedBuyer={isApprovedBuyer} isBackendConfigured={isBackendConfigured} />
         );
       case 'account':
+        // Keyed by account: another buyer never sees the last one's orders (AW-190).
         return (
-          <AccountPage profile={profile} onSignIn={openSignin} products={products}
-                       addLines={cart.addLines} onOpenCart={() => setCartOpen(true)} isApprovedBuyer={isApprovedBuyer} />
+          <AccountPage key={session?.user?.id || 'guest'} {...accountProps} products={products}
+                       addLines={cart.addLines} onOpenCart={() => setCartOpen(true)} isApprovedBuyer={isApprovedBuyer}
+                       onSignOutEverywhere={() => handleLogout({ scope: 'global' })} />
         );
       case 'admin':
-        return <AdminPage profile={profile} onSignIn={openSignin} />;
+        return <AdminPage {...accountProps} />;
       case 'catalog':
         return (
           <CatalogIndexPage products={products} departments={departments} profile={profile} isApprovedBuyer={isApprovedBuyer}
@@ -162,11 +221,12 @@ export default function App() {
         return <PolicyPage kind={route.page} />;
       case 'apply':
         return (
-          <ApplyPage profile={profile} isBackendConfigured={isBackendConfigured}
+          <ApplyPage profile={profile} account={account} isBackendConfigured={isBackendConfigured}
                      onApplyClick={openApplication} onLoginClick={openSignin} onResetClick={openReset} />
         );
       case 'reset-password':
-        return <ResetPasswordPage auth={auth} onRequestReset={openReset} onLoginClick={openSignin} />;
+        // Keyed by account: signing out ends a finished or half-done reset (AW-015).
+        return <ResetPasswordPage key={session?.user?.id || 'guest'} auth={auth} onRequestReset={openReset} onLoginClick={openSignin} />;
       default:
         return <NotFoundPage key={routeKey(route)} kind={route.kind} category={route.category} products={products} departments={departments} />;
     }
@@ -180,13 +240,14 @@ export default function App() {
         cartCount={cart.count} onCart={() => setCartOpen(true)}
         products={products} departments={departments}
         user={user} isAdmin={isAdmin}
-        onLoginClick={openSignin} onSignupClick={openSignup} onLogout={handleLogout}
+        onLoginClick={openSignin} onSignupClick={openSignup} onLogout={signOutHere} signingOut={signingOut}
         onHelp={() => setHelpOpen(true)}
       />
 
       {/* tabIndex -1: the fallback focus target after a page change (AW-041). */}
       <main className="container" id="main" tabIndex={-1}>
-        <ErrorBoundary resetKey={accountLinkPage ? 'account-link' : routeKey(route)}>
+        <SiteNotices notices={notices} />
+        <ErrorBoundary resetKey={routeKey(route)}>
           {renderRoute()}
         </ErrorBoundary>
       </main>
@@ -199,7 +260,7 @@ export default function App() {
       {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} onApply={() => { setHelpOpen(false); openSignup(); }} />}
       {loginOpen && (
         <ModalLayer onClose={() => setLoginOpen(false)}>
-          <AuthModal open initialMode={loginMode} onClose={() => setLoginOpen(false)} />
+          <AuthModal open initialMode={loginMode} onClose={() => setLoginOpen(false)} onSignOut={signOutHere} signingOut={signingOut} />
         </ModalLayer>
       )}
       {/* Last, so it sits above any other layer. No onClose and no history

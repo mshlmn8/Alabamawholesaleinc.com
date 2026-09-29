@@ -6,7 +6,7 @@ import { COMPANY } from '../data/content.js';
 import { Link } from '../lib/router.js';
 import { ModalLayer } from './ModalLayer.jsx';
 
-export function MobileMenu({ onClose, onFollowLink, departments, products, user, isAdmin, go }) {
+export function MobileMenu({ onClose, onFollowLink, departments, products, user, isAdmin, signingOut = false, go }) {
   return (
     <ModalLayer onClose={onClose} className="aw-menu-layer">
       <div className="overlay" aria-hidden="true" onClick={onClose} />
@@ -39,7 +39,7 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
                 <Link to="/account" onClick={onFollowLink}>{user.business || user.name || 'My Account'}</Link>
                 {isAdmin && <Link to="/admin" onClick={onFollowLink}>Admin</Link>}
                 <Link to="/account" onClick={onFollowLink}>Quick Reorder</Link>
-                <button type="button" onClick={go.logout}>Sign Out</button>
+                <button type="button" onClick={go.logout} disabled={signingOut}><span>{signingOut ? 'Signing out…' : 'Sign Out'}</span></button>
               </>
             ) : (
               <>

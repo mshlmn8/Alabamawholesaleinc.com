@@ -1,6 +1,10 @@
-// New-password page. Reached from the recovery link in the reset email (the
-// storefront recognises the recovery fragment and shows this page), or
-// directly at /reset-password by a signed-in account.
+// New-password page at /reset-password. The recovery link in the reset email
+// opens it (src/lib/authLink.js turns the link into this address, once), and
+// a signed-in account can open it directly. It is an ordinary page: the
+// header, footer, links and Back all work while it is showing (AW-015).
+//
+// App keys it by account, so signing out ends a half-done or finished reset
+// and shows the signed-out view, not "link expired".
 
 import { useState } from 'react';
 import { describeError } from '../../lib/errors.js';
@@ -9,16 +13,28 @@ import { CallOrEmail } from '../../components/ContactLinks.jsx';
 import { Link } from '../../lib/router.js';
 import { PageHead } from './SupportShell.jsx';
 
+// What a reset link that did not work says. Supabase's own description is
+// never shown: anyone can write text into a link.
+function linkProblem(linkError) {
+  if (linkError.network) {
+    return {
+      title: 'We couldn’t check this reset link',
+      text: 'Check your connection, then open the link from your email again. It works until it expires.',
+    };
+  }
+  return {
+    title: 'This reset link has expired or was already used',
+    text: 'Reset links work once and expire after a short time. Request a new one and open it on the same device.',
+  };
+}
+
 export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
-  const { session, loading, recovery, linkError, updatePassword, clearRecovery, isBackendConfigured } = auth;
+  const { session, loading, recovery, linkError, linkChecking, updatePassword, isBackendConfigured } = auth;
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
-
-  // Leaving the page (any of its links) ends the account-link state.
-  const finish = () => clearRecovery();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,7 +50,7 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
   let body;
   if (!isBackendConfigured) {
     body = <ServiceUnavailable what="Password reset" className="form-error support-alert" />;
-  } else if (done) {
+  } else if (done && session) {
     body = (
       <div className="status-panel status-approved">
         <div>
@@ -43,13 +59,13 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
           <p>You are signed in with your new password. Use it the next time you sign in.</p>
         </div>
         <div className="contact-strip-actions">
-          <Link className="button" to="/account" onClick={finish}>Go to my account <span aria-hidden="true">↗</span></Link>
-          <Link className="button ghost" to="/catalog" onClick={finish}>Browse the catalog</Link>
+          <Link className="button" to="/account">Go to my account <span aria-hidden="true">↗</span></Link>
+          <Link className="button ghost" to="/catalog">Browse the catalog</Link>
         </div>
       </div>
     );
-  } else if (loading && !session) {
-    body = <p className="support-note" role="status">Checking your reset link…</p>;
+  } else if (linkChecking || (loading && !session)) {
+    body = <p className="support-note" role="status">{linkChecking ? 'Checking your reset link…' : 'Loading your account…'}</p>;
   } else if (session) {
     body = (
       <form className="reset-form" onSubmit={handleSubmit} aria-labelledby="reset-form-title">
@@ -69,23 +85,35 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
         <p className="form-error" role="alert">{error}</p>
         <div className="dialog-actions">
           <button className="button" type="submit" disabled={saving}><span>{saving ? 'Saving…' : 'Save new password'}</span> <span aria-hidden="true">↗</span></button>
-          <Link className="text-link" to="/" onClick={finish}>Cancel</Link>
+          <Link className="text-link" to="/">Cancel</Link>
         </div>
       </form>
     );
-  } else {
-    const fromLink = recovery || !!linkError;
+  } else if (linkError?.forReset) {
+    const problem = linkProblem(linkError);
     body = (
-      <div className={`status-panel ${fromLink ? 'status-suspended' : 'status-pending'}`}>
+      <div className="status-panel status-suspended">
         <div>
-          <p className="eyebrow">{fromLink ? 'LINK NOT VALID' : 'RESET BY EMAIL'}</p>
-          <h2>{fromLink ? 'This link has expired or was already used' : 'Request a reset link'}</h2>
-          {fromLink
-            ? <p><span>{linkError ? `${linkError.replace(/\.$/, '')}. ` : ''}</span>Reset links work once and expire after a short time. Request a new one and open it from the same device, or <CallOrEmail before="call" after=" and a trade rep will help you get back in." /></p>
-            : <p>We’ll email a link to the business address on your account. Open it on this device to choose a new password. Locked out completely? <CallOrEmail before="Call" after="." /></p>}
+          <p className="eyebrow">LINK NOT VALID</p>
+          <h2>{problem.title}</h2>
+          <p><span>{problem.text}</span> Or <CallOrEmail before="call" after=" and a trade rep will help you get back in." /></p>
         </div>
         <div className="contact-strip-actions">
           <button className="button" type="button" onClick={onRequestReset}>Request a new reset link <span aria-hidden="true">↗</span></button>
+          <button className="button ghost" type="button" onClick={onLoginClick}>Sign in</button>
+        </div>
+      </div>
+    );
+  } else {
+    body = (
+      <div className="status-panel status-pending">
+        <div>
+          <p className="eyebrow">RESET BY EMAIL</p>
+          <h2>Request a reset link</h2>
+          <p>We’ll email a link to the business address on your account. Open it on this device to choose a new password. Locked out completely? <CallOrEmail before="Call" after="." /></p>
+        </div>
+        <div className="contact-strip-actions">
+          <button className="button" type="button" onClick={onRequestReset}>Request a reset link <span aria-hidden="true">↗</span></button>
           <button className="button ghost" type="button" onClick={onLoginClick}>Sign in</button>
         </div>
       </div>
@@ -94,7 +122,7 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
 
   return (
     <section className="support-page">
-      <PageHead onHome={finish} crumb="Password reset" eyebrow="PASSWORD HELP" title="Choose a new password">
+      <PageHead crumb="Password reset" eyebrow="PASSWORD HELP" title="Choose a new password">
         <p>Pick a password of at least 8 characters that you don’t use anywhere else. Your trade account stays signed in once it is saved.</p>
       </PageHead>
       <div className="reset-layout">{body}</div>

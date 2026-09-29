@@ -1,11 +1,18 @@
 // Trade-account dashboard: profile summary, quick reorder by SKU, and order
 // history with a Reorder action per order.
+//
+// While the session and profile load it says so instead of showing the
+// signed-out view (AW-186); a profile that fails to load gets Try again and
+// Sign out (AW-089). App keys this page by account (AW-190). "Sign out of all
+// devices" ends the buyer's sessions everywhere (AW-337); the header's Sign
+// Out only ends this browser's.
 
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { linesFromOrder } from '../../lib/lines.js';
 import { formatMoney } from '../../lib/format.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
+import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
 import { QuickReorder } from './QuickReorder.jsx';
 
 const STATUS_CLASS = {
@@ -31,7 +38,10 @@ const reorderMessage = (note, target) => (note.lines > 0
   + (note.needsVariant > 0 ? ` ${plural(note.needsVariant, 'line')} need${note.needsVariant === 1 ? 's' : ''} a variant choice in the cart.` : '')
   + (note.unavailable.length > 0 ? ` No longer available: ${note.unavailable.join(', ')}.` : '');
 
-export function AccountPage({ profile, onSignIn, products = [], addLines, onOpenCart, isApprovedBuyer }) {
+export function AccountPage({
+  profile, account = profile ? 'ready' : 'signed-out', onSignIn, onRetry, retrying = false, onSignOut, onSignOutEverywhere,
+  signingOut = false, products = [], addLines, onOpenCart, isApprovedBuyer,
+}) {
   const [orders, setOrders] = useState(null);
   const [error, setError] = useState(null);
   const [reorderNote, setReorderNote] = useState(null);
@@ -50,17 +60,26 @@ export function AccountPage({ profile, onSignIn, products = [], addLines, onOpen
       });
   }, [profileId]);
 
-  if (!profile) {
+  // The same heading element in every state, so focus on it survives the
+  // profile arriving.
+  if (account !== 'ready' || !profile) {
     return (
-      <section className="page-head">
-        <p className="eyebrow">TRADE ACCOUNT</p>
-        <h1>My account</h1>
-        <p>Sign in to view your account, order history, and quick reorder.</p>
-        {onSignIn && (
-          <div className="dialog-actions compact-actions">
-            <button className="button" type="button" onClick={onSignIn}>Sign in <span aria-hidden="true">↗</span></button>
-          </div>
-        )}
+      <section>
+        <div className="page-head">
+          <Breadcrumbs items={[HOME_CRUMB, { label: 'My Account' }]} />
+          <p className="eyebrow">TRADE ACCOUNT</p>
+          <h1>My account</h1>
+          {account === 'loading' && <AccountLoading />}
+          {account === 'no-profile' && (
+            <AccountProblem onRetry={onRetry} retrying={retrying} onSignOut={onSignOut} signingOut={signingOut} />
+          )}
+          {account === 'signed-out' && <p>Sign in to view your account, order history, and quick reorder.</p>}
+          {account === 'signed-out' && onSignIn && (
+            <div className="dialog-actions compact-actions">
+              <button className="button" type="button" onClick={onSignIn}>Sign in <span aria-hidden="true">↗</span></button>
+            </div>
+          )}
+        </div>
       </section>
     );
   }
@@ -97,6 +116,15 @@ export function AccountPage({ profile, onSignIn, products = [], addLines, onOpen
 
       {profile.status === 'pending' && (
         <p className="notice">Your account is awaiting approval. A trade rep will verify your retail license and activate pricing within one business day.</p>
+      )}
+
+      {onSignOutEverywhere && (
+        <div className="account-signout">
+          <button className="button ghost" type="button" onClick={onSignOutEverywhere} disabled={signingOut}>
+            <span>{signingOut ? 'Signing out…' : 'Sign out of all devices'}</span>
+          </button>
+          <p className="result-note">Ends your sessions on every computer and phone, including this one. Sign Out in the header only signs out this browser.</p>
+        </div>
       )}
 
       <section className="section" id="quick-reorder">

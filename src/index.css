@@ -467,6 +467,7 @@ p > .text-link { min-height: 0; }
 .dialog h2 { color: var(--purple); font-size: 42px; margin: 0 0 6px; line-height: 1; }
 .dialog .kicker { font-size: var(--text-xs); font-weight: 700; letter-spacing: 1.6px; color: var(--orange-dark); text-transform: uppercase; margin: 0 0 14px; }
 .dialog > .desc { max-width: 600px; font-size: var(--text-md); color: #5f5862; line-height: 1.7; margin: 0 0 22px; }
+.dialog > .desc a { color: var(--purple); text-decoration: underline; text-underline-offset: 2px; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0 6px; }
 .form-grid label, .contact-grid dt { display: block; font-size: var(--text-xs); font-weight: 700; letter-spacing: 1.2px; color: var(--purple); text-transform: uppercase; margin-bottom: 6px; }
 .form-grid input, .form-grid select { width: 100%; height: var(--tap); border: 1px solid #dcd5cc; background: #f8f6f2; border-radius: 2px; padding: 0 12px; font-size: var(--text-base); color: var(--ink); }
@@ -878,3 +879,27 @@ ul.sub-pills { list-style: none; padding: 0; }
   .not-found-layout { grid-template-columns: 1fr; }
   .not-found-browse .sub-pills { flex-wrap: wrap; overflow-x: visible; padding: 0; margin-inline: 0; }
 }
+
+/* Account notices and states (AW-015, AW-048, AW-089, AW-186, AW-336, AW-337) */
+.site-notices { display: grid; gap: 10px; margin: 22px 0 16px; }
+.site-notice { display: flex; align-items: flex-start; gap: 12px; padding: 14px 12px 14px 18px; background: var(--paper); border: 1px solid var(--line); border-left: 4px solid var(--purple); color: var(--ink); }
+.site-notice.is-warn { background: var(--cream); border-color: var(--orange); border-left-color: var(--orange-dark); }
+.site-notice-body { flex: 1; min-width: 0; }
+.site-notice-body p { margin: 0; font-size: var(--text-md); line-height: 1.6; max-width: 72ch; }
+.site-notice-body .site-notice-title { font-weight: 700; color: var(--purple); margin-bottom: 2px; }
+.site-notice-actions { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-top: 4px; }
+.site-notice-actions .text-link { min-height: var(--tap); }
+.site-notice-close { flex-shrink: 0; width: var(--tap); height: var(--tap); margin: -8px -4px -8px 0; border: 0; border-radius: 50%; background: transparent; color: var(--purple); font-size: 24px; line-height: 1; }
+@media (hover: hover) {
+  .site-notice-close:hover { background: #fff; }
+}
+.account-loading { margin: 6px 0 0; }
+.account-problem { margin-top: 12px; max-width: 640px; }
+.account-problem p { margin: 0; }
+.account-problem .dialog-actions { margin-top: 12px; }
+.account-signout { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-top: 22px; }
+.account-signout .result-note { max-width: 52ch; }
+.checkout-lost { margin: 10px 0 14px; }
+.checkout-lost .form-error { margin-top: 0; }
+.checkout-lost .dialog-actions { margin-top: 8px; }
+.aw-signin:disabled, .menu-group button:disabled { cursor: progress; opacity: .7; text-decoration: none; }

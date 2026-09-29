@@ -18,8 +18,8 @@
 //
 // Old '#/…' links are redirected to their path by redirectLegacyHash(), which
 // main.jsx calls once before the first render. Supabase auth fragments
-// ('#access_token=…', '#error=…') do not start with '/', so they are left for
-// the auth layer.
+// ('#access_token=…', '#error=…') are read and removed before that, by
+// takeAuthLink() in src/lib/authLink.js.
 
 import { createElement, useEffect, useLayoutEffect, useMemo, useSyncExternalStore } from 'react';
 import { hrefFor, legacyHashTarget, pageKeyFor, parseUrl } from './routes.js';
@@ -172,8 +172,7 @@ function onPopState() {
 
   let key = historyState()?.awKey;
   if (!key) {
-    // An entry this router did not create (a plain #fragment link, or
-    // Supabase clearing its auth fragment).
+    // An entry this router did not create (a plain #fragment link).
     key = newKey();
     writeState('replaceState', { ...(historyState() || {}), awKey: key });
   }

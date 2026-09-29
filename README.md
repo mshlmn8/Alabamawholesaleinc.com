@@ -28,7 +28,7 @@ Also on the storefront:
 - Category menu for the eight departments
 - Cart drawer. Cart contents persist in `localStorage`. Escape closes the cart, sign-in, and help overlays and unlocks page scrolling
 - Quote requests and orders are saved by the `submit_quote` function in Supabase, which prices the lines on the server. If saving fails, the quote page shows an error with the trade desk's phone number and email; there is no other fallback
-- Trade sign-in and account applications through Supabase Auth
+- Trade sign-in and account applications through Supabase Auth. One provider (`src/lib/auth.jsx`) holds the session and profile; account pages wait for them instead of flashing a signed-out view, and email links are handled by `src/lib/authLink.js` (see BACKEND.md, "Email links")
 
 Prices stay hidden until someone is signed in. Approved accounts see tier pricing (standard, silver, gold).
 

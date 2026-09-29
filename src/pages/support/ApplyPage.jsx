@@ -6,11 +6,15 @@ import { APPLICATION_CHECKLIST } from '../../data/onboarding.js';
 import { ServiceUnavailable } from '../../components/ServiceUnavailable.jsx';
 import { ApplicationDocuments } from '../../components/DocumentUploads.jsx';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
+import { AccountLoading } from '../../components/AccountStatus.jsx';
 import { Link } from '../../lib/router.js';
 import { PageHead, ContactStrip } from './SupportShell.jsx';
 
-export function ApplyPage({ profile, isBackendConfigured, onApplyClick, onLoginClick, onResetClick }) {
+export function ApplyPage({ profile, account = profile ? 'ready' : 'signed-out', isBackendConfigured, onApplyClick, onLoginClick, onResetClick }) {
   const status = profile?.status;
+  // A signed-in applicant's status, not the application checklist, while
+  // their account loads (AW-186).
+  const loadingAccount = account === 'loading';
 
   return (
     <section className="support-page">
@@ -18,13 +22,15 @@ export function ApplyPage({ profile, isBackendConfigured, onApplyClick, onLoginC
         <p>Alabama Wholesale sells exclusively to licensed retail businesses — 21+, no consumer sales. Here is what to have ready, and what happens after you apply.</p>
       </PageHead>
 
+      {loadingAccount && <AccountLoading text="Checking for your application…" />}
+
       {profile && <StatusPanel profile={profile} />}
 
       {profile?.status === 'pending' && <ApplicationDocuments disabled={!isBackendConfigured} />}
 
       {!isBackendConfigured && <ServiceUnavailable what="The online application" className="form-error support-alert" />}
 
-      {(!profile || status === 'suspended') && (
+      {!loadingAccount && (!profile || status === 'suspended') && (
         <div className="apply-layout">
           <section className="checklist-card" aria-labelledby="checklist-title">
             <p className="eyebrow">WHAT YOU’LL NEED</p>

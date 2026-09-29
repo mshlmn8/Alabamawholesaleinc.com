@@ -13,12 +13,10 @@ export const POLICY_LINKS = [
   { page: 'terms', label: 'Trade terms' },
 ];
 
-// `onHome` runs when the Home crumb is followed (the reset page clears its
-// account-link state).
-export function PageHead({ crumb, eyebrow, title, onHome, children }) {
+export function PageHead({ crumb, eyebrow, title, children }) {
   return (
     <div className="page-head">
-      <Breadcrumbs items={[{ ...HOME_CRUMB, onClick: onHome }, { label: crumb }]} />
+      <Breadcrumbs items={[HOME_CRUMB, { label: crumb }]} />
       {eyebrow && <p className="eyebrow">{eyebrow}</p>}
       <h1>{title}</h1>
       {children}

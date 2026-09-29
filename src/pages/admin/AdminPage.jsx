@@ -7,6 +7,7 @@ import { DOCUMENT_TYPES, createDocumentViewUrl, listAllProfileDocuments } from '
 import { formatMoney } from '../../lib/format.js';
 import { Link } from '../../lib/router.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
+import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
 
 const TABS = [
   { id: 'orders', label: 'Orders' },
@@ -16,12 +17,30 @@ const TABS = [
 
 const ORDER_STATES = ['new', 'contacted', 'fulfilled', 'cancelled'];
 
-export function AdminPage({ profile, onSignIn }) {
+export function AdminPage({
+  profile, account = profile ? 'ready' : 'signed-out', onSignIn, onRetry, retrying = false, onSignOut, signingOut = false,
+}) {
   const [tab, setTab] = useState('orders');
 
-  // Not a dead end (AW-232): signed-out visitors can sign in, and signed-in
-  // accounts without the admin role get a way back. The loading state while
-  // auth resolves is AW-087.
+  // While auth loads, a real admin sees "Loading", not "access denied"
+  // (AW-087). Not a dead end otherwise (AW-232): signed-out visitors can sign
+  // in, and signed-in accounts without the admin role get a way back. The
+  // server boundary is RLS (is_admin()); this is only what the page shows.
+  // (Laid out like the dashboard, so its heading stays put when it loads.)
+  if (account === 'loading' || account === 'no-profile') {
+    return (
+      <section>
+        <div className="page-head">
+          <Breadcrumbs items={[HOME_CRUMB, { label: 'Admin' }]} />
+          <p className="eyebrow">TRADE DESK</p>
+          <h1>Admin</h1>
+          {account === 'loading'
+            ? <AccountLoading />
+            : <AccountProblem onRetry={onRetry} retrying={retrying} onSignOut={onSignOut} signingOut={signingOut} />}
+        </div>
+      </section>
+    );
+  }
   if (!profile || profile.role !== 'admin') {
     return (
       <section className="page-head">

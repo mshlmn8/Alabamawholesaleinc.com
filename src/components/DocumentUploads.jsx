@@ -4,7 +4,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { COMPANY } from '../data/content.js';
-import { useAuth } from '../lib/useAuth.js';
+import { useAuth } from '../lib/auth.jsx';
 import {
   DOCUMENT_ACCEPT,
   DOCUMENT_TYPES,

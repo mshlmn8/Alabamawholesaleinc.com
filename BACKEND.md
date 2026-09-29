@@ -86,9 +86,40 @@ deploy can no longer ship a storefront with sign-in, applications and quotes
 silently disabled. To build a static-only preview on purpose, set
 `ALLOW_NO_BACKEND=1` for that build only; never set it on the production site.
 
-Password-reset emails link back to the site root. Under **Authentication →
-URL Configuration**, set the Site URL to the production domain and add
-`http://localhost:3000/` to the redirect allow list for local testing.
+### Email links (sign-up confirmation and password reset)
+
+Under **Authentication → URL Configuration**:
+
+- Set the **Site URL** to the production domain. Sign-up confirmation links
+  return there.
+- Add `https://<production domain>/reset-password` to the **Redirect URLs**
+  allow list. Password-reset emails link to `/reset-password`. Until that
+  address is allowed, Supabase sends the reset link to the Site URL instead,
+  and the storefront still opens the new-password page from there.
+- For local testing, also allow `http://localhost:3000/` and
+  `http://localhost:3000/reset-password`.
+
+The storefront reads the link's `#access_token=…` or `#error=…` fragment
+once, at boot (`src/lib/authLink.js`), and removes it from the address bar
+and the browser history. Only a password-recovery link opens the
+new-password page. An expired or already used link shows a notice with
+Sign in and Reset password, and never the text Supabase put in the link.
+A buyer whose sign-up confirmation expired can ask for a new one from the
+sign-in dialog (`auth.resend`).
+
+### Sessions and sign-out
+
+One `AuthProvider` (`src/lib/auth.jsx`) holds the session and the profile
+for the whole site. The profile is loaded again when the buyer returns to
+the tab, and every few minutes while the account is pending, so approving an
+account in Admin → Accounts shows prices without a reload.
+
+The header's **Sign Out** ends this browser's session only
+(`signOut({ scope: 'local' })`). **Sign out of all devices** on `/account`
+ends every session of that account. If Supabase cannot be reached, the
+browser's saved session is still removed, so a shared computer is never
+signed back in on the next load. Other open tabs follow a sign-out and say
+that the session ended.
 
 ## 5. First-run sanity check
 
