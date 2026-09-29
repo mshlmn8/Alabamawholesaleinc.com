@@ -1,6 +1,6 @@
 // Not-found page (AW-188, AW-232): a way forward instead of a dead end.
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { NotFoundPage } from './NotFoundPage.jsx';
 
 const products = [
@@ -42,4 +42,30 @@ describe('NotFoundPage', () => {
     fireEvent.change(screen.getByRole('searchbox', { name: 'Product, brand or SKU' }), { target: { value: 'zzz' } });
     expect(screen.getByRole('status').textContent).toMatch(/^No matches/);
   });
+
+  it('says it is loading, not "not found", while the live catalog loads (AW-204)', () => {
+    const view = render(<NotFoundPage kind="product" catalog="loading" products={products} departments={departments} />);
+    const h1 = screen.getByRole('heading', { level: 1 });
+    expect(h1.textContent).toBe('Loading product…');
+    expect(screen.queryByRole('search')).toBeNull();
+    // The heading element stays when the catalog fails to load.
+    const onRetry = vi.fn();
+    view.rerender(<NotFoundPage kind="product" catalog="error" onRetry={onRetry} products={products} departments={departments} />);
+    expect(screen.getByRole('heading', { level: 1 })).toBe(h1);
+    expect(h1.textContent).toBe('We couldn’t load this product');
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(onRetry).toHaveBeenCalled();
+    view.rerender(<NotFoundPage kind="product" catalog="error" retrying onRetry={onRetry} products={products} departments={departments} />);
+    expect(screen.getByRole('button', { name: 'Trying again…' }).disabled).toBe(true);
+    // Once loaded, a product that isn't there is not found.
+    view.rerender(<NotFoundPage kind="product" products={products} departments={departments} />);
+    expect(screen.getByRole('heading', { level: 1 })).toBe(h1);
+    expect(h1.textContent).toBe('Product not found');
+  });
+
+  it('ignores the catalog state for addresses that are not catalog pages', () => {
+    render(<NotFoundPage kind="page" catalog="loading" products={products} departments={departments} />);
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Page not found');
+  });
 });
+

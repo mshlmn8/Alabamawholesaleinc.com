@@ -10,10 +10,17 @@
 // Lines that can no longer be ordered (AW-083) are listed with a notice and
 // block the submit until they are removed; products from an older cart that
 // still need a variant (AW-354) are listed at the top.
+//
+// The catalog may have changed since the page was opened (AW-191, AW-204):
+// Submit first loads it again (checkCart, from App) and stops, naming the
+// lines, when one can no longer be ordered, needs a variant or has a new
+// price. When the catalog can't be loaded, nothing is sent against the old
+// copy.
 
 import { useState } from 'react';
 import { COMPANY, ORDER_MINIMUM } from '../data/content.js';
 import { submitOrder } from '../lib/orders.js';
+import { cartChanges, describeCartChanges } from '../lib/cart.js';
 import { formatMoney } from '../lib/format.js';
 import { Link } from '../lib/router.js';
 import { CallOrEmail } from '../components/ContactLinks.jsx';
@@ -25,9 +32,14 @@ import { initialQuoteForm, quoteFormForAccount } from '../lib/quoteForm.js';
 
 const UNAVAILABLE_ERROR = 'Remove the items that are no longer available before you submit.';
 
+// Identifies what the buyer is looking at: which lines, how many, whether
+// each can be ordered and at what price.
+const itemsSignature = (items) => items.map((it) => `${it.lineKey}|${it.qty}|${it.unavailable || ''}|${it.needsVariant ? 1 : 0}|${it.price ?? ''}`).join(',');
+
 export function QuotePage({
   items, total, addLine, decLine, removeLine, removeLines, clearCart, legacy = [], onDismissLegacy,
   profile, account = profile ? 'ready' : 'signed-out', signedIn = !!profile, onSignIn, isApprovedBuyer, isBackendConfigured,
+  checkCart = null,
 }) {
   const [step, setStep] = useState('review');
   const [data, setData] = useState(() => initialQuoteForm(profile));
@@ -54,12 +66,21 @@ export function QuotePage({
   const [refNum] = useState(() => `ALW-Q-${Math.floor(Math.random() * 90000) + 10000}`);
   const [receipt, setReceipt] = useState(null);
   const [submitError, setSubmitError] = useState(null);
-  const [sending, setSending] = useState(false);
+  // null | 'checking' (loading the catalog again) | 'sending'
+  const [phase, setPhase] = useState(null);
+  const sending = phase !== null;
+  // What changed in the catalog, shown until the lines on the page change.
+  const [changeNote, setChangeNote] = useState(null); // { text, forItems }
+  const currentSignature = itemsSignature(items);
+  const changeText = changeNote && changeNote.forItems === currentSignature ? changeNote.text : null;
   const unavailable = items.filter(it => it.unavailable);
   const orderable = items.filter(it => !it.unavailable);
   const totalUnits = orderable.reduce((s, i) => s + i.qty, 0);
   const needsVariant = items.some(it => it.needsVariant);
   const pricedBelowMinimum = isApprovedBuyer && Number(total) < ORDER_MINIMUM;
+  let submitLabel = isApprovedBuyer ? 'Submit order' : 'Submit quote request';
+  if (phase === 'checking') submitLabel = 'Checking the catalog…';
+  else if (phase === 'sending') submitLabel = 'Sending…';
 
   const handleQuoteSubmit = async (e) => {
     e.preventDefault();
@@ -75,10 +96,29 @@ export function QuotePage({
       setSubmitError(UNAVAILABLE_ERROR);
       return;
     }
-    setSending(true);
+    setPhase('checking');
     setSubmitError(null);
+    setChangeNote(null);
     try {
-      const r = await submitOrder({ refNum, formData: data, items: orderable });
+      let lines = orderable;
+      if (checkCart) {
+        const check = await checkCart();
+        if (!check?.ok) {
+          setSubmitError({
+            before: 'We couldn’t check the latest prices and availability, so nothing was sent. Check your connection and try again, or call',
+            after: ` and reference ${refNum}.`,
+          });
+          return;
+        }
+        const changes = cartChanges(items, check.items);
+        if (changes.length) {
+          setChangeNote({ text: describeCartChanges(changes), forItems: itemsSignature(check.items) });
+          return;
+        }
+        lines = check.items.filter(it => !it.unavailable);
+      }
+      setPhase('sending');
+      const r = await submitOrder({ refNum, formData: data, items: lines });
       if (!r?.ok || !r.order?.id) throw new Error('The quote was not saved.');
       setReceipt({ ...r.order, asOrder: isApprovedBuyer });
       setStep('submitted');
@@ -87,7 +127,7 @@ export function QuotePage({
       setSubmitError(err?.code === 'unavailable'
         ? { before: 'Quote requests can’t be saved right now. Call', after: ' and the trade desk will write it up with you.' }
         : { before: 'We couldn’t save this quote. Please call', after: ` and reference ${refNum}.` });
-    } finally { setSending(false); }
+    } finally { setPhase(null); }
   };
 
   if (items.length === 0 && step === 'review') {
@@ -187,6 +227,7 @@ export function QuotePage({
           {!isBackendConfigured && <p className="form-error" role="status"><CallOrEmail before="Quote requests can’t be saved right now. Call" after=" and the trade desk will write it up with you." /></p>}
           {needsVariant && <p className="form-error" role="alert">Choose a variant for every product that has more than one.</p>}
           {unavailable.length > 0 && <p className="form-error" role="alert">{UNAVAILABLE_ERROR}</p>}
+          {changeText && <p className="form-error" role="alert">{changeText}</p>}
           {submitError && <p className="form-error" role="alert">{typeof submitError === 'string' ? submitError : <CallOrEmail before={submitError.before} after={submitError.after} />}</p>}
           {lostOrdering && (
             <div className="checkout-lost">
@@ -200,7 +241,7 @@ export function QuotePage({
             </div>
           )}
           <button className="button wide" type="submit" disabled={sending || !isBackendConfigured || needsVariant || unavailable.length > 0 || lostOrdering}>
-            <span>{sending ? 'Sending…' : (isApprovedBuyer ? 'Submit order' : 'Submit quote request')}</span> <span aria-hidden="true">↗</span></button>
+            <span>{submitLabel}</span> <span aria-hidden="true">↗</span></button>
           <p className="fine">The minimum order is $500.00. Orders over $1,500 qualify for free delivery on a delivery route in AL, MS &amp; GA. Will-call is pickup at the Birmingham warehouse during business hours. Tobacco products supplied to licensed retailers only — 21+.</p>
         </form>
       </div>

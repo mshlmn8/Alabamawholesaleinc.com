@@ -1,7 +1,16 @@
 // Checkout while the account changes underneath it (AW-186, AW-190, AW-048).
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { QuotePage } from './QuotePage.jsx';
+
+// submitOrder is the only way out; record what it is asked to send.
+const sent = vi.hoisted(() => []);
+vi.mock('../lib/orders.js', () => ({
+  submitOrder: vi.fn(async ({ refNum, items }) => {
+    sent.push(items);
+    return { ok: true, order: { id: 'o1', ref_num: refNum } };
+  }),
+}));
 
 const ITEMS = [{ lineKey: '14', productId: 14, variant: null, name: 'Kite cigarette tobacco', sku: 'AW-KITE', qty: 2, unitPrice: 10, lineTotal: 20 }];
 const A = { id: 'a', business: 'Alpha Food Mart', name: 'Alice Alpha', email: 'alpha@example.test', phone: '205-000-0001', status: 'approved' };
@@ -85,3 +94,59 @@ describe('QuotePage and the account', () => {
     expect(screen.getByRole('link', { name: 'Choose a variant for Swisher Sweets cigarillos' })).toBeTruthy();
   });
 });
+
+// Submit loads the catalog again and stops when a line changed (AW-191).
+describe('QuotePage and a catalog that changed', () => {
+  const fill = () => {
+    for (const [id, value] of [['quote-business', 'Test Market'], ['quote-contact', 'Test Buyer'], ['quote-email', 'buyer@example.test'],
+      ['quote-phone', '205-000-0000'], ['ship-street', '1 Test Way'], ['ship-city', 'Birmingham'], ['ship-state', 'AL'], ['ship-zip', '35203']]) {
+      fireEvent.change(document.getElementById(id), { target: { value } });
+    }
+  };
+  const submitForm = () => fireEvent.submit(document.querySelector('form[aria-labelledby="quote-form-title"]'));
+
+  it('checks the catalog, then sends the lines as they are now', async () => {
+    sent.length = 0;
+    let finish;
+    const checkCart = vi.fn(() => new Promise((resolve) => { finish = resolve; }));
+    render(page({ profile: null, account: 'signed-out', isApprovedBuyer: false, checkCart }));
+    fill();
+    submitForm();
+    const button = document.querySelector('button[type="submit"]');
+    expect(button.textContent).toMatch(/Checking the catalog…/);
+    expect(button.disabled).toBe(true);
+    await act(async () => { finish({ ok: true, items: ITEMS }); });
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Thank you/));
+    expect(checkCart).toHaveBeenCalledTimes(1);
+    expect(sent).toEqual([ITEMS]);
+  });
+
+  it('names a line that is no longer available and sends nothing', async () => {
+    sent.length = 0;
+    const gone = { ...ITEMS[0], unavailable: 'product', price: null };
+    const checkCart = vi.fn(async () => ({ ok: true, items: [gone] }));
+    const view = render(page({ profile: null, account: 'signed-out', isApprovedBuyer: false, checkCart }));
+    fill();
+    await act(async () => { submitForm(); });
+    // App re-renders the page with the catalog it just loaded.
+    view.rerender(page({ items: [gone], removeLines: vi.fn(), profile: null, account: 'signed-out', isApprovedBuyer: false, checkCart }));
+    const alerts = screen.getAllByRole('alert').map((el) => el.textContent);
+    expect(alerts).toContain('The catalog changed since this page opened, so nothing was sent. Kite cigarette tobacco is no longer available — remove it to continue. Check your items, then submit again.');
+    expect(sent).toEqual([]);
+    // Gone once the lines on the page change.
+    view.rerender(page({ items: [], profile: null, account: 'signed-out', isApprovedBuyer: false, checkCart }));
+    expect(screen.queryByText(/The catalog changed/)).toBeNull();
+  });
+
+  it('sends nothing when the catalog can’t be checked', async () => {
+    sent.length = 0;
+    const checkCart = vi.fn(async () => ({ ok: false, error: { kind: 'network' } }));
+    render(page({ profile: null, account: 'signed-out', isApprovedBuyer: false, checkCart }));
+    fill();
+    await act(async () => { submitForm(); });
+    expect(screen.getByRole('alert').textContent).toMatch(/^We couldn’t check the latest prices and availability, so nothing was sent\./);
+    expect(sent).toEqual([]);
+    expect(submit().disabled).toBe(false);
+  });
+});
+

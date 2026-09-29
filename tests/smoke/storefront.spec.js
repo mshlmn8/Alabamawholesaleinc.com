@@ -1,10 +1,12 @@
 // Storefront smoke test: the built site boots, passes the age gate and renders
 // the main pages without console or page errors. Every request that leaves
-// the preview server (Supabase included) is aborted, so the catalog falls back
-// to the bundled static data and nothing is ever written anywhere.
+// the preview server is aborted, so nothing is ever written anywhere; the
+// products request is answered with the seeded catalog (./catalog.js).
+// Loading and failure states of the catalog are in catalog.spec.js.
 //
 // Pages live at path URLs (AW-043); old '#/' links redirect to them.
 import { test, expect } from '@playwright/test';
+import { serveCatalog } from './catalog.js';
 
 const AGE_KEY = 'aw-age-verified'; // STORAGE.age in src/data/content.js
 // The dated record src/lib/ageGate.js stores for "Yes, I am 21+" (AW-340).
@@ -30,6 +32,7 @@ function trackErrors(page) {
 
 test.beforeEach(async ({ context }) => {
   await context.route('**/*', (route) => (isLocal(route.request().url()) ? route.continue() : route.abort()));
+  await serveCatalog(context);
 });
 
 // The age gate is a layer over the page, not a replacement for it (AW-044,

@@ -132,4 +132,15 @@ describe('useCart', () => {
     act(() => result.current.clearCart());
     expect(result.current.count).toBe(0);
   });
+
+  it('prices the stored cart against a catalog loaded again (AW-191)', () => {
+    const { result } = renderHook(() => useTestCart({ owner: GUEST, profile: { status: 'approved', pricing_tier: 'standard' } }));
+    act(() => result.current.addLine(14, null, 2));
+    // Another tab added a line the page has not drawn yet.
+    window.localStorage.setItem(cartKey(GUEST), JSON.stringify({ 14: 2, '20::only': 1 }));
+    const next = P.filter(p => p.id !== 20).map(p => (p.id === 14 ? { ...p, price: 25 } : p));
+    const items = result.current.itemsFor(next);
+    expect(items.map(i => [i.lineKey, i.qty, i.price, i.unavailable])).toEqual([['14', 2, 25, null], ['20::only', 1, null, 'product']]);
+  });
 });
+

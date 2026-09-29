@@ -121,6 +121,20 @@ browser's saved session is still removed, so a shared computer is never
 signed back in on the next load. Other open tabs follow a sign-out and say
 that the session ended.
 
+### The storefront catalog
+
+One `CatalogProvider` (`src/lib/catalog.jsx`) reads the active rows of
+`products`, a page of 1,000 at a time so the catalog is never cut off at the
+API's row limit, and only the columns in `CATALOG_COLUMNS`. Change that list
+when a column the storefront reads is added, renamed or revoked. The copy of
+the catalog built into the site shows until the live one arrives, and stays
+on screen if it can't be loaded, with a notice and a **Try again** button.
+An open tab loads the catalog again when the buyer comes back to it after
+five minutes or reconnects, so admin edits (prices, names, deactivations)
+reach tabs that were already open. Checkout loads it once more before sending
+and stops, naming the lines, when one was deactivated, lost its variant or
+changed price.
+
 ## 5. First-run sanity check
 
 1. Open the site, click **SIGN IN → Open a trade account**.

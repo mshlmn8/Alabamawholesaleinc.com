@@ -1,8 +1,10 @@
 // Accounts against a mocked Supabase (AW-015, AW-047, AW-186, AW-187): email
 // links, sign-out without a connection, and account pages while the profile
 // loads. Every Supabase request is answered here or aborted; nothing leaves
-// the browser, and no real account is used.
+// the browser, and no real account is used. Products come from the seeded
+// catalog (./catalog.js).
 import { test, expect } from '@playwright/test';
+import { fulfillProducts, seedRows, serveCatalog } from './catalog.js';
 
 const AGE_KEY = 'aw-age-verified'; // STORAGE.age in src/data/content.js
 const AUTH_KEY = 'aw-auth'; // AUTH_STORAGE_KEY in src/lib/supabase.js
@@ -49,6 +51,7 @@ async function mockSupabase(page, { profileDelay = 0, logout = 'ok' } = {}) {
       return route.fulfill({ json: [PROFILE] });
     }
     if (/\/rest\/v1\/orders/.test(url)) return route.fulfill({ json: [] });
+    if (/\/rest\/v1\/products/.test(url)) return fulfillProducts(route, seedRows());
     return route.abort();
   });
   return calls;
@@ -56,6 +59,7 @@ async function mockSupabase(page, { profileDelay = 0, logout = 'ok' } = {}) {
 
 test.beforeEach(async ({ context }) => {
   await context.route('**/*', (route) => (isLocal(route.request().url()) ? route.continue() : route.abort()));
+  await serveCatalog(context);
   await context.addInitScript(([key, value]) => {
     try { localStorage.setItem(key, value); } catch { /* storage blocked */ }
   }, [AGE_KEY, ageRecord(Date.now())]);

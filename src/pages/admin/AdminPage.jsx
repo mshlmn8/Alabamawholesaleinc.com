@@ -17,8 +17,11 @@ const TABS = [
 
 const ORDER_STATES = ['new', 'contacted', 'fulfilled', 'cancelled'];
 
+// onCatalogChange: a product was edited; the storefront loads the catalog
+// again so this tab shows the edit at once (AW-191).
 export function AdminPage({
   profile, account = profile ? 'ready' : 'signed-out', onSignIn, onRetry, retrying = false, onSignOut, signingOut = false,
+  onCatalogChange,
 }) {
   const [tab, setTab] = useState('orders');
 
@@ -86,7 +89,7 @@ export function AdminPage({
 
       {tab === 'orders' && <OrdersTab />}
       {tab === 'accounts' && <AccountsTab />}
-      {tab === 'products' && <ProductsTab />}
+      {tab === 'products' && <ProductsTab onCatalogChange={onCatalogChange} />}
     </section>
   );
 }
@@ -290,7 +293,7 @@ function AccountsTab() {
   );
 }
 
-function ProductsTab() {
+function ProductsTab({ onCatalogChange }) {
   const [rows, setRows] = useState(null);
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState('');
@@ -304,6 +307,7 @@ function ProductsTab() {
     await supabase.from('products').update(patch).eq('id', id);
     setEditing(null);
     reload();
+    onCatalogChange?.();
   };
 
   if (!rows) return <p className="result-note">Loading…</p>;

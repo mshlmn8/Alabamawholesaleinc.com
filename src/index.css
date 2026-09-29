@@ -875,6 +875,7 @@ ul.sub-pills { list-style: none; padding: 0; }
 .not-found-hits { grid-template-columns: 1fr; }
 .not-found-browse .sub-pills { margin: 16px 0 12px; }
 .not-found-links { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 0; }
+.not-found .not-found-retry { margin-bottom: 24px; }
 @media (max-width: 850px) {
   .not-found-layout { grid-template-columns: 1fr; }
   .not-found-browse .sub-pills { flex-wrap: wrap; overflow-x: visible; padding: 0; margin-inline: 0; }

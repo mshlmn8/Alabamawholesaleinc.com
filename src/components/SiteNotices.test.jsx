@@ -40,4 +40,18 @@ describe('SiteNotices', () => {
     expect(document.activeElement).toBe(main);
     main.remove();
   });
+
+  it('moves focus to <main> when a notice goes away while focus is in it', () => {
+    const main = document.createElement('main');
+    main.id = 'main';
+    main.tabIndex = -1;
+    document.body.appendChild(main);
+    const notices = [{ id: 'catalog-error', text: 'We couldn’t load the latest catalog.', actions: [{ id: 'retry', label: 'Try again', onClick: () => {} }] }];
+    const view = render(<SiteNotices notices={notices} />);
+    screen.getByRole('button', { name: 'Try again' }).focus();
+    view.rerender(<SiteNotices notices={[]} />);
+    expect(document.activeElement).toBe(main);
+    main.remove();
+  });
 });
+

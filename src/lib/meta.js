@@ -35,6 +35,11 @@ const NOT_FOUND = {
   line: { title: 'Product line not found', description: 'This product line does not exist. Browse the department or search the catalog.' },
 };
 
+// A product, department or line that isn't in the bundled catalog while the
+// live one loads (route.catalog 'loading') or could not be loaded ('error')
+// (AW-204, App.jsx).
+const CATALOG_PENDING = { product: 'product', department: 'department', line: 'product line' };
+
 // Title, description, canonical path, share image and indexing for a
 // resolved route (see resolveRoute in routes.js).
 export function pageMeta(route, products, departments) {
@@ -52,6 +57,9 @@ export function pageMeta(route, products, departments) {
 function pageText(route, products, departments) {
   const site = COMPANY.name;
   if (route.page === 'not-found') {
+    const what = route.catalog ? CATALOG_PENDING[route.kind] : null;
+    if (what && route.catalog === 'loading') return { title: `Loading ${what}… · ${site}`, description: 'Getting the latest catalog.' };
+    if (what) return { title: `Couldn’t load this ${what} · ${site}`, description: 'The latest catalog didn’t load. Check your connection and try again.' };
     const text = NOT_FOUND[route.kind] || NOT_FOUND.page;
     return { title: `${text.title} · ${site}`, description: text.description };
   }

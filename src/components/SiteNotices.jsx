@@ -4,14 +4,26 @@
 // dismissed; App decides which apply and when they go away.
 //
 // A new notice is read out through the shared live region, a moment after
-// the page-change announcement so neither cuts the other off.
+// the page-change announcement so neither cuts the other off. The catalog's
+// notices (src/lib/catalogNotices.js, AW-204) use the same list.
+//
+// When a notice goes away while focus is in it (dismissed, or its "Try
+// again" worked), focus moves to <main> instead of falling back to <body>.
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { announce } from '../lib/announce.js';
 
 // notices: [{ id, title?, text, tone?: 'warn', actions?: [{ id, label, onClick, disabled? }], onDismiss? }]
 export function SiteNotices({ notices }) {
   const announced = useRef(new Set());
+  const focused = useRef(null);
+  useLayoutEffect(() => {
+    const el = focused.current;
+    if (!el || el.isConnected) return;
+    focused.current = null;
+    const active = document.activeElement;
+    if (!active || active === document.body) document.getElementById('main')?.focus({ preventScroll: true });
+  }, [notices]);
   useEffect(() => {
     const ids = new Set(notices.map((n) => n.id));
     // A notice that went away is read out again if it comes back.
@@ -30,7 +42,7 @@ export function SiteNotices({ notices }) {
     document.getElementById('main')?.focus({ preventScroll: true });
   };
   return (
-    <div className="site-notices">
+    <div className="site-notices" onFocus={(e) => { focused.current = e.target; }}>
       {notices.map((notice) => (
         <div key={notice.id} className={`site-notice${notice.tone === 'warn' ? ' is-warn' : ''}`} data-notice={notice.id}>
           <div className="site-notice-body">

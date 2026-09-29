@@ -1,9 +1,10 @@
 // Cart storage smoke test (AW-045, AW-046, AW-354): the cart survives blocked
 // or damaged storage, stays in step across tabs, and carts from earlier
 // builds move over once. Every request that leaves the preview server is
-// aborted, so the catalog is the bundled one. Per-account carts (AW-189) are
-// covered in auth.spec.js.
+// aborted, except the products request, which gets the seeded catalog
+// (./catalog.js). Per-account carts (AW-189) are covered in auth.spec.js.
 import { test, expect } from '@playwright/test';
+import { serveCatalog } from './catalog.js';
 
 const AGE_KEY = 'aw-age-verified'; // STORAGE.age in src/data/content.js
 const GUEST_CART = 'aw-cart-v2:guest'; // cartKey('guest') in src/lib/cartStorage.js
@@ -30,6 +31,7 @@ const addButton = (page) => page.getByRole('button', { name: /^Add to (quote|ord
 
 test.beforeEach(async ({ context }) => {
   await context.route('**/*', (route) => (isLocal(route.request().url()) ? route.continue() : route.abort()));
+  await serveCatalog(context);
 });
 
 test.describe('with the age confirmed', () => {

@@ -5,12 +5,14 @@
 // page, not a replacement for it (AW-044); its state is in src/lib/ageGate.js.
 // The session and profile come from the AuthProvider (src/lib/auth.jsx,
 // AW-187), mounted in main.jsx. The cart belongs to whoever is signed in
-// (src/lib/cart.js and src/lib/cartStorage.js, AW-189).
+// (src/lib/cart.js and src/lib/cartStorage.js, AW-189). The catalog comes
+// from the CatalogProvider (src/lib/catalog.jsx, AW-204, AW-191), also
+// mounted in main.jsx.
 
 import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 
 import { savedSessionUserId, useAuth } from './lib/auth.jsx';
-import { useCatalog } from './lib/useCatalog.js';
+import { useCatalog } from './lib/catalog.jsx';
 import { useCart } from './lib/cart.js';
 import { cartOwner, clearGuestCart } from './lib/cartStorage.js';
 import { focusPageHeading, navigate, pathFor, resolveRoute, routeKey, useNavigationEffects, useRoute } from './lib/router.js';
@@ -19,6 +21,8 @@ import { confirmAge, declineAge, endAgeConfirmationOnSignOut, reconsiderAge, use
 import { pageMeta, applyPageMeta } from './lib/meta.js';
 import { departmentsFor } from './lib/departments.js';
 import { accountNotices, signOutMessage } from './lib/accountNotices.js';
+import { catalogNotices } from './lib/catalogNotices.js';
+import { announce } from './lib/announce.js';
 import { AgeGate } from './components/AgeGate.jsx';
 import { TradeBar } from './components/TradeBar.jsx';
 import { Header } from './components/Header.jsx';
@@ -44,6 +48,8 @@ import { ApplyPage } from './pages/support/ApplyPage.jsx';
 import { ResetPasswordPage } from './pages/support/ResetPasswordPage.jsx';
 
 const SEARCH_NOT_READY = { page: 'not-found', kind: 'page' };
+// Not-found routes that depend on what is in the catalog.
+const CATALOG_KINDS = ['product', 'department', 'line'];
 // Sign Out leads home, and its notice shows there.
 const SIGNED_OUT_PAGE = '/';
 const SIGNED_OUT_PAGE_KEY = pageKeyFor({ pathname: SIGNED_OUT_PAGE });
@@ -57,9 +63,19 @@ export default function App() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutNotice, setSignOutNotice] = useState(null); // { text, pageKey }
+  const [catalogNoticeHidden, setCatalogNoticeHidden] = useState(false);
 
   const auth = useAuth();
-  const { products, settled: catalogSettled } = useCatalog();
+  const catalog = useCatalog();
+  const { products, refreshIfStale } = catalog;
+  // A dismissed catalog notice stays away until the catalog loads again.
+  if (catalogNoticeHidden && catalog.status !== 'error') setCatalogNoticeHidden(false);
+  // "Try again" on a catalog that didn't load (AW-204). The notice or page
+  // stays as it was when it fails again, so say so.
+  const retryCatalog = async () => {
+    const result = await catalog.refresh();
+    if (!result.ok) announce('The latest catalog still didn’t load. Try again in a moment.');
+  };
   const { session, profile, account, signOut, refreshProfile, dismissLink, isBackendConfigured } = auth;
   // Signed in whenever there is a session, also before (or without) its
   // profile, so Sign Out is always within reach (AW-089).
@@ -71,7 +87,8 @@ export default function App() {
   // (AW-189). While the saved session is being checked, it is that
   // session's account, so a reload shows the right cart at once.
   const [savedUserId] = useState(savedSessionUserId);
-  const cart = useCart({ products, profile, owner: cartOwner(auth, savedUserId), catalogSettled });
+  // Lines are only re-keyed or flagged against the live catalog (AW-083).
+  const cart = useCart({ products, profile, owner: cartOwner(auth, savedUserId), catalogSettled: catalog.settled });
 
   // The URL is checked against the catalog (AW-188): unknown pages,
   // departments, lines and products render NotFound, and other spellings of
@@ -81,7 +98,13 @@ export default function App() {
   const canonicalPath = pathFor(resolved);
   // /search is reserved for the search results page (AW-007); until it
   // exists it shows NotFound.
-  const route = resolved.page === 'search' ? SEARCH_NOT_READY : resolved;
+  const found = resolved.page === 'search' ? SEARCH_NOT_READY : resolved;
+  // A product, department or line that isn't in the bundled catalog may be in
+  // the live one (AW-204): until that is on screen the page says it is
+  // loading, or that the catalog didn't load, instead of "not found".
+  const catalogPending = found.page === 'not-found' && CATALOG_KINDS.includes(found.kind) && !catalog.settled;
+  const pendingAs = catalogPending ? (catalog.status === 'loading' ? 'loading' : 'error') : null;
+  const route = useMemo(() => (pendingAs ? { ...found, catalog: pendingAs } : found), [found, pendingAs]);
   useLayoutEffect(() => {
     if (canonicalPath && canonicalPath !== location.pathname) {
       navigate(canonicalPath + location.search + location.hash, { replace: true, scroll: false });
@@ -93,6 +116,25 @@ export default function App() {
   }, [route, products, departments]);
   // Scroll, focus and announcement on page changes (after the title is set).
   useNavigationEffects();
+
+  // An open tab keeps its catalog current (AW-191): moving to another page
+  // loads it again once it is more than a few minutes old.
+  useEffect(() => {
+    refreshIfStale();
+  }, [location.pageKey, refreshIfStale]);
+
+  // The live catalog arrived after a link led to the loading view, whose
+  // heading had focus: the page that replaced it takes focus instead of
+  // <body> (AW-041). A page opened directly keeps the browser's own focus.
+  const wasPending = useRef(catalogPending);
+  const navigated = location.action !== 'load';
+  useEffect(() => {
+    if (wasPending.current && !catalogPending && navigated) {
+      const active = document.activeElement;
+      if (!active || active === document.body) focusPageHeading();
+    }
+    wasPending.current = catalogPending;
+  }, [catalogPending, navigated]);
 
   // When the age gate closes, the page it covered takes focus like a newly
   // opened page (AW-041), instead of focus falling back to <body>.
@@ -157,7 +199,7 @@ export default function App() {
     openSignin();
   };
 
-  const notices = accountNotices({
+  const notices = [...accountNotices({
     linkError: auth.linkError,
     linkConfirmed: auth.linkConfirmed,
     sessionEnded: auth.sessionEnded,
@@ -176,7 +218,17 @@ export default function App() {
     dismissSessionEnded: auth.dismissSessionEnded,
     dismissConnectionProblem: auth.dismissConnectionProblem,
     dismissSignOut: () => setSignOutNotice(null),
-  });
+  }), ...catalogNotices(catalog, { dismissed: catalogNoticeHidden, pageExplains: catalogPending }, {
+    retry: retryCatalog,
+    dismiss: () => setCatalogNoticeHidden(true),
+  })];
+
+  // Checkout loads the catalog again right before a submit and stops when a
+  // line changed (AW-191): the cart as stored now, priced against it.
+  const checkCart = async () => {
+    const result = await catalog.refresh();
+    return result.ok ? { ok: true, items: cart.itemsFor(result.products) } : { ok: false, error: result.error };
+  };
 
   // Product cards need the account, the cart and the add/step actions.
   const cardProps = {
@@ -209,7 +261,7 @@ export default function App() {
           <QuotePage items={cart.items} total={cart.total} addLine={cart.addLine} decLine={cart.decLine} removeLine={cart.removeLine}
                      removeLines={cart.removeLines} clearCart={cart.clearCart} legacy={cart.legacy} onDismissLegacy={cart.dismissLegacy}
                      profile={profile} account={account} signedIn={!!session} onSignIn={openSignin}
-                     isApprovedBuyer={isApprovedBuyer} isBackendConfigured={isBackendConfigured} />
+                     isApprovedBuyer={isApprovedBuyer} isBackendConfigured={isBackendConfigured} checkCart={checkCart} />
         );
       case 'account':
         // Keyed by account: another buyer never sees the last one's orders (AW-190).
@@ -219,7 +271,7 @@ export default function App() {
                        onSignOutEverywhere={() => handleLogout({ scope: 'global' })} />
         );
       case 'admin':
-        return <AdminPage {...accountProps} />;
+        return <AdminPage {...accountProps} onCatalogChange={() => { catalog.refresh(); }} />;
       case 'catalog':
         return (
           <CatalogIndexPage products={products} departments={departments} profile={profile} isApprovedBuyer={isApprovedBuyer}
@@ -242,7 +294,10 @@ export default function App() {
         // Keyed by account: signing out ends a finished or half-done reset (AW-015).
         return <ResetPasswordPage key={session?.user?.id || 'guest'} auth={auth} onRequestReset={openReset} onLoginClick={openSignin} />;
       default:
-        return <NotFoundPage key={routeKey(route)} kind={route.kind} category={route.category} products={products} departments={departments} />;
+        return (
+          <NotFoundPage key={routeKey(route)} kind={route.kind} category={route.category} products={products} departments={departments}
+                        catalog={route.catalog || null} onRetry={retryCatalog} retrying={catalog.refreshing} />
+        );
     }
   };
 

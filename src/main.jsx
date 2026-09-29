@@ -5,6 +5,7 @@ import { ErrorBoundary } from './components/ErrorBoundary.jsx';
 import { installDomGuards } from './lib/domGuard.js';
 import { takeAuthLink } from './lib/authLink.js';
 import { AuthProvider } from './lib/auth.jsx';
+import { CatalogProvider } from './lib/catalog.jsx';
 import { redirectLegacyHash } from './lib/router.js';
 import './index.css';
 
@@ -23,7 +24,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary fullPage>
       <AuthProvider link={authLink}>
-        <App />
+        <CatalogProvider>
+          <App />
+        </CatalogProvider>
       </AuthProvider>
     </ErrorBoundary>
   </React.StrictMode>
