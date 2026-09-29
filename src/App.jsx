@@ -1,15 +1,16 @@
 // App root: age gate, auth, catalog, cart and route state, the page layout
 // and the route switch. Pages live in src/pages/, shared pieces in
 // src/components/ and src/lib/. URLs, links and page-change behaviour live in
-// src/lib/router.js and src/lib/routes.js.
+// src/lib/router.js and src/lib/routes.js. The age gate is a layer over the
+// page, not a replacement for it (AW-044); its state is in src/lib/ageGate.js.
 
-import { useState, useEffect, useLayoutEffect, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 
-import { STORAGE } from './data/content.js';
 import { useAuth } from './lib/useAuth.js';
 import { useCatalog } from './lib/useCatalog.js';
 import { useCart } from './lib/cart.js';
-import { navigate, pathFor, resolveRoute, routeKey, useNavigationEffects, useRoute } from './lib/router.js';
+import { focusPageHeading, navigate, pathFor, resolveRoute, routeKey, useNavigationEffects, useRoute } from './lib/router.js';
+import { confirmAge, declineAge, endAgeConfirmationOnSignOut, reconsiderAge, useAgeGate } from './lib/ageGate.js';
 import { pageMeta, applyPageMeta } from './lib/meta.js';
 import { departmentsFor } from './lib/departments.js';
 import { AgeGate } from './components/AgeGate.jsx';
@@ -38,8 +39,8 @@ import { ResetPasswordPage } from './pages/support/ResetPasswordPage.jsx';
 const SEARCH_NOT_READY = { page: 'not-found', kind: 'page' };
 
 export default function App() {
-  const [verified, setVerified] = useState(() => window.localStorage.getItem(STORAGE.age) === 'yes');
-  const [tooYoung, setTooYoung] = useState(false);
+  const age = useAgeGate();
+  const gated = !age.confirmed;
   const [cartOpen, setCartOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [loginMode, setLoginMode] = useState('signin');
@@ -79,11 +80,26 @@ export default function App() {
   // Scroll, focus and announcement on page changes (after the title is set).
   useNavigationEffects();
 
+  // When the age gate closes, the page it covered takes focus like a newly
+  // opened page (AW-041), instead of focus falling back to <body>.
+  const wasGated = useRef(gated);
+  useEffect(() => {
+    if (wasGated.current && !gated) focusPageHeading();
+    wasGated.current = gated;
+  }, [gated]);
+
   // Escape handling, body scroll lock, the inert background and Back-to-close
   // live in ModalLayer so every dialog (including the auth modal) behaves the same.
 
-  const handleAgeYes = () => { setVerified(true); window.localStorage.setItem(STORAGE.age, 'yes'); };
-  const handleLogout = async () => { await signOut(); navigate('/'); };
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/');
+    } finally {
+      // The next person on a shared computer is asked their age again (AW-340).
+      endAgeConfirmationOnSignOut();
+    }
+  };
 
   // signin | signup (checklist first) | application (straight to the form) | reset
   const openLogin = (mode) => {
@@ -98,8 +114,6 @@ export default function App() {
     setCartOpen(false);
     openSignin();
   };
-
-  if (!verified) return <AgeGate onYes={handleAgeYes} onNo={() => setTooYoung(true)} tooYoung={tooYoung} />;
 
   // Product cards need the account, the cart and the add/step actions.
   const cardProps = {
@@ -186,6 +200,13 @@ export default function App() {
       {loginOpen && (
         <ModalLayer onClose={() => setLoginOpen(false)}>
           <AuthModal open initialMode={loginMode} onClose={() => setLoginOpen(false)} />
+        </ModalLayer>
+      )}
+      {/* Last, so it sits above any other layer. No onClose and no history
+          entry: Escape and Back leave it open (AW-044, AW-065). */}
+      {gated && (
+        <ModalLayer className="age-gate-layer" historyEntry={false}>
+          <AgeGate declined={age.declined} onYes={confirmAge} onNo={declineAge} onBack={reconsiderAge} />
         </ModalLayer>
       )}
     </div>

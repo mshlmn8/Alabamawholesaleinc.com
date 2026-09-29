@@ -522,18 +522,35 @@ p > .text-link { min-height: 0; }
 .menu-contact p { margin: 0 0 4px; color: var(--muted); font-size: var(--text-md); line-height: 1.6; }
 .menu-contact .button { justify-content: center; }
 
-/* age gate */
-.age-gate { position: fixed; inset: 0; z-index: 100; background: var(--purple); color: #fff; display: flex; align-items: center; justify-content: center; padding: 24px; }
-.age-gate .inner { max-width: 560px; text-align: center; }
-.age-gate .brand span { font: 700 46px/1 var(--body); letter-spacing: -2px; color: var(--orange); display: block; }
-.age-gate .brand small { font: 700 var(--text-xs)/1.4 var(--body); letter-spacing: 3px; color: #e9e2f5; display: block; margin-top: 10px; }
-.age-gate h1 { font-size: clamp(42px, 5.5vw, 60px); color: #fff; margin: 34px 0 16px; }
-.age-gate h1 em { color: var(--orange); font-style: normal; }
-.age-gate p { color: #e9e2f5; font-size: 15px; line-height: 1.8; max-width: 46ch; margin: 0 auto 32px; }
+/* age gate (AW-044, AW-156): a layer over the page, above every other layer.
+   Its content is centred when it fits and scrolls when the screen is too
+   short for it (landscape phones). Sizes in rem so they follow text zoom. */
+.aw-layer.age-gate-layer { z-index: 100; }
+.age-gate { position: fixed; inset: 0; z-index: 100; background: var(--purple); color: #fff; display: flex; align-items: flex-start; justify-content: center; padding: 24px; overflow-y: auto; overscroll-behavior: contain; }
+.age-gate .inner { max-width: 560px; margin: auto; text-align: center; }
+.age-gate .brand span { font: 700 2.875rem/1 var(--body); letter-spacing: -2px; color: var(--orange); display: block; }
+.age-gate .brand small { font: 700 0.75rem/1.4 var(--body); letter-spacing: 3px; color: #e9e2f5; display: block; margin-top: 10px; }
+.age-gate h2 { font-size: clamp(2.625rem, 5.5vw, 3.75rem); color: #fff; margin: 34px 0 16px; }
+.age-gate h2 em { color: var(--orange); font-style: normal; }
+/* The exit screen's heading takes focus when it appears; it is not a control. */
+.age-gate h2[tabindex="-1"]:focus { outline: none; }
+.age-gate p { color: #e9e2f5; font-size: 0.9375rem; line-height: 1.8; max-width: 46ch; margin: 0 auto 32px; }
 .age-gate .btn-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
-.age-gate .button { font-size: var(--text-md); padding: 16px 26px; }
+.age-gate .button { font-size: 0.8125rem; padding: 16px 26px; }
 .age-gate .button.ghost { color: #fff; border-color: #ffffff88; background: transparent; }
-.age-gate .button.ghost:hover { background: #ffffff1f; border-color: #fff; }
+/* The purple ring other buttons get would vanish on the purple gate. */
+.age-gate .button:focus-visible { outline-color: var(--focus-ring); }
+@media (hover: hover) {
+  .age-gate .button.ghost:hover { background: #ffffff1f; border-color: #fff; }
+}
+@media (max-height: 420px) {
+  .age-gate { padding: 12px 24px; }
+  .age-gate .brand span { font-size: 1.875rem; }
+  .age-gate .brand small { margin-top: 6px; }
+  .age-gate h2 { font-size: 2.125rem; margin: 12px 0 8px; }
+  .age-gate p { font-size: 0.875rem; line-height: 1.5; margin-bottom: 14px; }
+  .age-gate .button { padding: 12px 20px; }
+}
 
 /* ============================ responsive ============================ */
 @media(max-width:1100px) {

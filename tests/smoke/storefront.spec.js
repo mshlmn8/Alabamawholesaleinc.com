@@ -7,6 +7,8 @@
 import { test, expect } from '@playwright/test';
 
 const AGE_KEY = 'aw-age-verified'; // STORAGE.age in src/data/content.js
+// The dated record src/lib/ageGate.js stores for "Yes, I am 21+" (AW-340).
+const ageRecord = (at) => JSON.stringify({ ok: true, at });
 
 const isLocal = (url) => /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(url) || url.startsWith('data:') || url.startsWith('blob:');
 
@@ -30,23 +32,105 @@ test.beforeEach(async ({ context }) => {
   await context.route('**/*', (route) => (isLocal(route.request().url()) ? route.continue() : route.abort()));
 });
 
-test('first visit shows the age gate, and confirming reveals the storefront', async ({ page }) => {
-  const errors = trackErrors(page);
-  await page.goto('/');
-  const gate = page.getByRole('dialog', { name: /21 or older/i });
-  await expect(gate).toBeVisible();
-  await page.getByRole('button', { name: /Yes, I am 21\+/ }).click();
-  await expect(gate).toBeHidden();
-  await expect(page.getByRole('search')).toBeVisible();
-  expect(await page.evaluate((key) => localStorage.getItem(key), AGE_KEY)).toBe('yes');
-  expect(errors).toEqual([]);
+// The age gate is a layer over the page, not a replacement for it (AW-044,
+// AW-176, AW-156, AW-339, AW-340).
+test.describe('age gate', () => {
+  test('a fresh browser gets the page beneath the gate, and "Yes" reveals it', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/category/tobacco');
+    const gate = page.getByRole('dialog', { name: 'Are you 21 or older?' });
+    await expect(gate).toBeVisible();
+    // The real page is in the document for crawlers, inert until the answer.
+    await expect(page.locator('main h1')).toHaveText('Tobacco');
+    await expect(page.locator('main a[href^="/product/"]').first()).toBeAttached();
+    await expect(page).toHaveTitle(/Tobacco/);
+    await expect(page.locator('#root')).toHaveAttribute('inert', '');
+    // Focus starts on "Yes", Tab stays inside, Escape and Back do not dismiss it.
+    const yes = page.getByRole('button', { name: /Yes, I am 21\+/ });
+    await expect(yes).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'No, exit' })).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(yes).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(gate).toBeVisible();
+
+    await yes.click();
+    await expect(gate).toBeHidden();
+    await expect(page.locator('#root')).not.toHaveAttribute('inert', '');
+    await expect(page.getByRole('heading', { level: 1, name: 'Tobacco' })).toBeFocused();
+    const stored = JSON.parse(await page.evaluate((key) => localStorage.getItem(key), AGE_KEY));
+    expect(stored).toEqual({ ok: true, at: expect.any(Number) });
+    await page.reload();
+    await expect(page.getByRole('heading', { level: 1, name: 'Tobacco' })).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
+  test('"No, exit" shows an exit screen that lasts the session and can be taken back', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/');
+    await page.getByRole('button', { name: 'No, exit' }).click();
+    const exit = page.getByRole('dialog', { name: 'Sorry, you must be 21 or older to enter' });
+    await expect(exit).toBeVisible();
+    await expect(exit.getByRole('heading')).toBeFocused();
+    await page.reload();
+    await expect(exit).toBeVisible();
+    await page.getByRole('button', { name: 'Answered by mistake? Go back' }).click();
+    await expect(page.getByRole('dialog', { name: 'Are you 21 or older?' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Yes, I am 21\+/ })).toBeFocused();
+    expect(errors).toEqual([]);
+  });
+
+  test('confirming in one tab opens the site in the other open tabs', async ({ context }) => {
+    const first = await context.newPage();
+    const second = await context.newPage();
+    const errors = [...trackErrors(first), ...trackErrors(second)];
+    await first.goto('/category/tobacco');
+    await second.goto('/product/12');
+    await expect(second.getByRole('dialog', { name: 'Are you 21 or older?' })).toBeVisible();
+    await first.getByRole('button', { name: /Yes, I am 21\+/ }).click();
+    await expect(second.getByRole('dialog')).toHaveCount(0);
+    await expect(second.locator('#root')).not.toHaveAttribute('inert', '');
+    expect(errors).toEqual([]);
+  });
+
+  test('an old undated confirmation still counts and is rewritten with a date', async ({ page }) => {
+    await page.goto('/contact');
+    await page.evaluate((key) => localStorage.setItem(key, 'yes'), AGE_KEY);
+    await page.reload();
+    await expect(page.getByRole('heading', { level: 1, name: /Contact/ })).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    const stored = JSON.parse(await page.evaluate((key) => localStorage.getItem(key), AGE_KEY));
+    expect(stored).toEqual({ ok: true, at: expect.any(Number) });
+  });
+
+  test('an expired confirmation asks again', async ({ page }) => {
+    await page.goto('/contact');
+    await page.evaluate(([key, value]) => localStorage.setItem(key, value), [AGE_KEY, ageRecord(Date.now() - 31 * 24 * 60 * 60 * 1000)]);
+    await page.reload();
+    await expect(page.getByRole('dialog', { name: 'Are you 21 or older?' })).toBeVisible();
+  });
+
+  test('on a short landscape screen the whole gate can be scrolled into view', async ({ page }) => {
+    await page.setViewportSize({ width: 568, height: 260 });
+    await page.goto('/');
+    await expect(page.locator('.age-gate .brand')).toBeInViewport({ ratio: 1 });
+    for (const name of [/Yes, I am 21\+/, 'No, exit']) {
+      const button = page.getByRole('button', { name });
+      await button.scrollIntoViewIfNeeded();
+      await expect(button).toBeInViewport({ ratio: 1 });
+    }
+    // The gate scrolled, not the page underneath.
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  });
 });
 
 test.describe('after age confirmation', () => {
   test.beforeEach(async ({ context }) => {
-    await context.addInitScript((key) => {
-      try { localStorage.setItem(key, 'yes'); } catch { /* storage blocked */ }
-    }, AGE_KEY);
+    await context.addInitScript(([key, value]) => {
+      try { localStorage.setItem(key, value); } catch { /* storage blocked */ }
+    }, [AGE_KEY, ageRecord(Date.now())]);
   });
 
   const pages = [

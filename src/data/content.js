@@ -101,7 +101,10 @@ export const WELCOME_OFFERS = [
 ];
 
 export const STORAGE = {
+  // localStorage: the dated 21+ confirmation (src/lib/ageGate.js, AW-340).
   age: 'aw-age-verified',
+  // sessionStorage: "No, exit" on the age gate, for this tab's session (AW-176).
+  ageDeclined: 'aw-age-declined',
   cart: 'aw-cart',
   user: 'aw-trade-user',
   welcome: 'aw-welcome-seen'

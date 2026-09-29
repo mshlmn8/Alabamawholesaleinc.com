@@ -23,7 +23,7 @@ Any other address shows a not-found page with a catalog search and the departmen
 
 Also on the storefront:
 
-- 21+ age gate, remembered in `localStorage`
+- 21+ age gate over the page (the page stays crawlable underneath), remembered in `localStorage` for a set period and cleared on sign-out (`src/lib/ageGate.js`; the period is an owner question, see `docs/OWNER-TODO.md`)
 - Header search across name, brand, department, SKU, and variants
 - Category menu for the eight departments
 - Cart drawer. Cart contents persist in `localStorage`. Escape closes the cart, sign-in, and help overlays and unlocks page scrolling
@@ -68,7 +68,7 @@ Output goes to `dist/`; `npm run preview` serves it locally. The build fails wit
 
 ## Customize
 
-`src/App.jsx` is the root: age gate, auth, cart and route state, the page layout and the route switch. Pages live in `src/pages/` (storefront pages at the top level; `account/`, `admin/` and `support/` below it), shared pieces in `src/components/`, and logic in `src/lib/`: `routes.js` (URLs, validation, canonical paths), `router.js` (History API router, `<Link>`, scroll, focus and Back-closes-dialog behaviour), `announce.js` (the shared polite live region), `meta.js` (titles, canonical and share tags from one `SITE_URL`), `search.js`, `departments.js`, `cart.js`, `pricing.js`, `format.js` (money and labels), `errors.js` (shared error copy) and `domGuard.js`. Product photos live in **`src/assets/products/`** and hero photos in **`src/assets/`**; each product row in `src/data/products.js` names its photo file.
+`src/App.jsx` is the root: age gate, auth, cart and route state, the page layout and the route switch. Pages live in `src/pages/` (storefront pages at the top level; `account/`, `admin/` and `support/` below it), shared pieces in `src/components/`, and logic in `src/lib/`: `routes.js` (URLs, validation, canonical paths), `router.js` (History API router, `<Link>`, scroll, focus and Back-closes-dialog behaviour), `announce.js` (the shared polite live region), `ageGate.js` (the dated 21+ confirmation, synced across tabs), `meta.js` (titles, canonical and share tags from one `SITE_URL`), `search.js`, `departments.js`, `cart.js`, `pricing.js`, `format.js` (money and labels), `errors.js` (shared error copy) and `domGuard.js`. Product photos live in **`src/assets/products/`** and hero photos in **`src/assets/`**; each product row in `src/data/products.js` names its photo file.
 
 | What | Where |
 | ---- | ----- |

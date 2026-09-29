@@ -409,6 +409,13 @@ function focusWithoutScroll(el) {
 
 const headingIn = (el) => (el && (el.matches('h1, h2, h3') ? el : el.querySelector('h1, h2, h3'))) || el;
 
+// Focuses the current page's h1 (or <main>) the way a page change does. For
+// a page that appears without a navigation, e.g. when the age gate closes.
+export function focusPageHeading() {
+  if (!hasWindow) return;
+  focusWithoutScroll(document.querySelector('main h1') || document.querySelector('main'));
+}
+
 // Runs the page-change behaviour for every navigation. App calls it once,
 // after the effect that writes the page title.
 export function useNavigationEffects() {
