@@ -1,34 +1,25 @@
 // Product detail: photo, description, variant picker, price or pricing lock,
-// quantity and add, then more products from the same line.
+// quantity and add, then more products from the same line. App keys this
+// page by product id, so another product starts with a fresh picker.
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { lineKey, variantList, variantSku, requiresVariantChoice } from '../lib/lines.js';
 import { priceForProfile } from '../lib/pricing.js';
 import { catLabel, formatMoney, initials } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
+import { Link } from '../lib/router.js';
+import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 import { Picture } from '../components/Picture.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
 
-export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLine, products, goProduct, goHome, goCategory, onLoginClick, onApplyClick, onAccountClick }) {
+export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLine, products, onLoginClick, onApplyClick }) {
   const [desiredQty, setDesiredQty] = useState(1);
   const [chosenVariant, setChosenVariant] = useState(null);
   const [variantError, setVariantError] = useState(false);
-  // Resets the picker when another product opens in the same page instance.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setDesiredQty(1);
-    setChosenVariant(null);
-    setVariantError(false);
-  }, [productId]);
   const p = products.find(x => Number(x.id) === Number(productId));
-  if (!p) {
-    return (
-      <section className="page-head">
-        <h1>Product not found</h1>
-        <p><button className="text-link" onClick={goHome}>Back to home</button></p>
-      </section>
-    );
-  }
+  // App renders NotFound for ids that are not in the catalog.
+  if (!p) return null;
+  const department = { page: 'category', category: p.cat };
   const variants = variantList(p);
   const choiceRequired = requiresVariantChoice(p);
   const selected = choiceRequired ? chosenVariant : (variants.length === 1 ? variants[0] : null);
@@ -48,11 +39,7 @@ export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine
   return (
     <section>
       <div className="page-head" style={{ paddingBottom: 0 }}>
-        <div className="crumbs">
-          <button type="button" onClick={goHome}>Home</button><span aria-hidden="true">/</span>
-          <button type="button" onClick={() => goCategory(p.cat)}>{catLabel(p.cat)}</button><span aria-hidden="true">/</span>
-          <span>{p.name}</span>
-        </div>
+        <Breadcrumbs items={[HOME_CRUMB, { label: catLabel(p.cat), to: department }, { label: p.name }]} />
       </div>
       <div className="pd-grid">
         <div className="pd-media">
@@ -99,7 +86,7 @@ export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine
           )}
           {profile && !isApprovedBuyer && (
             <div className="dialog-actions compact-actions">
-              <button className="text-link" type="button" onClick={onAccountClick}>View approval status</button>
+              <Link className="text-link" to="/account">View approval status</Link>
             </div>
           )}
         </div>
@@ -108,10 +95,10 @@ export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine
         <section className="section">
           <div className="section-head">
             <div><p className="eyebrow">SAME LINE</p><h2>{`More ${p.sub.toLowerCase()}`}</h2></div>
-            <button type="button" onClick={() => goCategory(p.cat)}>View department <span aria-hidden="true">↗</span></button>
+            <Link to={department}>View department <span aria-hidden="true">↗</span></Link>
           </div>
           <div className="card-grid">
-            {related.map(r => <ProductCard key={r.id} p={r} profile={profile} isApprovedBuyer={isApprovedBuyer} cart={cart} addLine={addLine} decLine={decLine} goProduct={goProduct} onLoginClick={onLoginClick} />)}
+            {related.map(r => <ProductCard key={r.id} p={r} profile={profile} isApprovedBuyer={isApprovedBuyer} cart={cart} addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} />)}
           </div>
         </section>
       )}

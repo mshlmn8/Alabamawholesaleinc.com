@@ -2,20 +2,24 @@
 
 Editorial wholesale storefront for licensed retailers. 368 SKUs across 8 departments — tobacco, novelties, merchandise, candies, food stuff, grocery, motor oil, drinks & bags — shipping from Birmingham.
 
-Every page uses the 2A editorial system: Barlow Condensed and DM Sans (bundled in `src/fonts/`), purple / cream / orange, and plain CSS in `src/index.css`. Home, catalog, product, quote, cart, the sign-in dialog, the support pages, account (`#/account`) and admin (`#/admin`) all share it; Tailwind stays in the build only for its preflight reset.
+Every page uses the 2A editorial system: Barlow Condensed and DM Sans (bundled in `src/fonts/`), purple / cream / orange, and plain CSS in `src/index.css`. Home, catalog, product, quote, cart, the sign-in dialog, the support pages, account (`/account`) and admin (`/admin`) all share it; Tailwind stays in the build only for its preflight reset.
 
 ## Pages
 
-Hash routes:
+Every page has a real path URL (History API router, `src/lib/router.js` and `src/lib/routes.js`). Netlify serves `index.html` for every path (`netlify.toml`), and old `#/…` links redirect to their path.
 
 | Route | Page |
 | ----- | ---- |
-| `#/` | Home — warehouse hero, department strip, new arrivals, collections, bestsellers, services, department grid, account application |
-| `#/category/<name>` | Department catalog, with an optional `/<sub>` line |
-| `#/product/<id>` | Product detail |
-| `#/quote` | Checkout for a signed-in account, or a quote request for a guest |
-| `#/account` | Trade account and order history |
-| `#/admin` | Admin dashboard |
+| `/` | Home — warehouse hero, department strip, new arrivals (`/#new-arrivals`), collections, bestsellers (`/#bestsellers`), services, department grid, account application |
+| `/catalog` | All products: every department, product line and SKU |
+| `/category/<department>[/<line>]` | Department catalog, optionally one product line, e.g. `/category/drinks-and-bags/energy-drinks`. Search, sort and filters live in the query string (`?q=&sort=&tags=&variants=1`) |
+| `/product/<id>` | Product detail |
+| `/quote` | Checkout for a signed-in account, or a quote request for a guest |
+| `/account` | Trade account and order history |
+| `/admin` | Admin dashboard |
+| `/contact`, `/delivery`, `/shipping`, `/privacy`, `/terms`, `/apply`, `/reset-password` | Support pages |
+
+Any other address shows a not-found page with a catalog search and the departments (marked `noindex`). Department and line segments are slugs of the catalog names; other spellings (`/category/TOBACCO`) redirect to the canonical one. `npm run build` also writes `dist/sitemap.xml` from the catalog (`scripts/build-sitemap.mjs`).
 
 Also on the storefront:
 
@@ -64,7 +68,7 @@ Output goes to `dist/`; `npm run preview` serves it locally. The build fails wit
 
 ## Customize
 
-`src/App.jsx` is the root: age gate, auth, cart and route state, the page layout and the route switch. Pages live in `src/pages/` (storefront pages at the top level; `account/`, `admin/` and `support/` below it), shared pieces in `src/components/`, and logic in `src/lib/`: `router.js` (the hash routes), `meta.js` (page titles), `search.js`, `departments.js`, `cart.js`, `pricing.js`, `format.js` (money and labels), `errors.js` (shared error copy) and `domGuard.js`. Product photos live in **`src/assets/products/`** and hero photos in **`src/assets/`**; each product row in `src/data/products.js` names its photo file.
+`src/App.jsx` is the root: age gate, auth, cart and route state, the page layout and the route switch. Pages live in `src/pages/` (storefront pages at the top level; `account/`, `admin/` and `support/` below it), shared pieces in `src/components/`, and logic in `src/lib/`: `routes.js` (URLs, validation, canonical paths), `router.js` (History API router, `<Link>`, scroll, focus and Back-closes-dialog behaviour), `announce.js` (the shared polite live region), `meta.js` (titles, canonical and share tags from one `SITE_URL`), `search.js`, `departments.js`, `cart.js`, `pricing.js`, `format.js` (money and labels), `errors.js` (shared error copy) and `domGuard.js`. Product photos live in **`src/assets/products/`** and hero photos in **`src/assets/`**; each product row in `src/data/products.js` names its photo file.
 
 | What | Where |
 | ---- | ----- |

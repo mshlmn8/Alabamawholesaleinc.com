@@ -51,7 +51,7 @@ bucket named `application-documents` (PDF, JPG, PNG, and HEIC, 10 MB maximum).
 Confirm in **Storage** that the bucket is not public. No extra environment
 variables. Applicants may upload a state retail tobacco license and a resale
 certificate from the application form once they have a session, or later from
-`#/apply` while the account is pending. The license number and resale
+`/apply` while the account is pending. The license number and resale
 certificate number stay required. Proof can also be emailed to the trade desk.
 
 A trigger on `auth.users` auto-creates a `profiles` row on signup. **Every
@@ -99,7 +99,7 @@ URL Configuration**, set the Site URL to the production domain and add
 3. Click the confirmation link, then sign in.
 4. Run `supabase/seed/provision_owner.sql` for that email. You should then see
    an **Admin** link in the header.
-5. Open `#/admin`. Three tabs:
+5. Open `/admin`. Three tabs:
    - **Orders** — every quote submitted via the storefront, with status dropdown.
    - **Accounts** — every trade account; flip `pending → approved`, change
      pricing tier (`standard` / `silver` / `gold`), or grant admin role.

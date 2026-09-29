@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { DOCUMENT_TYPES, createDocumentViewUrl, listAllProfileDocuments } from '../../lib/documents.js';
 import { formatMoney } from '../../lib/format.js';
+import { Link } from '../../lib/router.js';
+import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 
 const TABS = [
   { id: 'orders', label: 'Orders' },
@@ -14,15 +16,27 @@ const TABS = [
 
 const ORDER_STATES = ['new', 'contacted', 'fulfilled', 'cancelled'];
 
-export function AdminPage({ profile, goHome }) {
+export function AdminPage({ profile, onSignIn }) {
   const [tab, setTab] = useState('orders');
 
+  // Not a dead end (AW-232): signed-out visitors can sign in, and signed-in
+  // accounts without the admin role get a way back. The loading state while
+  // auth resolves is AW-087.
   if (!profile || profile.role !== 'admin') {
     return (
       <section className="page-head">
-        <p className="eyebrow">ADMIN</p>
-        <h1>Access denied</h1>
-        <p>Admin role required.</p>
+        <Breadcrumbs items={[HOME_CRUMB, { label: 'Admin' }]} />
+        <p className="eyebrow">TRADE DESK</p>
+        <h1>{profile ? 'This page is for the trade desk' : 'Sign in to continue'}</h1>
+        <p>{profile
+          ? 'The admin area is only open to Alabama Wholesale staff accounts. Your account doesn’t have access.'
+          : 'The admin area is only open to Alabama Wholesale staff accounts. Sign in with a staff account to continue.'}</p>
+        <div className="dialog-actions compact-actions">
+          {profile
+            ? <Link className="button" to="/account">My account <span aria-hidden="true">↗</span></Link>
+            : <button className="button" type="button" onClick={onSignIn}>Sign in <span aria-hidden="true">↗</span></button>}
+          <Link className="text-link" to="/">Back to home</Link>
+        </div>
       </section>
     );
   }
@@ -30,11 +44,7 @@ export function AdminPage({ profile, goHome }) {
   return (
     <section>
       <div className="page-head">
-        <div className="crumbs">
-          <button type="button" onClick={goHome}>Home</button>
-          <span aria-hidden="true">/</span>
-          <span>Admin</span>
-        </div>
+        <Breadcrumbs items={[HOME_CRUMB, { label: 'Admin' }]} />
         <p className="eyebrow">TRADE DESK</p>
         <h1>Admin</h1>
         <p>Orders, account approvals, and catalog edits.</p>

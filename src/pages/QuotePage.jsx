@@ -5,10 +5,12 @@ import { useState } from 'react';
 import { COMPANY, ORDER_MINIMUM } from '../data/content.js';
 import { submitOrder } from '../lib/orders.js';
 import { formatMoney } from '../lib/format.js';
+import { Link } from '../lib/router.js';
 import { CallOrEmail } from '../components/ContactLinks.jsx';
+import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 import { CartLine } from '../components/CartLine.jsx';
 
-export function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHome, goCatalog, goProduct, profile, isApprovedBuyer, isBackendConfigured }) {
+export function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, profile, isApprovedBuyer, isBackendConfigured }) {
   const [step, setStep] = useState('review');
   const [data, setData] = useState({
     business: profile?.business || '', contact: profile?.name || '', email: profile?.email || '', phone: '',
@@ -54,7 +56,7 @@ export function QuotePage({ items, total, addLine, decLine, removeLine, clearCar
       <section className="page-head" style={{ textAlign: 'center', padding: '60px 0' }}>
         <h1>Your cart is empty</h1>
         <p style={{ margin: '0 auto 20px' }}>Add products, then come back to checkout.</p>
-        <button className="button" onClick={goCatalog}>Browse catalog <span aria-hidden="true">↗</span></button>
+        <Link className="button" to="/catalog">Browse catalog <span aria-hidden="true">↗</span></Link>
       </section>
     );
   }
@@ -70,7 +72,7 @@ export function QuotePage({ items, total, addLine, decLine, removeLine, clearCar
         <p className="result-note" style={{ fontSize: 13 }}>Reference number: <strong>{receipt?.ref_num || refNum}</strong></p>
         <div className="dialog-actions" style={{ justifyContent: 'center' }}>
           <a className="button ghost" href={`tel:${COMPANY.phoneRaw}`}>Call to discuss</a>
-          <button className="button" onClick={() => { clearCart(); goHome(); }}>Back to home <span aria-hidden="true">↗</span></button>
+          <Link className="button" to="/" onClick={clearCart}>Back to home <span aria-hidden="true">↗</span></Link>
         </div>
       </section>
     );
@@ -79,7 +81,7 @@ export function QuotePage({ items, total, addLine, decLine, removeLine, clearCar
   return (
     <section>
       <div className="page-head">
-        <div className="crumbs"><button type="button" onClick={goHome}>Home</button><span aria-hidden="true">/</span><span>{isApprovedBuyer ? 'Checkout' : 'Request Quote'}</span></div>
+        <Breadcrumbs items={[HOME_CRUMB, { label: isApprovedBuyer ? 'Checkout' : 'Request Quote' }]} />
         <p className="eyebrow">{isApprovedBuyer ? 'CHECKOUT' : 'QUOTE REQUEST'}</p>
         <h1>{isApprovedBuyer ? 'Place your order' : 'Request your quote'}</h1>
         <p>Review your items and submit. The minimum order is $500.00. A trade desk rep will confirm pricing, availability and delivery within one business day.</p>
@@ -90,7 +92,7 @@ export function QuotePage({ items, total, addLine, decLine, removeLine, clearCar
             {items.map(it => (
               <CartLine key={it.lineKey} item={it} layout="checkout" showPrice={isApprovedBuyer}
                         onInc={() => addLine(it.productId, it.variant)} onDec={() => decLine(it.lineKey)}
-                        onRemove={() => removeLine(it.lineKey)} onChoose={() => goProduct(it.productId)} />
+                        onRemove={() => removeLine(it.lineKey)} />
             ))}
           </ul>
           <button className="text-link checkout-clear" type="button" onClick={clearCart}>Clear all items</button>

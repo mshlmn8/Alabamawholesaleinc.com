@@ -4,16 +4,19 @@
 import { HERO_SLIDES } from '../data/content.js';
 import { NEW_ARRIVALS_IDS } from '../data/products.js';
 import { heroImage, SIZES } from '../lib/images.js';
+import { Link } from '../lib/router.js';
 import { Picture } from '../components/Picture.jsx';
 import { HeroCarousel } from '../components/HeroCarousel.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
 
 const EDITORIAL_BG = heroImage('hero_candy.jpg');
 
-export function HomePage({ products, departments, profile, isApprovedBuyer, cart, addLine, decLine, goProduct, goCategory, goCatalog, onLoginClick, onApplyClick }) {
+const dept = (category) => ({ page: 'category', category });
+
+export function HomePage({ products, departments, profile, isApprovedBuyer, cart, addLine, decLine, onLoginClick, onApplyClick }) {
   const card = (p) => (
     <ProductCard key={p.id} p={p} profile={profile} isApprovedBuyer={isApprovedBuyer} cart={cart}
-                 addLine={addLine} decLine={decLine} goProduct={goProduct} onLoginClick={onLoginClick} />
+                 addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} />
   );
   const newArrivals = NEW_ARRIVALS_IDS.map(id => products.find(p => Number(p.id) === id)).filter(Boolean).slice(0, 8);
   const bestsellers = products.filter(p => p.tag === 'BESTSELLER').slice(0, 8);
@@ -25,7 +28,7 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, cart
       <section className="section" id="new-arrivals">
         <div className="section-head">
           <div><p className="eyebrow">FRESH INVENTORY / 01</p><h2>New arrivals</h2></div>
-          <button type="button" onClick={() => goCategory('NOVELTIES')}>Shop novelties <span aria-hidden="true">↗</span></button>
+          <Link to={dept('NOVELTIES')}>Shop novelties <span aria-hidden="true">↗</span></Link>
         </div>
         <div className="card-grid">
           {newArrivals.map(card)}
@@ -33,21 +36,21 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, cart
       </section>
 
       <section className="editorials" aria-label="Collections">
-        <button className="editorial-card cream" type="button" onClick={() => goCategory('NOVELTIES')}>
+        <Link className="editorial-card cream" to={dept('NOVELTIES')}>
           <Picture className="bg" picture={EDITORIAL_BG.picture} alt="" aria-hidden="true" sizes={SIZES.editorial} />
           <span className="block-label">COLLECTION / 01</span>
           <div><p className="eyebrow">EXOTICS &amp; NOVELTIES</p><h2>Disposables, detox,<br />kratom &amp; more.</h2><span className="text-link">Browse novelties</span><span className="arrow" aria-hidden="true">↗</span></div>
-        </button>
-        <button className="editorial-card purple" type="button" onClick={() => goCategory('TOBACCO')}>
+        </Link>
+        <Link className="editorial-card purple" to={dept('TOBACCO')}>
           <span className="block-label">COLLECTION / 02</span>
           <div><p className="eyebrow">THE CORE BUSINESS</p><h2>Tobacco, wraps<br />&amp; accessories.</h2><span className="text-link">Browse tobacco</span><span className="arrow" aria-hidden="true">↗</span></div>
-        </button>
+        </Link>
       </section>
 
       <section className="section" id="bestsellers">
         <div className="section-head">
           <div><p className="eyebrow">PROVEN MOVERS / 02</p><h2>Bestsellers</h2></div>
-          <button type="button" onClick={() => goCategory('TOBACCO')}>Shop tobacco <span aria-hidden="true">↗</span></button>
+          <Link to={dept('TOBACCO')}>Shop tobacco <span aria-hidden="true">↗</span></Link>
         </div>
         <div className="card-grid">
           {bestsellers.map(card)}
@@ -63,13 +66,13 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, cart
       <section className="section" id="catalog">
         <div className="section-head">
           <div><p className="eyebrow">FULL ASSORTMENT / 03</p><h2>Shop by department</h2></div>
-          <button type="button" onClick={goCatalog}>Browse the catalog <span aria-hidden="true">↗</span></button>
+          <Link to="/catalog">Browse the catalog <span aria-hidden="true">↗</span></Link>
         </div>
         <div className="card-grid">
           {departments.map(c => {
             const preview = products.find(p => p.cat === c.key && p.img);
             return (
-              <button className="content-card" key={c.key} type="button" onClick={() => goCategory(c.key)}>
+              <Link className="content-card" key={c.key} to={dept(c.key)}>
                 <div className="card-block">
                   <span className="block-label">DEPARTMENT</span>
                   {preview?.picture ? <Picture picture={preview.picture} alt="" sizes={SIZES.card} /> : <span className="card-initials">{String(c.count).padStart(2, '0')}</span>}
@@ -78,7 +81,7 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, cart
                 <h3>{c.label}</h3>
                 <p className="card-detail">{c.subs.slice(0, 3).join(' · ')}</p>
                 <span className="card-meta"><span>Browse department</span><span aria-hidden="true">↗</span></span>
-              </button>
+              </Link>
             );
           })}
         </div>

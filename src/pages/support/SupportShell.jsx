@@ -2,6 +2,8 @@
 // application, password reset). Same editorial system as the storefront.
 
 import { COMPANY } from '../../data/content.js';
+import { Link } from '../../lib/router.js';
+import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 
 export const DIRECTIONS_URL = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${COMPANY.addressLine1}, ${COMPANY.addressLine2}`)}`;
 
@@ -11,12 +13,12 @@ export const POLICY_LINKS = [
   { page: 'terms', label: 'Trade terms' },
 ];
 
-export function PageHead({ goHome, crumb, eyebrow, title, children }) {
+// `onHome` runs when the Home crumb is followed (the reset page clears its
+// account-link state).
+export function PageHead({ crumb, eyebrow, title, onHome, children }) {
   return (
     <div className="page-head">
-      <div className="crumbs">
-        <button type="button" onClick={goHome}>Home</button><span aria-hidden="true">/</span><span>{crumb}</span>
-      </div>
+      <Breadcrumbs items={[{ ...HOME_CRUMB, onClick: onHome }, { label: crumb }]} />
       {eyebrow && <p className="eyebrow">{eyebrow}</p>}
       <h1>{title}</h1>
       {children}
@@ -25,7 +27,7 @@ export function PageHead({ goHome, crumb, eyebrow, title, children }) {
 }
 
 // Compact contact strip reused at the bottom of the support pages.
-export function ContactStrip({ navigate, eyebrow = 'QUESTIONS?', title = 'Talk to the warehouse' }) {
+export function ContactStrip({ eyebrow = 'QUESTIONS?', title = 'Talk to the warehouse', contactLink = true }) {
   return (
     <aside className="contact-strip" aria-label="Contact the trade desk">
       <div>
@@ -36,21 +38,25 @@ export function ContactStrip({ navigate, eyebrow = 'QUESTIONS?', title = 'Talk t
       <div className="contact-strip-actions">
         <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Call {COMPANY.phone} <span aria-hidden="true">↗</span></a>
         <a className="button ghost" href={`mailto:${COMPANY.email}`}>Email us</a>
-        {navigate && <button className="text-link" type="button" onClick={() => navigate({ page: 'contact' })}>Contact &amp; visit</button>}
+        {contactLink && <Link className="text-link" to="/contact">Contact &amp; visit</Link>}
       </div>
     </aside>
   );
 }
 
-export function PolicyNav({ current, navigate }) {
+const POLICY_NAV = [
+  ...POLICY_LINKS,
+  { page: 'delivery', label: 'Delivery & service area' },
+  { page: 'contact', label: 'Contact & visit' },
+];
+
+export function PolicyNav({ current }) {
   return (
     <nav className="policy-nav" aria-label="Customer policies">
       <p className="eyebrow">CUSTOMER POLICIES</p>
-      {POLICY_LINKS.map(link => (
-        <button key={link.page} type="button" aria-current={current === link.page ? 'page' : undefined} onClick={() => navigate({ page: link.page })}>{link.label}</button>
+      {POLICY_NAV.map(link => (
+        <Link key={link.page} to={`/${link.page}`} aria-current={current === link.page ? 'page' : undefined}>{link.label}</Link>
       ))}
-      <button type="button" aria-current={current === 'delivery' ? 'page' : undefined} onClick={() => navigate({ page: 'delivery' })}>Delivery &amp; service area</button>
-      <button type="button" aria-current={current === 'contact' ? 'page' : undefined} onClick={() => navigate({ page: 'contact' })}>Contact &amp; visit</button>
     </nav>
   );
 }

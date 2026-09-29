@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { linesFromOrder } from '../../lib/lines.js';
 import { formatMoney } from '../../lib/format.js';
+import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 import { QuickReorder } from './QuickReorder.jsx';
 
 const STATUS_CLASS = {
@@ -30,7 +31,7 @@ const reorderMessage = (note, target) => (note.lines > 0
   + (note.needsVariant > 0 ? ` ${plural(note.needsVariant, 'line')} need${note.needsVariant === 1 ? 's' : ''} a variant choice in the cart.` : '')
   + (note.unavailable.length > 0 ? ` No longer available: ${note.unavailable.join(', ')}.` : '');
 
-export function AccountPage({ profile, goHome, onSignIn, products = [], addLines, onOpenCart, isApprovedBuyer }) {
+export function AccountPage({ profile, onSignIn, products = [], addLines, onOpenCart, isApprovedBuyer }) {
   const [orders, setOrders] = useState(null);
   const [error, setError] = useState(null);
   const [reorderNote, setReorderNote] = useState(null);
@@ -82,11 +83,7 @@ export function AccountPage({ profile, goHome, onSignIn, products = [], addLines
   return (
     <section>
       <div className="page-head">
-        <div className="crumbs">
-          <button type="button" onClick={goHome}>Home</button>
-          <span aria-hidden="true">/</span>
-          <span>My Account</span>
-        </div>
+        <Breadcrumbs items={[HOME_CRUMB, { label: 'My Account' }]} />
         <p className="eyebrow">TRADE ACCOUNT</p>
         <h1>{profile.business || profile.name}</h1>
         <p>{profile.email}</p>

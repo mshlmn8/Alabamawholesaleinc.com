@@ -19,7 +19,14 @@ deploy → Continuous deployment**):
   version fails instead of warning.
 
 `netlify.toml` also sets `NPM_FLAGS = "--no-fund"` (npm audit stays on) and the
-`/* → /index.html` fallback the single-page app needs.
+`/* → /index.html` fallback the single-page app needs: every page has a path
+URL (`/product/12`, `/category/tobacco`), and loading or reloading one must
+serve `index.html`. Keep that rule. `npm run build` also writes
+`dist/sitemap.xml` from the catalog; `public/robots.txt` points at it.
+
+Optional: `VITE_SITE_URL` sets the public origin used for canonical links,
+share tags and the sitemap. It defaults to `https://alabamawholesaleinc.com`;
+set it only if the site moves to another domain.
 
 ## Environment variables, migrations and releases
 

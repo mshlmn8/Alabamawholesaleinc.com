@@ -39,7 +39,9 @@ describe('CartLine', () => {
     renderLine({ item: bare, layout: 'drawer', showPrice: false, ...h });
     expect(screen.getByText('AW-KITE · Choose a variant')).toBeTruthy();
     expect(screen.queryByRole('group')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Choose variant' }));
+    const choose = screen.getByRole('link', { name: 'Choose variant' });
+    expect(choose.getAttribute('href')).toBe('/product/14');
+    fireEvent.click(choose);
     expect(h.onChoose).toHaveBeenCalledTimes(1);
   });
 });

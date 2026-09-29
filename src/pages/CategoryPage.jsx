@@ -1,87 +1,123 @@
-// Department page: sub-line pills, filters (sidebar on desktop, drawer on
+// Department page: product-line pills, filters (sidebar on desktop, drawer on
 // phones), sort, active-filter chips and the product grid.
+//
+// The URL is the only filter state (AW-008): the product line is in the path
+// and the search text, sort and filters in the query string
+// (/category/candies/gum?q=mint&sort=name-asc&tags=new&variants=1). Back,
+// Forward, reload and shared links all restore the same view. Filter changes
+// replace the history entry and keep the scroll position (AW-327); the
+// product-line pills are links. App keys this page by department (AW-228).
 
-import { useState, useEffect } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useMediaQuery, MOBILE_QUERY } from '../lib/useMediaQuery.js';
 import { productText } from '../lib/search.js';
 import { catLabel } from '../lib/format.js';
+import { Link, navigate } from '../lib/router.js';
+import { EMPTY_CATEGORY_QUERY } from '../lib/routes.js';
+import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 import { ModalLayer } from '../components/ModalLayer.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
 
-export function CategoryPage({ category, sub, products, departments, profile, isApprovedBuyer, cart, addLine, decLine, goProduct, goCategory, goHome, onLoginClick }) {
-  const [tagFilter, setTagFilter] = useState([]);
-  const [hasVariants, setHasVariants] = useState(false);
-  const [searchQ, setSearchQ] = useState('');
-  const [sort, setSort] = useState('featured');
+const TAG_OPTIONS = [
+  ['Bestsellers', 'BESTSELLER'],
+  ['New', 'NEW'],
+  ['Deals', 'DEAL'],
+  ['Premium', 'PREMIUM'],
+];
+
+// Typing in the department search updates the URL once the typing pauses.
+const SEARCH_DELAY_MS = 250;
+
+export function CategoryPage({ category, sub, query = EMPTY_CATEGORY_QUERY, products, departments, profile, isApprovedBuyer, cart, addLine, decLine, onLoginClick }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const isMobile = useMediaQuery(MOBILE_QUERY);
 
-  // Resets the filters when the department changes. AW-228 replaces this by
-  // keying CategoryPage on the department.
+  // The search box shows what is typed right away; the URL (and the results)
+  // follow after a short pause. A change from elsewhere (Back, Clear all)
+  // replaces what is in the box.
+  const [draft, setDraft] = useState(query.q);
+  const [draftFor, setDraftFor] = useState(query.q);
+  if (draftFor !== query.q) {
+    setDraftFor(query.q);
+    // The URL drops outer spaces; keep a space the user is still typing.
+    if (draft.trim() !== query.q.trim()) setDraft(query.q);
+  }
+  const searchTimer = useRef(0);
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTagFilter([]);
-    setHasVariants(false);
-    setSearchQ('');
-    setSort('featured');
-    setFiltersOpen(false);
-  }, [category]);
+    const timer = searchTimer;
+    return () => window.clearTimeout(timer.current);
+  }, []);
+  // The line and filters at the moment a delayed search write happens.
+  const latest = useRef({ sub, query });
+  useLayoutEffect(() => { latest.current = { sub, query }; });
 
   const cat = departments.find(c => c.key === category);
   const inCategory = products.filter(p => p.cat === category);
   const activeSub = sub || null;
-  const tagOptions = [
-    ['Bestsellers', 'BESTSELLER'],
-    ['New', 'NEW'],
-    ['Deals', 'DEAL'],
-    ['Premium', 'PREMIUM'],
-  ];
-  const query = searchQ.trim().toLowerCase();
-  let items = inCategory.filter(p => {
-    if (activeSub && p.sub !== activeSub) return false;
-    if (tagFilter.length && !tagFilter.includes(p.tag)) return false;
+  const inScope = activeSub ? inCategory.filter(p => p.sub === activeSub) : inCategory;
+  const { tags, variants: hasVariants } = query;
+  const sort = query.sort.startsWith('price-') && !isApprovedBuyer ? 'featured' : query.sort;
+  const needle = query.q.trim().toLowerCase();
+  let items = inScope.filter(p => {
+    if (tags.length && !tags.includes(p.tag)) return false;
     if (hasVariants && p.flavors === 0) return false;
-    if (query && !productText(p).includes(query)) return false;
+    if (needle && !productText(p).includes(needle)) return false;
     return true;
   });
   if (sort === 'name-asc') items = [...items].sort((a, b) => a.name.localeCompare(b.name));
   if (sort === 'name-desc') items = [...items].sort((a, b) => b.name.localeCompare(a.name));
   if (sort === 'variants') items = [...items].sort((a, b) => b.flavors - a.flavors);
-  if (sort === 'price-low' && isApprovedBuyer) items = [...items].sort((a, b) => a.price - b.price);
-  if (sort === 'price-high' && isApprovedBuyer) items = [...items].sort((a, b) => b.price - a.price);
+  if (sort === 'price-low') items = [...items].sort((a, b) => a.price - b.price);
+  if (sort === 'price-high') items = [...items].sort((a, b) => b.price - a.price);
 
-  const toggleTag = (tag) => setTagFilter(current => current.includes(tag) ? current.filter(t => t !== tag) : [...current, tag]);
-  const clearFilters = () => {
-    setTagFilter([]);
-    setHasVariants(false);
-    setSearchQ('');
-    goCategory(category, null);
+  const here = (changes = {}) => ({ page: 'category', category, sub: activeSub, query, ...changes });
+  // Filter changes rewrite the current history entry and keep the scroll position.
+  const setFilters = (changes) => navigate(here({ query: { ...query, ...changes } }), { replace: true, scroll: false });
+  const cancelSearch = () => window.clearTimeout(searchTimer.current);
+  const onSearchInput = (value) => {
+    setDraft(value);
+    cancelSearch();
+    searchTimer.current = window.setTimeout(() => {
+      const now = latest.current;
+      navigate({ page: 'category', category, sub: now.sub || null, query: { ...now.query, q: value } }, { replace: true, scroll: false });
+    }, SEARCH_DELAY_MS);
   };
-  const activeFilterCount = (activeSub ? 1 : 0) + tagFilter.length + (hasVariants ? 1 : 0) + (query ? 1 : 0);
+  const clearSearch = () => {
+    cancelSearch();
+    setDraft('');
+    setFilters({ q: '' });
+  };
+  const toggleTag = (tag) => setFilters({ tags: tags.includes(tag) ? tags.filter(t => t !== tag) : [...tags, tag] });
+  // Clears the product line and every filter; the sort order stays.
+  const clearFilters = () => {
+    cancelSearch();
+    setDraft('');
+    navigate({ page: 'category', category, sub: null, query: { ...EMPTY_CATEGORY_QUERY, sort: query.sort } }, { replace: true, scroll: false });
+  };
+  const activeFilterCount = (activeSub ? 1 : 0) + tags.length + (hasVariants ? 1 : 0) + (needle ? 1 : 0);
 
-  if (!cat) {
-    return (
-      <section className="page-head">
-        <h1>Department not found</h1>
-        <p>That department doesn&apos;t exist. <button className="text-link" onClick={goHome}>Back to home</button></p>
-      </section>
-    );
-  }
-
+  // Removing a chip is a filter change like any other: it replaces the entry.
   const chips = [];
-  if (activeSub) chips.push({ key: 'sub', label: activeSub, remove: () => goCategory(category, null) });
-  tagFilter.forEach(tag => chips.push({ key: `tag-${tag}`, label: tagOptions.find(([, t]) => t === tag)?.[0] || tag, remove: () => toggleTag(tag) }));
-  if (hasVariants) chips.push({ key: 'variants', label: 'Has variants', remove: () => setHasVariants(false) });
-  if (query) chips.push({ key: 'query', label: `“${searchQ.trim()}”`, remove: () => setSearchQ('') });
+  if (activeSub) chips.push({ key: 'sub', label: activeSub });
+  tags.forEach(tag => chips.push({ key: `tag-${tag}`, tag, label: TAG_OPTIONS.find(([, t]) => t === tag)?.[0] || tag }));
+  if (hasVariants) chips.push({ key: 'variants', label: 'Has variants' });
+  if (needle) chips.push({ key: 'query', label: `“${query.q.trim()}”` });
+  const removeChip = (chip) => {
+    if (chip.key === 'sub') navigate(here({ sub: null }), { replace: true, scroll: false });
+    else if (chip.tag) toggleTag(chip.tag);
+    else if (chip.key === 'variants') setFilters({ variants: false });
+    else if (chip.key === 'query') clearSearch();
+  };
 
+  // With a product line picked, the count compares against that line (AW-232).
   const resultNote = (
     <p className="result-note" role="status">
-      Showing <strong>{items.length}</strong> <span>{`of ${inCategory.length} item${inCategory.length === 1 ? '' : 's'}${activeSub ? ` in ${activeSub}` : ''}`}</span>
+      Showing <strong>{items.length}</strong> <span>{`of ${inScope.length} item${inScope.length === 1 ? '' : 's'}${activeSub ? ` in ${activeSub}` : ''}`}</span>
     </p>
   );
   const sortControl = (
     <label className="category-sort" htmlFor="category-sort">Sort by
-      <select id="category-sort" value={sort} onChange={(e) => setSort(e.target.value)}>
+      <select id="category-sort" value={sort} onChange={(e) => setFilters({ sort: e.target.value })}>
         <option value="featured">Featured</option>
         <option value="name-asc">Name: A to Z</option>
         <option value="name-desc">Name: Z to A</option>
@@ -94,17 +130,17 @@ export function CategoryPage({ category, sub, products, departments, profile, is
   const filterPanel = (
     <div className="filter-panel">
       <label className="filter-search" htmlFor="category-search"><span>{`Search in ${catLabel(category)}`}</span>
-        <input id="category-search" type="search" value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Item, brand, SKU, variant…" autoComplete="off" />
+        <input id="category-search" type="search" value={draft} onChange={(e) => onSearchInput(e.target.value)} placeholder="Item, brand, SKU, variant…" autoComplete="off" />
       </label>
       <fieldset>
         <legend>Featured</legend>
-        {tagOptions.map(([label, tag]) => (
-          <label key={tag}><input type="checkbox" checked={tagFilter.includes(tag)} onChange={() => toggleTag(tag)} /> <span>{label}</span></label>
+        {TAG_OPTIONS.map(([label, tag]) => (
+          <label key={tag}><input type="checkbox" checked={tags.includes(tag)} onChange={() => toggleTag(tag)} /> <span>{label}</span></label>
         ))}
       </fieldset>
       <fieldset>
         <legend>Variants</legend>
-        <label><input type="checkbox" checked={hasVariants} onChange={(e) => setHasVariants(e.target.checked)} /> <span>Has flavors or variants</span></label>
+        <label><input type="checkbox" checked={hasVariants} onChange={(e) => setFilters({ variants: e.target.checked })} /> <span>Has flavors or variants</span></label>
       </fieldset>
       {!profile && <button className="filter-signin" type="button" onClick={onLoginClick}><b>Wholesale pricing is locked</b><span>Sign in to see your account pricing.</span></button>}
       {profile && !isApprovedBuyer && <p className="filter-signin"><b>Pricing after approval</b><span>Your account is not approved for trade pricing yet.</span></p>}
@@ -115,20 +151,17 @@ export function CategoryPage({ category, sub, products, departments, profile, is
   return (
     <section>
       <div className="page-head">
-        <div className="crumbs">
-          <button type="button" onClick={goHome}>Home</button><span aria-hidden="true">/</span><span>{catLabel(category)}</span>
-          {activeSub && <><span aria-hidden="true">/</span><span>{activeSub}</span></>}
-        </div>
-        <p className="eyebrow">{`DEPARTMENT · ${String(cat.count).padStart(2, '0')} SKUs`}</p>
+        <Breadcrumbs items={[HOME_CRUMB, { label: catLabel(category), to: here({ sub: null }) }, ...(activeSub ? [{ label: activeSub }] : [])]} />
+        <p className="eyebrow">{`DEPARTMENT · ${String(cat?.count ?? inCategory.length).padStart(2, '0')} SKUs`}</p>
         <h1>{catLabel(category)}</h1>
         <p>{`Wholesale ${catLabel(category).toLowerCase()} for licensed retail accounts. ${isApprovedBuyer ? 'Your tier pricing is shown on each card.' : profile ? 'Pricing unlocks after your account is approved.' : 'Sign in to see your wholesale pricing.'}`}</p>
-        <div className="sub-pills" role="group" aria-label={`${catLabel(category)} subcategories`}>
-          <button className={`sub-pill ${!activeSub ? 'active' : ''}`} type="button" aria-pressed={!activeSub} onClick={() => goCategory(category, null)}>{`All (${cat.count})`}</button>
-          {cat.subs.map(s => {
+        <nav className="sub-pills" aria-label={`${catLabel(category)} product lines`}>
+          <Link className={`sub-pill ${!activeSub ? 'active' : ''}`} to={here({ sub: null })} scroll={false} aria-current={!activeSub ? 'page' : undefined}>{`All (${inCategory.length})`}</Link>
+          {(cat?.subs || []).map(s => {
             const count = inCategory.filter(p => p.sub === s).length;
-            return <button key={s} className={`sub-pill ${activeSub === s ? 'active' : ''}`} type="button" aria-pressed={activeSub === s} onClick={() => goCategory(category, s)}>{`${s} (${count})`}</button>;
+            return <Link key={s} className={`sub-pill ${activeSub === s ? 'active' : ''}`} to={here({ sub: s })} scroll={false} aria-current={activeSub === s ? 'page' : undefined}>{`${s} (${count})`}</Link>;
           })}
-        </div>
+        </nav>
       </div>
 
       <div className="category-toolbar">
@@ -146,7 +179,7 @@ export function CategoryPage({ category, sub, products, departments, profile, is
         {chips.length > 0 && (
           <ul className="active-filters" aria-label="Active filters">
             {chips.map(c => (
-              <li key={c.key}><button type="button" onClick={c.remove} aria-label={`Remove filter ${c.label}`}><span>{c.label}</span> <span aria-hidden="true">×</span></button></li>
+              <li key={c.key}><button type="button" onClick={() => removeChip(c)} aria-label={`Remove filter ${c.label}`}><span>{c.label}</span> <span aria-hidden="true">×</span></button></li>
             ))}
             <li><button className="text-link" type="button" onClick={clearFilters}>Clear all</button></li>
           </ul>
@@ -191,7 +224,7 @@ export function CategoryPage({ category, sub, products, departments, profile, is
             <div className="card-grid category-card-grid">
               {items.map(p => (
                 <ProductCard key={p.id} p={p} profile={profile} isApprovedBuyer={isApprovedBuyer} cart={cart}
-                             addLine={addLine} decLine={decLine} goProduct={goProduct} onLoginClick={onLoginClick} />
+                             addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} />
               ))}
             </div>
           ) : (

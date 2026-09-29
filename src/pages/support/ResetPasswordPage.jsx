@@ -1,14 +1,15 @@
 // New-password page. Reached from the recovery link in the reset email (the
 // storefront recognises the recovery fragment and shows this page), or
-// directly at #/reset-password by a signed-in account.
+// directly at /reset-password by a signed-in account.
 
 import { useState } from 'react';
 import { describeError } from '../../lib/errors.js';
 import { ServiceUnavailable } from '../../components/ServiceUnavailable.jsx';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
+import { Link } from '../../lib/router.js';
 import { PageHead } from './SupportShell.jsx';
 
-export function ResetPasswordPage({ navigate, auth, onRequestReset, onLoginClick }) {
+export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
   const { session, loading, recovery, linkError, updatePassword, clearRecovery, isBackendConfigured } = auth;
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -16,7 +17,8 @@ export function ResetPasswordPage({ navigate, auth, onRequestReset, onLoginClick
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
 
-  const finish = (page) => { clearRecovery(); navigate({ page }); };
+  // Leaving the page (any of its links) ends the account-link state.
+  const finish = () => clearRecovery();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,8 +43,8 @@ export function ResetPasswordPage({ navigate, auth, onRequestReset, onLoginClick
           <p>You are signed in with your new password. Use it the next time you sign in.</p>
         </div>
         <div className="contact-strip-actions">
-          <button className="button" type="button" onClick={() => finish('account')}>Go to my account <span aria-hidden="true">↗</span></button>
-          <button className="button ghost" type="button" onClick={() => finish('catalog')}>Browse the catalog</button>
+          <Link className="button" to="/account" onClick={finish}>Go to my account <span aria-hidden="true">↗</span></Link>
+          <Link className="button ghost" to="/catalog" onClick={finish}>Browse the catalog</Link>
         </div>
       </div>
     );
@@ -67,7 +69,7 @@ export function ResetPasswordPage({ navigate, auth, onRequestReset, onLoginClick
         <p className="form-error" role="alert">{error}</p>
         <div className="dialog-actions">
           <button className="button" type="submit" disabled={saving}><span>{saving ? 'Saving…' : 'Save new password'}</span> <span aria-hidden="true">↗</span></button>
-          <button className="text-link" type="button" onClick={() => finish('home')}>Cancel</button>
+          <Link className="text-link" to="/" onClick={finish}>Cancel</Link>
         </div>
       </form>
     );
@@ -92,7 +94,7 @@ export function ResetPasswordPage({ navigate, auth, onRequestReset, onLoginClick
 
   return (
     <section className="support-page">
-      <PageHead goHome={() => finish('home')} crumb="Password reset" eyebrow="PASSWORD HELP" title="Choose a new password">
+      <PageHead onHome={finish} crumb="Password reset" eyebrow="PASSWORD HELP" title="Choose a new password">
         <p>Pick a password of at least 8 characters that you don’t use anywhere else. Your trade account stays signed in once it is saved.</p>
       </PageHead>
       <div className="reset-layout">{body}</div>

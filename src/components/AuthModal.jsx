@@ -7,6 +7,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/useAuth.js';
 import { COMPANY } from '../data/content.js';
 import { describeError } from '../lib/errors.js';
+import { Link } from '../lib/router.js';
 import { APPLICATION_CHECKLIST } from '../data/onboarding.js';
 import { DOCUMENT_TYPES, documentErrorMessage, uploadSelectedProof } from '../lib/documents.js';
 import { ServiceUnavailable } from './ServiceUnavailable.jsx';
@@ -33,7 +34,7 @@ function Field({ id, label, hint, full = false, children }) {
   );
 }
 
-export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate }) {
+export function AuthModal({ open, initialMode = 'signin', onClose }) {
   const { signIn, signUp, resetPassword, session, profile, profileReady, loading, isBackendConfigured } = useAuth();
   // signin | checklist | signup | sent | status | checking | reset | reset-sent
   // initialMode 'signup' starts at the checklist; 'application' skips straight to the form.
@@ -81,7 +82,6 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
   const setS = (k) => (e) => setSignin({ ...signin, [k]: e.target.value });
   const setU = (k) => (e) => setSignup({ ...signup, [k]: e.target.value });
   const switchMode = (next) => { setError(null); setMode(next); };
-  const go = (page) => { onClose(); onNavigate?.({ page }); };
 
   const handleSignin = async (e) => {
     e.preventDefault();
@@ -309,8 +309,8 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
               </>
             )}
             <div className="dialog-actions">
-              <button className="button" type="button" onClick={() => go('account')} data-autofocus>View account status <span aria-hidden="true">↗</span></button>
-              <button className="text-link" type="button" onClick={() => go('catalog')}>Browse the catalog</button>
+              <Link className="button" to="/account" onClick={onClose} data-autofocus>View account status <span aria-hidden="true">↗</span></Link>
+              <Link className="text-link" to="/catalog" onClick={onClose}>Browse the catalog</Link>
               <button className="text-link" type="button" onClick={onClose}>Close</button>
             </div>
           </>

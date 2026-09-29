@@ -6,20 +6,21 @@ import { useState } from 'react';
 import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../../data/content.js';
 import { DELIVERY_STATES, OTHER_STATES } from '../../data/onboarding.js';
 import { formatMoney, formatMoneyShort } from '../../lib/format.js';
+import { Link } from '../../lib/router.js';
 import { PhoneLink } from '../../components/ContactLinks.jsx';
 import { PageHead, ContactStrip } from './SupportShell.jsx';
 
 const ROUTE_STATE_NAMES = DELIVERY_STATES.map(s => s.name);
 const routeStates = `${ROUTE_STATE_NAMES.slice(0, -1).join(', ')} and ${ROUTE_STATE_NAMES[ROUTE_STATE_NAMES.length - 1]}`;
 
-export function DeliveryPage({ goHome, navigate }) {
+export function DeliveryPage() {
   const [stateCode, setStateCode] = useState('');
   const routeState = DELIVERY_STATES.find(s => s.code === stateCode);
   const otherState = OTHER_STATES.find(s => s.code === stateCode);
 
   return (
     <section className="support-page">
-      <PageHead goHome={goHome} crumb="Delivery & service area" eyebrow="OUR OWN TRUCKS" title="Delivery & service area">
+      <PageHead crumb="Delivery & service area" eyebrow="OUR OWN TRUCKS" title="Delivery & service area">
         <p>{`We run our own delivery routes across ${routeStates} from the Birmingham warehouse. When your store is on a route, your order rides on our truck and arrives the next day.`}</p>
       </PageHead>
 
@@ -33,7 +34,7 @@ export function DeliveryPage({ goHome, navigate }) {
           <p className="eyebrow">02 · WILL-CALL</p>
           <h2>Pick up in Birmingham</h2>
           <p>Will-call is pickup at {COMPANY.addressLine1}, {COMPANY.addressLine2} during business hours. {COMPANY.hoursLine1}, {COMPANY.hoursLine2}.</p>
-          <button className="text-link" type="button" onClick={() => navigate({ page: 'contact' })}>Contact &amp; visit</button>
+          <Link className="text-link" to="/contact">Contact &amp; visit</Link>
         </article>
         <article className="info-card">
           <p className="eyebrow">03 · MINIMUM ORDER</p>
@@ -91,12 +92,12 @@ export function DeliveryPage({ goHome, navigate }) {
           </ul>
           <p className="support-note">Tobacco and vapor products are delivered to the licensed retail business on the account only.</p>
           <div className="dialog-actions compact-actions">
-            <button className="text-link" type="button" onClick={() => navigate({ page: 'shipping' })}>Delivery policy</button>
+            <Link className="text-link" to="/shipping">Delivery policy</Link>
           </div>
         </section>
       </div>
 
-      <ContactStrip navigate={navigate} eyebrow="CONFIRM YOUR STOP" title="Ask about your route" />
+      <ContactStrip eyebrow="CONFIRM YOUR STOP" title="Ask about your route" />
     </section>
   );
 }

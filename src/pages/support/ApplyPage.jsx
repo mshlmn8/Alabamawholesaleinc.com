@@ -6,18 +6,19 @@ import { APPLICATION_CHECKLIST } from '../../data/onboarding.js';
 import { ServiceUnavailable } from '../../components/ServiceUnavailable.jsx';
 import { ApplicationDocuments } from '../../components/DocumentUploads.jsx';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
+import { Link } from '../../lib/router.js';
 import { PageHead, ContactStrip } from './SupportShell.jsx';
 
-export function ApplyPage({ goHome, navigate, profile, isBackendConfigured, onApplyClick, onLoginClick, onResetClick }) {
+export function ApplyPage({ profile, isBackendConfigured, onApplyClick, onLoginClick, onResetClick }) {
   const status = profile?.status;
 
   return (
     <section className="support-page">
-      <PageHead goHome={goHome} crumb="Trade account" eyebrow="OPEN AN ACCOUNT" title={profile ? 'Your trade account' : 'Apply for a trade account'}>
+      <PageHead crumb="Trade account" eyebrow="OPEN AN ACCOUNT" title={profile ? 'Your trade account' : 'Apply for a trade account'}>
         <p>Alabama Wholesale sells exclusively to licensed retail businesses — 21+, no consumer sales. Here is what to have ready, and what happens after you apply.</p>
       </PageHead>
 
-      {profile && <StatusPanel profile={profile} navigate={navigate} />}
+      {profile && <StatusPanel profile={profile} />}
 
       {profile?.status === 'pending' && <ApplicationDocuments disabled={!isBackendConfigured} />}
 
@@ -58,12 +59,12 @@ export function ApplyPage({ goHome, navigate, profile, isBackendConfigured, onAp
         </div>
       )}
 
-      <ContactStrip navigate={navigate} eyebrow="RATHER TALK IT THROUGH?" title="Apply with a trade rep" />
+      <ContactStrip eyebrow="RATHER TALK IT THROUGH?" title="Apply with a trade rep" />
     </section>
   );
 }
 
-function StatusPanel({ profile, navigate }) {
+function StatusPanel({ profile }) {
   const status = profile.status || 'pending';
   const label = { pending: 'Pending approval', approved: 'Approved', suspended: 'On hold' }[status] || status;
   return (
@@ -82,8 +83,8 @@ function StatusPanel({ profile, navigate }) {
         )}
       </div>
       <div className="contact-strip-actions">
-        <button className="button" type="button" onClick={() => navigate({ page: 'account' })}><span>{status === 'approved' ? 'My account' : 'View account'}</span> <span aria-hidden="true">↗</span></button>
-        <button className="button ghost" type="button" onClick={() => navigate({ page: 'catalog' })}>Browse the catalog</button>
+        <Link className="button" to="/account"><span>{status === 'approved' ? 'My account' : 'View account'}</span> <span aria-hidden="true">↗</span></Link>
+        <Link className="button ghost" to="/catalog">Browse the catalog</Link>
       </div>
     </section>
   );

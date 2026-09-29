@@ -1,6 +1,9 @@
 // Site header: utility line, masthead (menu, logo, search, account, cart),
 // the Categories mega menu and the discovery/service navigation. Below the
 // mobile breakpoint the navigation rows move into MobileMenu.
+//
+// Every destination is a real link (AW-043); buttons are kept for actions
+// (open a dialog, sign in or out, toggle a menu).
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { IMG } from '../data/theme.js';
@@ -8,9 +11,10 @@ import { COMPANY } from '../data/content.js';
 import { useMediaQuery, MOBILE_QUERY } from '../lib/useMediaQuery.js';
 import { getSearchMatches } from '../lib/search.js';
 import { catLabel, initials } from '../lib/format.js';
+import { Link, navigate, useLocation } from '../lib/router.js';
 import { MobileMenu } from './MobileMenu.jsx';
 
-export function Header({ cartCount, onCart, goHome, goCategory, goProduct, products, departments, onNewArrivals, onBestsellers, user, isAdmin, onAccountClick, onAdminClick, onLoginClick, onSignupClick, onLogout, onHelp, onReorder, onCatalog, onSearchChange }) {
+export function Header({ cartCount, onCart, products, departments, user, isAdmin, onLoginClick, onSignupClick, onLogout, onHelp }) {
   const [megaOpen, setMegaOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -19,6 +23,16 @@ export function Header({ cartCount, onCart, goHome, goCategory, goProduct, produ
   const categoryToggleRef = useRef(null);
   const megaOpenRef = useRef(false);
   useEffect(() => { megaOpenRef.current = megaOpen; }, [megaOpen]);
+
+  // Back/Forward (or any page change) closes the mega menu and the search
+  // results, like following one of their links does.
+  const location = useLocation();
+  const [seenLocation, setSeenLocation] = useState(location);
+  if (seenLocation !== location) {
+    setSeenLocation(location);
+    setMegaOpen(false);
+    setResultsOpen(false);
+  }
 
   useEffect(() => {
     const onKey = (e) => {
@@ -44,13 +58,14 @@ export function Header({ cartCount, onCart, goHome, goCategory, goProduct, produ
   }, []);
 
   const hits = useMemo(() => getSearchMatches(products, query), [products, query]);
-  useEffect(() => {
-    onSearchChange?.(resultsOpen && query.trim().length >= 2 ? query.trim() : '');
-  }, [query, resultsOpen, onSearchChange]);
-  const runNav = (action) => {
+  // Closes the menus before an action or a followed link.
+  const closeMenus = () => {
     setMegaOpen(false);
     setMenuOpen(false);
     setResultsOpen(false);
+  };
+  const runNav = (action) => {
+    closeMenus();
     action();
   };
   const closeMega = () => {
@@ -60,10 +75,13 @@ export function Header({ cartCount, onCart, goHome, goCategory, goProduct, produ
 
   const submitSearch = (e) => {
     e.preventDefault();
-    if (hits.length) { setQuery(''); runNav(() => goProduct(hits[0].id)); }
+    if (hits.length) {
+      setQuery('');
+      closeMenus();
+      navigate({ page: 'product', productId: hits[0].id });
+    }
   };
-  const pickResult = (id) => { setQuery(''); runNav(() => goProduct(id)); };
-  const pickCategory = (cat, sub) => runNav(() => goCategory(cat, sub));
+  const pickResult = () => { setQuery(''); closeMenus(); };
 
   return (
     <header className="aw-header container">
@@ -77,9 +95,9 @@ export function Header({ cartCount, onCart, goHome, goCategory, goProduct, produ
           <span className="aw-menu-bars" aria-hidden="true"><i></i><i></i><i></i></span>
           <span>Menu</span>
         </button>
-        <button className="aw-logo" onClick={() => runNav(goHome)} aria-label="Alabama Wholesale home">
+        <Link className="aw-logo" to="/" onClick={closeMenus} aria-label="Alabama Wholesale home">
           <img src={IMG.logo} alt="" />
-        </button>
+        </Link>
         <form className="aw-search" role="search" onSubmit={submitSearch}>
           <input type="search" value={query} placeholder={`Search ${products.length} SKUs — cigars, disposables, candy, drinks…`}
                  autoComplete="off" aria-label="Search products"
@@ -95,10 +113,10 @@ export function Header({ cartCount, onCart, goHome, goCategory, goProduct, produ
               <div className="aw-search-list">
                 {hits.length === 0 && <p>Try a brand (Geekbar, Backwoods, BIC) or a line (&quot;energy drinks&quot;, &quot;wraps&quot;).</p>}
                 {hits.map(p => (
-                  <button key={p.id} type="button" onClick={() => pickResult(p.id)}>
+                  <Link key={p.id} to={{ page: 'product', productId: p.id }} onClick={pickResult}>
                     <span className="sr-thumb">{p.img ? <img src={p.img} alt="" loading="lazy" /> : initials(p.name)}</span>
                     <span><strong>{p.name}</strong><small>{`${catLabel(p.cat)} · ${p.sub} · ${p.sku}`}</small></span>
-                  </button>
+                  </Link>
                 ))}
               </div>
             </div>
@@ -107,8 +125,8 @@ export function Header({ cartCount, onCart, goHome, goCategory, goProduct, produ
         <div className="aw-account-actions">
           {user ? (
             <>
-              <button className="aw-signin aw-account-name" type="button" onClick={() => runNav(onAccountClick)}>{user.business || user.name || 'My Account'}</button>
-              {isAdmin && <button className="aw-signin aw-desktop-only" type="button" onClick={() => runNav(onAdminClick)}>Admin</button>}
+              <Link className="aw-signin aw-account-name" to="/account" onClick={closeMenus}>{user.business || user.name || 'My Account'}</Link>
+              {isAdmin && <Link className="aw-signin aw-desktop-only" to="/admin" onClick={closeMenus}>Admin</Link>}
               <span className="aw-account-or">·</span>
               <button className="aw-signin aw-desktop-only" type="button" onClick={() => runNav(onLogout)}>Sign Out</button>
             </>
@@ -128,13 +146,9 @@ export function Header({ cartCount, onCart, goHome, goCategory, goProduct, produ
 
       {menuOpen && isMobile && (
         <MobileMenu
-          onClose={() => setMenuOpen(false)} departments={departments} products={products} user={user} isAdmin={isAdmin}
-          pickCategory={pickCategory}
+          onClose={() => setMenuOpen(false)} onFollowLink={closeMenus} departments={departments} products={products} user={user} isAdmin={isAdmin}
           go={{
-            newArrivals: () => runNav(onNewArrivals), bestsellers: () => runNav(onBestsellers), exotics: () => runNav(() => goCategory('NOVELTIES')),
-            account: () => runNav(onAccountClick), admin: () => runNav(onAdminClick), logout: () => runNav(onLogout),
-            signin: () => runNav(onLoginClick), signup: () => runNav(onSignupClick), reorder: () => runNav(onReorder), help: () => runNav(onHelp),
-            catalog: () => runNav(onCatalog),
+            logout: () => runNav(onLogout), signin: () => runNav(onLoginClick), signup: () => runNav(onSignupClick), help: () => runNav(onHelp),
           }}
         />
       )}
@@ -155,28 +169,28 @@ export function Header({ cartCount, onCart, goHome, goCategory, goProduct, produ
                 <nav className="aw-department" key={c.key} aria-label={c.label}>
                   <h3><span>{String(i + 1).padStart(2, '0')}</span><span>{c.label}</span></h3>
                   {c.subs.slice(0, 3).map(s => (
-                    <button key={s} type="button" onClick={() => pickCategory(c.key, s)}>{s}</button>
+                    <Link key={s} to={{ page: 'category', category: c.key, sub: s }} onClick={closeMenus}>{s}</Link>
                   ))}
-                  <button type="button" style={{ fontWeight: 700, color: 'var(--purple)' }} onClick={() => pickCategory(c.key, null)}>{`All ${c.label} →`}</button>
+                  <Link className="aw-department-all" to={{ page: 'category', category: c.key }} onClick={closeMenus}>{`All ${c.label} →`}</Link>
                 </nav>
               ))}
-              <button className="aw-menu-feature" type="button" onClick={() => pickCategory('NOVELTIES', null)}>
+              <Link className="aw-menu-feature" to={{ page: 'category', category: 'NOVELTIES' }} onClick={closeMenus}>
                 <div><p className="eyebrow">FEATURED</p><h3>Exotics &amp;<br />novelties.</h3><span>Explore the department <b aria-hidden="true">↗</b></span></div>
-              </button>
+              </Link>
             </div>
             <div className="aw-menu-footer">
-              <button type="button" onClick={() => runNav(onCatalog)}>View full catalog <span aria-hidden="true">↗</span></button>
+              <Link to="/catalog" onClick={closeMenus}>View full catalog <span aria-hidden="true">↗</span></Link>
               <span>{`${departments.length} departments · ${products.length} SKUs`}</span>
             </div>
           </section>
         )}
         <nav className="aw-discovery-nav" aria-label="Main navigation">
-          <button type="button" onClick={() => runNav(onNewArrivals)}><span className="aw-new-dot" aria-hidden="true"></span>New Arrivals</button>
-          <button type="button" onClick={() => runNav(onBestsellers)}>Bestsellers</button>
-          <button type="button" className="aw-exotics-link" onClick={() => runNav(() => goCategory('NOVELTIES'))}>Exotics <span aria-hidden="true">↗</span></button>
+          <Link to="/#new-arrivals" onClick={closeMenus}><span className="aw-new-dot" aria-hidden="true"></span>New Arrivals</Link>
+          <Link to="/#bestsellers" onClick={closeMenus}>Bestsellers</Link>
+          <Link className="aw-exotics-link" to={{ page: 'category', category: 'NOVELTIES' }} onClick={closeMenus}>Exotics <span aria-hidden="true">↗</span></Link>
         </nav>
         <div className="aw-service-nav">
-          <button type="button" onClick={() => runNav(onReorder)}>Quick Reorder</button>
+          <Link to="/account" onClick={closeMenus}>Quick Reorder</Link>
           <button type="button" onClick={() => runNav(onHelp)}>Help <span className="aw-help-icon" aria-hidden="true">?</span></button>
         </div>
       </div>

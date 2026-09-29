@@ -2,10 +2,11 @@
 // accounts) and the checkout/quote actions.
 
 import { formatMoney } from '../lib/format.js';
+import { Link } from '../lib/router.js';
 import { ModalLayer } from './ModalLayer.jsx';
 import { CartLine } from './CartLine.jsx';
 
-export function CartDrawer({ open, onClose, items, total, addLine, decLine, removeLine, goQuote, goProduct, profile, isApprovedBuyer, onLoginClick }) {
+export function CartDrawer({ open, onClose, items, total, addLine, decLine, removeLine, profile, isApprovedBuyer, onLoginClick }) {
   if (!open) return null;
   // Guests are asked to sign in; signed-in buyers who are not approved yet are
   // told pricing is waiting on approval instead.
@@ -25,7 +26,7 @@ export function CartDrawer({ open, onClose, items, total, addLine, decLine, remo
               {items.map(it => (
                 <CartLine key={it.lineKey} item={it} layout="drawer" showPrice={isApprovedBuyer}
                           onInc={() => addLine(it.productId, it.variant)} onDec={() => decLine(it.lineKey)}
-                          onRemove={() => removeLine(it.lineKey)} onChoose={() => { onClose(); goProduct(it.productId); }} />
+                          onRemove={() => removeLine(it.lineKey)} onChoose={onClose} />
               ))}
             </ul>
           )}
@@ -39,9 +40,9 @@ export function CartDrawer({ open, onClose, items, total, addLine, decLine, remo
           </div>
           {items.length > 0 && (
             isApprovedBuyer
-              ? <button className="button wide" type="button" onClick={goQuote}>Checkout <span aria-hidden="true">↗</span></button>
+              ? <Link className="button wide" to="/quote" onClick={onClose}>Checkout <span aria-hidden="true">↗</span></Link>
               : <>
-                  <button className="button wide" type="button" onClick={goQuote}>Request quote <span aria-hidden="true">↗</span></button>
+                  <Link className="button wide" to="/quote" onClick={onClose}>Request quote <span aria-hidden="true">↗</span></Link>
                   {!pendingBuyer && <button className="drawer-signin text-link" type="button" onClick={onLoginClick}>Sign in for account pricing</button>}
                 </>
           )}

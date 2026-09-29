@@ -2,6 +2,7 @@
 
 import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../../data/content.js';
 import { formatMoney, formatMoneyShort } from '../../lib/format.js';
+import { Link } from '../../lib/router.js';
 import { CallOrEmail, PhoneLink, EmailLink } from '../../components/ContactLinks.jsx';
 import { PageHead, PolicyNav, ContactStrip, POLICY_LINKS } from './SupportShell.jsx';
 
@@ -73,7 +74,7 @@ const POLICIES = {
       ] },
       { heading: 'Orders and delivery', body: [
         `The minimum order is ${formatMoney(ORDER_MINIMUM)}.`,
-        <>Orders are delivered on our own trucks when the stop is on a delivery route in Alabama, Mississippi or Georgia, or collected at the Birmingham warehouse during business hours. See <button className="text-link" type="button" data-nav="shipping">Delivery</button> for how that works.</>,
+        <>Orders are delivered on our own trucks when the stop is on a delivery route in Alabama, Mississippi or Georgia, or collected at the Birmingham warehouse during business hours. See <Link to="/shipping">Delivery</Link> for how that works.</>,
       ] },
       { heading: 'Payment', body: [
         'Payment methods are cash, checks, and electronic wiring and transfers.',
@@ -94,28 +95,19 @@ const POLICIES = {
 export const POLICY_TITLES = Object.fromEntries(Object.entries(POLICIES).map(([k, v]) => [k, v.title]));
 export const POLICY_INTROS = Object.fromEntries(Object.entries(POLICIES).map(([k, v]) => [k, v.intro]));
 
-export function PolicyPage({ kind, goHome, navigate }) {
+export function PolicyPage({ kind }) {
   const policy = POLICIES[kind];
   if (!policy) return null;
   const crumb = POLICY_LINKS.find(l => l.page === kind)?.label || policy.title;
 
-  // Inline cross-links inside policy copy are plain buttons tagged with data-nav.
-  const onBodyClick = (e) => {
-    const target = e.target.closest('[data-nav]');
-    if (target) navigate({ page: target.dataset.nav });
-  };
-
   return (
     <section className="support-page">
-      <PageHead goHome={goHome} crumb={crumb} eyebrow={policy.eyebrow} title={policy.title}>
+      <PageHead crumb={crumb} eyebrow={policy.eyebrow} title={policy.title}>
         <p>{policy.intro}</p>
       </PageHead>
       <div className="policy-layout">
-        <PolicyNav current={kind} navigate={navigate} />
-        {/* Delegated handler for the [data-nav] cross-links in the policy text, which are
-            real buttons, so keyboard activation bubbles here too. */}
-        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
-        <article className="policy-body" onClick={onBodyClick}>
+        <PolicyNav current={kind} />
+        <article className="policy-body">
           {policy.sections.map((section, i) => (
             <section key={section.heading} aria-labelledby={`policy-${kind}-${i}`}>
               <h2 id={`policy-${kind}-${i}`}>{section.heading}</h2>
@@ -131,7 +123,7 @@ export function PolicyPage({ kind, goHome, navigate }) {
           </p>
         </article>
       </div>
-      <ContactStrip navigate={navigate} />
+      <ContactStrip />
     </section>
   );
 }

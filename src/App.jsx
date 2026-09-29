@@ -1,14 +1,15 @@
 // App root: age gate, auth, catalog, cart and route state, the page layout
 // and the route switch. Pages live in src/pages/, shared pieces in
-// src/components/ and src/lib/.
+// src/components/ and src/lib/. URLs, links and page-change behaviour live in
+// src/lib/router.js and src/lib/routes.js.
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo } from 'react';
 
 import { STORAGE } from './data/content.js';
 import { useAuth } from './lib/useAuth.js';
 import { useCatalog } from './lib/useCatalog.js';
 import { useCart } from './lib/cart.js';
-import { useRoute, routeKey } from './lib/router.js';
+import { navigate, pathFor, resolveRoute, routeKey, useNavigationEffects, useRoute } from './lib/router.js';
 import { pageMeta, applyPageMeta } from './lib/meta.js';
 import { departmentsFor } from './lib/departments.js';
 import { AgeGate } from './components/AgeGate.jsx';
@@ -24,6 +25,7 @@ import { HomePage } from './pages/HomePage.jsx';
 import { CategoryPage } from './pages/CategoryPage.jsx';
 import { ProductPage } from './pages/ProductPage.jsx';
 import { QuotePage } from './pages/QuotePage.jsx';
+import { NotFoundPage } from './pages/NotFoundPage.jsx';
 import { AccountPage } from './pages/account/AccountPage.jsx';
 import { AdminPage } from './pages/admin/AdminPage.jsx';
 import { CatalogIndexPage } from './pages/support/CatalogIndexPage.jsx';
@@ -32,6 +34,8 @@ import { DeliveryPage } from './pages/support/DeliveryPage.jsx';
 import { PolicyPage } from './pages/support/PolicyPage.jsx';
 import { ApplyPage } from './pages/support/ApplyPage.jsx';
 import { ResetPasswordPage } from './pages/support/ResetPasswordPage.jsx';
+
+const SEARCH_NOT_READY = { page: 'not-found', kind: 'page' };
 
 export default function App() {
   const [verified, setVerified] = useState(() => window.localStorage.getItem(STORAGE.age) === 'yes');
@@ -52,34 +56,34 @@ export default function App() {
   const departments = useMemo(() => departmentsFor(products), [products]);
   const cart = useCart(products, profile);
 
-  const { route, navigate } = useRoute();
+  // The URL is checked against the catalog (AW-188): unknown pages,
+  // departments, lines and products render NotFound, and other spellings of
+  // a real page are redirected to its canonical address.
+  const { location, raw } = useRoute();
+  const resolved = useMemo(() => resolveRoute(raw, { departments, products }), [raw, departments, products]);
+  const canonicalPath = pathFor(resolved);
+  // /search is reserved for the search results page (AW-007); until it
+  // exists it shows NotFound.
+  const route = resolved.page === 'search' ? SEARCH_NOT_READY : resolved;
+  useLayoutEffect(() => {
+    if (canonicalPath && canonicalPath !== location.pathname) {
+      navigate(canonicalPath + location.search + location.hash, { replace: true, scroll: false });
+    }
+  }, [canonicalPath, location]);
 
-  // Header search reports its live query so the tab title follows it.
-  const [searchTerm, setSearchTerm] = useState('');
   useEffect(() => {
-    // A recovery/expired account link shows the reset page whatever the hash says.
+    // A recovery/expired account link shows the reset page whatever the URL says.
     const shown = accountLinkPage ? { page: 'reset-password' } : route;
-    applyPageMeta(pageMeta(shown, products, departments, searchTerm));
-  }, [route, products, departments, searchTerm, accountLinkPage]);
+    applyPageMeta(pageMeta(shown, products, departments));
+  }, [route, products, departments, accountLinkPage]);
+  // Scroll, focus and announcement on page changes (after the title is set).
+  useNavigationEffects();
 
-  const goHome = () => navigate({ page: 'home' });
-  const goProduct = (id) => navigate({ page: 'product', productId: id });
-  const goCategory = (cat, sub = null) => navigate({ page: 'category', category: cat, sub });
-  const goQuote = () => { setCartOpen(false); navigate({ page: 'quote' }); };
-  const goCatalog = () => navigate({ page: 'catalog' });
-  const goAccount = () => navigate({ page: 'account' });
-  const goHomeSection = (sectionId) => {
-    const scrollToSection = () => window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
-      document.getElementById(sectionId)?.scrollIntoView({ block: 'start' });
-    }));
-    if (route.page === 'home') scrollToSection();
-    else { navigate({ page: 'home' }, { scroll: false }); scrollToSection(); }
-  };
-  // Escape handling, body scroll lock and the inert background live in
-  // ModalLayer so every dialog (including the auth modal) behaves the same.
+  // Escape handling, body scroll lock, the inert background and Back-to-close
+  // live in ModalLayer so every dialog (including the auth modal) behaves the same.
 
   const handleAgeYes = () => { setVerified(true); window.localStorage.setItem(STORAGE.age, 'yes'); };
-  const handleLogout = async () => { await signOut(); navigate({ page: 'home' }); };
+  const handleLogout = async () => { await signOut(); navigate('/'); };
 
   // signin | signup (checklist first) | application (straight to the form) | reset
   const openLogin = (mode) => {
@@ -99,62 +103,58 @@ export default function App() {
 
   // Product cards need the account, the cart and the add/step actions.
   const cardProps = {
-    profile, isApprovedBuyer, cart: cart.cart, addLine: cart.addLine, decLine: cart.decLine,
-    goProduct, onLoginClick: openSignin,
+    profile, isApprovedBuyer, cart: cart.cart, addLine: cart.addLine, decLine: cart.decLine, onLoginClick: openSignin,
   };
 
   const renderRoute = () => {
     if (accountLinkPage) {
-      return <ResetPasswordPage key="account-link" navigate={navigate} auth={auth} onRequestReset={openReset} onLoginClick={openSignin} />;
+      return <ResetPasswordPage key="account-link" auth={auth} onRequestReset={openReset} onLoginClick={openSignin} />;
     }
     switch (route.page) {
       case 'home':
-        return <HomePage products={products} departments={departments} {...cardProps} goCategory={goCategory} goCatalog={goCatalog} onApplyClick={openSignup} />;
+        return <HomePage products={products} departments={departments} {...cardProps} onApplyClick={openSignup} />;
       case 'product':
-        return (
-          <ProductPage productId={route.productId} products={products} {...cardProps} goHome={goHome} goCategory={goCategory}
-                       onApplyClick={openSignup} onAccountClick={goAccount} />
-        );
+        return <ProductPage key={route.productId} productId={route.productId} products={products} {...cardProps} onApplyClick={openSignup} />;
       case 'category':
+        // Keyed by department (AW-228): another department starts with a fresh page.
         return (
-          <CategoryPage category={route.category} sub={route.sub} products={products} departments={departments} {...cardProps}
-                        goHome={goHome} goCategory={goCategory} />
+          <CategoryPage key={route.category} category={route.category} sub={route.sub} query={route.query}
+                        products={products} departments={departments} {...cardProps} />
         );
       case 'quote':
         return (
           <QuotePage items={cart.items} total={cart.total} addLine={cart.addLine} decLine={cart.decLine} removeLine={cart.removeLine}
-                     clearCart={cart.clearCart} goHome={goHome} goCatalog={goCatalog} goProduct={goProduct} profile={profile}
-                     isApprovedBuyer={isApprovedBuyer} isBackendConfigured={isBackendConfigured} />
+                     clearCart={cart.clearCart} profile={profile} isApprovedBuyer={isApprovedBuyer} isBackendConfigured={isBackendConfigured} />
         );
       case 'account':
         return (
-          <AccountPage profile={profile} goHome={goHome} onSignIn={openSignin} products={products}
+          <AccountPage profile={profile} onSignIn={openSignin} products={products}
                        addLines={cart.addLines} onOpenCart={() => setCartOpen(true)} isApprovedBuyer={isApprovedBuyer} />
         );
       case 'admin':
-        return <AdminPage profile={profile} goHome={goHome} />;
+        return <AdminPage profile={profile} onSignIn={openSignin} />;
       case 'catalog':
         return (
           <CatalogIndexPage products={products} departments={departments} profile={profile} isApprovedBuyer={isApprovedBuyer}
-                            goHome={goHome} goCategory={goCategory} goProduct={goProduct} onLoginClick={openSignin} />
+                            onLoginClick={openSignin} />
         );
       case 'contact':
-        return <ContactPage goHome={goHome} navigate={navigate} onApplyClick={openSignup} />;
+        return <ContactPage onApplyClick={openSignup} />;
       case 'delivery':
-        return <DeliveryPage goHome={goHome} navigate={navigate} />;
+        return <DeliveryPage />;
       case 'shipping':
       case 'privacy':
       case 'terms':
-        return <PolicyPage kind={route.page} goHome={goHome} navigate={navigate} />;
+        return <PolicyPage kind={route.page} />;
       case 'apply':
         return (
-          <ApplyPage goHome={goHome} navigate={navigate} profile={profile} isBackendConfigured={isBackendConfigured}
+          <ApplyPage profile={profile} isBackendConfigured={isBackendConfigured}
                      onApplyClick={openApplication} onLoginClick={openSignin} onResetClick={openReset} />
         );
       case 'reset-password':
-        return <ResetPasswordPage navigate={navigate} auth={auth} onRequestReset={openReset} onLoginClick={openSignin} />;
+        return <ResetPasswordPage auth={auth} onRequestReset={openReset} onLoginClick={openSignin} />;
       default:
-        return null;
+        return <NotFoundPage key={routeKey(route)} kind={route.kind} category={route.category} products={products} departments={departments} />;
     }
   };
 
@@ -164,33 +164,28 @@ export default function App() {
 
       <Header
         cartCount={cart.count} onCart={() => setCartOpen(true)}
-        goHome={goHome} goCategory={goCategory} goProduct={goProduct}
         products={products} departments={departments}
-        onNewArrivals={() => goHomeSection('new-arrivals')} onBestsellers={() => goHomeSection('bestsellers')}
         user={user} isAdmin={isAdmin}
-        onAccountClick={goAccount}
-        onAdminClick={() => navigate({ page: 'admin' })}
         onLoginClick={openSignin} onSignupClick={openSignup} onLogout={handleLogout}
-        onHelp={() => setHelpOpen(true)} onReorder={goAccount} onCatalog={goCatalog}
-        onSearchChange={setSearchTerm}
+        onHelp={() => setHelpOpen(true)}
       />
 
-      <main className="container">
+      {/* tabIndex -1: the fallback focus target after a page change (AW-041). */}
+      <main className="container" id="main" tabIndex={-1}>
         <ErrorBoundary resetKey={accountLinkPage ? 'account-link' : routeKey(route)}>
           {renderRoute()}
         </ErrorBoundary>
       </main>
 
-      <Footer goHome={goHome} goCategory={goCategory} departments={departments} onLoginClick={openSignin} onApplyClick={openSignup}
-              onNewArrivals={() => goHomeSection('new-arrivals')} onBestsellers={() => goHomeSection('bestsellers')} navigate={navigate} />
+      <Footer departments={departments} onLoginClick={openSignin} onApplyClick={openSignup} />
 
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} items={cart.items} total={cart.total}
-                  addLine={cart.addLine} decLine={cart.decLine} removeLine={cart.removeLine} goQuote={goQuote} goProduct={goProduct}
+                  addLine={cart.addLine} decLine={cart.decLine} removeLine={cart.removeLine}
                   profile={profile} isApprovedBuyer={isApprovedBuyer} onLoginClick={openCartSignin} />
       {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} onApply={() => { setHelpOpen(false); openSignup(); }} />}
       {loginOpen && (
         <ModalLayer onClose={() => setLoginOpen(false)}>
-          <AuthModal open initialMode={loginMode} onClose={() => setLoginOpen(false)} onNavigate={navigate} />
+          <AuthModal open initialMode={loginMode} onClose={() => setLoginOpen(false)} />
         </ModalLayer>
       )}
     </div>

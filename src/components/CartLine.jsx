@@ -2,8 +2,11 @@
 // thumbnail, name and SKU, the quantity stepper (or "Choose variant" for a
 // product still missing its variant) and remove. The checkout layout adds
 // "each" to the unit price, a separate variant note and the line total.
+// "Choose variant" is a link to the product page; onChoose runs when it is
+// followed (the drawer closes itself).
 
 import { formatMoney, initials } from '../lib/format.js';
+import { Link } from '../lib/router.js';
 
 export function CartLine({ item: it, layout = 'drawer', showPrice, onInc, onDec, onRemove, onChoose }) {
   const checkout = layout === 'checkout';
@@ -23,7 +26,7 @@ export function CartLine({ item: it, layout = 'drawer', showPrice, onInc, onDec,
         )}
       </span>
       {it.needsVariant ? (
-        <button className="text-link choose" type="button" onClick={onChoose}>Choose variant</button>
+        <Link className="text-link choose" to={{ page: 'product', productId: it.productId }} onClick={onChoose}>Choose variant</Link>
       ) : (
         <span className="qty" role="group" aria-label={`${it.name} quantity`}>
           <button type="button" onClick={onDec} aria-label="Decrease quantity">−</button>

@@ -2,6 +2,7 @@
 // hours, and will-call pickup. Facts come from COMPANY in data/content.js.
 
 import { COMPANY } from '../../data/content.js';
+import { Link } from '../../lib/router.js';
 import { PageHead, DIRECTIONS_URL } from './SupportShell.jsx';
 
 const HOURS = [
@@ -9,10 +10,10 @@ const HOURS = [
   { days: 'Saturday – Sunday', time: '8:00 AM – 5:30 PM' },
 ];
 
-export function ContactPage({ goHome, navigate, onApplyClick }) {
+export function ContactPage({ onApplyClick }) {
   return (
     <section className="support-page">
-      <PageHead goHome={goHome} crumb="Contact & visit" eyebrow="TALK TO THE WAREHOUSE" title="Contact & visit">
+      <PageHead crumb="Contact & visit" eyebrow="TALK TO THE WAREHOUSE" title="Contact & visit">
         <p>Real people, same building as the inventory. Call the trade desk, email us, or come by the Birmingham warehouse for will-call pickup.</p>
       </PageHead>
 
@@ -55,8 +56,8 @@ export function ContactPage({ goHome, navigate, onApplyClick }) {
           <p>Order ahead online or by phone, then collect your order at {COMPANY.addressLine1} during business hours. Have your order reference and business name ready at the counter.</p>
           <p>Prefer delivery? We run our own trucks on routes in Alabama, Mississippi and Georgia.</p>
           <div className="dialog-actions compact-actions">
-            <button className="text-link" type="button" onClick={() => navigate({ page: 'delivery' })}>Delivery &amp; service area</button>
-            <button className="text-link" type="button" onClick={() => navigate({ page: 'shipping' })}>Delivery policy</button>
+            <Link className="text-link" to="/delivery">Delivery &amp; service area</Link>
+            <Link className="text-link" to="/shipping">Delivery policy</Link>
           </div>
         </section>
       </div>
@@ -68,7 +69,7 @@ export function ContactPage({ goHome, navigate, onApplyClick }) {
           <p>Licensed retail businesses only. See what you’ll need before you start.</p>
         </div>
         <div className="contact-strip-actions">
-          <button className="button" type="button" onClick={() => navigate({ page: 'apply' })}>Application checklist <span aria-hidden="true">↗</span></button>
+          <Link className="button" to="/apply">Application checklist <span aria-hidden="true">↗</span></Link>
           <button className="button ghost" type="button" onClick={onApplyClick}>Start application</button>
         </div>
       </section>

@@ -5,9 +5,11 @@ import { lineKey, parseLineKey, variantList, requiresVariantChoice } from '../li
 import { priceForProfile } from '../lib/pricing.js';
 import { formatMoney, initials } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
+import { Link } from '../lib/router.js';
 import { Picture } from './Picture.jsx';
 
-export function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLine, goProduct, onLoginClick }) {
+export function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLine, onLoginClick }) {
+  const productRoute = { page: 'product', productId: p.id };
   const variants = variantList(p);
   const choiceRequired = requiresVariantChoice(p);
   const onlyVariant = variants.length === 1 ? variants[0] : null;
@@ -18,7 +20,7 @@ export function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLin
   const price = priceForProfile(p.price, profile);
   return (
     <article className="content-card">
-      <button type="button" className="card-link" onClick={() => goProduct(p.id)} aria-label={`${p.name} details`}>
+      <Link className="card-link" to={productRoute} aria-label={`${p.name} details`}>
         <div className="card-block">
           <span className="block-label">{p.cat}</span>
           {p.tag && <span className={`card-tag ${p.tag === 'NEW' ? 'new' : ''}`}>{p.tag}</span>}
@@ -27,7 +29,7 @@ export function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLin
         <p className="card-kicker">{p.sub}</p>
         <h3>{p.name}</h3>
         <p className="card-detail">{`${p.brand}${p.flavors ? ` · ${p.flavors} variants` : ''} · ${p.sku}`}</p>
-      </button>
+      </Link>
       <span className="card-meta card-actions">
         {isApprovedBuyer && price != null ? (
           <span>{formatMoney(price)}</span>
@@ -37,7 +39,7 @@ export function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLin
           <button className="lock price-login" type="button" onClick={onLoginClick}>LOCKED · Sign in for pricing</button>
         )}
         {choiceRequired ? (
-          <button className="card-add" type="button" onClick={() => goProduct(p.id)}>{qty > 0 ? `Choose · ${qty}` : 'Choose'}</button>
+          <Link className="card-add" to={productRoute}>{qty > 0 ? `Choose · ${qty}` : 'Choose'}</Link>
         ) : qty > 0 ? (
           <span className="card-stepper" role="group" aria-label={`${p.name} quantity`}>
             <button type="button" onClick={() => decLine(key)} aria-label="Decrease quantity">−</button>

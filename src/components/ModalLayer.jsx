@@ -3,9 +3,15 @@
 // root so the root can be made inert while a layer is open. The topmost layer
 // owns Escape, keeps Tab inside itself, receives focus on open and hands focus
 // back to the element that opened it on close.
+//
+// While open, a layer also holds a browser history entry (AW-065): the Back
+// button then closes it through its onClose, like the × button, instead of
+// changing the page underneath. Pass historyEntry={false} for a layer that
+// Back must not dismiss.
 
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { holdOverlayEntry, lastPageMove } from '../lib/router.js';
 
 const FOCUSABLE = [
   'a[href]', 'button:not([disabled])', 'input:not([disabled]):not([type="hidden"])',
@@ -103,10 +109,11 @@ function createEntry(onClose) {
     onClose,
     container: null,
     lastInside: null,
+    pageMoveAtOpen: lastPageMove(),
   };
 }
 
-export function ModalLayer({ onClose, initialFocus, className = '', children }) {
+export function ModalLayer({ onClose, initialFocus, className = '', historyEntry = true, children }) {
   const ref = useRef(null);
   // This layer's record on the module-level stack; mutable on purpose, so it
   // lives in a ref that is created once, on the first render.
@@ -122,6 +129,7 @@ export function ModalLayer({ onClose, initialFocus, className = '', children }) 
     stack.push(entry);
     ensureListener();
     syncBackground();
+    const releaseHistory = historyEntry ? holdOverlayEntry(() => entry.onClose?.()) : null;
 
     // A layer can name its first field with a ref or a data-autofocus attribute;
     // otherwise the first focusable control (usually the close button) gets focus.
@@ -142,10 +150,13 @@ export function ModalLayer({ onClose, initialFocus, className = '', children }) 
       const i = stack.indexOf(entry);
       if (i !== -1) stack.splice(i, 1);
       syncBackground();
+      releaseHistory?.();
       // If another layer opened in the same commit (cart -> sign in) it already
       // holds focus; leave it there instead of pulling focus back to the page.
+      // After a link inside the layer opened a new page, the router focuses
+      // that page's heading instead (AW-041).
       const heldByAnotherLayer = portalRoot && portalRoot.contains(active) && !container.contains(active);
-      if (!heldByAnotherLayer) restoreFocus(entry);
+      if (!heldByAnotherLayer && lastPageMove() === entry.pageMoveAtOpen) restoreFocus(entry);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
