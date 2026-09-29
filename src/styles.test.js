@@ -4,6 +4,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { MOBILE_QUERY } from './lib/useMediaQuery.js';
 
 // Vitest runs from the repository root.
 const read = (file) => readFileSync(resolve(process.cwd(), file), 'utf8');
@@ -37,6 +38,16 @@ const lastCompound = (selector) => selector.split(/\s*[\s>+~]\s*/).pop();
 const rootBlocks = rules(css).filter((r) => r.selectors.length === 1 && r.selectors[0] === ':root');
 const root = declarations(rootBlocks[0].body);
 const outsideRoot = css.replace(/:root\s*\{[^{}]*\}/g, '');
+
+// Every `@media` prelude, e.g. '(max-width: 37.5em)'.
+const mediaPreludes = [...css.matchAll(/@media\s*([^{]+?)\s*\{/g)].map((m) => m[1]);
+// Every declaration of `property`, with the selectors it belongs to.
+const declared = (property) => rules(css).flatMap(({ selectors, body }) => {
+  const value = declarations(body)[property];
+  return value === undefined ? [] : [{ selector: selectors.join(', '), value }];
+});
+// Replaces var(--token) with the token's :root value.
+const resolveVars = (value) => value.replace(/var\((--[\w-]+)\)/g, (m, token) => root[token] ?? m);
 
 // Field borders stay hex until C4 (AW-146, AW-172) replaces them with --field-border.
 const FIELD_BORDER_HEXES = ['#dcd5cc', '#d8d1c9', '#b9aed0'];
@@ -148,5 +159,83 @@ describe('fonts (AW-178)', () => {
       for (const d of ['size-adjust', 'ascent-override', 'descent-override', 'line-gap-override']) expect(face[d], d).toMatch(/^\d+(\.\d+)?%$/);
     }
     expect(fallback('DM Sans Fallback').find((f) => f['font-weight'] === '700').src).toContain("local('Arial Bold')");
+  });
+});
+
+describe('type scale in rem with a 12px floor (AW-162, AW-174, AW-291)', () => {
+  const sizes = [...declared('font-size'), ...declared('font')];
+
+  it('defines the text, heading, tracking and tap tokens in rem, and no --text-md', () => {
+    expect(root).toMatchObject({
+      '--text-xs': '.75rem', '--text-sm': '.8125rem', '--text-base': '.875rem', '--text-lg': '1rem',
+      '--h3': '1.625rem', '--h2-sm': '1.875rem', '--h2': '2.25rem', '--h2-lg': '2.625rem',
+      '--track-label': '.075rem', '--track-eyebrow': '.125rem',
+      '--tap': '2.75rem', '--tap-sm': '2.5rem',
+    });
+    expect(Object.keys(root)).not.toContain('--text-md');
+    expect(css).not.toContain('--text-md');
+    // No two type tokens share a size.
+    const scale = ['--text-xs', '--text-sm', '--text-base', '--text-lg', '--h3', '--h2-sm', '--h2', '--h2-lg'].map((t) => parseFloat(root[t]));
+    expect(new Set(scale).size).toBe(scale.length);
+  });
+
+  it('leaves the root font size to the browser', () => {
+    for (const { selector, value } of declared('font-size')) expect(selector, value).not.toMatch(/^(html|:root)$/);
+  });
+
+  it('sets no font size in px, in font-size or in a font shorthand', () => {
+    const px = sizes.filter(({ value }) => /\d(\.\d+)?px\b/.test(value));
+    expect(px.map(({ selector, value }) => `${selector} { ${value} }`)).toEqual([]);
+  });
+
+  it('never goes below .75rem (12px), tokens included', () => {
+    for (const { selector, value } of sizes) {
+      const resolved = resolveVars(value);
+      if (/^(inherit|\d+%)$/.test(resolved)) continue;
+      const rems = [...resolved.matchAll(/(\d*\.?\d+)rem\b/g)].map((m) => parseFloat(m[1]));
+      expect(rems.length, `${selector} { ${value} } has a rem size`).toBeGreaterThan(0);
+      for (const rem of rems) expect(rem, `${selector} { ${value} }`).toBeGreaterThanOrEqual(0.75);
+    }
+    // The phone :root block may only redefine tokens, still in rem.
+    for (const block of rootBlocks.slice(1)) {
+      for (const [token, value] of Object.entries(declarations(block.body))) {
+        if (/^--(text|h\d)/.test(token)) expect(value, token).toMatch(/^\d*\.?\d+rem$/);
+      }
+    }
+  });
+
+  it('spaces uppercase labels with the two tracking tokens', () => {
+    for (const { selector, value } of declared('letter-spacing')) {
+      if (/^(0|inherit|-\d*\.?\d+rem)$/.test(value)) continue;
+      expect(value, selector).toMatch(/^var\(--track-(label|eyebrow)\)$/);
+    }
+  });
+
+  it('lets text-holding controls grow with the text (min-height, not height)', () => {
+    const controls = ['.aw-search', '.category-sort select', '.filter-search input', '.filter-drawer-body .category-sort select',
+      '.order-head select', '.qr-field input', '.aw-table input', '.form-grid input', '.eligibility-form select'];
+    for (const control of controls) {
+      const matching = rules(css).filter((r) => r.selectors.includes(control));
+      expect(matching.length, control).toBeGreaterThan(0);
+      for (const { body } of matching) expect(declarations(body), control).not.toHaveProperty('height');
+    }
+  });
+
+  it('gives the footer policy links full-size text and 44px targets', () => {
+    const link = declarations(rules(css).find((r) => r.selectors.includes('.footer-policies a')).body);
+    expect(link).toMatchObject({ 'font-size': 'var(--text-xs)', 'min-height': 'var(--tap)', 'min-width': 'var(--tap)' });
+  });
+});
+
+describe('breakpoints in em, one compact-layout condition (AW-162, AW-151)', () => {
+  it('writes every width and height breakpoint in em', () => {
+    expect(mediaPreludes.filter((p) => /\d(px|rem)\b/.test(p))).toEqual([]);
+  });
+
+  it('switches to the compact layout with exactly the MOBILE_QUERY that Header and CategoryPage use', () => {
+    const compact = mediaPreludes.filter((p) => p.includes('53.125em'));
+    // The main responsive block, the support pages and the not-found page.
+    expect(compact).toHaveLength(3);
+    for (const prelude of compact) expect(prelude).toBe(MOBILE_QUERY);
   });
 });

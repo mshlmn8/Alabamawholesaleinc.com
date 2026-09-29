@@ -60,7 +60,7 @@ export function HeroCarousel({ slides }) {
                 />
               ) : slide.picture ? (
                 <Picture picture={slide.picture} alt={isActive ? (slide.title || '') : ''}
-                         sizes={`(max-width: 600px) 100vw, ${slide.picture.width || 720}px`}
+                         sizes={`(max-width: 37.5em) 100vw, ${slide.picture.width || 720}px`}
                          priority={i === 0} loading={i === 0 ? 'eager' : 'lazy'} />
               ) : (
                 <img src={slide.img} alt={isActive ? (slide.title || '') : ''} />
