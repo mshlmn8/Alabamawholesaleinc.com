@@ -239,3 +239,82 @@ describe('breakpoints in em, one compact-layout condition (AW-162, AW-151)', () 
     for (const prelude of compact) expect(prelude).toBe(MOBILE_QUERY);
   });
 });
+
+// Every `@media` block's prelude and the text between its braces (nested
+// rules included), with the offsets of that text in the source.
+const mediaBlocks = (source) => {
+  const out = [];
+  const re = /@media\s*([^{]+?)\s*\{/g;
+  let m;
+  while ((m = re.exec(source))) {
+    let depth = 1, i = re.lastIndex;
+    for (; i < source.length && depth; i++) {
+      if (source[i] === '{') depth++;
+      else if (source[i] === '}') depth--;
+    }
+    out.push({ prelude: m[1], start: re.lastIndex, end: i - 1, body: source.slice(re.lastIndex, i - 1) });
+  }
+  return out;
+};
+
+describe('one button system and drawn icons (AW-143, AW-298, AW-293, AW-218)', () => {
+  const hoverBlocks = mediaBlocks(css).filter((b) => b.prelude === '(hover: hover)');
+  const insideHover = hoverBlocks.map((b) => b.body).join('\n');
+  const outsideHover = hoverBlocks.reduceRight((text, b) => text.slice(0, b.start) + text.slice(b.end), css);
+  const rule = (selector) => declarations(rules(css).find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+
+  it('has one .button: label centred with no arrow slot, 2px corners, sentence case', () => {
+    expect(rule('.button')).toMatchObject({ 'justify-content': 'center', gap: '.5rem', 'border-radius': '2px', 'min-height': 'var(--tap)', 'font-size': 'var(--text-sm)', 'font-weight': '700' });
+    expect(rule('.button.sm')).toMatchObject({ 'min-height': 'var(--tap-sm)' });
+    expect(rule('.button.xs')).toMatchObject({ 'min-height': '2rem', 'font-size': 'var(--text-xs)' });
+    for (const variant of ['.button.ghost', '.button.on-dark', '.button.xs.text']) expect(Object.keys(rule(variant)).length, variant).toBeGreaterThan(0);
+    for (const { selectors, body } of rules(css)) {
+      if (!selectors.some((s) => /\.button\b/.test(s))) continue;
+      expect(declarations(body)['text-transform'], selectors.join(', ')).toBeUndefined();
+      expect(declarations(body)['justify-content'] ?? 'center', selectors.join(', ')).toBe('center');
+    }
+  });
+
+  it('has no retired button, close, stepper or glyph-icon classes', () => {
+    for (const cls of ['mini-btn', 'aw-signup', 'dialog-close', 'aw-menu-close', 'qty-stepper', 'grid-symbol', 'filter-icon', 'search-icon', 'aw-help-icon', 'aw-menu-bars', 'arrow']) {
+      expect(css, cls).not.toMatch(new RegExp(`\\.${cls}(?![\\w-])`));
+    }
+    expect(Object.keys(root)).not.toContain('--icon-ring');
+  });
+
+  it('lets no header container rule out-rank the button sizes', () => {
+    for (const { selectors, body } of rules(css)) {
+      if (!selectors.some((s) => /^\.aw-account-actions (button|a)$/.test(s))) continue;
+      for (const d of ['border-radius', 'min-height', 'padding', 'font-size']) expect(declarations(body), `${selectors.join(', ')} ${d}`).not.toHaveProperty(d);
+    }
+  });
+
+  it('draws icons as SVG, not text: the breadcrumb slash is the only generated text', () => {
+    const glyphs = declared('content').filter(({ value }) => !/^(''|counter\([\w-]+\))$/.test(value));
+    expect(glyphs.map(({ selector }) => selector)).toEqual(['.crumbs li + li::before']);
+    expect(css).not.toMatch(/[↗→⊞⌄×✓−]/);
+    expect(rule('.icon')).toMatchObject({ width: '1em', height: '1em', flex: 'none', 'vertical-align': '-.125em' });
+  });
+
+  it('keeps button, icon-button and stepper hovers inside @media (hover: hover), and never on a disabled one', () => {
+    const controls = /\.button|\.icon-btn|\.stepper/;
+    for (const { selectors } of rules(outsideHover)) {
+      for (const s of selectors) if (/:hover/.test(s)) expect(s).not.toMatch(controls);
+    }
+    const hovers = rules(insideHover).flatMap((r) => r.selectors).filter((s) => controls.test(s) && /:hover/.test(s));
+    expect(hovers.length).toBeGreaterThanOrEqual(5);
+    for (const s of hovers) expect(s).toMatch(/:not\(:disabled\):hover$/);
+    // Focus rings are not hover states: they stay outside the hover blocks.
+    expect(insideHover).not.toMatch(/:focus/);
+  });
+
+  it('fades every disabled control by the same amount, and gives buttons a pressed state', () => {
+    expect(root['--disabled-opacity']).toBe('.5');
+    for (const selector of ['.button:disabled', '.icon-btn:disabled, .stepper button:disabled', '.doc-file:disabled, fieldset:disabled .doc-file']) {
+      expect(rule(selector), selector).toMatchObject({ opacity: 'var(--disabled-opacity)', cursor: 'not-allowed' });
+    }
+    const pressed = rules(outsideHover).find((r) => r.selectors.includes('.button:not(:disabled):active'));
+    expect(pressed.selectors).toEqual(['.button:not(:disabled):active', '.icon-btn:not(:disabled):active', '.stepper button:not(:disabled):active']);
+    expect(declarations(pressed.body)).toMatchObject({ transform: 'translateY(1px)', filter: 'brightness(.95)' });
+  });
+});

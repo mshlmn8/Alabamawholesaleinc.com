@@ -11,6 +11,7 @@
 
 import { formatMoney, initials } from '../lib/format.js';
 import { Link } from '../lib/router.js';
+import { Icon } from './Icon.jsx';
 
 export function CartLine({ item: it, layout = 'drawer', showPrice, onInc, onDec, onRemove, onChoose }) {
   const checkout = layout === 'checkout';
@@ -35,14 +36,14 @@ export function CartLine({ item: it, layout = 'drawer', showPrice, onInc, onDec,
       {choose ? (
         <Link className="text-link choose" to={{ page: 'product', productId: it.productId }} onClick={onChoose}>Choose variant</Link>
       ) : gone ? null : (
-        <span className="qty" role="group" aria-label={`${it.name} quantity`}>
-          <button type="button" onClick={onDec} aria-label="Decrease quantity">−</button>
+        <span className="stepper qty" role="group" aria-label={`${it.name} quantity`}>
+          <button type="button" onClick={onDec} aria-label="Decrease quantity"><Icon name="minus" /></button>
           <b aria-live="polite">{it.qty}</b>
-          <button type="button" onClick={onInc} aria-label="Increase quantity">+</button>
+          <button type="button" onClick={onInc} aria-label="Increase quantity"><Icon name="plus" /></button>
         </span>
       )}
       {checkout && priced && <b className="line-total">{formatMoney(it.qty * it.price)}</b>}
-      <button className="drawer-remove" type="button" onClick={onRemove} aria-label={`Remove ${it.name}`}><span aria-hidden="true">×</span></button>
+      <button className="icon-btn drawer-remove" type="button" onClick={onRemove} aria-label={`Remove ${it.name}`}><Icon name="close" /></button>
     </li>
   );
 }

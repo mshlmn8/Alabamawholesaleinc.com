@@ -15,6 +15,7 @@ import { Link } from '../lib/router.js';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 import { Picture } from '../components/Picture.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
+import { Icon } from '../components/Icon.jsx';
 
 export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLine, products, onLoginClick, onApplyClick, savedQty = 0 }) {
   const [desiredQty, setDesiredQty] = useState(() => savedQty || 1);
@@ -81,12 +82,12 @@ export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine
               : <><b>Sign in</b><span>Wholesale pricing is visible to approved trade accounts</span></>}
           </div>
           <div className="qty-row">
-            <div className="qty-stepper" role="group" aria-label="Quantity to add">
-              <button type="button" onClick={() => setDesiredQty(q => Math.max(1, q - 1))} aria-label="Decrease quantity">−</button>
+            <div className="stepper" role="group" aria-label="Quantity to add">
+              <button type="button" onClick={() => setDesiredQty(q => Math.max(1, q - 1))} aria-label="Decrease quantity"><Icon name="minus" /></button>
               <b aria-live="polite">{desiredQty}</b>
-              <button type="button" onClick={() => setDesiredQty(q => q + 1)} aria-label="Increase quantity">+</button>
+              <button type="button" onClick={() => setDesiredQty(q => q + 1)} aria-label="Increase quantity"><Icon name="plus" /></button>
             </div>
-            <button className="button" type="button" onClick={handleAdd} disabled={choiceRequired && !chosenVariant}><span>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</span> <span aria-hidden="true">↗</span></button>
+            <button className="button" type="button" onClick={handleAdd} disabled={choiceRequired && !chosenVariant}><span>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</span></button>
           </div>
           {qty > 0 && <p className="in-cart-note"><span>{`Already in ${isApprovedBuyer ? 'order' : 'quote'}: `}</span><strong>{qty}</strong><span>{selected ? ` · ${selected}` : ''}</span></p>}
           {!profile && (
@@ -106,7 +107,7 @@ export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine
         <section className="section">
           <div className="section-head">
             <div><p className="eyebrow">SAME LINE</p><h2>{`More ${p.sub.toLowerCase()}`}</h2></div>
-            <Link to={department}>View department <span aria-hidden="true">↗</span></Link>
+            <Link to={department}>View department</Link>
           </div>
           <div className="card-grid">
             {related.map(r => <ProductCard key={r.id} p={r} profile={profile} isApprovedBuyer={isApprovedBuyer} cart={cart} addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} />)}

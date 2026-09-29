@@ -2,6 +2,7 @@
 
 import { COMPANY } from '../data/content.js';
 import { ModalLayer } from './ModalLayer.jsx';
+import { Icon } from './Icon.jsx';
 
 export function HelpDialog({ onClose, onApply }) {
   return (
@@ -12,7 +13,7 @@ export function HelpDialog({ onClose, onApply }) {
         {/* Keeps clicks inside the dialog from reaching the backdrop. */}
         {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
         <div className="dialog scale-in" role="dialog" aria-modal="true" aria-labelledby="help-title" onClick={(e) => e.stopPropagation()}>
-          <div className="dialog-top"><p className="eyebrow">ACCOUNT SERVICE</p><button className="dialog-close" onClick={onClose} aria-label="Close">×</button></div>
+          <div className="dialog-top"><p className="eyebrow">ACCOUNT SERVICE</p><button className="icon-btn" type="button" onClick={onClose} aria-label="Close"><Icon name="close" /></button></div>
           <p className="kicker">WE ANSWER FAST</p>
           <h2 id="help-title">Talk to the warehouse</h2>
           <p className="desc">Real people, same building as the inventory. Call, email or stop by will-call.</p>
@@ -23,7 +24,7 @@ export function HelpDialog({ onClose, onApply }) {
             <div><dt>Will-call</dt><dd>{COMPANY.addressShort}</dd></div>
           </dl>
           <div className="dialog-actions">
-            <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Call now <span aria-hidden="true">↗</span></a>
+            <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Call now</a>
             <button className="text-link" type="button" onClick={onApply}>Apply for an account</button>
           </div>
           <p className="fine">The minimum order is $500.00. Next-day delivery on our own trucks when the stop is on a delivery route in AL, MS and GA. Will-call is pickup at the Birmingham warehouse during business hours.</p>

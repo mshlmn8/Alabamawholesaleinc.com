@@ -15,7 +15,7 @@ export function AccountProblem({ onRetry, onSignOut, retrying = false, signingOu
       <div className="dialog-actions compact-actions">
         {onRetry && (
           <button className="button" type="button" onClick={onRetry} disabled={retrying}>
-            <span>{retrying ? 'Trying again…' : 'Try again'}</span> <span aria-hidden="true">↗</span>
+            <span>{retrying ? 'Trying again…' : 'Try again'}</span>
           </button>
         )}
         {onSignOut && (

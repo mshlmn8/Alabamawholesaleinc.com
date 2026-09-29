@@ -154,7 +154,7 @@ test('signing out puts the buyer’s cart away: the next person starts empty, th
   const cart = page.getByRole('button', { name: /^Cart, \d+ items$/ });
   await page.goto('/product/14');
   await expect(page.locator('.aw-account-actions')).toContainText('Test Market LLC');
-  await page.getByRole('button', { name: /^Add to (quote|order)/ }).click();
+  await page.locator('.pd-info').getByRole('button', { name: /^Add to (quote|order)/ }).click();
   await expect(cart).toHaveAccessibleName('Cart, 1 items');
   expect(JSON.parse(await page.evaluate((k) => localStorage.getItem(k), `aw-cart-v2:${UID}`))).toEqual({ 14: 1 });
 
@@ -208,7 +208,7 @@ test('after a sign-out, a session another tab saved that cannot be refreshed nev
   const cart = page.getByRole('button', { name: /^Cart, \d+ items$/ });
   await page.goto('/product/14');
   await expect(page.locator('.aw-account-actions')).toContainText('Test Market LLC');
-  await page.getByRole('button', { name: /^Add to (quote|order)/ }).click();
+  await page.locator('.pd-info').getByRole('button', { name: /^Add to (quote|order)/ }).click();
   await expect(cart).toHaveAccessibleName('Cart, 1 items');
 
   const menu = page.getByRole('button', { name: 'Menu' });

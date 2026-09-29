@@ -34,8 +34,8 @@ export function ContactStrip({ eyebrow = 'QUESTIONS?', title = 'Talk to the ware
         <p>Real people, same building as the inventory. {COMPANY.hoursLine1} · {COMPANY.hoursLine2}.</p>
       </div>
       <div className="contact-strip-actions">
-        <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Call {COMPANY.phone} <span aria-hidden="true">↗</span></a>
-        <a className="button ghost" href={`mailto:${COMPANY.email}`}>Email us</a>
+        <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Call {COMPANY.phone}</a>
+        <a className="button on-dark" href={`mailto:${COMPANY.email}`}>Email us</a>
         {contactLink && <Link className="text-link" to="/contact">Contact &amp; visit</Link>}
       </div>
     </aside>

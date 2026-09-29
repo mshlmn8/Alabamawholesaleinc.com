@@ -12,6 +12,7 @@
 
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { announce } from '../lib/announce.js';
+import { Icon } from './Icon.jsx';
 
 // notices: [{ id, title?, text, tone?: 'warn', actions?: [{ id, label, onClick, disabled? }], onDismiss? }]
 export function SiteNotices({ notices }) {
@@ -57,7 +58,7 @@ export function SiteNotices({ notices }) {
             )}
           </div>
           {notice.onDismiss && (
-            <button className="site-notice-close" type="button" aria-label="Dismiss this notice" onClick={() => dismiss(notice)}>×</button>
+            <button className="icon-btn site-notice-close" type="button" aria-label="Dismiss this notice" onClick={() => dismiss(notice)}><Icon name="close" /></button>
           )}
         </div>
       ))}

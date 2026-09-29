@@ -135,7 +135,7 @@ export function QuotePage({
       <section className="page-head" style={{ textAlign: 'center', padding: '60px 0' }}>
         <h1>Your cart is empty</h1>
         <p style={{ margin: '0 auto 20px' }}>Add products, then come back to checkout.</p>
-        <Link className="button" to="/catalog">Browse catalog <span aria-hidden="true">↗</span></Link>
+        <Link className="button" to="/catalog">Browse catalog</Link>
         {legacy.length > 0 && (
           <div className="quote-saved-lines">
             <SavedLinesNotice items={legacy} onDismiss={onDismissLegacy} />
@@ -157,7 +157,7 @@ export function QuotePage({
         <p className="result-note" style={{ fontSize: 13 }}>Reference number: <strong>{receipt?.ref_num || refNum}</strong></p>
         <div className="dialog-actions" style={{ justifyContent: 'center' }}>
           <a className="button ghost" href={`tel:${COMPANY.phoneRaw}`}>Call to discuss</a>
-          <Link className="button" to="/" onClick={clearCart}>Back to home <span aria-hidden="true">↗</span></Link>
+          <Link className="button" to="/" onClick={clearCart}>Back to home</Link>
         </div>
       </section>
     );
@@ -235,13 +235,13 @@ export function QuotePage({
                 ? 'The account you’re signed in with can’t place orders yet, so this would go in as a quote request without prices.'
                 : 'You were signed out, so this can’t be placed as an order. Sign in again to place it.'}</p>
               <div className="dialog-actions">
-                {!signedIn && onSignIn && <button className="button" type="button" onClick={onSignIn}>Sign in <span aria-hidden="true">↗</span></button>}
+                {!signedIn && onSignIn && <button className="button" type="button" onClick={onSignIn}>Sign in</button>}
                 <button className="text-link" type="button" onClick={() => setSendAsQuote(true)}>Send it as a quote request instead</button>
               </div>
             </div>
           )}
           <button className="button wide" type="submit" disabled={sending || !isBackendConfigured || needsVariant || unavailable.length > 0 || lostOrdering}>
-            <span>{submitLabel}</span> <span aria-hidden="true">↗</span></button>
+            <span>{submitLabel}</span></button>
           <p className="fine">The minimum order is $500.00. Orders over $1,500 qualify for free delivery on a delivery route in AL, MS &amp; GA. Will-call is pickup at the Birmingham warehouse during business hours. Tobacco products supplied to licensed retailers only — 21+.</p>
         </form>
       </div>

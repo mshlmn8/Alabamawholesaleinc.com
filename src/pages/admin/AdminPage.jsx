@@ -55,8 +55,8 @@ export function AdminPage({
           : 'The admin area is only open to Alabama Wholesale staff accounts. Sign in with a staff account to continue.'}</p>
         <div className="dialog-actions compact-actions">
           {profile
-            ? <Link className="button" to="/account">My account <span aria-hidden="true">↗</span></Link>
-            : <button className="button" type="button" onClick={onSignIn}>Sign in <span aria-hidden="true">↗</span></button>}
+            ? <Link className="button" to="/account">My account</Link>
+            : <button className="button" type="button" onClick={onSignIn}>Sign in</button>}
           <Link className="text-link" to="/">Back to home</Link>
         </div>
       </section>
@@ -280,7 +280,7 @@ function AccountsTab() {
               </td>
               <td>
                 {p.status === 'pending' && (
-                  <button className="mini-btn primary" type="button" onClick={() => updateProfile(p.id, { status: 'approved' })}>
+                  <button className="button xs" type="button" onClick={() => updateProfile(p.id, { status: 'approved' })}>
                     Approve
                   </button>
                 )}
@@ -355,8 +355,8 @@ function ProductsTab({ onCatalogChange }) {
                 </td>
                 <td>
                   <div className="inline-actions">
-                    <button className="mini-btn primary" type="button" onClick={() => save(p.id, { name: editing.name, brand: editing.brand, price: editing.price, tag: editing.tag, active: editing.active })}>Save</button>
-                    <button className="mini-btn quiet" type="button" onClick={() => setEditing(null)}>Cancel</button>
+                    <button className="button xs" type="button" onClick={() => save(p.id, { name: editing.name, brand: editing.brand, price: editing.price, tag: editing.tag, active: editing.active })}>Save</button>
+                    <button className="button xs text" type="button" onClick={() => setEditing(null)}>Cancel</button>
                   </div>
                 </td>
               </tr>
@@ -370,7 +370,7 @@ function ProductsTab({ onCatalogChange }) {
                 <td>{p.tag || '—'}</td>
                 <td>{p.active ? 'Yes' : 'No'}</td>
                 <td>
-                  <button className="mini-btn" type="button" onClick={() => setEditing({ ...p })}>Edit</button>
+                  <button className="button xs ghost" type="button" onClick={() => setEditing({ ...p })}>Edit</button>
                 </td>
               </tr>
             ))}

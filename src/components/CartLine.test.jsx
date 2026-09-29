@@ -21,6 +21,17 @@ describe('CartLine', () => {
     expect(h.onRemove).toHaveBeenCalledTimes(1);
   });
 
+  it('uses the shared stepper and a round icon button to remove, with drawn icons (AW-143, AW-293)', () => {
+    renderLine({ item, layout: 'drawer', showPrice: false, ...handlers() });
+    const group = screen.getByRole('group', { name: 'Kite quantity' });
+    expect(group.className).toBe('stepper qty');
+    expect(group.querySelectorAll('button > svg.icon')).toHaveLength(2);
+    const remove = screen.getByRole('button', { name: 'Remove Kite' });
+    expect(remove.className).toBe('icon-btn drawer-remove');
+    expect(remove.querySelector('svg.icon')).toBeTruthy();
+    expect(remove.textContent).toBe('');
+  });
+
   it('checkout layout: "each" price and a line total', () => {
     renderLine({ item, layout: 'checkout', showPrice: true, ...handlers() });
     expect(screen.getByText('AW-KITE · $41.16 each')).toBeTruthy();

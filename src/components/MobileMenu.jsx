@@ -5,6 +5,7 @@
 import { COMPANY } from '../data/content.js';
 import { Link } from '../lib/router.js';
 import { ModalLayer } from './ModalLayer.jsx';
+import { Icon } from './Icon.jsx';
 
 export function MobileMenu({ onClose, onFollowLink, departments, products, user, isAdmin, signingOut = false, go }) {
   return (
@@ -13,7 +14,7 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
       <aside className="drawer drawer-left" role="dialog" aria-modal="true" aria-labelledby="aw-mobile-menu-title" id="aw-mobile-menu">
         <div className="drawer-head">
           <h2 id="aw-mobile-menu-title">Menu</h2>
-          <button className="dialog-close" type="button" onClick={onClose} aria-label="Close menu">×</button>
+          <button className="icon-btn" type="button" onClick={onClose} aria-label="Close menu"><Icon name="close" /></button>
         </div>
         <div className="drawer-body menu-body">
           <nav className="menu-group" aria-label="Departments">
@@ -24,13 +25,13 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
                 <span className="menu-count">{c.count}</span>
               </Link>
             ))}
-            <Link className="menu-highlight" to="/catalog" onClick={onFollowLink}>View full catalog <span aria-hidden="true">↗</span></Link>
+            <Link className="menu-highlight" to="/catalog" onClick={onFollowLink}>View full catalog</Link>
           </nav>
           <nav className="menu-group" aria-label="Discover">
             <h3>Discover</h3>
             <Link to="/#new-arrivals" onClick={onFollowLink}><span><span className="aw-new-dot" aria-hidden="true"></span>New Arrivals</span></Link>
             <Link to="/#bestsellers" onClick={onFollowLink}>Bestsellers</Link>
-            <Link className="menu-highlight" to={{ page: 'category', category: 'NOVELTIES' }} onClick={onFollowLink}>Exotics <span aria-hidden="true">↗</span></Link>
+            <Link className="menu-highlight" to={{ page: 'category', category: 'NOVELTIES' }} onClick={onFollowLink}>Exotics</Link>
           </nav>
           <nav className="menu-group" aria-label="Account and help">
             <h3>Account</h3>
@@ -44,7 +45,7 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
             ) : (
               <>
                 <button type="button" onClick={go.signin}>Sign In</button>
-                <button type="button" onClick={go.signup}>Sign Up <span aria-hidden="true">↗</span></button>
+                <button type="button" onClick={go.signup}>Sign Up</button>
                 <Link to="/account" onClick={onFollowLink}>Quick Reorder</Link>
               </>
             )}
@@ -53,7 +54,7 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
           <div className="menu-contact">
             <p>{COMPANY.addressShort}<br /><span>{`${departments.length} departments · ${products.length} SKUs`}</span></p>
             <a className="button ghost" href={`tel:${COMPANY.phoneRaw}`}>Call {COMPANY.phone}</a>
-            {!user && <button className="button" type="button" onClick={go.signup}>Apply for a trade account <span aria-hidden="true">↗</span></button>}
+            {!user && <button className="button" type="button" onClick={go.signup}>Apply for a trade account</button>}
           </div>
         </div>
       </aside>

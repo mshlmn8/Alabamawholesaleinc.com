@@ -30,7 +30,7 @@ export function AgeGate({ declined, onYes, onNo, onBack }) {
             <h2 id="age-gate-title" tabIndex={-1} data-autofocus>Sorry, you must be <em>21 or older</em> to enter</h2>
             <p id="age-gate-text">This wholesale site lists tobacco and vapor products, so it is only open to visitors 21 or older.</p>
             <div className="btn-row">
-              <button type="button" className="button ghost" onClick={onBack}>Answered by mistake? Go back</button>
+              <button type="button" className="button on-dark" onClick={onBack}>Answered by mistake? Go back</button>
             </div>
           </div>
         ) : (
@@ -38,8 +38,8 @@ export function AgeGate({ declined, onYes, onNo, onBack }) {
             <h2 id="age-gate-title">Are you <em>21 or older?</em></h2>
             <p id="age-gate-text">This is a wholesale site for licensed retail businesses only. It lists tobacco and vapor products, so you must be 21 or older to enter.</p>
             <div className="btn-row">
-              <button type="button" className="button" data-autofocus onClick={onYes}>Yes, I am 21+ <span aria-hidden="true">↗</span></button>
-              <button type="button" className="button ghost" onClick={onNo}>No, exit</button>
+              <button type="button" className="button" data-autofocus onClick={onYes}>Yes, I am 21+</button>
+              <button type="button" className="button on-dark" onClick={onNo}>No, exit</button>
             </div>
           </div>
         )}

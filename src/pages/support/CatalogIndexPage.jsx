@@ -3,6 +3,7 @@
 // destination.
 
 import { Link } from '../../lib/router.js';
+import { Icon } from '../../components/Icon.jsx';
 import { PageHead } from './SupportShell.jsx';
 
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -33,7 +34,7 @@ export function CatalogIndexPage({ products, departments, isApprovedBuyer, profi
                   <p className="eyebrow">{`DEPARTMENT ${String(i + 1).padStart(2, '0')} · ${d.count} SKUs`}</p>
                   <h2 id={`dept-title-${slug(d.key)}`}>{d.label}</h2>
                 </div>
-                <Link className="text-link" to={{ page: 'category', category: d.key }}><span>{`Browse ${d.label}`}</span> <span aria-hidden="true">↗</span></Link>
+                <Link className="text-link" to={{ page: 'category', category: d.key }}><span>{`Browse ${d.label}`}</span></Link>
               </div>
               <div className="sub-pills" aria-label={`${d.label} product lines`}>
                 {d.subs.map(s => {
@@ -42,7 +43,7 @@ export function CatalogIndexPage({ products, departments, isApprovedBuyer, profi
                 })}
               </div>
               <details className="sku-details">
-                <summary>{`All ${d.count} ${d.label} SKUs`}</summary>
+                <summary><Icon name="plus" className="sku-plus" /><Icon name="minus" className="sku-minus" /><span>{`All ${d.count} ${d.label} SKUs`}</span></summary>
                 <ul className="sku-list">
                   {rows.map(p => (
                     <li key={p.id}>

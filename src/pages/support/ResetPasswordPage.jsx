@@ -59,7 +59,7 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
           <p>You are signed in with your new password. Use it the next time you sign in.</p>
         </div>
         <div className="contact-strip-actions">
-          <Link className="button" to="/account">Go to my account <span aria-hidden="true">↗</span></Link>
+          <Link className="button" to="/account">Go to my account</Link>
           <Link className="button ghost" to="/catalog">Browse the catalog</Link>
         </div>
       </div>
@@ -84,7 +84,7 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
         </div>
         <p className="form-error" role="alert">{error}</p>
         <div className="dialog-actions">
-          <button className="button" type="submit" disabled={saving}><span>{saving ? 'Saving…' : 'Save new password'}</span> <span aria-hidden="true">↗</span></button>
+          <button className="button" type="submit" disabled={saving}><span>{saving ? 'Saving…' : 'Save new password'}</span></button>
           <Link className="text-link" to="/">Cancel</Link>
         </div>
       </form>
@@ -99,7 +99,7 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
           <p><span>{problem.text}</span> Or <CallOrEmail before="call" after=" and a trade rep will help you get back in." /></p>
         </div>
         <div className="contact-strip-actions">
-          <button className="button" type="button" onClick={onRequestReset}>Request a new reset link <span aria-hidden="true">↗</span></button>
+          <button className="button" type="button" onClick={onRequestReset}>Request a new reset link</button>
           <button className="button ghost" type="button" onClick={onLoginClick}>Sign in</button>
         </div>
       </div>
@@ -113,7 +113,7 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
           <p>We’ll email a link to the business address on your account. Open it on this device to choose a new password. Locked out completely? <CallOrEmail before="Call" after="." /></p>
         </div>
         <div className="contact-strip-actions">
-          <button className="button" type="button" onClick={onRequestReset}>Request a reset link <span aria-hidden="true">↗</span></button>
+          <button className="button" type="button" onClick={onRequestReset}>Request a reset link</button>
           <button className="button ghost" type="button" onClick={onLoginClick}>Sign in</button>
         </div>
       </div>

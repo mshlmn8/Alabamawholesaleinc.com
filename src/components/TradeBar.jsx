@@ -12,7 +12,7 @@ export function TradeBar({ onApplyClick }) {
         <div className="container">
           <div className="ticker" aria-hidden="true"><span>{TICKER_TEXT + TICKER_TEXT + TICKER_TEXT + TICKER_TEXT}</span></div>
           <a className="trade-call" href={`tel:${COMPANY.phoneRaw}`}>Call {COMPANY.phone}</a>
-          <button type="button" onClick={onApplyClick}>Apply for a trade account ↗</button>
+          <button type="button" onClick={onApplyClick}>Apply for a trade account</button>
         </div>
       </div>
       <div className="trade-only">WHOLESALE TO LICENSED RETAIL BUSINESSES ONLY · NO CONSUMER SALES · 21+</div>
