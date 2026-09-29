@@ -76,3 +76,39 @@ test.describe('after age confirmation', () => {
     expect(errors).toEqual([]);
   });
 });
+
+// Static boot shell in index.html (AW-193): something useful shows before the
+// bundle runs, when it fails, and without JavaScript.
+test.describe('without JavaScript', () => {
+  test.use({ javaScriptEnabled: false });
+
+  test('shows the noscript message with the trade desk contacts', async ({ page }) => {
+    await page.goto('/');
+    // Playwright's text engine skips <noscript>, so these use CSS locators.
+    const message = page.locator('noscript .boot');
+    await expect(message).toBeVisible();
+    await expect(message).toContainText('This catalog needs JavaScript');
+    await expect(message.locator('a[href^="tel:"]')).toBeVisible();
+    await expect(message.locator('a[href^="mailto:"]')).toBeVisible();
+    await expect(page.locator('#root .boot')).toBeHidden();
+  });
+});
+
+test('if the app bundle fails to load, the loading shell stays and then offers the phone line', async ({ page }) => {
+  await page.clock.install();
+  await page.route(/\/assets\/index-[^/]*\.js$/, (route) => route.abort());
+  await page.goto('/');
+  await expect(page.getByRole('status').filter({ hasText: 'Loading the wholesale catalog' })).toBeVisible();
+  await expect(page.getByText('Trouble loading?')).toBeHidden();
+  await page.clock.runFor(8000);
+  await expect(page.getByText('Trouble loading?')).toBeVisible();
+  await expect(page.locator('#root a[href^="tel:"]')).toBeVisible();
+});
+
+test('the app replaces the loading shell once it renders', async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto('/');
+  await expect(page.getByRole('dialog', { name: /21 or older/i })).toBeVisible();
+  await expect(page.locator('#root .boot')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
