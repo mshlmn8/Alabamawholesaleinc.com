@@ -327,6 +327,7 @@ function unavailableLine(key, productId, qty, product, variantLabel, reason) {
     name: variantLabel ? `${name} — ${variantLabel}` : name,
     sku: product?.sku || '',
     sellUnit: product?.sellUnit || '',
+    cat: product?.cat || null,
     qty,
     img: product?.img || null,
   };
@@ -334,14 +335,16 @@ function unavailableLine(key, productId, qty, product, variantLabel, reason) {
 
 // The cart's lines against the catalog, in stored order. Each item is
 // { lineKey, productId, variant, needsVariant, unavailable, name, sku,
-// sellUnit, qty, img }. Prices are not part of the catalog (AW-003); cart.js
-// adds them.
+// sellUnit, cat, qty, img }. Prices are not part of the catalog (AW-003);
+// cart.js adds them.
 //   needsVariant  a bare line of a product with several variants (a reorder
 //                 that lost its variant); the buyer chooses one
 //   unavailable   null, or 'product' / 'variant' for a line that can no
 //                 longer be ordered (AW-083): the product left the catalog,
 //                 or its variant did or is marked not available (AW-030)
 //   sellUnit      what quantity 1 means ('5-pack'), or '' (AW-031)
+//   cat           the product's department, e.g. for the quote form's
+//                 license fields (AW-014); null when the product is unknown
 // Options:
 //   settled  false while the live catalog is still loading: lines it may yet
 //            know are left out for now instead of being flagged
@@ -375,6 +378,7 @@ export function resolveCartItems(cart, products, { settled = true, known = [] } 
         name: product.name,
         sku: product.sku,
         sellUnit: product.sellUnit || '',
+        cat: product.cat,
         qty: n,
         img: product.img,
       }];
@@ -399,6 +403,7 @@ export function resolveCartItems(cart, products, { settled = true, known = [] } 
       name: variant ? `${product.name} — ${variant}` : product.name,
       sku: variantSku(product.sku, variant),
       sellUnit: product.sellUnit || '',
+      cat: product.cat,
       qty: n,
       img: product.img,
     }];

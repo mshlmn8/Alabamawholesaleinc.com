@@ -27,6 +27,9 @@ supabase/migrations/20260927000000_application_fields.sql
 supabase/migrations/20260927120000_product_copy.sql
 supabase/migrations/20260927180000_application_documents.sql
 supabase/migrations/20260928120000_price_boundary.sql
+supabase/migrations/20260928121000_variant_model.sql
+supabase/migrations/20260928122000_catalog_corrections.sql
+supabase/migrations/20260928123000_submit_quote_v2.sql
 supabase/seed/products.sql
 ```
 
@@ -294,6 +297,54 @@ AW-138, AW-126): SKUs cut at 17 characters or ending in a hyphen, misspelled
 codes, and inconsistent or abbreviated labels. A renamed label also renames
 its `product_variant_prices` row and its `unavailable_variants` entry.
 
+## Quotes and orders (`submit_quote`)
+
+The storefront saves a quote (or an approved buyer's order) with one call,
+`submit_quote`. Since `20260928123000_submit_quote_v2.sql`:
+
+- **The reference number is made by the server** (AW-049): `ALW-Q-` for a
+  quote, `ALW-O-` for an approved buyer's order, then 10 random hex digits.
+  The checkout shows it only once the quote is saved.
+- **Will-call needs no address** (AW-079). Delivery needs street, city,
+  state and ZIP, and only to a state on the delivery routes.
+- **Input is checked on the server** (AW-198): field lengths, the email, ZIP
+  and 2-letter state formats, and no preferred date before today (Birmingham
+  time). A refused call raises an error with a typed hint (for example
+  `invalid_zip`, `delivery_state`, `address_required`), which the checkout
+  turns into a sentence next to the field.
+- **Throttle** (AW-198): 5 saved quotes per account, or per guest address
+  and email, in 15 minutes, and 20 per guest address in an hour (hint
+  `rate_limited`). `public.quote_throttle` keeps only SHA-256 digests of those
+  keys, for a day; nobody but the function can read it. The guest address is
+  the first `X-Forwarded-For` entry, which a client can spoof, so this slows
+  casual flooding and is not a guarantee. The checkout also has a hidden
+  honeypot field that simple bots fill in.
+- **Suspended accounts can't submit** (AW-201, hint `account_suspended`);
+  the cart and checkout tell them ordering is paused.
+- **License details** (AW-014): the checkout asks visitors who aren't
+  approved buyers for the store's tobacco/retail license number, resale
+  certificate number and a license statement when the cart has a Tobacco or
+  Novelties line. They are optional for now and stored with the order
+  (`orders.license_no`, `resale_cert_no`, `license_attested_at`); Admin →
+  Orders shows them.
+
+<!-- TODO(owner): Should guests (and accounts not approved yet) have to give the license number, resale certificate number and the statement to quote tobacco or novelty items, or should those carts require signing in as an approved buyer? Which departments count, and what should the statement say? (AW-014) -->
+<!-- TODO(owner): confirm route states: do the delivery routes cover exactly Alabama, Mississippi and Georgia? (AW-198) -->
+
+The rules the checkout mirrors live in `src/data/quoteRules.js`, and each
+has a twin at the top of `submit_quote`: the delivery-route states
+(`DELIVERY_ROUTE_STATES` / `v_route_states`), the departments that ask for
+license details (`AGE_RESTRICTED_DEPARTMENTS` / `v_restricted_departments`)
+and whether those details are required (`LICENSE_FIELDS_FOR_GUESTS =
+'required'` / `v_require_license := true`). Change both together; the
+database side is a new migration that recreates `submit_quote` from its
+newest definition.
+
+The older 13-argument `submit_quote(p_ref_num, …)` still exists as a thin
+wrapper that ignores `p_ref_num`, so the frontend deployed before the
+migration keeps working until the new one is live. Drop it later (release
+checklist).
+
 ## Row-level security summary
 
 - **profiles**: a user reads/updates their own row; admins read/update any.
@@ -310,8 +361,11 @@ its `product_variant_prices` row and its `unavailable_variants` entry.
   from `my_prices()`.
 - **orders / order_items**: a user reads their own orders; admins read and
   update all. Customers and guests do not insert rows directly. `submit_quote`
-  saves the header and lines together, sets `user_id` from the session, and
-  calculates prices. Guest quotes are stored with `user_id` null.
+  saves the header and lines together, sets `user_id` from the session,
+  makes the reference number and calculates prices. Guest quotes are stored
+  with `user_id` null.
+- **quote_throttle**: no access for guests or signed-in accounts (RLS on, no
+  policies, privileges revoked); only `submit_quote` uses it.
 - **pricing_tiers**: readable by admins and approved buyers only;
   admin-writable. `profiles.pricing_tier` must name one of its rows.
 - **profile_documents**: a user reads, inserts, and replaces only their own
@@ -351,4 +405,20 @@ Every migration ends with a commented reverse-SQL block for rolling it back.
 | `20260928120000_price_boundary.sql` | `products.price` becomes nullable and unreadable to guests and signed-in accounts (column privileges); approved buyers' prices come from `my_prices()`, admins' from `admin_product_prices()`; the order trigger rounds with `tier_unit_price()`; `pricing_tiers` is readable by admins and approved buyers only; `profiles.pricing_tier` is a foreign key to `pricing_tiers`. The prices already stored are not changed. | Apply before the new seed (the seed has no price column). The frontend deployed before it reads `select=*`, which is now refused: it falls back to the catalog bundled with it, with a "couldn't load the latest catalog" notice, until the new frontend is deployed, so deploy right after. The new frontend also works before this migration (when `my_prices()` is missing it reads the prices the old way). |
 | `20260928121000_variant_model.sql` | Adds `products.variant_axis` and `products.unavailable_variants` (readable by everyone), the private `product_variant_prices` table and `order_items.sell_unit`; recreates the order trigger (variant prices, unavailable variants refused with hint `variant_unavailable`, no variant kept on a product without variants, the sell unit saved with the line), `my_prices()` and `admin_product_prices()` (per-variant prices); drops `products.flavors`; fills the variant axis, the sell units the catalog states and 20 corrected descriptions on existing rows, only where nobody has set them (see "Variants, availability and sell units"). | Apply after `20260928120000` and before the new seed (the seed has `variant_axis` and no `flavors`). The frontend deployed before `20260928120000` is unaffected beyond what that migration already did. The new frontend also works before this migration: it reads the columns every database has, takes the axis and sell units from its bundled catalog, and treats every variant as available at its product's price. |
 | `20260928122000_catalog_corrections.sql` | Data only: completes 86 SKUs (cut at 17 characters, a trailing hyphen, misspelled, or #329's bare `AW-RAW`), corrects the variant labels of 33 products (spelled-out sizes, fixed spellings, #62's merged flavor split, one-item non-choices removed, #60's profanity starred out), their descriptions, #354's name and #123/#124's sell unit; renames the matching `product_variant_prices` rows and `unavailable_variants` entries. Each row changes only while it still has the value the seed wrote, so admin edits are kept (see "Changing a SKU or a variant label"). | Apply after `20260928121000` and before the new seed. The new frontend also works before it (its aliases read the old codes and labels). Deploy the new frontend right after: the frontend deployed before it doesn't know the new labels, and a quote it sends with a renamed variant is refused ("Unknown variant"). Stored carts, Quick Reorder codes and order history keep working with the new frontend. |
+| `20260928123000_submit_quote_v2.sql` | Recreates `submit_quote` without `p_ref_num` and with three optional license arguments: the server makes the reference (`ALW-Q-`/`ALW-O-` and 10 hex digits), checks lengths, email, ZIP, state, route state and date, throttles (new private table `quote_throttle`), refuses suspended accounts, needs an address only for delivery, and stores the license details (new `orders.license_no`, `resale_cert_no`, `license_attested_at`); every refusal has a typed hint. Keeps the 13-argument signature as a wrapper that ignores `p_ref_num` (see "Quotes and orders"). | Apply after `20260928122000`, before the new frontend. The frontend deployed before it keeps working through the wrapper (its reference is ignored, and a will-call quote sends the address it always required). The new frontend also works before it: when the new signature is missing it calls the old one with a long random reference, and sends the warehouse address for will-call. **Later step:** once the new frontend has been live for a few days, drop the wrapper (below). |
+
+### Later steps
+
+- **Drop the old `submit_quote` signature** (after
+  `20260928123000_submit_quote_v2.sql`). Once the frontend that calls the new
+  signature has been live for a few days, so no open tab still runs the one
+  before it, run in the SQL editor:
+
+  ```sql
+  drop function if exists public.submit_quote(text, text, text, text, text, text, date, text, text, text, text, text, jsonb);
+  ```
+
+  In the same change, the new frontend's fallback to that signature (for a
+  database without the migration: `legacyQuoteParams` and the retry in
+  `submitOrder`, `src/lib/orders.js`) can go.
 

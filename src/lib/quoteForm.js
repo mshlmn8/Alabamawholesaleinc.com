@@ -12,15 +12,22 @@
 //
 // A saved draft (AW-080, later) comes before profile values for the same
 // account, and is discarded when the account changes.
+//
+// The store's license details (AW-014) belong to the buyer too, so they are
+// cleared with the rest.
 
 export const EMPTY_QUOTE_FORM = Object.freeze({
   business: '', contact: '', email: '', phone: '',
   notes: '', delivery: 'delivery', preferredDate: '',
   shipStreet: '', shipCity: '', shipState: '', shipZip: '',
+  licenseNo: '', resaleCertNo: '', licenseAttested: false,
 });
 
 // Fields that belong to one buyer.
-const BUYER_FIELDS = ['business', 'contact', 'email', 'phone', 'shipStreet', 'shipCity', 'shipState', 'shipZip', 'notes'];
+const BUYER_FIELDS = [
+  'business', 'contact', 'email', 'phone', 'shipStreet', 'shipCity', 'shipState', 'shipZip', 'notes',
+  'licenseNo', 'resaleCertNo', 'licenseAttested',
+];
 // Form field -> profiles column.
 const FROM_PROFILE = { business: 'business', contact: 'name', email: 'email', phone: 'phone' };
 
@@ -30,7 +37,7 @@ export function quoteFormForAccount(data, profile, previousId = null) {
   const id = profile?.id ?? null;
   const next = { ...EMPTY_QUOTE_FORM, ...data };
   if (previousId !== null && previousId !== id) {
-    for (const field of BUYER_FIELDS) next[field] = '';
+    for (const field of BUYER_FIELDS) next[field] = EMPTY_QUOTE_FORM[field];
   }
   if (profile) {
     for (const [field, column] of Object.entries(FROM_PROFILE)) {

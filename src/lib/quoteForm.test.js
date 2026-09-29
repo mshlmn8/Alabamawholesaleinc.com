@@ -19,17 +19,28 @@ describe('quoteForm', () => {
   });
 
   it('clears the last buyer’s details when they sign out', () => {
-    const filled = { ...initialQuoteForm(A), shipStreet: '1 Alpha Way', shipCity: 'Birmingham', notes: 'Dock B', delivery: 'willcall', preferredDate: '2026-10-01' };
+    const filled = {
+      ...initialQuoteForm(A), shipStreet: '1 Alpha Way', shipCity: 'Birmingham', notes: 'Dock B', delivery: 'willcall', preferredDate: '2026-10-01',
+      licenseNo: 'TL-TEST-1', resaleCertNo: 'RS-TEST-1', licenseAttested: true,
+    };
     const next = quoteFormForAccount(filled, null, 'a');
-    for (const field of ['business', 'contact', 'email', 'phone', 'shipStreet', 'shipCity', 'shipState', 'shipZip', 'notes']) expect(next[field]).toBe('');
+    for (const field of ['business', 'contact', 'email', 'phone', 'shipStreet', 'shipCity', 'shipState', 'shipZip', 'notes', 'licenseNo', 'resaleCertNo']) expect(next[field]).toBe('');
+    // The attestation is a checkbox: unchecked, not blank (AW-014).
+    expect(next.licenseAttested).toBe(false);
     // Not personal: kept.
     expect(next).toMatchObject({ delivery: 'willcall', preferredDate: '2026-10-01' });
   });
 
   it('never carries buyer A’s details into buyer B’s order', () => {
-    const filled = { ...initialQuoteForm(A), shipStreet: '1 Alpha Way' };
+    const filled = { ...initialQuoteForm(A), shipStreet: '1 Alpha Way', licenseNo: 'TL-TEST-A', resaleCertNo: 'RS-TEST-A', licenseAttested: true };
     expect(quoteFormForAccount(filled, B, 'a')).toMatchObject({
       business: 'Bravo Tobacco Outlet', contact: 'Bea Bravo', email: 'bravo@example.test', phone: '', shipStreet: '',
+      licenseNo: '', resaleCertNo: '', licenseAttested: false,
     });
+  });
+
+  it('keeps the license details a guest typed when they sign in (AW-014)', () => {
+    const typed = { ...EMPTY_QUOTE_FORM, licenseNo: 'TL-TEST-G', licenseAttested: true };
+    expect(quoteFormForAccount(typed, A, null)).toMatchObject({ licenseNo: 'TL-TEST-G', licenseAttested: true });
   });
 });

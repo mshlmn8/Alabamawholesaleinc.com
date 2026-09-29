@@ -84,6 +84,8 @@ export default function App() {
   // profile, so Sign Out is always within reach (AW-089).
   const user = session ? { name: profile?.name || '', business: profile?.business || '' } : null;
   const isApprovedBuyer = profile?.status === 'approved';
+  // Ordering is paused on a suspended account (AW-201).
+  const isSuspended = profile?.status === 'suspended';
   const isAdmin = profile?.role === 'admin';
   const departments = useMemo(() => departmentsFor(products), [products]);
   // The signed-in buyer's unit price for a product (and variant), or null:
@@ -277,7 +279,7 @@ export default function App() {
           <QuotePage items={cart.items} total={cart.total} addLine={cart.addLine} decLine={cart.decLine} removeLine={cart.removeLine}
                      removeLines={cart.removeLines} clearCart={cart.clearCart} legacy={cart.legacy} onDismissLegacy={cart.dismissLegacy}
                      profile={profile} account={account} signedIn={!!session} onSignIn={openSignin}
-                     isApprovedBuyer={isApprovedBuyer} pricesStatus={prices.status} isBackendConfigured={isBackendConfigured} checkCart={checkCart} />
+                     isApprovedBuyer={isApprovedBuyer} isSuspended={isSuspended} pricesStatus={prices.status} isBackendConfigured={isBackendConfigured} checkCart={checkCart} />
         );
       case 'account':
         // Keyed by account: another buyer never sees the last one's orders (AW-190).
@@ -342,7 +344,7 @@ export default function App() {
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} items={cart.items} total={cart.total}
                   addLine={cart.addLine} decLine={cart.decLine} removeLine={cart.removeLine} removeLines={cart.removeLines}
                   legacy={cart.legacy} onDismissLegacy={cart.dismissLegacy}
-                  profile={profile} isApprovedBuyer={isApprovedBuyer} pricesStatus={prices.status} onLoginClick={openCartSignin} />
+                  profile={profile} isApprovedBuyer={isApprovedBuyer} isSuspended={isSuspended} pricesStatus={prices.status} onLoginClick={openCartSignin} />
       {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} onApply={() => { setHelpOpen(false); openSignup(); }} />}
       {loginOpen && (
         <ModalLayer onClose={() => setLoginOpen(false)}>

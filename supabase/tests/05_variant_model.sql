@@ -139,6 +139,9 @@ begin
       {"product_id": 90501, "variant": "Small", "qty": 2},
       {"product_id": 90502, "variant": "Stray", "qty": 4}]'::jsonb);
   o := (r->>'id')::uuid;
+  -- References are made by the server since 20260928123000 (AW-049); the
+  -- last block below finds this order by its id.
+  perform set_config('test.p5_order', o::text, false);
   assert (select unit_price from public.order_items where order_id = o and variant = 'Big') = 19.29,
     'the overridden variant is priced from its own list price';
   assert (select unit_price from public.order_items where order_id = o and variant = 'Medium') = 9.60,
@@ -162,7 +165,9 @@ end $$;
 -- A variant marked not available is refused with a typed hint, and so is a
 -- one-variant product whose only variant is.
 do $$
-declare hint text;
+declare
+  hint text;
+  saved int := (select count(*) from public.orders);
 begin
   begin
     perform public.submit_quote('T-P5-SILVER-2', 'Store', 'Contact', 'p5-silver@example.com', '205-555-0105', 'delivery', null, null,
@@ -181,7 +186,7 @@ begin
     get stacked diagnostics hint = pg_exception_hint;
     assert hint = 'variant_unavailable', coalesce(hint, 'no hint');
   end;
-  assert not exists (select 1 from public.orders where ref_num in ('T-P5-SILVER-2', 'T-P5-SILVER-3')), 'a refused quote saves nothing';
+  assert (select count(*) from public.orders) = saved, 'a refused quote saves nothing';
 end $$;
 select test_reset();
 
@@ -189,8 +194,8 @@ select test_reset();
 update public.products set unavailable_variants = '["Big"]' where id = 90501;
 do $$ begin
   update public.order_items set qty = 4
-  where variant = 'Big' and order_id = (select id from public.orders where ref_num = 'T-P5-SILVER-1');
-  assert (select qty from public.order_items where variant = 'Big' and order_id = (select id from public.orders where ref_num = 'T-P5-SILVER-1')) = 4,
+  where variant = 'Big' and order_id = current_setting('test.p5_order')::uuid;
+  assert (select qty from public.order_items where variant = 'Big' and order_id = current_setting('test.p5_order')::uuid) = 4,
     'an admin can still change the quantity of a saved line';
 end $$;
 

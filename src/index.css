@@ -926,3 +926,13 @@ ul.sub-pills { list-style: none; padding: 0; }
    the add button of a card whose only variant it is. The text says so too. */
 .variant-chips button:disabled { border-style: dashed; color: var(--muted); cursor: not-allowed; }
 .card-add:disabled, .card-add:disabled:hover { border-color: var(--line); background: none; color: var(--muted); cursor: not-allowed; }
+/* Checkout and submit_quote v2: the guests' sign-in and apply links (AW-014),
+   the license statement checkbox (AW-014), and the paused-ordering note in
+   place of the submit and quote buttons (AW-201). */
+.quote-account-links { display: flex; flex-wrap: wrap; gap: 0 24px; margin: 4px 0 0; }
+.quote-account-links p { display: flex; flex-wrap: wrap; align-items: center; gap: 0 6px; margin: 0; color: var(--muted); font-size: var(--text-sm); }
+.quote-account-links .text-link { min-height: var(--tap); }
+.form-grid .quote-attest label { display: flex; align-items: flex-start; gap: 10px; min-height: var(--tap); margin: 0; padding: 4px 0; color: var(--ink); font-size: var(--text-sm); font-weight: 400; letter-spacing: 0; line-height: 1.5; text-transform: none; cursor: pointer; }
+.form-grid .quote-attest input { flex: none; width: 20px; height: 20px; margin: 1px 0 0; padding: 0; accent-color: var(--button-orange); }
+.quote-paused { margin: 16px 0 0; }
+.drawer-paused { margin: 4px 0 0; }

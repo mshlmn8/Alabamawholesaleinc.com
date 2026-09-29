@@ -1,19 +1,27 @@
-// Checkout while the account changes underneath it (AW-186, AW-190, AW-048).
+// Checkout while the account changes underneath it (AW-186, AW-190, AW-048),
+// and against submit_quote v2 (AW-049, AW-079, AW-198, AW-201, AW-014).
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { QuotePage } from './QuotePage.jsx';
-import { submitOrder } from '../lib/orders.js';
+import { submitOrder, todayInBirmingham } from '../lib/orders.js';
+import { COMPANY } from '../data/content.js';
+import { LICENSE_ATTESTATION } from '../data/quoteRules.js';
 
-// submitOrder is the only way out; record what it is asked to send.
+// submitOrder is the only way out; record what it is asked to send. The
+// reference comes back from the server (AW-049).
 const sent = vi.hoisted(() => []);
-vi.mock('../lib/orders.js', () => ({
-  submitOrder: vi.fn(async ({ refNum, items }) => {
-    sent.push(items);
-    return { ok: true, order: { id: 'o1', ref_num: refNum } };
+const calls = vi.hoisted(() => []);
+vi.mock('../lib/orders.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  submitOrder: vi.fn(async (args) => {
+    sent.push(args.items);
+    calls.push(args);
+    // No kind, like a database without v2: the account decides order or quote.
+    return { ok: true, order: { id: 'o1', ref_num: 'ALW-Q-TEST000001' } };
   }),
 }));
 
-const ITEMS = [{ lineKey: '14', productId: 14, variant: null, name: 'Kite cigarette tobacco', sku: 'AW-KITE', qty: 2, price: 10 }];
+const ITEMS = [{ lineKey: '14', productId: 14, variant: null, name: 'Kite cigarette tobacco', sku: 'AW-KITE', cat: 'TOBACCO', qty: 2, price: 10 }];
 const A = { id: 'a', business: 'Alpha Food Mart', name: 'Alice Alpha', email: 'alpha@example.test', phone: '205-000-0001', status: 'approved' };
 const B = { id: 'b', business: 'Bravo Tobacco Outlet', name: 'Bea Bravo', email: 'bravo@example.test', phone: '', status: 'pending' };
 
@@ -141,13 +149,15 @@ describe('QuotePage and a catalog that changed', () => {
 
   it('shows the total the server saved (AW-351)', async () => {
     sent.length = 0;
-    submitOrder.mockImplementationOnce(async ({ refNum }) => ({ ok: true, order: { id: 'o2', ref_num: refNum, subtotal: 1234.5, total_units: 7 } }));
+    submitOrder.mockImplementationOnce(async () => ({ ok: true, order: { id: 'o2', ref_num: 'ALW-O-TEST000002', kind: 'order', subtotal: 1234.5, total_units: 7 } }));
     const checkCart = vi.fn(async () => ({ ok: true, items: ITEMS }));
     render(page({ profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true, pricesStatus: 'ready', checkCart }));
     fill();
     await act(async () => { submitForm(); });
     await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Thank you/));
     expect(screen.getByText('Saved total: $1,234.50 · 7 units')).toBeTruthy();
+    expect(screen.getByText('ALW-O-TEST000002')).toBeTruthy();
+    expect(screen.getByText('ORDER RECEIVED')).toBeTruthy();
   });
 
   it('shows no saved total for an unpriced quote', async () => {
@@ -167,6 +177,8 @@ describe('QuotePage and a catalog that changed', () => {
     fill();
     await act(async () => { submitForm(); });
     expect(screen.getByRole('alert').textContent).toMatch(/^We couldn’t check the latest prices and availability, so nothing was sent\./);
+    expect(screen.getByRole('alert').textContent).toMatch(/call the trade desk at/);
+    expect(screen.getByRole('alert').textContent).not.toMatch(/ALW-|reference/);
     expect(sent).toEqual([]);
     expect(submit().disabled).toBe(false);
   });
@@ -184,5 +196,180 @@ describe('QuotePage totals for an approved buyer', () => {
     expect(screen.queryByText(/The order minimum is/)).toBeNull();
     view.rerender(page({ items: unpriced, profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true, total: 0, pricesStatus: 'ready' }));
     expect(total()).toBe('2 unitsPrice on request');
+  });
+});
+
+// submit_quote v2 on the page (AW-049, AW-079, AW-198, AW-201, AW-014).
+describe('QuotePage and submit_quote v2', () => {
+  const GUEST = { profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false };
+  const PENDING = { profile: { ...B }, account: 'ready', signedIn: true, isApprovedBuyer: false };
+  const APPROVED = { profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true };
+  const CANDY = [{ lineKey: '40', productId: 40, variant: null, name: 'Test candy', sku: 'AW-CANDY', cat: 'CANDIES', qty: 1, price: null }];
+  const fillContact = () => {
+    for (const [id, value] of [['quote-business', 'Test Market'], ['quote-contact', 'Test Buyer'], ['quote-email', 'buyer@example.test'], ['quote-phone', '205-000-0000']]) {
+      fireEvent.change(document.getElementById(id), { target: { value } });
+    }
+  };
+  const fillAddress = () => {
+    for (const [id, value] of [['ship-street', '1 Test Way'], ['ship-city', 'Birmingham'], ['ship-state', 'AL'], ['ship-zip', '35203']]) {
+      fireEvent.change(document.getElementById(id), { target: { value } });
+    }
+  };
+  const submitForm = () => fireEvent.submit(document.querySelector('form[aria-labelledby="quote-form-title"]'));
+  const checkCart = () => vi.fn(async () => ({ ok: true, items: ITEMS }));
+
+  it('shows the reference the server made, and no reference before (AW-049)', async () => {
+    calls.length = 0;
+    render(page({ ...GUEST, checkCart: checkCart() }));
+    expect(document.body.textContent).not.toMatch(/ALW-/);
+    fillContact();
+    fillAddress();
+    await act(async () => { submitForm(); });
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Thank you/));
+    expect(screen.getByText('ALW-Q-TEST000001')).toBeTruthy();
+    expect(calls[0]).not.toHaveProperty('refNum');
+  });
+
+  it('says what the server refused, marks the field, and cites no reference (AW-198, AW-200)', async () => {
+    submitOrder.mockImplementationOnce(async () => { throw Object.assign(new Error('Enter a valid ZIP code'), { code: 'P0001', hint: 'invalid_zip' }); });
+    render(page({ ...GUEST, checkCart: checkCart() }));
+    fillContact();
+    fillAddress();
+    await act(async () => { submitForm(); });
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toBe('Enter a 5-digit ZIP code (or ZIP+4).');
+    const zip = document.getElementById('ship-zip');
+    expect(zip.getAttribute('aria-invalid')).toBe('true');
+    expect(zip.getAttribute('aria-describedby')).toBe('quote-submit-error');
+    expect(alert.id).toBe('quote-submit-error');
+    // Editing the field clears the mark.
+    fireEvent.change(zip, { target: { value: '35204' } });
+    expect(zip.hasAttribute('aria-invalid')).toBe(false);
+
+    submitOrder.mockImplementationOnce(async () => { throw new Error('boom'); });
+    await act(async () => { submitForm(); });
+    expect((await screen.findByRole('alert')).textContent).toMatch(/^We couldn’t save this quote\. Please call the trade desk at \(205\)/);
+    expect(document.querySelector('.form-error').textContent).not.toMatch(/ALW-|reference/);
+  });
+
+  it('puts the delivery method first and hides the address for will-call (AW-079)', async () => {
+    calls.length = 0;
+    render(page({ ...GUEST, checkCart: checkCart() }));
+    const labels = [...document.querySelectorAll('.checkout-form-grid label')].map((l) => l.htmlFor);
+    expect(labels.indexOf('quote-delivery')).toBeLessThan(labels.indexOf('ship-street'));
+    fillContact();
+    fillAddress();
+    const delivery = screen.getByLabelText('Delivery method');
+    fireEvent.change(delivery, { target: { value: 'willcall' } });
+    for (const id of ['ship-street', 'ship-city', 'ship-state', 'ship-zip']) expect(document.getElementById(id)).toBeNull();
+    const pickup = document.getElementById('quote-pickup');
+    expect(pickup.textContent).toBe(`Pickup at ${COMPANY.addressShort} during business hours.`);
+    expect(delivery.getAttribute('aria-describedby')).toBe('quote-pickup');
+    // What was typed comes back with delivery.
+    fireEvent.change(delivery, { target: { value: 'delivery' } });
+    expect(document.getElementById('ship-street').value).toBe('1 Test Way');
+    expect(document.getElementById('ship-street').required).toBe(true);
+    fireEvent.change(delivery, { target: { value: 'willcall' } });
+    await act(async () => { submitForm(); });
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Thank you/));
+    expect(calls[0].formData.delivery).toBe('willcall');
+  });
+
+  it('carries the server’s limits on the fields (AW-198)', () => {
+    render(page(GUEST));
+    const attr = (id, name) => document.getElementById(id).getAttribute(name);
+    expect(['quote-business', 'quote-contact', 'quote-email', 'quote-phone', 'ship-street', 'ship-city', 'quote-notes'].map((id) => attr(id, 'maxlength')))
+      .toEqual(['200', '120', '254', '40', '200', '100', '2000']);
+    expect([attr('ship-state', 'maxlength'), attr('ship-state', 'pattern')]).toEqual(['2', '[A-Za-z]{2}']);
+    expect(attr('ship-zip', 'pattern')).toBe('[0-9]{5}(-[0-9]{4})?');
+    expect(attr('quote-date', 'min')).toBe(todayInBirmingham());
+  });
+
+  it('sends nothing when the honeypot is filled, and says what a failed save says (AW-198)', async () => {
+    calls.length = 0;
+    const check = checkCart();
+    render(page({ ...GUEST, checkCart: check }));
+    const trap = document.getElementById('quote-company-website');
+    expect(trap.tabIndex).toBe(-1);
+    expect(trap.getAttribute('autocomplete')).toBe('off');
+    expect(trap.closest('[aria-hidden="true"]').classList.contains('sr-only')).toBe(true);
+    fillContact();
+    fillAddress();
+    fireEvent.change(trap, { target: { value: 'https://spam.example' } });
+    await act(async () => { submitForm(); });
+    expect(screen.getByRole('alert').textContent).toMatch(/^We couldn’t save this quote\. Please call the trade desk at/);
+    expect(calls).toEqual([]);
+    expect(check).not.toHaveBeenCalled();
+  });
+
+  it('tells a suspended account ordering is paused, instead of a submit button (AW-201)', () => {
+    const suspended = { ...A, status: 'suspended' };
+    const view = render(page({ profile: suspended, account: 'ready', signedIn: true, isApprovedBuyer: false, isSuspended: true }));
+    expect(screen.queryByRole('button', { name: /Submit/ })).toBeNull();
+    const paused = document.querySelector('.quote-paused');
+    expect(paused.textContent).toMatch(/^Ordering is paused on this account\. Call \(205\) 354-4473 or email/);
+    expect(paused.querySelector(`a[href="tel:${COMPANY.phoneRaw}"]`)).toBeTruthy();
+    // Not the "send it as a quote instead" warning, nor pricing talk.
+    expect(screen.queryByText(/can’t place orders yet/)).toBeNull();
+    expect(document.querySelector('.checkout-total').textContent).toBe('2 unitsOrdering paused');
+    // No license fields: the account can't submit anyway.
+    expect(document.getElementById('quote-license')).toBeNull();
+    // An approved buyer suspended mid-checkout gets the same.
+    view.rerender(page({ ...APPROVED }));
+    view.rerender(page({ profile: suspended, account: 'ready', signedIn: true, isApprovedBuyer: false, isSuspended: true }));
+    expect(screen.queryByRole('button', { name: /Submit|Send it as a quote/ })).toBeNull();
+    expect(document.querySelector('.quote-paused')).toBeTruthy();
+  });
+
+  it('offers guests sign-in and apply links above the form (AW-014)', () => {
+    const onSignIn = vi.fn();
+    const view = render(page({ ...GUEST, onSignIn }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(onSignIn).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('link', { name: 'Apply for a trade account' }).getAttribute('href')).toBe('/apply');
+    expect(document.querySelector('.quote-account-links').textContent).toBe('Have an account? Sign inNew? Apply for a trade account');
+    view.rerender(page({ ...PENDING }));
+    expect(document.querySelector('.quote-account-links')).toBeNull();
+  });
+
+  it('asks guests and pending accounts with a tobacco or novelty line for the license details (AW-014)', async () => {
+    calls.length = 0;
+    const view = render(page({ ...GUEST, checkCart: checkCart() }));
+    const license = screen.getByLabelText('State tobacco/retail license # (optional)');
+    const resale = screen.getByLabelText('Sales-tax / resale certificate # (optional)');
+    const attest = screen.getByRole('checkbox', { name: LICENSE_ATTESTATION });
+    for (const input of [license, resale]) {
+      expect(input.required).toBe(false);
+      expect(input.getAttribute('autocomplete')).toBe('off');
+      expect(input.getAttribute('aria-describedby')).toBe('quote-license-note');
+      expect(input.getAttribute('maxlength')).toBe('64');
+    }
+    expect(attest.required).toBe(false);
+    fillContact();
+    fillAddress();
+    fireEvent.change(license, { target: { value: 'TL-TEST-1' } });
+    fireEvent.change(resale, { target: { value: 'RS-TEST-1' } });
+    fireEvent.click(attest);
+    await act(async () => { submitForm(); });
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Thank you/));
+    expect(calls[0].license).toEqual({ licenseNo: 'TL-TEST-1', resaleCertNo: 'RS-TEST-1', attested: true });
+
+    view.unmount();
+    render(page({ ...PENDING }));
+    expect(screen.getByLabelText('State tobacco/retail license # (optional)')).toBeTruthy();
+  });
+
+  it('doesn’t ask approved buyers, or for a cart without restricted lines (AW-014)', async () => {
+    calls.length = 0;
+    const view = render(page({ ...APPROVED }));
+    expect(screen.queryByLabelText(/license #/)).toBeNull();
+    view.rerender(page({ ...GUEST, items: CANDY, checkCart: vi.fn(async () => ({ ok: true, items: CANDY })) }));
+    expect(screen.queryByLabelText(/license #/)).toBeNull();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    fillContact();
+    fillAddress();
+    await act(async () => { submitForm(); });
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Thank you/));
+    expect(calls[0].license).toBeNull();
   });
 });

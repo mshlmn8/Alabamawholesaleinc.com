@@ -45,6 +45,14 @@ describe('stored carts', () => {
     ]);
   });
 
+  it('carries each line’s department, for the quote form’s license fields (AW-014)', () => {
+    const withCat = [{ ...P[0], cat: 'TOBACCO' }, { ...P[1], cat: 'CANDIES' }, { ...P[4], cat: 'NOVELTIES' }];
+    const items = resolveCartItems({ 1: 1, '1::red': 1, 14: 1, 40: 1, 999: 1 }, withCat);
+    expect(items.map((i) => [i.lineKey, i.cat])).toEqual([
+      ['1', 'TOBACCO'], ['14', 'CANDIES'], ['40', 'NOVELTIES'], ['999', null], ['1::red', 'TOBACCO'],
+    ]);
+  });
+
   it('ignores non-object carts and bad quantities', () => {
     expect(normalizeCart(null, P)).toEqual({});
     expect(normalizeCart([5], P)).toEqual({});

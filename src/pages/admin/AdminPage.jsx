@@ -150,6 +150,8 @@ function OrdersTab() {
                 <small>
                   <span>{`${new Date(o.created_at).toLocaleString()} · ${o.business} · ${o.contact} · ${o.email} · ${o.phone}`}</span>
                   {o.ship_street && <span>{` · Deliver to ${o.ship_street}, ${o.ship_city} ${o.ship_state} ${o.ship_zip}`}</span>}
+                  {/* Will-call quotes have no address since submit_quote v2 (AW-079). */}
+                  {o.delivery === 'willcall' && <span> · Will-call pickup</span>}
                   {o.profiles?.pricing_tier && <span> · tier: <b>{o.profiles.pricing_tier}</b></span>}
                 </small>
               </div>
@@ -166,6 +168,10 @@ function OrdersTab() {
               ))}
             </ul>
             {o.notes && <p className="order-notes">{`Notes: ${o.notes}`}</p>}
+            {/* The store's license details, when the quote came with them (AW-014). */}
+            {(o.license_no || o.resale_cert_no || o.license_attested_at) && (
+              <p className="order-notes">{`License: ${o.license_no || '—'} · Resale certificate: ${o.resale_cert_no || '—'} · ${o.license_attested_at ? 'License statement confirmed' : 'License statement not confirmed'}`}</p>
+            )}
           </article>
         ))}
       </div>

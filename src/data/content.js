@@ -12,6 +12,12 @@ export const COMPANY = {
   addressShort: '613 Graymont Ave N, Birmingham AL 35203',
   addressLine1: '613 Graymont Ave N',
   addressLine2: 'Birmingham, AL 35203',
+  // The same address in parts: the will-call address a quote sends to a
+  // database without submit_quote v2 (src/lib/orders.js, AW-079).
+  addressStreet: '613 Graymont Ave N',
+  addressCity: 'Birmingham',
+  addressState: 'AL',
+  addressZip: '35203',
   hoursLine1: 'Mon–Fri 7:00 AM – 6:00 PM',
   hoursLine2: 'Sat–Sun 8:00 AM – 5:30 PM'
 };
