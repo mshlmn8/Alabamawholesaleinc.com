@@ -19,6 +19,13 @@ describe('index.html boot shell', () => {
     expect(between('<noscript>\n', '</noscript>')).toContain('This catalog needs JavaScript');
   });
 
+  it('says what the business is when JavaScript is off (AW-044)', () => {
+    const noscript = between('<noscript>\n', '</noscript>');
+    expect(noscript).toContain(COMPANY.name);
+    expect(noscript).toContain('for licensed retailers');
+    expect(noscript).toContain(COMPANY.addressShort);
+  });
+
   it('shows the trade desk phone and email from COMPANY', () => {
     for (const block of [between('<div id="root">', '<noscript>\n'), between('<noscript>\n', '</noscript>')]) {
       expect(block).toContain(`href="tel:${COMPANY.phoneRaw}"`);

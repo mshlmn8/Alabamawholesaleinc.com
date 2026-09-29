@@ -351,6 +351,8 @@ test.describe('without JavaScript', () => {
     const message = page.locator('noscript .boot');
     await expect(message).toBeVisible();
     await expect(message).toContainText('This catalog needs JavaScript');
+    // What the business is, for visitors and crawlers without JavaScript (AW-044).
+    await expect(message).toContainText('for licensed retailers');
     await expect(message.locator('a[href^="tel:"]')).toBeVisible();
     await expect(message.locator('a[href^="mailto:"]')).toBeVisible();
     await expect(page.locator('#root .boot')).toBeHidden();
