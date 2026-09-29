@@ -2,7 +2,7 @@
 
 Editorial wholesale storefront for licensed retailers. 368 SKUs across 8 departments — tobacco, novelties, merchandise, candies, food stuff, grocery, motor oil, drinks & bags — shipping from Birmingham.
 
-Every page uses the 2A editorial system: Barlow Condensed and DM Sans (bundled in `src/fonts/`), purple / cream / orange, and plain CSS in `src/index.css`. Home, catalog, product, quote, cart, the sign-in dialog, the support pages, account (`/account`) and admin (`/admin`) all share it; Tailwind stays in the build only for its preflight reset.
+Every page uses the 2A editorial system: Barlow Condensed and DM Sans (bundled in `src/fonts/`), purple / cream / orange, and plain CSS in `src/index.css`. Home, catalog, product, quote, cart, the sign-in dialog, the support pages, account (`/account`) and admin (`/admin`) all share it, with no CSS framework.
 
 ## Pages
 
@@ -99,8 +99,7 @@ Output goes to `dist/`; `npm run preview` serves it locally. The build fails wit
 
 - React 18
 - Vite 7
-- Plain CSS for the editorial storefront
-- Tailwind CSS 3, kept in the build only for its preflight reset (Account and Admin use the plain CSS too)
+- Plain CSS with `:root` design tokens and an explicit reset in `src/index.css` for every page, including Account and Admin (no Tailwind)
 - Supabase (Postgres + Auth + RLS); see [BACKEND.md](BACKEND.md)
 
 Without `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, `npm run dev` still serves the catalog, but trade accounts, quotes, order history and the admin dashboard are off, and `npm run build` stops with an error (set `ALLOW_NO_BACKEND=1` to build a static-only preview on purpose). See [BACKEND.md](BACKEND.md).

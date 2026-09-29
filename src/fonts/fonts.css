@@ -36,3 +36,89 @@
   font-display: swap;
   src: url('./dm-sans-latin-variable.woff2') format('woff2');
 }
+
+/* Metric-matched fallbacks (AW-178). While the files above load, or when they
+   are blocked, text renders in a local font scaled to the same widths and line
+   metrics, so nothing re-wraps or moves when the web font swaps in. The stacks
+   in src/index.css are --display: 'Barlow Condensed', 'Barlow Condensed
+   Fallback', sans-serif and --body: 'DM Sans', 'DM Sans Fallback', sans-serif.
+
+   Measured, not guessed (Chromium, 2026-09-29, /tmp/aw-p2p3-p3/fontmetrics.mjs):
+   each woff2 above and each local() font below was loaded with FontFace and
+   measured with canvas measureText at 100px on the text each weight sets:
+     body 400          a support-page paragraph (mostly lower case)
+     body 600          mixed-case labels ('Add to quote · Geek Bar Pulse X 25K …')
+     body 700          the breadcrumb 'HOME / NOVELTIES & VAPES / GEEK BAR PULSE X 25K'
+     display 500, 600  tile initials and numbers ('GB 68 51 60 SW BI')
+     display 700       headings ('Contact & visit · Disposables, detox, kratom …')
+   size-adjust      = web width / fallback width
+   ascent-override  = web fontBoundingBoxAscent  / (font size × size-adjust)
+   descent-override = web fontBoundingBoxDescent / (font size × size-adjust)
+   DM Sans has a 0.99 ascent and 0.31 descent, Barlow Condensed 1.00 and 0.20,
+   and neither has a line gap. With these values each fallback matches the web
+   font's width on its measuring text to within 0.01%, and its ascent and
+   descent exactly.
+   Liberation Sans (Linux) has Arial's advance widths, so Arial's values fit it.
+   The condensed alternates share Arial Narrow's values: iOS Helvetica Neue
+   Condensed Bold measured 2% wider than Arial Narrow Bold; Android Roboto
+   Condensed is not installed here and is unmeasured. Where none of these
+   exist, text falls back to the plain sans-serif. Impact and Verdana are no
+   longer in the stacks. */
+@font-face {
+  font-family: 'DM Sans Fallback';
+  font-weight: 400;
+  src: local('Arial'), local('ArialMT'), local('Liberation Sans'), local('LiberationSans');
+  size-adjust: 103.43%;
+  ascent-override: 95.72%;
+  descent-override: 29.97%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'DM Sans Fallback';
+  font-weight: 600;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('LiberationSans-Bold');
+  size-adjust: 98.02%;
+  ascent-override: 101%;
+  descent-override: 31.62%;
+  line-gap-override: 0%;
+}
+/* A real bold face, so the browser never synthesises bold from Arial. */
+@font-face {
+  font-family: 'DM Sans Fallback';
+  font-weight: 700;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('LiberationSans-Bold');
+  size-adjust: 95.05%;
+  ascent-override: 104.16%;
+  descent-override: 32.61%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Barlow Condensed Fallback';
+  font-weight: 500;
+  src: local('Arial Narrow'), local('ArialNarrow'), local('Arial Narrow Bold'), local('ArialNarrow-Bold'),
+    local('Roboto Condensed'), local('RobotoCondensed-Regular'), local('HelveticaNeue-CondensedBold');
+  size-adjust: 84.33%;
+  ascent-override: 118.58%;
+  descent-override: 23.72%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Barlow Condensed Fallback';
+  font-weight: 600;
+  src: local('Arial Narrow Bold'), local('ArialNarrow-Bold'), local('Arial Narrow'),
+    local('Roboto Condensed Bold'), local('RobotoCondensed-Bold'), local('HelveticaNeue-CondensedBold');
+  size-adjust: 84.56%;
+  ascent-override: 118.26%;
+  descent-override: 23.65%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Barlow Condensed Fallback';
+  font-weight: 700;
+  src: local('Arial Narrow Bold'), local('ArialNarrow-Bold'), local('Arial Narrow'),
+    local('Roboto Condensed Bold'), local('RobotoCondensed-Bold'), local('HelveticaNeue-CondensedBold');
+  size-adjust: 92.81%;
+  ascent-override: 107.74%;
+  descent-override: 21.55%;
+  line-gap-override: 0%;
+}
