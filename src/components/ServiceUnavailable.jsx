@@ -2,12 +2,12 @@
 // not reachable. Shared by the sign-in dialog and the account pages so the
 // wording stays identical everywhere.
 
-import { COMPANY } from '../data/content.js';
+import { CallOrEmail } from './ContactLinks.jsx';
 
 export function ServiceUnavailable({ what = 'Account sign-in', className = 'form-error', role = 'status' }) {
   return (
     <p className={className} role={role}>
-      {what} is unavailable right now. Call <a href={`tel:${COMPANY.phoneRaw}`}>{COMPANY.phone}</a> or email <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a> and a trade rep will help you.
+      {what} is unavailable right now. <CallOrEmail after=" and a trade rep will help you." />
     </p>
   );
 }

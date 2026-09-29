@@ -6,23 +6,16 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/useAuth.js';
 import { COMPANY } from '../data/content.js';
+import { describeError } from '../lib/errors.js';
 import { APPLICATION_CHECKLIST } from '../data/onboarding.js';
 import { DOCUMENT_TYPES, documentErrorMessage, uploadSelectedProof } from '../lib/documents.js';
 import { ServiceUnavailable } from './ServiceUnavailable.jsx';
+import { CallOrEmail } from './ContactLinks.jsx';
 import { DocumentUploads } from './DocumentUploads.jsx';
 
 const STATES = ['AL','GA','MS','TN','FL','LA','SC','NC','KY','Other'];
 const BUSINESS_TYPES = ['Convenience Store','Smoke Shop','Vape Shop','Liquor Store','Grocery / Bodega','Auto Parts','Hookah Lounge','Other'];
 const VOLUMES = ['Under $5K','$5K — $15K','$15K — $50K','$50K — $100K','$100K+'];
-
-// A network failure is a service problem, not something the customer typed
-// wrong, so it gets the same customer-facing copy as an unconfigured backend.
-const NETWORK_ERROR = /fetch|network|load failed/i;
-const describeError = (err, what, fallback) => (
-  NETWORK_ERROR.test(err?.message || '')
-    ? `${what} is unavailable right now. Call ${COMPANY.phone} or email ${COMPANY.email} and a trade rep will help you.`
-    : (err?.message || fallback)
-);
 
 const EMPTY_SIGNUP = {
   email: '', password: '', name: '', business: '', phone: '',
@@ -38,10 +31,6 @@ function Field({ id, label, hint, full = false, children }) {
       {hint && <small className="field-hint" id={`${id}-hint`}>{hint}</small>}
     </div>
   );
-}
-
-function TradeDesk() {
-  return <>Call <a href={`tel:${COMPANY.phoneRaw}`}>{COMPANY.phone}</a> or email <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a></>;
 }
 
 export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate }) {
@@ -182,7 +171,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
         {mode === 'reset-sent' && <p className="desc">If an account exists for {resetEmail}, a password reset link is on its way. The link works once — if it doesn’t arrive within a few minutes, check your spam folder or call us.</p>}
         {mode === 'status' && (
           status === 'suspended'
-            ? <p className="desc">Ordering is paused on this account. <TradeDesk /> and a trade rep will help you sort it out.</p>
+            ? <p className="desc">Ordering is paused on this account. <CallOrEmail after=" and a trade rep will help you sort it out." /></p>
             : <p className="desc">
                 {afterSignup ? 'Thanks' : 'Welcome back'}{profile?.name || signup.name ? `, ${profile?.name || signup.name}` : ''}.
                 {' '}{(profile?.business || signup.business) ? `We have the application for ${profile?.business || signup.business}. ` : ''}
@@ -225,7 +214,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
                 <li key={item.title}><b>{item.title}</b><span>{item.detail}</span></li>
               ))}
             </ul>
-            <p className="checklist-note">Missing one of these? <TradeDesk /> and a trade rep can talk you through the application.</p>
+            <p className="checklist-note">Missing one of these? <CallOrEmail after=" and a trade rep can talk you through the application." /></p>
             <div className="dialog-actions">
               <button className="button" type="button" onClick={() => switchMode('signup')} data-autofocus>Continue to the application <span aria-hidden="true">↗</span></button>
               <button className="text-link" type="button" onClick={() => switchMode('signin')}>Already approved? Sign in</button>
@@ -313,7 +302,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
                 <ul className="checklist">
                   <li><b>Browse the catalog.</b><span>You can look through every department and build a quote request now.</span></li>
                   <li><b>Pricing unlocks on approval.</b><span>Wholesale prices and checkout appear as soon as a trade rep approves the account.</span></li>
-                  <li><b>Questions?</b><span><TradeDesk />.</span></li>
+                  <li><b>Questions?</b><span><CallOrEmail /></span></li>
                 </ul>
               </>
             )}

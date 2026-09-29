@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { linesFromOrder } from '../../lib/lines.js';
+import { formatMoney } from '../../lib/format.js';
 import { QuickReorder } from './QuickReorder.jsx';
 
 const STATUS_CLASS = {
@@ -133,7 +134,7 @@ export function AccountPage({ profile, goHome, onSignIn, products = [], addLines
                       <b className="order-ref">{o.ref_num}</b>
                       <small>
                         {new Date(o.created_at).toLocaleString()} · {o.total_units} unit{o.total_units === 1 ? '' : 's'}
-                        {o.subtotal != null && ` · $${Number(o.subtotal).toFixed(2)}`}
+                        {o.subtotal != null && ` · ${formatMoney(o.subtotal)}`}
                       </small>
                     </div>
                     <div className="order-actions">
@@ -148,7 +149,7 @@ export function AccountPage({ profile, goHome, onSignIn, products = [], addLines
                       <li key={it.id}>
                         <span>{it.qty} × {it.product_name} <span className="sku">({it.sku})</span></span>
                         {it.unit_price != null && (
-                          <span className="line-total">${Number(it.unit_price * it.qty).toFixed(2)}</span>
+                          <span className="line-total">{formatMoney(it.unit_price * it.qty)}</span>
                         )}
                       </li>
                     ))}

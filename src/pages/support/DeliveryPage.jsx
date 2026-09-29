@@ -5,12 +5,12 @@
 import { useState } from 'react';
 import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../../data/content.js';
 import { DELIVERY_STATES, OTHER_STATES } from '../../data/onboarding.js';
-import { PageHead, ContactStrip, PhoneLink } from './SupportShell.jsx';
+import { formatMoney, formatMoneyShort } from '../../lib/format.js';
+import { PhoneLink } from '../../components/ContactLinks.jsx';
+import { PageHead, ContactStrip } from './SupportShell.jsx';
 
 const ROUTE_STATE_NAMES = DELIVERY_STATES.map(s => s.name);
 const routeStates = `${ROUTE_STATE_NAMES.slice(0, -1).join(', ')} and ${ROUTE_STATE_NAMES[ROUTE_STATE_NAMES.length - 1]}`;
-const money = (n) => `$${Number(n).toLocaleString('en-US')}`;
-const moneyExact = (n) => `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export function DeliveryPage({ goHome, navigate }) {
   const [stateCode, setStateCode] = useState('');
@@ -27,7 +27,7 @@ export function DeliveryPage({ goHome, navigate }) {
         <article className="info-card">
           <p className="eyebrow">01 · ROUTE DELIVERY</p>
           <h2>Next day, on our trucks</h2>
-          <p>Next-day delivery on our own trucks when your stop is on a delivery route. Free delivery on orders over {money(FREE_DELIVERY_THRESHOLD)} when the stop is on a route.</p>
+          <p>Next-day delivery on our own trucks when your stop is on a delivery route. Free delivery on orders over {formatMoneyShort(FREE_DELIVERY_THRESHOLD)} when the stop is on a route.</p>
         </article>
         <article className="info-card">
           <p className="eyebrow">02 · WILL-CALL</p>
@@ -37,8 +37,8 @@ export function DeliveryPage({ goHome, navigate }) {
         </article>
         <article className="info-card">
           <p className="eyebrow">03 · MINIMUM ORDER</p>
-          <h2>{moneyExact(ORDER_MINIMUM)} minimum</h2>
-          <p>The minimum order is {moneyExact(ORDER_MINIMUM)}.</p>
+          <h2>{formatMoney(ORDER_MINIMUM)} minimum</h2>
+          <p>The minimum order is {formatMoney(ORDER_MINIMUM)}.</p>
         </article>
       </div>
 

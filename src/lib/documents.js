@@ -3,8 +3,8 @@
 // Uploads run only when a session exists — the storage path is the user's
 // own folder, which the storage policy checks against auth.uid().
 
-import { COMPANY } from '../data/content.js';
 import { supabase } from './supabase.js';
+import { describeError } from './errors.js';
 
 export const DOCUMENT_BUCKET = 'application-documents';
 export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
@@ -36,13 +36,8 @@ const MIME_FOR_EXT = {
   heif: 'image/heif',
 };
 
-const NETWORK_ERROR = /fetch|network|load failed/i;
-
 export function documentErrorMessage(err) {
-  if (NETWORK_ERROR.test(err?.message || '')) {
-    return `Document upload is unavailable right now. Call ${COMPANY.phone} or email ${COMPANY.email} and a trade rep will help you.`;
-  }
-  return err?.message || 'That file did not upload. You can try again, or send proof later.';
+  return describeError(err, 'Document upload', 'That file did not upload. You can try again, or send proof later.');
 }
 
 export function validateDocumentFile(file) {

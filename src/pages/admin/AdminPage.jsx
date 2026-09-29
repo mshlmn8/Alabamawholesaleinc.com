@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { DOCUMENT_TYPES, createDocumentViewUrl, listAllProfileDocuments } from '../../lib/documents.js';
+import { formatMoney } from '../../lib/format.js';
 
 const TABS = [
   { id: 'orders', label: 'Orders' },
@@ -119,7 +120,7 @@ function OrdersTab() {
               {(o.order_items || []).map(it => (
                 <li key={it.id}>
                   <span>{it.qty} × {it.product_name} <span className="sku">({it.sku})</span></span>
-                  <span className="line-total">{it.unit_price != null ? `$${(it.unit_price * it.qty).toFixed(2)}` : '—'}</span>
+                  <span className="line-total">{it.unit_price != null ? formatMoney(it.unit_price * it.qty) : '—'}</span>
                 </li>
               ))}
             </ul>
@@ -332,7 +333,7 @@ function ProductsTab() {
                 <td>{p.name}</td>
                 <td>{p.brand}</td>
                 <td className="muted">{p.cat} / {p.sub}</td>
-                <td className="price">${Number(p.price).toFixed(2)}</td>
+                <td className="price">{formatMoney(p.price)}</td>
                 <td>{p.tag || '—'}</td>
                 <td>{p.active ? 'Yes' : 'No'}</td>
                 <td>

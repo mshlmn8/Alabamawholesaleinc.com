@@ -5,7 +5,8 @@ import { COMPANY } from '../../data/content.js';
 import { APPLICATION_CHECKLIST } from '../../data/onboarding.js';
 import { ServiceUnavailable } from '../../components/ServiceUnavailable.jsx';
 import { ApplicationDocuments } from '../../components/DocumentUploads.jsx';
-import { PageHead, ContactStrip, CallOrEmail } from './SupportShell.jsx';
+import { CallOrEmail } from '../../components/ContactLinks.jsx';
+import { PageHead, ContactStrip } from './SupportShell.jsx';
 
 export function ApplyPage({ goHome, navigate, profile, isBackendConfigured, onApplyClick, onLoginClick, onResetClick }) {
   const status = profile?.status;

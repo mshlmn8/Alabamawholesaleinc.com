@@ -24,18 +24,6 @@ export function PageHead({ goHome, crumb, eyebrow, title, children }) {
   );
 }
 
-export function PhoneLink({ className }) {
-  return <a className={className} href={`tel:${COMPANY.phoneRaw}`}>{COMPANY.phone}</a>;
-}
-
-export function EmailLink({ className }) {
-  return <a className={className} href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>;
-}
-
-export function CallOrEmail({ before = 'Call', after = '.' }) {
-  return <>{before} <PhoneLink /> or email <EmailLink />{after}</>;
-}
-
 // Compact contact strip reused at the bottom of the support pages.
 export function ContactStrip({ navigate, eyebrow = 'QUESTIONS?', title = 'Talk to the warehouse' }) {
   return (

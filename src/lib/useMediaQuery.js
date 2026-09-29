@@ -1,5 +1,9 @@
 import { useCallback, useSyncExternalStore } from 'react';
 
+// Below this width the header collapses to menu/logo/account/cart + search and
+// category filters move into a drawer.
+export const MOBILE_QUERY = '(max-width: 850px)';
+
 const canMatch = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function';
 
 // Tracks a CSS media query so components can render one control set per

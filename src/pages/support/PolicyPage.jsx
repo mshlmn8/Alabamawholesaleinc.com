@@ -1,10 +1,10 @@
 // Customer policy pages: delivery, privacy, and trade terms.
 
 import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../../data/content.js';
-import { PageHead, PolicyNav, ContactStrip, CallOrEmail, PhoneLink, EmailLink, POLICY_LINKS } from './SupportShell.jsx';
+import { formatMoney, formatMoneyShort } from '../../lib/format.js';
+import { CallOrEmail, PhoneLink, EmailLink } from '../../components/ContactLinks.jsx';
+import { PageHead, PolicyNav, ContactStrip, POLICY_LINKS } from './SupportShell.jsx';
 
-const money = (n) => `$${Number(n).toLocaleString('en-US')}`;
-const moneyExact = (n) => `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const UPDATED = 'September 2026';
 
 // Each policy is a list of sections; `body` items are paragraphs (string or JSX)
@@ -16,11 +16,11 @@ const POLICIES = {
     intro: 'How orders leave the Birmingham warehouse: on our own trucks along routes in Alabama, Mississippi and Georgia, or will-call pickup during business hours.',
     sections: [
       { heading: 'How we deliver', body: [
-        `Alabama Wholesale delivers on its own trucks along routes in Alabama, Mississippi and Georgia. When your store is on a delivery route, orders arrive the next day on our truck. Free delivery applies to orders over ${money(FREE_DELIVERY_THRESHOLD)} when the stop is on a delivery route.`,
+        `Alabama Wholesale delivers on its own trucks along routes in Alabama, Mississippi and Georgia. When your store is on a delivery route, orders arrive the next day on our truck. Free delivery applies to orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} when the stop is on a delivery route.`,
         'Routes are planned stop by stop, so they do not reach every address in those states. The trade desk confirms whether a route passes your store when your account is set up, and again when you order.',
       ] },
       { heading: 'Minimum order', body: [
-        `The minimum order is ${moneyExact(ORDER_MINIMUM)}.`,
+        `The minimum order is ${formatMoney(ORDER_MINIMUM)}.`,
       ] },
       { heading: 'Will-call pickup', body: [
         `Will-call is pickup at ${COMPANY.addressLine1}, ${COMPANY.addressLine2} during business hours: ${COMPANY.hoursLine1}, ${COMPANY.hoursLine2}. Order ahead and have your order reference and business name ready at the counter.`,
@@ -72,7 +72,7 @@ const POLICIES = {
         'Wholesale prices shown after sign-in apply to the approved account that is signed in and are not for publication. A quote request is not an order: the trade desk confirms pricing, availability and delivery before an order is accepted. Prices and availability can change until then.',
       ] },
       { heading: 'Orders and delivery', body: [
-        `The minimum order is ${moneyExact(ORDER_MINIMUM)}.`,
+        `The minimum order is ${formatMoney(ORDER_MINIMUM)}.`,
         <>Orders are delivered on our own trucks when the stop is on a delivery route in Alabama, Mississippi or Georgia, or collected at the Birmingham warehouse during business hours. See <button className="text-link" type="button" data-nav="shipping">Delivery</button> for how that works.</>,
       ] },
       { heading: 'Payment', body: [
