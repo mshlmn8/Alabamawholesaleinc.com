@@ -9,7 +9,7 @@ const departments = [
   { key: 'TOBACCO', subs: ['Cigarettes', 'Cigars & Cigarillos'] },
   { key: 'DRINKS & BAGS', subs: ['Energy Drinks'] },
 ];
-const products = [{ id: 12 }, { id: 3 }, { id: 3 }, { id: 'x' }];
+const products = [{ id: 12 }, { id: 3 }, { id: 3 }, { id: 'x' }, { id: 40, active: false }];
 
 describe('sitemapPaths', () => {
   it('lists the indexable pages, departments, product lines and products as paths', () => {

@@ -30,7 +30,9 @@ export function sitemapPaths({ departments, products }) {
     paths.push(hrefFor({ page: 'category', category: d.key, sub: null }));
     for (const sub of d.subs) paths.push(hrefFor({ page: 'category', category: d.key, sub }));
   }
-  const ids = products.map((p) => Number(p.id)).filter((id) => Number.isInteger(id) && id > 0).sort((a, b) => a - b);
+  // Deactivated products render "not found", so they stay out.
+  const ids = products.filter((p) => p.active !== false)
+    .map((p) => Number(p.id)).filter((id) => Number.isInteger(id) && id > 0).sort((a, b) => a - b);
   for (const id of new Set(ids)) paths.push(hrefFor({ page: 'product', productId: id }));
   return paths;
 }
