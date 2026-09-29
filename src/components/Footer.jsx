@@ -15,7 +15,7 @@ export function Footer({ goCategory, departments, onLoginClick, onApplyClick, on
           <div>
             <h4>Departments</h4>
             <button type="button" onClick={() => navigate({ page: 'catalog' })}>All products</button>
-            {departments.map(c => <button key={c.key} type="button" onClick={() => goCategory(c.key)}>{c.label} ({c.count})</button>)}
+            {departments.map(c => <button key={c.key} type="button" onClick={() => goCategory(c.key)}>{`${c.label} (${c.count})`}</button>)}
           </div>
           <div>
             <h4>Account &amp; help</h4>

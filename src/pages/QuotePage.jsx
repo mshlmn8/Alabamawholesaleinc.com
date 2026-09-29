@@ -63,9 +63,9 @@ export function QuotePage({ items, total, addLine, decLine, removeLine, clearCar
     return (
       <section className="page-head" style={{ textAlign: 'center', padding: '60px 0' }}>
         <p className="eyebrow">{isApprovedBuyer ? 'ORDER RECEIVED' : 'QUOTE RECEIVED'}</p>
-        <h1>Thank you, {data.contact || 'partner'}.</h1>
+        <h1>{`Thank you, ${data.contact || 'partner'}.`}</h1>
         <p style={{ margin: '0 auto 14px' }}>
-          {isApprovedBuyer ? 'Your order has been saved.' : 'Your quote request has been saved.'} A trade desk rep will reach out within one business day at <strong style={{ color: 'var(--purple)' }}>{data.phone || data.email}</strong> to confirm details.
+          <span>{isApprovedBuyer ? 'Your order has been saved.' : 'Your quote request has been saved.'}</span> A trade desk rep will reach out within one business day at <strong style={{ color: 'var(--purple)' }}>{data.phone || data.email}</strong> to confirm details.
         </p>
         <p className="result-note" style={{ fontSize: 13 }}>Reference number: <strong>{receipt?.ref_num || refNum}</strong></p>
         <div className="dialog-actions" style={{ justifyContent: 'center' }}>
@@ -116,7 +116,7 @@ export function QuotePage({ items, total, addLine, decLine, removeLine, clearCar
             <div className="full"><label htmlFor="quote-notes">Notes</label><input id="quote-notes" name="notes" value={data.notes} onChange={set('notes')} placeholder="Dock hours, pallet needs, substitutions…" autoComplete="off" /></div>
           </div>
           <div className="drawer-total checkout-total">
-            <span>{totalUnits} units</span>
+            <span>{`${totalUnits} units`}</span>
             <span>{isApprovedBuyer ? formatMoney(total) : (profile ? 'Pricing after approval' : 'Pricing after sign-in')}</span>
           </div>
           {pricedBelowMinimum && <p className="notice" role="status">The order minimum is $500.00. You can still submit this order.</p>}
@@ -124,7 +124,7 @@ export function QuotePage({ items, total, addLine, decLine, removeLine, clearCar
           {needsVariant && <p className="form-error" role="alert">Choose a variant for every product that has more than one.</p>}
           {submitError && <p className="form-error" role="alert">{typeof submitError === 'string' ? submitError : <CallOrEmail before={submitError.before} after={submitError.after} />}</p>}
           <button className="button wide" type="submit" disabled={sending || !isBackendConfigured || needsVariant}>
-            {sending ? 'Sending…' : (isApprovedBuyer ? 'Submit order' : 'Submit quote request')} <span aria-hidden="true">↗</span></button>
+            <span>{sending ? 'Sending…' : (isApprovedBuyer ? 'Submit order' : 'Submit quote request')}</span> <span aria-hidden="true">↗</span></button>
           <p className="fine">The minimum order is $500.00. Orders over $1,500 qualify for free delivery on a delivery route in AL, MS &amp; GA. Will-call is pickup at the Birmingham warehouse during business hours. Tobacco products supplied to licensed retailers only — 21+.</p>
         </form>
       </div>

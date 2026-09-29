@@ -74,7 +74,7 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, cart
                   <span className="block-label">DEPARTMENT</span>
                   {preview?.picture ? <Picture picture={preview.picture} alt="" sizes={SIZES.card} /> : <span className="card-initials">{String(c.count).padStart(2, '0')}</span>}
                 </div>
-                <p className="card-kicker">{c.subs.length} PRODUCT LINES · {c.count} SKUs</p>
+                <p className="card-kicker">{`${c.subs.length} PRODUCT LINES · ${c.count} SKUs`}</p>
                 <h3>{c.label}</h3>
                 <p className="card-detail">{c.subs.slice(0, 3).join(' · ')}</p>
                 <span className="card-meta"><span>Browse department</span><span aria-hidden="true">↗</span></span>

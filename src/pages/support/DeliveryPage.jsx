@@ -20,14 +20,14 @@ export function DeliveryPage({ goHome, navigate }) {
   return (
     <section className="support-page">
       <PageHead goHome={goHome} crumb="Delivery & service area" eyebrow="OUR OWN TRUCKS" title="Delivery & service area">
-        <p>We run our own delivery routes across {routeStates} from the Birmingham warehouse. When your store is on a route, your order rides on our truck and arrives the next day.</p>
+        <p>{`We run our own delivery routes across ${routeStates} from the Birmingham warehouse. When your store is on a route, your order rides on our truck and arrives the next day.`}</p>
       </PageHead>
 
       <div className="info-grid">
         <article className="info-card">
           <p className="eyebrow">01 · ROUTE DELIVERY</p>
           <h2>Next day, on our trucks</h2>
-          <p>Next-day delivery on our own trucks when your stop is on a delivery route. Free delivery on orders over {formatMoneyShort(FREE_DELIVERY_THRESHOLD)} when the stop is on a route.</p>
+          <p>{`Next-day delivery on our own trucks when your stop is on a delivery route. Free delivery on orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} when the stop is on a route.`}</p>
         </article>
         <article className="info-card">
           <p className="eyebrow">02 · WILL-CALL</p>
@@ -37,8 +37,8 @@ export function DeliveryPage({ goHome, navigate }) {
         </article>
         <article className="info-card">
           <p className="eyebrow">03 · MINIMUM ORDER</p>
-          <h2>{formatMoney(ORDER_MINIMUM)} minimum</h2>
-          <p>The minimum order is {formatMoney(ORDER_MINIMUM)}.</p>
+          <h2>{`${formatMoney(ORDER_MINIMUM)} minimum`}</h2>
+          <p>{`The minimum order is ${formatMoney(ORDER_MINIMUM)}.`}</p>
         </article>
       </div>
 
@@ -62,7 +62,7 @@ export function DeliveryPage({ goHome, navigate }) {
           <div className="eligibility-result" role="status" aria-live="polite">
             {routeState && (
               <>
-                <b>We run delivery routes in {routeState.name}.</b>
+                <b>{`We run delivery routes in ${routeState.name}.`}</b>
                 <span>Routes don’t reach every address. Call <PhoneLink /> to confirm your stop and delivery day before you count on next-day delivery.</span>
               </>
             )}

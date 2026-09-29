@@ -23,6 +23,13 @@ const STATUS_LABEL = {
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
+// The note under an order after Reorder, as one string (AW-039).
+const reorderMessage = (note, target) => (note.lines > 0
+  ? `Added ${plural(note.lines, 'line')} (${plural(note.units, 'unit')}) to your ${target}.`
+  : 'None of these items are available right now.')
+  + (note.needsVariant > 0 ? ` ${plural(note.needsVariant, 'line')} need${note.needsVariant === 1 ? 's' : ''} a variant choice in the cart.` : '')
+  + (note.unavailable.length > 0 ? ` No longer available: ${note.unavailable.join(', ')}.` : '');
+
 export function AccountPage({ profile, goHome, onSignIn, products = [], addLines, onOpenCart, isApprovedBuyer }) {
   const [orders, setOrders] = useState(null);
   const [error, setError] = useState(null);
@@ -113,7 +120,7 @@ export function AccountPage({ profile, goHome, onSignIn, products = [], addLines
           </div>
         </div>
 
-        {error && <p className="form-error">Couldn&apos;t load orders: {error}</p>}
+        {error && <p className="form-error">{`Couldn't load orders: ${error}`}</p>}
         {orders === null && !error && <p className="result-note">Loading…</p>}
         {orders && orders.length === 0 && (
           <div className="empty-results">
@@ -133,8 +140,7 @@ export function AccountPage({ profile, goHome, onSignIn, products = [], addLines
                     <div>
                       <b className="order-ref">{o.ref_num}</b>
                       <small>
-                        {new Date(o.created_at).toLocaleString()} · {o.total_units} unit{o.total_units === 1 ? '' : 's'}
-                        {o.subtotal != null && ` · ${formatMoney(o.subtotal)}`}
+                        {`${new Date(o.created_at).toLocaleString()} · ${plural(o.total_units, 'unit')}${o.subtotal != null ? ` · ${formatMoney(o.subtotal)}` : ''}`}
                       </small>
                     </div>
                     <div className="order-actions">
@@ -147,7 +153,7 @@ export function AccountPage({ profile, goHome, onSignIn, products = [], addLines
                   <ul className="order-items">
                     {(o.order_items || []).map(it => (
                       <li key={it.id}>
-                        <span>{it.qty} × {it.product_name} <span className="sku">({it.sku})</span></span>
+                        <span><span>{`${it.qty} × ${it.product_name}`}</span> <span className="sku">{`(${it.sku})`}</span></span>
                         {it.unit_price != null && (
                           <span className="line-total">{formatMoney(it.unit_price * it.qty)}</span>
                         )}
@@ -156,13 +162,7 @@ export function AccountPage({ profile, goHome, onSignIn, products = [], addLines
                   </ul>
                   {note && (
                     <div className="order-foot" role="status">
-                      <p>
-                        {note.lines > 0
-                          ? `Added ${plural(note.lines, 'line')} (${plural(note.units, 'unit')}) to your ${target}.`
-                          : 'None of these items are available right now.'}
-                        {note.needsVariant > 0 && ` ${plural(note.needsVariant, 'line')} need${note.needsVariant === 1 ? 's' : ''} a variant choice in the cart.`}
-                        {note.unavailable.length > 0 && ` No longer available: ${note.unavailable.join(', ')}.`}
-                      </p>
+                      <p>{reorderMessage(note, target)}</p>
                       {note.lines > 0 && <button className="mini-btn primary" type="button" onClick={onOpenCart}>Review cart</button>}
                     </div>
                   )}

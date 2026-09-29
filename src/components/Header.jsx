@@ -97,7 +97,7 @@ export function Header({ cartCount, onCart, goHome, goCategory, goProduct, produ
                 {hits.map(p => (
                   <button key={p.id} type="button" onClick={() => pickResult(p.id)}>
                     <span className="sr-thumb">{p.img ? <img src={p.img} alt="" loading="lazy" /> : initials(p.name)}</span>
-                    <span><strong>{p.name}</strong><small>{catLabel(p.cat)} · {p.sub} · {p.sku}</small></span>
+                    <span><strong>{p.name}</strong><small>{`${catLabel(p.cat)} · ${p.sub} · ${p.sku}`}</small></span>
                   </button>
                 ))}
               </div>
@@ -153,11 +153,11 @@ export function Header({ cartCount, onCart, goHome, goCategory, goProduct, produ
             <div className="aw-menu-grid">
               {departments.map((c, i) => (
                 <nav className="aw-department" key={c.key} aria-label={c.label}>
-                  <h3><span>{String(i + 1).padStart(2, '0')}</span>{c.label}</h3>
+                  <h3><span>{String(i + 1).padStart(2, '0')}</span><span>{c.label}</span></h3>
                   {c.subs.slice(0, 3).map(s => (
                     <button key={s} type="button" onClick={() => pickCategory(c.key, s)}>{s}</button>
                   ))}
-                  <button type="button" style={{ fontWeight: 700, color: 'var(--purple)' }} onClick={() => pickCategory(c.key, null)}>All {c.label} →</button>
+                  <button type="button" style={{ fontWeight: 700, color: 'var(--purple)' }} onClick={() => pickCategory(c.key, null)}>{`All ${c.label} →`}</button>
                 </nav>
               ))}
               <button className="aw-menu-feature" type="button" onClick={() => pickCategory('NOVELTIES', null)}>
@@ -166,7 +166,7 @@ export function Header({ cartCount, onCart, goHome, goCategory, goProduct, produ
             </div>
             <div className="aw-menu-footer">
               <button type="button" onClick={() => runNav(onCatalog)}>View full catalog <span aria-hidden="true">↗</span></button>
-              <span>{departments.length} departments · {products.length} SKUs</span>
+              <span>{`${departments.length} departments · ${products.length} SKUs`}</span>
             </div>
           </section>
         )}

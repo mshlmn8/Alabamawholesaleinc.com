@@ -146,6 +146,12 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
     reset: 'Reset your password',
     'reset-sent': 'Check your inbox',
   }[mode];
+  // One string, so Google Translate cannot strand a piece of it (AW-039).
+  const applicantName = profile?.name || signup.name;
+  const applicantBusiness = profile?.business || signup.business;
+  const statusMessage = `${afterSignup ? 'Thanks' : 'Welcome back'}${applicantName ? `, ${applicantName}` : ''}. `
+    + `${applicantBusiness ? `We have the application for ${applicantBusiness}. ` : ''}`
+    + `A trade rep is reviewing your license information and will contact you at ${profile?.email || signup.email} when your account is approved. Wholesale pricing and ordering unlock at that point.`;
   const unavailableWhat = { signin: 'Account sign-in', checking: 'Account sign-in', checklist: 'The online application', signup: 'The online application', reset: 'Password reset' }[mode];
 
   return (
@@ -165,18 +171,14 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
         {mode === 'signin' && <p className="desc">Sign in to view wholesale pricing, build orders and see your order history.</p>}
         {mode === 'checklist' && <p className="desc">Alabama Wholesale sells exclusively to licensed retail businesses. Have these on hand before you start — the application takes a few minutes.</p>}
         {mode === 'signup' && <p className="desc">Alabama Wholesale sells exclusively to licensed retail businesses. Most applications are approved within one business day. Net-30 terms available with credit verification.</p>}
-        {mode === 'sent' && <p className="desc">We sent a confirmation link to {signup.email}. Click it to activate your account — a trade rep will verify your license within one business day.</p>}
+        {mode === 'sent' && <p className="desc">{`We sent a confirmation link to ${signup.email}. Click it to activate your account — a trade rep will verify your license within one business day.`}</p>}
         {mode === 'checking' && <p className="desc" aria-live="polite">One moment while we load your account.</p>}
         {mode === 'reset' && <p className="desc">Enter the business email on your account and we’ll send a link to choose a new password.</p>}
-        {mode === 'reset-sent' && <p className="desc">If an account exists for {resetEmail}, a password reset link is on its way. The link works once — if it doesn’t arrive within a few minutes, check your spam folder or call us.</p>}
+        {mode === 'reset-sent' && <p className="desc">{`If an account exists for ${resetEmail}, a password reset link is on its way. The link works once — if it doesn’t arrive within a few minutes, check your spam folder or call us.`}</p>}
         {mode === 'status' && (
           status === 'suspended'
             ? <p className="desc">Ordering is paused on this account. <CallOrEmail after=" and a trade rep will help you sort it out." /></p>
-            : <p className="desc">
-                {afterSignup ? 'Thanks' : 'Welcome back'}{profile?.name || signup.name ? `, ${profile?.name || signup.name}` : ''}.
-                {' '}{(profile?.business || signup.business) ? `We have the application for ${profile?.business || signup.business}. ` : ''}
-                A trade rep is reviewing your license information and will contact you at {profile?.email || signup.email} when your account is approved. Wholesale pricing and ordering unlock at that point.
-              </p>
+            : <p className="desc">{statusMessage}</p>
         )}
 
         {unavailableWhat && !isBackendConfigured && <ServiceUnavailable what={unavailableWhat} />}
@@ -193,7 +195,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
             </div>
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
-              <button className="button" type="submit" disabled={submitting || !isBackendConfigured}>{submitting ? 'Signing in…' : 'Sign in'} <span aria-hidden="true">↗</span></button>
+              <button className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Signing in…' : 'Sign in'}</span> <span aria-hidden="true">↗</span></button>
               <button className="text-link" type="button" onClick={() => { setResetEmail(signin.email); switchMode('reset'); }}>Forgot password?</button>
               <button className="text-link" type="button" onClick={() => switchMode('checklist')}>No account? Apply instead</button>
             </div>
@@ -267,7 +269,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
             </div>
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
-              <button className="button" type="submit" disabled={submitting || !isBackendConfigured}>{submitting ? 'Creating…' : 'Submit application'} <span aria-hidden="true">↗</span></button>
+              <button className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Creating…' : 'Submit application'}</span> <span aria-hidden="true">↗</span></button>
               <button className="text-link" type="button" onClick={() => switchMode('checklist')}>Back to the checklist</button>
               <button className="text-link" type="button" onClick={() => switchMode('signin')}>Already approved? Sign in</button>
             </div>
@@ -278,9 +280,9 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
           <>
             <h3 className="checklist-heading">What happens next</h3>
             <ol className="next-steps">
-              <li><b>Confirm your email.</b><span>Open the link we sent to {signup.email}. If it doesn’t arrive within a few minutes, check your spam folder. Already have an account with this email? Sign in instead.</span></li>
+              <li><b>Confirm your email.</b><span>{`Open the link we sent to ${signup.email}. If it doesn’t arrive within a few minutes, check your spam folder. Already have an account with this email? Sign in instead.`}</span></li>
               <li><b>We review your application.</b><span>A trade rep checks your EIN, state retail tobacco license and resale certificate.</span></li>
-              <li><b>You hear from us.</b><span>We’ll contact you at {signup.email} or {signup.phone} when your account is approved. Wholesale pricing and ordering unlock then.</span></li>
+              <li><b>You hear from us.</b><span>{`We’ll contact you at ${signup.email} or ${signup.phone} when your account is approved. Wholesale pricing and ordering unlock then.`}</span></li>
             </ol>
             {proofWaiting && (
               <p className="checklist-note">Your files stay on this device until you are signed in. After you confirm your email, upload them from your application status, or send proof later to <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.</p>
@@ -323,7 +325,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
             </div>
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
-              <button className="button" type="submit" disabled={submitting || !isBackendConfigured}>{submitting ? 'Sending…' : 'Send reset link'} <span aria-hidden="true">↗</span></button>
+              <button className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Sending…' : 'Send reset link'}</span> <span aria-hidden="true">↗</span></button>
               <button className="text-link" type="button" onClick={() => switchMode('signin')}>Back to sign in</button>
             </div>
           </form>

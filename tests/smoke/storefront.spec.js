@@ -68,6 +68,70 @@ test.describe('after age confirmation', () => {
     });
   }
 
+  // Google Translate (AW-039, AW-164): replaces every text node with <font>
+  // and translates new text as it appears. The DOM guard in src/lib/domGuard.js
+  // is switched off here so the markup itself is what gets tested.
+  test.describe('with the page translated', () => {
+    test.beforeEach(async ({ context }) => {
+      await context.addInitScript(() => {
+        const { removeChild, insertBefore } = Node.prototype;
+        Object.defineProperty(Node.prototype, 'removeChild', { configurable: true, get: () => removeChild, set() {} });
+        Object.defineProperty(Node.prototype, 'insertBefore', { configurable: true, get: () => insertBefore, set() {} });
+      });
+    });
+
+    const translate = (page) => page.evaluate(() => {
+      const wrap = (root) => {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        const nodes = [];
+        while (walker.nextNode()) {
+          const t = walker.currentNode;
+          const parent = t.parentElement;
+          if (t.nodeValue.trim() && parent && !['SCRIPT', 'STYLE', 'OPTION'].includes(parent.tagName) && !parent.closest('font')) nodes.push(t);
+        }
+        for (const t of nodes) {
+          const font = document.createElement('font');
+          font.appendChild(document.createElement('font')).textContent = t.nodeValue;
+          t.replaceWith(font);
+        }
+      };
+      wrap(document.body);
+      new MutationObserver((records) => {
+        for (const r of records) for (const n of r.addedNodes) {
+          if (n.nodeType === Node.TEXT_NODE && n.parentElement) wrap(n.parentElement);
+          else if (n.nodeType === Node.ELEMENT_NODE && n.tagName !== 'FONT') wrap(n);
+        }
+      }).observe(document.body, { childList: true, subtree: true });
+    });
+
+    test('department filters keep working and counts stay current', async ({ page }) => {
+      const errors = trackErrors(page);
+      await page.goto('/#/category/TOBACCO');
+      await expect(page.getByRole('heading', { level: 1, name: 'Tobacco' })).toBeVisible();
+      await translate(page);
+      await page.getByRole('button', { name: /^Cigarettes \(/ }).click();
+      await page.getByRole('button', { name: /^Cigars & Cigarillos \(/ }).click();
+      await expect(page.locator('.result-note')).toHaveText(/Showing \d+ of 68 items in Cigars & Cigarillos/);
+      await page.getByRole('button', { name: /^All \(/ }).click();
+      await expect(page.locator('.result-note')).toHaveText(/Showing 68 of 68 items$/);
+      await expect(page.getByRole('heading', { level: 1, name: 'Tobacco' })).toBeVisible();
+      expect(errors).toEqual([]);
+    });
+
+    test('policy pages switch without crashing', async ({ page }) => {
+      const errors = trackErrors(page);
+      await page.goto('/#/privacy');
+      await expect(page.getByRole('heading', { level: 1, name: 'Privacy' })).toBeVisible();
+      await translate(page);
+      const nav = page.getByRole('navigation', { name: 'Customer policies' }).first();
+      await nav.getByRole('button', { name: 'Delivery', exact: true }).click();
+      await expect(page.getByRole('heading', { level: 1, name: 'Delivery' })).toBeVisible();
+      await nav.getByRole('button', { name: 'Privacy', exact: true }).click();
+      await expect(page.locator('.support-note').last()).toHaveText(/Last updated .+\. Questions about this policy\?/);
+      expect(errors).toEqual([]);
+    });
+  });
+
   test('header search lists matching products', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/');

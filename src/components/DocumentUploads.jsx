@@ -59,7 +59,7 @@ function DocumentFields({
         return (
           <div className="doc-upload" key={doc.id}>
             <label htmlFor={id}>
-              {doc.label}
+              <span>{doc.label}</span>
               <span className="optional"> Optional</span>
             </label>
             <input
@@ -80,7 +80,7 @@ function DocumentFields({
               </p>
             )}
             {files?.[doc.id] && !showStatus && (
-              <p className="doc-status" aria-live="polite">Selected: {files[doc.id].name}</p>
+              <p className="doc-status" aria-live="polite">{`Selected: ${files[doc.id].name}`}</p>
             )}
             {error && <p className="form-error" id={errorId} role="alert">{error}</p>}
           </div>

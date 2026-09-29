@@ -18,7 +18,7 @@ export function MobileMenu({ onClose, departments, products, user, isAdmin, pick
             <h3>Departments</h3>
             {departments.map((c, i) => (
               <button key={c.key} type="button" onClick={() => pickCategory(c.key, null)}>
-                <span><span className="menu-index" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>{c.label}</span>
+                <span><span className="menu-index" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span><span>{c.label}</span></span>
                 <span className="menu-count">{c.count}</span>
               </button>
             ))}
@@ -49,7 +49,7 @@ export function MobileMenu({ onClose, departments, products, user, isAdmin, pick
             <button type="button" onClick={go.help}>Help</button>
           </nav>
           <div className="menu-contact">
-            <p>{COMPANY.addressShort}<br />{departments.length} departments · {products.length} SKUs</p>
+            <p>{COMPANY.addressShort}<br /><span>{`${departments.length} departments · ${products.length} SKUs`}</span></p>
             <a className="button ghost" href={`tel:${COMPANY.phoneRaw}`}>Call {COMPANY.phone}</a>
             {!user && <button className="button" type="button" onClick={go.signup}>Apply for a trade account <span aria-hidden="true">↗</span></button>}
           </div>

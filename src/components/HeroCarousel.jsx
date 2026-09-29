@@ -70,7 +70,7 @@ export function HeroCarousel({ slides }) {
         })}
       </div>
       <div className="home-carousel-controls">
-        <p aria-live="polite">Slide {safeIndex + 1} of {count}</p>
+        <p aria-live="polite">{`Slide ${safeIndex + 1} of ${count}`}</p>
         <button type="button" onClick={() => go(-1)} aria-label="Previous slide">Previous</button>
         <button type="button" aria-pressed={paused} onClick={() => setPaused(value => !value)}>{paused ? 'Play' : 'Pause'}</button>
         <button type="button" onClick={() => go(1)} aria-label="Next slide">Next</button>

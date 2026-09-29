@@ -50,7 +50,7 @@ export function QuickReorder({ products, addLines, onOpenCart, isApprovedBuyer }
   return (
     <form className="quick-reorder" onSubmit={submit} aria-labelledby="quick-reorder-title">
       <p className="qr-help" id="quick-reorder-title">
-        Type a SKU from a past order or product page, set the quantity, and add it to your {target}. Variant codes look like <code>AW-BACKWOODS-5PK-HONEY-BERRY</code>.
+        <span>{`Type a SKU from a past order or product page, set the quantity, and add it to your ${target}. Variant codes look like `}</span><code>AW-BACKWOODS-5PK-HONEY-BERRY</code>.
       </p>
 
       <div className="qr-rows">
@@ -75,8 +75,8 @@ export function QuickReorder({ products, addLines, onOpenCart, isApprovedBuyer }
             <div className="qr-status">
               {res.status === 'ok' && (
                 <p className="qr-match">
-                  <b>{res.product.name}{res.variant ? ` — ${res.variant}` : ''}</b>
-                  <small>{variantSku(res.product.sku, res.variant)} · {res.product.brand}{rowQty(row) > 0 ? '' : ' · Enter a quantity of 1 or more'}</small>
+                  <b>{`${res.product.name}${res.variant ? ` — ${res.variant}` : ''}`}</b>
+                  <small>{`${variantSku(res.product.sku, res.variant)} · ${res.product.brand}${rowQty(row) > 0 ? '' : ' · Enter a quantity of 1 or more'}`}</small>
                 </p>
               )}
               {res.status === 'not-found' && <p className="qr-problem">Not in the catalog. Check the code or search the catalog above.</p>}
@@ -86,14 +86,14 @@ export function QuickReorder({ products, addLines, onOpenCart, isApprovedBuyer }
                   <select value="" onChange={(e) => update(row.key, { productId: Number(e.target.value) })}>
                     <option value="" disabled>Choose a product…</option>
                     {res.candidates.map(({ product }) => (
-                      <option key={product.id} value={product.id}>{product.name} · {product.sub}</option>
+                      <option key={product.id} value={product.id}>{`${product.name} · ${product.sub}`}</option>
                     ))}
                   </select>
                 </label>
               )}
               {res.status === 'choose-variant' && (
                 <label className="qr-choice">
-                  <span>{res.product.name} — which variant?</span>
+                  <span>{`${res.product.name} — which variant?`}</span>
                   <select value="" onChange={(e) => update(row.key, { variant: e.target.value })}>
                     <option value="" disabled>Choose a variant…</option>
                     {res.variants.map((v, vi) => <option key={`${v}-${vi}`} value={v}>{v}</option>)}
@@ -108,7 +108,7 @@ export function QuickReorder({ products, addLines, onOpenCart, isApprovedBuyer }
 
       <div className="qr-actions">
         <button className="button" type="submit" disabled={ready.length === 0}>
-          {ready.length > 0 ? `Add ${ready.length} line${ready.length === 1 ? '' : 's'} to ${target}` : `Add to ${target}`} <span aria-hidden="true">↗</span>
+          <span>{ready.length > 0 ? `Add ${ready.length} line${ready.length === 1 ? '' : 's'} to ${target}` : `Add to ${target}`}</span> <span aria-hidden="true">↗</span>
         </button>
         <button className="text-link" type="button" onClick={addRow}>Add another line</button>
         {attention.length > 0 && (
@@ -121,8 +121,8 @@ export function QuickReorder({ products, addLines, onOpenCart, isApprovedBuyer }
       {summary && (
         <div className="qr-summary" role="status">
           <p>
-            Added {summary.lines} line{summary.lines === 1 ? '' : 's'} ({summary.units} unit{summary.units === 1 ? '' : 's'}) to your {target}.
-            {summary.attention > 0 && ` ${summary.attention} line${summary.attention === 1 ? ' is' : 's are'} still waiting above.`}
+            {`Added ${summary.lines} line${summary.lines === 1 ? '' : 's'} (${summary.units} unit${summary.units === 1 ? '' : 's'}) to your ${target}.`
+              + (summary.attention > 0 ? ` ${summary.attention} line${summary.attention === 1 ? ' is' : 's are'} still waiting above.` : '')}
           </p>
           <button className="mini-btn primary" type="button" onClick={onOpenCart}>Review cart</button>
         </div>

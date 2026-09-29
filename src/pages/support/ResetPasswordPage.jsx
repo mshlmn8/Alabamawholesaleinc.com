@@ -52,7 +52,7 @@ export function ResetPasswordPage({ navigate, auth, onRequestReset, onLoginClick
     body = (
       <form className="reset-form" onSubmit={handleSubmit} aria-labelledby="reset-form-title">
         <p className="eyebrow">{recovery ? 'RESET LINK CONFIRMED' : 'SIGNED IN'}</p>
-        <h2 id="reset-form-title">New password for {session.user?.email}</h2>
+        <h2 id="reset-form-title">{`New password for ${session.user?.email}`}</h2>
         <div className="form-grid">
           <div className="full">
             <label htmlFor="reset-password">New password</label>
@@ -66,7 +66,7 @@ export function ResetPasswordPage({ navigate, auth, onRequestReset, onLoginClick
         </div>
         <p className="form-error" role="alert">{error}</p>
         <div className="dialog-actions">
-          <button className="button" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save new password'} <span aria-hidden="true">↗</span></button>
+          <button className="button" type="submit" disabled={saving}><span>{saving ? 'Saving…' : 'Save new password'}</span> <span aria-hidden="true">↗</span></button>
           <button className="text-link" type="button" onClick={() => finish('home')}>Cancel</button>
         </div>
       </form>
@@ -79,7 +79,7 @@ export function ResetPasswordPage({ navigate, auth, onRequestReset, onLoginClick
           <p className="eyebrow">{fromLink ? 'LINK NOT VALID' : 'RESET BY EMAIL'}</p>
           <h2>{fromLink ? 'This link has expired or was already used' : 'Request a reset link'}</h2>
           {fromLink
-            ? <p>{linkError ? `${linkError.replace(/\.$/, '')}. ` : ''}Reset links work once and expire after a short time. Request a new one and open it from the same device, or <CallOrEmail before="call" after=" and a trade rep will help you get back in." /></p>
+            ? <p><span>{linkError ? `${linkError.replace(/\.$/, '')}. ` : ''}</span>Reset links work once and expire after a short time. Request a new one and open it from the same device, or <CallOrEmail before="call" after=" and a trade rep will help you get back in." /></p>
             : <p>We’ll email a link to the business address on your account. Open it on this device to choose a new password. Locked out completely? <CallOrEmail before="Call" after="." /></p>}
         </div>
         <div className="contact-strip-actions">

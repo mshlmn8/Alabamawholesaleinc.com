@@ -43,12 +43,16 @@ Then open http://localhost:3000
 
 | Command | What it runs |
 | ------- | ------------ |
-| `npm run lint` | ESLint (flat config in `eslint.config.js`: React, React Hooks, jsx-a11y); warnings fail it |
+| `npm run lint` | ESLint (flat config in `eslint.config.js`: React, React Hooks, jsx-a11y and the project rule `aw/translate-safe-text`); warnings fail it |
 | `npm test` | Vitest unit and component tests (`src/**/*.test.{js,jsx}`, `scripts/**/*.test.mjs`, jsdom) |
 | `npm run test:db` | Replays `supabase/migrations` and the seed in an in-memory Postgres (PGlite) and runs the assertions in `supabase/tests/*.sql` |
 | `npm run test:e2e` | Builds the site and runs the Playwright smoke test in `tests/smoke` against `vite preview` (run `npx playwright install chromium` once first) |
 
 GitHub Actions (`.github/workflows/ci.yml`) runs all four, plus `npm audit --omit=dev --audit-level=high` and a check that the production build refuses to run without the Supabase settings. Dependabot (`.github/dependabot.yml`) opens weekly update PRs.
+
+### Text that Google Translate can break
+
+Translated pages replace React's text nodes, so a string that can change, appear or disappear must be the only child of an element that is always rendered: build one template string (`` {`Showing ${n} of ${total} items`} ``) or give the changing part its own `<span>`. `npm run lint` enforces this with `aw/translate-safe-text` (`scripts/eslint/translate-safe-text.mjs`), and `src/lib/domGuard.js` keeps a missed spot from blanking the page.
 
 ## Build for production
 
@@ -60,7 +64,7 @@ Output goes to `dist/`; `npm run preview` serves it locally. The build fails wit
 
 ## Customize
 
-Storefront layout lives in **`src/App.jsx`**. Product photos live in **`src/assets/products/`** and hero photos in **`src/assets/`**; each product row in `src/data/products.js` names its photo file.
+`src/App.jsx` is the root: age gate, auth, cart and route state, the page layout and the route switch. Pages live in `src/pages/` (storefront pages at the top level; `account/`, `admin/` and `support/` below it), shared pieces in `src/components/`, and logic in `src/lib/`: `router.js` (the hash routes), `meta.js` (page titles), `search.js`, `departments.js`, `cart.js`, `pricing.js`, `format.js` (money and labels), `errors.js` (shared error copy) and `domGuard.js`. Product photos live in **`src/assets/products/`** and hero photos in **`src/assets/`**; each product row in `src/data/products.js` names its photo file.
 
 | What | Where |
 | ---- | ----- |

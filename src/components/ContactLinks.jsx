@@ -11,6 +11,8 @@ export function EmailLink({ className }) {
   return <a className={className} href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>;
 }
 
+// One root element, and before/after in their own spans, because callers
+// swap this sentence in and out and pass text that changes (AW-039).
 export function CallOrEmail({ before = 'Call', after = '.' }) {
-  return <>{before} <PhoneLink /> or email <EmailLink />{after}</>;
+  return <span><span>{before}</span> <PhoneLink /> or email <EmailLink /><span>{after}</span></span>;
 }

@@ -127,7 +127,7 @@ export function PolicyPage({ kind, goHome, navigate }) {
             </section>
           ))}
           <p className="support-note">
-            {policy.updated ? `Last updated ${UPDATED}. ` : ''}Questions about this policy? Call <PhoneLink /> or email <EmailLink />.
+            <span>{policy.updated ? `Last updated ${UPDATED}. ` : ''}</span>Questions about this policy? Call <PhoneLink /> or email <EmailLink />.
           </p>
         </article>
       </div>

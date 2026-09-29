@@ -31,7 +31,7 @@ export function ApplyPage({ goHome, navigate, profile, isBackendConfigured, onAp
             <ul className="checklist big">
               {APPLICATION_CHECKLIST.map((item, i) => (
                 <li key={item.title}>
-                  <b>{String(i + 1).padStart(2, '0')} · {item.title}</b>
+                  <b>{`${String(i + 1).padStart(2, '0')} · ${item.title}`}</b>
                   <span>{item.detail}</span>
                 </li>
               ))}
@@ -72,17 +72,17 @@ function StatusPanel({ profile, navigate }) {
         <p className="eyebrow">APPLICATION STATUS</p>
         <h2 id="status-title">{label}</h2>
         {status === 'pending' && (
-          <p>Thanks{profile.name ? `, ${profile.name}` : ''}. We have the application{profile.business ? ` for ${profile.business}` : ''}. A trade rep is reviewing your license information and will contact you at {profile.email} when the account is approved. Wholesale pricing and ordering unlock at that point.</p>
+          <p>{`Thanks${profile.name ? `, ${profile.name}` : ''}. We have the application${profile.business ? ` for ${profile.business}` : ''}. A trade rep is reviewing your license information and will contact you at ${profile.email} when the account is approved. Wholesale pricing and ordering unlock at that point.`}</p>
         )}
         {status === 'approved' && (
-          <p>{profile.business || profile.name} is approved for wholesale pricing and ordering. Prices show on every product while you are signed in.</p>
+          <p>{`${profile.business || profile.name} is approved for wholesale pricing and ordering. Prices show on every product while you are signed in.`}</p>
         )}
         {status === 'suspended' && (
           <p>Ordering is paused on this account. <CallOrEmail before="Call" after=" and a trade rep will help you sort it out." /></p>
         )}
       </div>
       <div className="contact-strip-actions">
-        <button className="button" type="button" onClick={() => navigate({ page: 'account' })}>{status === 'approved' ? 'My account' : 'View account'} <span aria-hidden="true">↗</span></button>
+        <button className="button" type="button" onClick={() => navigate({ page: 'account' })}><span>{status === 'approved' ? 'My account' : 'View account'}</span> <span aria-hidden="true">↗</span></button>
         <button className="button ghost" type="button" onClick={() => navigate({ page: 'catalog' })}>Browse the catalog</button>
       </div>
     </section>

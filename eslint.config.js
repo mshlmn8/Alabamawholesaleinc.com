@@ -6,6 +6,11 @@ import globals from 'globals';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
+import translateSafeText from './scripts/eslint/translate-safe-text.mjs';
+
+// Project rules. aw/translate-safe-text keeps pages from crashing or showing
+// stale numbers under Google Translate (AW-039, AW-164).
+const aw = { rules: { 'translate-safe-text': translateSafeText } };
 
 export default [
   {
@@ -17,7 +22,8 @@ export default [
     plugins: {
       react,
       'react-hooks': reactHooks,
-      'jsx-a11y': jsxA11y
+      'jsx-a11y': jsxA11y,
+      aw
     },
     languageOptions: {
       ecmaVersion: 'latest',
@@ -33,7 +39,8 @@ export default [
       ...reactHooks.configs.flat.recommended.rules,
       // The app declares no PropTypes (React 19 drops them entirely); prop
       // contracts are covered by unit tests instead.
-      'react/prop-types': 'off'
+      'react/prop-types': 'off',
+      'aw/translate-safe-text': 'error'
     }
   },
   {
@@ -48,6 +55,14 @@ export default [
       ecmaVersion: 'latest',
       sourceType: 'module',
       globals: { ...globals.node }
+    }
+  },
+  {
+    // Playwright specs also hold callbacks that run in the page
+    // (page.evaluate, addInitScript).
+    files: ['tests/smoke/**/*.{js,mjs}'],
+    languageOptions: {
+      globals: { ...globals.node, ...globals.browser }
     }
   }
 ];

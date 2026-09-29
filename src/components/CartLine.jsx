@@ -15,11 +15,11 @@ export function CartLine({ item: it, layout = 'drawer', showPrice, onInc, onDec,
         <b>{it.name}</b>
         {checkout ? (
           <>
-            <small>{it.sku}{priced ? ` · ${formatMoney(it.price)} each` : ''}</small>
+            <small>{`${it.sku}${priced ? ` · ${formatMoney(it.price)} each` : ''}`}</small>
             {it.needsVariant && <small>Choose a variant before submitting.</small>}
           </>
         ) : (
-          <small>{it.sku}{priced ? ` · ${formatMoney(it.price)}` : ''}{it.needsVariant ? ' · Choose a variant' : ''}</small>
+          <small>{`${it.sku}${priced ? ` · ${formatMoney(it.price)}` : ''}${it.needsVariant ? ' · Choose a variant' : ''}`}</small>
         )}
       </span>
       {it.needsVariant ? (

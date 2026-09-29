@@ -60,11 +60,11 @@ export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine
           {p.picture ? <Picture picture={p.picture} alt={p.name} sizes={SIZES.detail} priority /> : <span className="card-initials" aria-hidden="true">{initials(p.name)}</span>}
         </div>
         <div className="pd-info">
-          <p className="pd-brand">{p.brand} · {p.sub}</p>
+          <p className="pd-brand">{`${p.brand} · ${p.sub}`}</p>
           <h1>{p.name}</h1>
           <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()} from ${p.brand}.`}</p>
-          {p.sellUnit && <p className="pd-unit">Sold by the {p.sellUnit} — quantity 1 is one {p.sellUnit}.</p>}
-          <p className="pd-desc pd-fine">SKU {p.sku}. Supplied to licensed retail businesses for lawful resale. Next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA. Will-call is pickup at the Birmingham warehouse during business hours.</p>
+          {p.sellUnit && <p className="pd-unit">{`Sold by the ${p.sellUnit} — quantity 1 is one ${p.sellUnit}.`}</p>}
+          <p className="pd-desc pd-fine">{`SKU ${p.sku}. Supplied to licensed retail businesses for lawful resale. Next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
           {variants.length > 0 && (
             <div className="variant-chips" role="group" aria-label={choiceRequired ? 'Choose a variant' : 'Variant'}>
               {variants.map(v => (
@@ -77,7 +77,7 @@ export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine
           {variantError && <p className="form-error" role="alert">Select a variant before adding this product.</p>}
           <div className="pd-price">
             {isApprovedBuyer && price != null
-              ? <><b>{formatMoney(price)}</b><span>Wholesale unit price · {variantSku(p.sku, selected)}</span></>
+              ? <><b>{formatMoney(price)}</b><span>{`Wholesale unit price · ${variantSku(p.sku, selected)}`}</span></>
               : profile
               ? <><b>Pending</b><span>Pricing unlocks after your account is approved</span></>
               : <><b>Sign in</b><span>Wholesale pricing is visible to approved trade accounts</span></>}
@@ -88,9 +88,9 @@ export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine
               <b aria-live="polite">{desiredQty}</b>
               <button type="button" onClick={() => setDesiredQty(q => q + 1)} aria-label="Increase quantity">+</button>
             </div>
-            <button className="button" type="button" onClick={handleAdd} disabled={choiceRequired && !chosenVariant}>{isApprovedBuyer ? 'Add to order' : 'Add to quote'} <span aria-hidden="true">↗</span></button>
+            <button className="button" type="button" onClick={handleAdd} disabled={choiceRequired && !chosenVariant}><span>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</span> <span aria-hidden="true">↗</span></button>
           </div>
-          {qty > 0 && <p className="in-cart-note">Already in {isApprovedBuyer ? 'order' : 'quote'}: <strong>{qty}</strong>{selected ? ` · ${selected}` : ''}</p>}
+          {qty > 0 && <p className="in-cart-note"><span>{`Already in ${isApprovedBuyer ? 'order' : 'quote'}: `}</span><strong>{qty}</strong><span>{selected ? ` · ${selected}` : ''}</span></p>}
           {!profile && (
             <div className="dialog-actions compact-actions">
               <button className="text-link" type="button" onClick={onLoginClick}>Sign in for pricing</button>
@@ -107,7 +107,7 @@ export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine
       {related.length > 0 && (
         <section className="section">
           <div className="section-head">
-            <div><p className="eyebrow">SAME LINE</p><h2>More {p.sub.toLowerCase()}</h2></div>
+            <div><p className="eyebrow">SAME LINE</p><h2>{`More ${p.sub.toLowerCase()}`}</h2></div>
             <button type="button" onClick={() => goCategory(p.cat)}>View department <span aria-hidden="true">↗</span></button>
           </div>
           <div className="card-grid">

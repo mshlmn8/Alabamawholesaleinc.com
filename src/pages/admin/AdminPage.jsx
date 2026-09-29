@@ -95,7 +95,7 @@ function OrdersTab() {
             className={`sub-pill ${filter === s ? 'active' : ''}`}
             onClick={() => setFilter(s)}
           >
-            {s} ({orders.filter(o => s === 'all' || o.status === s).length})
+            {`${s} (${orders.filter(o => s === 'all' || o.status === s).length})`}
           </button>
         ))}
       </div>
@@ -107,8 +107,8 @@ function OrdersTab() {
               <div>
                 <b className="order-ref">{o.ref_num}</b>
                 <small>
-                  {new Date(o.created_at).toLocaleString()} · {o.business} · {o.contact} · {o.email} · {o.phone}
-                  {o.ship_street && <span> · Deliver to {o.ship_street}, {o.ship_city} {o.ship_state} {o.ship_zip}</span>}
+                  <span>{`${new Date(o.created_at).toLocaleString()} · ${o.business} · ${o.contact} · ${o.email} · ${o.phone}`}</span>
+                  {o.ship_street && <span>{` · Deliver to ${o.ship_street}, ${o.ship_city} ${o.ship_state} ${o.ship_zip}`}</span>}
                   {o.profiles?.pricing_tier && <span> · tier: <b>{o.profiles.pricing_tier}</b></span>}
                 </small>
               </div>
@@ -119,12 +119,12 @@ function OrdersTab() {
             <ul className="order-items">
               {(o.order_items || []).map(it => (
                 <li key={it.id}>
-                  <span>{it.qty} × {it.product_name} <span className="sku">({it.sku})</span></span>
+                  <span><span>{`${it.qty} × ${it.product_name}`}</span> <span className="sku">{`(${it.sku})`}</span></span>
                   <span className="line-total">{it.unit_price != null ? formatMoney(it.unit_price * it.qty) : '—'}</span>
                 </li>
               ))}
             </ul>
-            {o.notes && <p className="order-notes">Notes: {o.notes}</p>}
+            {o.notes && <p className="order-notes">{`Notes: ${o.notes}`}</p>}
           </article>
         ))}
       </div>
@@ -229,11 +229,11 @@ function AccountsTab() {
                               <span>On file</span>
                               {signedUrls[`${p.id}:${doc.id}`] ? (
                                 <a href={signedUrls[`${p.id}:${doc.id}`]} target="_blank" rel="noopener noreferrer">
-                                  View<span className="sr-only"> {doc.label} for {p.business || p.name}</span>
+                                  View<span className="sr-only">{` ${doc.label} for ${p.business || p.name}`}</span>
                                 </a>
                               ) : (
                                 <button type="button" className="text-link" onClick={() => viewDocument(row, p, doc.label)}>
-                                  View<span className="sr-only"> {doc.label} for {p.business || p.name}</span>
+                                  View<span className="sr-only">{` ${doc.label} for ${p.business || p.name}`}</span>
                                 </button>
                               )}
                             </>
@@ -290,7 +290,7 @@ function ProductsTab() {
       <label className="filter-search admin-search">Search products
         <input type="search" placeholder="Name, brand, or SKU" value={search} onChange={e => setSearch(e.target.value)} />
       </label>
-      <p className="result-note">{filtered.length} of {rows.length} products</p>
+      <p className="result-note">{`${filtered.length} of ${rows.length} products`}</p>
       <div className="table-scroll">
         <table className="aw-table">
           <thead>
@@ -306,7 +306,7 @@ function ProductsTab() {
                 <td>{p.id}</td>
                 <td><input aria-label="Product name" value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} /></td>
                 <td><input aria-label="Brand" value={editing.brand} onChange={e => setEditing({ ...editing, brand: e.target.value })} /></td>
-                <td className="muted">{p.cat} / {p.sub}</td>
+                <td className="muted">{`${p.cat} / ${p.sub}`}</td>
                 <td><input aria-label="Price" type="number" step="0.01" value={editing.price} onChange={e => setEditing({ ...editing, price: parseFloat(e.target.value) })} /></td>
                 <td>
                   <select aria-label="Tag" value={editing.tag || ''} onChange={e => setEditing({ ...editing, tag: e.target.value || null })}>
@@ -332,7 +332,7 @@ function ProductsTab() {
                 <td>{p.id}</td>
                 <td>{p.name}</td>
                 <td>{p.brand}</td>
-                <td className="muted">{p.cat} / {p.sub}</td>
+                <td className="muted">{`${p.cat} / ${p.sub}`}</td>
                 <td className="price">{formatMoney(p.price)}</td>
                 <td>{p.tag || '—'}</td>
                 <td>{p.active ? 'Yes' : 'No'}</td>
