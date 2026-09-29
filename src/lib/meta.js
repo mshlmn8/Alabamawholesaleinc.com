@@ -21,11 +21,20 @@ export const clip = (text, max = 155) => {
   return `${t.slice(0, max - 1).replace(/[\s,;:—-]+\S*$/, '')}…`;
 };
 
-// A product photo as a share image: the largest JPEG of its set.
+// The size a generated photo's file name carries ('<base>--640x640-<hash>.jpg',
+// see src/lib/images.js), or nothing for other URLs.
+const sizeInName = (url) => {
+  const match = /--(\d+)x(\d+)[-.]/.exec(String(url));
+  return match ? { width: Number(match[1]), height: Number(match[2]) } : { width: undefined, height: undefined };
+};
+
+// A product photo as a share image: the largest JPEG of its set. Its size is
+// read from that file's name: picture.width/height describe the largest WebP,
+// which can be bigger than the largest JPEG.
 const imageOf = (product, alt) => {
   const url = product?.picture?.src || product?.img;
   if (!url) return null;
-  return { url, width: product.picture?.width, height: product.picture?.height, alt };
+  return { url, ...sizeInName(url), alt };
 };
 
 const NOT_FOUND = {

@@ -2,7 +2,10 @@
 import { describe, expect, it } from 'vitest';
 import { applyPageMeta, clip, DEFAULT_IMAGE, HOME_DESCRIPTION, pageMeta, SITE_URL } from './meta.js';
 
-const products = [{ id: 7, name: 'Kite', brand: 'Kite', cat: 'TOBACCO', sub: 'Cigarettes', sku: 'AW-KITE', description: '', img: '/assets/kite-320.jpg', picture: { src: '/assets/kite-640.jpg', width: 640, height: 640 } }];
+const products = [
+  { id: 7, name: 'Kite', brand: 'Kite', cat: 'TOBACCO', sub: 'Cigarettes', sku: 'AW-KITE', description: '', img: '/assets/kite--320x320-a1.jpg', picture: { src: '/assets/kite--640x640-b2.jpg', width: 1000, height: 1000 } },
+  { id: 8, name: 'Bic', brand: 'Bic', cat: 'MERCHANDISE', sub: 'Lighters', sku: 'AW-BIC', description: '', img: 'https://cdn.example.test/bic.jpg', picture: { src: 'https://cdn.example.test/bic.jpg' } },
+];
 const departments = [{ key: 'TOBACCO', subs: ['Cigarettes', 'Cigars', 'Hookah', 'Wraps', 'Zyn'], count: 68 }];
 const EMPTY = { q: '', sort: 'featured', tags: [], variants: false };
 
@@ -31,9 +34,16 @@ describe('pageMeta', () => {
   });
 
   it('uses the product photo as the share image', () => {
-    expect(pageMeta({ page: 'product', productId: 7 }, products, departments).image).toEqual({ url: '/assets/kite-640.jpg', width: 640, height: 640, alt: 'Kite' });
-    expect(pageMeta({ page: 'category', category: 'TOBACCO', sub: null, query: EMPTY }, products, departments).image.url).toBe('/assets/kite-640.jpg');
+    expect(pageMeta({ page: 'product', productId: 7 }, products, departments).image).toEqual({ url: '/assets/kite--640x640-b2.jpg', width: 640, height: 640, alt: 'Kite' });
+    expect(pageMeta({ page: 'category', category: 'TOBACCO', sub: null, query: EMPTY }, products, departments).image.url).toBe('/assets/kite--640x640-b2.jpg');
     expect(pageMeta({ page: 'home' }, products, departments).image).toBeNull();
+  });
+
+  it('gives the share image the size of the JPEG it names, not of the largest WebP', () => {
+    // picture.width/height describe the largest WebP; the JPEG can be smaller.
+    expect(pageMeta({ page: 'product', productId: 7 }, products, departments).image).toMatchObject({ width: 640, height: 640 });
+    // A photo URL without a generated size leaves the size out.
+    expect(pageMeta({ page: 'product', productId: 8 }, products, departments).image).toEqual({ url: 'https://cdn.example.test/bic.jpg', width: undefined, height: undefined, alt: 'Bic' });
   });
 
   it('keeps private and not-found pages out of search results', () => {
