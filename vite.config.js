@@ -24,8 +24,10 @@ export default defineConfig(({ command, mode }) => {
       // Baseline widely-available browsers; keeping the old list means the
       // toolchain upgrade does not drop any browser the site supported.
       target: ['es2020', 'edge88', 'firefox78', 'chrome87', 'safari14'],
-      // Keep product photos as cacheable files instead of inlining them into JS.
-      assetsInlineLimit: 4096,
+      // Every asset stays a cacheable, same-origin file: no data: URIs in the
+      // CSS or JS (the select chevron included), so the Content-Security-Policy
+      // needs no `img-src data:` or `font-src data:` (AW-180 step 1, AW-205).
+      assetsInlineLimit: 0,
       rollupOptions: {
         output: {
           // Vite 8 bundles with Rolldown: re-check this split when upgrading
