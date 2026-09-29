@@ -11,6 +11,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useMediaQuery, MOBILE_QUERY } from '../lib/useMediaQuery.js';
 import { productText } from '../lib/search.js';
+import { variantCount } from '../lib/lines.js';
 import { catLabel } from '../lib/format.js';
 import { Link, navigate } from '../lib/router.js';
 import { EMPTY_CATEGORY_QUERY } from '../lib/routes.js';
@@ -76,13 +77,14 @@ export function CategoryPage({
   const needle = query.q.trim().toLowerCase();
   let items = inScope.filter(p => {
     if (tags.length && !tags.includes(p.tag)) return false;
-    if (hasVariants && p.flavors === 0) return false;
+    // A single variant is not a choice (AW-233).
+    if (hasVariants && variantCount(p) <= 1) return false;
     if (needle && !productText(p).includes(needle)) return false;
     return true;
   });
   if (sort === 'name-asc') items = [...items].sort((a, b) => a.name.localeCompare(b.name));
   if (sort === 'name-desc') items = [...items].sort((a, b) => b.name.localeCompare(a.name));
-  if (sort === 'variants') items = [...items].sort((a, b) => b.flavors - a.flavors);
+  if (sort === 'variants') items = [...items].sort((a, b) => variantCount(b) - variantCount(a));
   if (sort === 'price-low') items = [...items].sort(byPrice(priceOf, 1));
   if (sort === 'price-high') items = [...items].sort(byPrice(priceOf, -1));
 

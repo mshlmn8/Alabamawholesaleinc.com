@@ -24,8 +24,58 @@ export function parseLineKey(key) {
   return { productId: Number(raw.slice(0, sep)), variantSlug: raw.slice(sep + 2) || null };
 }
 
+// How many variants a product has (AW-332): the count on cards and in the
+// catalog index, the "Has flavors or variants" filter and the "Most
+// variants" sort. There is no separate stored count to drift.
+export const variantCount = (product) => variantList(product).length;
+
 export function requiresVariantChoice(product) {
   return variantList(product).length > 1;
+}
+
+// What a product's variants differ by (AW-128): products.variant_axis, one of
+// these labels, with the words the storefront uses for it. A product without
+// one (or with a value the storefront doesn't know) gets the neutral
+// DEFAULT_AXIS: "Choose a variant", "3 variants". The database accepts the
+// same labels (supabase/migrations/20260928121000_variant_model.sql).
+export const VARIANT_AXES = Object.freeze({
+  Flavor: { noun: 'flavor', plural: 'flavors' },
+  Size: { noun: 'size', plural: 'sizes' },
+  Color: { noun: 'color', plural: 'colors' },
+  Style: { noun: 'style', plural: 'styles' },
+  Format: { noun: 'format', plural: 'formats' },
+  Strength: { noun: 'strength', plural: 'strengths' },
+  Type: { noun: 'type', plural: 'types' },
+  Variety: { noun: 'variety', plural: 'varieties' },
+});
+export const DEFAULT_AXIS = Object.freeze({ label: 'Variety', noun: 'variant', plural: 'variants' });
+
+// { label: 'Flavor', noun: 'flavor', plural: 'flavors' } for a product.
+export function variantAxis(product) {
+  const wanted = String(product?.variantAxis ?? '').trim().toLowerCase();
+  const label = Object.keys(VARIANT_AXES).find((key) => key.toLowerCase() === wanted);
+  return label ? { label, ...VARIANT_AXES[label] } : DEFAULT_AXIS;
+}
+
+// Whether a variant can be ordered now (AW-030): products.unavailable_variants
+// lists the labels that can't be, matched like line keys (by slug). A product
+// the live catalog hasn't described has every variant available.
+export function isVariantAvailable(product, label) {
+  if (label == null || label === '') return true;
+  const off = Array.isArray(product?.unavailableVariants) ? product.unavailableVariants : [];
+  const slug = variantSlug(label);
+  return !off.some((v) => variantSlug(v) === slug);
+}
+
+// A one-variant product's variant, when it tells the buyer something the name
+// doesn't: 'Green' for Garcia y Vega cigars, but not 'Tips' for RAW tips.
+// Null otherwise, and for products with no variants or several (AW-233).
+export function informativeVariant(product) {
+  const variants = variantList(product);
+  if (variants.length !== 1) return null;
+  const words = (text) => String(text).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const label = words(variants[0]);
+  return label && ` ${words(product.name || '')} `.includes(` ${label} `) ? null : variants[0];
 }
 
 export function variantSku(sku, variantLabel) {
@@ -169,18 +219,22 @@ function unavailableLine(key, productId, qty, product, variantLabel, reason) {
     unavailable: reason,
     name: variantLabel ? `${name} — ${variantLabel}` : name,
     sku: product?.sku || '',
+    sellUnit: product?.sellUnit || '',
     qty,
     img: product?.img || null,
   };
 }
 
 // The cart's lines against the catalog, in stored order. Each item is
-// { lineKey, productId, variant, needsVariant, unavailable, name, sku, qty,
-// img }. Prices are not part of the catalog (AW-003); cart.js adds them.
+// { lineKey, productId, variant, needsVariant, unavailable, name, sku,
+// sellUnit, qty, img }. Prices are not part of the catalog (AW-003); cart.js
+// adds them.
 //   needsVariant  a bare line of a product with several variants (a reorder
 //                 that lost its variant); the buyer chooses one
 //   unavailable   null, or 'product' / 'variant' for a line that can no
-//                 longer be ordered (AW-083)
+//                 longer be ordered (AW-083): the product left the catalog,
+//                 or its variant did or is marked not available (AW-030)
+//   sellUnit      what quantity 1 means ('5-pack'), or '' (AW-031)
 // Options:
 //   settled  false while the live catalog is still loading: lines it may yet
 //            know are left out for now instead of being flagged
@@ -209,6 +263,7 @@ export function resolveCartItems(cart, products, { settled = true, known = [] } 
         unavailable: null,
         name: product.name,
         sku: product.sku,
+        sellUnit: product.sellUnit || '',
         qty: n,
         img: product.img,
       }];
@@ -224,9 +279,12 @@ export function resolveCartItems(cart, products, { settled = true, known = [] } 
       productId: product.id,
       variant,
       needsVariant: false,
-      unavailable: null,
+      // A variant the catalog still lists but marks not available keeps its
+      // line, flagged like one that went away.
+      unavailable: isVariantAvailable(product, variant) ? null : 'variant',
       name: variant ? `${product.name} — ${variant}` : product.name,
       sku: variantSku(product.sku, variant),
+      sellUnit: product.sellUnit || '',
       qty: n,
       img: product.img,
     }];

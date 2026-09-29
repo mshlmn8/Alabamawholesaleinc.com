@@ -96,6 +96,20 @@ export function priceFor(prices, productId, variant = null) {
   return { list: entry.list, unit: entry.unit };
 }
 
+// The price to show for a product before one of its variants is chosen,
+// from each variant's unit price (null for "price on request"): { unit,
+// from }. unit is the price every variant shares, or the lowest one with
+// from true ("From $x") when they differ or only some have a price (AW-030).
+// unit is null when none has a price.
+export function variantPriceRange(units) {
+  const cents = (units || []).map(toCents);
+  const priced = cents.filter((c) => c != null);
+  if (!priced.length) return { unit: null, from: false };
+  const low = Math.min(...priced);
+  const same = priced.length === cents.length && priced.every((c) => c === low);
+  return { unit: fromCents(low), from: !same };
+}
+
 // The live database before 20260928120000 has no my_prices(), and there the
 // price column and pricing_tiers are still readable, so the same prices are
 // worked out here from them and the account's tier. Remove this path once
@@ -150,13 +164,14 @@ export async function loadPrices(client, { profile = null, signal = null, pageSi
 }
 
 // What an approved buyer sees where a unit price goes: the price, or why
-// there is none. status is usePrices().status.
+// there is none. status is usePrices().status. With from (a product whose
+// variants are priced differently, variantPriceRange()), "From $x".
 export const PRICE_LOADING = 'Loading price…';
 export const PRICE_ON_REQUEST = 'Price on request';
 export const PRICE_FAILED = 'Price didn’t load';
 
-export function priceLabel(unit, status) {
-  if (unit != null) return formatMoney(unit);
+export function priceLabel(unit, status, { from = false } = {}) {
+  if (unit != null) return from ? `From ${formatMoney(unit)}` : formatMoney(unit);
   if (status === 'loading') return PRICE_LOADING;
   if (status === 'error') return PRICE_FAILED;
   return PRICE_ON_REQUEST;

@@ -223,6 +223,59 @@ Never put prices in `src/data/products.js`, the seed, a migration or any other
 committed file: everything in the repository ships to, or can be read by,
 people who must not see trade prices.
 
+## Variants, availability and sell units
+
+`20260928121000_variant_model.sql` gives variants a data model without
+changing their shape: `products.variants` is still a list of label strings,
+and cart lines, Quick Reorder and order history keep working with them.
+
+- **Variant axis** (`products.variant_axis`): what the variants differ by,
+  one of Flavor, Size, Color, Style, Format, Strength, Type or Variety. The
+  storefront says "Choose a flavor", counts "8 flavors" on cards, and shows
+  the "flavors change often" note only for Flavor. Every product with two or
+  more variants has one; a product with one variant or none needs none.
+- **A variant's own price** (`product_variant_prices`): a row for a
+  product's variant wins over `products.price` in `my_prices()` and in the
+  order trigger, so the cart, the product page ("From $x" until a variant is
+  chosen) and the saved line agree. A row with a null price is "price on
+  request" for that variant; a variant without a row costs the product's
+  price. Labels match case-insensitively. Only admins read or write the
+  table; it is private like `products.price`.
+- **Availability** (`products.unavailable_variants`): labels that can't be
+  ordered right now. The product page shows them as disabled choices that
+  say so, a cart line with one is flagged like a variant that went away, and
+  `submit_quote` refuses it (hint `variant_unavailable`).
+- **Sell unit** (`products.sell_unit`): what quantity 1 means ("5-pack",
+  "box of 200"). It shows on the product page, the card and every cart and
+  checkout line, and `order_items.sell_unit` keeps the value a line was saved
+  with. Rows whose name or description states the unit have one; the rest
+  are empty until you supply them.
+- The old `products.flavors` count is gone; the storefront counts the
+  variants.
+
+<!-- TODO(owner): What is the price, and is it in stock, for each size or pack-count variant of the multi-variant products (for example gas cans 1 gal / 2 gal / 5 gal)? Load them as below. (AW-030) -->
+<!-- TODO(owner): What is the sell unit (each, box of N, case of N, or a size) of each product that has none yet? Load them as below. (AW-031) -->
+
+Until Admin → Products can edit these, load them from a private SQL file
+under `supabase/private/` (never committed), run in the SQL editor:
+
+```sql
+-- A variant's own list price (leave price null for "price on request").
+insert into public.product_variant_prices (product_id, variant, price)
+values (<id>, '<variant label>', <list price>)
+on conflict (product_id, variant) do update set price = excluded.price;
+
+-- Variants that can't be ordered right now ('[]' when all can).
+update public.products set unavailable_variants = '["<variant label>"]'::jsonb where id = <id>;
+
+-- What quantity 1 means.
+update public.products set sell_unit = '<sell unit, e.g. case of 24>' where id = <id>;
+```
+
+Sell units are not prices, so they may also go in `src/data/products.js`
+(`sellUnit`) with an UPDATE data migration, like any other catalog
+correction.
+
 ## Row-level security summary
 
 - **profiles**: a user reads/updates their own row; admins read/update any.
@@ -234,6 +287,9 @@ people who must not see trade prices.
   them with an ordinary update. Approved buyers get their prices from
   `my_prices()`. A column added to `products` later needs its own
   `grant select (<column>) on public.products to anon, authenticated;`.
+- **product_variant_prices**: admins only (read and write); guests have no
+  privileges on it at all. Approved buyers get its prices, at their tier,
+  from `my_prices()`.
 - **orders / order_items**: a user reads their own orders; admins read and
   update all. Customers and guests do not insert rows directly. `submit_quote`
   saves the header and lines together, sets `user_id` from the session, and
@@ -275,4 +331,5 @@ Every migration ends with a commented reverse-SQL block for rolling it back.
 | Migration | What it changes | Before and after |
 | --- | --- | --- |
 | `20260928120000_price_boundary.sql` | `products.price` becomes nullable and unreadable to guests and signed-in accounts (column privileges); approved buyers' prices come from `my_prices()`, admins' from `admin_product_prices()`; the order trigger rounds with `tier_unit_price()`; `pricing_tiers` is readable by admins and approved buyers only; `profiles.pricing_tier` is a foreign key to `pricing_tiers`. The prices already stored are not changed. | Apply before the new seed (the seed has no price column). The frontend deployed before it reads `select=*`, which is now refused: it falls back to the catalog bundled with it, with a "couldn't load the latest catalog" notice, until the new frontend is deployed, so deploy right after. The new frontend also works before this migration (when `my_prices()` is missing it reads the prices the old way). |
+| `20260928121000_variant_model.sql` | Adds `products.variant_axis` and `products.unavailable_variants` (readable by everyone), the private `product_variant_prices` table and `order_items.sell_unit`; recreates the order trigger (variant prices, unavailable variants refused with hint `variant_unavailable`, no variant kept on a product without variants, the sell unit saved with the line), `my_prices()` and `admin_product_prices()` (per-variant prices); drops `products.flavors`; fills the variant axis, the sell units the catalog states and 20 corrected descriptions on existing rows, only where nobody has set them (see "Variants, availability and sell units"). | Apply after `20260928120000` and before the new seed (the seed has `variant_axis` and no `flavors`). The frontend deployed before `20260928120000` is unaffected beyond what that migration already did. The new frontend also works before this migration: it reads the columns every database has, takes the axis and sell units from its bundled catalog, and treats every variant as available at its product's price. |
 

@@ -29,6 +29,13 @@ describe('addableLineKey', () => {
     expect(addableLineKey(P, 40, null)).toBeNull();
     expect(addableLineKey(P, 1, null)).toBeNull();
   });
+
+  it('refuses a variant marked not available (AW-030)', () => {
+    const products = [{ ...P[0], unavailableVariants: ['Red'] }, { ...P[2], unavailableVariants: ['Only'] }];
+    expect(addableLineKey(products, 1, 'Red')).toBeNull();
+    expect(addableLineKey(products, 1, 'Diamond')).toBe('1::diamond');
+    expect(addableLineKey(products, 20, 'Only')).toBeNull();
+  });
 });
 
 describe('line updates', () => {

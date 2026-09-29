@@ -3,6 +3,7 @@
 // destination.
 
 import { Link } from '../../lib/router.js';
+import { variantAxis, variantCount } from '../../lib/lines.js';
 import { PageHead } from './SupportShell.jsx';
 
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -48,7 +49,7 @@ export function CatalogIndexPage({ products, departments, isApprovedBuyer, profi
                     <li key={p.id}>
                       <Link to={{ page: 'product', productId: p.id }}>
                         <b>{p.name}</b>
-                        <small>{`${p.brand} · ${p.sub} · ${p.sku}${p.flavors ? ` · ${p.flavors} variants` : ''}`}</small>
+                        <small>{`${p.brand} · ${p.sub} · ${p.sku}${variantCount(p) > 1 ? ` · ${variantCount(p)} ${variantAxis(p).plural}` : ''}`}</small>
                       </Link>
                     </li>
                   ))}

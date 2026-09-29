@@ -1,6 +1,9 @@
 // Cart and order line helpers (AW-209). Fixtures carry no prices.
 import { describe, expect, it } from 'vitest';
-import { lineKey, parseLineKey, normalizeCart, resolveCartItems, resolveSkuLine, variantSku, requiresVariantChoice } from './lines.js';
+import {
+  DEFAULT_AXIS, informativeVariant, isVariantAvailable, lineKey, parseLineKey, normalizeCart, resolveCartItems, resolveSkuLine,
+  variantAxis, variantCount, variantSku, requiresVariantChoice,
+} from './lines.js';
 
 const P = [
   { id: 1, sku: 'AW-SS', name: 'Cigarillos', variants: ['Diamond', 'Red'] },
@@ -71,6 +74,58 @@ describe('stored carts', () => {
   it('returns the same object when nothing changes', () => {
     const cart = { 14: 2, '1::red': 1 };
     expect(normalizeCart(cart, P)).toBe(cart);
+  });
+});
+
+describe('variants (AW-332, AW-128, AW-233, AW-030, AW-031)', () => {
+  it('counts variants from the list itself', () => {
+    expect(P.map(variantCount)).toEqual([2, 0, 1, 1, 0]);
+    expect(variantCount({ variants: [' Red ', '', 'Blue'] })).toBe(2);
+    expect(variantCount({ variants: null })).toBe(0);
+    expect(variantCount(null)).toBe(0);
+  });
+
+  it('names the axis, with a neutral default', () => {
+    expect(variantAxis({ variantAxis: 'Flavor' })).toEqual({ label: 'Flavor', noun: 'flavor', plural: 'flavors' });
+    expect(variantAxis({ variantAxis: 'Size' })).toEqual({ label: 'Size', noun: 'size', plural: 'sizes' });
+    expect(variantAxis({ variantAxis: 'Variety' })).toEqual({ label: 'Variety', noun: 'variety', plural: 'varieties' });
+    expect(variantAxis({ variantAxis: ' format ' }).label).toBe('Format');
+    expect(variantAxis({ variantAxis: 'Scent' })).toBe(DEFAULT_AXIS);
+    expect(variantAxis({})).toEqual({ label: 'Variety', noun: 'variant', plural: 'variants' });
+    expect(variantAxis(null)).toBe(DEFAULT_AXIS);
+  });
+
+  it('checks availability by label, like line keys', () => {
+    const p = { variants: ['1 gal', '2gal', '5 gal'], unavailableVariants: ['5 Gal'] };
+    expect(isVariantAvailable(p, '1 gal')).toBe(true);
+    expect(isVariantAvailable(p, '5 gal')).toBe(false);
+    expect(isVariantAvailable(p, null)).toBe(true);
+    expect(isVariantAvailable({ variants: ['Red'] }, 'Red')).toBe(true);
+    expect(isVariantAvailable({ variants: ['Red'], unavailableVariants: null }, 'Red')).toBe(true);
+  });
+
+  it('shows a lone variant only when the name doesn’t already say it', () => {
+    expect(informativeVariant({ name: 'Garcia y Vega cigars', variants: ['Green'] })).toBe('Green');
+    expect(informativeVariant({ name: 'RAW tips', variants: ['Tips'] })).toBeNull();
+    expect(informativeVariant({ name: 'High Hemp organic wraps', variants: ['Organic'] })).toBeNull();
+    expect(informativeVariant({ name: 'Rips bags', variants: ['Grape'] })).toBe('Grape');
+    expect(informativeVariant(P[0])).toBeNull();
+    expect(informativeVariant(P[1])).toBeNull();
+  });
+
+  it('flags a line whose variant is marked not available, and carries the sell unit', () => {
+    const products = [
+      { id: 356, sku: 'AW-GAS', name: 'Gas cans', variants: ['1 gal', '5 gal'], unavailableVariants: ['5 gal'], sellUnit: '' },
+      { id: 242, sku: 'AW-TUBES', name: 'Tubes', variants: [], sellUnit: 'box of 200' },
+    ];
+    const items = resolveCartItems({ '356::1-gal': 1, '356::5-gal': 2, 242: 3 }, products);
+    // (Integer keys come first in a JS object.)
+    expect(items.map((i) => [i.lineKey, i.unavailable, i.name, i.sku, i.sellUnit])).toEqual([
+      ['242', null, 'Tubes', 'AW-TUBES', 'box of 200'],
+      ['356::1-gal', null, 'Gas cans — 1 gal', 'AW-GAS-1-GAL', ''],
+      ['356::5-gal', 'variant', 'Gas cans — 5 gal', 'AW-GAS-5-GAL', ''],
+    ]);
+    expect(items[2]).toMatchObject({ variant: '5 gal', needsVariant: false });
   });
 });
 

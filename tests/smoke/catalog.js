@@ -51,8 +51,14 @@ export function seedRows() {
 
 // Columns guests and signed-in accounts may not read (column privileges).
 export const REVOKED_COLUMNS = ['price'];
-// Every column of public.products the database has.
-const TABLE_COLUMNS = ['id', 'name', 'brand', 'cat', 'sub', 'sku', 'flavors', 'variants', 'img', 'tag', 'price', 'active', 'updated_at', 'description', 'sell_unit'];
+// Every column of public.products the database has (after
+// 20260928121000_variant_model.sql: variant_axis and unavailable_variants,
+// no flavors). Columns the seed leaves out (unavailable_variants) come back
+// null, which the storefront reads as "every variant is available".
+const TABLE_COLUMNS = [
+  'id', 'name', 'brand', 'cat', 'sub', 'sku', 'variants', 'variant_axis', 'unavailable_variants', 'img', 'tag', 'price', 'active',
+  'updated_at', 'description', 'sell_unit',
+];
 
 const postgrestError = (route, status, code, message) => route.fulfill({
   status,

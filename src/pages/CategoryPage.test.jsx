@@ -6,10 +6,10 @@ import { navigate, resolveRoute, useRoute } from '../lib/router.js';
 import { CategoryPage } from './CategoryPage.jsx';
 
 const products = [
-  { id: 1, name: 'Kite tobacco', brand: 'Kite', cat: 'TOBACCO', sub: 'Cigarettes', sku: 'AW-KITE', flavors: 0, variants: [], tag: 'NEW' },
-  { id: 2, name: 'Swisher Sweets', brand: 'Swisher', cat: 'TOBACCO', sub: 'Cigars', sku: 'AW-SS', flavors: 2, variants: ['Grape', 'Diamond'], tag: 'BESTSELLER' },
-  { id: 3, name: 'Backwoods', brand: 'Backwoods', cat: 'TOBACCO', sub: 'Cigars', sku: 'AW-BW', flavors: 0, variants: [], tag: null },
-  { id: 4, name: 'Snickers', brand: 'Snickers', cat: 'CANDIES', sub: 'Chocolate', sku: 'AW-SN', flavors: 0, variants: [], tag: 'NEW' },
+  { id: 1, name: 'Kite tobacco', brand: 'Kite', cat: 'TOBACCO', sub: 'Cigarettes', sku: 'AW-KITE', variants: [], tag: 'NEW' },
+  { id: 2, name: 'Swisher Sweets', brand: 'Swisher', cat: 'TOBACCO', sub: 'Cigars', sku: 'AW-SS', variants: ['Grape', 'Diamond'], tag: 'BESTSELLER' },
+  { id: 3, name: 'Backwoods', brand: 'Backwoods', cat: 'TOBACCO', sub: 'Cigars', sku: 'AW-BW', variants: [], tag: null },
+  { id: 4, name: 'Snickers', brand: 'Snickers', cat: 'CANDIES', sub: 'Chocolate', sku: 'AW-SN', variants: [], tag: 'NEW' },
 ];
 const departments = [
   { key: 'TOBACCO', label: 'Tobacco', subs: ['Cigarettes', 'Cigars'], count: 3 },
@@ -17,13 +17,13 @@ const departments = [
 ];
 
 // App's wiring: the URL resolved against the catalog, the page keyed by department.
-function Harness({ buyer = null }) {
+function Harness({ buyer = null, list = products }) {
   const { raw } = useRoute();
-  const route = resolveRoute(raw, { departments, products });
+  const route = resolveRoute(raw, { departments, products: list });
   if (route.page !== 'category') return <p>{route.page}</p>;
   return (
     <CategoryPage key={route.category} category={route.category} sub={route.sub} query={route.query}
-                  products={products} departments={departments} profile={buyer?.profile || null} isApprovedBuyer={!!buyer}
+                  products={list} departments={departments} profile={buyer?.profile || null} isApprovedBuyer={!!buyer}
                   priceOf={buyer?.priceOf} pricesStatus={buyer?.status}
                   cart={{}} addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} />
   );
@@ -110,6 +110,21 @@ describe('CategoryPage', () => {
     expect(screen.queryByRole('option', { name: /Price/ })).toBeNull();
     expect(cardNames()).toEqual(['Kite tobacco', 'Swisher Sweets', 'Backwoods']);
     expect(screen.queryByText(/\$/)).toBeNull();
+  });
+
+  it('counts variants from the list: one variant is not "Has variants", and "Most variants" sorts by the count (AW-332, AW-233)', () => {
+    const list = [
+      ...products.slice(0, 3),
+      // A stale count from an old row is not read.
+      { id: 5, name: 'Garcia y Vega', brand: 'Garcia y Vega', cat: 'TOBACCO', sub: 'Cigars', sku: 'AW-GV', variants: ['Green'], flavors: 9, tag: null },
+      { id: 6, name: 'Black & Mild', brand: 'Black & Mild', cat: 'TOBACCO', sub: 'Cigars', sku: 'AW-BM', variants: ['Regular', 'Wine', 'Casino'], tag: null },
+    ];
+    act(() => navigate('/category/tobacco?variants=1', { replace: true }));
+    const view = render(<Harness list={list} />);
+    expect(cardNames()).toEqual(['Swisher Sweets', 'Black & Mild']);
+    act(() => navigate('/category/tobacco?sort=variants', { replace: true }));
+    view.rerender(<Harness list={list} />);
+    expect(cardNames()).toEqual(['Black & Mild', 'Swisher Sweets', 'Garcia y Vega', 'Kite tobacco', 'Backwoods']);
   });
 
   it('starts another department without the old filters (AW-228)', () => {

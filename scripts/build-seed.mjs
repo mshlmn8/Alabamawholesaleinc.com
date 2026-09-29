@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 // Regenerates supabase/seed/products.sql from src/data/products.js so a new
-// database starts with the same ids, names, brands, SKUs, variant counts,
-// variants, photos, descriptions and sell units as the storefront's static
-// rows. Run with `npm run seed`; commit the result.
+// database starts with the same ids, names, brands, SKUs, variants and their
+// axis, photos, descriptions and sell units as the storefront's static rows.
+// Run with `npm run seed`; commit the result. The rows are checked first
+// (scripts/validate-catalog.mjs); a problem stops the seed, and warnings (how
+// many rows have no sell unit) are printed.
 //
 // The seed is insert-only (AW-032): a row whose id is already in the table is
 // left exactly as it is, so re-applying the file never overwrites what an
@@ -18,13 +20,15 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
+import { validateCatalog } from './validate-catalog.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(ROOT, 'supabase/seed/products.sql');
 
 // No price: prices live only in the database (see BACKEND.md, "How pricing
-// tiers work").
-const COLUMNS = ['id', 'name', 'brand', 'cat', 'sub', 'sku', 'flavors', 'variants', 'img', 'tag', 'active', 'description', 'sell_unit'];
+// tiers work"). No flavors count: 20260928121000_variant_model.sql drops the
+// column (AW-332). unavailable_variants keeps its database default ([]).
+const COLUMNS = ['id', 'name', 'brand', 'cat', 'sub', 'sku', 'variants', 'variant_axis', 'img', 'tag', 'active', 'description', 'sell_unit'];
 
 const text = (v) => (v == null || v === '' ? 'null' : `'${String(v).replace(/'/g, "''")}'`);
 const requiredText = (v) => `'${String(v ?? '').replace(/'/g, "''")}'`;
@@ -39,8 +43,8 @@ function rowSql(p) {
     requiredText(p.cat),
     requiredText(p.sub),
     requiredText(p.sku),
-    variants.length,
     jsonb(variants),
+    text(p.variantAxis),
     text(p.img),
     text(p.tag),
     'true',
@@ -51,18 +55,9 @@ function rowSql(p) {
 }
 
 function validate(rows) {
-  const problems = [];
-  const ids = new Set();
-  const skus = new Set();
-  for (const p of rows) {
-    if (!Number.isInteger(p.id) || ids.has(p.id)) problems.push(`duplicate or invalid id ${p.id}`);
-    ids.add(p.id);
-    if (!p.sku || skus.has(p.sku)) problems.push(`duplicate or missing sku ${p.sku} (id ${p.id})`);
-    skus.add(p.sku);
-    for (const key of ['name', 'brand', 'cat', 'sub']) if (!p[key]) problems.push(`row ${p.id} is missing ${key}`);
-    if ('price' in p) problems.push(`row ${p.id} has a price; prices live only in the database (AW-003)`);
-    if (p.flavors !== (p.variants || []).length) problems.push(`row ${p.id}: flavors ${p.flavors} != variants.length ${(p.variants || []).length}`);
-  }
+  const { problems, warnings } = validateCatalog(rows);
+  // TODO(owner): What is the sell unit (each, box of N, case of N, or a size) of each product that has none yet? (AW-031)
+  for (const warning of warnings) console.warn(`build-seed: WARNING: ${warning}`);
   if (problems.length) throw new Error(`catalog is not seedable:\n  ${problems.join('\n  ')}`);
 }
 
@@ -94,10 +89,11 @@ const sql = [
   '-- Admin -> Products or a private SQL file under supabase/private/ (gitignored). A new',
   '-- row starts with a null price, which the storefront shows as "Price on request".',
   '--',
-  '-- Needs supabase/migrations/20260927120000_product_copy.sql (description, sell_unit)',
-  '-- and 20260928120000_price_boundary.sql (price nullable). Postgres checks NOT NULL',
-  '-- before ON CONFLICT, so on a database without that migration every row fails,',
-  '-- including ids that already exist.',
+  '-- Needs supabase/migrations/20260927120000_product_copy.sql (description, sell_unit),',
+  '-- 20260928120000_price_boundary.sql (price nullable) and 20260928121000_variant_model.sql',
+  '-- (variant_axis; no flavors column). Postgres checks NOT NULL before ON CONFLICT, so on a',
+  '-- database without the price-boundary migration every row fails, including ids that',
+  '-- already exist.',
   '',
   `insert into public.products (${COLUMNS.join(', ')}) values`,
   rows.map(rowSql).join(',\n'),

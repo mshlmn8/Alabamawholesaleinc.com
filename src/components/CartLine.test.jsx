@@ -71,6 +71,18 @@ describe('CartLine', () => {
     expect(h.onRemove).toHaveBeenCalledTimes(1);
   });
 
+  it('says what quantity 1 means in both layouts (AW-031)', () => {
+    const boxed = { ...item, sku: 'AW-TUBES', name: 'Tubes', sellUnit: 'box of 200' };
+    const view = renderLine({ item: boxed, layout: 'drawer', showPrice: true, ...handlers() });
+    expect(screen.getByText('AW-TUBES · Sold by the box of 200 · $12.34')).toBeTruthy();
+    view.rerender(<ul><CartLine item={boxed} layout="checkout" showPrice {...handlers()} /></ul>);
+    expect(screen.getByText('AW-TUBES · Sold by the box of 200 · $12.34 each')).toBeTruthy();
+    view.rerender(<ul><CartLine item={boxed} layout="checkout" showPrice={false} {...handlers()} /></ul>);
+    expect(screen.getByText('AW-TUBES · Sold by the box of 200')).toBeTruthy();
+    view.rerender(<ul><CartLine item={{ ...boxed, sellUnit: '' }} layout="drawer" showPrice={false} {...handlers()} /></ul>);
+    expect(screen.getByText('AW-TUBES')).toBeTruthy();
+  });
+
   it('offers another variant when only the variant went away (AW-083)', () => {
     const gone = { ...item, name: 'Kite — Menthol', unavailable: 'variant', price: null, qty: 2 };
     renderLine({ item: gone, layout: 'checkout', showPrice: true, ...handlers() });

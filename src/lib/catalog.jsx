@@ -69,10 +69,13 @@ const MAX_PAGES = 50;
 // products needs its own `grant select (<column>)` in that migration's style
 // before it can be listed here.
 // TODO(owner): What is the real wholesale list price of each of the 368 SKUs? The prices in the database are placeholders; load the real ones through Admin -> Products or a private SQL file under supabase/private/ (BACKEND.md, "Loading your list prices"). (AW-002)
-export const CATALOG_COLUMNS = 'id,name,brand,cat,sub,sku,flavors,variants,img,tag,active,description,sell_unit';
-// Every database since 20260927120000_product_copy.sql has these (the
-// Phase 1 list without price).
-export const CATALOG_BASE_COLUMNS = 'id,name,brand,cat,sub,sku,flavors,variants,img,tag,active,description,sell_unit';
+// variant_axis and unavailable_variants come with
+// 20260928121000_variant_model.sql (AW-128, AW-030), which also drops the
+// old flavors count (AW-332).
+export const CATALOG_COLUMNS = 'id,name,brand,cat,sub,sku,variants,variant_axis,unavailable_variants,img,tag,active,description,sell_unit';
+// Every database since 20260927120000_product_copy.sql has these, before and
+// after 20260928121000 (the Phase 1 list without price and flavors).
+export const CATALOG_BASE_COLUMNS = 'id,name,brand,cat,sub,sku,variants,img,tag,active,description,sell_unit';
 // What a load tries, in order, while the database answers 42703 (a column
 // it doesn't have, i.e. a missing migration). '*' works only on a database
 // from before 20260928120000, where every column is readable.
@@ -83,17 +86,23 @@ const STATIC_BY_ID = new Map(STATIC_PRODUCTS.map((p) => [Number(p.id), p]));
 // Live rows in the shape the storefront uses. Rows saved before the product
 // copy columns were filled (supabase/migrations/20260927120000_product_copy.sql
 // adds them with '' as the default) take the bundled copy's description and
-// sell unit for the same id. A price that came along (select('*') on a
-// database from before 20260928120000) is dropped: prices come only from
-// usePrices().
+// sell unit for the same id, and a row without a variant axis (a database
+// from before 20260928121000, or a row nobody set one on) takes the bundled
+// copy's. Without unavailable_variants every variant is available. A price
+// that came along (select('*') on a database from before 20260928120000) is
+// dropped: prices come only from usePrices(); so is the old flavors count
+// (AW-332: variantCount() in lines.js counts the variants).
 export function hydrateProducts(rows, bundled = STATIC_BY_ID) {
   return rows.map((row) => {
     const p = { ...row };
     delete p.price;
+    delete p.flavors;
     const local = bundled.get(Number(p.id));
     return {
       ...p,
       variants: Array.isArray(p.variants) ? p.variants : [],
+      variantAxis: p.variant_axis || p.variantAxis || local?.variantAxis || '',
+      unavailableVariants: Array.isArray(p.unavailable_variants) ? p.unavailable_variants : [],
       description: p.description || local?.description || '',
       sellUnit: p.sell_unit || p.sellUnit || local?.sellUnit || '',
       // img is a filename in src/assets/products, or a full URL (e.g. Supabase Storage)

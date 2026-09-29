@@ -9,6 +9,9 @@
 // quantity on show but has no stepper: it says so, offers "Choose variant"
 // when only its variant went away, and can be removed.
 //
+// A product with a sell unit says what quantity 1 means ("Sold by the
+// 5-pack", AW-031) after the SKU, in both layouts.
+//
 // With showPrice (an approved buyer), a line without a price says why:
 // "Loading price…" while the buyer's prices load, "Price on request" for a
 // product without one (pricesStatus is usePrices().status). The line total
@@ -26,10 +29,11 @@ export function CartLine({ item: it, layout = 'drawer', showPrice, pricesStatus 
   const noPrice = showPrice && !gone && !priced ? priceLabel(null, pricesStatus) : '';
   const choose = it.needsVariant || it.unavailable === 'variant';
   const className = ['drawer-line', checkout && 'checkout-line', gone && 'is-unavailable'].filter(Boolean).join(' ');
+  const unit = it.sellUnit ? `Sold by the ${it.sellUnit}` : '';
   let detail;
   if (gone) detail = [it.sku, `Quantity ${it.qty}`, checkout ? '' : 'No longer available'];
-  else if (checkout) detail = [it.sku, priced ? `${formatMoney(it.price)} each` : noPrice];
-  else detail = [it.sku, priced ? formatMoney(it.price) : noPrice, it.needsVariant ? 'Choose a variant' : ''];
+  else if (checkout) detail = [it.sku, unit, priced ? `${formatMoney(it.price)} each` : noPrice];
+  else detail = [it.sku, unit, priced ? formatMoney(it.price) : noPrice, it.needsVariant ? 'Choose a variant' : ''];
   return (
     <li className={className}>
       {/* A product no catalog knows has no name to take initials from. */}

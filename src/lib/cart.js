@@ -5,7 +5,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { PRODUCTS as BUNDLED_PRODUCTS } from '../data/products.js';
-import { lineKey, requiresVariantChoice, normalizeCart, resolveCartItems } from './lines.js';
+import { isVariantAvailable, lineKey, requiresVariantChoice, normalizeCart, resolveCartItems } from './lines.js';
 import { sumLines } from './pricing.js';
 import { formatMoney } from './format.js';
 import {
@@ -16,11 +16,13 @@ import {
 export const cartCount = (cart) => Object.values(cart).reduce((a, b) => a + Number(b || 0), 0);
 
 // The line key a product-page or card add goes to, or null when the product
-// is unknown, inactive, or has several variants and none was chosen.
+// is unknown, inactive, or has several variants and none was chosen, or the
+// variant is marked not available (AW-030).
 export function addableLineKey(products, productId, variant) {
   const product = products.find(p => Number(p.id) === Number(productId));
   if (!product || product.active === false) return null;
   if (requiresVariantChoice(product) && !variant) return null;
+  if (!isVariantAvailable(product, variant)) return null;
   return lineKey(product.id, variant || null);
 }
 

@@ -5,7 +5,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   MISSING_FUNCTION_CODES, PRICE_FAILED, PRICE_LOADING, PRICE_ON_REQUEST, fromCents, lineTotal, loadPrices, normalizePrices,
-  priceFor, priceLabel, sumLines, tierUnitPrice, toCents, totalLabel,
+  priceFor, priceLabel, sumLines, tierUnitPrice, toCents, totalLabel, variantPriceRange,
 } from './pricing.js';
 import * as pricing from './pricing.js';
 
@@ -215,6 +215,19 @@ describe('loadPrices', () => {
   });
 });
 
+describe('variantPriceRange (AW-030)', () => {
+  it('gives the shared price, or the lowest with "from" when variants differ', () => {
+    expect(variantPriceRange([12.25, 12.25])).toEqual({ unit: 12.25, from: false });
+    expect(variantPriceRange([13.5, 12.25, 20.1])).toEqual({ unit: 12.25, from: true });
+    // Some on request: the lowest priced one, as a "from" price.
+    expect(variantPriceRange([null, 12.25])).toEqual({ unit: 12.25, from: true });
+    expect(variantPriceRange([null, null])).toEqual({ unit: null, from: false });
+    expect(variantPriceRange([])).toEqual({ unit: null, from: false });
+    // Compared in cents, so float noise is not a difference.
+    expect(variantPriceRange([0.1 + 0.2, 0.3])).toEqual({ unit: 0.3, from: false });
+  });
+});
+
 describe('priceLabel and totalLabel', () => {
   it('shows the price, or why there is none', () => {
     expect(priceLabel(12.34, 'ready')).toBe('$12.34');
@@ -224,6 +237,8 @@ describe('priceLabel and totalLabel', () => {
     expect(priceLabel(null, 'ready')).toBe(PRICE_ON_REQUEST);
     expect(PRICE_ON_REQUEST).toBe('Price on request');
     expect(PRICE_LOADING).toBe('Loading price…');
+    expect(priceLabel(12.34, 'ready', { from: true })).toBe('From $12.34');
+    expect(priceLabel(null, 'loading', { from: true })).toBe(PRICE_LOADING);
   });
 
   it('shows the total once a line has a price, and says why otherwise', () => {
