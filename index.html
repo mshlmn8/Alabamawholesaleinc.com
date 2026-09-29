@@ -34,11 +34,12 @@
          email and age key in sync with COMPANY and STORAGE.age in
          src/data/content.js (src/boot-shell.test.js checks them). -->
     <style>
-      .boot { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px 16px; box-sizing: border-box; text-align: center; background: #fff; color: #281459; font: 600 16px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+      body { margin: 0; }
+      .boot { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem; padding: 24px 16px; box-sizing: border-box; text-align: center; background: #fff; color: #281459; font: 600 1rem/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
       .boot p { margin: 0; max-width: 36em; }
       .boot a { color: inherit; text-decoration: underline; }
-      .boot-brand { font: 800 32px/1 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: #ed5a21; }
-      .boot-brand small { display: block; margin-top: 6px; font-size: 12px; letter-spacing: 2.4px; color: #281459; }
+      .boot-brand { font: 800 2rem/1 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: #ed5a21; }
+      .boot-brand small { display: block; margin-top: 6px; font-size: 0.75rem; letter-spacing: 0.2em; color: #281459; }
       .boot-help { visibility: hidden; }
       .boot.slow .boot-help { visibility: visible; }
       html.aw-gate .boot, html.aw-gate .boot-brand small { background: #281459; color: #fff; }
