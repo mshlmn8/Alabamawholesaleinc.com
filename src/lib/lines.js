@@ -1,5 +1,15 @@
 // Cart and order lines are keyed by product plus variant. A product with more
 // than one variant cannot be added as a bare parent id.
+//
+// SKUs and variant labels that were corrected keep resolving through
+// ../data/catalogAliases.js (AW-135, AW-138, AW-126): stored cart keys, typed
+// Quick Reorder codes and saved orders match the current catalog in either
+// direction, old key to new label and new key to old label.
+
+import { SKU_ALIASES, VARIANT_ALIASES } from '../data/catalogAliases.js';
+
+// Object.hasOwn is newer than the browsers the build targets (Safari 14).
+const has = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
 
 export function variantList(product) {
   const raw = product?.variants;
@@ -68,7 +78,8 @@ export function isVariantAvailable(product, label) {
 }
 
 // A one-variant product's variant, when it tells the buyer something the name
-// doesn't: 'Green' for Garcia y Vega cigars, but not 'Tips' for RAW tips.
+// doesn't: 'Green' for Garcia y Vega cigars, but not a lone 'Tips' on a
+// product called "RAW tips" (AW-138 removed that one from the catalog).
 // Null otherwise, and for products with no variants or several (AW-233).
 export function informativeVariant(product) {
   const variants = variantList(product);
@@ -78,47 +89,138 @@ export function informativeVariant(product) {
   return label && ` ${words(product.name || '')} `.includes(` ${label} `) ? null : variants[0];
 }
 
+// A variant's SKU: the product's SKU plus the variant slug in capitals. A
+// trailing hyphen on the product's code is dropped first, so a code saved as
+// 'AW-BRILLO-BASICS-' never gives 'AW-BRILLO-BASICS--YELLOW' (AW-135).
 export function variantSku(sku, variantLabel) {
   if (!variantLabel) return sku;
   const suffix = String(variantLabel).trim().toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  return suffix ? `${sku}-${suffix}` : sku;
+  return suffix ? `${String(sku ?? '').replace(/-+$/, '')}-${suffix}` : sku;
 }
 
-export function canonicalVariant(product, slugOrLabel) {
-  if (!slugOrLabel) return null;
+// What a stored or typed variant (a slug or a label) is on this product now:
+//   { found: true, variant: label }  one of its labels, matched by slug or
+//                                    through VARIANT_ALIASES in either
+//                                    direction (an old slug on a renamed
+//                                    label, or a new slug while the product
+//                                    still has the old label)
+//   { found: true, variant: null }   a variant that was taken off a product
+//                                    that has none now (aliased to null);
+//                                    one that has a single variant gets it
+//   { found: false, variant: null }  anything else
+export function matchVariant(product, slugOrLabel) {
+  const none = { found: false, variant: null };
+  if (slugOrLabel == null || String(slugOrLabel).trim() === '') return none;
+  const labels = variantList(product);
   const needle = variantSlug(slugOrLabel);
-  return variantList(product).find((label) => variantSlug(label) === needle) || null;
+  const bySlug = (slug) => labels.find((label) => variantSlug(label) === slug) || null;
+  const direct = bySlug(needle);
+  if (direct) return { found: true, variant: direct };
+  const aliases = VARIANT_ALIASES[Number(product?.id)];
+  if (!aliases) return none;
+  if (has(aliases, needle)) {
+    const target = aliases[needle];
+    if (target == null) return labels.length <= 1 ? { found: true, variant: labels[0] ?? null } : none;
+    const renamed = bySlug(variantSlug(target));
+    if (renamed) return { found: true, variant: renamed };
+  }
+  for (const [oldSlug, target] of Object.entries(aliases)) {
+    if (target == null || variantSlug(target) !== needle) continue;
+    const before = bySlug(oldSlug);
+    if (before) return { found: true, variant: before };
+  }
+  return none;
 }
 
+// The product's current label for a slug or label, or null.
+export function canonicalVariant(product, slugOrLabel) {
+  return matchVariant(product, slugOrLabel).variant;
+}
+
+// A SKU as typed or saved, in one form for comparing: capitals, spaces as
+// hyphens, no doubled or trailing hyphens ('aw-brillo-basics--yellow' and
+// 'AW-BRILLO-BASICS-' are 'AW-BRILLO-BASICS-YELLOW' and 'AW-BRILLO-BASICS').
 export function normalizeSku(value) {
-  return String(value ?? '').trim().toUpperCase().replace(/\s+/g, '-');
+  return String(value ?? '').trim().toUpperCase().replace(/\s+/g, '-').replace(/-{2,}/g, '-').replace(/-+$/, '');
+}
+
+// SKU_ALIASES as equivalence classes, keyed by the code as it was written
+// (trailing hyphen kept, so #276's old 'AW-NOW-AND-LATER-' is not #36's
+// 'AW-NOW-AND-LATER'): code -> the other codes of the same product.
+const skuKey = (value) => String(value ?? '').trim().toUpperCase().replace(/\s+/g, '-');
+const SKU_EQUIVALENTS = (() => {
+  const classes = new Map();
+  for (const [from, to] of Object.entries(SKU_ALIASES)) {
+    const a = skuKey(from);
+    const b = skuKey(to);
+    const merged = new Set([...(classes.get(a) || [a]), ...(classes.get(b) || [b])]);
+    for (const code of merged) classes.set(code, merged);
+  }
+  const others = new Map();
+  for (const [code, members] of classes) others.set(code, [...members].filter((m) => m !== code));
+  return others;
+})();
+
+// The product's other codes (normalized): the codes it had before, or, while
+// the live catalog still has an old code, the code it has in this bundle.
+function aliasSkus(product) {
+  const own = normalizeSku(product?.sku);
+  const others = SKU_EQUIVALENTS.get(skuKey(product?.sku)) || [];
+  return [...new Set(others.map(normalizeSku))].filter((code) => code && code !== own);
+}
+
+// A code typed exactly as an old catalog code (hyphens and all) is read as the
+// code it became: 'AW-NOW-AND-LATER-' was #276's, while 'AW-NOW-AND-LATER'
+// is #36's.
+function renamedSku(value) {
+  const key = skuKey(value);
+  if (!has(SKU_ALIASES, key)) return null;
+  const [renamed] = (SKU_EQUIVALENTS.get(key) || []).filter((code) => !has(SKU_ALIASES, code));
+  return renamed || null;
+}
+
+// Variant hits for BASE-SUFFIX against each product's bases; the longest
+// base wins: AW-SS-MINI-RED belongs to AW-SS-MINI, not to AW-SS with a
+// "mini-red" variant.
+function variantHits(products, code, basesOf) {
+  const hits = [];
+  for (const product of products) {
+    for (const base of basesOf(product)) {
+      if (!base || !code.startsWith(`${base}-`)) continue;
+      // Also a variant that was taken off (AW-4PK-TISSUES-CASE is #122 now).
+      const { found, variant } = matchVariant(product, code.slice(base.length + 1));
+      if (found) hits.push({ product, variant, length: base.length });
+    }
+  }
+  const longest = Math.max(0, ...hits.map((h) => h.length));
+  const picked = new Map();
+  for (const h of hits) if (h.length === longest && !picked.has(h.product)) picked.set(h.product, { product: h.product, variant: h.variant });
+  return [...picked.values()];
 }
 
 // Resolves a typed SKU against the catalog. Exact product codes win; otherwise
 // BASE-SUFFIX is read as a variant SKU when the suffix names one of the base
-// product's variants. `choice` carries the buyer's answers when a code is
-// ambiguous: the catalog has a few duplicate SKUs, and a bare SKU of a
-// multi-variant product still needs a variant.
+// product's variants. A product's earlier or later codes (SKU_ALIASES) count
+// after its own: a code from an old order finds the product under its new
+// code, and a new code finds it while the live catalog still has the old one.
+// `choice` carries the buyer's answers when a code is ambiguous: two products
+// can share a code, and a bare SKU of a multi-variant product still needs a
+// variant.
 export function resolveSkuLine(products, sku, choice = {}) {
-  const code = normalizeSku(sku);
-  if (!code) return { status: 'empty', code };
+  if (!normalizeSku(sku)) return { status: 'empty', code: '' };
   const active = products.filter((p) => p.active !== false);
+  const typed = skuKey(sku);
+  const code = normalizeSku(renamedSku(sku) ?? sku);
 
-  let candidates = active
-    .filter((p) => normalizeSku(p.sku) === code)
+  const exact = (codesOf, value) => active
+    .filter((p) => codesOf(p).includes(value))
     .map((product) => ({ product, variant: null }));
-  if (candidates.length === 0) {
-    const hits = [];
-    for (const product of active) {
-      const base = normalizeSku(product.sku);
-      if (!code.startsWith(`${base}-`)) continue;
-      const variant = canonicalVariant(product, code.slice(base.length + 1));
-      if (variant) hits.push({ product, variant });
-    }
-    // AW-SS-MINI-RED belongs to AW-SS-MINI, not to AW-SS with a "mini-red" variant.
-    const longest = Math.max(0, ...hits.map((h) => normalizeSku(h.product.sku).length));
-    candidates = hits.filter((h) => normalizeSku(h.product.sku).length === longest);
-  }
+  // The code exactly as a product has it, stray hyphens included, first.
+  let candidates = exact((p) => [skuKey(p.sku)], typed);
+  if (candidates.length === 0) candidates = exact((p) => [normalizeSku(p.sku)], code);
+  if (candidates.length === 0) candidates = exact(aliasSkus, code);
+  if (candidates.length === 0) candidates = variantHits(active, code, (p) => [normalizeSku(p.sku)]);
+  if (candidates.length === 0) candidates = variantHits(active, code, aliasSkus);
   if (candidates.length === 0) return { status: 'not-found', code };
 
   let pick = candidates[0];
@@ -153,9 +255,12 @@ export function linesFromOrder(order, products) {
     if (product) {
       variant = canonicalVariant(product, item.variant);
       if (!variant) {
-        const base = normalizeSku(product.sku);
+        // The saved code, read against the product's code now or the one it
+        // had (AW-135): AW-BRILLO-BASICS--YELLOW, AW-HERSHEY-COOKIES-KING.
         const code = normalizeSku(item.sku);
-        if (code.startsWith(`${base}-`)) variant = canonicalVariant(product, code.slice(base.length + 1));
+        const bases = [normalizeSku(product.sku), ...aliasSkus(product)].sort((a, b) => b.length - a.length);
+        const base = bases.find((b) => b && code.startsWith(`${b}-`));
+        if (base) variant = canonicalVariant(product, code.slice(base.length + 1));
       }
     } else if (item.product_id == null) {
       const res = resolveSkuLine(products, item.sku);
@@ -174,11 +279,13 @@ export function linesFromOrder(order, products) {
 }
 
 // Re-keys stored lines to their canonical key: a bare id of a one-variant
-// product gets its variant, and variant slugs follow the catalog's labels.
-// Lines the catalog does not know (a product that was deactivated or has not
-// loaded yet, a variant that was renamed) are kept as they are, so the cart
-// can flag them instead of dropping them without a word (AW-083). Returns the
-// same object when nothing changes.
+// product gets its variant, variant slugs follow the catalog's labels, and an
+// old slug follows its alias (AW-138, AW-126): '60::fuckin-fab' becomes
+// '60::f-fab', and '329::tips' becomes '329' now that RAW tips has no
+// variants. Lines the catalog does not know (a product that was deactivated
+// or has not loaded yet, a variant that was taken out) are kept as they are,
+// so the cart can flag them instead of dropping them without a word
+// (AW-083). Returns the same object when nothing changes.
 export function normalizeCart(cart, products) {
   const source = cart && typeof cart === 'object' && !Array.isArray(cart) ? cart : {};
   const next = {};
@@ -189,10 +296,10 @@ export function normalizeCart(cart, products) {
     const { productId, variantSlug: slug } = parseLineKey(key);
     const product = products.find((p) => Number(p.id) === productId);
     const variants = variantList(product);
-    const variant = !product || product.active === false ? null
-      : slug ? canonicalVariant(product, slug) : (variants.length === 1 ? variants[0] : null);
-    const known = product && product.active !== false && (slug ? !!variant : variants.length <= 1);
-    add(known ? lineKey(product.id, variant) : key, n);
+    const listed = !!product && product.active !== false;
+    const match = !listed ? { found: false, variant: null }
+      : slug ? matchVariant(product, slug) : { found: variants.length <= 1, variant: variants.length === 1 ? variants[0] : null };
+    add(match.found ? lineKey(product.id, match.variant) : key, n);
   }
   const same = Object.keys(source).length === Object.keys(next).length
     && Object.entries(next).every(([key, qty]) => source[key] === qty);
@@ -239,9 +346,13 @@ function unavailableLine(key, productId, qty, product, variantLabel, reason) {
 //   settled  false while the live catalog is still loading: lines it may yet
 //            know are left out for now instead of being flagged
 //   known    other product lists to take an unavailable product's name from
+// Stored keys that name the same line (an old and a new key of a renamed
+// variant, AW-138, or a bare id and the id with its only variant) come back
+// as one item with their quantities added, so every lineKey is listed once
+// even before normalizeCart has merged them in storage.
 export function resolveCartItems(cart, products, { settled = true, known = [] } = {}) {
   const find = (list, id) => list.find((p) => Number(p.id) === id) || null;
-  return Object.entries(cart || {}).flatMap(([key, qty]) => {
+  const resolved = Object.entries(cart || {}).flatMap(([key, qty]) => {
     const n = Number(qty);
     if (!Number.isFinite(n) || n <= 0) return [];
     const { productId, variantSlug: slug } = parseLineKey(key);
@@ -268,8 +379,11 @@ export function resolveCartItems(cart, products, { settled = true, known = [] } 
         img: product.img,
       }];
     }
-    const variant = slug ? canonicalVariant(product, slug) : (variants.length === 1 ? variants[0] : null);
-    if (slug && !variant) {
+    // A slug the product no longer lists, unless an alias says what it
+    // became (possibly no variant at all, AW-138).
+    const match = slug ? matchVariant(product, slug) : { found: true, variant: variants.length === 1 ? variants[0] : null };
+    const variant = match.variant;
+    if (!match.found) {
       if (!settled) return [];
       const old = find(known, productId);
       return [unavailableLine(key, product.id, n, product, (old && canonicalVariant(old, slug)) || labelFromSlug(slug), 'variant')];
@@ -289,4 +403,11 @@ export function resolveCartItems(cart, products, { settled = true, known = [] } 
       img: product.img,
     }];
   });
+  const byKey = new Map();
+  for (const item of resolved) {
+    const same = byKey.get(item.lineKey);
+    if (same) same.qty += item.qty;
+    else byKey.set(item.lineKey, item);
+  }
+  return [...byKey.values()];
 }

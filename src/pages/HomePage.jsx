@@ -36,6 +36,7 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, pric
       </section>
 
       <section className="editorials" aria-label="Collections">
+        {/* TODO(owner): May the home page advertise detox and kratom products ("Disposables, detox, kratom & more.")? Awaiting the legal/compliance review of the Novelties lines; kept as it is until then (AW-001) */}
         <Link className="editorial-card cream" to={dept('NOVELTIES')}>
           <Picture className="bg" picture={EDITORIAL_BG.picture} alt="" aria-hidden="true" sizes={SIZES.editorial} />
           <span className="block-label">COLLECTION / 01</span>

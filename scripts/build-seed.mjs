@@ -3,8 +3,9 @@
 // database starts with the same ids, names, brands, SKUs, variants and their
 // axis, photos, descriptions and sell units as the storefront's static rows.
 // Run with `npm run seed`; commit the result. The rows are checked first
-// (scripts/validate-catalog.mjs); a problem stops the seed, and warnings (how
-// many rows have no sell unit) are printed.
+// (scripts/validate-catalog.mjs), with the aliases of corrected SKUs and
+// labels (src/data/catalogAliases.js); a problem stops the seed, and warnings
+// (how many rows have no sell unit) are printed.
 //
 // The seed is insert-only (AW-032): a row whose id is already in the table is
 // left exactly as it is, so re-applying the file never overwrites what an
@@ -21,6 +22,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
 import { validateCatalog } from './validate-catalog.mjs';
+import { SKU_ALIASES, VARIANT_ALIASES } from '../src/data/catalogAliases.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(ROOT, 'supabase/seed/products.sql');
@@ -55,7 +57,7 @@ function rowSql(p) {
 }
 
 function validate(rows) {
-  const { problems, warnings } = validateCatalog(rows);
+  const { problems, warnings } = validateCatalog(rows, { aliases: { skuAliases: SKU_ALIASES, variantAliases: VARIANT_ALIASES } });
   // TODO(owner): What is the sell unit (each, box of N, case of N, or a size) of each product that has none yet? (AW-031)
   for (const warning of warnings) console.warn(`build-seed: WARNING: ${warning}`);
   if (problems.length) throw new Error(`catalog is not seedable:\n  ${problems.join('\n  ')}`);

@@ -339,7 +339,7 @@ test.describe('after age confirmation', () => {
     await expect(page.getByRole('group', { name: 'Choose a size' })).toBeVisible();
     await expect(page.getByText('Pick a size to add it. Add each size you want separately.')).toBeVisible();
     await expect(page.getByText('Flavors and availability change often.', { exact: false })).toHaveCount(0);
-    // RAW tips: one variant, no chips.
+    // RAW tips: no variants (its lone "Tips" was no choice, AW-138), no chips.
     await page.goto('/product/329');
     await expect(page.locator('main h1')).toHaveText('RAW tips');
     await expect(page.locator('.variant-chips')).toHaveCount(0);

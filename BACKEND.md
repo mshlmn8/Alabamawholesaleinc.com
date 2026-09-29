@@ -276,6 +276,24 @@ Sell units are not prices, so they may also go in `src/data/products.js`
 (`sellUnit`) with an UPDATE data migration, like any other catalog
 correction.
 
+### Changing a SKU or a variant label
+
+Cart lines are stored as product id plus variant slug, buyers type SKUs into
+Quick Reorder, and Reorder maps a saved order back onto the catalog. A code
+or label that changes must keep working for all three, so every change goes
+in `src/data/catalogAliases.js` next to the `products.js` edit:
+`SKU_ALIASES` (old product code -> new code) and `VARIANT_ALIASES`
+(product id -> old variant slug -> new label, or null when the product no
+longer has a variant choice). The storefront reads each alias both ways, so
+it also works while the database still has the old values. `npm run seed`
+refuses an alias that points at a code or label the catalog doesn't have.
+Saved orders keep their own `sku`, `product_name` and `variant`.
+
+`20260928122000_catalog_corrections.sql` applied the first set (AW-135,
+AW-138, AW-126): SKUs cut at 17 characters or ending in a hyphen, misspelled
+codes, and inconsistent or abbreviated labels. A renamed label also renames
+its `product_variant_prices` row and its `unavailable_variants` entry.
+
 ## Row-level security summary
 
 - **profiles**: a user reads/updates their own row; admins read/update any.
@@ -332,4 +350,5 @@ Every migration ends with a commented reverse-SQL block for rolling it back.
 | --- | --- | --- |
 | `20260928120000_price_boundary.sql` | `products.price` becomes nullable and unreadable to guests and signed-in accounts (column privileges); approved buyers' prices come from `my_prices()`, admins' from `admin_product_prices()`; the order trigger rounds with `tier_unit_price()`; `pricing_tiers` is readable by admins and approved buyers only; `profiles.pricing_tier` is a foreign key to `pricing_tiers`. The prices already stored are not changed. | Apply before the new seed (the seed has no price column). The frontend deployed before it reads `select=*`, which is now refused: it falls back to the catalog bundled with it, with a "couldn't load the latest catalog" notice, until the new frontend is deployed, so deploy right after. The new frontend also works before this migration (when `my_prices()` is missing it reads the prices the old way). |
 | `20260928121000_variant_model.sql` | Adds `products.variant_axis` and `products.unavailable_variants` (readable by everyone), the private `product_variant_prices` table and `order_items.sell_unit`; recreates the order trigger (variant prices, unavailable variants refused with hint `variant_unavailable`, no variant kept on a product without variants, the sell unit saved with the line), `my_prices()` and `admin_product_prices()` (per-variant prices); drops `products.flavors`; fills the variant axis, the sell units the catalog states and 20 corrected descriptions on existing rows, only where nobody has set them (see "Variants, availability and sell units"). | Apply after `20260928120000` and before the new seed (the seed has `variant_axis` and no `flavors`). The frontend deployed before `20260928120000` is unaffected beyond what that migration already did. The new frontend also works before this migration: it reads the columns every database has, takes the axis and sell units from its bundled catalog, and treats every variant as available at its product's price. |
+| `20260928122000_catalog_corrections.sql` | Data only: completes 86 SKUs (cut at 17 characters, a trailing hyphen, misspelled, or #329's bare `AW-RAW`), corrects the variant labels of 33 products (spelled-out sizes, fixed spellings, #62's merged flavor split, one-item non-choices removed, #60's profanity starred out), their descriptions, #354's name and #123/#124's sell unit; renames the matching `product_variant_prices` rows and `unavailable_variants` entries. Each row changes only while it still has the value the seed wrote, so admin edits are kept (see "Changing a SKU or a variant label"). | Apply after `20260928121000` and before the new seed. The new frontend also works before it (its aliases read the old codes and labels). Deploy the new frontend right after: the frontend deployed before it doesn't know the new labels, and a quote it sends with a renamed variant is refused ("Unknown variant"). Stored carts, Quick Reorder codes and order history keep working with the new frontend. |
 

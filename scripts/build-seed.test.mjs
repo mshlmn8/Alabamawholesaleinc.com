@@ -4,7 +4,9 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { AXIS_LABELS, validateCatalog } from './validate-catalog.mjs';
+import { AXIS_LABELS, validateAliases, validateCatalog } from './validate-catalog.mjs';
+import { CATALOG } from '../src/data/products.js';
+import { SKU_ALIASES, VARIANT_ALIASES } from '../src/data/catalogAliases.js';
 
 const SEED = readFileSync(resolve(import.meta.dirname, '../supabase/seed/products.sql'), 'utf8');
 const SCRIPT = readFileSync(resolve(import.meta.dirname, 'build-seed.mjs'), 'utf8');
@@ -26,7 +28,7 @@ describe('supabase/seed/products.sql', () => {
 
   it('says it needs the price-boundary migration, and build-seed refuses rows with a price', () => {
     expect(SEED).toMatch(/20260928120000_price_boundary\.sql/);
-    expect(SCRIPT).toMatch(/validateCatalog\(rows\)/);
+    expect(SCRIPT).toMatch(/validateCatalog\(rows, \{ aliases: \{ skuAliases: SKU_ALIASES, variantAliases: VARIANT_ALIASES \} \}\)/);
     expect(validateCatalog([{ ...ROW, price: 1.1 }]).problems).toEqual([expect.stringMatching(/has a price/)]);
   });
 
@@ -76,5 +78,54 @@ describe('validateCatalog', () => {
     const { problems, warnings } = validateCatalog([ROW, { ...ROW, id: 2, sku: 'AW-T2', sellUnit: '' }, { ...ROW, id: 3, sku: 'AW-T3', sellUnit: ' ' }]);
     expect(problems).toEqual([]);
     expect(warnings).toEqual([expect.stringMatching(/^2 of 3 rows have no sellUnit/)]);
+  });
+});
+
+describe('catalog corrections (AW-135, AW-138, AW-126)', () => {
+  it('refuses SKUs with a trailing or doubled hyphen, or in lower case', () => {
+    const { problems } = validateCatalog([
+      { ...ROW, sku: 'AW-BRILLO-BASICS-' },
+      { ...ROW, id: 2, sku: 'AW-BRILLO--X' },
+      { ...ROW, id: 3, sku: 'aw-t3' },
+      { ...ROW, id: 4, sku: 'AW-RAZ-VUE-FULL-KIT' },
+    ]);
+    expect(problems).toEqual([
+      expect.stringMatching(/^row 1: sku AW-BRILLO-BASICS- is not AW-/),
+      expect.stringMatching(/^row 2: sku AW-BRILLO--X is not AW-/),
+      expect.stringMatching(/^row 3: sku aw-t3 is not AW-/),
+    ]);
+  });
+
+  it('refuses the abbreviated and misspelled labels AW-138 fixed', () => {
+    const bad = ['IPhone', 'Type C To Type C', 'Almond reg', 'Cookies king', 'Gold king', '2gal', '8lbs', '20oz'];
+    const good = ['iPhone (Lightning)', 'USB-C to USB-C', 'Almond, regular', 'Cookies, king size', 'Gold king size', '2 gal', '8 lb', '20 oz', 'Tootsie king size', 'Regular'];
+    const problems = (labels) => validateCatalog([{ ...ROW, variants: labels, variantAxis: 'Variety' }]).problems;
+    expect(problems(bad)).toHaveLength(bad.length);
+    expect(problems(good)).toEqual([]);
+  });
+
+  it('checks the aliases against the rows', () => {
+    const rows = [
+      { ...ROW, id: 1, sku: 'AW-NEW', variants: ['Red, regular', 'Blue'], variantAxis: 'Variety' },
+      { ...ROW, id: 2, sku: 'AW-OLD', variants: [] },
+      { ...ROW, id: 3, sku: 'AW-T3', variants: ['A', 'B'], variantAxis: 'Variety' },
+    ];
+    expect(validateAliases(rows, { skuAliases: { 'AW-OLDER': 'AW-NEW' }, variantAliases: { 1: { 'red-reg': 'Red, regular' }, 2: { case: null } } })).toEqual([]);
+    expect(validateAliases(rows, {
+      skuAliases: { 'AW-OLD': 'AW-NEW', 'AW-X': 'AW-GONE' },
+      variantAliases: { 1: { blue: 'Blue', 'red-reg': 'Red' }, 3: { tips: null }, 9: { a: 'A' } },
+    })).toEqual([
+      'SKU alias AW-OLD -> AW-NEW: AW-OLD is still a row\'s sku',
+      'SKU alias AW-X -> AW-GONE: no row has sku AW-GONE',
+      'row 1: variant alias "blue" is still one of its labels',
+      'row 1: variant alias "red-reg" -> "Red", which is not one of its labels',
+      'row 3: variant alias "tips" -> no variant, but the row has 2 variants',
+      'variant aliases for row 9: no such row',
+    ]);
+  });
+
+  it('src/data/products.js and its aliases pass', () => {
+    const { problems } = validateCatalog(CATALOG, { aliases: { skuAliases: SKU_ALIASES, variantAliases: VARIANT_ALIASES } });
+    expect(problems).toEqual([]);
   });
 });

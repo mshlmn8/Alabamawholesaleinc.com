@@ -41,7 +41,7 @@ do $$ begin
   end;
   -- The seed carries the axis and the stated sell units.
   assert (select variant_axis from public.products where id = 356) = 'Size', 'gas cans vary by size';
-  assert (select variant_axis from public.products where id = 329) is null, 'a one-variant product needs no axis';
+  assert (select variant_axis from public.products where id = 366) is null, 'a one-variant product needs no axis';
   assert (select sell_unit from public.products where id = 242) = 'box of 200', 'a stated sell unit is seeded';
   assert (select sell_unit from public.products where id = 16) = '', 'an unstated sell unit stays empty';
   assert (select unavailable_variants from public.products where id = 356) = '[]'::jsonb, 'every seeded variant is available';
