@@ -30,6 +30,9 @@ export function routeToHash(r) {
   return '#/';
 }
 
+// A string that identifies a route, e.g. to reset per-page state on navigation.
+export const routeKey = (route) => routeToHash(route);
+
 // The current route plus navigate(route, { scroll }). Back/Forward and edited
 // hashes update the route through popstate/hashchange.
 export function useRoute() {

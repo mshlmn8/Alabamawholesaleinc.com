@@ -8,7 +8,7 @@ import { STORAGE } from './data/content.js';
 import { useAuth } from './lib/useAuth.js';
 import { useCatalog } from './lib/useCatalog.js';
 import { useCart } from './lib/cart.js';
-import { useRoute } from './lib/router.js';
+import { useRoute, routeKey } from './lib/router.js';
 import { pageMeta, applyPageMeta } from './lib/meta.js';
 import { departmentsFor } from './lib/departments.js';
 import { AgeGate } from './components/AgeGate.jsx';
@@ -19,6 +19,7 @@ import { CartDrawer } from './components/CartDrawer.jsx';
 import { HelpDialog } from './components/HelpDialog.jsx';
 import { AuthModal } from './components/AuthModal.jsx';
 import { ModalLayer } from './components/ModalLayer.jsx';
+import { ErrorBoundary } from './components/ErrorBoundary.jsx';
 import { HomePage } from './pages/HomePage.jsx';
 import { CategoryPage } from './pages/CategoryPage.jsx';
 import { ProductPage } from './pages/ProductPage.jsx';
@@ -175,7 +176,9 @@ export default function App() {
       />
 
       <main className="container">
-        {renderRoute()}
+        <ErrorBoundary resetKey={accountLinkPage ? 'account-link' : routeKey(route)}>
+          {renderRoute()}
+        </ErrorBoundary>
       </main>
 
       <Footer goHome={goHome} goCategory={goCategory} departments={departments} onLoginClick={openSignin} onApplyClick={openSignup}

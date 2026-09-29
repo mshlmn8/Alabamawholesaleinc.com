@@ -254,6 +254,12 @@ p > .text-link { min-height: 0; }
 .page-head .eyebrow { color: var(--orange-dark); margin-bottom: 9px; }
 .page-head h1 { color: var(--purple); margin-bottom: 10px; }
 .page-head > p { max-width: 560px; color: var(--muted); font-size: var(--text-md); line-height: 1.7; }
+/* Render-error fallback (AW-183): inside the page layout, or full page with the logo. */
+.error-fallback { padding-bottom: var(--section-gap); }
+.error-fallback h1:focus { outline: none; }
+.error-fallback > p a { color: var(--purple); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.error-page { min-height: 100vh; padding: 40px 0; background: #fff; }
+.error-page-logo { display: block; height: 72px; width: auto; }
 .crumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: var(--text-xs); letter-spacing: 1.2px; text-transform: uppercase; font-weight: 700; margin-bottom: 18px; }
 .crumbs button { display: inline-flex; align-items: center; min-height: 36px; background: none; border: 0; padding: 0; color: var(--muted); }
 .crumbs button:hover { color: var(--orange-dark); }
