@@ -40,10 +40,30 @@ describe('stored carts', () => {
     ]);
   });
 
-  it('ignores non-object carts, bad quantities, unknown and inactive products', () => {
+  it('ignores non-object carts and bad quantities', () => {
     expect(normalizeCart(null, P)).toEqual({});
     expect(normalizeCart([5], P)).toEqual({});
-    expect(normalizeCart({ 14: 0, 999: 2, 40: 1, '1::purple': 1 }, P)).toEqual({});
+    expect(normalizeCart({ 14: 0, 20: -1, 1: 'x' }, P)).toEqual({});
+  });
+
+  it('keeps lines the catalog does not know instead of dropping them (AW-083)', () => {
+    expect(normalizeCart({ 999: 2, 40: 1, '1::purple': 1, 20: 1 }, P)).toEqual({ 999: 2, 40: 1, '1::purple': 1, '20::only': 1 });
+  });
+
+  it('flags lines that can no longer be ordered once the catalog is final (AW-083)', () => {
+    const cart = { 14: 1, 999: 2, 40: 1, '1::purple': 3 };
+    const known = [{ id: 999, sku: 'AW-OLD', name: 'Old product', variants: [] }];
+    const items = resolveCartItems(cart, P, { known });
+    expect(items.map((i) => [i.lineKey, i.unavailable, i.name, i.sku, i.qty])).toEqual([
+      ['14', null, 'Kite', 'AW-KITE', 1],
+      ['40', 'product', 'Off', 'AW-OFF', 1],
+      ['999', 'product', 'Old product', 'AW-OLD', 2],
+      ['1::purple', 'variant', 'Cigarillos — Purple', 'AW-SS', 3],
+    ]);
+    expect(items.filter((i) => i.unavailable).every((i) => i.listPrice === null && !i.needsVariant)).toBe(true);
+    expect(resolveCartItems({ 12345: 1 }, P)[0]).toMatchObject({ name: 'Product #12345', sku: '', unavailable: 'product' });
+    // While the live catalog loads, lines it may still know wait.
+    expect(resolveCartItems(cart, P, { settled: false }).map((i) => i.lineKey)).toEqual(['14']);
   });
 
   it('returns the same object when nothing changes', () => {

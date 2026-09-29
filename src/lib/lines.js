@@ -123,37 +123,83 @@ export function linesFromOrder(order, products) {
   return { lines, unavailable, needsVariant };
 }
 
+// Re-keys stored lines to their canonical key: a bare id of a one-variant
+// product gets its variant, and variant slugs follow the catalog's labels.
+// Lines the catalog does not know (a product that was deactivated or has not
+// loaded yet, a variant that was renamed) are kept as they are, so the cart
+// can flag them instead of dropping them without a word (AW-083). Returns the
+// same object when nothing changes.
 export function normalizeCart(cart, products) {
-  const source = cart && typeof cart === 'object' ? cart : {};
+  const source = cart && typeof cart === 'object' && !Array.isArray(cart) ? cart : {};
   const next = {};
+  const add = (key, n) => { next[key] = (next[key] || 0) + n; };
   for (const [key, qty] of Object.entries(source)) {
     const n = Number(qty);
     if (!Number.isFinite(n) || n <= 0) continue;
     const { productId, variantSlug: slug } = parseLineKey(key);
     const product = products.find((p) => Number(p.id) === productId);
-    if (!product || product.active === false) continue;
     const variants = variantList(product);
-    if (variants.length > 1 && !slug) {
-      next[key] = n;
-      continue;
-    }
-    const variant = slug ? canonicalVariant(product, slug) : (variants.length === 1 ? variants[0] : null);
-    if (slug && !variant) continue;
-    const canonical = lineKey(product.id, variant);
-    next[canonical] = (next[canonical] || 0) + n;
+    const variant = !product || product.active === false ? null
+      : slug ? canonicalVariant(product, slug) : (variants.length === 1 ? variants[0] : null);
+    const known = product && product.active !== false && (slug ? !!variant : variants.length <= 1);
+    add(known ? lineKey(product.id, variant) : key, n);
   }
   const same = Object.keys(source).length === Object.keys(next).length
     && Object.entries(next).every(([key, qty]) => source[key] === qty);
   return same ? source : next;
 }
 
-export function resolveCartItems(cart, products) {
+// 'white-grape' -> 'White grape', for a variant the catalog no longer lists.
+const labelFromSlug = (slug) => {
+  const text = String(slug).replace(/-+/g, ' ').trim();
+  return text ? text[0].toUpperCase() + text.slice(1) : '';
+};
+
+// A line the cart keeps but cannot order (AW-083): its product is no longer
+// in the catalog ('product') or its variant is not offered any more
+// ('variant'). `known` supplies the name of a product that has left the
+// live catalog (the bundled catalog still lists it).
+function unavailableLine(key, productId, qty, product, variantLabel, reason) {
+  const name = product ? product.name : `Product #${productId}`;
+  return {
+    lineKey: key,
+    productId,
+    variant: null,
+    needsVariant: false,
+    unavailable: reason,
+    name: variantLabel ? `${name} — ${variantLabel}` : name,
+    sku: product?.sku || '',
+    qty,
+    img: product?.img || null,
+    listPrice: null,
+  };
+}
+
+// The cart's lines against the catalog, in stored order. Each item is
+// { lineKey, productId, variant, needsVariant, unavailable, name, sku, qty,
+// img, listPrice }:
+//   needsVariant  a bare line of a product with several variants (a reorder
+//                 that lost its variant); the buyer chooses one
+//   unavailable   null, or 'product' / 'variant' for a line that can no
+//                 longer be ordered (AW-083); listPrice is null
+// Options:
+//   settled  false while the live catalog is still loading: lines it may yet
+//            know are left out for now instead of being flagged
+//   known    other product lists to take an unavailable product's name from
+export function resolveCartItems(cart, products, { settled = true, known = [] } = {}) {
+  const find = (list, id) => list.find((p) => Number(p.id) === id) || null;
   return Object.entries(cart || {}).flatMap(([key, qty]) => {
     const n = Number(qty);
     if (!Number.isFinite(n) || n <= 0) return [];
     const { productId, variantSlug: slug } = parseLineKey(key);
-    const product = products.find((p) => Number(p.id) === productId);
-    if (!product || product.active === false) return [];
+    const listed = find(products, productId);
+    const product = listed?.active === false ? null : listed;
+    if (!product) {
+      if (!settled) return [];
+      const old = listed || find(known, productId);
+      const label = slug ? ((old && canonicalVariant(old, slug)) || labelFromSlug(slug)) : null;
+      return [unavailableLine(key, productId, n, old, label, 'product')];
+    }
     const variants = variantList(product);
     if (variants.length > 1 && !slug) {
       return [{
@@ -161,6 +207,7 @@ export function resolveCartItems(cart, products) {
         productId: product.id,
         variant: null,
         needsVariant: true,
+        unavailable: null,
         name: product.name,
         sku: product.sku,
         qty: n,
@@ -169,12 +216,17 @@ export function resolveCartItems(cart, products) {
       }];
     }
     const variant = slug ? canonicalVariant(product, slug) : (variants.length === 1 ? variants[0] : null);
-    if (slug && !variant) return [];
+    if (slug && !variant) {
+      if (!settled) return [];
+      const old = find(known, productId);
+      return [unavailableLine(key, product.id, n, product, (old && canonicalVariant(old, slug)) || labelFromSlug(slug), 'variant')];
+    }
     return [{
       lineKey: lineKey(product.id, variant),
       productId: product.id,
       variant,
       needsVariant: false,
+      unavailable: null,
       name: variant ? `${product.name} — ${variant}` : product.name,
       sku: variantSku(product.sku, variant),
       qty: n,

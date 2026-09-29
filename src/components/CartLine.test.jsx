@@ -44,4 +44,24 @@ describe('CartLine', () => {
     fireEvent.click(choose);
     expect(h.onChoose).toHaveBeenCalledTimes(1);
   });
+
+  it('keeps an unavailable line’s quantity on show, without a stepper or price (AW-083)', () => {
+    const h = handlers();
+    const gone = { ...item, unavailable: 'product', price: null, qty: 3 };
+    renderLine({ item: gone, layout: 'drawer', showPrice: true, ...h });
+    expect(screen.getByText('AW-KITE · Quantity 3 · No longer available')).toBeTruthy();
+    expect(screen.queryByRole('group')).toBeNull();
+    expect(screen.queryByRole('link')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Kite' }));
+    expect(h.onRemove).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers another variant when only the variant went away (AW-083)', () => {
+    const gone = { ...item, name: 'Kite — Menthol', unavailable: 'variant', price: null, qty: 2 };
+    renderLine({ item: gone, layout: 'checkout', showPrice: true, ...handlers() });
+    expect(screen.getByText('AW-KITE · Quantity 2')).toBeTruthy();
+    expect(screen.getByText('No longer available. Remove it to continue.')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Choose variant' }).getAttribute('href')).toBe('/product/14');
+    expect(screen.queryByText(/\$/)).toBeNull();
+  });
 });

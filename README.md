@@ -26,7 +26,7 @@ Also on the storefront:
 - 21+ age gate over the page (the page stays crawlable underneath), remembered in `localStorage` for a set period and cleared on sign-out (`src/lib/ageGate.js`; the period is an owner question, see `docs/OWNER-TODO.md`)
 - Header search across name, brand, department, SKU, and variants
 - Category menu for the eight departments
-- Cart drawer. Cart contents persist in `localStorage`. Escape closes the cart, sign-in, and help overlays and unlocks page scrolling
+- Cart drawer. The cart is kept in `localStorage`, one per account on the device plus one for guests, and stays in step across open tabs; signing in adds the guest cart to the account's, and signing out leaves the next person an empty cart. Lines the catalog no longer has are flagged instead of dropped, and carts from earlier builds are moved over once (`src/lib/cartStorage.js`). Escape closes the cart, sign-in, and help overlays and unlocks page scrolling
 - Quote requests and orders are saved by the `submit_quote` function in Supabase, which prices the lines on the server. If saving fails, the quote page shows an error with the trade desk's phone number and email; there is no other fallback
 - Trade sign-in and account applications through Supabase Auth. One provider (`src/lib/auth.jsx`) holds the session and profile; account pages wait for them instead of flashing a signed-out view, and email links are handled by `src/lib/authLink.js` (see BACKEND.md, "Email links")
 

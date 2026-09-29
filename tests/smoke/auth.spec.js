@@ -142,3 +142,37 @@ test('signing out without a connection stays signed out after a reload, in every
   await expect(other.locator('main h1')).toHaveText('My account');
   expect(errors).toEqual([]);
 });
+
+test('signing out puts the buyer’s cart away: the next person starts empty, the buyer gets it back (AW-189)', async ({ page, context }) => {
+  const errors = trackErrors(page);
+  await seedSession(context);
+  await mockSupabase(page);
+  const cart = page.getByRole('button', { name: /^Cart, \d+ items$/ });
+  await page.goto('/product/14');
+  await expect(page.locator('.aw-account-actions')).toContainText('Test Market LLC');
+  await page.getByRole('button', { name: /^Add to (quote|order)/ }).click();
+  await expect(cart).toHaveAccessibleName('Cart, 1 items');
+  expect(JSON.parse(await page.evaluate((k) => localStorage.getItem(k), `aw-cart-v2:${UID}`))).toEqual({ 14: 1 });
+
+  const menu = page.getByRole('button', { name: 'Menu' });
+  if (await menu.isVisible()) {
+    await menu.click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Sign Out', exact: true }).click();
+  } else {
+    await page.getByRole('button', { name: 'Sign Out', exact: true }).click();
+  }
+  await expect(page.locator('.site-notice[data-notice="signed-out"]')).toContainText('Your cart is saved on this computer for your next sign-in.');
+  await page.getByRole('button', { name: /Yes, I am 21\+/ }).click();
+  await expect(cart).toHaveAccessibleName('Cart, 0 items');
+  await page.goto('/quote');
+  await expect(page.getByRole('heading', { level: 1, name: 'Your cart is empty' })).toBeVisible();
+
+  // The buyer signs in again (in another tab; this one follows).
+  const other = await context.newPage();
+  await other.goto('/robots.txt');
+  await other.evaluate(([key, value]) => localStorage.setItem(key, value), [AUTH_KEY, JSON.stringify(savedSession())]);
+  await expect(page.locator('.aw-account-actions')).toContainText('Test Market LLC');
+  await expect(cart).toHaveAccessibleName('Cart, 1 items');
+  await expect(page.getByRole('heading', { level: 1, name: 'Place your order' })).toBeVisible();
+  expect(errors).toEqual([]);
+});

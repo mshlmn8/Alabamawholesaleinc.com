@@ -105,9 +105,13 @@ export const STORAGE = {
   age: 'aw-age-verified',
   // sessionStorage: "No, exit" on the age gate, for this tab's session (AW-176).
   ageDeclined: 'aw-age-declined',
-  cart: 'aw-cart',
-  user: 'aw-trade-user',
-  welcome: 'aw-welcome-seen'
+  // localStorage: the cart, one per account on this device plus one for
+  // guests ('aw-cart-v2:guest', 'aw-cart-v2:<user id>'), and lines from an
+  // older cart that still need a variant ('aw-cart-legacy:<owner>'). See
+  // src/lib/cartStorage.js (AW-189, AW-354). The first builds' 'aw-cart',
+  // 'aw-trade-user' and 'aw-welcome-seen' are moved or removed there.
+  cart: 'aw-cart-v2',
+  cartLegacy: 'aw-cart-legacy'
 };
 
 export const FREE_DELIVERY_THRESHOLD = 1500;

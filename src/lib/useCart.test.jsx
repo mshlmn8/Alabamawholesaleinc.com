@@ -1,0 +1,135 @@
+// The useCart hook over cart storage (AW-045, AW-046, AW-189, AW-354, AW-083).
+// Fixtures carry test prices only.
+import { StrictMode } from 'react';
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useCart } from './cart.js';
+import { GUEST, OLD_CART_KEY, cartKey, legacyListKey, resetCartStoreForTests } from './cartStorage.js';
+
+const P = [
+  { id: 1, sku: 'AW-SS', name: 'Cigarillos', variants: ['Diamond', 'Red'], price: 10 },
+  { id: 14, sku: 'AW-KITE', name: 'Kite', variants: [], price: 20 },
+  { id: 20, sku: 'AW-ONE', name: 'One', variants: ['Only'], price: 5 },
+];
+const A = '11111111-2222-4333-8444-555555555555';
+const B = '99999999-8888-4777-8666-555555555555';
+
+const stored = (key) => JSON.parse(window.localStorage.getItem(key) || 'null');
+const store = (key, value) => window.localStorage.setItem(key, JSON.stringify(value));
+function otherTab(key, value) {
+  const raw = value === null ? null : JSON.stringify(value);
+  if (raw === null) window.localStorage.removeItem(key);
+  else window.localStorage.setItem(key, raw);
+  window.dispatchEvent(new StorageEvent('storage', { key, newValue: raw }));
+}
+const useTestCart = (props) => useCart({ products: P, ...props });
+
+beforeEach(() => {
+  window.localStorage.clear();
+  resetCartStoreForTests();
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+  window.localStorage.clear();
+  resetCartStoreForTests();
+});
+
+describe('useCart', () => {
+  it('adds exactly one per click, also under StrictMode, and stores it at once (AW-046)', () => {
+    const { result } = renderHook(() => useTestCart({ owner: GUEST }), { wrapper: StrictMode });
+    act(() => result.current.addLine(14, null));
+    expect(result.current.count).toBe(1);
+    expect(stored(cartKey(GUEST))).toEqual({ 14: 1 });
+  });
+
+  it('follows changes made in another tab without overwriting them (AW-046)', () => {
+    const { result } = renderHook(() => useTestCart({ owner: GUEST }));
+    act(() => result.current.addLine(14, null));
+    act(() => otherTab(cartKey(GUEST), { 14: 1, '1::red': 1 }));
+    expect(result.current.count).toBe(2);
+    act(() => result.current.addLine(20, 'Only'));
+    expect(stored(cartKey(GUEST))).toEqual({ 14: 1, '1::red': 1, '20::only': 1 });
+    // A clear in another tab empties this one too.
+    act(() => otherTab(cartKey(GUEST), null));
+    expect(result.current.count).toBe(0);
+    expect(result.current.items).toEqual([]);
+  });
+
+  it('gives each account its own cart and brings the guest cart along at sign-in (AW-189)', () => {
+    store(cartKey(A), { 14: 3 });
+    const { result, rerender } = renderHook((props) => useTestCart(props), { initialProps: { owner: GUEST } });
+    act(() => result.current.addLine(20, 'Only', 2));
+    rerender({ owner: A });
+    expect(result.current.cart).toEqual({ 14: 3, '20::only': 2 });
+    expect(window.localStorage.getItem(cartKey(GUEST))).toBeNull();
+    // Signing out: the next person sees an empty cart; A's stays stored.
+    rerender({ owner: GUEST });
+    expect(result.current.count).toBe(0);
+    expect(stored(cartKey(A))).toEqual({ 14: 3, '20::only': 2 });
+    // Another buyer signing in does not get A's lines.
+    rerender({ owner: B });
+    expect(result.current.count).toBe(0);
+    rerender({ owner: GUEST });
+    rerender({ owner: A });
+    expect(result.current.count).toBe(5);
+  });
+
+  it('starts on the account’s cart after a reload, without adding the guest cart to it', () => {
+    store(cartKey(A), { 14: 1 });
+    store(cartKey(GUEST), { 20: 1 });
+    const { result, rerender } = renderHook((props) => useTestCart(props), { initialProps: { owner: A } });
+    rerender({ owner: A });
+    expect(result.current.cart).toEqual({ 14: 1 });
+    expect(stored(cartKey(GUEST))).toEqual({ 20: 1 });
+  });
+
+  it('waits for the live catalog before flagging or re-keying lines, and never drops them (AW-083)', () => {
+    store(cartKey(GUEST), { 14: 1, 999: 2, 20: 1, '1::purple': 1 });
+    const { result, rerender } = renderHook((props) => useTestCart(props), { initialProps: { owner: GUEST, catalogSettled: false } });
+    expect(result.current.items.map((i) => i.lineKey)).toEqual(['14', '20::only']);
+    expect(stored(cartKey(GUEST))).toEqual({ 14: 1, 999: 2, 20: 1, '1::purple': 1 });
+    rerender({ owner: GUEST, catalogSettled: true });
+    expect(result.current.items.map((i) => [i.lineKey, i.unavailable])).toEqual([
+      ['14', null], ['999', 'product'], ['20::only', null], ['1::purple', 'variant'],
+    ]);
+    expect(result.current.count).toBe(5);
+    expect(stored(cartKey(GUEST))).toEqual({ 14: 1, 999: 2, '20::only': 1, '1::purple': 1 });
+    act(() => result.current.removeLines(['999', '1::purple']));
+    expect(stored(cartKey(GUEST))).toEqual({ 14: 1, '20::only': 1 });
+  });
+
+  it('prices lines for approved accounts and never prices unavailable lines', () => {
+    store(cartKey(A), { 14: 2, 999: 1 });
+    const profile = { status: 'approved', pricing_tier: 'standard' };
+    const { result } = renderHook(() => useTestCart({ owner: A, profile }));
+    expect(result.current.items.map((i) => i.price)).toEqual([20, null]);
+    expect(result.current.total).toBe(40);
+  });
+
+  it('moves an old cart and lists the lines that still need a variant (AW-354)', () => {
+    window.localStorage.setItem(OLD_CART_KEY, JSON.stringify({ 1: 3, 14: 1 }));
+    window.localStorage.setItem('aw-trade-user', '{"name":"x"}');
+    const { result } = renderHook(() => useTestCart({ owner: GUEST }));
+    expect(result.current.cart).toEqual({ 14: 1 });
+    expect(result.current.legacy).toEqual([{ productId: 1, qty: 3, name: 'Cigarillos', sku: 'AW-SS' }]);
+    expect(window.localStorage.getItem(OLD_CART_KEY)).toBeNull();
+    expect(window.localStorage.getItem('aw-trade-user')).toBeNull();
+    // Choosing a variant uses up the saved quantity.
+    act(() => result.current.addLine(1, 'Red', 2));
+    expect(result.current.legacy).toEqual([{ productId: 1, qty: 1, name: 'Cigarillos', sku: 'AW-SS' }]);
+    expect(result.current.cart).toEqual({ 14: 1, '1::red': 2 });
+    act(() => result.current.dismissLegacy());
+    expect(result.current.legacy).toEqual([]);
+    expect(window.localStorage.getItem(legacyListKey(GUEST))).toBeNull();
+  });
+
+  it('works in memory when storage is blocked (AW-045)', () => {
+    vi.spyOn(window, 'localStorage', 'get').mockImplementation(() => { throw new DOMException('The operation is insecure.', 'SecurityError'); });
+    const { result } = renderHook(() => useTestCart({ owner: GUEST }));
+    act(() => result.current.addLine(14, null));
+    act(() => result.current.addLine(14, null));
+    expect(result.current.count).toBe(2);
+    act(() => result.current.clearCart());
+    expect(result.current.count).toBe(0);
+  });
+});

@@ -4,13 +4,15 @@
 // src/lib/router.js and src/lib/routes.js. The age gate is a layer over the
 // page, not a replacement for it (AW-044); its state is in src/lib/ageGate.js.
 // The session and profile come from the AuthProvider (src/lib/auth.jsx,
-// AW-187), mounted in main.jsx.
+// AW-187), mounted in main.jsx. The cart belongs to whoever is signed in
+// (src/lib/cart.js and src/lib/cartStorage.js, AW-189).
 
 import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 
-import { useAuth } from './lib/auth.jsx';
+import { savedSessionUserId, useAuth } from './lib/auth.jsx';
 import { useCatalog } from './lib/useCatalog.js';
 import { useCart } from './lib/cart.js';
+import { cartOwner, clearGuestCart } from './lib/cartStorage.js';
 import { focusPageHeading, navigate, pathFor, resolveRoute, routeKey, useNavigationEffects, useRoute } from './lib/router.js';
 import { pageKeyFor } from './lib/routes.js';
 import { confirmAge, declineAge, endAgeConfirmationOnSignOut, reconsiderAge, useAgeGate } from './lib/ageGate.js';
@@ -57,7 +59,7 @@ export default function App() {
   const [signOutNotice, setSignOutNotice] = useState(null); // { text, pageKey }
 
   const auth = useAuth();
-  const { products } = useCatalog();
+  const { products, settled: catalogSettled } = useCatalog();
   const { session, profile, account, signOut, refreshProfile, dismissLink, isBackendConfigured } = auth;
   // Signed in whenever there is a session, also before (or without) its
   // profile, so Sign Out is always within reach (AW-089).
@@ -65,7 +67,11 @@ export default function App() {
   const isApprovedBuyer = profile?.status === 'approved';
   const isAdmin = profile?.role === 'admin';
   const departments = useMemo(() => departmentsFor(products), [products]);
-  const cart = useCart(products, profile);
+  // Each account on this device has its own cart, and guests share one
+  // (AW-189). While the saved session is being checked, it is that
+  // session's account, so a reload shows the right cart at once.
+  const [savedUserId] = useState(savedSessionUserId);
+  const cart = useCart({ products, profile, owner: cartOwner(auth, savedUserId), catalogSettled });
 
   // The URL is checked against the catalog (AW-188): unknown pages,
   // departments, lines and products render NotFound, and other spellings of
@@ -117,6 +123,9 @@ export default function App() {
   const handleLogout = async ({ scope = 'local' } = {}) => {
     if (signingOut) return;
     setSigningOut(true);
+    // The account's cart stays stored for its next sign-in; the next person
+    // here gets an empty guest cart (AW-189).
+    const cartSaved = cart.count > 0;
     let result = { ok: false, scope };
     try {
       result = await signOut({ scope });
@@ -125,9 +134,10 @@ export default function App() {
     } finally {
       setSigningOut(false);
     }
+    clearGuestCart();
     navigate(SIGNED_OUT_PAGE);
     setLoginOpen(false);
-    setSignOutNotice({ text: signOutMessage(result), pageKey: SIGNED_OUT_PAGE_KEY });
+    setSignOutNotice({ text: signOutMessage(result, { cartSaved }), pageKey: SIGNED_OUT_PAGE_KEY });
     // The next person on a shared computer is asked their age again (AW-340).
     endAgeConfirmationOnSignOut();
   };
@@ -184,7 +194,10 @@ export default function App() {
       case 'home':
         return <HomePage products={products} departments={departments} {...cardProps} onApplyClick={openSignup} />;
       case 'product':
-        return <ProductPage key={route.productId} productId={route.productId} products={products} {...cardProps} onApplyClick={openSignup} />;
+        return (
+          <ProductPage key={route.productId} productId={route.productId} products={products} {...cardProps} onApplyClick={openSignup}
+                       savedQty={cart.legacy.find(entry => entry.productId === route.productId)?.qty || 0} />
+        );
       case 'category':
         // Keyed by department (AW-228): another department starts with a fresh page.
         return (
@@ -194,7 +207,8 @@ export default function App() {
       case 'quote':
         return (
           <QuotePage items={cart.items} total={cart.total} addLine={cart.addLine} decLine={cart.decLine} removeLine={cart.removeLine}
-                     clearCart={cart.clearCart} profile={profile} account={account} signedIn={!!session} onSignIn={openSignin}
+                     removeLines={cart.removeLines} clearCart={cart.clearCart} legacy={cart.legacy} onDismissLegacy={cart.dismissLegacy}
+                     profile={profile} account={account} signedIn={!!session} onSignIn={openSignin}
                      isApprovedBuyer={isApprovedBuyer} isBackendConfigured={isBackendConfigured} />
         );
       case 'account':
@@ -255,7 +269,8 @@ export default function App() {
       <Footer departments={departments} onLoginClick={openSignin} onApplyClick={openSignup} />
 
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} items={cart.items} total={cart.total}
-                  addLine={cart.addLine} decLine={cart.decLine} removeLine={cart.removeLine}
+                  addLine={cart.addLine} decLine={cart.decLine} removeLine={cart.removeLine} removeLines={cart.removeLines}
+                  legacy={cart.legacy} onDismissLegacy={cart.dismissLegacy}
                   profile={profile} isApprovedBuyer={isApprovedBuyer} onLoginClick={openCartSignin} />
       {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} onApply={() => { setHelpOpen(false); openSignup(); }} />}
       {loginOpen && (

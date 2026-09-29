@@ -62,4 +62,26 @@ describe('QuotePage and the account', () => {
     expect(field('quote-business')).toBe('Alpha Food Mart');
     expect(screen.queryByRole('alert')).toBeNull();
   });
+
+  it('blocks the submit until lines that can no longer be ordered are removed (AW-083)', () => {
+    const removeLines = vi.fn();
+    const gone = { lineKey: '999', productId: 999, variant: null, unavailable: 'product', name: 'Old product', sku: 'AW-OLD', qty: 4, price: null };
+    render(page({ items: [...ITEMS, gone], removeLines, profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true }));
+    expect(screen.getByText('1 item in your cart is no longer available.')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toBe('Remove the items that are no longer available before you submit.');
+    expect(submit().disabled).toBe(true);
+    // Units count only what can be ordered.
+    expect(screen.getByText('2 units')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove unavailable items' }));
+    expect(removeLines).toHaveBeenCalledWith(['999']);
+  });
+
+  it('lists an old cart’s products that need a variant, also when the cart is empty (AW-354)', () => {
+    const legacy = [{ productId: 1, qty: 3, name: 'Swisher Sweets cigarillos' }];
+    const view = render(page({ items: [], legacy, onDismissLegacy: vi.fn(), profile: null, account: 'signed-out', isApprovedBuyer: false }));
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Your cart is empty');
+    expect(screen.getByRole('link', { name: 'Choose a variant for Swisher Sweets cigarillos' })).toBeTruthy();
+    view.rerender(page({ legacy, onDismissLegacy: vi.fn(), profile: null, account: 'signed-out', isApprovedBuyer: false }));
+    expect(screen.getByRole('link', { name: 'Choose a variant for Swisher Sweets cigarillos' })).toBeTruthy();
+  });
 });

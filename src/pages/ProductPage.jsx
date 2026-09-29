@@ -1,6 +1,10 @@
 // Product detail: photo, description, variant picker, price or pricing lock,
 // quantity and add, then more products from the same line. App keys this
 // page by product id, so another product starts with a fresh picker.
+//
+// savedQty is this product's quantity on the list of lines from an older
+// cart that still need a variant (AW-354): it fills in the quantity, and
+// adding a variant uses it up.
 
 import { useState } from 'react';
 import { lineKey, variantList, variantSku, requiresVariantChoice } from '../lib/lines.js';
@@ -12,8 +16,14 @@ import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 import { Picture } from '../components/Picture.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
 
-export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLine, products, onLoginClick, onApplyClick }) {
-  const [desiredQty, setDesiredQty] = useState(1);
+export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLine, products, onLoginClick, onApplyClick, savedQty = 0 }) {
+  const [desiredQty, setDesiredQty] = useState(() => savedQty || 1);
+  // What is left of the saved quantity after each add becomes the next one.
+  const [prefilledFrom, setPrefilledFrom] = useState(savedQty);
+  if (prefilledFrom !== savedQty) {
+    setPrefilledFrom(savedQty);
+    if (savedQty > 0) setDesiredQty(savedQty);
+  }
   const [chosenVariant, setChosenVariant] = useState(null);
   const [variantError, setVariantError] = useState(false);
   const p = products.find(x => Number(x.id) === Number(productId));
@@ -61,6 +71,7 @@ export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine
           )}
           {variants.length > 1 && <p className="in-cart-note">Flavors and availability change often. The trade desk confirms what is in stock.</p>}
           {choiceRequired && <p className="in-cart-note">Choose one variant. Each variant is quoted on its own line.</p>}
+          {savedQty > 0 && <p className="pd-saved">{`From your last visit: quantity ${savedQty}.${choiceRequired ? ' Choose a variant, then add it.' : ''}`}</p>}
           {variantError && <p className="form-error" role="alert">Select a variant before adding this product.</p>}
           <div className="pd-price">
             {isApprovedBuyer && price != null

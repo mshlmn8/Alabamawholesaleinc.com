@@ -84,6 +84,18 @@ export function hasStoredSession(storage = localStore()) {
   }
 }
 
+// The user id of the session supabase-js has saved in this browser, or null.
+// Read before that session is checked, so the cart can show the right
+// account's lines from the first render (AW-189); it grants nothing.
+export function savedSessionUserId(storage = localStore()) {
+  try {
+    const id = JSON.parse(storage?.getItem(AUTH_STORAGE_KEY) || 'null')?.user?.id;
+    return typeof id === 'string' && id ? id : null;
+  } catch {
+    return null;
+  }
+}
+
 // Removes the saved session and supabase-js's helper keys ('aw-auth-…').
 export function clearStoredSession(storage = localStore()) {
   if (!storage) return;

@@ -1,13 +1,20 @@
 // Slide-in cart: the lines in the cart, the estimated total (approved
-// accounts) and the checkout/quote actions.
+// accounts) and the checkout/quote actions. Above the lines: products from an
+// older cart that still need a variant (AW-354) and lines that can no longer
+// be ordered (AW-083).
 
 import { formatMoney } from '../lib/format.js';
 import { Link } from '../lib/router.js';
 import { ModalLayer } from './ModalLayer.jsx';
 import { CartLine } from './CartLine.jsx';
+import { SavedLinesNotice, UnavailableNotice } from './CartNotices.jsx';
 
-export function CartDrawer({ open, onClose, items, total, addLine, decLine, removeLine, profile, isApprovedBuyer, onLoginClick }) {
+export function CartDrawer({
+  open, onClose, items, total, addLine, decLine, removeLine, removeLines, legacy = [], onDismissLegacy,
+  profile, isApprovedBuyer, onLoginClick,
+}) {
   if (!open) return null;
+  const unavailable = items.filter(it => it.unavailable);
   // Guests are asked to sign in; signed-in buyers who are not approved yet are
   // told pricing is waiting on approval instead.
   const pendingBuyer = Boolean(profile) && !isApprovedBuyer;
@@ -20,6 +27,8 @@ export function CartDrawer({ open, onClose, items, total, addLine, decLine, remo
           <button className="dialog-close" onClick={onClose} aria-label="Close cart">×</button>
         </div>
         <div className="drawer-body">
+          <SavedLinesNotice items={legacy} onDismiss={onDismissLegacy} onChoose={onClose} />
+          <UnavailableNotice items={unavailable} onRemoveAll={removeLines} />
           {items.length === 0 && <p className="empty-note">Your cart is empty.<br />Browse the catalog and add items to build an order.</p>}
           {items.length > 0 && (
             <ul className="drawer-lines" aria-label="Items in your order">

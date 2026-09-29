@@ -5,23 +5,31 @@
 //                   work (AW-015). A link meant for the new-password page is
 //                   explained on that page instead.
 //   link-confirmed  a sign-up confirmation link signed the buyer in
-//   session-ended   the session ended without a sign-out in this tab (AW-048)
+//   session-ended   the session ended without a sign-out in this tab (AW-048);
+//                   the cart switched to the guest cart with it (AW-189)
 //   connection      a saved session could not be refreshed: Supabase is out
 //                   of reach
 //   no-profile      signed in, but the account's profile did not load
 //                   (AW-089); /account and /admin explain it in the page
 //   signed-out      the result of Sign Out (AW-336), on the page it led to
 
+// Said when a buyer signs out with items in the cart: the cart is kept for
+// the account on this device, out of sight of the next person (AW-189).
+export const CART_KEPT_NOTE = 'Your cart is saved on this computer for your next sign-in.';
+
 // What a finished sign-out says. A local sign-out that could not reach
 // Supabase still cleared this browser (AW-047); a global one may have left
-// other devices signed in (AW-337).
-export function signOutMessage({ ok, scope } = {}) {
+// other devices signed in (AW-337). cartSaved: the account's cart had items.
+export function signOutMessage({ ok, scope } = {}, { cartSaved = false } = {}) {
+  let text;
   if (scope === 'global') {
-    return ok
+    text = ok
       ? 'You’re signed out on all your devices.'
       : 'You’re signed out on this computer. We couldn’t reach the server, so your other devices may still be signed in. When you’re back online, sign in and choose “Sign out of all devices” again.';
+  } else {
+    text = ok ? 'You’re signed out.' : 'You’re signed out on this computer.';
   }
-  return ok ? 'You’re signed out.' : 'You’re signed out on this computer.';
+  return cartSaved ? `${text} ${CART_KEPT_NOTE}` : text;
 }
 
 function linkErrorNotice(linkError, act) {
@@ -66,7 +74,9 @@ export function accountNotices(state, act) {
       id: 'session-ended',
       tone: 'warn',
       title: 'Your session has ended',
-      text: 'Sign in again to see your account pricing and place orders.',
+      // The account's cart is put away with the session and comes back when
+      // the buyer signs in again (AW-189).
+      text: 'Sign in again to see your account pricing and saved cart, and to place orders.',
       actions: [{ id: 'sign-in', label: 'Sign in', onClick: act.signIn }],
       onDismiss: act.dismissSessionEnded,
     });

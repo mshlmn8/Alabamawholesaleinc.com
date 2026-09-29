@@ -6,6 +6,10 @@
 // details follow the signed-in account (src/lib/quoteForm.js), and a buyer
 // who loses ordering mid-checkout (signed out, or the session ended) is told
 // so and must sign in again or choose to send a quote request instead.
+//
+// Lines that can no longer be ordered (AW-083) are listed with a notice and
+// block the submit until they are removed; products from an older cart that
+// still need a variant (AW-354) are listed at the top.
 
 import { useState } from 'react';
 import { COMPANY, ORDER_MINIMUM } from '../data/content.js';
@@ -15,12 +19,15 @@ import { Link } from '../lib/router.js';
 import { CallOrEmail } from '../components/ContactLinks.jsx';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 import { CartLine } from '../components/CartLine.jsx';
+import { SavedLinesNotice, UnavailableNotice } from '../components/CartNotices.jsx';
 import { AccountLoading } from '../components/AccountStatus.jsx';
 import { initialQuoteForm, quoteFormForAccount } from '../lib/quoteForm.js';
 
+const UNAVAILABLE_ERROR = 'Remove the items that are no longer available before you submit.';
+
 export function QuotePage({
-  items, total, addLine, decLine, removeLine, clearCart, profile, account = profile ? 'ready' : 'signed-out',
-  signedIn = !!profile, onSignIn, isApprovedBuyer, isBackendConfigured,
+  items, total, addLine, decLine, removeLine, removeLines, clearCart, legacy = [], onDismissLegacy,
+  profile, account = profile ? 'ready' : 'signed-out', signedIn = !!profile, onSignIn, isApprovedBuyer, isBackendConfigured,
 }) {
   const [step, setStep] = useState('review');
   const [data, setData] = useState(() => initialQuoteForm(profile));
@@ -48,7 +55,9 @@ export function QuotePage({
   const [receipt, setReceipt] = useState(null);
   const [submitError, setSubmitError] = useState(null);
   const [sending, setSending] = useState(false);
-  const totalUnits = items.reduce((s, i) => s + i.qty, 0);
+  const unavailable = items.filter(it => it.unavailable);
+  const orderable = items.filter(it => !it.unavailable);
+  const totalUnits = orderable.reduce((s, i) => s + i.qty, 0);
   const needsVariant = items.some(it => it.needsVariant);
   const pricedBelowMinimum = isApprovedBuyer && Number(total) < ORDER_MINIMUM;
 
@@ -62,10 +71,14 @@ export function QuotePage({
       setSubmitError('Choose a variant for every product that has more than one.');
       return;
     }
+    if (unavailable.length) {
+      setSubmitError(UNAVAILABLE_ERROR);
+      return;
+    }
     setSending(true);
     setSubmitError(null);
     try {
-      const r = await submitOrder({ refNum, formData: data, items });
+      const r = await submitOrder({ refNum, formData: data, items: orderable });
       if (!r?.ok || !r.order?.id) throw new Error('The quote was not saved.');
       setReceipt({ ...r.order, asOrder: isApprovedBuyer });
       setStep('submitted');
@@ -83,6 +96,11 @@ export function QuotePage({
         <h1>Your cart is empty</h1>
         <p style={{ margin: '0 auto 20px' }}>Add products, then come back to checkout.</p>
         <Link className="button" to="/catalog">Browse catalog <span aria-hidden="true">↗</span></Link>
+        {legacy.length > 0 && (
+          <div className="quote-saved-lines">
+            <SavedLinesNotice items={legacy} onDismiss={onDismissLegacy} />
+          </div>
+        )}
       </section>
     );
   }
@@ -130,6 +148,8 @@ export function QuotePage({
       </div>
       <div className="checkout-grid">
         <div>
+          <SavedLinesNotice items={legacy} onDismiss={onDismissLegacy} />
+          <UnavailableNotice items={unavailable} onRemoveAll={removeLines} />
           <ul className="checkout-lines" aria-label="Items in this request">
             {items.map(it => (
               <CartLine key={it.lineKey} item={it} layout="checkout" showPrice={isApprovedBuyer}
@@ -160,12 +180,13 @@ export function QuotePage({
             <div className="full"><label htmlFor="quote-notes">Notes</label><input id="quote-notes" name="notes" value={data.notes} onChange={set('notes')} placeholder="Dock hours, pallet needs, substitutions…" autoComplete="off" /></div>
           </div>
           <div className="drawer-total checkout-total">
-            <span>{`${totalUnits} units`}</span>
+            <span>{`${totalUnits} ${totalUnits === 1 ? 'unit' : 'units'}`}</span>
             <span>{isApprovedBuyer ? formatMoney(total) : (signedIn ? 'Pricing after approval' : 'Pricing after sign-in')}</span>
           </div>
           {pricedBelowMinimum && <p className="notice" role="status">The order minimum is $500.00. You can still submit this order.</p>}
           {!isBackendConfigured && <p className="form-error" role="status"><CallOrEmail before="Quote requests can’t be saved right now. Call" after=" and the trade desk will write it up with you." /></p>}
           {needsVariant && <p className="form-error" role="alert">Choose a variant for every product that has more than one.</p>}
+          {unavailable.length > 0 && <p className="form-error" role="alert">{UNAVAILABLE_ERROR}</p>}
           {submitError && <p className="form-error" role="alert">{typeof submitError === 'string' ? submitError : <CallOrEmail before={submitError.before} after={submitError.after} />}</p>}
           {lostOrdering && (
             <div className="checkout-lost">
@@ -178,7 +199,7 @@ export function QuotePage({
               </div>
             </div>
           )}
-          <button className="button wide" type="submit" disabled={sending || !isBackendConfigured || needsVariant || lostOrdering}>
+          <button className="button wide" type="submit" disabled={sending || !isBackendConfigured || needsVariant || unavailable.length > 0 || lostOrdering}>
             <span>{sending ? 'Sending…' : (isApprovedBuyer ? 'Submit order' : 'Submit quote request')}</span> <span aria-hidden="true">↗</span></button>
           <p className="fine">The minimum order is $500.00. Orders over $1,500 qualify for free delivery on a delivery route in AL, MS &amp; GA. Will-call is pickup at the Birmingham warehouse during business hours. Tobacco products supplied to licensed retailers only — 21+.</p>
         </form>
