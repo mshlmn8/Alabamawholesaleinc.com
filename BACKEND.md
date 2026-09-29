@@ -30,6 +30,7 @@ supabase/migrations/20260928120000_price_boundary.sql
 supabase/migrations/20260928121000_variant_model.sql
 supabase/migrations/20260928122000_catalog_corrections.sql
 supabase/migrations/20260928123000_submit_quote_v2.sql
+supabase/migrations/20260928124000_profile_and_document_boundaries.sql
 supabase/seed/products.sql
 ```
 
@@ -72,13 +73,29 @@ variables. Applicants may upload a state retail tobacco license and a resale
 certificate from the application form once they have a session, or later from
 `/apply` while the account is pending. The license number and resale
 certificate number stay required. Proof can also be emailed to the trade desk.
+Once the account is approved the proof is locked
+(`20260928124000_profile_and_document_boundaries.sql`): the applicant can
+still see it, admins still open it from Admin → Accounts, but nobody can
+replace or delete it through the site; a renewed license is emailed to the
+trade desk for now.
 
 A trigger on `auth.users` auto-creates a `profiles` row on signup. **Every
 signup starts as `customer` / `pending`.** Public signup never creates an
-administrator. After the owner has confirmed their email, open
-`supabase/seed/provision_owner.sql`, replace the placeholder email, and run
-that statement in the SQL editor. Later accounts are approved from the
-Admin → Accounts tab.
+administrator. The trigger copies the application (including the store
+address and when the Trade terms, Privacy policy and 21+ boxes were ticked,
+with the terms version) to the profile, then removes everything but the name
+and business from the account's auth metadata, which is sent with every
+access token and editable by the user (AW-348).
+
+**Provisioning the owner.** After the owner has signed up **and confirmed
+their email**, open `supabase/seed/provision_owner.sql`, replace the
+placeholder with that email, and run the file in the SQL editor. It finds the
+owner by the confirmed sign-in email in `auth.users` (upper or lower case
+doesn't matter), never by the email stored on the profile, and then lists
+every admin account: check that the list shows only the owner and staff you
+promoted on purpose. Only an **approved** admin has admin rights; setting an
+admin's status to suspended removes them at once. Later accounts are approved
+from the Admin → Accounts tab, which records who approved them and when.
 
 ## 3. Wire the env vars locally
 
@@ -161,12 +178,16 @@ changed price.
    (You can disable email confirmation in Supabase → Authentication →
    Providers → Email if you'd rather skip it for internal testing.)
 3. Click the confirmation link, then sign in.
-4. Run `supabase/seed/provision_owner.sql` for that email. You should then see
+4. Run `supabase/seed/provision_owner.sql` for that email (it has to be
+   confirmed first), and check the admin list it prints. You should then see
    an **Admin** link in the header.
 5. Open `/admin`. Three tabs:
    - **Orders** — every quote submitted via the storefront, with status dropdown.
-   - **Accounts** — every trade account; flip `pending → approved`, change
-     pricing tier (the `pricing_tiers` rows), or grant admin role.
+   - **Accounts** — every trade account; flip `pending → approved` (the row
+     then shows who approved it and when), change pricing tier (the
+     `pricing_tiers` rows), grant the admin role (which also approves the
+     account), and open each account's license documents. Your own status and
+     role can't be changed there.
    - **Products** — edit name/price/tag/active flag for any of the 368 SKUs.
 
 ## How pricing tiers work
@@ -347,9 +368,24 @@ checklist).
 
 ## Row-level security summary
 
-- **profiles**: a user reads/updates their own row; admins read/update any.
-  Users cannot self-promote (the policy explicitly blocks changing role,
-  status, or pricing_tier in self-updates).
+- **Admins**: `is_admin()` is true only for a profile with role `admin`
+  **and** status `approved`, so a suspended or pending admin has no admin
+  rights anywhere below.
+- **profiles**: a user reads their own row; admins read any. A signed-in
+  customer may change only their name, phone and store address (street,
+  city, ZIP); anything else (email, business, state, license, EIN, resale
+  certificate, tier, status, role, consent and approval records) is refused
+  with `insufficient_privilege` by the `profiles_guard` trigger. Admins
+  update any row, except their own role and status, and can't edit the
+  consent (`terms_*`, `age_confirmed_at`) or approval (`approved_at`,
+  `approved_by`) records, which only the signup and approval triggers write.
+  `profiles.email` always follows the sign-in email (a trigger on
+  `auth.users` copies changes). The SQL editor is not limited.
+  `verification_note` is readable by the account holder.
+- **profile_status_log**: one row per status change (who, when, from, to),
+  written by a trigger; admins read it, nobody can add, change or delete rows.
+- **profile_admin_notes**: internal notes about an account; admins only (the
+  account holder can't read them).
 - **products**: anyone reads `active = true` rows, and every column except
   `price` (column privileges; `select=*` is refused). Admins read and write
   every row; they read list prices through `admin_product_prices()` and set
@@ -368,12 +404,17 @@ checklist).
   policies, privileges revoked); only `submit_quote` uses it.
 - **pricing_tiers**: readable by admins and approved buyers only;
   admin-writable. `profiles.pricing_tier` must name one of its rows.
-- **profile_documents**: a user reads, inserts, and replaces only their own
-  rows (one tobacco license and one resale certificate). Admins read every row.
+- **profile_documents**: a user reads their own rows (one tobacco license
+  and one resale certificate); admins read every row. A user inserts,
+  replaces or deletes their rows only while their account is **pending**, and
+  a row's `storage_path` must be `{their id}/{its document type}/{file}`.
 - **storage `application-documents`**: private. Object paths are
-  `{user id}/{document type}/{filename}`. A user can upload, read, replace,
-  and delete only inside their own folder. Admins can read every object, which
-  is what the Accounts tab uses to mint a signed View link.
+  `{user id}/{document type}/{filename}`, where the type folder is
+  `tobacco_license` or `resale_certificate`. A user reads their own folder;
+  while their account is pending they can upload and replace files at that
+  layout only, at most 10 files each, and delete files in their folder. After
+  approval their files are read-only. Admins can read every object, which is
+  what the Accounts tab uses to mint a signed View link.
 
 ## Resetting
 
@@ -406,6 +447,8 @@ Every migration ends with a commented reverse-SQL block for rolling it back.
 | `20260928121000_variant_model.sql` | Adds `products.variant_axis` and `products.unavailable_variants` (readable by everyone), the private `product_variant_prices` table and `order_items.sell_unit`; recreates the order trigger (variant prices, unavailable variants refused with hint `variant_unavailable`, no variant kept on a product without variants, the sell unit saved with the line), `my_prices()` and `admin_product_prices()` (per-variant prices); drops `products.flavors`; fills the variant axis, the sell units the catalog states and 20 corrected descriptions on existing rows, only where nobody has set them (see "Variants, availability and sell units"). | Apply after `20260928120000` and before the new seed (the seed has `variant_axis` and no `flavors`). The frontend deployed before `20260928120000` is unaffected beyond what that migration already did. The new frontend also works before this migration: it reads the columns every database has, takes the axis and sell units from its bundled catalog, and treats every variant as available at its product's price. |
 | `20260928122000_catalog_corrections.sql` | Data only: completes 86 SKUs (cut at 17 characters, a trailing hyphen, misspelled, or #329's bare `AW-RAW`), corrects the variant labels of 33 products (spelled-out sizes, fixed spellings, #62's merged flavor split, one-item non-choices removed, #60's profanity starred out), their descriptions, #354's name and #123/#124's sell unit; renames the matching `product_variant_prices` rows and `unavailable_variants` entries. Each row changes only while it still has the value the seed wrote, so admin edits are kept (see "Changing a SKU or a variant label"). | Apply after `20260928121000` and before the new seed. The new frontend also works before it (its aliases read the old codes and labels). Deploy the new frontend right after: the frontend deployed before it doesn't know the new labels, and a quote it sends with a renamed variant is refused ("Unknown variant"). Stored carts, Quick Reorder codes and order history keep working with the new frontend. |
 | `20260928123000_submit_quote_v2.sql` | Recreates `submit_quote` without `p_ref_num` and with three optional license arguments: the server makes the reference (`ALW-Q-`/`ALW-O-` and 10 hex digits), checks lengths, email, ZIP, state, route state and date, throttles (new private table `quote_throttle`), refuses suspended accounts, needs an address only for delivery, and stores the license details (new `orders.license_no`, `resale_cert_no`, `license_attested_at`); every refusal has a typed hint. Keeps the 13-argument signature as a wrapper that ignores `p_ref_num` (see "Quotes and orders"). | Apply after `20260928122000`, before the new frontend. The frontend deployed before it keeps working through the wrapper (its reference is ignored, and a will-call quote sends the address it always required). The new frontend also works before it: when the new signature is missing it calls the old one with a long random reference, and sends the warehouse address for will-call. **Later step:** once the new frontend has been live for a few days, drop the wrapper (below). |
+
+| `20260928124000_profile_and_document_boundaries.sql` | `is_admin()` requires an approved admin; the `profiles_guard` trigger limits what each caller may change on a profile (customers: name, phone, store address; admins: not their own role or status, not the consent or approval records); `profiles.email` follows the sign-in email (a trigger on `auth.users`, and existing rows are realigned); new profile columns for the store address, consent record (`terms_version`, `terms_accepted_at`, `age_confirmed_at`), approval (`approved_at`, `approved_by`) and `verification_note`; new tables `profile_status_log` (status history) and `profile_admin_notes` (internal notes, admins only); the signup trigger copies the store address and consent, then strips the EIN, license, resale certificate, phone, volume, address and consent keys from auth metadata, and the same keys are moved to the profiles and stripped for existing accounts; license documents and files are locked after approval, must sit at `{user id}/{type}/{file}`, and a user may keep at most 10 files. | Apply after `20260928123000`, before the new frontend. Before running it, check with `select id, email, status from public.profiles where role = 'admin';` that every real admin is `approved`: the others lose admin rights. The frontend deployed before it keeps working (its admins must be approved; a customer's profile edits aren't part of it). The new frontend also works before it: the old database keeps the store address and consent in auth metadata (this migration moves them to the profiles), the new columns are simply absent, and document paths are unchanged. Then run `supabase/seed/provision_owner.sql`'s admin list once. |
 
 ### Later steps
 

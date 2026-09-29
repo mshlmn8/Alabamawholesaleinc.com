@@ -37,6 +37,9 @@ const EMPTY_SIGNUP = {
   email: '', password: '', name: '', business: '', phone: '',
   ein: '', license_no: '', resale_cert_no: '',
   business_type: 'Convenience Store', state: 'AL', expected_volume: '$5K — $15K',
+  // The store's address (AW-092) and the two required boxes (AW-019).
+  store_street: '', store_city: '', store_zip: '',
+  terms_accepted: false, age_confirmed: false,
 };
 
 function Field({ id, label, hint, full = false, children }) {
@@ -110,6 +113,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
 
   const setS = (k) => (e) => setSignin({ ...signin, [k]: e.target.value });
   const setU = (k) => (e) => setSignup({ ...signup, [k]: e.target.value });
+  const setUChecked = (k) => (e) => setSignup({ ...signup, [k]: e.target.checked });
   const switchMode = (next) => { setError(null); setMode(next); };
 
   const handleSignin = async (e) => {
@@ -331,6 +335,15 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
               <Field id="aw-su-state" label="Store state">
                 <select id="aw-su-state" name="state" value={signup.state} onChange={setU('state')} autoComplete="address-level1">{STATES.map(o => <option key={o}>{o}</option>)}</select>
               </Field>
+              <Field id="aw-su-street" label="Store street address" full>
+                <input id="aw-su-street" name="store_street" value={signup.store_street} onChange={setU('store_street')} required maxLength={200} autoComplete="address-line1" />
+              </Field>
+              <Field id="aw-su-city" label="City">
+                <input id="aw-su-city" name="store_city" value={signup.store_city} onChange={setU('store_city')} required maxLength={100} autoComplete="address-level2" />
+              </Field>
+              <Field id="aw-su-zip" label="ZIP">
+                <input id="aw-su-zip" name="store_zip" value={signup.store_zip} onChange={setU('store_zip')} required maxLength={10} inputMode="numeric" pattern="[0-9]{5}(-[0-9]{4})?" title="A 5-digit ZIP code, or ZIP+4" autoComplete="postal-code" />
+              </Field>
               <Field id="aw-su-license" label="State retail tobacco license #" hint="From the state where the store is licensed.">
                 <input id="aw-su-license" name="license_no" value={signup.license_no} onChange={setU('license_no')} required autoComplete="off" aria-describedby="aw-su-license-hint" />
               </Field>
@@ -346,6 +359,15 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
               <Field id="aw-su-volume" label="Expected monthly volume" full>
                 <select id="aw-su-volume" name="expected_volume" value={signup.expected_volume} onChange={setU('expected_volume')} autoComplete="off">{VOLUMES.map(o => <option key={o}>{o}</option>)}</select>
               </Field>
+              {/* Recorded with the date and the terms version (AW-019). The
+                  policies open in a new tab, so the answers typed here stay.
+                  TODO(owner): approve the wording of both boxes (AW-019). */}
+              <div className="full quote-attest">
+                <label htmlFor="aw-su-terms"><input id="aw-su-terms" name="terms_accepted" type="checkbox" checked={signup.terms_accepted} onChange={setUChecked('terms_accepted')} required /> <span>I agree to the <Link to={{ page: 'terms' }} target="_blank" rel="noopener">Trade terms</Link> and <Link to={{ page: 'privacy' }} target="_blank" rel="noopener">Privacy policy</Link></span></label>
+              </div>
+              <div className="full quote-attest">
+                <label htmlFor="aw-su-age"><input id="aw-su-age" name="age_confirmed" type="checkbox" checked={signup.age_confirmed} onChange={setUChecked('age_confirmed')} required /> <span>I am 21 or older</span></label>
+              </div>
             </div>
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
@@ -418,7 +440,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
           </div>
         )}
 
-        <p className="fine">21+ licensed businesses only. By applying you confirm all store staff handling tobacco products meet federal and state age requirements.</p>
+        {mode === 'signup' && <p className="fine">21+ licensed businesses only. By applying you confirm all store staff handling tobacco products meet federal and state age requirements.</p>}
       </div>
     </div>
   );

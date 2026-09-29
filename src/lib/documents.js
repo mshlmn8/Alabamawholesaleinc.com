@@ -1,7 +1,10 @@
 // Optional trade-application proof: state retail tobacco license and resale
 // certificate. Numbers stay required on the profile; these files are not.
-// Uploads run only when a session exists — the storage path is the user's
-// own folder, which the storage policy checks against auth.uid().
+// Uploads run only when a session exists. The storage path is
+// {user id}/{document type}/{file}; since 20260928124000 the storage and
+// profile_documents policies require exactly that layout, allow changes only
+// while the account is pending (the proof is locked once approved, AW-197),
+// and cap a user at 10 files (AW-207).
 
 import { supabase } from './supabase.js';
 import { describeError } from './errors.js';
@@ -36,7 +39,21 @@ const MIME_FOR_EXT = {
   heif: 'image/heif',
 };
 
+// What an applicant sees when the database refuses a document change: the
+// account is no longer pending (AW-197).
+export const DOCUMENTS_LOCKED_MESSAGE = 'Documents can’t be changed after approval. Email them to the trade desk.';
+
+// A refusal by row-level security: 42501 from PostgREST, or a 403 / RLS
+// message from Storage.
+export function isDocumentPermissionError(err) {
+  if (!err) return false;
+  const code = String(err.code ?? '');
+  const status = String(err.statusCode ?? err.status ?? '');
+  return code === '42501' || status === '403' || /row-level security/i.test(String(err.message || ''));
+}
+
 export function documentErrorMessage(err) {
+  if (isDocumentPermissionError(err)) return DOCUMENTS_LOCKED_MESSAGE;
   return describeError(err, 'Document upload', 'That file did not upload. You can try again, or send proof later.');
 }
 
@@ -130,8 +147,12 @@ export async function uploadProfileDocument(session, documentType, file) {
     .upsert(row, { onConflict: 'profile_id,document_type' });
   if (rowError) throw rowError;
 
+  // The replaced file. If it can't be removed, the new one is still saved;
+  // cleanup: 'failed' says an old file was left behind (it counts towards
+  // the 10-file limit until removed).
   if (existing?.storage_path && existing.storage_path !== path) {
-    await supabase.storage.from(DOCUMENT_BUCKET).remove([existing.storage_path]);
+    const { error: removeError } = await supabase.storage.from(DOCUMENT_BUCKET).remove([existing.storage_path]);
+    if (removeError) return { attempted: true, ...row, cleanup: 'failed' };
   }
 
   return { attempted: true, ...row };

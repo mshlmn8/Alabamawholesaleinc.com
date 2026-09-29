@@ -122,3 +122,12 @@ export const STORAGE = {
 
 export const FREE_DELIVERY_THRESHOLD = 1500;
 export const ORDER_MINIMUM = 500;
+
+// The date the Trade terms and Privacy policy last changed, as the policy
+// pages print it, and the version a trade application records acceptance of
+// (profiles.terms_version, AW-019). Change both together when either policy
+// changes; content.test.js checks they name the same month.
+// TODO(owner): approve the Trade terms and Privacy policy version the
+// application records acceptance of (AW-019).
+export const POLICIES_UPDATED = 'September 2026';
+export const TERMS_VERSION = '2026-09';

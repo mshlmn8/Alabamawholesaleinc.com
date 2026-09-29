@@ -44,6 +44,8 @@ export function ApplyPage({ profile, account = profile ? 'ready' : 'signed-out',
               ))}
             </ul>
             <p className="checklist-note">Missing one of these? <CallOrEmail before="Call" after=" and a trade rep can talk you through it." /></p>
+            {/* The form's required agreement box links the same pages (AW-019). */}
+            <p className="checklist-note">The application asks you to agree to the <Link to="/terms">Trade terms</Link> and the <Link to="/privacy">Privacy policy</Link>.</p>
             <div className="dialog-actions">
               {isBackendConfigured
                 ? <button className="button" type="button" onClick={onApplyClick}>Start application <span aria-hidden="true">↗</span></button>

@@ -39,6 +39,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase as defaultClient, AUTH_STORAGE_KEY } from './supabase.js';
 import { RESET_PASSWORD_PATH } from './authLink.js';
+import { TERMS_VERSION } from '../data/content.js';
 
 const UNAVAILABLE = 'Account access is temporarily unavailable. Please call or email the trade desk.';
 
@@ -330,13 +331,24 @@ export function AuthProvider({ client = defaultClient, link = null, children }) 
     };
   }, [client, userId, profileStatus, refreshProfile]);
 
-  const signUp = useCallback(async ({ email, password, name, business, phone, license_no, ein, resale_cert_no, business_type, state, expected_volume }) => {
+  // The application goes to Supabase as signup metadata; the signup trigger
+  // copies it to the profile and then removes all but name and business from
+  // the metadata (20260928124000, AW-348). Consent is recorded only when the
+  // form's boxes were ticked, with the terms version (AW-019).
+  const signUp = useCallback(async ({
+    email, password, name, business, phone, license_no, ein, resale_cert_no, business_type, state, expected_volume,
+    store_street, store_city, store_zip, terms_accepted = false, age_confirmed = false,
+  }) => {
     if (!client) throw new Error(UNAVAILABLE);
     const { data, error } = await client.auth.signUp({
       email,
       password,
       options: {
-        data: { name, business, phone, license_no, ein, resale_cert_no, business_type, state, expected_volume },
+        data: {
+          name, business, phone, license_no, ein, resale_cert_no, business_type, state, expected_volume,
+          store_street, store_city, store_zip,
+          terms_version: TERMS_VERSION, terms_accepted: terms_accepted === true, age_confirmed: age_confirmed === true,
+        },
       },
     });
     if (error) throw error;

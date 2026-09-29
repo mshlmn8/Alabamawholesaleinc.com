@@ -53,15 +53,21 @@ export function AdminPage({
       </section>
     );
   }
-  if (!profile || profile.role !== 'admin') {
+  // Only an approved admin gets the dashboard, as only an approved admin
+  // passes is_admin() in the database (AW-352). A suspended or pending admin
+  // is told their access is on hold.
+  if (!profile || profile.role !== 'admin' || profile.status !== 'approved') {
+    const held = profile?.role === 'admin';
     return (
       <section className="page-head">
         <Breadcrumbs items={[HOME_CRUMB, { label: 'Admin' }]} />
         <p className="eyebrow">TRADE DESK</p>
         <h1>{profile ? 'This page is for the trade desk' : 'Sign in to continue'}</h1>
-        <p>{profile
-          ? 'The admin area is only open to Alabama Wholesale staff accounts. Your account doesn’t have access.'
-          : 'The admin area is only open to Alabama Wholesale staff accounts. Sign in with a staff account to continue.'}</p>
+        <p>{held
+          ? 'Your admin access is on hold. Contact the owner.'
+          : profile
+            ? 'The admin area is only open to Alabama Wholesale staff accounts. Your account doesn’t have access.'
+            : 'The admin area is only open to Alabama Wholesale staff accounts. Sign in with a staff account to continue.'}</p>
         <div className="dialog-actions compact-actions">
           {profile
             ? <Link className="button" to="/account">My account <span aria-hidden="true">↗</span></Link>
@@ -97,7 +103,7 @@ export function AdminPage({
       </div>
 
       {tab === 'orders' && <OrdersTab />}
-      {tab === 'accounts' && <AccountsTab />}
+      {tab === 'accounts' && <AccountsTab currentAdminId={profile.id} />}
       {tab === 'products' && <ProductsTab onCatalogChange={onCatalogChange} />}
     </section>
   );
@@ -180,11 +186,27 @@ function OrdersTab() {
   );
 }
 
-function AccountsTab() {
+// Who approved an account, and when (AW-197): the approver's name from the
+// accounts already loaded. Accounts approved before 20260928124000, or on a
+// database without it, have no approved_at, and show nothing.
+export function approvalLine(p, profiles) {
+  if (!p.approved_at) return null;
+  const at = new Date(p.approved_at);
+  if (Number.isNaN(at.getTime())) return null;
+  const when = at.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const approver = p.approved_by ? profiles.find(x => x.id === p.approved_by) : null;
+  const by = approver ? (approver.name || approver.email) : null;
+  return by ? `Approved ${when} by ${by}` : `Approved ${when}`;
+}
+
+// currentAdminId: the signed-in admin, whose own status and role can't be
+// changed here (AW-352); the database refuses it too (profiles_guard).
+function AccountsTab({ currentAdminId }) {
   const [profiles, setProfiles] = useState(null);
   const [documents, setDocuments] = useState([]);
   const [signedUrls, setSignedUrls] = useState({});
   const [viewError, setViewError] = useState(null);
+  const [updateError, setUpdateError] = useState(null);
   const [tiers, setTiers] = useState(FALLBACK_TIERS);
   const reload = () => {
     supabase.from('profiles').select('*').order('created_at', { ascending: false }).then(({ data }) => setProfiles(data || []));
@@ -229,8 +251,19 @@ function AccountsTab() {
     }
   };
 
-  const updateProfile = async (id, patch) => {
-    await supabase.from('profiles').update(patch).eq('id', id);
+  // A refused or failed change is shown, not ignored: since 20260928124000
+  // the database refuses some changes with 42501. An update that reaches no
+  // row (RLS) returns no error, so the changed row is read back.
+  const updateProfile = async (row, patch) => {
+    setUpdateError(null);
+    const who = row.business || row.name || row.email;
+    if (row.id === currentAdminId && ('status' in patch || 'role' in patch)) {
+      setUpdateError('You can’t change your own status or role.');
+      return;
+    }
+    const { data, error } = await supabase.from('profiles').update(patch).eq('id', row.id).select('id');
+    if (error?.code === '42501') setUpdateError(`That change to ${who} isn’t allowed.`);
+    else if (error || !data?.length) setUpdateError(`The change to ${who} wasn’t saved${error?.message ? ` (${error.message})` : ''}. Try again.`);
     reload();
   };
 
@@ -239,6 +272,7 @@ function AccountsTab() {
   return (
     <div className="table-scroll">
       {viewError && <p className="form-error" role="alert">{viewError}</p>}
+      {updateError && <p className="form-error" role="alert">{updateError}</p>}
       <table className="aw-table">
         <thead>
           <tr>
@@ -254,56 +288,60 @@ function AccountsTab() {
               <td>{p.name}</td>
               <td className="muted">{p.email}</td>
               <td>
-                <select aria-label={`Status for ${p.business || p.name}`} value={p.status} onChange={e => updateProfile(p.id, { status: e.target.value })}>
+                <select aria-label={`Status for ${p.business || p.name}`} value={p.status} disabled={p.id === currentAdminId} aria-describedby={p.id === currentAdminId ? 'admin-own-row' : undefined} onChange={e => updateProfile(p, { status: e.target.value })}>
                   <option value="pending">pending</option>
                   <option value="approved">approved</option>
                   <option value="suspended">suspended</option>
                 </select>
+                {p.id === currentAdminId && <small className="field-hint" id="admin-own-row">Your own status and role can’t be changed here.</small>}
+                {p.approved_at && <small className="field-hint">{approvalLine(p, profiles)}</small>}
               </td>
               <td>
-                <select aria-label={`Tier for ${p.business || p.name}`} value={p.pricing_tier} onChange={e => updateProfile(p.id, { pricing_tier: e.target.value })}>
+                <select aria-label={`Tier for ${p.business || p.name}`} value={p.pricing_tier} onChange={e => updateProfile(p, { pricing_tier: e.target.value })}>
                   {(tiers.includes(p.pricing_tier) ? tiers : [...tiers, p.pricing_tier]).map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </td>
               <td>
-                <select aria-label={`Role for ${p.business || p.name}`} value={p.role} onChange={e => updateProfile(p.id, { role: e.target.value })}>
+                {/* An admin must be an approved account (is_admin()), so
+                    making a pending or suspended account an admin approves it. */}
+                <select aria-label={`Role for ${p.business || p.name}`} value={p.role} disabled={p.id === currentAdminId} aria-describedby={p.id === currentAdminId ? 'admin-own-row' : undefined}
+                  onChange={e => updateProfile(p, e.target.value === 'admin' && p.status !== 'approved' ? { role: 'admin', status: 'approved' } : { role: e.target.value })}>
                   <option value="customer">customer</option>
                   <option value="admin">admin</option>
                 </select>
               </td>
               <td>
-                {p.status === 'pending' ? (
-                  <ul className="doc-admin">
-                    {DOCUMENT_TYPES.map(doc => {
-                      const row = documents.find(item => item.profile_id === p.id && item.document_type === doc.id);
-                      return (
-                        <li key={doc.id}>
-                          <span>{doc.label}</span>
-                          {row ? (
-                            <>
-                              <span>On file</span>
-                              {signedUrls[`${p.id}:${doc.id}`] ? (
-                                <a href={signedUrls[`${p.id}:${doc.id}`]} target="_blank" rel="noopener noreferrer">
-                                  View<span className="sr-only">{` ${doc.label} for ${p.business || p.name}`}</span>
-                                </a>
-                              ) : (
-                                <button type="button" className="text-link" onClick={() => viewDocument(row, p, doc.label)}>
-                                  View<span className="sr-only">{` ${doc.label} for ${p.business || p.name}`}</span>
-                                </button>
-                              )}
-                            </>
-                          ) : (
-                            <span className="muted">Not on file</span>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : '—'}
+                {/* Every status: the proof stays on file after approval (AW-197). */}
+                <ul className="doc-admin">
+                  {DOCUMENT_TYPES.map(doc => {
+                    const row = documents.find(item => item.profile_id === p.id && item.document_type === doc.id);
+                    return (
+                      <li key={doc.id}>
+                        <span>{doc.label}</span>
+                        {row ? (
+                          <>
+                            <span>On file</span>
+                            {signedUrls[`${p.id}:${doc.id}`] ? (
+                              <a href={signedUrls[`${p.id}:${doc.id}`]} target="_blank" rel="noopener noreferrer">
+                                View<span className="sr-only">{` ${doc.label} for ${p.business || p.name}`}</span>
+                              </a>
+                            ) : (
+                              <button type="button" className="text-link" onClick={() => viewDocument(row, p, doc.label)}>
+                                View<span className="sr-only">{` ${doc.label} for ${p.business || p.name}`}</span>
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <span className="muted">Not on file</span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
               </td>
               <td>
                 {p.status === 'pending' && (
-                  <button className="mini-btn primary" type="button" onClick={() => updateProfile(p.id, { status: 'approved' })}>
+                  <button className="mini-btn primary" type="button" onClick={() => updateProfile(p, { status: 'approved' })}>
                     Approve
                   </button>
                 )}

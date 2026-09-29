@@ -6,7 +6,7 @@ export const APPLICATION_CHECKLIST = [
   { title: 'Federal EIN', detail: 'Your 9-digit Employer Identification Number.' },
   { title: 'State retail tobacco license number', detail: 'Issued by the state your store is in. Required before you can buy tobacco or vapor products.' },
   { title: 'Resale certificate number', detail: 'Your sales tax resale or exemption certificate for the store.' },
-  { title: 'Store details', detail: 'Legal business name, store type, and the state you sell in.' },
+  { title: 'Store details', detail: 'Legal business name, store type, and the store’s street address.' },
   { title: 'Account contact', detail: 'Your name, a phone number, and the business email you will sign in with.' },
 ];
 

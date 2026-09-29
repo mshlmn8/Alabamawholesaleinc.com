@@ -86,7 +86,9 @@ export default function App() {
   const isApprovedBuyer = profile?.status === 'approved';
   // Ordering is paused on a suspended account (AW-201).
   const isSuspended = profile?.status === 'suspended';
-  const isAdmin = profile?.role === 'admin';
+  // Only an approved admin is one; the database's is_admin() says the same
+  // (AW-352).
+  const isAdmin = profile?.role === 'admin' && profile?.status === 'approved';
   const departments = useMemo(() => departmentsFor(products), [products]);
   // The signed-in buyer's unit price for a product (and variant), or null:
   // no approved account, prices still loading, or price on request (AW-003).
