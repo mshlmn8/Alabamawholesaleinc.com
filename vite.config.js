@@ -28,6 +28,8 @@ export default defineConfig(({ command, mode }) => {
       assetsInlineLimit: 4096,
       rollupOptions: {
         output: {
+          // Vite 8 bundles with Rolldown: re-check this split when upgrading
+          // (README, "Planned toolchain upgrades", AW-211).
           manualChunks: {
             vendor: ['react', 'react-dom']
           }

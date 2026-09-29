@@ -55,6 +55,13 @@ Then open http://localhost:3000
 
 GitHub Actions (`.github/workflows/ci.yml`) runs all four, plus `npm audit --omit=dev --audit-level=high` and a check that the production build refuses to run without the Supabase settings. Dependabot (`.github/dependabot.yml`) opens weekly update PRs.
 
+### Planned toolchain upgrades
+
+The build runs on Vite 7 with `@vitejs/plugin-react` 5 and React 18. Two upgrades are planned as their own changes (AW-211), not bundled into a Dependabot PR:
+
+- **Vite 8 with `@vitejs/plugin-react` 6.** Vite 8 bundles with Rolldown instead of Rollup, so check that the `manualChunks` split in `vite.config.js` still produces the separate `vendor` chunk, then run the full checks above.
+- **React 19, after launch.** Plan it with the ESLint plugins: `eslint-plugin-react` and `eslint-plugin-jsx-a11y` do not declare ESLint 10 support yet, so ESLint stays on 9 for now.
+
 ### Text that Google Translate can break
 
 Translated pages replace React's text nodes, so a string that can change, appear or disappear must be the only child of an element that is always rendered: build one template string (`` {`Showing ${n} of ${total} items`} ``) or give the changing part its own `<span>`. `npm run lint` enforces this with `aw/translate-safe-text` (`scripts/eslint/translate-safe-text.mjs`), and `src/lib/domGuard.js` keeps a missed spot from blanking the page.
