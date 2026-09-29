@@ -84,9 +84,12 @@ export default function App() {
   const isAdmin = profile?.role === 'admin';
   const departments = useMemo(() => departmentsFor(products), [products]);
   // Each account on this device has its own cart, and guests share one
-  // (AW-189). While the saved session is being checked, it is that
-  // session's account, so a reload shows the right cart at once.
-  const [savedUserId] = useState(savedSessionUserId);
+  // (AW-189). While the saved session is being checked, or can't be
+  // refreshed because Supabase is out of reach, it is that session's
+  // account, so a reload shows the right cart at once. Read now, not once at
+  // mount: after a sign-out here, a session another tab saved later must not
+  // bring back the cart of the account that signed out.
+  const savedUserId = auth.loading || auth.connectionProblem ? savedSessionUserId() : null;
   // Lines are only re-keyed or flagged against the live catalog (AW-083).
   const cart = useCart({ products, profile, owner: cartOwner(auth, savedUserId), catalogSettled: catalog.settled });
 

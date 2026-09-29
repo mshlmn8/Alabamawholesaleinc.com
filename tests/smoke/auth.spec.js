@@ -180,3 +180,53 @@ test('signing out puts the buyer’s cart away: the next person starts empty, th
   await expect(page.getByRole('heading', { level: 1, name: 'Place your order' })).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test('after a sign-out, a session another tab saved that cannot be refreshed never brings the old cart back (AW-189)', async ({ page, context }) => {
+  const errors = trackErrors(page);
+  await page.clock.install();
+  // Saved once for the whole browser (not once per tab, like seedSession),
+  // so the second tab below does not sign the buyer back in.
+  await context.addInitScript(([key, value]) => {
+    try {
+      if (!localStorage.getItem('smoke-seeded-once')) {
+        localStorage.setItem(key, value);
+        localStorage.setItem('smoke-seeded-once', '1');
+      }
+    } catch { /* storage blocked */ }
+  }, [AUTH_KEY, JSON.stringify(savedSession())]);
+  await mockSupabase(page);
+  // Another account's session, saved later by another tab, whose access
+  // token has expired; the token endpoint can't be reached (mockSupabase
+  // aborts it), so this tab has a connection problem and no session.
+  const OTHER = '66666666-7777-4888-8999-aaaaaaaaaaaa';
+  const past = Math.floor(Date.now() / 1000) - 60;
+  const otherSession = {
+    access_token: `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: OTHER, role: 'authenticated', aud: 'authenticated', exp: past })}.c2ln`,
+    token_type: 'bearer', expires_in: 3600, expires_at: past, refresh_token: 'smoke-other',
+    user: { ...USER, id: OTHER, email: 'other@example.test' },
+  };
+  const cart = page.getByRole('button', { name: /^Cart, \d+ items$/ });
+  await page.goto('/product/14');
+  await expect(page.locator('.aw-account-actions')).toContainText('Test Market LLC');
+  await page.getByRole('button', { name: /^Add to (quote|order)/ }).click();
+  await expect(cart).toHaveAccessibleName('Cart, 1 items');
+
+  const menu = page.getByRole('button', { name: 'Menu' });
+  if (await menu.isVisible()) {
+    await menu.click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Sign Out', exact: true }).click();
+  } else {
+    await page.getByRole('button', { name: 'Sign Out', exact: true }).click();
+  }
+  await page.getByRole('button', { name: /Yes, I am 21\+/ }).click();
+  await expect(cart).toHaveAccessibleName('Cart, 0 items');
+
+  const other = await context.newPage();
+  await other.goto('/robots.txt');
+  await other.evaluate(([key, value]) => localStorage.setItem(key, value), [AUTH_KEY, JSON.stringify(otherSession)]);
+  // supabase-js retries the refresh with backoff for up to 30 s.
+  await page.clock.runFor(35_000);
+  await expect(page.locator('.site-notice[data-notice="connection"]')).toBeVisible();
+  await expect(cart).toHaveAccessibleName('Cart, 0 items');
+  expect(errors).toEqual([]);
+});
