@@ -158,7 +158,7 @@ export function ModalLayer({ onClose, initialFocus, className = '', historyEntry
       const heldByAnotherLayer = portalRoot && portalRoot.contains(active) && !container.contains(active);
       if (!heldByAnotherLayer && lastPageMove() === entry.pageMoveAtOpen) restoreFocus(entry);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per layer: it joins the stack and takes its history entry when it mounts; onClose is read through entryRef, and initialFocus/historyEntry only matter at open
   }, []);
 
   return createPortal(
