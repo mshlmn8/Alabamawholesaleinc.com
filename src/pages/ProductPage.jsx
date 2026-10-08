@@ -15,17 +15,23 @@
 // its axis ("Choose a flavor"), and a variant marked not available is a
 // disabled chip that says so (AW-030). A product with one variant has no
 // chips; its variant shows as text when the name doesn't already say it.
+//
+// From Cursor's PR #13: "Photo coming soon" without a photo (AW-029), the
+// sell unit badged on a photo other rows share (AW-136), the Wikimedia credit
+// under the photo (AW-033), and no placeholder brand "Assorted" (AW-286).
 
 import { useState } from 'react';
 import {
   informativeVariant, isVariantAvailable, lineKey, requiresVariantChoice, variantAxis, variantList, variantSku,
 } from '../lib/lines.js';
 import { priceLabel, variantPriceRange } from '../lib/pricing.js';
-import { catLabel, initials } from '../lib/format.js';
+import { brandLabel, catLabel } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 import { Picture } from '../components/Picture.jsx';
+import { MissingPhoto } from '../components/MissingPhoto.jsx';
+import { photoCredit, photoCreditSource } from '../data/photoCredits.js';
 import { ProductCard } from '../components/ProductCard.jsx';
 import { NicotineWarning } from '../components/NicotineWarning.jsx';
 import { showsNicotineWarning } from '../lib/regulated.js';
@@ -60,6 +66,9 @@ export function ProductPage({
   const key = lineKey(p.id, selected);
   const qty = cart[key] || 0;
   const related = products.filter(x => x.sub === p.sub && Number(x.id) !== Number(p.id)).slice(0, 4);
+  const brand = brandLabel(p.brand);
+  const credit = p.picture ? photoCredit(p) : '';
+  const creditSource = photoCreditSource(p);
   let shown = { unit: null, from: false };
   if (isApprovedBuyer) {
     shown = choiceRequired && !selected
@@ -82,15 +91,24 @@ export function ProductPage({
         <Breadcrumbs items={[HOME_CRUMB, { label: catLabel(p.cat), to: department }, { label: p.name }]} />
       </div>
       <div className="pd-grid">
-        <div className="pd-media">
-          {p.tag && <span className={`card-tag ${p.tag === 'NEW' ? 'new' : ''}`}>{p.tag}</span>}
-          {p.picture ? <Picture picture={p.picture} alt={p.name} sizes={SIZES.detail} priority /> : <span className="card-initials" aria-hidden="true">{initials(p.name)}</span>}
-        </div>
+        <figure className="pd-figure">
+          <div className="pd-media">
+            {p.tag && <span className={`card-tag ${p.tag === 'NEW' ? 'new' : ''}`}>{p.tag}</span>}
+            {p.picture ? <Picture picture={p.picture} alt={p.name} sizes={SIZES.detail} priority /> : <MissingPhoto name={p.name} />}
+            {p.picture && p.sharedPhoto && p.sellUnit && <span className="pack-badge">{p.sellUnit}</span>}
+          </div>
+          {credit && (
+            <figcaption className="photo-credit">
+              <span>{credit}</span>
+              {creditSource && <> <a href={creditSource} target="_blank" rel="noopener noreferrer">Wikimedia Commons<span className="sr-only"> (opens in a new tab)</span></a></>}
+            </figcaption>
+          )}
+        </figure>
         <div className="pd-info">
           {showsNicotineWarning(p) && <NicotineWarning />}
-          <p className="pd-brand">{`${p.brand} · ${p.sub}`}</p>
+          <p className="pd-brand">{brand ? `${brand} · ${p.sub}` : p.sub}</p>
           <h1>{p.name}</h1>
-          <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()} from ${p.brand}.`}</p>
+          <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()}${brand ? ` from ${brand}` : ''}.`}</p>
           {p.sellUnit && <p className="pd-unit">{`Sold by the ${p.sellUnit} — quantity 1 is one ${p.sellUnit}.`}</p>}
           <p className="pd-desc pd-fine">{`SKU ${p.sku}. Supplied to licensed retail businesses for lawful resale. Next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
           {choiceRequired && (

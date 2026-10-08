@@ -27,6 +27,13 @@ describe('pageMeta', () => {
     expect(pageMeta({ page: 'privacy' }, products, departments).title).toBe('Privacy · Alabama Wholesale Inc');
   });
 
+  it('leaves the placeholder brand "Assorted" out of a product title and description (AW-286)', () => {
+    const shirts = [{ id: 9, name: 'White V-neck shirts', brand: 'Assorted', cat: 'MERCHANDISE', sub: 'Apparel', sku: 'AW-V', description: '', img: null, picture: null }];
+    const meta = pageMeta({ page: 'product', productId: 9 }, shirts, departments);
+    expect(meta.title).toBe('White V-neck shirts · Alabama Wholesale Inc');
+    expect(meta.description).toBe('White V-neck shirts — wholesale apparel. SKU AW-V.');
+  });
+
   it('gives each page its own canonical path, without filters', () => {
     expect(pageMeta({ page: 'category', category: 'TOBACCO', sub: 'Cigars', query: { ...EMPTY, q: 'kite' } }, products, departments).path).toBe('/category/tobacco/cigars');
     expect(pageMeta({ page: 'product', productId: 7 }, products, departments).path).toBe('/product/7');

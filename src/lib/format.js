@@ -20,8 +20,11 @@ const CAT_LABEL = {
 };
 export const catLabel = (c) => CAT_LABEL[c] || c;
 
-// Two-letter placeholder for products without a photo.
-export const initials = (name) => {
-  const p = String(name).split(/\s+/).filter(Boolean);
-  return ((p[0]?.[0] || '?') + (p[1]?.[0] || '')).toUpperCase();
+// The brand as printed on cards and product pages: '' for the catalog's
+// placeholder brand "Assorted", which names no brand (AW-286). Search still
+// matches the stored brand.
+export const PLACEHOLDER_BRANDS = ['Assorted'];
+export const brandLabel = (brand) => {
+  const text = String(brand ?? '').trim();
+  return PLACEHOLDER_BRANDS.includes(text) ? '' : text;
 };

@@ -69,6 +69,19 @@ export function productImage(file) {
   return fromSet(stripExt(name), devOriginal(`../assets/products/${name}`));
 }
 
+// The photo files that more than one catalog row uses (AW-136): a shared
+// photo shows one size or pack, so a row with a sell unit badges it on the
+// photo. `rows` are raw catalog rows ({ img: filename or URL or null }).
+export function sharedImageFiles(rows) {
+  const counts = new Map();
+  for (const row of rows || []) {
+    const file = row?.img == null ? '' : String(row.img).trim();
+    if (!file) continue;
+    counts.set(file, (counts.get(file) || 0) + 1);
+  }
+  return new Set([...counts].filter(([, n]) => n > 1).map(([file]) => file));
+}
+
 // `file` is a filename in src/assets, e.g. 'hero_candy.jpg'.
 export function heroImage(file) {
   const name = String(file).trim();

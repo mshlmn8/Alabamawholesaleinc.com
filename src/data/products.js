@@ -47,7 +47,11 @@
 // assorted case? Their flavor lists below are unchanged until that sheet arrives
 // (only #60's label was starred out, AW-126). (AW-137)
 
-import { productImage } from '../lib/images.js';
+// TODO(owner): Packshots for the products without a photo (they show "Photo coming soon" and stay off the home rails, AW-029), for the rows that share a photo with a different size or pack (AW-136), and to replace the mismatched (AW-010), retailer-copied (AW-033), banner or collage (AW-034), low-resolution (AW-073) and dark or full-bleed (AW-141) photos; for each photo that shows a flavor the row doesn't list, is that flavor stocked (AW-142)? Photos are unchanged until then.
+// TODO(owner): Which brand is actually stocked for each "Assorted" row (the storefront doesn't print that placeholder), and for #343, which mixes eFrutti and SpongeBob? (AW-286)
+// TODO(owner): Pack size, case count, dimensions and attributes for each product, so the descriptions can be rewritten. (AW-075)
+
+import { productImage, sharedImageFiles } from '../lib/images.js';
 
 export const NAV_ORDER = ['TOBACCO', 'NOVELTIES', 'MERCHANDISE', 'CANDIES', 'FOOD STUFF', 'GROCERY', 'MOTOR OIL', 'DRINKS & BAGS'];
 
@@ -142,7 +146,7 @@ export const CATALOG = [
     description: "Orbit gum from the gum and mints line in our Candies department. Three flavors: Sweet mint, Peppermint and Spearmint." },
   { id:  43, name: "Mentos", brand: "Mentos", cat: "CANDIES", sub: "Gum & Mints", sku: "AW-MENTOS", sellUnit: "", variantAxis: "Flavor", variants: ["Strawberry", "Mint", "Fruit"], img: "mentos.webp", tag: null,
     description: "Mentos chewy mints in rolls. Three flavors: Strawberry, Mint and Fruit." },
-  { id:  44, name: "Mike & Ike", brand: "Mike and Ike", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-MIKE-IKE", sellUnit: "", variantAxis: "Flavor", variants: ["Watermelon", "Grape", "Blue raspberry", "Sour blue", "Green", "Cherry", "Blue"], img: "mike_ike.webp", tag: null,
+  { id:  44, name: "Mike and Ike", brand: "Mike and Ike", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-MIKE-IKE", sellUnit: "", variantAxis: "Flavor", variants: ["Watermelon", "Grape", "Blue raspberry", "Sour blue", "Green", "Cherry", "Blue"], img: "mike_ike.webp", tag: null,
     description: "Mike and Ike chewy candy boxes. Seven flavors: Watermelon, Grape, Blue raspberry, Sour blue, Green, Cherry and Blue." },
   { id:  45, name: "Argo corn starch", brand: "Argo", cat: "FOOD STUFF", sub: "Cooking Basics", sku: "AW-ARGO-CORN-STARCH", sellUnit: "", variants: [], img: "argo_corn_starch.webp", tag: null,
     description: "Argo corn starch, from the cooking basics line in our Food Stuff department." },
@@ -260,7 +264,7 @@ export const CATALOG = [
     description: "Autoguard automotive fluids. Three fluids: Power steering, Brake fluid and Antifreeze." },
   { id:  97, name: "Itasca 2-cycle engine oil", brand: "Itasca", cat: "MOTOR OIL", sub: "Lubricants", sku: "AW-2-CYCLE-OIL", sellUnit: "", variants: [], img: "2_cycle_oil.webp", tag: null,
     description: "Itasca Outdoors 2-cycle engine oil in 8 oz bottles." },
-  { id:  98, name: "BlueDEF diesel exhaust fluid 2.5 gal", brand: "BlueDEF", cat: "MOTOR OIL", sub: "Fluids", sku: "AW-DEF-2-5-GAL", sellUnit: "2.5 gal jug", variants: [], img: "blue_def_2_5_gal.jpg", tag: null,
+  { id:  98, name: "PEAK BlueDEF diesel exhaust fluid 2.5 gal", brand: "PEAK", cat: "MOTOR OIL", sub: "Fluids", sku: "AW-DEF-2-5-GAL", sellUnit: "2.5 gal jug", variants: [], img: "blue_def_2_5_gal.jpg", tag: null,
     description: "PEAK BlueDEF diesel exhaust fluid in the 2.5 gallon jug." },
   { id:  99, name: "PEAK antifreeze", brand: "PEAK", cat: "MOTOR OIL", sub: "Fluids", sku: "AW-PEAK-ANTIFREEZE", sellUnit: "", variants: [], img: "peak_antifreeze.webp", tag: null,
     description: "PEAK antifreeze and coolant, from the automotive fluid line in our Motor Oil department." },
@@ -451,9 +455,9 @@ export const CATALOG = [
     description: "Mamba fruit chews in big bars. Three flavors: Original, Sour and Tropical." },
   { id: 190, name: "Mamba small", brand: "Mamba", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-MAMBA-SMALL", sellUnit: "", variantAxis: "Variety", variants: ["Regular", "Tropical", "Sour"], img: "mamba_big_bars.jpg", tag: null,
     description: "Mamba fruit chews in the small size. Three varieties: Regular, Tropical and Sour." },
-  { id: 191, name: "Mint candy lumps", brand: "Mint lumps", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-MINT-LUMPS", sellUnit: "", variants: [], img: "mint_lumps.jpg", tag: null,
+  { id: 191, name: "Mint candy lumps", brand: "Candyman's", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-MINT-LUMPS", sellUnit: "", variants: [], img: "mint_lumps.jpg", tag: null,
     description: "Mint candy lumps in the counter dispenser box." },
-  { id: 192, name: "Cherry candy lumps", brand: "Cherry lumps", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-CHERRY-LUMPS", sellUnit: "", variants: [], img: "cherry_lumps.jpg", tag: null,
+  { id: 192, name: "Cherry candy lumps", brand: "Candyman's", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-CHERRY-LUMPS", sellUnit: "", variants: [], img: "cherry_lumps.jpg", tag: null,
     description: "Cherry candy lumps in the counter dispenser box." },
   { id: 193, name: "Pure Eyes redness relief", brand: "Pure Eyes", cat: "MERCHANDISE", sub: "OTC & Health", sku: "AW-PURE-EYES", sellUnit: "", variants: [], img: "p193-pure-eyes.avif", tag: null,
     description: "Pure eyes from the OTC and health line in our Merchandise department." },
@@ -566,7 +570,7 @@ export const CATALOG = [
     description: "Value incense from the air freshener and incense line in our Merchandise department. Three sizes: Small, Medium and Big." },
   { id: 247, name: "Lattafa air freshener", brand: "Lattafa", cat: "MERCHANDISE", sub: "Air Fresheners & Incense", sku: "AW-LATTAFA-AIR-FRESHENER", sellUnit: "", variants: ["Pink"], img: "lattafa_air_freshener.webp", tag: null,
     description: "Lattafa air freshener sprays. Stocked in one variety: Pink." },
-  { id: 248, name: "Coke", brand: "Coca-Cola", cat: "DRINKS & BAGS", sub: "Sodas", sku: "AW-COKE", sellUnit: "", variants: [], img: "p248-coke.jpg", tag: null,
+  { id: 248, name: "Coca-Cola", brand: "Coca-Cola", cat: "DRINKS & BAGS", sub: "Sodas", sku: "AW-COKE", sellUnit: "", variants: [], img: "p248-coke.jpg", tag: null,
     description: "Coca-Cola from the soda line in our Drinks & Bags department." },
   { id: 249, name: "Sprite", brand: "Sprite", cat: "DRINKS & BAGS", sub: "Sodas", sku: "AW-SPRITE", sellUnit: "", variantAxis: "Variety", variants: ["Regular", "Tropical"], img: "p249-sprite.jpg", tag: null,
     description: "Sprite from the soda line in our Drinks & Bags department. Two varieties: Regular and Tropical." },
@@ -839,7 +843,12 @@ export const CATALOG = [
 
 // img becomes the small JPEG URL (thumbnails, plain <img>), picture the
 // responsive WebP/JPEG set rendered by <Picture>.
-export const PRODUCTS = CATALOG.map((p) => ({ ...p, ...productImage(p.img) }));
+// Photo files more than one row uses (AW-136). sharedPhoto marks the rows, so
+// a card or product page can badge a shared photo with the row's sell unit;
+// the live catalog is marked the same way (hydrateProducts in
+// ../lib/catalog.jsx).
+export const SHARED_IMAGES = sharedImageFiles(CATALOG);
+export const PRODUCTS = CATALOG.map((p) => ({ ...p, ...productImage(p.img), sharedPhoto: SHARED_IMAGES.has(p.img) }));
 
 // Subset shown in the rotating "new arrivals" row on home.
 export const NEW_ARRIVALS_IDS = [61, 62, 64, 31, 171, 167, 342, 184, 75, 76];

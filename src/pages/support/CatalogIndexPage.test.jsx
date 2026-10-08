@@ -17,7 +17,8 @@ describe('CatalogIndexPage', () => {
   it('counts variants by their axis, and not a single one', () => {
     render(<CatalogIndexPage products={products} departments={departmentsFor(products)} profile={null} isApprovedBuyer={false} onLoginClick={() => {}} />);
     expect(row('Swisher Sweets cigarillos')).toBe('Swisher · Cigars · AW-SS · 2 flavors');
-    expect(row('Gas cans')).toBe('Assorted · Auto · AW-GAS · 3 sizes');
+    // The placeholder brand isn't printed (AW-286).
+    expect(row('Gas cans')).toBe('Auto · AW-GAS · 3 sizes');
     expect(row('Gatorade')).toBe('Gatorade · Sports · AW-GATORADE');
     expect(row('Kite')).toBe('Kite · Cigarettes · AW-KITE');
     expect(screen.queryByText(/1 variants/)).toBeNull();

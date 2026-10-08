@@ -13,13 +13,18 @@ const EDITORIAL_BG = heroImage('hero_candy.jpg');
 
 const dept = (category) => ({ page: 'category', category });
 
+// Products without a photo stay off the home rails until a packshot exists
+// (AW-029, Cursor PR #13); they are still in their department.
+export const hasPhoto = (p) => Boolean(p?.picture?.src || p?.img);
+
 export function HomePage({ products, departments, profile, isApprovedBuyer, priceOf, pricesStatus, cart, addLine, decLine, onLoginClick, onApplyClick }) {
   const card = (p) => (
     <ProductCard key={p.id} p={p} profile={profile} isApprovedBuyer={isApprovedBuyer} priceOf={priceOf} pricesStatus={pricesStatus} cart={cart}
                  addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} />
   );
-  const newArrivals = NEW_ARRIVALS_IDS.map(id => products.find(p => Number(p.id) === id)).filter(Boolean).slice(0, 8);
-  const bestsellers = products.filter(p => p.tag === 'BESTSELLER').slice(0, 8);
+  // TODO(owner): Which products are really new and which are bestsellers, plus dedicated hero and department images? (AW-056)
+  const newArrivals = NEW_ARRIVALS_IDS.map(id => products.find(p => Number(p.id) === id)).filter(hasPhoto).slice(0, 8);
+  const bestsellers = products.filter(p => p.tag === 'BESTSELLER' && hasPhoto(p)).slice(0, 8);
 
   return (
     <>
@@ -103,7 +108,7 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, pric
             </li>
             <li>
               <h3>We verify</h3>
-              <p>Our team checks your license with the state and approves most accounts within one business day. You&apos;ll get price-list access by email.</p>
+              <p>Our team checks your license with the state and approves most accounts within one business day. Wholesale pricing and ordering unlock when you sign in.</p>
             </li>
             <li>
               <h3>Order &amp; receive</h3>

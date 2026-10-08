@@ -1,7 +1,7 @@
 // Money and label formatting (AW-184, AW-330). Amounts are test numbers, not
 // catalog prices.
 import { describe, expect, it } from 'vitest';
-import { formatMoney, formatMoneyShort, catLabel, initials } from './format.js';
+import { formatMoney, formatMoneyShort, catLabel, brandLabel } from './format.js';
 
 describe('formatMoney', () => {
   it('adds thousands separators and always shows cents', () => {
@@ -41,10 +41,11 @@ describe('catLabel', () => {
   });
 });
 
-describe('initials', () => {
-  it('uses the first letters of the first two words', () => {
-    expect(initials('Kite cigarette tobacco')).toBe('KC');
-    expect(initials('zyn')).toBe('Z');
-    expect(initials('')).toBe('?');
+describe('brandLabel (AW-286)', () => {
+  it('prints a real brand and drops the placeholder "Assorted"', () => {
+    expect(brandLabel('Coca-Cola')).toBe('Coca-Cola');
+    expect(brandLabel(' Candyman\'s ')).toBe('Candyman\'s');
+    expect(brandLabel('Assorted')).toBe('');
+    expect(brandLabel(null)).toBe('');
   });
 });

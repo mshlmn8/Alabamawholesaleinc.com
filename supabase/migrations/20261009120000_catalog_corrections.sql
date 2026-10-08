@@ -1,4 +1,4 @@
--- Catalog corrections (AW-135, AW-138, AW-126; AW-001 changes no data).
+-- Catalog corrections (AW-135, AW-138, AW-126, AW-286; AW-001 changes no data).
 --
 -- Data only: the rows already in the database get the corrections made in
 -- src/data/products.js, which reach new databases through the regenerated
@@ -11,7 +11,10 @@
 --       "Tips", "Mix", "Organic", "Small") are removed (AW-138); #60's
 --       profane flavor is starred out (AW-126).
 --   (c) The descriptions list the new labels; #354's size moves into its
---       name and #123/#124 say they are sold by the case.
+--       name and #123/#124 say they are sold by the case. Five names and
+--       brands are aligned with the packshot or the brand already on the
+--       row (AW-286, from Cursor's PR #13): #44 "Mike and Ike", #98 "PEAK
+--       BlueDEF ..." by PEAK, #191 and #192 by Candyman's, #248 "Coca-Cola".
 --   (d) A variant's own price (product_variant_prices) and an "unavailable"
 --       mark (products.unavailable_variants) follow a renamed label, because
 --       the order trigger and my_prices() match them by label.
@@ -346,13 +349,29 @@ from (values
 ) as v(id, old_text, new_text)
 where p.id = v.id and p.description = v.old_text;
 
--- #354's only variant was its size.
+-- #354's only variant was its size; #44, #98 and #248 match their packshot
+-- or brand (AW-286).
 update public.products as p
 set name = v.new_name
 from (values
-  (354, 'Folgers coffee', 'Folgers coffee (small)')
+  (354, 'Folgers coffee', 'Folgers coffee (small)'),
+  (44, 'Mike & Ike', 'Mike and Ike'),
+  (98, 'BlueDEF diesel exhaust fluid 2.5 gal', 'PEAK BlueDEF diesel exhaust fluid 2.5 gal'),
+  (248, 'Coke', 'Coca-Cola')
 ) as v(id, old_name, new_name)
 where p.id = v.id and p.name = v.old_name;
+
+-- Brands the packshot shows (AW-286). The placeholder brand "Assorted" stays
+-- in the data; the storefront doesn't print it (brandLabel in
+-- src/lib/format.js).
+update public.products as p
+set brand = v.new_brand
+from (values
+  (98, 'BlueDEF', 'PEAK'),
+  (191, 'Mint lumps', 'Candyman''s'),
+  (192, 'Cherry lumps', 'Candyman''s')
+) as v(id, old_brand, new_brand)
+where p.id = v.id and p.brand = v.old_brand;
 
 -- "Case" was the only variant of #123 and #124.
 -- TODO(owner): Is quantity 1 of #122-#124 a case, and how many packs or rolls are in one? (AW-138)
@@ -591,9 +610,20 @@ where p.id = v.id
 --
 -- update public.products as p set name = v.old_name
 -- from (values
---   (354, 'Folgers coffee', 'Folgers coffee (small)')
+--   (354, 'Folgers coffee', 'Folgers coffee (small)'),
+--   (44, 'Mike & Ike', 'Mike and Ike'),
+--   (98, 'BlueDEF diesel exhaust fluid 2.5 gal', 'PEAK BlueDEF diesel exhaust fluid 2.5 gal'),
+--   (248, 'Coke', 'Coca-Cola')
 -- ) as v(id, old_name, new_name)
 -- where p.id = v.id and p.name = v.new_name;
+--
+-- update public.products as p set brand = v.old_brand
+-- from (values
+--   (98, 'BlueDEF', 'PEAK'),
+--   (191, 'Mint lumps', 'Candyman''s'),
+--   (192, 'Cherry lumps', 'Candyman''s')
+-- ) as v(id, old_brand, new_brand)
+-- where p.id = v.id and p.brand = v.new_brand;
 --
 -- update public.products as p set description = v.old_text
 -- from (values

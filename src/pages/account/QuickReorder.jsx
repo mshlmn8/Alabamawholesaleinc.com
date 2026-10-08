@@ -5,6 +5,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { resolveSkuLine, variantSku } from '../../lib/lines.js';
+import { brandLabel } from '../../lib/format.js';
 
 const START_ROWS = 3;
 let rowSeq = 0;
@@ -76,7 +77,7 @@ export function QuickReorder({ products, addLines, onOpenCart, isApprovedBuyer }
               {res.status === 'ok' && (
                 <p className="qr-match">
                   <b>{`${res.product.name}${res.variant ? ` — ${res.variant}` : ''}`}</b>
-                  <small>{`${variantSku(res.product.sku, res.variant)} · ${res.product.brand}${rowQty(row) > 0 ? '' : ' · Enter a quantity of 1 or more'}`}</small>
+                  <small>{[variantSku(res.product.sku, res.variant), brandLabel(res.product.brand), rowQty(row) > 0 ? '' : 'Enter a quantity of 1 or more'].filter(Boolean).join(' · ')}</small>
                 </p>
               )}
               {res.status === 'not-found' && <p className="qr-problem">Not in the catalog. Check the code or search the catalog above.</p>}

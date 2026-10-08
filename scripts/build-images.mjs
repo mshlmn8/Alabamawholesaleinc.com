@@ -30,7 +30,7 @@ const OUT_DIR = path.join(ASSETS, 'generated');
 const PUBLIC_DIR = path.join(ROOT, 'public');
 const LOGO = path.join(ASSETS, 'logo.jpg');
 
-const VERSION = 2;
+const VERSION = 3;
 const PRODUCT_WIDTHS = [320, 640, 1024];
 const HERO_WIDTHS = [480, 720];
 // WebP is rendered at every width. The JPEG fallback (browsers without WebP,
@@ -39,8 +39,9 @@ const HERO_WIDTHS = [480, 720];
 const JPEG_MAX_WIDTH = 640;
 const WEBP = { quality: 78, effort: 4 };
 const JPEG = { quality: 78, progressive: true, mozjpeg: true };
-// JPEG has no alpha; transparent PNG sources are flattened onto the card background.
-const CARD_BG = '#f6f3ee';
+// JPEG has no alpha; transparent PNG sources are flattened onto the photo tile
+// colour, white since the tiles are white (AW-141; --tile in src/index.css).
+const CARD_BG = '#ffffff';
 const CONCURRENCY = Math.max(2, Math.min(8, os.cpus().length));
 
 const SOURCE_RE = /\.(webp|jpe?g|png|avif)$/i;

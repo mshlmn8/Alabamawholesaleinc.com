@@ -7,7 +7,7 @@
 
 import { COMPANY } from '../data/content.js';
 import { POLICY_TITLES, POLICY_INTROS } from '../pages/support/PolicyPage.jsx';
-import { catLabel } from './format.js';
+import { brandLabel, catLabel } from './format.js';
 import { NOINDEX_PAGES, pathFor, siteUrl } from './routes.js';
 
 export const SITE_URL = siteUrl(import.meta.env.VITE_SITE_URL);
@@ -89,9 +89,11 @@ function pageText(route, products, departments) {
   if (route.page === 'product') {
     const p = products.find(x => Number(x.id) === route.productId);
     if (!p) return { title: `${NOT_FOUND.product.title} · ${site}`, description: NOT_FOUND.product.description };
+    // The placeholder brand "Assorted" names no brand (AW-286).
+    const brand = brandLabel(p.brand);
     return {
-      title: `${p.name} · ${p.brand} · ${site}`,
-      description: clip(p.description || `${p.name} — wholesale ${p.sub.toLowerCase()} from ${p.brand}. SKU ${p.sku}.`),
+      title: brand ? `${p.name} · ${brand} · ${site}` : `${p.name} · ${site}`,
+      description: clip(p.description || `${p.name} — wholesale ${p.sub.toLowerCase()}${brand ? ` from ${brand}` : ''}. SKU ${p.sku}.`),
       image: imageOf(p, p.name),
     };
   }

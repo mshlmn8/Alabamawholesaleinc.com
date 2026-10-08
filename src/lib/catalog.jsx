@@ -44,7 +44,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase as defaultClient } from './supabase.js';
-import { productImage } from './images.js';
+import { productImage, sharedImageFiles } from './images.js';
 import { isNetworkError } from './errors.js';
 import { PRODUCTS as STATIC_PRODUCTS } from '../data/products.js';
 
@@ -93,6 +93,7 @@ const STATIC_BY_ID = new Map(STATIC_PRODUCTS.map((p) => [Number(p.id), p]));
 // dropped: prices come only from usePrices(); so is the old flavors count
 // (AW-332: variantCount() in lines.js counts the variants).
 export function hydrateProducts(rows, bundled = STATIC_BY_ID) {
+  const shared = sharedImageFiles(rows);
   return rows.map((row) => {
     const p = { ...row };
     delete p.price;
@@ -107,6 +108,8 @@ export function hydrateProducts(rows, bundled = STATIC_BY_ID) {
       sellUnit: p.sell_unit || p.sellUnit || local?.sellUnit || '',
       // img is a filename in src/assets/products, or a full URL (e.g. Supabase Storage)
       ...productImage(p.img),
+      // Another row uses the same photo file (AW-136).
+      sharedPhoto: p.img != null && shared.has(String(p.img).trim()),
     };
   });
 }

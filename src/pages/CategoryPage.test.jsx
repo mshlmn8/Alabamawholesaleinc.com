@@ -48,7 +48,7 @@ describe('CategoryPage', () => {
     act(() => navigate('/category/tobacco/cigars?sort=name-asc&tags=bestseller', { replace: true }));
     render(<Harness />);
     expect(note()).toBe('Showing 1 of 2 items in Cigars');
-    expect(screen.getByRole('checkbox', { name: 'Bestsellers' }).checked).toBe(true);
+    expect(screen.getByRole('checkbox', { name: 'Bestsellers (1)' }).checked).toBe(true);
     expect(screen.getByLabelText('Sort by').value).toBe('name-asc');
     expect(screen.getByRole('link', { name: 'Cigars (2)' }).getAttribute('aria-current')).toBe('page');
   });
@@ -56,7 +56,7 @@ describe('CategoryPage', () => {
   it('writes filter changes to the URL without adding history entries', () => {
     render(<Harness />);
     const length = window.history.length;
-    fireEvent.click(screen.getByRole('checkbox', { name: 'New' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'New (1)' }));
     fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'variants' } });
     fireEvent.click(screen.getByRole('checkbox', { name: 'Has flavors or variants' }));
     expect(url()).toBe('/category/tobacco?sort=variants&tags=new&variants=1');
@@ -133,6 +133,37 @@ describe('CategoryPage', () => {
     expect(note()).toBe('Showing 1 of 3 items');
     act(() => navigate('/category/candies'));
     expect(note()).toBe('Showing 1 of 1 item');
-    expect(screen.getByRole('checkbox', { name: 'New' }).checked).toBe(false);
+    expect(screen.getByRole('checkbox', { name: 'New (1)' }).checked).toBe(false);
+  });
+
+  it('offers only the Featured tags the products in view carry, with counts (AW-139)', () => {
+    const list = [
+      ...products,
+      { id: 7, name: 'Bleach', brand: 'Clorox', cat: 'GROCERY', sub: 'Cleaning', sku: 'AW-BL', variants: [], tag: null },
+    ];
+    const depts = [...departments, { key: 'GROCERY', label: 'Grocery', subs: ['Cleaning'], count: 1 }];
+    function Many() {
+      const { raw } = useRoute();
+      const route = resolveRoute(raw, { departments: depts, products: list });
+      return (
+        <CategoryPage key={route.category} category={route.category} sub={route.sub} query={route.query}
+                      products={list} departments={depts} profile={null} isApprovedBuyer={false}
+                      cart={{}} addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} />
+      );
+    }
+    const boxes = () => screen.queryAllByRole('checkbox').map((b) => b.closest('label').textContent.trim()).filter((t) => !/variants/.test(t));
+    render(<Many />);
+    // Tobacco: one bestseller and one new product; no deals or premium.
+    expect(boxes()).toEqual(['Bestsellers (1)', 'New (1)']);
+    // The Cigars line has only the bestseller.
+    act(() => navigate('/category/tobacco/cigars', { replace: true }));
+    expect(boxes()).toEqual(['Bestsellers (1)']);
+    // A tag picked in the URL stays, so it can be unpicked.
+    act(() => navigate('/category/tobacco/cigars?tags=new', { replace: true }));
+    expect(boxes()).toEqual(['Bestsellers (1)', 'New (0)']);
+    // No tags at all: no Featured box.
+    act(() => navigate('/category/grocery'));
+    expect(screen.queryByRole('group', { name: 'Featured' })).toBeNull();
+    expect(boxes()).toEqual([]);
   });
 });

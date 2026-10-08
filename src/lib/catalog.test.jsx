@@ -168,6 +168,17 @@ describe('loadCatalog', () => {
 });
 
 describe('hydrateProducts', () => {
+  it('marks rows whose photo file another row uses (AW-136)', () => {
+    const rows = hydrateProducts([
+      row(1, { img: 'shared.jpg' }), row(2, { img: 'shared.jpg' }), row(3, { img: 'own.jpg' }), row(4, { img: null }),
+    ]);
+    expect(rows.map((p) => p.sharedPhoto)).toEqual([true, true, false, false]);
+    // The bundled catalog is marked the same way: the two Backwoods rows share one photo.
+    expect(BUNDLED.filter((p) => p.sharedPhoto).length).toBeGreaterThan(1);
+    expect(BUNDLED.find((p) => p.id === 11).sharedPhoto).toBe(true);
+    expect(BUNDLED.find((p) => p.id === 16).sharedPhoto).toBe(true);
+  });
+
   it('fills an empty description and sell unit from the bundled copy of the same id', () => {
     const bundled = BUNDLED.find((p) => p.description && p.sellUnit) || BUNDLED[0];
     const [p] = hydrateProducts([{ ...row(bundled.id), description: '', sell_unit: '', variants: null }]);

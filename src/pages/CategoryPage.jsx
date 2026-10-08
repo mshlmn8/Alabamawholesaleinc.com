@@ -19,12 +19,23 @@ import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 import { ModalLayer } from '../components/ModalLayer.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
 
+// TODO(owner): What do the DEAL and PREMIUM tags mean for buyers (the actual deal terms and premium criteria), or should those tags be removed? (AW-139)
 const TAG_OPTIONS = [
   ['Bestsellers', 'BESTSELLER'],
   ['New', 'NEW'],
   ['Deals', 'DEAL'],
   ['Premium', 'PREMIUM'],
 ];
+
+// The Featured checkboxes worth showing (AW-139, Cursor PR #13): each tag the
+// products in view (the department, or the picked line) carry, with its
+// count. A tag already picked stays, so it can be unpicked. No options, no
+// Featured box.
+export function featuredOptions(products, picked = []) {
+  return TAG_OPTIONS
+    .map(([label, tag]) => ({ label, tag, count: products.filter(p => p.tag === tag).length }))
+    .filter(o => o.count > 0 || picked.includes(o.tag));
+}
 
 // Typing in the department search updates the URL once the typing pauses.
 const SEARCH_DELAY_MS = 250;
@@ -73,6 +84,7 @@ export function CategoryPage({
   const activeSub = sub || null;
   const inScope = activeSub ? inCategory.filter(p => p.sub === activeSub) : inCategory;
   const { tags, variants: hasVariants } = query;
+  const featured = featuredOptions(inScope, tags);
   const sort = query.sort.startsWith('price-') && !isApprovedBuyer ? 'featured' : query.sort;
   const needle = query.q.trim().toLowerCase();
   let items = inScope.filter(p => {
@@ -150,12 +162,14 @@ export function CategoryPage({
       <label className="filter-search" htmlFor="category-search"><span>{`Search in ${catLabel(category)}`}</span>
         <input id="category-search" type="search" value={draft} onChange={(e) => onSearchInput(e.target.value)} placeholder="Item, brand, SKU, variant…" autoComplete="off" />
       </label>
-      <fieldset>
-        <legend>Featured</legend>
-        {TAG_OPTIONS.map(([label, tag]) => (
-          <label key={tag}><input type="checkbox" checked={tags.includes(tag)} onChange={() => toggleTag(tag)} /> <span>{label}</span></label>
-        ))}
-      </fieldset>
+      {featured.length > 0 && (
+        <fieldset>
+          <legend>Featured</legend>
+          {featured.map(({ label, tag, count }) => (
+            <label key={tag}><input type="checkbox" checked={tags.includes(tag)} onChange={() => toggleTag(tag)} /> <span>{`${label} (${count})`}</span></label>
+          ))}
+        </fieldset>
+      )}
       <fieldset>
         <legend>Variants</legend>
         <label><input type="checkbox" checked={hasVariants} onChange={(e) => setFilters({ variants: e.target.checked })} /> <span>Has flavors or variants</span></label>

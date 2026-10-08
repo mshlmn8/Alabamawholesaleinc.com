@@ -10,9 +10,10 @@ import { IMG } from '../data/theme.js';
 import { COMPANY } from '../data/content.js';
 import { useMediaQuery, MOBILE_QUERY } from '../lib/useMediaQuery.js';
 import { getSearchMatches } from '../lib/search.js';
-import { catLabel, initials } from '../lib/format.js';
+import { catLabel } from '../lib/format.js';
 import { Link, navigate, useLocation } from '../lib/router.js';
 import { MobileMenu } from './MobileMenu.jsx';
+import { MissingPhoto } from './MissingPhoto.jsx';
 
 export function Header({ cartCount, onCart, products, departments, user, isAdmin, onLoginClick, onSignupClick, onLogout, signingOut = false, onHelp }) {
   const [megaOpen, setMegaOpen] = useState(false);
@@ -121,7 +122,7 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
                 {hits.length === 0 && <p>Try a brand (Geekbar, Backwoods, BIC) or a line (&quot;energy drinks&quot;, &quot;wraps&quot;).</p>}
                 {hits.map(p => (
                   <Link key={p.id} to={{ page: 'product', productId: p.id }} onClick={pickResult}>
-                    <span className="sr-thumb">{p.img ? <img src={p.img} alt="" loading="lazy" /> : initials(p.name)}</span>
+                    <span className="sr-thumb">{p.img ? <img src={p.img} alt="" loading="lazy" /> : <MissingPhoto compact />}</span>
                     <span><strong>{p.name}</strong><small>{`${catLabel(p.cat)} · ${p.sub} · ${p.sku}`}</small></span>
                   </Link>
                 ))}
