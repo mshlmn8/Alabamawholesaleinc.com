@@ -4,7 +4,20 @@
 export function variantList(product) {
   const raw = product?.variants;
   if (!Array.isArray(raw)) return [];
-  return raw.map((v) => String(v).trim()).filter(Boolean);
+  return raw.map((v) => String(v && typeof v === 'object' ? v.label || v.name || '' : v).trim()).filter(Boolean);
+}
+
+// Per-variant price when the owner has supplied one. Otherwise the parent list
+// price, so nothing on the page changes until those prices exist.
+// TODO(owner): Supply the price and availability for each size and pack-count variant. (AW-030)
+export function variantPrice(product, label) {
+  const table = product?.variantPrices || product?.variant_prices;
+  if (label && table && typeof table === 'object' && !Array.isArray(table)) {
+    const raw = table[label];
+    const n = Number(raw);
+    if (raw != null && raw !== '' && Number.isFinite(n)) return n;
+  }
+  return Number(product?.price);
 }
 
 export function variantSlug(label) {
@@ -167,7 +180,8 @@ export function resolveCartItems(cart, products) {
         sub: product.sub,
         qty: n,
         img: product.img,
-        listPrice: Number(product.price),
+        listPrice: variantPrice(product, null),
+        sellUnit: product.sellUnit || '',
       }];
     }
     const variant = slug ? canonicalVariant(product, slug) : (variants.length === 1 ? variants[0] : null);
@@ -183,7 +197,8 @@ export function resolveCartItems(cart, products) {
       sub: product.sub,
       qty: n,
       img: product.img,
-      listPrice: Number(product.price),
+      listPrice: variantPrice(product, variant),
+      sellUnit: product.sellUnit || '',
     }];
   });
 }

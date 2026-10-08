@@ -14,6 +14,8 @@ const moneyExact = (n) => `$${Number(n).toLocaleString('en-US', { minimumFractio
 
 export function DeliveryPage({ goHome, navigate }) {
   const [stateCode, setStateCode] = useState('');
+  const [zip, setZip] = useState('');
+  // TODO(owner): Which ZIP codes are on each route, and what are the delivery days and cutoff? (AW-123)
   const routeState = DELIVERY_STATES.find(s => s.code === stateCode);
   const otherState = OTHER_STATES.find(s => s.code === stateCode);
 
@@ -49,6 +51,8 @@ export function DeliveryPage({ goHome, navigate }) {
           <p>Our routes are planned stop by stop, so this check only confirms the states we drive in. Call to confirm your stop before you count on next-day delivery.</p>
         </div>
         <form className="eligibility-form" onSubmit={(e) => e.preventDefault()}>
+          <label htmlFor="delivery-zip">Store ZIP</label>
+          <input id="delivery-zip" inputMode="numeric" maxLength={5} autoComplete="postal-code" pattern="[0-9]{5}" value={zip} onChange={(e) => setZip(e.target.value.replace(/\D/g, '').slice(0, 5))} />
           <label htmlFor="delivery-state">State your store is in</label>
           <select id="delivery-state" value={stateCode} onChange={(e) => setStateCode(e.target.value)} autoComplete="address-level1">
             <option value="">Choose a state…</option>
@@ -67,7 +71,10 @@ export function DeliveryPage({ goHome, navigate }) {
               </>
             )}
             {otherState && (
-              <b>Delivery is currently on routes in Alabama, Mississippi, and Georgia.</b>
+              <b>Delivery is currently on routes in Alabama, Mississippi and Georgia. Call <PhoneLink /> about will-call pickup in Birmingham.</b>
+            )}
+            {zip.length === 5 && (
+              <span>Call <PhoneLink /> to confirm whether {zip} is on a route. Route days and the order cutoff are confirmed by the trade desk.</span>
             )}
           </div>
         </form>

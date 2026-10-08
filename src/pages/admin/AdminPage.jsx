@@ -11,7 +11,8 @@ const TABS = [
   { id: 'products', label: 'Products' },
 ];
 
-const ORDER_STATES = ['new', 'contacted', 'fulfilled', 'cancelled'];
+// TODO(owner): Confirm staff should price guest quotes and convert them to orders, and that orders use quoted and confirmed before picking. (AW-024)
+const ORDER_STATES = ['new', 'contacted', 'quoted', 'confirmed', 'picking', 'ready', 'out_for_delivery', 'fulfilled', 'cancelled'];
 
 export function AdminPage({ profile, goHome }) {
   const [tab, setTab] = useState('orders');
@@ -61,6 +62,104 @@ export function AdminPage({ profile, goHome }) {
   );
 }
 
+function quoteMailBody(order, lines) {
+  const rows = lines.map(line => `${line.qty} × ${line.product_name} (${line.sku}) @ $${Number(line.unit_price || 0).toFixed(2)}`).join('\n');
+  const total = lines.reduce((sum, line) => sum + Number(line.qty || 0) * Number(line.unit_price || 0), 0);
+  return `Quote ${order.ref_num}\n\n${rows}\n\nTotal $${total.toFixed(2)}`;
+}
+
+function OrderCard({ order, onStatus, onReload }) {
+  const [editing, setEditing] = useState(false);
+  const [lines, setLines] = useState(() => (order.order_items || []).map(line => ({
+    ...line,
+    unit_price: line.unit_price ?? line.products?.price ?? '',
+  })));
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const isQuote = order.kind === 'quote' || order.user_id == null;
+  const savePrices = async () => {
+    setBusy(true);
+    setError(null);
+    const { error: rpcError } = await supabase.rpc('admin_price_order', {
+      p_order_id: order.id,
+      p_lines: lines.map(line => ({
+        item_id: line.id,
+        qty: Math.max(0, Math.floor(Number(line.qty) || 0)),
+        unit_price: line.unit_price === '' ? null : Number(line.unit_price),
+      })),
+    });
+    setBusy(false);
+    if (rpcError) {
+      setError(rpcError.message || 'Prices could not be saved. Apply the quote-workflow migration first.');
+      return;
+    }
+    setEditing(false);
+    onReload();
+  };
+  const convert = async () => {
+    setBusy(true);
+    setError(null);
+    const { error: rpcError } = await supabase.rpc('admin_convert_quote', {
+      p_order_id: order.id,
+      p_user_id: null,
+    });
+    setBusy(false);
+    if (rpcError) setError(rpcError.message || 'This quote could not be converted yet.');
+    else onReload();
+  };
+  return (
+    <article className={`order-card${isQuote ? ' is-quote' : ''}`}>
+      <div className="order-head">
+        <div>
+          <span className="order-kind">{isQuote ? 'Guest quote' : 'Trade order'}</span>
+          <b className="order-ref">{order.ref_num}</b>
+          <small>
+            {new Date(order.created_at).toLocaleString()} · {order.business} · {order.contact}
+            {' · '}<a href={`mailto:${order.email}`}>{order.email}</a>
+            {order.phone && <> · <a href={`tel:${String(order.phone).replace(/[^\d+]/g, '')}`}>{order.phone}</a></>}
+            {order.ship_street && <span> · Deliver to {order.ship_street}, {order.ship_city} {order.ship_state} {order.ship_zip}</span>}
+            {order.license_no && <span> · Tobacco license {order.license_no}</span>}
+            {order.resale_cert_no && <span> · Resale certificate {order.resale_cert_no}</span>}
+            {order.purchasers_21 && <span> · 21+ purchasers confirmed</span>}
+            {order.profiles?.pricing_tier && <span> · tier: <b>{order.profiles.pricing_tier}</b></span>}
+          </small>
+        </div>
+        <select aria-label={`Status for ${order.ref_num}`} value={order.status} onChange={e => onStatus(order.id, e.target.value)}>
+          {ORDER_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+      </div>
+      {editing ? (
+        <div className="order-edit">
+          {lines.map((line, index) => (
+            <label key={line.id}>
+              <span>{line.product_name} <span className="sku">({line.sku})</span></span>
+              <input aria-label={`Quantity for ${line.product_name}`} type="number" min="0" value={line.qty} onChange={e => setLines(current => current.map((row, i) => i === index ? { ...row, qty: e.target.value } : row))} />
+              <input aria-label={`Unit price for ${line.product_name}`} type="number" min="0" step="0.01" value={line.unit_price} onChange={e => setLines(current => current.map((row, i) => i === index ? { ...row, unit_price: e.target.value } : row))} />
+            </label>
+          ))}
+        </div>
+      ) : (
+        <ul className="order-items">
+          {(order.order_items || []).map(it => (
+            <li key={it.id}>
+              <span>{it.qty} × {it.product_name} <span className="sku">({it.sku})</span>{it.unit_price != null ? ` · $${Number(it.unit_price).toFixed(2)} each` : ''}</span>
+              <span className="line-total">{it.unit_price != null ? `$${(it.unit_price * it.qty).toFixed(2)}` : '—'}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {order.notes && <p className="order-notes">Notes: {order.notes}</p>}
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <div className="inline-actions">
+        <button className="mini-btn" type="button" onClick={() => setEditing(value => !value)}>{editing ? 'Close editor' : 'Edit / price'}</button>
+        {editing && <button className="mini-btn primary" type="button" disabled={busy} onClick={savePrices}>Save prices</button>}
+        <a className="mini-btn" href={`mailto:${order.email}?subject=${encodeURIComponent(`Quote ${order.ref_num}`)}&body=${encodeURIComponent(quoteMailBody(order, editing ? lines : (order.order_items || [])))}`}>Email quote</a>
+        {isQuote && <button className="mini-btn" type="button" disabled={busy} onClick={convert}>Convert to order</button>}
+      </div>
+    </article>
+  );
+}
+
 function OrdersTab() {
   const [orders, setOrders] = useState(null);
   const [filter, setFilter] = useState('new');
@@ -68,7 +167,7 @@ function OrdersTab() {
   const reload = () => {
     supabase
       .from('orders')
-      .select('*, order_items(id, product_name, sku, qty, unit_price), profiles(business, name, pricing_tier)')
+      .select('*, order_items(id, product_id, product_name, sku, qty, unit_price, products(price)), profiles(business, name, pricing_tier)')
       .order('created_at', { ascending: false })
       .limit(200)
       .then(({ data }) => setOrders(data || []));
@@ -101,33 +200,7 @@ function OrdersTab() {
 
       <div className="order-list">
         {filtered.map(o => (
-          <article className="order-card" key={o.id}>
-            <div className="order-head">
-              <div>
-                <b className="order-ref">{o.ref_num}</b>
-                <small>
-                  {new Date(o.created_at).toLocaleString()} · {o.business} · {o.contact} · {o.email} · {o.phone}
-                  {o.ship_street && <span> · Deliver to {o.ship_street}, {o.ship_city} {o.ship_state} {o.ship_zip}</span>}
-                  {o.license_no && <span> · Tobacco license {o.license_no}</span>}
-                  {o.resale_cert_no && <span> · Resale certificate {o.resale_cert_no}</span>}
-                  {o.purchasers_21 && <span> · 21+ purchasers confirmed</span>}
-                  {o.profiles?.pricing_tier && <span> · tier: <b>{o.profiles.pricing_tier}</b></span>}
-                </small>
-              </div>
-              <select aria-label={`Status for ${o.ref_num}`} value={o.status} onChange={e => updateStatus(o.id, e.target.value)}>
-                {ORDER_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <ul className="order-items">
-              {(o.order_items || []).map(it => (
-                <li key={it.id}>
-                  <span>{it.qty} × {it.product_name} <span className="sku">({it.sku})</span></span>
-                  <span className="line-total">{it.unit_price != null ? `$${(it.unit_price * it.qty).toFixed(2)}` : '—'}</span>
-                </li>
-              ))}
-            </ul>
-            {o.notes && <p className="order-notes">Notes: {o.notes}</p>}
-          </article>
+          <OrderCard key={o.id} order={o} onStatus={updateStatus} onReload={reload} />
         ))}
       </div>
       {filtered.length === 0 && <p className="result-note">No orders in this state.</p>}
@@ -260,6 +333,7 @@ function AccountsTab() {
                       Approve
                     </button>
                   )}
+                  <a className="mini-btn" href={`mailto:${p.email}?subject=${encodeURIComponent('Your Alabama Wholesale trade account')}&body=${encodeURIComponent('Your Alabama Wholesale trade account is approved. Sign in to see pricing.')}`}>Email applicant</a>
                 </div>
               </td>
             </tr>

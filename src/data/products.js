@@ -34,6 +34,13 @@ import { productImage } from '../lib/images.js';
 
 export const NAV_ORDER = ['TOBACCO', 'NOVELTIES', 'MERCHANDISE', 'CANDIES', 'FOOD STUFF', 'GROCERY', 'MOTOR OIL', 'DRINKS & BAGS'];
 
+// TODO(owner): Real wholesale list prices for all 368 SKUs (AW-002). Sell unit
+// for every product that does not already state one (AW-031). Packshots for
+// missing, shared, mismatched, low-resolution, and non-packshot photos
+// (AW-010, AW-029, AW-033, AW-034, AW-073, AW-136, AW-142). Do not delist or
+// rename Kratom & Kava, Mushroom Products, Detox, Wellness Pills, or Honey &
+// Energy until the owner says so (AW-001, AW-134).
+
 // Raw rows with photo filenames. The storefront uses PRODUCTS below;
 // scripts/build-seed.mjs writes these rows to supabase/seed/products.sql.
 export const CATALOG = [
@@ -123,7 +130,7 @@ export const CATALOG = [
     description: "Orbit gum from the gum and mints line in our Candies department. Three flavors: Sweet mint, Peppermint and Spearmint." },
   { id:  43, name: "Mentos", brand: "Mentos", cat: "CANDIES", sub: "Gum & Mints", sku: "AW-MENTOS", sellUnit: "", flavors: 3, variants: ["Strawberry", "Mint", "Fruit"], img: "mentos.webp", tag: null, price: 34.68,
     description: "Mentos chewy mints in rolls. Three flavors: Strawberry, Mint and Fruit." },
-  { id:  44, name: "Mike & Ike", brand: "Mike and Ike", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-MIKE-IKE", sellUnit: "", flavors: 7, variants: ["Watermelon", "Grape", "Blue raspberry", "Sour blue", "Green", "Cherry", "Blue"], img: "mike_ike.webp", tag: null, price: 38.79,
+  { id:  44, name: "Mike and Ike", brand: "Mike and Ike", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-MIKE-IKE", sellUnit: "", flavors: 7, variants: ["Watermelon", "Grape", "Blue raspberry", "Sour blue", "Green", "Cherry", "Blue"], img: "mike_ike.webp", tag: null, price: 38.79,
     description: "Mike and Ike chewy candy boxes. Seven flavors: Watermelon, Grape, Blue raspberry, Sour blue, Green, Cherry and Blue." },
   { id:  45, name: "Argo corn starch", brand: "Argo", cat: "FOOD STUFF", sub: "Cooking Basics", sku: "AW-ARGO-CORN-STAR", sellUnit: "", flavors: 0, variants: [], img: "argo_corn_starch.webp", tag: null, price: 20.5,
     description: "Argo corn starch, from the cooking basics line in our Food Stuff department." },
@@ -231,7 +238,7 @@ export const CATALOG = [
     description: "Autoguard automotive fluids. Three fluids: Power steering, Brake fluid and Antifreeze." },
   { id:  97, name: "Itasca 2-cycle engine oil", brand: "Itasca", cat: "MOTOR OIL", sub: "Lubricants", sku: "AW-2-CYCLE-OIL", sellUnit: "", flavors: 0, variants: [], img: "2_cycle_oil.webp", tag: null, price: 38.22,
     description: "Itasca Outdoors 2-cycle engine oil in 8 oz bottles." },
-  { id:  98, name: "BlueDEF diesel exhaust fluid 2.5 gal", brand: "BlueDEF", cat: "MOTOR OIL", sub: "Fluids", sku: "AW-DEF-2-5-GAL", sellUnit: "2.5 gal jug", flavors: 0, variants: [], img: "blue_def_2_5_gal.jpg", tag: null, price: 12.2,
+  { id:  98, name: "PEAK BlueDEF diesel exhaust fluid 2.5 gal", brand: "PEAK", cat: "MOTOR OIL", sub: "Fluids", sku: "AW-DEF-2-5-GAL", sellUnit: "2.5 gal jug", flavors: 0, variants: [], img: "blue_def_2_5_gal.jpg", tag: null, price: 12.2,
     description: "PEAK BlueDEF diesel exhaust fluid in the 2.5 gallon jug." },
   { id:  99, name: "PEAK antifreeze", brand: "PEAK", cat: "MOTOR OIL", sub: "Fluids", sku: "AW-PEAK-ANTIFREEZ", sellUnit: "", flavors: 0, variants: [], img: "peak_antifreeze.webp", tag: null, price: 38.5,
     description: "PEAK antifreeze and coolant, from the automotive fluid line in our Motor Oil department." },
@@ -417,9 +424,9 @@ export const CATALOG = [
     description: "Mamba fruit chews in big bars. Three flavors: Original, Sour and Tropical." },
   { id: 190, name: "Mamba small", brand: "Mamba", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-MAMBA-SMALL", sellUnit: "", flavors: 3, variants: ["Regular", "Tropical", "Sour"], img: "mamba_big_bars.jpg", tag: null, price: 43.6,
     description: "Mamba fruit chews in the small size. Three varieties: Regular, Tropical and Sour." },
-  { id: 191, name: "Mint candy lumps", brand: "Mint lumps", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-MINT-LUMPS", sellUnit: "", flavors: 0, variants: [], img: "mint_lumps.jpg", tag: null, price: 32.23,
+  { id: 191, name: "Mint candy lumps", brand: "Candyman's", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-MINT-LUMPS", sellUnit: "", flavors: 0, variants: [], img: "mint_lumps.jpg", tag: null, price: 32.23,
     description: "Mint candy lumps in the counter dispenser box." },
-  { id: 192, name: "Cherry candy lumps", brand: "Cherry lumps", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-CHERRY-LUMPS", sellUnit: "", flavors: 0, variants: [], img: "cherry_lumps.jpg", tag: null, price: 18.58,
+  { id: 192, name: "Cherry candy lumps", brand: "Candyman's", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-CHERRY-LUMPS", sellUnit: "", flavors: 0, variants: [], img: "cherry_lumps.jpg", tag: null, price: 18.58,
     description: "Cherry candy lumps in the counter dispenser box." },
   { id: 193, name: "Pure Eyes redness relief", brand: "Pure Eyes", cat: "MERCHANDISE", sub: "OTC & Health", sku: "AW-PURE-EYES", sellUnit: "", flavors: 0, variants: [], img: "p193-pure-eyes.avif", tag: null, price: 50.7,
     description: "Pure eyes from the OTC and health line in our Merchandise department." },
@@ -531,7 +538,7 @@ export const CATALOG = [
     description: "Value incense from the air freshener and incense line in our Merchandise department. Three sizes: Small, Medium and Big." },
   { id: 247, name: "Lattafa air freshener", brand: "Lattafa", cat: "MERCHANDISE", sub: "Air Fresheners & Incense", sku: "AW-LATTAFA-AIR-FR", sellUnit: "", flavors: 1, variants: ["Pink"], img: "lattafa_air_freshener.webp", tag: null, price: 78.98,
     description: "Lattafa air freshener sprays. Stocked in one variety: Pink." },
-  { id: 248, name: "Coke", brand: "Coca-Cola", cat: "DRINKS & BAGS", sub: "Sodas", sku: "AW-COKE", sellUnit: "", flavors: 0, variants: [], img: "p248-coke.jpg", tag: null, price: 28.94,
+  { id: 248, name: "Coca-Cola", brand: "Coca-Cola", cat: "DRINKS & BAGS", sub: "Sodas", sku: "AW-COKE", sellUnit: "", flavors: 0, variants: [], img: "p248-coke.jpg", tag: null, price: 28.94,
     description: "Coca-Cola from the soda line in our Drinks & Bags department." },
   { id: 249, name: "Sprite", brand: "Sprite", cat: "DRINKS & BAGS", sub: "Sodas", sku: "AW-SPRITE", sellUnit: "", flavors: 2, variants: ["Regular", "Tropical"], img: "p249-sprite.jpg", tag: null, price: 14.33,
     description: "Sprite from the soda line in our Drinks & Bags department. Two varieties: Regular and Tropical." },
@@ -778,6 +785,15 @@ export const CATALOG = [
 // img becomes the small JPEG URL (thumbnails, plain <img>), picture the
 // responsive WebP/JPEG set rendered by <Picture>.
 export const PRODUCTS = CATALOG.map((p) => ({ ...p, ...productImage(p.img) }));
+
+const sharedImageCounts = new Map();
+for (const row of PRODUCTS) {
+  if (!row.img) continue;
+  sharedImageCounts.set(row.img, (sharedImageCounts.get(row.img) || 0) + 1);
+}
+export const SHARED_IMAGES = new Set(
+  [...sharedImageCounts].filter(([, count]) => count > 1).map(([img]) => img),
+);
 
 // Subset shown in the rotating "new arrivals" row on home.
 export const NEW_ARRIVALS_IDS = [61, 62, 64, 31, 171, 167, 342, 184, 75, 76];
