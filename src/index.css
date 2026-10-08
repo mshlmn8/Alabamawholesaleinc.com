@@ -318,7 +318,11 @@ p > .text-link { min-height: 0; }
 .home-carousel-stage { position: relative; height: min(56vw, 480px); min-height: 280px; background: #fff; }
 .home-carousel-slide { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; pointer-events: none; }
 .home-carousel-slide.is-active { opacity: 1; }
-.home-carousel-slide img,
+/* The photo stays out of grid flow, centred by inset and auto margins:
+   inside <picture> (display: contents) the <source> takes a grid row of its
+   own, and an in-flow img then grows past the stage, over the controls and
+   the slide's nicotine warning (AW-026). */
+.home-carousel-slide img { position: absolute; inset: 0; margin: auto; max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; display: block; }
 .home-carousel-slide video { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; display: block; }
 .home-carousel-controls { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #fff; border-top: 1px solid var(--line); }
 .home-carousel-controls p { margin: 0 auto 0 0; color: var(--orange-dark); font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); }

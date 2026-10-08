@@ -436,6 +436,33 @@ test.describe('tobacco and vapor', () => {
     expect(errors).toEqual([]);
   });
 
+  test('the vape hero slide shows the statement below its controls, not under the photo', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/');
+    const carousel = page.locator('.home-carousel');
+    await carousel.getByRole('button', { name: 'Pause' }).click();
+    await carousel.getByRole('button', { name: 'Next slide' }).click();
+    const warning = carousel.locator('.nicotine-warning');
+    await expect(warning).toHaveText(FDA);
+    // Every photo stays inside the stage; one that grew past it covered the
+    // controls and this statement on phones and tablets.
+    const overflow = await carousel.locator('.home-carousel-slide').evaluateAll((slides) => slides.map((slide) => {
+      const img = slide.querySelector('img');
+      return img ? Math.round(img.getBoundingClientRect().bottom - slide.getBoundingClientRect().bottom) : 0;
+    }));
+    expect(Math.max(...overflow)).toBeLessThanOrEqual(0);
+    await warning.scrollIntoViewIfNeeded();
+    const covered = await warning.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return !el.contains(hit);
+    });
+    expect(covered).toBe(false);
+    await carousel.getByRole('button', { name: 'Next slide' }).click();
+    await expect(warning).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
   test('a guest quote with a cigarette line asks for the licence, resale certificate and 21+', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/product/14');
