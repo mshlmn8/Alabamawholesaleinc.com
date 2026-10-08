@@ -39,6 +39,7 @@ export function DeliveryPage() {
           <p>{`Next-day delivery on our own trucks when your stop is on a delivery route. Free delivery on orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} when the stop is on a route.`}</p>
         </article>
         <article className="info-card">
+          {/* TODO(owner): Warehouse photo, will-call lead time, entrance and parking, and payment at pickup. (AW-124) */}
           <p className="eyebrow">02 · WILL-CALL</p>
           <h2>Pick up in Birmingham</h2>
           <p>Will-call is pickup at {COMPANY.addressLine1}, {COMPANY.addressLine2} during business hours. {COMPANY.hoursLine1}, {COMPANY.hoursLine2}.</p>

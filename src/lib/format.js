@@ -13,6 +13,7 @@ export const formatMoney = (n) => USD.format(Number(n));
 export const formatMoneyShort = (n) => USD_WHOLE.format(Number(n));
 
 // Department keys are the catalog's upper-case `cat` values.
+// TODO(owner): One name for the Novelties department (Exotics, Novelties & Vapes, or Novelties), and approval of any department renames; names are unchanged until then. (AW-217, AW-134)
 const CAT_LABEL = {
   'TOBACCO': 'Tobacco', 'NOVELTIES': 'Novelties & Vapes', 'MERCHANDISE': 'Merchandise',
   'CANDIES': 'Candies', 'DRINKS & BAGS': 'Drinks & Bags', 'FOOD STUFF': 'Food Stuff',

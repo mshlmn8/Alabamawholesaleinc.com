@@ -4,6 +4,8 @@ The site deploys only from Git. Netlify installs and builds every push itself,
 so each deploy runs the environment check and the image and site build, and
 every deploy maps to a commit.
 
+<!-- TODO(owner): Which cookieless analytics, error reporting and uptime monitor should the site use? None is added; adding one also changes the CSP in netlify.toml and the privacy policy's processor list. (AW-210) -->
+
 ## Site settings
 
 Link the Netlify site to the GitHub repository (**Site configuration → Build &

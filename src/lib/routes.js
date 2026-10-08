@@ -20,6 +20,7 @@
 
 // The production origin. VITE_SITE_URL overrides it (see src/lib/meta.js and
 // scripts/build-sitemap.mjs); this is the domain the site already uses.
+// TODO(owner): Register the production domain and connect it in Netlify; VITE_SITE_URL overrides this. (AW-052)
 export const DEFAULT_SITE_URL = 'https://alabamawholesaleinc.com';
 
 // Normalises a configured site URL to `https://host` with no trailing slash.

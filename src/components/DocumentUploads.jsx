@@ -4,7 +4,8 @@
 //
 // On the apply page (ApplicationDocuments) the panel says how many of the two
 // files are on file, and each one on file can be opened (AW-099, Cursor PR
-// #13). Staff are not alerted yet; that waits on the owner (OWNER-TODO).
+// #13).
+// TODO(owner): Which staff email address (or channel) should hear when an applicant uploads license documents? No alert is sent yet. (AW-099)
 
 import { useEffect, useRef, useState } from 'react';
 import { COMPANY } from '../data/content.js';
@@ -60,7 +61,7 @@ function DocumentFields({
 
   return (
     <fieldset className="doc-uploads" disabled={disabled}>
-      <legend>{showStatus ? 'License documents' : 'Optional documents'}</legend>
+      <legend>{showStatus ? 'Upload or replace' : 'Optional documents'}</legend>
       <p className="doc-uploads-note" id={`${idPrefix}-later`}>
         {showStatus
           ? 'Uploading a new file replaces the one on file.'

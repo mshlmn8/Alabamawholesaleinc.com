@@ -50,6 +50,8 @@
 // TODO(owner): Packshots for the products without a photo (they show "Photo coming soon" and stay off the home rails, AW-029), for the rows that share a photo with a different size or pack (AW-136), and to replace the mismatched (AW-010), retailer-copied (AW-033), banner or collage (AW-034), low-resolution (AW-073) and dark or full-bleed (AW-141) photos; for each photo that shows a flavor the row doesn't list, is that flavor stocked (AW-142)? Photos are unchanged until then.
 // TODO(owner): Which brand is actually stocked for each "Assorted" row (the storefront doesn't print that placeholder), and for #343, which mixes eFrutti and SpongeBob? (AW-286)
 // TODO(owner): Pack size, case count, dimensions and attributes for each product, so the descriptions can be rewritten. (AW-075)
+// TODO(owner): Is #366 Game Palma Green, are trash bags #95 and #107 the same stock, and which other Uncle Al's flavors are stocked? No rows were removed or renamed. (AW-140)
+// TODO(owner): Approve department renames, and a lawful name for the Honey & Energy line after legal review; names are unchanged until then. (AW-134)
 
 import { productImage, sharedImageFiles } from '../lib/images.js';
 

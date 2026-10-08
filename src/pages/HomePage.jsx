@@ -41,6 +41,7 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, pric
       </section>
 
       <section className="editorials" aria-label="Collections">
+        {/* TODO(owner): Licensed photos for the novelties collection card and the tobacco collection card. (AW-058) */}
         <Link className="editorial-card cream" to={dept('NOVELTIES')}>
           <Picture className="bg" picture={EDITORIAL_BG.picture} alt="" aria-hidden="true" sizes={SIZES.editorial} />
           <span className="block-label">COLLECTION / 01</span>
@@ -65,6 +66,7 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, pric
 
       <section className="services" aria-label="Services">
         <div className="service"><span>01</span><h3>Next-day delivery, our own trucks</h3><p>We run our own delivery service on routes in Alabama, Mississippi and Georgia. Free delivery on orders over $1,500 when the stop is on a delivery route. Will-call is pickup at the Birmingham warehouse during business hours.</p></div>
+        {/* TODO(owner): Who gets Net-30, and what is the real volume discount? Kept as published (decision 2). (AW-025) */}
         <div className="service"><span>02</span><h3>Net-30 trade terms</h3><p>Approved retail accounts order now and pay on Net-30 terms. Volume discounts up to 18% on pallet quantities across all eight departments.</p></div>
         {/* TODO(owner): Is a tobacco license required for every trade account, or only for tobacco, vapor, and nicotine? This sentence is unchanged until you decide. (AW-129) */}
         <div className="service"><span>03</span><h3>Licensed businesses only</h3><p>We verify your state retail tobacco license and resale certificate before your first order. No consumer sales, no exceptions — 21+ trade accounts only.</p></div>

@@ -11,6 +11,8 @@ const UPDATED = POLICIES_UPDATED;
 
 // Each policy is a list of sections; `body` items are paragraphs (string or JSX)
 // or `{ list: [...] }` bullet groups.
+// TODO(owner): Order cutoff, delivery days, the fee under $1,500, tobacco receiving rules and the damage-claim process for the Delivery policy. (AW-130)
+// TODO(owner): Returns, damage, credit, tax, risk of loss, liability and governing law for the Trade terms, ideally with counsel. (AW-028)
 const POLICIES = {
   shipping: {
     eyebrow: 'CUSTOMER POLICIES',

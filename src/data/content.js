@@ -8,6 +8,7 @@ export const COMPANY = {
   phone: '(205) 354-4473',
   phoneRaw: '+12053544473',
   whatsapp: '12053544473',
+  // TODO(owner): Which domain email address is monitored, so it can replace the Gmail address? (AW-127)
   email: 'Alabamawholesaleinc@gmail.com',
   addressShort: '613 Graymont Ave N, Birmingham AL 35203',
   addressLine1: '613 Graymont Ave N',
@@ -22,6 +23,7 @@ export const COMPANY = {
   hoursLine2: 'Sat–Sun 8:00 AM – 5:30 PM'
 };
 
+// TODO(owner): Who gets Net-30, and what is the real volume discount behind "up to 18%"? Kept exactly as published until you say (decision 2). (AW-025)
 export const ANNOUNCEMENTS = [
   '★ FREE DELIVERY on orders over $1,500 on our delivery routes in Alabama, Mississippi & Georgia',
   '★ NET-30 TERMS available for approved retail accounts',
@@ -40,6 +42,7 @@ export const SHOP_CATS = [
   { name: 'DRINKS & BAGS', count: 44, color: ['#1F2A4A', '#0EA5E9'], icon: 'drink' }
 ];
 
+// TODO(owner): Wide licensed photos of the warehouse or a multi-department assortment for the hero; the current hero photos are unchanged until then. (AW-006)
 export const HERO_SLIDES = [
   // To use video: set videoUrl to a public MP4 URL (or leave null for image)
   // For demo, all use images. Replace with your real product videos.
@@ -53,6 +56,8 @@ export const HERO_SLIDES = [
 
 export const BRANDS = ["HERSHEY'S", 'GATORADE', 'BIC', 'WD-40', 'GEEK BAR', 'GAIN', 'STP', 'WHITE OWL', 'TWANGERZ', 'POM POM', 'NEON', 'JOB'];
 
+// Not shown on the site.
+// TODO(owner): Years in business, account or route counts, warehouse and truck photos, and which brand logos may be shown, before any trust claim like these is published. (AW-005)
 export const TRUST = [
   { icon: 'ShieldCheck', title: '100% Authentic',        blurb: 'Sourced direct from manufacturers and authorized distributors. Every SKU verified.' },
   { icon: 'Truck',       title: 'Free Delivery $1,500+', blurb: 'Will-call pickup at the Birmingham warehouse during business hours, or next-day delivery on our routes in Alabama, Georgia and Mississippi.' },
@@ -60,6 +65,8 @@ export const TRUST = [
   { icon: 'Users',       title: 'Family Owned',          blurb: 'Three generations serving Southeast retailers. Real relationships, honest pricing.' }
 ];
 
+// Not shown on the site.
+// TODO(owner): Confirm the FAQ answers (including Net-30, approval time and volume discounts) before they are published. (AW-279)
 export const FAQS = [
   { q: 'Do I need a business license to order?',
     a: 'Yes. Alabama Wholesale only sells to licensed retailers. You\'ll need a valid retail business license, sales tax / resale certificate, and (for tobacco/vape products) a tobacco permit for your state. We verify all documents during account approval.' },
@@ -130,5 +137,6 @@ export const ORDER_MINIMUM = 500;
 // changes; content.test.js checks they name the same month.
 // TODO(owner): approve the Trade terms and Privacy policy version the
 // application records acceptance of (AW-019).
+// TODO(owner): The exact date each policy should show. (AW-277)
 export const POLICIES_UPDATED = 'September 2026';
 export const TERMS_VERSION = '2026-09';

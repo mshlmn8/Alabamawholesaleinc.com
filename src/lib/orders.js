@@ -112,6 +112,7 @@ export const resetQuoteSignatureForTests = () => { workingSignature = null; };
 // current function kind, priced_lines, unpriced_lines }) and legacy says an
 // older signature saved it; throws the error otherwise (quoteErrorMessage()
 // words it).
+// TODO(owner): Which address or phone should hear about a new quote, and which provider sends it? Nothing is sent on its own yet. (AW-050)
 export async function submitOrder({ formData, items }, { client = supabase } = {}) {
   if (!client) {
     const err = new Error('Quote requests can’t be saved right now.');
