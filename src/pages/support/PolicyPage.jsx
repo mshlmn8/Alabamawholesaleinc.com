@@ -1,12 +1,13 @@
 // Customer policy pages: delivery, privacy, and trade terms.
 
-import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../../data/content.js';
+import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM, POLICIES_UPDATED } from '../../data/content.js';
 import { formatMoney, formatMoneyShort } from '../../lib/format.js';
 import { Link } from '../../lib/router.js';
 import { CallOrEmail, PhoneLink, EmailLink } from '../../components/ContactLinks.jsx';
 import { PageHead, PolicyNav, ContactStrip, POLICY_LINKS } from './SupportShell.jsx';
 
-const UPDATED = 'September 2026';
+// Shared with TERMS_VERSION, the version an application accepts (AW-019).
+const UPDATED = POLICIES_UPDATED;
 
 // Each policy is a list of sections; `body` items are paragraphs (string or JSX)
 // or `{ list: [...] }` bullet groups.
@@ -40,10 +41,15 @@ const POLICIES = {
     intro: 'What Alabama Wholesale collects from trade customers, and why.',
     updated: true,
     sections: [
-      // TODO(owner): Provide or approve the privacy policy details: service providers used, data sharing, retention periods for uploaded license and EIN documents, and the contact method for access or deletion requests. Published sections below are unchanged. (AW-027)
+      // TODO(owner): Provide or approve the privacy policy details: service providers used, data sharing, retention periods for uploaded license and EIN documents, and the contact method for access or deletion requests. Apart from the store address, license files and agreement record now named under 'What we collect' (AW-019), the published sections below are unchanged. (AW-027)
+      // TODO(owner): approve this wording, and say how long application
+      // details, license files and the agreement record are kept; no
+      // retention period is stated until you do (AW-019).
       { heading: 'What we collect', body: [
         { list: [
-          'Application details: your name, business name, phone, business email, business type, store state, federal EIN, state retail tobacco license number, resale certificate number and expected monthly volume.',
+          'Application details: your name, business name, phone, business email, business type, store street address, city, state and ZIP, federal EIN, state retail tobacco license number, resale certificate number and expected monthly volume.',
+          'License documents: the state retail tobacco license and resale certificate files you upload with an application. They are kept in private storage that only you and the trade desk can open.',
+          'Your agreement: when you accepted the Trade terms and Privacy policy and which version, and when you confirmed you are 21 or older.',
           'Orders: business and contact details, delivery address, the items requested, delivery preferences and notes.',
         ] },
       ] },

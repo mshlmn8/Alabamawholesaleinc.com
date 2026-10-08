@@ -13,9 +13,9 @@ const EDITORIAL_BG = heroImage('hero_candy.jpg');
 
 const dept = (category) => ({ page: 'category', category });
 
-export function HomePage({ products, departments, profile, isApprovedBuyer, cart, addLine, decLine, onLoginClick, onApplyClick }) {
+export function HomePage({ products, departments, profile, isApprovedBuyer, priceOf, pricesStatus, cart, addLine, decLine, onLoginClick, onApplyClick }) {
   const card = (p) => (
-    <ProductCard key={p.id} p={p} profile={profile} isApprovedBuyer={isApprovedBuyer} cart={cart}
+    <ProductCard key={p.id} p={p} profile={profile} isApprovedBuyer={isApprovedBuyer} priceOf={priceOf} pricesStatus={pricesStatus} cart={cart}
                  addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} />
   );
   const newArrivals = NEW_ARRIVALS_IDS.map(id => products.find(p => Number(p.id) === id)).filter(Boolean).slice(0, 8);
@@ -39,7 +39,7 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, cart
         <Link className="editorial-card cream" to={dept('NOVELTIES')}>
           <Picture className="bg" picture={EDITORIAL_BG.picture} alt="" aria-hidden="true" sizes={SIZES.editorial} />
           <span className="block-label">COLLECTION / 01</span>
-          {/* TODO(owner): After legal review, which of Kratom & Kava, Mushroom Products, Detox, Wellness Pills, and Honey & Energy enhancement items should be delisted, de-featured, or kept? Headline kept as published. (AW-001) */}
+          {/* TODO(owner): After legal review, which of Kratom & Kava, Mushroom Products, Detox, Wellness Pills, and Honey & Energy enhancement items should be delisted, de-featured, or kept, and may this card advertise detox and kratom? Headline kept as published. (AW-001) */}
           <div><p className="eyebrow">EXOTICS &amp; NOVELTIES</p><h2>Disposables, detox,<br />kratom &amp; more.</h2><span className="text-link">Browse novelties</span><span className="arrow" aria-hidden="true">↗</span></div>
         </Link>
         <Link className="editorial-card purple" to={dept('TOBACCO')}>

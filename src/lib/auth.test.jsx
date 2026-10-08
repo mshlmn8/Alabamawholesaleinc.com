@@ -5,6 +5,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AUTH_STORAGE_KEY } from './supabase.js';
 import { accountState, AuthProvider, clearStoredSession, PENDING_PROFILE_POLL_MS, PROFILE_REFRESH_MIN_MS, useAuth } from './auth.jsx';
+import { TERMS_VERSION } from '../data/content.js';
 
 const retryable = () => Object.assign(new Error('Failed to fetch'), { name: 'AuthRetryableFetchError', status: 0 });
 
@@ -278,6 +279,28 @@ describe('AuthProvider', () => {
     await waitFor(() => expect(seen.auth.loading).toBe(false));
     await act(async () => { await seen.auth.resetPassword('buyer@example.test'); });
     expect(client.auth.resetPasswordForEmail).toHaveBeenCalledWith('buyer@example.test', { redirectTo: `${window.location.origin}/reset-password` });
+  });
+
+  it('sends the store address and the consent with the application (AW-092, AW-019)', async () => {
+    const client = fakeClient();
+    client.auth.signUp.mockResolvedValue({ data: { session: null, user: { id: 'u9' } }, error: null });
+    renderWith(client);
+    await waitFor(() => expect(seen.auth.loading).toBe(false));
+    const form = {
+      email: 'new@example.test', password: 'test-password-1', name: 'New Buyer', business: 'New Store', phone: '205-555-0199',
+      license_no: 'TL-TEST', ein: '12-3456789', resale_cert_no: 'RS-TEST', business_type: 'Smoke Shop', state: 'AL',
+      expected_volume: '$5K — $15K', store_street: '1 Test Way', store_city: 'Testville', store_zip: '35203',
+      terms_accepted: true, age_confirmed: true,
+    };
+    await act(async () => { await seen.auth.signUp(form); });
+    const { email, password, terms_accepted, age_confirmed, ...rest } = form;
+    expect(client.auth.signUp).toHaveBeenCalledWith({
+      email, password,
+      options: { data: { ...rest, terms_version: TERMS_VERSION, terms_accepted, age_confirmed } },
+    });
+    // Boxes that weren't ticked record no consent (the server then stores none).
+    await act(async () => { await seen.auth.signUp({ ...form, terms_accepted: undefined, age_confirmed: 'yes' }); });
+    expect(client.auth.signUp.mock.calls[1][0].options.data).toMatchObject({ terms_accepted: false, age_confirmed: false });
   });
 });
 

@@ -6,14 +6,17 @@
 // The session and profile come from the AuthProvider (src/lib/auth.jsx,
 // AW-187), mounted in main.jsx. The cart belongs to whoever is signed in
 // (src/lib/cart.js and src/lib/cartStorage.js, AW-189). The catalog comes
-// from the CatalogProvider (src/lib/catalog.jsx, AW-204, AW-191), also
-// mounted in main.jsx.
+// from the CatalogProvider (src/lib/catalog.jsx, AW-204, AW-191), and an
+// approved buyer's prices from the PricesProvider (src/lib/prices.jsx,
+// AW-003), both also mounted in main.jsx.
 
 import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 
 import { savedSessionUserId, useAuth } from './lib/auth.jsx';
 import { useCatalog } from './lib/catalog.jsx';
 import { useCart } from './lib/cart.js';
+import { usePrices } from './lib/prices.jsx';
+import { priceFor } from './lib/pricing.js';
 import { cartOwner, clearGuestCart } from './lib/cartStorage.js';
 import { focusPageHeading, navigate, pathFor, resolveRoute, routeKey, useNavigationEffects, useRoute } from './lib/router.js';
 import { pageKeyFor } from './lib/routes.js';
@@ -81,8 +84,16 @@ export default function App() {
   // profile, so Sign Out is always within reach (AW-089).
   const user = session ? { name: profile?.name || '', business: profile?.business || '' } : null;
   const isApprovedBuyer = profile?.status === 'approved';
-  const isAdmin = profile?.role === 'admin';
+  // Ordering is paused on a suspended account (AW-201).
+  const isSuspended = profile?.status === 'suspended';
+  // Only an approved admin is one; the database's is_admin() says the same
+  // (AW-352).
+  const isAdmin = profile?.role === 'admin' && profile?.status === 'approved';
   const departments = useMemo(() => departmentsFor(products), [products]);
+  // The signed-in buyer's unit price for a product (and variant), or null:
+  // no approved account, prices still loading, or price on request (AW-003).
+  const prices = usePrices();
+  const priceOf = useMemo(() => (id, variant) => priceFor(prices.prices, id, variant)?.unit ?? null, [prices.prices]);
   // Each account on this device has its own cart, and guests share one
   // (AW-189). While the saved session is being checked, or can't be
   // refreshed because Supabase is out of reach, it is that session's
@@ -91,7 +102,7 @@ export default function App() {
   // bring back the cart of the account that signed out.
   const savedUserId = auth.loading || auth.connectionProblem ? savedSessionUserId() : null;
   // Lines are only re-keyed or flagged against the live catalog (AW-083).
-  const cart = useCart({ products, profile, owner: cartOwner(auth, savedUserId), catalogSettled: catalog.settled });
+  const cart = useCart({ products, priceOf, owner: cartOwner(auth, savedUserId), catalogSettled: catalog.settled });
 
   // The URL is checked against the catalog (AW-188): unknown pages,
   // departments, lines and products render NotFound, and other spellings of
@@ -227,16 +238,21 @@ export default function App() {
     dismiss: () => setCatalogNoticeHidden(true),
   })];
 
-  // Checkout loads the catalog again right before a submit and stops when a
-  // line changed (AW-191): the cart as stored now, priced against it.
+  // Checkout loads the catalog and the buyer's prices again right before a
+  // submit and stops when a line changed (AW-191): the cart as stored now,
+  // priced against them.
   const checkCart = async () => {
-    const result = await catalog.refresh();
-    return result.ok ? { ok: true, items: cart.itemsFor(result.products) } : { ok: false, error: result.error };
+    const [latest, latestPrices] = await Promise.all([catalog.refresh(), prices.refresh()]);
+    if (!latest.ok) return { ok: false, error: latest.error };
+    if (!latestPrices.ok) return { ok: false, error: latestPrices.error };
+    const latestPriceOf = (id, variant) => priceFor(latestPrices.prices, id, variant)?.unit ?? null;
+    return { ok: true, items: cart.itemsFor(latest.products, latestPriceOf) };
   };
 
-  // Product cards need the account, the cart and the add/step actions.
+  // Product cards need the account, its prices, the cart and the add/step actions.
   const cardProps = {
-    profile, isApprovedBuyer, cart: cart.cart, addLine: cart.addLine, decLine: cart.decLine, onLoginClick: openSignin,
+    profile, isApprovedBuyer, priceOf, pricesStatus: prices.status,
+    cart: cart.cart, addLine: cart.addLine, decLine: cart.decLine, onLoginClick: openSignin,
   };
   // Account pages wait for the session and profile instead of flashing a
   // signed-out view (AW-186), and offer a retry when the profile fails (AW-089).
@@ -265,7 +281,7 @@ export default function App() {
           <QuotePage items={cart.items} total={cart.total} addLine={cart.addLine} decLine={cart.decLine} removeLine={cart.removeLine}
                      removeLines={cart.removeLines} clearCart={cart.clearCart} legacy={cart.legacy} onDismissLegacy={cart.dismissLegacy}
                      profile={profile} account={account} signedIn={!!session} onSignIn={openSignin} onApplyClick={openSignup}
-                     isApprovedBuyer={isApprovedBuyer} isBackendConfigured={isBackendConfigured} checkCart={checkCart} />
+                     isApprovedBuyer={isApprovedBuyer} isSuspended={isSuspended} pricesStatus={prices.status} isBackendConfigured={isBackendConfigured} checkCart={checkCart} />
         );
       case 'account':
         // Keyed by account: another buyer never sees the last one's orders (AW-190).
@@ -330,7 +346,7 @@ export default function App() {
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} items={cart.items} total={cart.total}
                   addLine={cart.addLine} decLine={cart.decLine} removeLine={cart.removeLine} removeLines={cart.removeLines}
                   legacy={cart.legacy} onDismissLegacy={cart.dismissLegacy}
-                  profile={profile} isApprovedBuyer={isApprovedBuyer} onLoginClick={openCartSignin} />
+                  profile={profile} isApprovedBuyer={isApprovedBuyer} isSuspended={isSuspended} pricesStatus={prices.status} onLoginClick={openCartSignin} />
       {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} onApply={() => { setHelpOpen(false); openSignup(); }} />}
       {loginOpen && (
         <ModalLayer onClose={() => setLoginOpen(false)}>

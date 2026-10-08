@@ -48,7 +48,8 @@ test.describe('with the age confirmed', () => {
     await first.goto('/product/14');
     await second.goto('/product/115');
     await addButton(first).click();
-    await second.locator('.variant-chips button').first().click();
+    // Product 115 has one variant: no chips to choose from (AW-233), it is added with it.
+    await expect(second.locator('.variant-chips')).toHaveCount(0);
     await addButton(second).click();
     await expect(cartButton(first)).toHaveAccessibleName('Cart, 2 items');
     await expect(cartButton(second)).toHaveAccessibleName('Cart, 2 items');

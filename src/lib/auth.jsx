@@ -39,6 +39,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase as defaultClient, AUTH_STORAGE_KEY } from './supabase.js';
 import { RESET_PASSWORD_PATH } from './authLink.js';
+import { TERMS_VERSION } from '../data/content.js';
 
 const UNAVAILABLE = 'Account access is temporarily unavailable. Please call or email the trade desk.';
 
@@ -330,22 +331,25 @@ export function AuthProvider({ client = defaultClient, link = null, children }) 
     };
   }, [client, userId, profileStatus, refreshProfile]);
 
+  // The application goes to Supabase as signup metadata. The signup trigger
+  // copies it to the profile and, once 20261008194000/195000 are applied,
+  // removes all but name and business from the metadata (AW-092, AW-019,
+  // AW-348); until then the keys stay there. Consent is recorded only when
+  // the form's boxes were ticked, with the terms version (AW-019).
   const signUp = useCallback(async ({
     email, password, name, business, phone, license_no, ein, resale_cert_no,
     business_type, state, expected_volume, store_street, store_city, store_zip,
-    terms_accepted, terms_version, age_confirmed,
+    terms_accepted = false, terms_version = TERMS_VERSION, age_confirmed = false,
   }) => {
     if (!client) throw new Error(UNAVAILABLE);
     const { data, error } = await client.auth.signUp({
       email,
       password,
       options: {
-        // The signup trigger copies these into profiles. Once the 2026-10-08
-        // migrations are applied it also removes the sensitive keys from the
-        // auth metadata (AW-092, AW-019, AW-348); until then they stay there.
         data: {
           name, business, phone, license_no, ein, resale_cert_no, business_type, state, expected_volume,
-          store_street, store_city, store_zip, terms_accepted, terms_version, age_confirmed,
+          store_street, store_city, store_zip,
+          terms_version, terms_accepted: terms_accepted === true, age_confirmed: age_confirmed === true,
         },
       },
     });

@@ -5,11 +5,23 @@
 // savedQty is this product's quantity on the list of lines from an older
 // cart that still need a variant (AW-354): it fills in the quantity, and
 // adding a variant uses it up.
+//
+// The price is the signed-in buyer's, from priceOf(productId, variant) (App,
+// src/lib/prices.jsx); products carry none (AW-003). It follows the chosen
+// variant; before one is chosen, variants priced differently show "From $x"
+// (AW-030).
+//
+// Variants (AW-233, AW-128): a product with several gets chips labelled with
+// its axis ("Choose a flavor"), and a variant marked not available is a
+// disabled chip that says so (AW-030). A product with one variant has no
+// chips; its variant shows as text when the name doesn't already say it.
 
 import { useState } from 'react';
-import { lineKey, variantList, variantSku, requiresVariantChoice } from '../lib/lines.js';
-import { priceForProfile } from '../lib/pricing.js';
-import { catLabel, formatMoney, initials } from '../lib/format.js';
+import {
+  informativeVariant, isVariantAvailable, lineKey, requiresVariantChoice, variantAxis, variantList, variantSku,
+} from '../lib/lines.js';
+import { priceLabel, variantPriceRange } from '../lib/pricing.js';
+import { catLabel, initials } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
@@ -18,7 +30,11 @@ import { ProductCard } from '../components/ProductCard.jsx';
 import { NicotineWarning } from '../components/NicotineWarning.jsx';
 import { showsNicotineWarning } from '../lib/regulated.js';
 
-export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLine, products, onLoginClick, onApplyClick, savedQty = 0 }) {
+const NO_PRICES = () => null;
+
+export function ProductPage({
+  productId, profile, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, products, onLoginClick, onApplyClick, savedQty = 0,
+}) {
   const [desiredQty, setDesiredQty] = useState(() => savedQty || 1);
   // What is left of the saved quantity after each add becomes the next one.
   const [prefilledFrom, setPrefilledFrom] = useState(savedQty);
@@ -33,17 +49,29 @@ export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine
   if (!p) return null;
   const department = { page: 'category', category: p.cat };
   const variants = variantList(p);
+  const axis = variantAxis(p);
+  const available = (v) => isVariantAvailable(p, v);
   const choiceRequired = requiresVariantChoice(p);
-  const selected = choiceRequired ? chosenVariant : (variants.length === 1 ? variants[0] : null);
+  // A choice the catalog has since marked not available no longer counts.
+  const chosen = chosenVariant && available(chosenVariant) ? chosenVariant : null;
+  const selected = choiceRequired ? chosen : (variants.length === 1 ? variants[0] : null);
+  const soleUnavailable = variants.length === 1 && !available(variants[0]);
+  const soleShown = soleUnavailable ? variants[0] : informativeVariant(p);
   const key = lineKey(p.id, selected);
   const qty = cart[key] || 0;
   const related = products.filter(x => x.sub === p.sub && Number(x.id) !== Number(p.id)).slice(0, 4);
-  const price = priceForProfile(p.price, profile);
+  let shown = { unit: null, from: false };
+  if (isApprovedBuyer) {
+    shown = choiceRequired && !selected
+      ? variantPriceRange(variants.filter(available).map(v => priceOf(p.id, v)))
+      : { unit: priceOf(p.id, selected), from: false };
+  }
   const handleAdd = () => {
-    if (choiceRequired && !chosenVariant) {
+    if (choiceRequired && !chosen) {
       setVariantError(true);
       return;
     }
+    if (soleUnavailable) return;
     addLine(p.id, selected, desiredQty);
     setDesiredQty(1);
   };
@@ -65,20 +93,21 @@ export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine
           <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()} from ${p.brand}.`}</p>
           {p.sellUnit && <p className="pd-unit">{`Sold by the ${p.sellUnit} — quantity 1 is one ${p.sellUnit}.`}</p>}
           <p className="pd-desc pd-fine">{`SKU ${p.sku}. Supplied to licensed retail businesses for lawful resale. Next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
-          {variants.length > 0 && (
-            <div className="variant-chips" role="group" aria-label={choiceRequired ? 'Choose a variant' : 'Variant'}>
+          {choiceRequired && (
+            <div className="variant-chips" role="group" aria-label={`Choose a ${axis.noun}`}>
               {variants.map(v => (
-                <button key={v} type="button" aria-pressed={selected === v} onClick={() => { setChosenVariant(v); setVariantError(false); }}>{v}</button>
+                <button key={v} type="button" aria-pressed={selected === v} disabled={!available(v)} onClick={() => { setChosenVariant(v); setVariantError(false); }}>{available(v) ? v : `${v} (not available)`}</button>
               ))}
             </div>
           )}
-          {variants.length > 1 && <p className="in-cart-note">Flavors and availability change often. The trade desk confirms what is in stock.</p>}
-          {choiceRequired && <p className="in-cart-note">Choose one variant. Each variant is quoted on its own line.</p>}
-          {savedQty > 0 && <p className="pd-saved">{`From your last visit: quantity ${savedQty}.${choiceRequired ? ' Choose a variant, then add it.' : ''}`}</p>}
-          {variantError && <p className="form-error" role="alert">Select a variant before adding this product.</p>}
+          {soleShown && <p className="pd-desc">{`${axis.label}: ${soleShown}${soleUnavailable ? ' (not available)' : ''}`}</p>}
+          {choiceRequired && axis.label === 'Flavor' && <p className="in-cart-note">Flavors and availability change often. The trade desk confirms what is in stock.</p>}
+          {choiceRequired && <p className="in-cart-note">{`Pick a ${axis.noun} to add it. Add each ${axis.noun} you want separately.`}</p>}
+          {savedQty > 0 && <p className="pd-saved">{`From your last visit: quantity ${savedQty}.${choiceRequired ? ` Choose a ${axis.noun}, then add it.` : ''}`}</p>}
+          {variantError && <p className="form-error" role="alert">{`Select a ${axis.noun} before adding this product.`}</p>}
           <div className="pd-price">
-            {isApprovedBuyer && price != null
-              ? <><b>{formatMoney(price)}</b><span>{`Wholesale unit price · ${variantSku(p.sku, selected)}`}</span></>
+            {isApprovedBuyer
+              ? <><b>{priceLabel(shown.unit, pricesStatus, { from: shown.from })}</b><span>{`Wholesale unit price · ${variantSku(p.sku, selected)}`}</span></>
               : profile
               ? <><b>Pending</b><span>Pricing unlocks after your account is approved</span></>
               : <><b>Sign in</b><span>Wholesale pricing is visible to approved trade accounts</span></>}
@@ -89,7 +118,7 @@ export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine
               <b aria-live="polite">{desiredQty}</b>
               <button type="button" onClick={() => setDesiredQty(q => q + 1)} aria-label="Increase quantity">+</button>
             </div>
-            <button className="button" type="button" onClick={handleAdd} disabled={choiceRequired && !chosenVariant}><span>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</span> <span aria-hidden="true">↗</span></button>
+            <button className="button" type="button" onClick={handleAdd} disabled={(choiceRequired && !chosen) || soleUnavailable}><span>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</span> <span aria-hidden="true">↗</span></button>
           </div>
           {qty > 0 && <p className="in-cart-note"><span>{`Already in ${isApprovedBuyer ? 'order' : 'quote'}: `}</span><strong>{qty}</strong><span>{selected ? ` · ${selected}` : ''}</span></p>}
           {!profile && (
@@ -112,7 +141,7 @@ export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine
             <Link to={department}>View department <span aria-hidden="true">↗</span></Link>
           </div>
           <div className="card-grid">
-            {related.map(r => <ProductCard key={r.id} p={r} profile={profile} isApprovedBuyer={isApprovedBuyer} cart={cart} addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} />)}
+            {related.map(r => <ProductCard key={r.id} p={r} profile={profile} isApprovedBuyer={isApprovedBuyer} priceOf={priceOf} pricesStatus={pricesStatus} cart={cart} addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} />)}
           </div>
         </section>
       )}

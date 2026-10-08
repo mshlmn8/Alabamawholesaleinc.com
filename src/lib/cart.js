@@ -5,8 +5,8 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { PRODUCTS as BUNDLED_PRODUCTS } from '../data/products.js';
-import { lineKey, requiresVariantChoice, normalizeCart, resolveCartItems } from './lines.js';
-import { priceForProfile } from './pricing.js';
+import { isVariantAvailable, lineKey, requiresVariantChoice, normalizeCart, resolveCartItems } from './lines.js';
+import { sumLines } from './pricing.js';
 import { formatMoney } from './format.js';
 import {
   EMPTY_CART, EMPTY_LIST, GUEST, adoptGuestCart, migrateLegacyCart, readCart, readLegacyList, subscribeCart,
@@ -16,11 +16,13 @@ import {
 export const cartCount = (cart) => Object.values(cart).reduce((a, b) => a + Number(b || 0), 0);
 
 // The line key a product-page or card add goes to, or null when the product
-// is unknown, inactive, or has several variants and none was chosen.
+// is unknown, inactive, or has several variants and none was chosen, or the
+// variant is marked not available (AW-030).
 export function addableLineKey(products, productId, variant) {
   const product = products.find(p => Number(p.id) === Number(productId));
   if (!product || product.active === false) return null;
   if (requiresVariantChoice(product) && !variant) return null;
+  if (!isVariantAvailable(product, variant)) return null;
   return lineKey(product.id, variant || null);
 }
 
@@ -56,16 +58,22 @@ export function deleteLine(cart, key) {
 // Units in a list of resolved cart lines.
 export const itemCount = (items) => items.reduce((sum, item) => sum + item.qty, 0);
 
-// Cart lines resolved against the catalog, with the signed-in account's
-// display price (null when prices are hidden, and for lines that can no
-// longer be ordered). `options` go to resolveCartItems.
-export const priceCartItems = (cart, products, profile, options) =>
+// No prices: what priceOf returns for guests and accounts that aren't approved.
+export const NO_PRICES = () => null;
+
+// Cart lines resolved against the catalog, each with the buyer's unit price
+// from priceOf(productId, variant) (App: the signed-in account's price from
+// usePrices(), src/lib/prices.jsx). price is null when the account sees no
+// prices, the product has none (price on request), and for lines that can no
+// longer be ordered. `options` go to resolveCartItems.
+export const priceCartItems = (cart, products, priceOf = NO_PRICES, options) =>
   resolveCartItems(cart, products, options).map(item => ({
     ...item,
-    price: item.unavailable ? null : priceForProfile(item.listPrice, profile),
+    price: item.unavailable ? null : (priceOf(item.productId, item.variant) ?? null),
   }));
 
-export const cartTotal = (items) => items.reduce((s, i) => s + (i.price == null ? 0 : i.qty * i.price), 0);
+// The estimated total, added up in cents like the saved subtotal (AW-077).
+export const cartTotal = (items) => sumLines(items);
 
 // What changed for the buyer between the cart lines they reviewed (`before`)
 // and the same cart resolved against a catalog loaded again just now
@@ -100,7 +108,7 @@ export function cartChanges(before, after) {
       changes.push({ kind: 'added', ...base });
     } else {
       if (Number(old.qty) !== Number(item.qty)) changes.push({ kind: 'qty', ...base });
-      if (old.price != null && item.price != null && Math.abs(Number(old.price) - Number(item.price)) > 1e-9) {
+      if (old.price != null && item.price != null && Math.round(Number(old.price) * 100) !== Math.round(Number(item.price) * 100)) {
         changes.push({ kind: 'price', from: Number(old.price), to: Number(item.price), ...base });
       }
     }
@@ -152,17 +160,21 @@ export function resolveLegacyList(list, products) {
 // The cart for `owner` (cartOwner() in cartStorage.js: the signed-in user's
 // id, or 'guest'). catalogSettled is false until the live catalog is on
 // screen (useCatalog().settled, src/lib/catalog.jsx); lines are only
-// re-keyed, and unknown ones only flagged, after it.
+// re-keyed, and unknown ones only flagged, after it. priceOf(productId,
+// variant) gives a line's unit price (see priceCartItems); keep it stable
+// between renders (useCallback), as the lines are priced again when it
+// changes.
 //
 // Returns { cart, count, items, total, legacy, addLine, addLines, decLine,
 // removeLine, removeLines, clearCart, dismissLegacy, itemsFor }. items carry
 // needsVariant and unavailable flags (src/lib/lines.js); legacy is the old
 // cart's list of products to choose a variant for. The actions write
 // through to storage at once, so they belong in event handlers.
-// itemsFor(products) prices the cart as stored now against another product
-// list, e.g. the catalog loaded again right before a submit (AW-191); it
-// also reads storage, so it is for event handlers too.
-export function useCart({ products, profile = null, owner = GUEST, catalogSettled = true }) {
+// itemsFor(products, priceOf) prices the cart as stored now against another
+// product list and prices, e.g. the catalog and prices loaded again right
+// before a submit (AW-191); it also reads storage, so it is for event
+// handlers too.
+export function useCart({ products, priceOf = NO_PRICES, owner = GUEST, catalogSettled = true }) {
   const cart = useSyncExternalStore(subscribeCart, () => readCart(owner), () => EMPTY_CART);
   const legacyList = useSyncExternalStore(subscribeCart, () => readLegacyList(owner), () => EMPTY_LIST);
 
@@ -184,8 +196,8 @@ export function useCart({ products, profile = null, owner = GUEST, catalogSettle
   }, [owner, products, catalogSettled]);
 
   const items = useMemo(
-    () => priceCartItems(cart, products, profile, { settled: catalogSettled, known: BUNDLED_PRODUCTS }),
-    [cart, products, profile, catalogSettled],
+    () => priceCartItems(cart, products, priceOf, { settled: catalogSettled, known: BUNDLED_PRODUCTS }),
+    [cart, products, priceOf, catalogSettled],
   );
   const legacy = useMemo(() => resolveLegacyList(legacyList, products), [legacyList, products]);
   const count = itemCount(items);
@@ -209,7 +221,7 @@ export function useCart({ products, profile = null, owner = GUEST, catalogSettle
   const removeLines = (keys) => update(c => keys.reduce(deleteLine, c));
   const clearCart = () => updateCart(owner, () => ({}));
   const dismissLegacy = () => writeLegacyList(owner, []);
-  const itemsFor = (nextProducts) => priceCartItems(readCart(owner), nextProducts, profile, { settled: true, known: BUNDLED_PRODUCTS });
+  const itemsFor = (nextProducts, nextPriceOf = priceOf) => priceCartItems(readCart(owner), nextProducts, nextPriceOf, { settled: true, known: BUNDLED_PRODUCTS });
 
   return { cart, count, items, total, legacy, addLine, addLines, decLine, removeLine, removeLines, clearCart, dismissLegacy, itemsFor };
 }

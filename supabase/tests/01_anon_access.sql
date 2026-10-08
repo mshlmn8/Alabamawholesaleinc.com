@@ -1,9 +1,10 @@
--- Guests (role anon): read the active catalog and the tier list, nothing else.
+-- Guests (role anon): read the active catalog (without prices), nothing else.
+-- The tier list is private from 20260928120000 (see 04_price_boundary.sql).
 select test_anon();
 do $$ begin
   assert (select count(*) from public.products) > 0, 'anon should see active products';
   assert not exists (select 1 from public.products where active = false), 'anon must not see inactive products';
-  assert (select count(*) from public.pricing_tiers) = 3, 'anon should see the pricing tiers';
+  assert (select count(*) from public.pricing_tiers) = 0, 'anon must not see the pricing tiers';
   assert (select count(*) from public.profiles) = 0, 'anon should see no profiles';
   assert (select count(*) from public.orders) = 0, 'anon should see no orders';
   assert (select count(*) from public.order_items) = 0, 'anon should see no order lines';

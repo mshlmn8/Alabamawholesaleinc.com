@@ -12,6 +12,12 @@ export const COMPANY = {
   addressShort: '613 Graymont Ave N, Birmingham AL 35203',
   addressLine1: '613 Graymont Ave N',
   addressLine2: 'Birmingham, AL 35203',
+  // The same address in parts: the will-call address a quote sends to a
+  // database without submit_quote v2 (src/lib/orders.js, AW-079).
+  addressStreet: '613 Graymont Ave N',
+  addressCity: 'Birmingham',
+  addressState: 'AL',
+  addressZip: '35203',
   hoursLine1: 'Mon–Fri 7:00 AM – 6:00 PM',
   hoursLine2: 'Sat–Sun 8:00 AM – 5:30 PM'
 };
@@ -116,3 +122,12 @@ export const STORAGE = {
 
 export const FREE_DELIVERY_THRESHOLD = 1500;
 export const ORDER_MINIMUM = 500;
+
+// The date the Trade terms and Privacy policy last changed, as the policy
+// pages print it, and the version a trade application records acceptance of
+// (profiles.terms_version, AW-019). Change both together when either policy
+// changes; content.test.js checks they name the same month.
+// TODO(owner): approve the Trade terms and Privacy policy version the
+// application records acceptance of (AW-019).
+export const POLICIES_UPDATED = 'September 2026';
+export const TERMS_VERSION = '2026-09';

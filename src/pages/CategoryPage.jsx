@@ -11,6 +11,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useMediaQuery, MOBILE_QUERY } from '../lib/useMediaQuery.js';
 import { productText } from '../lib/search.js';
+import { variantCount } from '../lib/lines.js';
 import { catLabel } from '../lib/format.js';
 import { Link, navigate } from '../lib/router.js';
 import { EMPTY_CATEGORY_QUERY } from '../lib/routes.js';
@@ -28,7 +29,23 @@ const TAG_OPTIONS = [
 // Typing in the department search updates the URL once the typing pauses.
 const SEARCH_DELAY_MS = 250;
 
-export function CategoryPage({ category, sub, query = EMPTY_CATEGORY_QUERY, products, departments, profile, isApprovedBuyer, cart, addLine, decLine, onLoginClick }) {
+const NO_PRICES = () => null;
+
+// Price sorts use the signed-in buyer's prices (priceOf, AW-003); products
+// without one (price on request, or not loaded yet) go last, in catalog order.
+function byPrice(priceOf, direction) {
+  return (a, b) => {
+    const pa = priceOf(a.id);
+    const pb = priceOf(b.id);
+    if (pa == null || pb == null) return (pa == null) - (pb == null);
+    return direction * (pa - pb);
+  };
+}
+
+export function CategoryPage({
+  category, sub, query = EMPTY_CATEGORY_QUERY, products, departments, profile, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off',
+  cart, addLine, decLine, onLoginClick,
+}) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const isMobile = useMediaQuery(MOBILE_QUERY);
 
@@ -60,15 +77,16 @@ export function CategoryPage({ category, sub, query = EMPTY_CATEGORY_QUERY, prod
   const needle = query.q.trim().toLowerCase();
   let items = inScope.filter(p => {
     if (tags.length && !tags.includes(p.tag)) return false;
-    if (hasVariants && p.flavors === 0) return false;
+    // A single variant is not a choice (AW-233).
+    if (hasVariants && variantCount(p) <= 1) return false;
     if (needle && !productText(p).includes(needle)) return false;
     return true;
   });
   if (sort === 'name-asc') items = [...items].sort((a, b) => a.name.localeCompare(b.name));
   if (sort === 'name-desc') items = [...items].sort((a, b) => b.name.localeCompare(a.name));
-  if (sort === 'variants') items = [...items].sort((a, b) => b.flavors - a.flavors);
-  if (sort === 'price-low') items = [...items].sort((a, b) => a.price - b.price);
-  if (sort === 'price-high') items = [...items].sort((a, b) => b.price - a.price);
+  if (sort === 'variants') items = [...items].sort((a, b) => variantCount(b) - variantCount(a));
+  if (sort === 'price-low') items = [...items].sort(byPrice(priceOf, 1));
+  if (sort === 'price-high') items = [...items].sort(byPrice(priceOf, -1));
 
   const here = (changes = {}) => ({ page: 'category', category, sub: activeSub, query, ...changes });
   // Filter changes rewrite the current history entry and keep the scroll position.
@@ -223,7 +241,7 @@ export function CategoryPage({ category, sub, query = EMPTY_CATEGORY_QUERY, prod
           {items.length > 0 ? (
             <div className="card-grid category-card-grid">
               {items.map(p => (
-                <ProductCard key={p.id} p={p} profile={profile} isApprovedBuyer={isApprovedBuyer} cart={cart}
+                <ProductCard key={p.id} p={p} profile={profile} isApprovedBuyer={isApprovedBuyer} priceOf={priceOf} pricesStatus={pricesStatus} cart={cart}
                              addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} />
               ))}
             </div>

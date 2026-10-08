@@ -332,6 +332,30 @@ test.describe('after age confirmation', () => {
     await expect(page).toHaveTitle(title);
     expect(errors).toEqual([]);
   });
+
+  test('variants are named by what they differ in, and a single one is no choice (AW-128, AW-233, AW-031)', async ({ page }) => {
+    const errors = trackErrors(page);
+    // Swisher Sweets Leaf: flavors, with the flavor note.
+    await page.goto('/product/8');
+    await expect(page.getByRole('group', { name: 'Choose a flavor' })).toBeVisible();
+    await expect(page.getByText('Flavors and availability change often.', { exact: false })).toBeVisible();
+    // Gas cans: sizes, no flavor note.
+    await page.goto('/product/356');
+    await expect(page.getByRole('group', { name: 'Choose a size' })).toBeVisible();
+    await expect(page.getByText('Pick a size to add it. Add each size you want separately.')).toBeVisible();
+    await expect(page.getByText('Flavors and availability change often.', { exact: false })).toHaveCount(0);
+    // RAW tips: no variants (its lone "Tips" was no choice, AW-138), no chips.
+    await page.goto('/product/329');
+    await expect(page.locator('main h1')).toHaveText('RAW tips');
+    await expect(page.locator('.variant-chips')).toHaveCount(0);
+    // Gambler tubes: the sell unit, on the page and its card.
+    await page.goto('/product/242');
+    await expect(page.locator('.pd-unit')).toHaveText('Sold by the box of 200 — quantity 1 is one box of 200.');
+    await page.goto('/category/tobacco/tubes-and-filters');
+    await expect(page.locator('.card-detail').filter({ hasText: 'AW-GAMBLER-TUBES' }))
+      .toHaveText('Gambler · 6 varieties · Sold by the box of 200 · AW-GAMBLER-TUBES');
+    expect(errors).toEqual([]);
+  });
 });
 
 // Generated at build time from the catalog (AW-317).

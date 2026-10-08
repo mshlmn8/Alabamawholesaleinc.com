@@ -1,7 +1,12 @@
 // Optional trade-application proof: state retail tobacco license and resale
 // certificate. Numbers stay required on the profile; these files are not.
-// Uploads run only when a session exists — the storage path is the user's
-// own folder, which the storage policy checks against auth.uid().
+// Uploads run only when a session exists. The storage path is
+// {user id}/{document type}/{time}-{file}: every upload is a new object, and
+// the replaced one stays in the bucket, so profile_document_history
+// (20261008193000) still points at a file when a license is renewed (AW-197,
+// AW-254). Since 20261009140000 the storage and profile_documents policies
+// require exactly that layout and accept at most 10 uploads per account in
+// 24 hours (AW-207).
 
 import { supabase } from './supabase.js';
 import { describeError } from './errors.js';
@@ -36,7 +41,21 @@ const MIME_FOR_EXT = {
   heif: 'image/heif',
 };
 
+// What an applicant sees when the database refuses a document upload: with
+// the client's own path, that is the upload limit (AW-207).
+export const DOCUMENTS_REFUSED_MESSAGE = 'We couldn’t accept that file (at most 10 uploads a day). Email it to the trade desk instead.';
+
+// A refusal by row-level security: 42501 from PostgREST, or a 403 / RLS
+// message from Storage.
+export function isDocumentPermissionError(err) {
+  if (!err) return false;
+  const code = String(err.code ?? '');
+  const status = String(err.statusCode ?? err.status ?? '');
+  return code === '42501' || status === '403' || /row-level security/i.test(String(err.message || ''));
+}
+
 export function documentErrorMessage(err) {
+  if (isDocumentPermissionError(err)) return DOCUMENTS_REFUSED_MESSAGE;
   return describeError(err, 'Document upload', 'That file did not upload. You can try again, or send proof later.');
 }
 

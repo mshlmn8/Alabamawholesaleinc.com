@@ -11,7 +11,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth.jsx';
-import { COMPANY } from '../data/content.js';
+import { COMPANY, TERMS_VERSION } from '../data/content.js';
 import { describeError } from '../lib/errors.js';
 import { Link } from '../lib/router.js';
 import { APPLICATION_CHECKLIST } from '../data/onboarding.js';
@@ -33,13 +33,14 @@ const SIGNED_OUT_MODES = ['signin', 'reset', 'reset-sent', 'unconfirmed'];
 
 const isUnconfirmedEmail = (err) => err?.code === 'email_not_confirmed' || /email not confirmed/i.test(err?.message || '');
 
-// TODO(owner): Approve the consent checkbox wording and the Trade terms / Privacy version recorded here. 2026-09 matches the September 2026 date already printed on those pages. (AW-019)
-const TERMS_VERSION = '2026-09';
+// TODO(owner): Approve the consent checkbox wording. The Trade terms / Privacy
+// version it records is TERMS_VERSION in ../data/content.js. (AW-019)
 
 const EMPTY_SIGNUP = {
   email: '', password: '', name: '', business: '', phone: '',
   ein: '', license_no: '', resale_cert_no: '',
   business_type: 'Convenience Store', state: 'AL', expected_volume: '$5K — $15K',
+  // The store's address (AW-092) and the two required boxes (AW-019).
   store_street: '', store_city: '', store_zip: '',
   agreeTerms: false, ageConfirmed: false,
 };
@@ -342,13 +343,13 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
                 <select id="aw-su-state" name="state" value={signup.state} onChange={setU('state')} autoComplete="address-level1">{STATES.map(o => <option key={o}>{o}</option>)}</select>
               </Field>
               <Field id="aw-su-street" label="Store street address" full>
-                <input id="aw-su-street" name="address-line1" value={signup.store_street} onChange={setU('store_street')} required autoComplete="address-line1" />
+                <input id="aw-su-street" name="address-line1" value={signup.store_street} onChange={setU('store_street')} required maxLength={200} autoComplete="address-line1" />
               </Field>
               <Field id="aw-su-city" label="City">
-                <input id="aw-su-city" name="address-level2" value={signup.store_city} onChange={setU('store_city')} required autoComplete="address-level2" />
+                <input id="aw-su-city" name="address-level2" value={signup.store_city} onChange={setU('store_city')} required maxLength={100} autoComplete="address-level2" />
               </Field>
               <Field id="aw-su-zip" label="ZIP">
-                <input id="aw-su-zip" name="postal-code" value={signup.store_zip} onChange={setU('store_zip')} required inputMode="numeric" pattern="[0-9]{5}" autoComplete="postal-code" title="Enter a 5-digit ZIP code" />
+                <input id="aw-su-zip" name="postal-code" value={signup.store_zip} onChange={setU('store_zip')} required maxLength={5} inputMode="numeric" pattern="[0-9]{5}" autoComplete="postal-code" title="Enter a 5-digit ZIP code" />
               </Field>
               {/* TODO(owner): Is a tobacco license required for every trade account, or only for tobacco, vapor, and nicotine? This field stays required for every application until you decide. (AW-129) */}
               <Field id="aw-su-license" label="State retail tobacco license #" hint="From the state where the store is licensed.">
@@ -453,7 +454,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
           </div>
         )}
 
-        <p className="fine">21+ licensed businesses only. By applying you confirm all store staff handling tobacco products meet federal and state age requirements.</p>
+        {mode === 'signup' && <p className="fine">21+ licensed businesses only. By applying you confirm all store staff handling tobacco products meet federal and state age requirements.</p>}
       </div>
     </div>
   );

@@ -31,7 +31,7 @@ Also on the storefront:
 - Quote requests and orders are saved by the `submit_quote` function in Supabase, which prices the lines on the server. If saving fails, the quote page shows an error with the trade desk's phone number and email; there is no other fallback
 - Trade sign-in and account applications through Supabase Auth. One provider (`src/lib/auth.jsx`) holds the session and profile; account pages wait for them instead of flashing a signed-out view, and email links are handled by `src/lib/authLink.js` (see BACKEND.md, "Email links")
 
-Prices stay hidden until someone is signed in. Approved accounts see tier pricing (standard, silver, gold).
+Trade prices are kept only in Supabase: the site's code and the product seed carry none. Approved accounts see their tier's prices, which the `my_prices()` database function works out; guests, pending and suspended accounts get no prices. The public API stops serving the price column once `supabase/migrations/20260928120000_price_boundary.sql` is applied (see BACKEND.md, "How pricing tiers work" and "Release checklist").
 
 ## Run locally
 

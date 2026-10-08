@@ -1,23 +1,29 @@
 // Slide-in cart: the lines in the cart, the estimated total (approved
 // accounts) and the checkout/quote actions. Above the lines: products from an
 // older cart that still need a variant (AW-354) and lines that can no longer
-// be ordered (AW-083).
+// be ordered (AW-083). A suspended account sees that ordering is paused, with
+// the trade desk's phone and email, instead of the quote button (AW-201).
 
-import { formatMoney } from '../lib/format.js';
+import { totalLabel } from '../lib/pricing.js';
 import { Link } from '../lib/router.js';
+import { CallOrEmail } from './ContactLinks.jsx';
 import { ModalLayer } from './ModalLayer.jsx';
 import { CartLine } from './CartLine.jsx';
 import { SavedLinesNotice, UnavailableNotice } from './CartNotices.jsx';
 
 export function CartDrawer({
   open, onClose, items, total, addLine, decLine, removeLine, removeLines, legacy = [], onDismissLegacy,
-  profile, isApprovedBuyer, onLoginClick,
+  profile, isApprovedBuyer, pricesStatus = 'ready', onLoginClick, isSuspended = false,
 }) {
   if (!open) return null;
   const unavailable = items.filter(it => it.unavailable);
   // Guests are asked to sign in; signed-in buyers who are not approved yet are
-  // told pricing is waiting on approval instead.
+  // told pricing is waiting on approval instead, and suspended ones that the
+  // account is on hold.
   const pendingBuyer = Boolean(profile) && !isApprovedBuyer;
+  let note = 'Sign in for pricing';
+  if (isSuspended) note = 'Account on hold';
+  else if (pendingBuyer) note = 'Pricing unlocks when your account is approved';
   return (
     <ModalLayer onClose={onClose}>
       <div className="overlay overlay-soft" aria-hidden="true" onClick={onClose} />
@@ -33,7 +39,7 @@ export function CartDrawer({
           {items.length > 0 && (
             <ul className="drawer-lines" aria-label="Items in your order">
               {items.map(it => (
-                <CartLine key={it.lineKey} item={it} layout="drawer" showPrice={isApprovedBuyer}
+                <CartLine key={it.lineKey} item={it} layout="drawer" showPrice={isApprovedBuyer} pricesStatus={pricesStatus}
                           onInc={() => addLine(it.productId, it.variant)} onDec={() => decLine(it.lineKey)}
                           onRemove={() => removeLine(it.lineKey)} onChoose={onClose} />
               ))}
@@ -44,10 +50,13 @@ export function CartDrawer({
           <div className="drawer-total">
             <span>Estimated total</span>
             {isApprovedBuyer
-              ? <span>{formatMoney(total)}</span>
-              : <span className="drawer-total-note">{pendingBuyer ? 'Pricing unlocks when your account is approved' : 'Sign in for pricing'}</span>}
+              ? <span>{totalLabel(items, total, pricesStatus)}</span>
+              : <span className="drawer-total-note">{note}</span>}
           </div>
-          {items.length > 0 && (
+          {items.length > 0 && isSuspended && (
+            <p className="notice drawer-paused">Ordering is paused on this account. <CallOrEmail after=" and a trade rep will help you sort it out." /></p>
+          )}
+          {items.length > 0 && !isSuspended && (
             isApprovedBuyer
               ? <Link className="button wide" to="/quote" onClick={onClose}>Checkout <span aria-hidden="true">↗</span></Link>
               : <>

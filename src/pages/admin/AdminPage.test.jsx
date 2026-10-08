@@ -13,11 +13,14 @@ vi.mock('../../lib/supabase.js', () => {
       select: () => builder,
       order: () => builder,
       limit: () => builder,
+      // The page reads the changed row back: update().eq().select('id').
       update: (patch) => ({
-        eq: async (_col, id) => {
-          db.updates.push({ table, id, patch });
-          return { error: db.updateError };
-        },
+        eq: (_col, id) => ({
+          select: async () => {
+            db.updates.push({ table, id, patch });
+            return db.updateError ? { data: null, error: db.updateError } : { data: [{ id }], error: null };
+          },
+        }),
       }),
       then: (resolve, reject) => Promise.resolve(result()).then(resolve, reject),
     };
@@ -109,8 +112,6 @@ describe('Admin orders', () => {
       license_no: 'TL-9', resale_cert_no: 'RC-9', purchasers_21: true, order_items: [],
     }];
     await act(async () => { render(<AdminPage profile={ADMIN} account="ready" />); });
-    expect(screen.getByText('· Tobacco license TL-9')).toBeTruthy();
-    expect(screen.getByText('· Resale certificate RC-9')).toBeTruthy();
-    expect(screen.getByText('· 21+ purchasers confirmed')).toBeTruthy();
+    expect(screen.getByText('Tobacco license: TL-9 · Resale certificate: RC-9 · 21+ purchasers confirmed')).toBeTruthy();
   });
 });

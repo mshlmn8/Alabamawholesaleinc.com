@@ -157,3 +157,58 @@ describe('AuthModal application form', () => {
     }));
   });
 });
+
+describe('AuthModal application form, more cases (AW-092, AW-019)', () => {
+  const fill = (label, value) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
+
+  it('asks for the store address and two required boxes, with the policies in a new tab', () => {
+    setup({}, { initialMode: 'application' });
+    for (const label of ['Store street address', 'City', 'ZIP']) expect(screen.getByLabelText(label).required).toBe(true);
+    expect(screen.getByLabelText('Store street address').getAttribute('autocomplete')).toBe('address-line1');
+    expect(screen.getByLabelText('City').getAttribute('autocomplete')).toBe('address-level2');
+    const zip = screen.getByLabelText('ZIP');
+    expect(zip.getAttribute('autocomplete')).toBe('postal-code');
+    expect(zip.getAttribute('inputmode')).toBe('numeric');
+    expect(new RegExp(`^(?:${zip.getAttribute('pattern')})$`).test('35203')).toBe(true);
+    expect(new RegExp(`^(?:${zip.getAttribute('pattern')})$`).test('3520')).toBe(false);
+    const terms = screen.getByRole('checkbox', { name: /^I agree to the Trade terms.* and Privacy policy/ });
+    const age = screen.getByRole('checkbox', { name: 'I am 21 or older' });
+    expect(terms.required && age.required).toBe(true);
+    expect(terms.checked || age.checked).toBe(false);
+    for (const [name, href] of [[/^Trade terms/, '/terms'], [/^Privacy policy/, '/privacy']]) {
+      const link = screen.getByRole('link', { name });
+      expect(link.getAttribute('href')).toBe(href);
+      expect(link.getAttribute('target')).toBe('_blank');
+    }
+    expect(screen.getByText(/21\+ licensed businesses only/)).toBeTruthy();
+  });
+
+  it('sends the store address and the ticked boxes to signUp', async () => {
+    const t = setup({ signUp: vi.fn(async () => ({ session: null })) }, { initialMode: 'application' });
+    fill('Your name', 'New Buyer');
+    fill('Business name', 'New Store');
+    fill('Business email', 'new@example.test');
+    fill('Phone', '205-555-0199');
+    fill('Password', 'test-password-1');
+    fill('Federal EIN', '12-3456789');
+    fill('State retail tobacco license #', 'TL-TEST');
+    fill('Resale certificate #', 'RS-TEST');
+    fill('Store street address', '1 Test Way');
+    fill('City', 'Testville');
+    fill('ZIP', '35203');
+    fireEvent.click(screen.getByRole('checkbox', { name: /I agree to the Trade terms/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'I am 21 or older' }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Submit application/ })); });
+    expect(t.value.signUp).toHaveBeenCalledWith(expect.objectContaining({
+      email: 'new@example.test', name: 'New Buyer', state: 'AL',
+      store_street: '1 Test Way', store_city: 'Testville', store_zip: '35203',
+      terms_accepted: true, age_confirmed: true,
+    }));
+    expect(screen.getByRole('heading', { name: 'Check your inbox' })).toBeTruthy();
+  });
+
+  it('shows the 21+ fine print only on the application form', () => {
+    setup();
+    expect(screen.queryByText(/21\+ licensed businesses only/)).toBeNull();
+  });
+});

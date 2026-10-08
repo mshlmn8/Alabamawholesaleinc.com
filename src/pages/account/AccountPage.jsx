@@ -12,6 +12,7 @@ import { supabase } from '../../lib/supabase.js';
 import { linesFromOrder } from '../../lib/lines.js';
 import { formatMoney } from '../../lib/format.js';
 import { Link } from '../../lib/router.js';
+import { lineTotal } from '../../lib/pricing.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
 import { QuickReorder } from './QuickReorder.jsx';
@@ -184,7 +185,7 @@ export function AccountPage({
                       <li key={it.id}>
                         <span><span>{`${it.qty} × ${it.product_name}`}</span> <span className="sku">{`(${it.sku})`}</span></span>
                         {it.unit_price != null && (
-                          <span className="line-total">{formatMoney(it.unit_price * it.qty)}</span>
+                          <span className="line-total">{formatMoney(lineTotal(it.unit_price, it.qty))}</span>
                         )}
                       </li>
                     ))}

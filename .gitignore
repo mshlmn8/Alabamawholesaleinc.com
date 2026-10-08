@@ -22,3 +22,7 @@ public/apple-touch-icon.png
 public/icon-192.png
 public/icon-512.png
 public/og.jpg
+
+# The owner's price files (BACKEND.md, "Loading your list prices"). Prices
+# never go in the repository (AW-002, AW-003).
+supabase/private/

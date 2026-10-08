@@ -17,16 +17,24 @@
 // price. When the catalog can't be loaded, nothing is sent against the old
 // copy.
 //
+// submit_quote (src/lib/orders.js): the reference number comes back from
+// the server and only a saved quote shows one (AW-049); will-call hides the
+// ship-to address (AW-079); the fields carry the server's limits, and a
+// hidden honeypot field stops simple bots (AW-198); a suspended account sees
+// that ordering is paused instead of a submit button (AW-201).
+//
 // Tobacco and vape lines from a guest or an unapproved account need a
-// tobacco licence number, a resale certificate number and a 21+ attestation
-// (AW-014, PR #12). submit_quote checks them once the 2026-10-08 migration is
-// applied; until then src/lib/orders.js keeps the answers in the notes.
+// tobacco license number, a resale certificate number and a 21+ attestation
+// (AW-014, PR #12; the rule is src/lib/regulated.js, and submit_quote applies
+// the same one). Guests also get sign-in and apply links.
 
 import { useState } from 'react';
 import { COMPANY, ORDER_MINIMUM } from '../data/content.js';
-import { submitOrder } from '../lib/orders.js';
+import { QUOTE_ERROR_GENERIC, quoteErrorField, quoteErrorMessage, submitOrder, todayInBirmingham } from '../lib/orders.js';
 import { cartChanges, describeCartChanges } from '../lib/cart.js';
 import { formatMoney } from '../lib/format.js';
+import { totalLabel } from '../lib/pricing.js';
+import { cartNeedsTobaccoLicense } from '../lib/regulated.js';
 import { Link } from '../lib/router.js';
 import { CallOrEmail } from '../components/ContactLinks.jsx';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
@@ -34,7 +42,6 @@ import { CartLine } from '../components/CartLine.jsx';
 import { SavedLinesNotice, UnavailableNotice } from '../components/CartNotices.jsx';
 import { AccountLoading } from '../components/AccountStatus.jsx';
 import { initialQuoteForm, quoteFormForAccount } from '../lib/quoteForm.js';
-import { cartNeedsTobaccoLicense } from '../lib/regulated.js';
 
 const UNAVAILABLE_ERROR = 'Remove the items that are no longer available before you submit.';
 
@@ -45,11 +52,24 @@ const itemsSignature = (items) => items.map((it) => `${it.lineKey}|${it.qty}|${i
 export function QuotePage({
   items, total, addLine, decLine, removeLine, removeLines, clearCart, legacy = [], onDismissLegacy,
   profile, account = profile ? 'ready' : 'signed-out', signedIn = !!profile, onSignIn, onApplyClick, isApprovedBuyer, isBackendConfigured,
-  checkCart = null,
+  checkCart = null, pricesStatus = 'ready', isSuspended = false,
 }) {
   const [step, setStep] = useState('review');
   const [data, setData] = useState(() => initialQuoteForm(profile));
-  const set = k => e => setData({ ...data, [k]: e.target.value });
+  // The field the last refused submit was about (its hint), marked invalid
+  // until it is edited.
+  const [errorField, setErrorField] = useState(null);
+  const set = k => e => {
+    setData({ ...data, [k]: e.target.value });
+    if (k === errorField) setErrorField(null);
+  };
+  const setChecked = k => e => setData({ ...data, [k]: e.target.checked });
+  // aria-describedby: the field's own hint, and the submit error when it is
+  // about this field.
+  const fieldProps = (k, hintId = null) => {
+    const ids = [hintId, errorField === k ? 'quote-submit-error' : null].filter(Boolean).join(' ');
+    return { 'aria-invalid': errorField === k ? true : undefined, 'aria-describedby': ids || undefined };
+  };
 
   // The details follow the signed-in account (AW-190), also when its profile
   // arrives after the page opened (AW-186).
@@ -67,9 +87,9 @@ export function QuotePage({
   if (isApprovedBuyer && !orderingSeen) setOrderingSeen(true);
   const [sendAsQuote, setSendAsQuote] = useState(false);
   if (isApprovedBuyer && sendAsQuote) setSendAsQuote(false);
-  const lostOrdering = orderingSeen && !isApprovedBuyer && !sendAsQuote && account !== 'loading';
+  // A suspended account is told ordering is paused instead (AW-201).
+  const lostOrdering = orderingSeen && !isApprovedBuyer && !sendAsQuote && account !== 'loading' && !isSuspended;
 
-  const [refNum] = useState(() => `ALW-Q-${Math.floor(Math.random() * 90000) + 10000}`);
   const [receipt, setReceipt] = useState(null);
   const [submitError, setSubmitError] = useState(null);
   // null | 'checking' (loading the catalog again) | 'sending'
@@ -83,14 +103,27 @@ export function QuotePage({
   const orderable = items.filter(it => !it.unavailable);
   const totalUnits = orderable.reduce((s, i) => s + i.qty, 0);
   const needsVariant = items.some(it => it.needsVariant);
-  const needsLicense = !isApprovedBuyer && cartNeedsTobaccoLicense(orderable);
-  const pricedBelowMinimum = isApprovedBuyer && Number(total) < ORDER_MINIMUM;
+  const willCall = data.delivery === 'willcall';
+  // The tobacco license answers (AW-014): asked of a visitor who isn't an
+  // approved buyer when a line needs them (not of a suspended account, which
+  // can't submit).
+  const needsLicense = !isApprovedBuyer && !isSuspended && cartNeedsTobaccoLicense(orderable);
+  const minDate = todayInBirmingham();
+  // Not while the buyer's prices are still loading (the total is not known yet).
+  const pricedBelowMinimum = isApprovedBuyer && pricesStatus !== 'loading' && Number(total) < ORDER_MINIMUM;
   let submitLabel = isApprovedBuyer ? 'Submit order' : 'Submit quote request';
   if (phase === 'checking') submitLabel = 'Checking the catalog…';
   else if (phase === 'sending') submitLabel = 'Sending…';
 
   const handleQuoteSubmit = async (e) => {
     e.preventDefault();
+    if (isSuspended) return;
+    // A person never fills the hidden honeypot field; a bot filling every
+    // field does, and is told what a failed save says (AW-198).
+    if (e.currentTarget.elements.namedItem('company_website')?.value) {
+      setSubmitError(QUOTE_ERROR_GENERIC);
+      return;
+    }
     if (!isBackendConfigured) {
       setSubmitError({ before: 'Quote requests can’t be saved right now. Call', after: ' and the trade desk will write it up with you.' });
       return;
@@ -105,6 +138,7 @@ export function QuotePage({
     }
     setPhase('checking');
     setSubmitError(null);
+    setErrorField(null);
     setChangeNote(null);
     try {
       let lines = orderable;
@@ -112,8 +146,8 @@ export function QuotePage({
         const check = await checkCart();
         if (!check?.ok) {
           setSubmitError({
-            before: 'We couldn’t check the latest prices and availability, so nothing was sent. Check your connection and try again, or call',
-            after: ` and reference ${refNum}.`,
+            before: 'We couldn’t check the latest prices and availability, so nothing was sent. Check your connection and try again, or call the trade desk at',
+            after: '.',
           });
           return;
         }
@@ -125,20 +159,23 @@ export function QuotePage({
         lines = check.items.filter(it => !it.unavailable);
       }
       setPhase('sending');
-      // Licence answers go only with lines that need them, from a buyer who
+      // License answers go only with lines that need them, from a buyer who
       // isn't approved (approved accounts were checked when they applied).
       const formData = !isApprovedBuyer && cartNeedsTobaccoLicense(lines)
         ? data
         : { ...data, licenseNo: '', resaleCert: '', purchasers21: false };
-      const r = await submitOrder({ refNum, formData, items: lines });
+      const r = await submitOrder({ formData, items: lines });
       if (!r?.ok || !r.order?.id) throw new Error('The quote was not saved.');
-      setReceipt({ ...r.order, asOrder: isApprovedBuyer });
+      // The server says whether it saved an order or a quote (v2); an older
+      // database doesn't, and the account decides.
+      setReceipt({ ...r.order, asOrder: r.order.kind ? r.order.kind === 'order' : isApprovedBuyer });
       setStep('submitted');
       window.scrollTo(0, 0);
     } catch (err) {
-      setSubmitError(err?.code === 'unavailable'
-        ? { before: 'Quote requests can’t be saved right now. Call', after: ' and the trade desk will write it up with you.' }
-        : { before: 'We couldn’t save this quote. Please call', after: ` and reference ${refNum}.` });
+      // What the server refused and why, never a reference: a failed quote
+      // has none (AW-049).
+      setSubmitError(quoteErrorMessage(err));
+      setErrorField(quoteErrorField(err));
     } finally { setPhase(null); }
   };
 
@@ -166,7 +203,9 @@ export function QuotePage({
         <p style={{ margin: '0 auto 14px' }}>
           <span>{asOrder ? 'Your order has been saved.' : 'Your quote request has been saved.'}</span> A trade desk rep will reach out within one business day at <strong style={{ color: 'var(--purple)' }}>{data.phone || data.email}</strong> to confirm details.
         </p>
-        <p className="result-note" style={{ fontSize: 13 }}>Reference number: <strong>{receipt?.ref_num || refNum}</strong></p>
+        <p className="result-note" style={{ fontSize: 13 }}>Reference number: <strong>{receipt?.ref_num}</strong></p>
+        {/* The total the server saved (AW-351), priced by submit_quote. */}
+        {receipt?.subtotal != null && <p className="result-note">{`Saved total: ${formatMoney(receipt.subtotal)} · ${receipt.total_units} ${Number(receipt.total_units) === 1 ? 'unit' : 'units'}`}</p>}
         <div className="dialog-actions" style={{ justifyContent: 'center' }}>
           <a className="button ghost" href={`tel:${COMPANY.phoneRaw}`}>Call to discuss</a>
           <Link className="button" to="/" onClick={clearCart}>Back to home <span aria-hidden="true">↗</span></Link>
@@ -204,7 +243,7 @@ export function QuotePage({
           <UnavailableNotice items={unavailable} onRemoveAll={removeLines} />
           <ul className="checkout-lines" aria-label="Items in this request">
             {items.map(it => (
-              <CartLine key={it.lineKey} item={it} layout="checkout" showPrice={isApprovedBuyer}
+              <CartLine key={it.lineKey} item={it} layout="checkout" showPrice={isApprovedBuyer} pricesStatus={pricesStatus}
                         onInc={() => addLine(it.productId, it.variant)} onDec={() => decLine(it.lineKey)}
                         onRemove={() => removeLine(it.lineKey)} />
             ))}
@@ -213,54 +252,69 @@ export function QuotePage({
         </div>
         <form onSubmit={handleQuoteSubmit} aria-labelledby="quote-form-title">
           <h2 id="quote-form-title" className="checkout-form-title">Your details</h2>
+          {/* Guests can sign in, or apply, before filling this in (AW-014). */}
           {!signedIn && (
             <p className="fine quote-account-links">
               {onSignIn && <button className="text-link" type="button" onClick={onSignIn}>Have an account? Sign in</button>}
               <span aria-hidden="true"> · </span>
-              {onApplyClick && <button className="text-link" type="button" onClick={onApplyClick}>New? Apply for a trade account</button>}
+              {onApplyClick
+                ? <button className="text-link" type="button" onClick={onApplyClick}>New? Apply for a trade account</button>
+                : <Link className="text-link" to="/apply">New? Apply for a trade account</Link>}
             </p>
           )}
+          {/* Honeypot (AW-198): out of sight and out of the tab order; people
+              leave it empty. */}
+          <div className="sr-only" aria-hidden="true">
+            <label htmlFor="quote-company-website">Company website</label>
+            <input id="quote-company-website" name="company_website" type="text" tabIndex={-1} autoComplete="off" defaultValue="" />
+          </div>
           <div className="form-grid checkout-form-grid">
-            <div><label htmlFor="quote-business">Business</label><input id="quote-business" name="business" value={data.business} onChange={set('business')} required autoComplete="organization" /></div>
-            <div><label htmlFor="quote-contact">Contact</label><input id="quote-contact" name="contact" value={data.contact} onChange={set('contact')} required autoComplete="name" /></div>
-            <div><label htmlFor="quote-email">Email</label><input id="quote-email" name="email" type="email" value={data.email} onChange={set('email')} required autoComplete="email" inputMode="email" /></div>
-            <div><label htmlFor="quote-phone">Phone</label><input id="quote-phone" name="phone" type="tel" value={data.phone} onChange={set('phone')} required autoComplete="tel" inputMode="tel" /></div>
-            <div className="full"><label htmlFor="ship-street">Street</label><input id="ship-street" name="shipStreet" value={data.shipStreet} onChange={set('shipStreet')} required autoComplete="street-address" /></div>
-            <div><label htmlFor="ship-city">City</label><input id="ship-city" name="shipCity" value={data.shipCity} onChange={set('shipCity')} required autoComplete="address-level2" /></div>
-            <div><label htmlFor="ship-state">State</label><input id="ship-state" name="shipState" value={data.shipState} onChange={set('shipState')} required autoComplete="address-level1" /></div>
-            <div><label htmlFor="ship-zip">ZIP</label><input id="ship-zip" name="shipZip" value={data.shipZip} onChange={set('shipZip')} required autoComplete="postal-code" inputMode="numeric" /></div>
-            <div><label htmlFor="quote-delivery">Delivery method</label>
-              <select id="quote-delivery" name="delivery" value={data.delivery} onChange={set('delivery')}>
+            <div><label htmlFor="quote-business">Business</label><input id="quote-business" name="business" value={data.business} onChange={set('business')} required maxLength={200} autoComplete="organization" {...fieldProps('business')} /></div>
+            <div><label htmlFor="quote-contact">Contact</label><input id="quote-contact" name="contact" value={data.contact} onChange={set('contact')} required maxLength={120} autoComplete="name" {...fieldProps('contact')} /></div>
+            <div><label htmlFor="quote-email">Email</label><input id="quote-email" name="email" type="email" value={data.email} onChange={set('email')} required maxLength={254} autoComplete="email" inputMode="email" {...fieldProps('email')} /></div>
+            <div><label htmlFor="quote-phone">Phone</label><input id="quote-phone" name="phone" type="tel" value={data.phone} onChange={set('phone')} required maxLength={40} autoComplete="tel" inputMode="tel" {...fieldProps('phone')} /></div>
+            {/* TODO(owner): Confirm guest tobacco and vape quotes may collect a license number, resale certificate, and 21+ attestation instead of requiring an approved sign-in. (AW-014) */}
+            {needsLicense && (
+              <>
+                <p className="full result-note" id="quote-license-note">Your cart has tobacco or vape items. Tobacco products are supplied to licensed retailers only — 21+.</p>
+                <div className="full"><label htmlFor="quote-license">State tobacco/retail license #</label><input id="quote-license" name="licenseNo" value={data.licenseNo} onChange={set('licenseNo')} required maxLength={64} autoComplete="off" {...fieldProps('licenseNo', 'quote-license-note')} /></div>
+                <div className="full"><label htmlFor="quote-resale">Sales-tax / resale certificate #</label><input id="quote-resale" name="resaleCert" value={data.resaleCert} onChange={set('resaleCert')} required maxLength={64} autoComplete="off" {...fieldProps('resaleCert', 'quote-license-note')} /></div>
+                <div className="full consent">
+                  <input id="quote-age" name="purchasers21" type="checkbox" checked={data.purchasers21} onChange={setChecked('purchasers21')} required />
+                  <label htmlFor="quote-age">I confirm this business holds a valid tobacco retail license and all purchasers are 21+</label>
+                </div>
+              </>
+            )}
+            {/* Delivery method first: will-call needs no address (AW-079). */}
+            <div className="full"><label htmlFor="quote-delivery">Delivery method</label>
+              <select id="quote-delivery" name="delivery" value={data.delivery} onChange={set('delivery')} aria-describedby={willCall ? 'quote-pickup' : undefined}>
                 <option value="delivery">Next-day delivery (on route)</option>
                 <option value="willcall">Will-call pickup</option>
               </select>
             </div>
-            <div><label htmlFor="quote-date">Preferred date</label><input id="quote-date" name="preferredDate" type="date" value={data.preferredDate} onChange={set('preferredDate')} autoComplete="off" /></div>
-            <div className="full"><label htmlFor="quote-notes">Notes</label><input id="quote-notes" name="notes" value={data.notes} onChange={set('notes')} placeholder="Dock hours, pallet needs, substitutions…" autoComplete="off" /></div>
-            {/* TODO(owner): Confirm guest tobacco and vape quotes may collect a license number, resale certificate, and 21+ attestation instead of requiring an approved sign-in. (AW-014) */}
-            {needsLicense && (
-              <div className="full"><label htmlFor="quote-license">State tobacco/retail license #</label><input id="quote-license" name="licenseNo" value={data.licenseNo} onChange={set('licenseNo')} required autoComplete="off" /></div>
+            {willCall ? (
+              <p className="full result-note" id="quote-pickup">{`Pickup at ${COMPANY.addressShort} during business hours.`}</p>
+            ) : (
+              <>
+                <div className="full"><label htmlFor="ship-street">Street</label><input id="ship-street" name="shipStreet" value={data.shipStreet} onChange={set('shipStreet')} required maxLength={200} autoComplete="street-address" {...fieldProps('shipStreet')} /></div>
+                <div><label htmlFor="ship-city">City</label><input id="ship-city" name="shipCity" value={data.shipCity} onChange={set('shipCity')} required maxLength={100} autoComplete="address-level2" {...fieldProps('shipCity')} /></div>
+                <div><label htmlFor="ship-state">State</label><input id="ship-state" name="shipState" value={data.shipState} onChange={set('shipState')} required maxLength={2} pattern="[A-Za-z]{2}" title="The 2-letter state code, for example AL" autoCapitalize="characters" autoComplete="address-level1" {...fieldProps('shipState')} /></div>
+                <div><label htmlFor="ship-zip">ZIP</label><input id="ship-zip" name="shipZip" value={data.shipZip} onChange={set('shipZip')} required maxLength={10} pattern="[0-9]{5}(-[0-9]{4})?" title="A 5-digit ZIP code, or ZIP+4" autoComplete="postal-code" inputMode="numeric" {...fieldProps('shipZip')} /></div>
+              </>
             )}
-            {needsLicense && (
-              <div className="full"><label htmlFor="quote-resale">Sales-tax / resale certificate #</label><input id="quote-resale" name="resaleCert" value={data.resaleCert} onChange={set('resaleCert')} required autoComplete="off" /></div>
-            )}
-            {needsLicense && (
-              <div className="full consent">
-                <input id="quote-age" name="purchasers21" type="checkbox" checked={data.purchasers21} onChange={e => setData({ ...data, purchasers21: e.target.checked })} required />
-                <label htmlFor="quote-age">I confirm this business holds a valid tobacco retail license and all purchasers are 21+</label>
-              </div>
-            )}
+            <div><label htmlFor="quote-date">Preferred date</label><input id="quote-date" name="preferredDate" type="date" value={data.preferredDate} onChange={set('preferredDate')} min={minDate} autoComplete="off" {...fieldProps('preferredDate')} /></div>
+            <div className="full"><label htmlFor="quote-notes">Notes</label><input id="quote-notes" name="notes" value={data.notes} onChange={set('notes')} maxLength={2000} placeholder="Dock hours, pallet needs, substitutions…" autoComplete="off" /></div>
           </div>
           <div className="drawer-total checkout-total">
             <span>{`${totalUnits} ${totalUnits === 1 ? 'unit' : 'units'}`}</span>
-            <span>{isApprovedBuyer ? formatMoney(total) : (signedIn ? 'Pricing after approval' : 'Pricing after sign-in')}</span>
+            <span>{isApprovedBuyer ? totalLabel(items, total, pricesStatus) : (isSuspended ? 'Ordering paused' : (signedIn ? 'Pricing after approval' : 'Pricing after sign-in'))}</span>
           </div>
           {pricedBelowMinimum && <p className="notice" role="status">The order minimum is $500.00. You can still submit this order.</p>}
           {!isBackendConfigured && <p className="form-error" role="status"><CallOrEmail before="Quote requests can’t be saved right now. Call" after=" and the trade desk will write it up with you." /></p>}
           {needsVariant && <p className="form-error" role="alert">Choose a variant for every product that has more than one.</p>}
           {unavailable.length > 0 && <p className="form-error" role="alert">{UNAVAILABLE_ERROR}</p>}
           {changeText && <p className="form-error" role="alert">{changeText}</p>}
-          {submitError && <p className="form-error" role="alert">{typeof submitError === 'string' ? submitError : <CallOrEmail before={submitError.before} after={submitError.after} />}</p>}
+          {submitError && <p className="form-error" id="quote-submit-error" role="alert">{typeof submitError === 'string' ? submitError : <CallOrEmail before={submitError.before} after={submitError.after} />}</p>}
           {lostOrdering && (
             <div className="checkout-lost">
               <p className="form-error" role="alert">{signedIn
@@ -272,8 +326,12 @@ export function QuotePage({
               </div>
             </div>
           )}
+          {/* A suspended account can't order (AW-201): no submit, a way to reach the trade desk. */}
+          {isSuspended && <p className="notice quote-paused">Ordering is paused on this account. <CallOrEmail after=" and a trade rep will help you sort it out." /></p>}
+          {!isSuspended && (
           <button className="button wide" type="submit" disabled={sending || !isBackendConfigured || needsVariant || unavailable.length > 0 || lostOrdering}>
             <span>{submitLabel}</span> <span aria-hidden="true">↗</span></button>
+          )}
           <p className="fine">The minimum order is $500.00. Orders over $1,500 qualify for free delivery on a delivery route in AL, MS &amp; GA. Will-call is pickup at the Birmingham warehouse during business hours. Tobacco products supplied to licensed retailers only — 21+.</p>
         </form>
       </div>

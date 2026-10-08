@@ -4,7 +4,7 @@
 // the browser, and no real account is used. Products come from the seeded
 // catalog (./catalog.js).
 import { test, expect } from '@playwright/test';
-import { fulfillProducts, seedRows, serveCatalog } from './catalog.js';
+import { fulfillMyPrices, fulfillProducts, seedRows, serveCatalog } from './catalog.js';
 
 const AGE_KEY = 'aw-age-verified'; // STORAGE.age in src/data/content.js
 const AUTH_KEY = 'aw-auth'; // AUTH_STORAGE_KEY in src/lib/supabase.js
@@ -36,7 +36,7 @@ function trackErrors(page) {
 // Answers Supabase: the user, the profile (after `profileDelay` ms), and a
 // logout that fails like an unreachable server when `logout` is 'abort'.
 async function mockSupabase(page, { profileDelay = 0, logout = 'ok' } = {}) {
-  const calls = { profiles: 0, logout: [] };
+  const calls = { profiles: 0, logout: [], prices: 0 };
   await page.route(/supabase\.co\//, async (route) => {
     const req = route.request();
     const url = req.url();
@@ -52,6 +52,11 @@ async function mockSupabase(page, { profileDelay = 0, logout = 'ok' } = {}) {
     }
     if (/\/rest\/v1\/orders/.test(url)) return route.fulfill({ json: [] });
     if (/\/rest\/v1\/products/.test(url)) return fulfillProducts(route, seedRows());
+    // PROFILE is an approved silver buyer: its prices (AW-003).
+    if (/\/rest\/v1\/rpc\/my_prices/.test(url)) {
+      calls.prices += 1;
+      return fulfillMyPrices(route, seedRows());
+    }
     return route.abort();
   });
   return calls;
@@ -228,5 +233,53 @@ test('after a sign-out, a session another tab saved that cannot be refreshed nev
   await page.clock.runFor(35_000);
   await expect(page.locator('.site-notice[data-notice="connection"]')).toBeVisible();
   await expect(cart).toHaveAccessibleName('Cart, 0 items');
+  expect(errors).toEqual([]);
+});
+
+test('an approved buyer’s prices come from my_prices(), and each × quantity is the line total (AW-003, AW-077)', async ({ page, context }) => {
+  const errors = trackErrors(page);
+  const selects = [];
+  page.on('request', (req) => {
+    if (/\/rest\/v1\/products/.test(req.url())) selects.push(new URL(req.url()).searchParams.get('select'));
+  });
+  await seedSession(context);
+  const calls = await mockSupabase(page);
+  // Product 14 (Kite) has the synthetic list price 14.10: 13.395 at silver, saved as 13.40.
+  await page.goto('/product/14');
+  await expect(page.locator('.pd-price')).toContainText('$13.40');
+  await page.getByRole('group', { name: 'Quantity to add' }).getByRole('button', { name: 'Increase quantity' }).click();
+  await page.getByRole('group', { name: 'Quantity to add' }).getByRole('button', { name: 'Increase quantity' }).click();
+  await page.getByRole('button', { name: /^Add to order/ }).click();
+  await page.getByRole('button', { name: /^Cart, 3 items$/ }).click();
+  const drawer = page.getByRole('dialog', { name: 'Your order' });
+  await expect(drawer.locator('.drawer-line small').first()).toHaveText('AW-KITE · $13.40');
+  await expect(drawer.locator('.drawer-total')).toContainText('$40.20');
+  await drawer.getByRole('link', { name: /Checkout/ }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Place your order' })).toBeVisible();
+  const line = page.locator('.checkout-lines .drawer-line').first();
+  await expect(line.locator('small').first()).toHaveText('AW-KITE · $13.40 each');
+  await expect(line.locator('.line-total')).toHaveText('$40.20');
+  await expect(page.locator('.checkout-total')).toHaveText('3 units$40.20');
+  // A product without a price (synthetic: ids ending in 7).
+  await page.goto('/product/7');
+  await expect(page.locator('.pd-price')).toContainText('Price on request');
+  // Cards show the same prices.
+  await page.goto('/category/tobacco/cigarettes');
+  await expect(page.locator('.content-card').filter({ hasText: 'AW-KITE' }).locator('.card-meta')).toContainText('$13.40');
+  expect(calls.prices).toBeGreaterThan(0);
+  expect(selects.length).toBeGreaterThan(0);
+  expect(selects.every((s) => s && s !== '*' && !s.split(',').includes('price'))).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test('guests never ask for prices and see the lock (AW-003)', async ({ page }) => {
+  const errors = trackErrors(page);
+  const calls = await mockSupabase(page);
+  await page.goto('/category/tobacco/cigarettes');
+  await expect(page.locator('.content-card').filter({ hasText: 'AW-KITE' }).locator('.card-meta')).toContainText('LOCKED · Sign in for pricing');
+  await page.goto('/product/14');
+  await expect(page.locator('.pd-price')).toContainText('Sign in');
+  await expect(page.locator('main')).not.toContainText('$13.40');
+  expect(calls.prices).toBe(0);
   expect(errors).toEqual([]);
 });

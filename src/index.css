@@ -947,3 +947,12 @@ ul.sub-pills { list-style: none; padding: 0; }
 .drawer-line.is-unavailable .info small, .drawer-line .line-flag { color: var(--orange-dark); }
 .drawer-line .line-flag { font-weight: 600; }
 .pd-info .pd-saved { margin: 0 0 14px; padding: 8px 12px; max-width: 480px; border-left: 3px solid var(--purple); background: var(--paper); color: var(--ink); font-size: var(--text-sm); font-weight: 600; }
+/* A variant marked not available (AW-030): its chip on the product page, and
+   the add button of a card whose only variant it is. The text says so too. */
+.variant-chips button:disabled { border-style: dashed; color: var(--muted); cursor: not-allowed; }
+.card-add:disabled, .card-add:disabled:hover { border-color: var(--line); background: none; color: var(--muted); cursor: not-allowed; }
+/* Checkout: the guests' sign-in and apply links are tap-sized (AW-014), and
+   the paused-ordering note replaces the submit and quote buttons (AW-201). */
+.quote-account-links .text-link { min-height: var(--tap); }
+.quote-paused { margin: 16px 0 0; }
+.drawer-paused { margin: 4px 0 0; }

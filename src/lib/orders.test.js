@@ -1,66 +1,220 @@
-// submitOrder against a fake Supabase client (no network). Covers Cursor's
-// PR #12 fallback: until 20261008190000_quote_tobacco_license.sql is applied,
-// the live submit_quote has no licence parameters, so the answers go in the
-// notes instead of being lost (AW-014).
+// Quote submission against the current submit_quote and, on an older
+// database, PR #12's 16-argument call and the 13-argument one (AW-049,
+// AW-079, AW-198, AW-201, AW-014). No network: a fake client answers.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-const rpc = vi.hoisted(() => vi.fn());
-vi.mock('./supabase.js', () => ({ supabase: { rpc } }));
-
-const { submitOrder } = await import('./orders.js');
+import { COMPANY } from '../data/content.js';
+import {
+  QUOTE_ERROR_GENERIC, QUOTE_UNAVAILABLE, legacyQuoteParams, licensedQuoteParams, makeClientRef, quoteErrorField, quoteErrorMessage,
+  quoteParams, resetQuoteSignatureForTests, submitOrder, todayInBirmingham,
+} from './orders.js';
 
 const FORM = {
-  business: 'Test Market', contact: 'Test Buyer', email: 'buyer@example.test', phone: '205-000-0000',
-  delivery: 'delivery', preferredDate: '', notes: 'Dock B',
-  shipStreet: '1 Test Way', shipCity: 'Birmingham', shipState: 'AL', shipZip: '35203',
-  licenseNo: 'TL-123', resaleCert: 'RC-456', purchasers21: true,
+  business: ' Test Market ', contact: 'Test Buyer', email: 'buyer@example.test', phone: '205-000-0000',
+  delivery: 'delivery', preferredDate: '', notes: '  ',
+  shipStreet: '1 Test Way', shipCity: 'Birmingham', shipState: 'al', shipZip: '35203',
+  licenseNo: '', resaleCert: '', purchasers21: false,
 };
-const ITEMS = [{ productId: 14, variant: null, qty: 2 }];
+const LICENSED = { ...FORM, notes: 'Dock B', licenseNo: ' TL-123 ', resaleCert: 'RC-456', purchasers21: true };
+const ITEMS = [{ productId: 14, variant: null, qty: 2 }, { productId: 1, variant: 'Red', qty: 1 }];
+const SAVED = { id: 'o1', ref_num: 'ALW-Q-0123456789', kind: 'quote', total_units: 3, subtotal: null, priced_lines: 0, unpriced_lines: 2 };
 const MISSING = { code: 'PGRST202', message: 'Could not find the function public.submit_quote(p_business, …) in the schema cache' };
 
-beforeEach(() => rpc.mockReset());
+// A supabase client whose rpc answers each call in turn.
+function fakeClient(...answers) {
+  const calls = [];
+  return {
+    calls,
+    rpc: vi.fn(async (name, args) => {
+      calls.push({ name, args });
+      return answers.shift();
+    }),
+  };
+}
 
-describe('submitOrder', () => {
-  it('sends the licence answers to the new submit_quote', async () => {
-    rpc.mockResolvedValueOnce({ data: { id: 'o1', ref_num: 'ALW-Q-1' }, error: null });
-    const result = await submitOrder({ refNum: 'ALW-Q-1', formData: FORM, items: ITEMS });
-    expect(result).toMatchObject({ ok: true, order: { id: 'o1' } });
-    expect(rpc).toHaveBeenCalledTimes(1);
-    const [name, args] = rpc.mock.calls[0];
-    expect(name).toBe('submit_quote');
-    expect(args).toMatchObject({
-      p_license_no: 'TL-123', p_resale_cert: 'RC-456', p_purchasers_21: true, p_notes: 'Dock B',
-      p_items: [{ product_id: 14, variant: null, qty: 2 }],
+beforeEach(() => resetQuoteSignatureForTests());
+
+describe('quoteParams', () => {
+  it('sends the details trimmed, the state upper-case and no reference', () => {
+    const params = quoteParams(FORM, ITEMS);
+    expect(params).toMatchObject({
+      p_business: 'Test Market', p_notes: null, p_preferred_date: null, p_ship_state: 'AL', p_delivery: 'delivery',
+      p_license_no: null, p_resale_cert: null, p_purchasers_21: false,
     });
+    expect(params).not.toHaveProperty('p_ref_num');
+    expect(params.p_items).toEqual([{ product_id: 14, variant: null, qty: 2 }, { product_id: 1, variant: 'Red', qty: 1 }]);
   });
 
-  it('keeps the answers in the notes when the live database has the old submit_quote', async () => {
-    rpc.mockResolvedValueOnce({ data: null, error: MISSING });
-    rpc.mockResolvedValueOnce({ data: { id: 'o2', ref_num: 'ALW-Q-2' }, error: null });
-    await submitOrder({ refNum: 'ALW-Q-2', formData: FORM, items: ITEMS });
-    expect(rpc).toHaveBeenCalledTimes(2);
-    const [, args] = rpc.mock.calls[1];
-    expect(args).not.toHaveProperty('p_license_no');
-    expect(args).not.toHaveProperty('p_purchasers_21');
-    expect(args.p_notes).toBe([
+  it('sends no address for will-call, whatever the hidden fields hold (AW-079)', () => {
+    const params = quoteParams({ ...FORM, delivery: 'willcall' }, ITEMS);
+    expect([params.p_ship_street, params.p_ship_city, params.p_ship_state, params.p_ship_zip]).toEqual([null, null, null, null]);
+  });
+
+  it('sends the license answers trimmed (AW-014)', () => {
+    expect(quoteParams(LICENSED, ITEMS)).toMatchObject({ p_license_no: 'TL-123', p_resale_cert: 'RC-456', p_purchasers_21: true });
+  });
+});
+
+describe('makeClientRef', () => {
+  it('is ALW-Q- and 10 hex digits from crypto.getRandomValues', () => {
+    expect(makeClientRef()).toMatch(/^ALW-Q-[0-9A-F]{10}$/);
+    expect(makeClientRef((bytes) => bytes.fill(0xab))).toBe('ALW-Q-ABABABABAB');
+    expect(makeClientRef()).not.toBe(makeClientRef());
+  });
+});
+
+describe('older signatures', () => {
+  it('16 arguments: adds the reference and keeps the license answers', () => {
+    const args = licensedQuoteParams(quoteParams(LICENSED, ITEMS), 'ALW-Q-TEST000001');
+    expect(args).toMatchObject({ p_ref_num: 'ALW-Q-TEST000001', p_license_no: 'TL-123', p_resale_cert: 'RC-456', p_purchasers_21: true });
+    expect(Object.keys(args)).toHaveLength(16);
+  });
+
+  it('13 arguments: adds the reference and keeps the license answers in the notes', () => {
+    const legacy = legacyQuoteParams(quoteParams(LICENSED, ITEMS), 'ALW-Q-TEST000001');
+    expect(legacy.p_ref_num).toBe('ALW-Q-TEST000001');
+    expect(Object.keys(legacy).sort()).toEqual([
+      'p_business', 'p_contact', 'p_delivery', 'p_email', 'p_items', 'p_notes', 'p_phone', 'p_preferred_date', 'p_ref_num',
+      'p_ship_city', 'p_ship_state', 'p_ship_street', 'p_ship_zip',
+    ]);
+    expect(legacy.p_notes).toBe([
       'Dock B',
       'State tobacco/retail license #: TL-123',
       'Sales-tax / resale certificate #: RC-456',
       'Confirmed: valid tobacco retail license and purchasers are 21+.',
     ].join('\n'));
+    // Nothing is added for a quote without answers.
+    expect(legacyQuoteParams(quoteParams(FORM, ITEMS), 'ALW-Q-TEST000003').p_notes).toBeNull();
   });
 
-  it('adds nothing to the notes for a quote without licence answers', async () => {
-    rpc.mockResolvedValueOnce({ data: null, error: MISSING });
-    rpc.mockResolvedValueOnce({ data: { id: 'o3' }, error: null });
-    await submitOrder({ refNum: 'ALW-Q-3', formData: { ...FORM, notes: '', licenseNo: '', resaleCert: '', purchasers21: false }, items: ITEMS });
-    expect(rpc.mock.calls[1][1].p_notes).toBeNull();
+  it('both send the warehouse address for will-call, which they require', () => {
+    for (const make of [legacyQuoteParams, licensedQuoteParams]) {
+      const args = make(quoteParams({ ...FORM, delivery: 'willcall' }, ITEMS), 'ALW-Q-TEST000002');
+      expect([args.p_ship_street, args.p_ship_city, args.p_ship_state, args.p_ship_zip])
+        .toEqual([COMPANY.addressStreet, COMPANY.addressCity, COMPANY.addressState, COMPANY.addressZip]);
+    }
+    // The same facts as the one-line address.
+    expect(COMPANY.addressShort).toBe(`${COMPANY.addressStreet}, ${COMPANY.addressCity} ${COMPANY.addressState} ${COMPANY.addressZip}`);
+  });
+});
+
+describe('submitOrder', () => {
+  it('calls the current submit_quote once and returns what it saved', async () => {
+    const client = fakeClient({ data: SAVED, error: null });
+    const r = await submitOrder({ formData: LICENSED, items: ITEMS }, { client });
+    expect(r).toEqual({ source: 'supabase', ok: true, order: SAVED, legacy: false });
+    expect(client.calls).toHaveLength(1);
+    expect(client.calls[0].name).toBe('submit_quote');
+    expect(client.calls[0].args).not.toHaveProperty('p_ref_num');
+    expect(client.calls[0].args).toMatchObject({ p_license_no: 'TL-123', p_resale_cert: 'RC-456', p_purchasers_21: true });
   });
 
-  it('does not retry other errors, such as the new rule refusing a quote', async () => {
+  it.each(['PGRST202', '42883'])('on a database with only PR #12 (%s), sends the 16-argument call', async (code) => {
+    const saved = { id: 'o2', ref_num: 'ALW-Q-FROMCLIENT', total_units: 3, subtotal: null };
+    const client = fakeClient({ data: null, error: { code, message: 'Could not find the function' } }, { data: saved, error: null });
+    const r = await submitOrder({ formData: { ...LICENSED, delivery: 'willcall' }, items: ITEMS }, { client });
+    expect(r).toMatchObject({ ok: true, order: saved, legacy: true });
+    expect(client.calls).toHaveLength(2);
+    const { args } = client.calls[1];
+    expect(args.p_ref_num).toMatch(/^ALW-Q-[0-9A-F]{10}$/);
+    expect(args).toMatchObject({ p_license_no: 'TL-123', p_purchasers_21: true, p_ship_street: COMPANY.addressStreet });
+  });
+
+  it('on the live database (neither), keeps the answers in the notes, with one reference for both older calls', async () => {
+    const saved = { id: 'o3', ref_num: 'ALW-Q-FROMCLIENT', total_units: 3, subtotal: null };
+    const client = fakeClient({ data: null, error: MISSING }, { data: null, error: MISSING }, { data: saved, error: null });
+    const r = await submitOrder({ formData: LICENSED, items: ITEMS }, { client });
+    expect(r).toMatchObject({ ok: true, order: saved, legacy: true });
+    expect(client.calls).toHaveLength(3);
+    const [, licensed, legacy] = client.calls.map((c) => c.args);
+    expect(legacy.p_ref_num).toBe(licensed.p_ref_num);
+    expect(legacy).not.toHaveProperty('p_license_no');
+    expect(legacy.p_notes).toContain('State tobacco/retail license #: TL-123');
+  });
+
+  it('remembers the signature that worked, and starts over when it disappears', async () => {
+    const client = fakeClient(
+      { data: null, error: MISSING }, { data: null, error: MISSING }, { data: { id: 'o4' }, error: null },
+      { data: { id: 'o5' }, error: null },
+      { data: null, error: MISSING }, { data: { id: 'o6' }, error: null },
+    );
+    await submitOrder({ formData: FORM, items: ITEMS }, { client });
+    await submitOrder({ formData: FORM, items: ITEMS }, { client });
+    expect(client.calls[3].args).toHaveProperty('p_ref_num');
+    expect(client.calls[3].args).not.toHaveProperty('p_license_no');
+    // The 13-argument function went away (migrations applied): the current one is tried next.
+    const r = await submitOrder({ formData: FORM, items: ITEMS }, { client });
+    expect(r).toMatchObject({ order: { id: 'o6' }, legacy: false });
+    expect(client.calls[5].args).not.toHaveProperty('p_ref_num');
+  });
+
+  it('throws what the server refused, without trying an older signature', async () => {
+    const refused = { code: 'P0001', message: 'Enter a valid ZIP code', hint: 'invalid_zip' };
+    const client = fakeClient({ data: null, error: refused });
+    await expect(submitOrder({ formData: FORM, items: ITEMS }, { client })).rejects.toBe(refused);
+    expect(client.calls).toHaveLength(1);
+  });
+
+  it('throws when an older call fails too, when no signature exists, and when nothing was saved', async () => {
+    const failed = { code: 'P0001', message: 'This quote was already submitted' };
+    await expect(submitOrder({ formData: FORM, items: ITEMS }, { client: fakeClient({ error: MISSING }, { error: failed }) }))
+      .rejects.toBe(failed);
+    await expect(submitOrder({ formData: FORM, items: ITEMS }, { client: fakeClient({ error: MISSING }, { error: MISSING }, { error: MISSING }) }))
+      .rejects.toBe(MISSING);
+    await expect(submitOrder({ formData: FORM, items: ITEMS }, { client: fakeClient({ data: null, error: null }) }))
+      .rejects.toThrow('The quote was not saved.');
+  });
+
+  it('says quote requests can’t be saved without a backend', async () => {
+    const err = await submitOrder({ formData: FORM, items: ITEMS }, { client: null }).catch((e) => e);
+    expect(err.code).toBe('unavailable');
+    expect(quoteErrorMessage(err)).toBe(QUOTE_UNAVAILABLE);
+  });
+});
+
+describe('quoteErrorMessage', () => {
+  it.each([
+    ['account_suspended', /^Ordering is paused on this account\. Call/],
+    ['rate_limited', /^Too many quote requests in a short time/],
+    ['field_too_long', /too long/],
+    ['invalid_email', /valid email/],
+    ['invalid_zip', /ZIP code/],
+    ['invalid_state', /2-letter state code/],
+    ['delivery_state', /^Delivery routes cover AL, MS and GA\. For another state, choose will-call pickup\.$/],
+    ['past_date', /from today on/],
+    ['address_required', /or choose will-call pickup/],
+    ['license_required', /tobacco license and resale certificate/],
+    ['contact_required', /business, contact, email and phone/],
+  ])('words the %s hint', (hint, text) => {
+    const message = quoteErrorMessage({ code: 'P0001', message: 'server text', hint });
+    expect(typeof message === 'string' ? message : message.before).toMatch(text);
+  });
+
+  it('words PR #12’s license refusal, which has no hint', () => {
     const refused = { code: 'P0001', message: 'A tobacco license, resale certificate, and 21+ confirmation are required' };
-    rpc.mockResolvedValueOnce({ data: null, error: refused });
-    await expect(submitOrder({ refNum: 'ALW-Q-4', formData: FORM, items: ITEMS })).rejects.toBe(refused);
-    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(quoteErrorMessage(refused)).toMatch(/tobacco license and resale certificate/);
+    expect(quoteErrorField(refused)).toBe('licenseNo');
+  });
+
+  it('falls back to "call the trade desk", with no reference number', () => {
+    for (const err of [new Error('TypeError: Failed to fetch'), { code: 'P0001', hint: 'something_new' }, null]) {
+      const message = quoteErrorMessage(err);
+      expect(message).toBe(QUOTE_ERROR_GENERIC);
+      expect(`${message.before}${message.after}`).not.toMatch(/ALW-|reference/);
+    }
+  });
+
+  it('names the field a hint is about', () => {
+    expect(quoteErrorField({ hint: 'invalid_zip' })).toBe('shipZip');
+    expect(quoteErrorField({ hint: 'delivery_state' })).toBe('shipState');
+    expect(quoteErrorField({ hint: 'rate_limited' })).toBeNull();
+    expect(quoteErrorField(new Error('x'))).toBeNull();
+  });
+});
+
+describe('todayInBirmingham', () => {
+  it('is the date in Birmingham, not UTC', () => {
+    // 03:00 UTC on 1 Oct is still 30 Sep in Birmingham (UTC-5 in October).
+    expect(todayInBirmingham(new Date('2026-10-01T03:00:00Z'))).toBe('2026-09-30');
+    expect(todayInBirmingham(new Date('2026-10-01T12:00:00Z'))).toBe('2026-10-01');
   });
 });
