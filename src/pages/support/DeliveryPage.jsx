@@ -1,6 +1,11 @@
 // Delivery & service area: own-truck routes in Alabama, Mississippi and
 // Georgia, will-call at the Birmingham warehouse, and a state-level check that
 // always points the customer to the trade desk to confirm their stop.
+//
+// The check also takes the store's ZIP code (AW-123, Cursor PR #13), but
+// there is no route list to look it up in yet, so a ZIP only changes the
+// answer to "call to confirm whether <ZIP> is on a route". Nothing is
+// guessed from it.
 
 import { useState } from 'react';
 import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../../data/content.js';
@@ -15,6 +20,9 @@ const routeStates = `${ROUTE_STATE_NAMES.slice(0, -1).join(', ')} and ${ROUTE_ST
 
 export function DeliveryPage() {
   const [stateCode, setStateCode] = useState('');
+  const [zip, setZip] = useState('');
+  // TODO(owner): Which ZIP codes or 3-digit prefixes are on each delivery route, what are each route's delivery days and order cutoff, and which cities or counties are served? (AW-123)
+  const zipEntered = /^[0-9]{5}$/.test(zip);
   const routeState = DELIVERY_STATES.find(s => s.code === stateCode);
   const otherState = OTHER_STATES.find(s => s.code === stateCode);
 
@@ -50,6 +58,8 @@ export function DeliveryPage() {
           <p>Our routes are planned stop by stop, so this check only confirms the states we drive in. Call to confirm your stop before you count on next-day delivery.</p>
         </div>
         <form className="eligibility-form" onSubmit={(e) => e.preventDefault()}>
+          <label htmlFor="delivery-zip">Store ZIP code</label>
+          <input id="delivery-zip" type="text" inputMode="numeric" maxLength={5} autoComplete="postal-code" value={zip} onChange={(e) => setZip(e.target.value.replace(/\D/g, '').slice(0, 5))} />
           <label htmlFor="delivery-state">State your store is in</label>
           <select id="delivery-state" value={stateCode} onChange={(e) => setStateCode(e.target.value)} autoComplete="address-level1">
             <option value="">Choose a state…</option>
@@ -64,11 +74,17 @@ export function DeliveryPage() {
             {routeState && (
               <>
                 <b>{`We run delivery routes in ${routeState.name}.`}</b>
-                <span>Routes don’t reach every address. Call <PhoneLink /> to confirm your stop and delivery day before you count on next-day delivery.</span>
+                <span>Routes don’t reach every address. Call <PhoneLink /> to confirm <span>{zipEntered ? `whether ${zip} is on a route` : 'your stop'}</span> and delivery day before you count on next-day delivery.</span>
               </>
             )}
             {otherState && (
-              <b>Delivery is currently on routes in Alabama, Mississippi, and Georgia.</b>
+              <>
+                <b>{`Delivery is currently on routes in ${routeStates}.`}</b>
+                <span>Call <PhoneLink /> about will-call pickup in Birmingham.</span>
+              </>
+            )}
+            {!stateCode && zipEntered && (
+              <span>Call <PhoneLink /> to confirm whether <span>{zip}</span> is on a route. Route days and the order cutoff are confirmed by the trade desk.</span>
             )}
           </div>
         </form>

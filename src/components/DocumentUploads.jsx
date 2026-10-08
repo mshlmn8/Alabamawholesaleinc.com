@@ -1,6 +1,10 @@
 // Optional license and resale proof. The number fields stay required; these
 // files can be added now or emailed later. Controls stay disabled when the
 // account backend is not configured.
+//
+// On the apply page (ApplicationDocuments) the panel says how many of the two
+// files are on file, and each one on file can be opened (AW-099, Cursor PR
+// #13). Staff are not alerted yet; that waits on the owner (OWNER-TODO).
 
 import { useEffect, useRef, useState } from 'react';
 import { COMPANY } from '../data/content.js';
@@ -8,6 +12,7 @@ import { useAuth } from '../lib/auth.jsx';
 import {
   DOCUMENT_ACCEPT,
   DOCUMENT_TYPES,
+  createDocumentViewUrl,
   documentErrorMessage,
   formatUploadedOn,
   listProfileDocuments,
@@ -25,6 +30,23 @@ function DocumentFields({
   showStatus,
   onPick,
 }) {
+  const [viewError, setViewError] = useState(null);
+  // The tab opens inside the click (a popup blocker would stop a window opened
+  // after the signed address arrives), then goes to the file.
+  const openFile = async (doc, record) => {
+    setViewError(null);
+    const tab = window.open('', '_blank');
+    if (tab) tab.opener = null;
+    try {
+      const url = await createDocumentViewUrl(record.storage_path);
+      if (!url) throw new Error('No address');
+      if (tab) tab.location.href = url;
+      else window.location.assign(url);
+    } catch {
+      tab?.close();
+      setViewError(`Couldn’t open your ${doc.label.toLowerCase()}. Try again.`);
+    }
+  };
   const onChange = (type) => (event) => {
     const file = event.target.files?.[0] || null;
     if (!file) {
@@ -38,10 +60,12 @@ function DocumentFields({
 
   return (
     <fieldset className="doc-uploads" disabled={disabled}>
-      <legend>Optional documents</legend>
+      <legend>{showStatus ? 'License documents' : 'Optional documents'}</legend>
       <p className="doc-uploads-note" id={`${idPrefix}-later`}>
-        Upload your state retail tobacco license and resale certificate now, or send proof later to{' '}
-        <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.
+        {showStatus
+          ? 'Uploading a new file replaces the one on file.'
+          : <>Upload your state retail tobacco license and resale certificate now, or send proof later to{' '}
+            <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.</>}
       </p>
       {DOCUMENT_TYPES.map(doc => {
         const id = `${idPrefix}-${doc.id}`;
@@ -60,7 +84,7 @@ function DocumentFields({
           <div className="doc-upload" key={doc.id}>
             <label htmlFor={id}>
               <span>{doc.label}</span>
-              <span className="optional"> Optional</span>
+              {!showStatus && <span className="optional"> Optional</span>}
             </label>
             <input
               id={id}
@@ -76,7 +100,12 @@ function DocumentFields({
             <small className="field-hint" id={hintId}>PDF, JPG, PNG, or HEIC. 10 MB maximum. One file; choosing another replaces it.</small>
             {showStatus && (
               <p className={`doc-status${record ? '' : ' is-missing'}`} id={statusId} data-document-status={record ? 'uploaded' : 'missing'} aria-live="polite">
-                {status}
+                <span>{status}</span>
+                {record && !isBusy && (
+                  <button type="button" className="text-link doc-view" onClick={() => openFile(doc, record)}>
+                    View<span className="sr-only">{` your ${doc.label.toLowerCase()}`}</span>
+                  </button>
+                )}
               </p>
             )}
             {files?.[doc.id] && !showStatus && (
@@ -86,6 +115,7 @@ function DocumentFields({
           </div>
         );
       })}
+      {viewError && <p className="form-error" role="alert">{viewError}</p>}
     </fieldset>
   );
 }
@@ -114,6 +144,19 @@ const PROOF_EYEBROW = {
   approved: 'KEEP YOUR LICENSE ON FILE',
   suspended: 'SEND UPDATED PROOF',
 };
+
+// How many of the license files are on file (AW-099): '' while they load.
+export function documentsSummary(records, status = 'pending') {
+  if (records == null) return '';
+  const received = DOCUMENT_TYPES.filter(doc => records.some(row => row.document_type === doc.id)).length;
+  if (received === DOCUMENT_TYPES.length) {
+    return status === 'pending'
+      ? 'Both documents received. A trade rep will check them with your application.'
+      : 'Both documents received.';
+  }
+  if (received > 0) return `${received} of ${DOCUMENT_TYPES.length} documents received.`;
+  return 'No documents yet.';
+}
 
 export function ApplicationDocuments({ disabled = false, status = 'pending' }) {
   const { session, loading, isBackendConfigured } = useAuth();
@@ -175,10 +218,14 @@ export function ApplicationDocuments({ disabled = false, status = 'pending' }) {
     }
   };
 
+  const summary = documentsSummary(records, status);
+
   return (
     <section className="doc-panel" aria-labelledby="proof-title">
       <p className="eyebrow">{PROOF_EYEBROW[status] || PROOF_EYEBROW.pending}</p>
       <h2 id="proof-title">License documents</h2>
+      {/* Always rendered, so the count is announced when it changes. */}
+      <p className="doc-summary" role="status">{summary}</p>
       <DocumentFields
         idPrefix="apply-doc"
         disabled={controlsDisabled}

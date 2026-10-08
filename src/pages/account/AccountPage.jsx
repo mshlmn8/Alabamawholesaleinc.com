@@ -27,6 +27,11 @@ const STATUS_CLASS = {
 const STATUS_LABEL = {
   new: 'New',
   contacted: 'Contacted',
+  quoted: 'Quote ready',
+  confirmed: 'Confirmed',
+  picking: 'Picking',
+  ready: 'Ready',
+  out_for_delivery: 'Out for delivery',
   fulfilled: 'Fulfilled',
   cancelled: 'Cancelled',
 };
