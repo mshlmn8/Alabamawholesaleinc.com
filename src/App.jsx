@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 
 import { IMG } from './data/theme.js';
 import { COMPANY, ANNOUNCEMENTS, STORAGE, HERO_SLIDES, ORDER_MINIMUM } from './data/content.js';
+import { cartNeedsTobaccoLicense, showsNicotineWarning } from './lib/regulated.js';
+import { clearAgeDeclined, clearAgeVerified, readAgeDeclined, readAgeVerified, writeAgeDeclined, writeAgeVerified, isAgeVerifiedValue } from './lib/ageGate.js';
 import { NAV_ORDER, NEW_ARRIVALS_IDS } from './data/products.js';
 import { useAuth } from './lib/useAuth.js';
 import { useCatalog } from './lib/useCatalog.js';
@@ -10,6 +12,7 @@ import { lineKey, variantList, variantSku, requiresVariantChoice, resolveCartIte
 import { useMediaQuery } from './lib/useMediaQuery.js';
 import { heroImage, SIZES } from './lib/images.js';
 import { Picture } from './components/Picture.jsx';
+import { NicotineWarning } from './components/NicotineWarning.jsx';
 import { AuthModal } from './components/AuthModal.jsx';
 import { ModalLayer } from './components/ModalLayer.jsx';
 import { AccountPage } from './pages/account/AccountPage.jsx';
@@ -143,8 +146,8 @@ function departmentsFor(products) {
 // ROOT
 // =============================================================================
 export default function App() {
-  const [verified, setVerified] = useState(() => window.localStorage.getItem(STORAGE.age) === 'yes');
-  const [tooYoung, setTooYoung] = useState(false);
+  const [verified, setVerified] = useState(() => readAgeVerified());
+  const [tooYoung, setTooYoung] = useState(() => readAgeDeclined());
   const [cart, setCart] = useState(() => safeReadJson(STORAGE.cart, {}));
   const [cartOpen, setCartOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
@@ -223,6 +226,13 @@ export default function App() {
   };
 
   useEffect(() => { safeWriteJson(STORAGE.cart, cart); }, [cart]);
+  useEffect(() => {
+    const onStorage = (event) => {
+      if (event.key === STORAGE.age) setVerified(isAgeVerifiedValue(event.newValue));
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
   // Escape handling, body scroll lock and the inert background live in
   // ModalLayer so every dialog (including the auth modal) behaves the same.
 
@@ -262,8 +272,26 @@ export default function App() {
   const removeLine = (key) => setCart(c => { const n = { ...c }; delete n[key]; return n; });
   const clearCart = () => setCart({});
 
-  const handleAgeYes = () => { setVerified(true); window.localStorage.setItem(STORAGE.age, 'yes'); };
-  const handleLogout = async () => { await signOut(); navigate({ page: 'home' }); };
+  const handleAgeYes = () => {
+    clearAgeDeclined();
+    writeAgeVerified();
+    setTooYoung(false);
+    setVerified(true);
+  };
+  const handleAgeNo = () => {
+    writeAgeDeclined();
+    setTooYoung(true);
+  };
+  const handleAgeBack = () => {
+    clearAgeDeclined();
+    setTooYoung(false);
+  };
+  const handleLogout = async () => {
+    clearAgeVerified();
+    setVerified(false);
+    await signOut();
+    navigate({ page: 'home' });
+  };
 
   // signin | signup (checklist first) | application (straight to the form) | reset
   const openLogin = (mode) => {
@@ -278,8 +306,6 @@ export default function App() {
     setCartOpen(false);
     openSignin();
   };
-
-  if (!verified) return <AgeGate onYes={handleAgeYes} onNo={() => setTooYoung(true)} tooYoung={tooYoung} />;
 
   const shared = {
     user, profile, isApprovedBuyer, cart, addLine, decLine, products, departments,
@@ -323,11 +349,13 @@ export default function App() {
             {route.page === 'quote' && (
               <QuotePage items={cartItems} total={cartTotal} addLine={addLine} decLine={decLine} removeLine={removeLine}
                          clearCart={clearCart} goHome={goHome} goCatalog={goCatalog} goProduct={goProduct} profile={profile}
-                         isApprovedBuyer={isApprovedBuyer} isBackendConfigured={isBackendConfigured} />
+                         isApprovedBuyer={isApprovedBuyer} isBackendConfigured={isBackendConfigured}
+                         onLoginClick={openSignin} onApplyClick={openSignup} />
             )}
             {route.page === 'account' && (
               <AccountPage profile={profile} goHome={goHome} onSignIn={openSignin} products={products}
-                           addLines={addLines} onOpenCart={() => setCartOpen(true)} isApprovedBuyer={isApprovedBuyer} />
+                           addLines={addLines} onOpenCart={() => setCartOpen(true)} isApprovedBuyer={isApprovedBuyer}
+                           navigate={navigate} />
             )}
             {route.page === 'admin' && <AdminPage profile={profile} goHome={goHome} />}
             {route.page === 'catalog' && <CatalogIndexPage {...shared} />}
@@ -352,6 +380,11 @@ export default function App() {
           <AuthModal open initialMode={loginMode} onClose={() => setLoginOpen(false)} onNavigate={navigate} />
         </ModalLayer>
       )}
+      {!verified && (
+        <ModalLayer className="age-gate-layer">
+          <AgeGate onYes={handleAgeYes} onNo={handleAgeNo} onBack={handleAgeBack} tooYoung={tooYoung} />
+        </ModalLayer>
+      )}
     </div>
   );
 }
@@ -359,24 +392,31 @@ export default function App() {
 // =============================================================================
 // AGE GATE
 // =============================================================================
-function AgeGate({ onYes, onNo, tooYoung }) {
+function AgeGate({ onYes, onNo, onBack, tooYoung }) {
+  const backRef = useRef(null);
+  useEffect(() => {
+    if (tooYoung) backRef.current?.focus();
+  }, [tooYoung]);
   return (
     <div className="age-gate" role="dialog" aria-modal="true" aria-labelledby="age-gate-title">
       <div className="inner fade-in">
         <div className="brand"><span>Alabama</span><small>WHOLESALE INC.</small></div>
         {!tooYoung ? (
           <>
-            <h1 id="age-gate-title">Are you <em>21 or older?</em></h1>
-            <p>This site lists tobacco and vapor products for licensed retail businesses. Access is restricted to trade accounts and adults 21 years or older.</p>
+            <h1 id="age-gate-title">Are you 21 or older?</h1>
+            <p>This site is for licensed retail businesses. You must be 21 or older to enter.</p>
             <div className="btn-row">
-              <button className="button" onClick={onYes}>Yes, I am 21+ <span aria-hidden="true">↗</span></button>
-              <button className="button ghost" onClick={onNo}>No, exit</button>
+              <button className="button" type="button" onClick={onYes} data-autofocus>Yes, I am 21+ <span aria-hidden="true">↗</span></button>
+              <button className="button ghost" type="button" onClick={onNo}>No, exit</button>
             </div>
           </>
         ) : (
           <>
-            <h1>We're sorry —</h1>
-            <p>You must be 21 years or older to enter this site.</p>
+            <h1 id="age-gate-title">We&apos;re sorry</h1>
+            <p>You must be 21 or older to enter this site. The catalog is for licensed retailers.</p>
+            <div className="btn-row">
+              <button className="button ghost" type="button" onClick={onBack} ref={backRef}>Back to the age question</button>
+            </div>
           </>
         )}
       </div>
@@ -692,6 +732,7 @@ function HeroCarousel({ slides }) {
         <button type="button" aria-pressed={paused} onClick={() => setPaused(value => !value)}>{paused ? 'Play' : 'Pause'}</button>
         <button type="button" onClick={() => go(1)} aria-label="Next slide">Next</button>
       </div>
+      {active.nicotineWarning && <NicotineWarning />}
     </section>
   );
 }
@@ -721,6 +762,7 @@ function HomePage(props) {
         <button className="editorial-card cream" type="button" onClick={() => goCategory('NOVELTIES')}>
           <Picture className="bg" picture={EDITORIAL_BG.picture} alt="" aria-hidden="true" sizes={SIZES.editorial} />
           <span className="block-label">COLLECTION / 01</span>
+          {/* TODO(owner): After legal review, which of Kratom & Kava, Mushroom Products, Detox, Wellness Pills, and Honey & Energy enhancement items should be delisted, de-featured, or kept? Headline kept as published. (AW-001) */}
           <div><p className="eyebrow">EXOTICS &amp; NOVELTIES</p><h2>Disposables, detox,<br />kratom &amp; more.</h2><span className="text-link">Browse novelties</span><span className="arrow" aria-hidden="true">↗</span></div>
         </button>
         <button className="editorial-card purple" type="button" onClick={() => goCategory('TOBACCO')}>
@@ -742,6 +784,7 @@ function HomePage(props) {
       <section className="services" aria-label="Services">
         <div className="service"><span>01</span><h3>Next-day delivery, our own trucks</h3><p>We run our own delivery service on routes in Alabama, Mississippi and Georgia. Free delivery on orders over $1,500 when the stop is on a delivery route. Will-call is pickup at the Birmingham warehouse during business hours.</p></div>
         <div className="service"><span>02</span><h3>Net-30 trade terms</h3><p>Approved retail accounts order now and pay on Net-30 terms. Volume discounts up to 18% on pallet quantities across all eight departments.</p></div>
+        {/* TODO(owner): Is a tobacco license required for every trade account, or only for tobacco, vapor, and nicotine? This sentence is unchanged until you decide. (AW-129) */}
         <div className="service"><span>03</span><h3>Licensed businesses only</h3><p>We verify your state retail tobacco license and resale certificate before your first order. No consumer sales, no exceptions — 21+ trade accounts only.</p></div>
       </section>
 
@@ -820,6 +863,7 @@ function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLine, goPr
         <h3>{p.name}</h3>
         <p className="card-detail">{p.brand}{p.flavors ? ` · ${p.flavors} variants` : ''} · {p.sku}</p>
       </button>
+      {showsNicotineWarning(p) && <NicotineWarning compact />}
       <span className="card-meta card-actions">
         {isApprovedBuyer && price != null ? (
           <span>{money(price)}</span>
@@ -1092,6 +1136,7 @@ function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLi
           {p.picture ? <Picture picture={p.picture} alt={p.name} sizes={SIZES.detail} priority /> : <span className="card-initials" aria-hidden="true">{initials(p.name)}</span>}
         </div>
         <div className="pd-info">
+          {showsNicotineWarning(p) && <NicotineWarning />}
           <p className="pd-brand">{p.brand} · {p.sub}</p>
           <h1>{p.name}</h1>
           <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()} from ${p.brand}.`}</p>
@@ -1162,13 +1207,28 @@ function TradeDeskContact({ before, after }) {
   );
 }
 
-function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHome, goCatalog, goProduct, profile, isApprovedBuyer, isBackendConfigured }) {
+function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHome, goCatalog, goProduct, profile, isApprovedBuyer, isBackendConfigured, onLoginClick, onApplyClick }) {
   const [step, setStep] = useState('review');
   const [data, setData] = useState({
-    business: profile?.business || '', contact: profile?.name || '', email: profile?.email || '', phone: '',
+    business: profile?.business || '', contact: profile?.name || '', email: profile?.email || '', phone: profile?.phone || '',
     notes: '', delivery: 'delivery', preferredDate: '',
-    shipStreet: '', shipCity: '', shipState: '', shipZip: '',
+    shipStreet: profile?.store_street || '', shipCity: profile?.store_city || '', shipState: profile?.state || '', shipZip: profile?.store_zip || '',
+    licenseNo: '', resaleCert: '', purchasers21: false,
   });
+  useEffect(() => {
+    if (!profile) return;
+    setData(current => ({
+      ...current,
+      business: current.business || profile.business || '',
+      contact: current.contact || profile.name || '',
+      email: current.email || profile.email || '',
+      phone: current.phone || profile.phone || '',
+      shipStreet: current.shipStreet || profile.store_street || '',
+      shipCity: current.shipCity || profile.store_city || '',
+      shipState: current.shipState || profile.state || '',
+      shipZip: current.shipZip || profile.store_zip || '',
+    }));
+  }, [profile]);
   const set = k => e => setData({ ...data, [k]: e.target.value });
   const [refNum] = useState(`ALW-Q-${Math.floor(Math.random() * 90000) + 10000}`);
   const [receipt, setReceipt] = useState(null);
@@ -1176,6 +1236,7 @@ function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHo
   const [sending, setSending] = useState(false);
   const totalUnits = items.reduce((s, i) => s + i.qty, 0);
   const needsVariant = items.some(it => it.needsVariant);
+  const needsLicense = cartNeedsTobaccoLicense(items) && !isApprovedBuyer;
   const pricedBelowMinimum = isApprovedBuyer && Number(total) < ORDER_MINIMUM;
 
   const handleQuoteSubmit = async (e) => {
@@ -1267,6 +1328,13 @@ function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHo
         </div>
         <form onSubmit={handleQuoteSubmit} aria-labelledby="quote-form-title">
           <h2 id="quote-form-title" className="checkout-form-title">Your details</h2>
+          {!profile && (
+            <p className="fine quote-account-links">
+              <button className="text-link" type="button" onClick={onLoginClick}>Have an account? Sign in</button>
+              <span aria-hidden="true"> · </span>
+              <button className="text-link" type="button" onClick={onApplyClick}>New? Apply for a trade account</button>
+            </p>
+          )}
           <div className="form-grid checkout-form-grid">
             <div><label htmlFor="quote-business">Business</label><input id="quote-business" name="business" value={data.business} onChange={set('business')} required autoComplete="organization" /></div>
             <div><label htmlFor="quote-contact">Contact</label><input id="quote-contact" name="contact" value={data.contact} onChange={set('contact')} required autoComplete="name" /></div>
@@ -1284,6 +1352,17 @@ function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHo
             </div>
             <div><label htmlFor="quote-date">Preferred date</label><input id="quote-date" name="preferredDate" type="date" value={data.preferredDate} onChange={set('preferredDate')} autoComplete="off" /></div>
             <div className="full"><label htmlFor="quote-notes">Notes</label><input id="quote-notes" name="notes" value={data.notes} onChange={set('notes')} placeholder="Dock hours, pallet needs, substitutions…" autoComplete="off" /></div>
+            {needsLicense && (
+              <>
+                {/* TODO(owner): Confirm guest tobacco and vape quotes may collect a license number, resale certificate, and 21+ attestation instead of requiring an approved sign-in. (AW-014) */}
+                <div className="full"><label htmlFor="quote-license">State tobacco/retail license #</label><input id="quote-license" name="licenseNo" value={data.licenseNo} onChange={set('licenseNo')} required autoComplete="off" /></div>
+                <div className="full"><label htmlFor="quote-resale">Sales-tax / resale certificate #</label><input id="quote-resale" name="resaleCert" value={data.resaleCert} onChange={set('resaleCert')} required autoComplete="off" /></div>
+                <div className="full consent">
+                  <input id="quote-age" name="purchasers21" type="checkbox" checked={data.purchasers21} onChange={e => setData({ ...data, purchasers21: e.target.checked })} required />
+                  <label htmlFor="quote-age">I confirm this business holds a valid tobacco retail license and all purchasers are 21+</label>
+                </div>
+              </>
+            )}
           </div>
           <div className="drawer-total checkout-total">
             <span>{totalUnits} units</span>
@@ -1307,6 +1386,7 @@ function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHo
 // =============================================================================
 function Footer({ goHome, goCategory, departments, onLoginClick, onApplyClick, onNewArrivals, onBestsellers, navigate }) {
   return (
+    <>
     <footer className="footer-main">
       <div className="container">
         <div className="footer-grid">
@@ -1346,10 +1426,11 @@ function Footer({ goHome, goCategory, departments, onLoginClick, onApplyClick, o
           <p>Sales to licensed retail businesses only · 21+ · No consumer orders</p>
         </div>
       </div>
-      <div className="fda-note">
-        <div className="container">WARNING: Tobacco products sold by Alabama Wholesale Inc. contain nicotine. Nicotine is an addictive chemical. Products are distributed exclusively to licensed retail businesses for lawful resale. Not for sale to minors.</div>
-      </div>
     </footer>
+    <div className="fda-note">
+      <div className="container"><NicotineWarning /></div>
+    </div>
+    </>
   );
 }
 

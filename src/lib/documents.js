@@ -107,9 +107,10 @@ export async function uploadProfileDocument(session, documentType, file) {
   if (problem) throw new Error(problem);
 
   const userId = session.user.id;
-  const path = `${userId}/${documentType}/${safeFilename(file.name)}`;
+  // A new object name keeps the previous file in the bucket when a license is renewed.
+  const path = `${userId}/${documentType}/${Date.now()}-${safeFilename(file.name)}`;
 
-  const { data: existing, error: existingError } = await supabase
+  const { error: existingError } = await supabase
     .from('profile_documents')
     .select('storage_path')
     .eq('profile_id', userId)
@@ -134,10 +135,6 @@ export async function uploadProfileDocument(session, documentType, file) {
     .from('profile_documents')
     .upsert(row, { onConflict: 'profile_id,document_type' });
   if (rowError) throw rowError;
-
-  if (existing?.storage_path && existing.storage_path !== path) {
-    await supabase.storage.from(DOCUMENT_BUCKET).remove([existing.storage_path]);
-  }
 
   return { attempted: true, ...row };
 }

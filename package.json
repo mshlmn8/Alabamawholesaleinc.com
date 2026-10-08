@@ -11,7 +11,8 @@
     "dev": "vite",
     "prebuild": "npm run images",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node scripts/test-part1.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",

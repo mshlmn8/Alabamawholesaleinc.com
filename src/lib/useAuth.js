@@ -62,13 +62,22 @@ export function useAuth() {
   // True once the profile fetch for the current session has finished (even if it failed).
   const profileReady = !!session?.user && profileFor === session.user.id;
 
-  const signUp = useCallback(async ({ email, password, name, business, phone, license_no, ein, resale_cert_no, business_type, state, expected_volume }) => {
+  const signUp = useCallback(async ({
+    email, password, name, business, phone, license_no, ein, resale_cert_no,
+    business_type, state, expected_volume, store_street, store_city, store_zip,
+    terms_accepted, terms_version, age_confirmed,
+  }) => {
     if (!supabase) throw new Error(UNAVAILABLE);
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { name, business, phone, license_no, ein, resale_cert_no, business_type, state, expected_volume },
+        // The signup trigger copies these into profiles, then removes the
+        // sensitive keys from auth metadata once that migration is applied.
+        data: {
+          name, business, phone, license_no, ein, resale_cert_no, business_type, state, expected_volume,
+          store_street, store_city, store_zip, terms_accepted, terms_version, age_confirmed,
+        },
       },
     });
     if (error) throw error;

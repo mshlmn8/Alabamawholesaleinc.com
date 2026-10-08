@@ -24,10 +24,15 @@ const describeError = (err, what, fallback) => (
     : (err?.message || fallback)
 );
 
+// TODO(owner): Approve the consent checkbox wording and the Trade terms / Privacy version recorded here. 2026-09 matches the September 2026 date already printed on those pages. (AW-019)
+const TERMS_VERSION = '2026-09';
+
 const EMPTY_SIGNUP = {
   email: '', password: '', name: '', business: '', phone: '',
   ein: '', license_no: '', resale_cert_no: '',
   business_type: 'Convenience Store', state: 'AL', expected_volume: '$5K — $15K',
+  store_street: '', store_city: '', store_zip: '',
+  agreeTerms: false, ageConfirmed: false,
 };
 
 function Field({ id, label, hint, full = false, children }) {
@@ -109,7 +114,12 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
     e.preventDefault();
     setSubmitting(true); setError(null);
     try {
-      const data = await signUp(signup);
+      const data = await signUp({
+        ...signup,
+        terms_accepted: signup.agreeTerms,
+        terms_version: TERMS_VERSION,
+        age_confirmed: signup.ageConfirmed,
+      });
       const chosen = DOCUMENT_TYPES.some(doc => proof[doc.id]);
       let uploadError = null;
       // Email confirmation leaves no session. Hold the files and do not call storage.
@@ -254,6 +264,16 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
               <Field id="aw-su-state" label="Store state">
                 <select id="aw-su-state" name="state" value={signup.state} onChange={setU('state')} autoComplete="address-level1">{STATES.map(o => <option key={o}>{o}</option>)}</select>
               </Field>
+              <Field id="aw-su-street" label="Store street address" full>
+                <input id="aw-su-street" name="address-line1" value={signup.store_street} onChange={setU('store_street')} required autoComplete="address-line1" />
+              </Field>
+              <Field id="aw-su-city" label="City">
+                <input id="aw-su-city" name="address-level2" value={signup.store_city} onChange={setU('store_city')} required autoComplete="address-level2" />
+              </Field>
+              <Field id="aw-su-zip" label="ZIP">
+                <input id="aw-su-zip" name="postal-code" value={signup.store_zip} onChange={setU('store_zip')} required inputMode="numeric" pattern="[0-9]{5}" autoComplete="postal-code" title="Enter a 5-digit ZIP code" />
+              </Field>
+              {/* TODO(owner): Is a tobacco license required for every trade account, or only for tobacco, vapor, and nicotine? This field stays required for every application until you decide. (AW-129) */}
               <Field id="aw-su-license" label="State retail tobacco license #" hint="From the state where the store is licensed.">
                 <input id="aw-su-license" name="license_no" value={signup.license_no} onChange={setU('license_no')} required autoComplete="off" aria-describedby="aw-su-license-hint" />
               </Field>
@@ -269,6 +289,16 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onNavigate })
               <Field id="aw-su-volume" label="Expected monthly volume" full>
                 <select id="aw-su-volume" name="expected_volume" value={signup.expected_volume} onChange={setU('expected_volume')} autoComplete="off">{VOLUMES.map(o => <option key={o}>{o}</option>)}</select>
               </Field>
+            </div>
+            <div className="consent-block">
+              <div className="consent">
+                <input id="aw-su-terms" name="agreeTerms" type="checkbox" checked={signup.agreeTerms} onChange={e => setSignup({ ...signup, agreeTerms: e.target.checked })} required />
+                <label htmlFor="aw-su-terms">I agree to the <a href="#/terms" target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>Trade terms</a> and <a href="#/privacy" target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>Privacy policy</a></label>
+              </div>
+              <div className="consent">
+                <input id="aw-su-age" name="ageConfirmed" type="checkbox" checked={signup.ageConfirmed} onChange={e => setSignup({ ...signup, ageConfirmed: e.target.checked })} required />
+                <label htmlFor="aw-su-age">I am 21 or older</label>
+              </div>
             </div>
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
