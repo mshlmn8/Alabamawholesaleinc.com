@@ -5,7 +5,7 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const db = vi.hoisted(() => ({ orders: [], profiles: [], rpc: [], rpcError: {}, listPrices: null, updates: [], updateError: null }));
+const db = vi.hoisted(() => ({ orders: [], profiles: [], rpc: [], rpcError: {}, listPrices: null, updates: [], updateError: null, selects: [] }));
 vi.mock('../../lib/supabase.js', () => {
   const from = (table) => {
     const rows = () => {
@@ -16,7 +16,7 @@ vi.mock('../../lib/supabase.js', () => {
       return [];
     };
     const builder = {
-      select: () => builder,
+      select: (columns) => { db.selects.push([table, columns]); return builder; },
       order: () => builder,
       limit: () => builder,
       update: (patch) => ({
@@ -144,6 +144,8 @@ describe('quote workflow helpers', () => {
 describe('Admin orders with the quote workflow', () => {
   it('labels quotes and orders, links the email and phone, and offers every status', async () => {
     await openOrders();
+    // orders has two links to profiles once quoted_by exists; the embed names user_id's.
+    expect(db.selects).toContainEqual(['orders', '*, order_items(*), profiles!orders_user_id_fkey(business, name, pricing_tier)']);
     const guest = card('ALW-Q-5E4F3A2B1C');
     expect(within(guest).getByText('Guest quote')).toBeTruthy();
     expect(within(guest).getByRole('link', { name: 'gus@example.test' }).getAttribute('href')).toBe('mailto:gus@example.test');

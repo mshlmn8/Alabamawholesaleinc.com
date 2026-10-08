@@ -212,6 +212,12 @@ export function orderEmail(order, lines, quote = isQuote(order)) {
   return `mailto:${order.email}?subject=${encodeURIComponent(`${label} ${order.ref_num}`)}&body=${encodeURIComponent(body)}`;
 }
 
+// order_items(*): the workflow columns (original_qty, sell_unit) exist only
+// after the October 2026 update. The account is named through its foreign key:
+// since 20261008200000, orders.quoted_by is a second link to profiles, and
+// PostgREST refuses an embed that could follow either (PGRST201).
+export const ADMIN_ORDER_SELECT = '*, order_items(*), profiles!orders_user_id_fkey(business, name, pricing_tier)';
+
 function OrdersTab() {
   const [orders, setOrders] = useState(null);
   const [loadError, setLoadError] = useState(null);
@@ -222,9 +228,7 @@ function OrdersTab() {
   const reload = () => {
     supabase
       .from('orders')
-      // order_items(*): the workflow columns (original_qty, sell_unit) exist
-      // only after the October 2026 update.
-      .select('*, order_items(*), profiles(business, name, pricing_tier)')
+      .select(ADMIN_ORDER_SELECT)
       .order('created_at', { ascending: false })
       .limit(200)
       .then(({ data, error }) => {
@@ -301,7 +305,12 @@ function OrderCard({ order: o, states, workflow, tiers, onStatus, onReload }) {
     const lines = items.map(it => ({ ...it, qty: String(it.qty), unit_price: it.unit_price == null ? '' : String(Number(it.unit_price).toFixed(2)) }));
     setDraft(lines);
     if (lines.every(l => l.unit_price !== '')) return;
-    const listPrices = await loadListPrices(supabase);
+    let listPrices = null;
+    try {
+      listPrices = await loadListPrices(supabase);
+    } catch {
+      listPrices = null;
+    }
     if (!listPrices) return;
     const prices = new Map(lines.map(l => [l.id, suggestedUnitPrice(l, listPrices, discountPct)]));
     // Only fields still empty are filled; what staff typed meanwhile stays.
