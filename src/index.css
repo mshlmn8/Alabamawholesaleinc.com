@@ -448,7 +448,7 @@ p > .text-link { min-height: 0; }
 .account-detail-row td { background: var(--paper); }
 /* The details row spans the whole (scrolling) table; its content stays in
    view at the left edge and wraps to the screen on phones. */
-.account-detail-row td > * { position: sticky; left: 12px; max-width: calc(100vw - 64px); }
+.account-detail-row td > * { position: sticky; left: 12px; max-width: min(100%, calc(100vw - 64px)); }
 .account-note { display: grid; gap: 6px; max-width: 420px; margin-bottom: 8px; font-size: 0.75rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
 .account-note input { height: var(--tap); padding: 0 8px; border: 1px solid #d8d1c9; background: #fff; text-transform: none; letter-spacing: 0; font-size: 0.875rem; font-weight: 500; color: var(--ink); }
 
