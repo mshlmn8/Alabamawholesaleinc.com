@@ -21,7 +21,7 @@ function DocumentFields({
   files,
   errors,
   records,
-  busyType,
+  busy,
   showStatus,
   onPick,
 }) {
@@ -51,10 +51,10 @@ function DocumentFields({
         const error = errors?.[doc.id];
         const record = (records || []).find(row => row.document_type === doc.id);
         const describedBy = [hintId, showStatus ? statusId : null, error ? errorId : null].filter(Boolean).join(' ');
-        const busy = busyType === doc.id;
+        const isBusy = !!busy?.[doc.id];
         let status = 'Not uploaded';
         if (records == null) status = 'Checking…';
-        else if (busy) status = 'Uploading…';
+        else if (isBusy) status = 'Uploading…';
         else if (record) status = `${formatUploadedOn(record.uploaded_at)}${record.original_filename ? ` · ${record.original_filename}` : ''}`;
         return (
           <div className="doc-upload" key={doc.id}>
@@ -68,7 +68,7 @@ function DocumentFields({
               type="file"
               name={doc.id}
               accept={DOCUMENT_ACCEPT}
-              disabled={disabled || busy}
+              disabled={disabled || isBusy}
               aria-invalid={error ? 'true' : undefined}
               aria-describedby={describedBy}
               onChange={onChange(doc.id)}
@@ -100,7 +100,7 @@ export function DocumentUploads({ idPrefix = 'aw-doc', disabled = false, files, 
       files={files}
       errors={errors}
       records={[]}
-      busyType={null}
+      busy={{}}
       showStatus={false}
       onPick={onPick}
     />
@@ -108,14 +108,21 @@ export function DocumentUploads({ idPrefix = 'aw-doc', disabled = false, files, 
 }
 
 // Signed-in pending application: status per document, upload or replace now.
-export function ApplicationDocuments({ disabled = false }) {
+const PROOF_EYEBROW = {
+  pending: 'WHILE YOUR APPLICATION IS PENDING',
+  approved: 'KEEP YOUR LICENSE ON FILE',
+  suspended: 'SEND UPDATED PROOF',
+};
+
+export function ApplicationDocuments({ disabled = false, status = 'pending' }) {
   const { session, loading, isBackendConfigured } = useAuth();
   const [records, setRecords] = useState(null);
   const [errors, setErrors] = useState({});
-  const [busyType, setBusyType] = useState(null);
+  const [busy, setBusy] = useState({});
   const tokens = useRef({});
+  const touched = useRef(false);
   const userId = session?.user?.id;
-  const controlsDisabled = disabled || !isBackendConfigured || loading || !userId;
+  const controlsDisabled = disabled || !isBackendConfigured || loading || !userId || records == null;
 
   useEffect(() => {
     if (!isBackendConfigured || !userId) {
@@ -124,18 +131,22 @@ export function ApplicationDocuments({ disabled = false }) {
     }
     let cancelled = false;
     listProfileDocuments(userId)
-      .then(rows => { if (!cancelled) setRecords(rows); })
-      .catch(() => { if (!cancelled) setRecords([]); });
+      .then(rows => {
+        if (cancelled || touched.current) return;
+        setRecords(rows);
+      })
+      .catch(() => { if (!cancelled && !touched.current) setRecords([]); });
     return () => { cancelled = true; };
   }, [isBackendConfigured, userId]);
 
   const onPick = async (type, file, problem) => {
+    touched.current = true;
     setErrors(prev => ({ ...prev, [type]: problem }));
     if (problem || !file) return;
     if (!session?.user?.id || !isBackendConfigured) return;
     const token = (tokens.current[type] || 0) + 1;
     tokens.current[type] = token;
-    setBusyType(type);
+    setBusy(current => ({ ...current, [type]: true }));
     try {
       const saved = await uploadProfileDocument(session, type, file);
       if (tokens.current[type] !== token) return;
@@ -147,18 +158,25 @@ export function ApplicationDocuments({ disabled = false }) {
       });
       const rows = await listProfileDocuments(session.user.id);
       if (tokens.current[type] !== token) return;
-      setRecords(rows);
+      setRecords(current => {
+        const latest = new Map((current || []).map(row => [row.document_type, row]));
+        for (const row of rows) {
+          const kept = latest.get(row.document_type);
+          if (!kept || String(row.uploaded_at) >= String(kept.uploaded_at)) latest.set(row.document_type, row);
+        }
+        return Array.from(latest.values());
+      });
     } catch (err) {
       if (tokens.current[type] !== token) return;
       setErrors(prev => ({ ...prev, [type]: documentErrorMessage(err) }));
     } finally {
-      if (tokens.current[type] === token) setBusyType(null);
+      if (tokens.current[type] === token) setBusy(current => ({ ...current, [type]: false }));
     }
   };
 
   return (
     <section className="doc-panel" aria-labelledby="proof-title">
-      <p className="eyebrow">WHILE YOUR APPLICATION IS PENDING</p>
+      <p className="eyebrow">{PROOF_EYEBROW[status] || PROOF_EYEBROW.pending}</p>
       <h2 id="proof-title">License documents</h2>
       <DocumentFields
         idPrefix="apply-doc"
@@ -166,7 +184,7 @@ export function ApplicationDocuments({ disabled = false }) {
         files={{}}
         errors={errors}
         records={records}
-        busyType={busyType}
+        busy={busy}
         showStatus
         onPick={onPick}
       />

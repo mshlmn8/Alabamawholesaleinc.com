@@ -22,7 +22,7 @@ const STATUS_LABEL = {
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-export function AccountPage({ profile, goHome, onSignIn, products = [], addLines, onOpenCart, isApprovedBuyer }) {
+export function AccountPage({ profile, goHome, onSignIn, products = [], addLines, onOpenCart, isApprovedBuyer, navigate }) {
   const [orders, setOrders] = useState(null);
   const [error, setError] = useState(null);
   const [reorderNote, setReorderNote] = useState(null);
@@ -88,6 +88,10 @@ export function AccountPage({ profile, goHome, onSignIn, products = [], addLines
         <Stat label="Pricing tier" value={profile.pricing_tier} />
         <Stat label="Role" value={profile.role} />
       </div>
+
+      {navigate && (
+        <p className="notice">License and resale documents: <button className="text-link" type="button" onClick={() => navigate({ page: 'apply' })}>view or replace</button></p>
+      )}
 
       {profile.status === 'pending' && (
         <p className="notice">Your account is awaiting approval. A trade rep will verify your retail license and activate pricing within one business day.</p>

@@ -12,6 +12,23 @@
 //   description  written from the name, brand, department and variants only
 //   sku          unique, stable code; quick reorder matches it exactly, and
 //                variant codes append the variant slug (see ../lib/lines.js)
+//
+// TODO(owner): After legal review, which of Kratom & Kava, Mushroom Products,
+// Detox, Wellness Pills, and the Honey & Energy enhancement items should be
+// delisted, de-featured, or kept? Do not change those lines until then. (AW-001)
+//
+// TODO(owner): Approve the department and sub-line for each misfiled product
+// before anything is moved. Known examples, left where they are: Seneca filtered
+// cigars (210) and Cheyenne filtered cigars (211) under Tobacco / Cigarettes;
+// gum and mint lumps under Candies / Sweets & Gummies; Tweaker under
+// Merchandise / OTC & Health; Rhino and Hard Steel under Honey & Energy;
+// Happy valentines jar (219) under Wellness Pills; register paper and trash
+// bags split across departments; blue-lotus and hemp items inside Mushroom
+// Products. (AW-070)
+//
+// TODO(owner): Which flavors does the warehouse stock for vape products 60,
+// 61, 64, 65, 66, 67, 68, 254, 310, and 311, or which are sold only as an
+// assorted case? Variant lists below are unchanged until that sheet arrives. (AW-137)
 
 import { productImage } from '../lib/images.js';
 
