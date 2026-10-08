@@ -121,6 +121,7 @@ export const STORAGE = {
 };
 
 export const FREE_DELIVERY_THRESHOLD = 1500;
+// TODO(owner): Is the $500 minimum order a hard rule that blocks submission, or only a guideline that orders below it may still be submitted? It is not enforced; checkout only notes it. (AW-076)
 export const ORDER_MINIMUM = 500;
 
 // The date the Trade terms and Privacy policy last changed, as the policy

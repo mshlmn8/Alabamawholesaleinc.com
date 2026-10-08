@@ -258,6 +258,37 @@ describe('QuotePage totals for an approved buyer', () => {
   });
 });
 
+// The $500 minimum isn't enforced (AW-076, owner question); the note that says
+// so appears only while the submit button can be used (Cursor's PR #13).
+describe('QuotePage minimum note (AW-076)', () => {
+  const minimum = () => screen.queryByText(/The order minimum is \$500\.00\. You can still submit this order\./);
+  it('shows below the minimum only when the order can be submitted', () => {
+    const buyer = { profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true, pricesStatus: 'ready', total: 20 };
+    const view = render(page(buyer));
+    expect(minimum()).toBeTruthy();
+    expect(submit().disabled).toBe(false);
+    // A line still needs a variant: the button is off, so no "you can still submit".
+    view.rerender(page({ ...buyer, items: [{ ...ITEMS[0], needsVariant: true }] }));
+    expect(submit().disabled).toBe(true);
+    expect(minimum()).toBeNull();
+    // A line that can no longer be ordered.
+    view.rerender(page({ ...buyer, items: [{ ...ITEMS[0], unavailable: 'product' }] }));
+    expect(minimum()).toBeNull();
+    // Quotes can't be saved (no backend).
+    view.rerender(page({ ...buyer, isBackendConfigured: false }));
+    expect(minimum()).toBeNull();
+    // At the minimum, nothing to say.
+    view.rerender(page({ ...buyer, total: 500 }));
+    expect(minimum()).toBeNull();
+  });
+
+  it('prints the minimum and free-delivery amounts from content.js', () => {
+    render(page({ profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false }));
+    expect(document.querySelector('.page-head p:last-of-type').textContent).toMatch(/The minimum order is \$500\.00\./);
+    expect(document.querySelector('form .fine:last-of-type').textContent).toMatch(/^The minimum order is \$500\.00\. Orders over \$1,500 qualify/);
+  });
+});
+
 // submit_quote on the page (AW-049, AW-079, AW-198, AW-201, AW-014).
 describe('QuotePage and submit_quote', () => {
   const GUEST = { profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false };

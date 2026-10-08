@@ -296,7 +296,8 @@ describe('AuthProvider', () => {
     const { email, password, terms_accepted, age_confirmed, ...rest } = form;
     expect(client.auth.signUp).toHaveBeenCalledWith({
       email, password,
-      options: { data: { ...rest, terms_version: TERMS_VERSION, terms_accepted, age_confirmed } },
+      // The confirmation link returns to this site (AW-051).
+      options: { emailRedirectTo: `${window.location.origin}/`, data: { ...rest, terms_version: TERMS_VERSION, terms_accepted, age_confirmed } },
     });
     // Boxes that weren't ticked record no consent (the server then stores none).
     await act(async () => { await seen.auth.signUp({ ...form, terms_accepted: undefined, age_confirmed: 'yes' }); });
@@ -340,5 +341,18 @@ describe('signUp', () => {
     });
     // Form-only state does not leave the browser.
     expect(options.data).not.toHaveProperty('agreeTerms');
+  });
+});
+
+// A new confirmation email also returns to this site (AW-051, Cursor PR #13).
+describe('resendConfirmation', () => {
+  it('asks for a link back to this site', async () => {
+    const client = fakeClient();
+    renderWith(client);
+    await waitFor(() => expect(seen.auth?.account).toBe('signed-out'));
+    await act(async () => { await seen.auth.resendConfirmation('new@example.test'); });
+    expect(client.auth.resend).toHaveBeenCalledWith({
+      type: 'signup', email: 'new@example.test', options: { emailRedirectTo: `${window.location.origin}/` },
+    });
   });
 });

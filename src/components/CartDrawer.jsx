@@ -4,6 +4,8 @@
 // be ordered (AW-083). A suspended account sees that ordering is paused, with
 // the trade desk's phone and email, instead of the quote button (AW-201).
 
+import { FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../data/content.js';
+import { formatMoney, formatMoneyShort } from '../lib/format.js';
 import { totalLabel } from '../lib/pricing.js';
 import { Link } from '../lib/router.js';
 import { CallOrEmail } from './ContactLinks.jsx';
@@ -64,7 +66,7 @@ export function CartDrawer({
                   {!pendingBuyer && <button className="drawer-signin text-link" type="button" onClick={onLoginClick}>Sign in for account pricing</button>}
                 </>
           )}
-          <p className="fine drawer-fine">The minimum order is $500.00. Free delivery over $1,500 applies on a delivery route in AL, MS &amp; GA. Will-call is pickup at the Birmingham warehouse during business hours.</p>
+          <p className="fine drawer-fine">{`The minimum order is ${formatMoney(ORDER_MINIMUM)}. Free delivery over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} applies on a delivery route in AL, MS & GA. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
         </div>
       </aside>
     </ModalLayer>

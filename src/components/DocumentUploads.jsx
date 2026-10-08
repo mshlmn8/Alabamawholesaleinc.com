@@ -103,7 +103,7 @@ function DocumentFields({
                 <span>{status}</span>
                 {record && !isBusy && (
                   <button type="button" className="text-link doc-view" onClick={() => openFile(doc, record)}>
-                    View<span className="sr-only">{` your ${doc.label.toLowerCase()}`}</span>
+                    <span>View</span> <span className="sr-only">{`your ${doc.label.toLowerCase()}`}</span>
                   </button>
                 )}
               </p>

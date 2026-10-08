@@ -27,12 +27,16 @@
 // tobacco license number, a resale certificate number and a 21+ attestation
 // (AW-014, PR #12; the rule is src/lib/regulated.js, and submit_quote applies
 // the same one). Guests also get sign-in and apply links.
+//
+// The $500 minimum is not enforced (AW-076, owner question). An approved
+// buyer below it is told "You can still submit this order" only while the
+// submit button can actually be used (Cursor's PR #13).
 
 import { useState } from 'react';
-import { COMPANY, ORDER_MINIMUM } from '../data/content.js';
+import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../data/content.js';
 import { QUOTE_ERROR_GENERIC, quoteErrorField, quoteErrorMessage, submitOrder, todayInBirmingham } from '../lib/orders.js';
 import { cartChanges, describeCartChanges } from '../lib/cart.js';
-import { formatMoney } from '../lib/format.js';
+import { formatMoney, formatMoneyShort } from '../lib/format.js';
 import { totalLabel } from '../lib/pricing.js';
 import { cartNeedsTobaccoLicense } from '../lib/regulated.js';
 import { Link } from '../lib/router.js';
@@ -111,6 +115,9 @@ export function QuotePage({
   const minDate = todayInBirmingham();
   // Not while the buyer's prices are still loading (the total is not known yet).
   const pricedBelowMinimum = isApprovedBuyer && pricesStatus !== 'loading' && Number(total) < ORDER_MINIMUM;
+  // What keeps the submit button off (apart from a send in progress). The
+  // minimum note says "you can still submit" only when nothing does (AW-076).
+  const submitBlocked = isSuspended || !isBackendConfigured || needsVariant || unavailable.length > 0 || lostOrdering;
   let submitLabel = isApprovedBuyer ? 'Submit order' : 'Submit quote request';
   if (phase === 'checking') submitLabel = 'Checking the catalog…';
   else if (phase === 'sending') submitLabel = 'Sending…';
@@ -235,7 +242,7 @@ export function QuotePage({
         <Breadcrumbs items={[HOME_CRUMB, { label: isApprovedBuyer ? 'Checkout' : 'Request Quote' }]} />
         <p className="eyebrow">{isApprovedBuyer ? 'CHECKOUT' : 'QUOTE REQUEST'}</p>
         <h1>{isApprovedBuyer ? 'Place your order' : 'Request your quote'}</h1>
-        <p>Review your items and submit. The minimum order is $500.00. A trade desk rep will confirm pricing, availability and delivery within one business day.</p>
+        <p>{`Review your items and submit. The minimum order is ${formatMoney(ORDER_MINIMUM)}. A trade desk rep will confirm pricing, availability and delivery within one business day.`}</p>
       </div>
       <div className="checkout-grid">
         <div>
@@ -309,7 +316,7 @@ export function QuotePage({
             <span>{`${totalUnits} ${totalUnits === 1 ? 'unit' : 'units'}`}</span>
             <span>{isApprovedBuyer ? totalLabel(items, total, pricesStatus) : (isSuspended ? 'Ordering paused' : (signedIn ? 'Pricing after approval' : 'Pricing after sign-in'))}</span>
           </div>
-          {pricedBelowMinimum && <p className="notice" role="status">The order minimum is $500.00. You can still submit this order.</p>}
+          {pricedBelowMinimum && !submitBlocked && <p className="notice" role="status">{`The order minimum is ${formatMoney(ORDER_MINIMUM)}. You can still submit this order.`}</p>}
           {!isBackendConfigured && <p className="form-error" role="status"><CallOrEmail before="Quote requests can’t be saved right now. Call" after=" and the trade desk will write it up with you." /></p>}
           {needsVariant && <p className="form-error" role="alert">Choose a variant for every product that has more than one.</p>}
           {unavailable.length > 0 && <p className="form-error" role="alert">{UNAVAILABLE_ERROR}</p>}
@@ -329,10 +336,10 @@ export function QuotePage({
           {/* A suspended account can't order (AW-201): no submit, a way to reach the trade desk. */}
           {isSuspended && <p className="notice quote-paused">Ordering is paused on this account. <CallOrEmail after=" and a trade rep will help you sort it out." /></p>}
           {!isSuspended && (
-          <button className="button wide" type="submit" disabled={sending || !isBackendConfigured || needsVariant || unavailable.length > 0 || lostOrdering}>
+          <button className="button wide" type="submit" disabled={sending || submitBlocked}>
             <span>{submitLabel}</span> <span aria-hidden="true">↗</span></button>
           )}
-          <p className="fine">The minimum order is $500.00. Orders over $1,500 qualify for free delivery on a delivery route in AL, MS &amp; GA. Will-call is pickup at the Birmingham warehouse during business hours. Tobacco products supplied to licensed retailers only — 21+.</p>
+          <p className="fine">{`The minimum order is ${formatMoney(ORDER_MINIMUM)}. Orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} qualify for free delivery on a delivery route in AL, MS & GA. Will-call is pickup at the Birmingham warehouse during business hours. Tobacco products supplied to licensed retailers only — 21+.`}</p>
         </form>
       </div>
     </section>

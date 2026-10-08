@@ -43,6 +43,12 @@ import { TERMS_VERSION } from '../data/content.js';
 
 const UNAVAILABLE = 'Account access is temporarily unavailable. Please call or email the trade desk.';
 
+// Where a sign-up confirmation link lands: the home page of the site the
+// applicant is using (AW-051, Cursor PR #13). The origin must be in
+// Supabase's redirect allow list (BACKEND.md), or Supabase falls back to its
+// Site URL.
+const confirmationRedirect = () => `${window.location.origin}/`;
+
 // A profile older than this is loaded again when the tab comes back into view.
 export const PROFILE_REFRESH_MIN_MS = 60 * 1000;
 // How often a pending account's profile is checked while its tab is visible.
@@ -346,6 +352,7 @@ export function AuthProvider({ client = defaultClient, link = null, children }) 
       email,
       password,
       options: {
+        emailRedirectTo: confirmationRedirect(),
         data: {
           name, business, phone, license_no, ein, resale_cert_no, business_type, state, expected_volume,
           store_street, store_city, store_zip,
@@ -416,7 +423,7 @@ export function AuthProvider({ client = defaultClient, link = null, children }) 
   // A new sign-up confirmation email, for an account whose link expired.
   const resendConfirmation = useCallback(async (email) => {
     if (!client) throw new Error(UNAVAILABLE);
-    const { error } = await client.auth.resend({ type: 'signup', email });
+    const { error } = await client.auth.resend({ type: 'signup', email, options: { emailRedirectTo: confirmationRedirect() } });
     if (error) throw error;
   }, [client]);
 
