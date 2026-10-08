@@ -299,9 +299,11 @@ h2 { font-size: var(--h2); margin-bottom: 0; }
   .icon-btn:not(:disabled):hover, .stepper button:not(:disabled):hover { background: var(--paper); }
 }
 /* On touch screens the compact admin buttons are full-size targets, as the
-   compact fields are (--field-h-compact). */
+   compact fields are (--field-h-compact), and the stepper's buttons are 44px
+   (40px with a mouse, AW-143). */
 @media (pointer: coarse) {
   .button.xs { min-height: var(--tap); }
+  .stepper button { width: var(--tap); height: var(--tap); }
 }
 /* Pressed. */
 .button:not(:disabled):active, .icon-btn:not(:disabled):active, .stepper button:not(:disabled):active { transform: translateY(1px); filter: brightness(.95); }
