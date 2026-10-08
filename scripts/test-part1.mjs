@@ -7,6 +7,8 @@ import {
   cartNeedsTobaccoLicense,
   showsNicotineWarning,
 } from '../src/lib/regulated.js';
+import { variantPrice } from '../src/lib/lines.js';
+import { photoCredit } from '../src/data/photoCredits.js';
 
 const now = 1_800_000_000_000;
 
@@ -30,5 +32,11 @@ assert.equal(cartNeedsTobaccoLicense([{ cat: 'TOBACCO', sub: 'Papers & Cones' }]
 assert.equal(cartNeedsTobaccoLicense([{ cat: 'NOVELTIES', sub: 'Disposable Vapes' }]), true);
 assert.equal(cartNeedsTobaccoLicense([{ cat: 'NOVELTIES', sub: 'Kratom & Kava' }]), false);
 assert.equal(cartNeedsTobaccoLicense([{ cat: 'CANDIES', sub: 'Chocolate Bars' }]), false);
+
+assert.equal(variantPrice({ price: 10, variant_prices: { 'King size': 14 } }, 'King size'), 14);
+assert.equal(variantPrice({ price: 10, variant_prices: {} }, 'Regular'), 10);
+assert.equal(variantPrice({ price: 10 }, null), 10);
+assert.equal(photoCredit({ id: 149 }).includes('Dietmar Rabich'), true);
+assert.equal(photoCredit({ id: 1 }), '');
 
 console.log('part1 checks ok');

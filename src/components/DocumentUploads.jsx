@@ -8,6 +8,7 @@ import { useAuth } from '../lib/useAuth.js';
 import {
   DOCUMENT_ACCEPT,
   DOCUMENT_TYPES,
+  createDocumentViewUrl,
   documentErrorMessage,
   formatUploadedOn,
   listProfileDocuments,
@@ -25,6 +26,10 @@ function DocumentFields({
   showStatus,
   onPick,
 }) {
+  const openFile = async (record) => {
+    const url = await createDocumentViewUrl(record.storage_path);
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+  };
   const onChange = (type) => (event) => {
     const file = event.target.files?.[0] || null;
     if (!file) {
@@ -38,10 +43,12 @@ function DocumentFields({
 
   return (
     <fieldset className="doc-uploads" disabled={disabled}>
-      <legend>Optional documents</legend>
+      <legend>{showStatus ? 'License documents' : 'Optional documents'}</legend>
       <p className="doc-uploads-note" id={`${idPrefix}-later`}>
-        Upload your state retail tobacco license and resale certificate now, or send proof later to{' '}
-        <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.
+        {showStatus
+          ? 'Uploading a new file replaces the one on file.'
+          : <>Upload your state retail tobacco license and resale certificate now, or send proof later to{' '}
+            <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.</>}
       </p>
       {DOCUMENT_TYPES.map(doc => {
         const id = `${idPrefix}-${doc.id}`;
@@ -60,7 +67,7 @@ function DocumentFields({
           <div className="doc-upload" key={doc.id}>
             <label htmlFor={id}>
               {doc.label}
-              <span className="optional"> Optional</span>
+              {!showStatus && <span className="optional"> Optional</span>}
             </label>
             <input
               id={id}
@@ -77,6 +84,12 @@ function DocumentFields({
             {showStatus && (
               <p className={`doc-status${record ? '' : ' is-missing'}`} id={statusId} data-document-status={record ? 'uploaded' : 'missing'} aria-live="polite">
                 {status}
+                {record && (
+                  <>
+                    {' '}
+                    <button type="button" className="text-link" onClick={() => openFile(record)}>View<span className="sr-only"> {doc.label}</span></button>
+                  </>
+                )}
               </p>
             )}
             {files?.[doc.id] && !showStatus && (
@@ -174,10 +187,20 @@ export function ApplicationDocuments({ disabled = false, status = 'pending' }) {
     }
   };
 
+  const received = DOCUMENT_TYPES.filter(doc => (records || []).some(row => row.document_type === doc.id)).length;
+  const summary = records == null
+    ? ''
+    : received === DOCUMENT_TYPES.length
+      ? 'Both documents received. A trade rep will check them with your application.'
+      : received === 1
+        ? '1 of 2 documents received.'
+        : 'No documents yet.';
+
   return (
     <section className="doc-panel" aria-labelledby="proof-title">
       <p className="eyebrow">{PROOF_EYEBROW[status] || PROOF_EYEBROW.pending}</p>
       <h2 id="proof-title">License documents</h2>
+      {summary && <p className="doc-summary" role="status">{summary}</p>}
       <DocumentFields
         idPrefix="apply-doc"
         disabled={controlsDisabled}

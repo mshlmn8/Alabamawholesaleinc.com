@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 
 import { IMG } from './data/theme.js';
-import { COMPANY, ANNOUNCEMENTS, STORAGE, HERO_SLIDES, ORDER_MINIMUM } from './data/content.js';
+import { COMPANY, ANNOUNCEMENTS, STORAGE, HERO_SLIDES, ORDER_MINIMUM, FREE_DELIVERY_THRESHOLD } from './data/content.js';
 import { cartNeedsTobaccoLicense, showsNicotineWarning } from './lib/regulated.js';
 import { clearAgeDeclined, clearAgeVerified, readAgeDeclined, readAgeVerified, writeAgeDeclined, writeAgeVerified, isAgeVerifiedValue } from './lib/ageGate.js';
-import { NAV_ORDER, NEW_ARRIVALS_IDS } from './data/products.js';
+import { NAV_ORDER, NEW_ARRIVALS_IDS, SHARED_IMAGES } from './data/products.js';
+import { photoCredit } from './data/photoCredits.js';
 import { useAuth } from './lib/useAuth.js';
 import { useCatalog } from './lib/useCatalog.js';
 import { submitOrder } from './lib/orders.js';
-import { lineKey, variantList, variantSku, requiresVariantChoice, resolveCartItems, normalizeCart } from './lib/lines.js';
+import { lineKey, variantList, variantSku, variantPrice, requiresVariantChoice, resolveCartItems, normalizeCart } from './lib/lines.js';
 import { useMediaQuery } from './lib/useMediaQuery.js';
 import { heroImage, SIZES } from './lib/images.js';
 import { Picture } from './components/Picture.jsx';
@@ -44,6 +45,18 @@ const initials = (name) => {
   const p = String(name).split(/\s+/).filter(Boolean);
   return ((p[0]?.[0] || '?') + (p[1]?.[0] || '')).toUpperCase();
 };
+const moneyExact = (n) => `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+function MissingPhoto({ name }) {
+  return (
+    <span className="photo-soon">
+      <span className="photo-soon-label">Photo coming soon</span>
+      <span className="photo-soon-name">{name}</span>
+    </span>
+  );
+}
+function brandPrefix(brand) {
+  return brand && brand !== 'Assorted' ? `${brand} · ` : '';
+}
 const money = (n) => `$${Number(n).toFixed(2)}`;
 
 const safeReadJson = (key, fallback) => {
@@ -741,8 +754,10 @@ const EDITORIAL_BG = heroImage('hero_candy.jpg');
 
 function HomePage(props) {
   const { goCategory, goCatalog, products, departments } = props;
-  const newArrivals = NEW_ARRIVALS_IDS.map(id => products.find(p => Number(p.id) === id)).filter(Boolean).slice(0, 8);
-  const bestsellers = products.filter(p => p.tag === 'BESTSELLER').slice(0, 8);
+  // Photo-less rows stay out of the home rails until a packshot exists. (AW-029)
+  const hasPhoto = (p) => Boolean(p?.picture?.src || p?.img);
+  const newArrivals = NEW_ARRIVALS_IDS.map(id => products.find(p => Number(p.id) === id)).filter(p => hasPhoto(p)).slice(0, 8);
+  const bestsellers = products.filter(p => p.tag === 'BESTSELLER' && hasPhoto(p)).slice(0, 8);
 
   return (
     <>
@@ -826,7 +841,7 @@ function HomePage(props) {
             </li>
             <li>
               <h3>We verify</h3>
-              <p>Our team checks your license with the state and approves most accounts within one business day. You'll get price-list access by email.</p>
+              <p>Our team checks your license with the state and approves most accounts within one business day. Wholesale pricing and ordering unlock when you sign in.</p>
             </li>
             <li>
               <h3>Order &amp; receive</h3>
@@ -843,6 +858,7 @@ function HomePage(props) {
 // PRODUCT CARD
 // =============================================================================
 function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLine, goProduct, onLoginClick }) {
+  const [added, setAdded] = useState(false);
   const variants = variantList(p);
   const choiceRequired = requiresVariantChoice(p);
   const onlyVariant = variants.length === 1 ? variants[0] : null;
@@ -850,18 +866,24 @@ function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLine, goPr
   const qty = choiceRequired
     ? Object.entries(cart).reduce((sum, [k, q]) => (Number(String(k).split('::')[0]) === Number(p.id) ? sum + Number(q) : sum), 0)
     : (Number(cart[key]) || 0);
-  const price = priceForProfile(p.price, profile);
+  const price = priceForProfile(variantPrice(p, onlyVariant), profile);
+  const addOne = () => {
+    addLine(p.id, onlyVariant);
+    setAdded(true);
+    window.setTimeout(() => setAdded(false), 2000);
+  };
   return (
     <article className="content-card">
       <button type="button" className="card-link" onClick={() => goProduct(p.id)} aria-label={`${p.name} details`}>
         <div className="card-block">
           <span className="block-label">{p.cat}</span>
           {p.tag && <span className={`card-tag ${p.tag === 'NEW' ? 'new' : ''}`}>{p.tag}</span>}
-          {p.picture ? <Picture picture={p.picture} alt={p.name} sizes={SIZES.card} /> : <span className="card-initials" aria-hidden="true">{initials(p.name)}</span>}
+          {p.picture ? <Picture picture={p.picture} alt={p.name} sizes={SIZES.card} /> : <MissingPhoto name={p.name} />}
+          {p.sellUnit && SHARED_IMAGES.has(p.img) && <span className="pack-badge">{p.sellUnit}</span>}
         </div>
         <p className="card-kicker">{p.sub}</p>
         <h3>{p.name}</h3>
-        <p className="card-detail">{p.brand}{p.flavors ? ` · ${p.flavors} variants` : ''} · {p.sku}</p>
+        <p className="card-detail">{brandPrefix(p.brand)}{p.flavors ? `${p.flavors} variants · ` : ''}{p.sku}</p>
       </button>
       {showsNicotineWarning(p) && <NicotineWarning compact />}
       <span className="card-meta card-actions">
@@ -873,16 +895,17 @@ function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLine, goPr
           <button className="lock price-login" type="button" onClick={onLoginClick}>LOCKED · Sign in for pricing</button>
         )}
         {choiceRequired ? (
-          <button className="card-add" type="button" onClick={() => goProduct(p.id)}>{qty > 0 ? `Choose · ${qty}` : 'Choose'}</button>
+          <button className="card-add" type="button" onClick={() => goProduct(p.id)}>{qty > 0 ? `Select options · ${qty}` : 'Select options'}</button>
         ) : qty > 0 ? (
           <span className="card-stepper" role="group" aria-label={`${p.name} quantity`}>
             <button type="button" onClick={() => decLine(key)} aria-label="Decrease quantity">−</button>
             <b aria-live="polite">{qty}</b>
-            <button type="button" onClick={() => addLine(p.id, onlyVariant)} aria-label="Increase quantity">+</button>
+            <button type="button" onClick={addOne} aria-label="Increase quantity">+</button>
           </span>
         ) : (
-          <button className="card-add" type="button" onClick={() => addLine(p.id, onlyVariant)}>{isApprovedBuyer ? 'ADD +' : 'QUOTE +'}</button>
+          <button className="card-add" type="button" onClick={addOne}>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</button>
         )}
+        <span className="added-note" role="status">{added ? 'Added' : ''}</span>
       </span>
     </article>
   );
@@ -910,12 +933,14 @@ function CategoryPage({ category, sub, ...props }) {
   const cat = props.departments.find(c => c.key === category);
   const inCategory = props.products.filter(p => p.cat === category);
   const activeSub = sub || null;
+  // TODO(owner): What do DEAL and PREMIUM mean for buyers, or should those tags be removed? (AW-139)
   const tagOptions = [
     ['Bestsellers', 'BESTSELLER'],
     ['New', 'NEW'],
     ['Deals', 'DEAL'],
     ['Premium', 'PREMIUM'],
-  ];
+  ].map(([label, tag]) => [label, tag, inCategory.filter(p => p.tag === tag).length])
+    .filter(([, , count]) => count > 0);
   const query = searchQ.trim().toLowerCase();
   let items = inCategory.filter(p => {
     if (activeSub && p.sub !== activeSub) return false;
@@ -976,12 +1001,12 @@ function CategoryPage({ category, sub, ...props }) {
       <label className="filter-search" htmlFor="category-search">Search in {catLabel(category)}
         <input id="category-search" type="search" value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder="Item, brand, SKU, variant…" autoComplete="off" />
       </label>
-      <fieldset>
+      {tagOptions.length > 0 && <fieldset>
         <legend>Featured</legend>
-        {tagOptions.map(([label, tag]) => (
-          <label key={tag}><input type="checkbox" checked={tagFilter.includes(tag)} onChange={() => toggleTag(tag)} /> <span>{label}</span></label>
+        {tagOptions.map(([label, tag, count]) => (
+          <label key={tag}><input type="checkbox" checked={tagFilter.includes(tag)} onChange={() => toggleTag(tag)} /> <span>{label} ({count})</span></label>
         ))}
-      </fieldset>
+      </fieldset>}
       <fieldset>
         <legend>Variants</legend>
         <label><input type="checkbox" checked={hasVariants} onChange={(e) => setHasVariants(e.target.checked)} /> <span>Has flavors or variants</span></label>
@@ -1111,7 +1136,8 @@ function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLi
   const key = lineKey(p.id, selected);
   const qty = cart[key] || 0;
   const related = products.filter(x => x.sub === p.sub && Number(x.id) !== Number(p.id)).slice(0, 4);
-  const price = priceForProfile(p.price, profile);
+  const price = priceForProfile(variantPrice(p, selected), profile);
+  const credit = photoCredit(p);
   const handleAdd = () => {
     if (choiceRequired && !chosenVariant) {
       setVariantError(true);
@@ -1133,11 +1159,13 @@ function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLi
       <div className="pd-grid">
         <div className="pd-media">
           {p.tag && <span className={`card-tag ${p.tag === 'NEW' ? 'new' : ''}`}>{p.tag}</span>}
-          {p.picture ? <Picture picture={p.picture} alt={p.name} sizes={SIZES.detail} priority /> : <span className="card-initials" aria-hidden="true">{initials(p.name)}</span>}
+          {p.picture ? <Picture picture={p.picture} alt={p.name} sizes={SIZES.detail} priority /> : <MissingPhoto name={p.name} />}
+          {p.sellUnit && SHARED_IMAGES.has(p.img) && <span className="pack-badge">{p.sellUnit}</span>}
         </div>
         <div className="pd-info">
           {showsNicotineWarning(p) && <NicotineWarning />}
-          <p className="pd-brand">{p.brand} · {p.sub}</p>
+          <p className="pd-brand">{brandPrefix(p.brand)}{p.sub}</p>
+          {credit && <p className="photo-credit">{credit}</p>}
           <h1>{p.name}</h1>
           <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()} from ${p.brand}.`}</p>
           {p.sellUnit && <p className="pd-unit">Sold by the {p.sellUnit} — quantity 1 is one {p.sellUnit}.</p>}
@@ -1297,17 +1325,17 @@ function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHo
         <div className="crumbs"><button type="button" onClick={goHome}>Home</button><span aria-hidden="true">/</span><span>{isApprovedBuyer ? 'Checkout' : 'Request Quote'}</span></div>
         <p className="eyebrow">{isApprovedBuyer ? 'CHECKOUT' : 'QUOTE REQUEST'}</p>
         <h1>{isApprovedBuyer ? 'Place your order' : 'Request your quote'}</h1>
-        <p>Review your items and submit. The minimum order is $500.00. A trade desk rep will confirm pricing, availability and delivery within one business day.</p>
+        <p>Review your items and submit. The minimum order is {moneyExact(ORDER_MINIMUM)}. A trade desk rep will confirm pricing, availability and delivery within one business day.</p>
       </div>
       <div className="checkout-grid">
         <div>
           <ul className="checkout-lines" aria-label="Items in this request">
             {items.map(it => (
               <li key={it.lineKey} className="drawer-line checkout-line">
-                <span className="thumb">{it.img ? <img src={it.img} alt="" /> : initials(it.name)}</span>
+                <span className="thumb">{it.img ? <img src={it.img} alt="" /> : <MissingPhoto name={it.name} />}</span>
                 <span className="info">
                   <b>{it.name}</b>
-                  <small>{it.sku}{isApprovedBuyer && it.price != null ? ` · ${money(it.price)} each` : ''}</small>
+                  <small>{it.sku}{it.sellUnit ? ` · ${it.sellUnit}` : ''}{isApprovedBuyer && it.price != null ? ` · ${money(it.price)} each` : ''}</small>
                   {it.needsVariant && <small>Choose a variant before submitting.</small>}
                 </span>
                 {it.needsVariant ? (
@@ -1368,13 +1396,15 @@ function QuotePage({ items, total, addLine, decLine, removeLine, clearCart, goHo
             <span>{totalUnits} units</span>
             <span>{isApprovedBuyer ? money(total) : (profile ? 'Pricing after approval' : 'Pricing after sign-in')}</span>
           </div>
-          {pricedBelowMinimum && <p className="notice" role="status">The order minimum is $500.00. You can still submit this order.</p>}
+          {pricedBelowMinimum && isBackendConfigured && !needsVariant && (
+            <p className="notice" role="status">The order minimum is {moneyExact(ORDER_MINIMUM)}. You can still submit this order.</p>
+          )}
           {!isBackendConfigured && <p className="form-error" role="status"><TradeDeskContact before="Quote requests can’t be saved right now. Call" after=" and the trade desk will write it up with you." /></p>}
           {needsVariant && <p className="form-error" role="alert">Choose a variant for every product that has more than one.</p>}
           {submitError && <p className="form-error" role="alert">{typeof submitError === 'string' ? submitError : <TradeDeskContact before={submitError.before} after={submitError.after} />}</p>}
           <button className="button wide" type="submit" disabled={sending || !isBackendConfigured || needsVariant}>
             {sending ? 'Sending…' : (isApprovedBuyer ? 'Submit order' : 'Submit quote request')} <span aria-hidden="true">↗</span></button>
-          <p className="fine">The minimum order is $500.00. Orders over $1,500 qualify for free delivery on a delivery route in AL, MS &amp; GA. Will-call is pickup at the Birmingham warehouse during business hours. Tobacco products supplied to licensed retailers only — 21+.</p>
+          <p className="fine">The minimum order is {moneyExact(ORDER_MINIMUM)}. Orders over {moneyExact(FREE_DELIVERY_THRESHOLD)} qualify for free delivery on a delivery route in AL, MS &amp; GA. Will-call is pickup at the Birmingham warehouse during business hours. Tobacco products supplied to licensed retailers only — 21+.</p>
         </form>
       </div>
     </section>
@@ -1479,7 +1509,7 @@ function CartDrawer({ open, onClose, items, total, addLine, decLine, removeLine,
             <ul className="drawer-lines" aria-label="Items in your order">
               {items.map(it => (
                 <li className="drawer-line" key={it.lineKey}>
-                  <span className="thumb">{it.img ? <img src={it.img} alt="" /> : initials(it.name)}</span>
+                  <span className="thumb">{it.img ? <img src={it.img} alt="" /> : <MissingPhoto name={it.name} />}</span>
                   <span className="info">
                     <b>{it.name}</b>
                     <small>{it.sku}{isApprovedBuyer && it.price != null ? ` · ${money(it.price)}` : ''}{it.needsVariant ? ' · Choose a variant' : ''}</small>
@@ -1514,7 +1544,7 @@ function CartDrawer({ open, onClose, items, total, addLine, decLine, removeLine,
                   {!pendingBuyer && <button className="drawer-signin text-link" type="button" onClick={onLoginClick}>Sign in for account pricing</button>}
                 </>
           )}
-          <p className="fine drawer-fine">The minimum order is $500.00. Free delivery over $1,500 applies on a delivery route in AL, MS &amp; GA. Will-call is pickup at the Birmingham warehouse during business hours.</p>
+          <p className="fine drawer-fine">The minimum order is {moneyExact(ORDER_MINIMUM)}. Free delivery over {moneyExact(FREE_DELIVERY_THRESHOLD)} applies on a delivery route in AL, MS &amp; GA. Will-call is pickup at the Birmingham warehouse during business hours.</p>
         </div>
       </aside>
     </ModalLayer>

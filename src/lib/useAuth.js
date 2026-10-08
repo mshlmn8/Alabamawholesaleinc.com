@@ -72,6 +72,7 @@ export function useAuth() {
       email,
       password,
       options: {
+        emailRedirectTo: `${window.location.origin}/`,
         // The signup trigger copies these into profiles, then removes the
         // sensitive keys from auth metadata once that migration is applied.
         data: {
