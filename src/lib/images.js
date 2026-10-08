@@ -89,9 +89,11 @@ export function heroImage(file) {
 }
 
 // `sizes` values matching the CSS in index.css: a 4-up grid inside the
-// 1280px container, 3-up beside the category filters, 2-up on phones.
+// 1280px container, 3-up beside the category filters, 2-up on phones. The
+// conditions are in em like the CSS breakpoints (37.5em = 600px, 53.125em =
+// 850px, 84em = 1344px at the default text size), so they move with them.
 export const SIZES = {
-  card: '(max-width: 600px) 46vw, (max-width: 850px) 24vw, (max-width: 1344px) 23vw, 302px',
-  detail: '(max-width: 850px) 100vw, (max-width: 1344px) 47vw, 620px',
-  editorial: '(max-width: 600px) 100vw, (max-width: 1344px) 50vw, 628px',
+  card: '(max-width: 37.5em) 46vw, (max-width: 53.125em) 24vw, (max-width: 84em) 23vw, 302px',
+  detail: '(max-width: 53.125em) 100vw, (max-width: 84em) 47vw, 620px',
+  editorial: '(max-width: 37.5em) 100vw, (max-width: 84em) 50vw, 628px',
 };

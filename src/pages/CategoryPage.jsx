@@ -18,6 +18,7 @@ import { EMPTY_CATEGORY_QUERY } from '../lib/routes.js';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 import { ModalLayer } from '../components/ModalLayer.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
+import { Icon } from '../components/Icon.jsx';
 
 // TODO(owner): What do the DEAL and PREMIUM tags mean for buyers (the actual deal terms and premium criteria), or should those tags be removed? (AW-139)
 const TAG_OPTIONS = [
@@ -200,7 +201,7 @@ export function CategoryPage({
         <div className="toolbar-row">
           {isMobile && (
             <button className="filter-toggle" type="button" aria-expanded={filtersOpen} aria-controls={filtersOpen ? 'aw-filter-drawer' : undefined} onClick={() => setFiltersOpen(true)}>
-              <span className="filter-icon" aria-hidden="true"></span>
+              <Icon name="filter" />
               Filter &amp; Sort
               {activeFilterCount > 0 && <span className="filter-count"><span className="sr-only">, </span><span>{activeFilterCount}</span><span className="sr-only"> active</span></span>}
             </button>
@@ -211,7 +212,7 @@ export function CategoryPage({
         {chips.length > 0 && (
           <ul className="active-filters" aria-label="Active filters">
             {chips.map(c => (
-              <li key={c.key}><button type="button" onClick={() => removeChip(c)} aria-label={`Remove filter ${c.label}`}><span>{c.label}</span> <span aria-hidden="true">×</span></button></li>
+              <li key={c.key}><button type="button" onClick={() => removeChip(c)} aria-label={`Remove filter ${c.label}`}><span>{c.label}</span><Icon name="close" /></button></li>
             ))}
             <li><button className="text-link" type="button" onClick={clearFilters}>Clear all</button></li>
           </ul>
@@ -224,7 +225,7 @@ export function CategoryPage({
           <aside className="drawer filter-drawer" role="dialog" aria-modal="true" aria-labelledby="aw-filter-title" id="aw-filter-drawer">
             <div className="drawer-head">
               <h2 id="aw-filter-title">Filter &amp; Sort</h2>
-              <button className="dialog-close" type="button" onClick={closeFilters} aria-label="Close filters">×</button>
+              <button className="icon-btn" type="button" onClick={closeFilters} aria-label="Close filters"><Icon name="close" /></button>
             </div>
             <div className="drawer-body filter-drawer-body">
               {sortControl}
@@ -233,7 +234,7 @@ export function CategoryPage({
             <div className="drawer-foot">
               <div className="drawer-actions">
                 {activeFilterCount > 0 && <button className="text-link" type="button" onClick={clearFilters}>{`Clear all (${activeFilterCount})`}</button>}
-                <button className="button" type="button" onClick={closeFilters}><span>{`Show ${items.length} item${items.length === 1 ? '' : 's'}`}</span> <span aria-hidden="true">↗</span></button>
+                <button className="button" type="button" onClick={closeFilters}><span>{`Show ${items.length} item${items.length === 1 ? '' : 's'}`}</span></button>
               </div>
             </div>
           </aside>

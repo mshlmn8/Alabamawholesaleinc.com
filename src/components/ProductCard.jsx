@@ -11,8 +11,12 @@
 // (AW-136); the placeholder brand "Assorted" isn't printed (AW-286); the
 // buttons say "Select options", "Add to quote" or "Add to order", and an add
 // shows "Added" for a moment and is announced (AW-057).
+//
+// The add and choose controls are .button.ghost.sm and are described by the
+// card's title, so "Add to quote" says which product (AW-143). Cursor's
+// "Select options" label (AW-057) is kept for products with a choice.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import {
   isVariantAvailable, lineKey, parseLineKey, requiresVariantChoice, variantAxis, variantCount, variantList,
 } from '../lib/lines.js';
@@ -25,6 +29,7 @@ import { Picture } from './Picture.jsx';
 import { MissingPhoto } from './MissingPhoto.jsx';
 import { NicotineWarning } from './NicotineWarning.jsx';
 import { showsNicotineWarning } from '../lib/regulated.js';
+import { Icon } from './Icon.jsx';
 
 const NO_PRICES = () => null;
 
@@ -73,6 +78,7 @@ export function ProductCard({ p, profile, isApprovedBuyer, priceOf = NO_PRICES, 
     // The stepper's own count is a live region; the first add is announced here.
     if (say) announce(`Added ${p.name} to your ${isApprovedBuyer ? 'order' : 'quote'}.`);
   };
+  const titleId = useId();
   return (
     <article className="content-card">
       <Link className="card-link" to={productRoute} aria-label={`${p.name} details`}>
@@ -84,7 +90,7 @@ export function ProductCard({ p, profile, isApprovedBuyer, priceOf = NO_PRICES, 
           {p.picture && p.sharedPhoto && p.sellUnit && <span className="pack-badge">{p.sellUnit}</span>}
         </div>
         <p className="card-kicker">{p.sub}</p>
-        <h3>{p.name}</h3>
+        <h3 id={titleId}>{p.name}</h3>
         <p className="card-detail">{cardDetail(p)}</p>
       </Link>
       {showsNicotineWarning(p) && <NicotineWarning compact />}
@@ -97,17 +103,17 @@ export function ProductCard({ p, profile, isApprovedBuyer, priceOf = NO_PRICES, 
           <button className="lock price-login" type="button" onClick={onLoginClick}>LOCKED · Sign in for pricing</button>
         )}
         {choiceRequired ? (
-          <Link className="card-add" to={productRoute}>{qty > 0 ? `Select options · ${qty}` : 'Select options'}</Link>
+          <Link className="button ghost sm card-add" to={productRoute} aria-describedby={titleId}>{qty > 0 ? `Select options · ${qty}` : 'Select options'}</Link>
         ) : soldOut ? (
-          <button className="card-add" type="button" disabled>Not available</button>
+          <button className="button ghost sm card-add" type="button" disabled aria-describedby={titleId}>Not available</button>
         ) : qty > 0 ? (
-          <span className="card-stepper" role="group" aria-label={`${p.name} quantity`}>
-            <button type="button" onClick={() => decLine(key)} aria-label="Decrease quantity">−</button>
+          <span className="stepper card-stepper" role="group" aria-label={`${p.name} quantity`}>
+            <button type="button" onClick={() => decLine(key)} aria-label="Decrease quantity"><Icon name="minus" /></button>
             <b aria-live="polite">{qty}</b>
-            <button type="button" onClick={() => add()} aria-label="Increase quantity">+</button>
+            <button type="button" onClick={() => add()} aria-label="Increase quantity"><Icon name="plus" /></button>
           </span>
         ) : (
-          <button className="card-add" type="button" onClick={() => add({ say: true })}>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</button>
+          <button className="button ghost sm card-add" type="button" onClick={() => add({ say: true })} aria-describedby={titleId}>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</button>
         )}
         <span className="added-note" aria-hidden="true">{adds ? 'Added' : ''}</span>
       </span>

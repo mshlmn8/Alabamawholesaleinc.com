@@ -3,6 +3,7 @@
 
 import { COMPANY } from '../../data/content.js';
 import { Link } from '../../lib/router.js';
+import { Icon } from '../../components/Icon.jsx';
 import { PageHead, DIRECTIONS_URL } from './SupportShell.jsx';
 
 const HOURS = [
@@ -22,7 +23,7 @@ export function ContactPage({ onApplyClick }) {
           <p className="eyebrow">CALL</p>
           <a className="info-lead" href={`tel:${COMPANY.phoneRaw}`}>{COMPANY.phone}</a>
           <p>Trade desk, orders, will-call and account questions. Tap the number to call from your phone.</p>
-          <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Call now <span aria-hidden="true">↗</span></a>
+          <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Call now</a>
         </article>
         <article className="info-card">
           <p className="eyebrow">EMAIL</p>
@@ -34,7 +35,7 @@ export function ContactPage({ onApplyClick }) {
           <p className="eyebrow">VISIT</p>
           <address className="info-lead info-lead-small">{COMPANY.addressLine1}<br />{COMPANY.addressLine2}</address>
           <p>Warehouse and will-call counter in Birmingham. Open the directions in your maps app for turn-by-turn navigation.</p>
-          <a className="button ghost" href={DIRECTIONS_URL} target="_blank" rel="noopener noreferrer">Get directions <span aria-hidden="true">↗</span></a>
+          <a className="button ghost" href={DIRECTIONS_URL} target="_blank" rel="noopener noreferrer">Get directions<Icon name="external" /><span className="sr-only"> (opens in a new tab)</span></a>
         </article>
       </div>
 
@@ -69,7 +70,7 @@ export function ContactPage({ onApplyClick }) {
           <p>Licensed retail businesses only. See what you’ll need before you start.</p>
         </div>
         <div className="contact-strip-actions">
-          <Link className="button" to="/apply">Application checklist <span aria-hidden="true">↗</span></Link>
+          <Link className="button" to="/apply">Application checklist</Link>
           <button className="button ghost" type="button" onClick={onApplyClick}>Start application</button>
         </div>
       </section>

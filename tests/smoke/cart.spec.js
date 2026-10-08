@@ -27,6 +27,7 @@ function trackErrors(page) {
 
 const stored = (page, key) => page.evaluate((k) => localStorage.getItem(k), key);
 const cartButton = (page) => page.getByRole('button', { name: /^Cart, \d+ items$/ });
+// The product's own add button: the related cards below it say "Add to quote" too.
 const addButton = (page) => page.locator('.pd-info').getByRole('button', { name: /^Add to (quote|order)/ });
 
 test.beforeEach(async ({ context }) => {
@@ -83,7 +84,7 @@ test.describe('with the age confirmed', () => {
     await expect(saved).toContainText('Quantity 3');
     await saved.getByRole('link', { name: /Choose a variant for Swisher/ }).click();
     await expect(page).toHaveURL(/\/product\/1$/);
-    await expect(page.locator('.qty-stepper b')).toHaveText('3');
+    await expect(page.getByRole('group', { name: 'Quantity to add' }).locator('b')).toHaveText('3');
     await page.locator('.variant-chips button').first().click();
     await addButton(page).click();
     await expect(cartButton(page)).toHaveAccessibleName('Cart, 4 items');

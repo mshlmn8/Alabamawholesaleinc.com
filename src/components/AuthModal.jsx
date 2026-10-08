@@ -19,6 +19,7 @@ import { DOCUMENT_TYPES, documentErrorMessage, uploadSelectedProof } from '../li
 import { ServiceUnavailable } from './ServiceUnavailable.jsx';
 import { CallOrEmail } from './ContactLinks.jsx';
 import { DocumentUploads } from './DocumentUploads.jsx';
+import { Icon } from './Icon.jsx';
 
 const STATES = ['AL','GA','MS','TN','FL','LA','SC','NC','KY','Other'];
 const BUSINESS_TYPES = ['Convenience Store','Smoke Shop','Vape Shop','Liquor Store','Grocery / Bodega','Auto Parts','Hookah Lounge','Other'];
@@ -224,7 +225,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
       <div className="dialog scale-in" role="dialog" aria-modal="true" aria-labelledby="auth-title" onClick={(e) => e.stopPropagation()}>
         <div className="dialog-top">
           <p className="eyebrow">TRADE ACCOUNT</p>
-          <button className="dialog-close" type="button" onClick={onClose} aria-label="Close">×</button>
+          <button className="icon-btn" type="button" onClick={onClose} aria-label="Close"><Icon name="close" /></button>
         </div>
         <p className="kicker">{kicker}</p>
         <h2 id="auth-title" ref={titleRef} tabIndex={-1}>{title}</h2>
@@ -264,7 +265,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             </div>
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
-              <button className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Signing in…' : 'Sign in'}</span> <span aria-hidden="true">↗</span></button>
+              <button className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Signing in…' : 'Sign in'}</span></button>
               <button className="text-link" type="button" onClick={() => { setResetEmail(signin.email); switchMode('reset'); }}>Forgot password?</button>
               <button className="text-link" type="button" onClick={() => switchMode('checklist')}>No account? Apply instead</button>
             </div>
@@ -279,7 +280,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
 
         {mode === 'profile-error' && (
           <div className="dialog-actions">
-            <button className="button" type="button" onClick={retryProfile} data-autofocus>Try again <span aria-hidden="true">↗</span></button>
+            <button className="button" type="button" onClick={retryProfile} data-autofocus>Try again</button>
             {onSignOut && (
               <button className="text-link" type="button" onClick={onSignOut} disabled={signingOut}><span>{signingOut ? 'Signing out…' : 'Sign out'}</span></button>
             )}
@@ -293,7 +294,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             <div className="dialog-actions">
               {!resent && (
                 <button className="button" type="button" onClick={handleResend} disabled={submitting || !isBackendConfigured} data-autofocus>
-                  <span>{submitting ? 'Sending…' : 'Send a new confirmation link'}</span> <span aria-hidden="true">↗</span>
+                  <span>{submitting ? 'Sending…' : 'Send a new confirmation link'}</span>
                 </button>
               )}
               <button className="text-link" type="button" onClick={() => switchMode('signin')}>Back to sign in</button>
@@ -311,7 +312,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             </ul>
             <p className="checklist-note">Missing one of these? <CallOrEmail after=" and a trade rep can talk you through the application." /></p>
             <div className="dialog-actions">
-              <button className="button" type="button" onClick={() => switchMode('signup')} data-autofocus>Continue to the application <span aria-hidden="true">↗</span></button>
+              <button className="button" type="button" onClick={() => switchMode('signup')} data-autofocus>Continue to the application</button>
               <button className="text-link" type="button" onClick={() => switchMode('signin')}>Already approved? Sign in</button>
             </div>
           </>
@@ -387,7 +388,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             </div>
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
-              <button className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Creating…' : 'Submit application'}</span> <span aria-hidden="true">↗</span></button>
+              <button className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Creating…' : 'Submit application'}</span></button>
               <button className="text-link" type="button" onClick={() => switchMode('checklist')}>Back to the checklist</button>
               <button className="text-link" type="button" onClick={() => switchMode('signin')}>Already approved? Sign in</button>
             </div>
@@ -407,7 +408,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             )}
             {error && <p className="form-error" role="alert">{error}</p>}
             <div className="dialog-actions">
-              <button className="button" type="button" onClick={onClose} data-autofocus>Done <span aria-hidden="true">↗</span></button>
+              <button className="button" type="button" onClick={onClose} data-autofocus>Done</button>
               <button className="text-link" type="button" onClick={() => switchMode('signin')}>Sign in</button>
             </div>
           </>
@@ -427,7 +428,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
               </>
             )}
             <div className="dialog-actions">
-              <Link className="button" to="/account" onClick={onClose} data-autofocus>View account status <span aria-hidden="true">↗</span></Link>
+              <Link className="button" to="/account" onClick={onClose} data-autofocus>View account status</Link>
               <Link className="text-link" to="/catalog" onClick={onClose}>Browse the catalog</Link>
               <button className="text-link" type="button" onClick={onClose}>Close</button>
             </div>
@@ -443,7 +444,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             </div>
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
-              <button className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Sending…' : 'Send reset link'}</span> <span aria-hidden="true">↗</span></button>
+              <button className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Sending…' : 'Send reset link'}</span></button>
               <button className="text-link" type="button" onClick={() => switchMode('signin')}>Back to sign in</button>
             </div>
           </form>
@@ -451,7 +452,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
 
         {mode === 'reset-sent' && (
           <div className="dialog-actions">
-            <button className="button" type="button" onClick={onClose} data-autofocus>Done <span aria-hidden="true">↗</span></button>
+            <button className="button" type="button" onClick={onClose} data-autofocus>Done</button>
             <button className="text-link" type="button" onClick={() => switchMode('signin')}>Back to sign in</button>
           </div>
         )}

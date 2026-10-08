@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#281459" />
+    <!-- Light only: browsers that force dark mode leave the page alone (AW-038). -->
+    <meta name="color-scheme" content="only light" />
+    <!-- The body and heading fonts start downloading with the HTML instead of
+         after the app renders (AW-178). Vite rewrites these to the same hashed
+         /assets files the stylesheet uses. -->
+    <link rel="preload" href="/src/fonts/dm-sans-latin-variable.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/src/fonts/barlow-condensed-latin-700.woff2" as="font" type="font/woff2" crossorigin />
     <title>Alabama Wholesale Inc · Wholesale Distributor — Birmingham, AL</title>
     <meta name="description" content="Wholesale tobacco, vapes, candy, drinks, grocery and motor oil for licensed retailers. Next-day delivery on our routes in Alabama, Mississippi and Georgia from our Birmingham warehouse." />
     <!-- Every path serves this file, so the canonical link and og:url are set per

@@ -33,7 +33,7 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, pric
       <section className="section" id="new-arrivals">
         <div className="section-head">
           <div><p className="eyebrow">FRESH INVENTORY / 01</p><h2>New arrivals</h2></div>
-          <Link to={dept('NOVELTIES')}>Shop novelties <span aria-hidden="true">↗</span></Link>
+          <Link to={dept('NOVELTIES')}>Shop novelties</Link>
         </div>
         <div className="card-grid">
           {newArrivals.map(card)}
@@ -46,18 +46,18 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, pric
           <Picture className="bg" picture={EDITORIAL_BG.picture} alt="" aria-hidden="true" sizes={SIZES.editorial} />
           <span className="block-label">COLLECTION / 01</span>
           {/* TODO(owner): After legal review, which of Kratom & Kava, Mushroom Products, Detox, Wellness Pills, and Honey & Energy enhancement items should be delisted, de-featured, or kept, and may this card advertise detox and kratom? Headline kept as published. (AW-001) */}
-          <div><p className="eyebrow">EXOTICS &amp; NOVELTIES</p><h2>Disposables, detox,<br />kratom &amp; more.</h2><span className="text-link">Browse novelties</span><span className="arrow" aria-hidden="true">↗</span></div>
+          <div><p className="eyebrow">EXOTICS &amp; NOVELTIES</p><h2>Disposables, detox,<br />kratom &amp; more.</h2><span className="text-link">Browse novelties</span></div>
         </Link>
         <Link className="editorial-card purple" to={dept('TOBACCO')}>
           <span className="block-label">COLLECTION / 02</span>
-          <div><p className="eyebrow">THE CORE BUSINESS</p><h2>Tobacco, wraps<br />&amp; accessories.</h2><span className="text-link">Browse tobacco</span><span className="arrow" aria-hidden="true">↗</span></div>
+          <div><p className="eyebrow">THE CORE BUSINESS</p><h2>Tobacco, wraps<br />&amp; accessories.</h2><span className="text-link">Browse tobacco</span></div>
         </Link>
       </section>
 
       <section className="section" id="bestsellers">
         <div className="section-head">
           <div><p className="eyebrow">PROVEN MOVERS / 02</p><h2>Bestsellers</h2></div>
-          <Link to={dept('TOBACCO')}>Shop tobacco <span aria-hidden="true">↗</span></Link>
+          <Link to={dept('TOBACCO')}>Shop tobacco</Link>
         </div>
         <div className="card-grid">
           {bestsellers.map(card)}
@@ -75,7 +75,7 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, pric
       <section className="section" id="catalog">
         <div className="section-head">
           <div><p className="eyebrow">FULL ASSORTMENT / 03</p><h2>Shop by department</h2></div>
-          <Link to="/catalog">Browse the catalog <span aria-hidden="true">↗</span></Link>
+          <Link to="/catalog">Browse the catalog</Link>
         </div>
         <div className="card-grid">
           {departments.map(c => {
@@ -89,7 +89,7 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, pric
                 <p className="card-kicker">{`${c.subs.length} PRODUCT LINES · ${c.count} SKUs`}</p>
                 <h3>{c.label}</h3>
                 <p className="card-detail">{c.subs.slice(0, 3).join(' · ')}</p>
-                <span className="card-meta"><span>Browse department</span><span aria-hidden="true">↗</span></span>
+                <span className="card-meta"><span>Browse department</span></span>
               </Link>
             );
           })}
@@ -101,7 +101,7 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, pric
           <div className="apply-intro">
             <p className="eyebrow">OPEN AN ACCOUNT / 04</p>
             <h2>Become a retail account</h2>
-            <button className="button" type="button" onClick={onApplyClick}>Start application <span aria-hidden="true">↗</span></button>
+            <button className="button" type="button" onClick={onApplyClick}>Start application</button>
           </div>
           <ol className="apply-steps">
             <li>

@@ -9,6 +9,7 @@ import { MISSING_FUNCTION_CODES, lineTotal, tierUnitPrice, toCents, fromCents } 
 import { Link } from '../../lib/router.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
+import { Icon } from '../../components/Icon.jsx';
 
 const TABS = [
   { id: 'orders', label: 'Orders' },
@@ -75,8 +76,8 @@ export function AdminPage({
             : 'The admin area is only open to Alabama Wholesale staff accounts. Sign in with a staff account to continue.'}</p>
         <div className="dialog-actions compact-actions">
           {profile
-            ? <Link className="button" to="/account">My account <span aria-hidden="true">↗</span></Link>
-            : <button className="button" type="button" onClick={onSignIn}>Sign in <span aria-hidden="true">↗</span></button>}
+            ? <Link className="button" to="/account">My account</Link>
+            : <button className="button" type="button" onClick={onSignIn}>Sign in</button>}
           <Link className="text-link" to="/">Back to home</Link>
         </div>
       </section>
@@ -405,19 +406,19 @@ function OrderCard({ order: o, states, workflow, tiers, onStatus, onReload }) {
       <div className="inline-actions order-actions-row">
         {draft ? (
           <>
-            <button className="mini-btn primary" type="button" disabled={busy || !workflow} onClick={save}>Save prices</button>
-            <button className="mini-btn" type="button" onClick={closeEditor}>Cancel</button>
+            <button className="button" type="button" disabled={busy || !workflow} onClick={save}>Save prices</button>
+            <button className="button ghost" type="button" onClick={closeEditor}>Cancel</button>
           </>
         ) : (
-          <button className="mini-btn" type="button" onClick={openEditor}>
+          <button className="button ghost" type="button" onClick={openEditor}>
             <span>Edit quantities and prices</span><span className="sr-only">{` for ${o.ref_num}`}</span>
           </button>
         )}
-        <a className="mini-btn" href={orderEmail(o, draft || items, quote)}>
+        <a className="button ghost" href={orderEmail(o, draft || items, quote)}>
           <span>{quote ? 'Email the quote' : 'Email the order'}</span><span className="sr-only">{` ${o.ref_num} to ${o.email}`}</span>
         </a>
         {quote && !draft && (
-          <button className="mini-btn" type="button" disabled={busy || !workflow || unpriced} onClick={convert}>
+          <button className="button ghost" type="button" disabled={busy || !workflow || unpriced} onClick={convert}>
             <span>Convert to order</span><span className="sr-only">{` ${o.ref_num}`}</span>
           </button>
         )}
@@ -568,7 +569,7 @@ function AccountsTab({ currentAdminId }) {
                             <span>On file</span>
                             {signedUrls[`${p.id}:${doc.id}`] ? (
                               <a href={signedUrls[`${p.id}:${doc.id}`]} target="_blank" rel="noopener noreferrer">
-                                View<span className="sr-only">{` ${doc.label} for ${p.business || p.name}`}</span>
+                                View<Icon name="external" /><span className="sr-only">{` ${doc.label} for ${p.business || p.name} (opens in a new tab)`}</span>
                               </a>
                             ) : (
                               <button type="button" className="text-link" onClick={() => viewDocument(row, p, doc.label)}>
@@ -587,7 +588,7 @@ function AccountsTab({ currentAdminId }) {
               <td>
                 <div className="inline-actions">
                   <button
-                    className="mini-btn"
+                    className="button xs ghost"
                     type="button"
                     aria-expanded={openId === p.id}
                     aria-controls={openId === p.id ? `account-details-${p.id}` : undefined}
@@ -597,14 +598,14 @@ function AccountsTab({ currentAdminId }) {
                     <span className="sr-only">{` for ${p.business || p.name}`}</span>
                   </button>
                   {p.status === 'pending' && (
-                    <button className="mini-btn primary" type="button" onClick={() => updateProfile(p, { status: 'approved' })}>
+                    <button className="button xs" type="button" onClick={() => updateProfile(p, { status: 'approved' })}>
                       Approve
                     </button>
                   )}
                   {/* No mail goes out on its own (AW-088): after approving,
                       staff send this from the desk's own mail. */}
                   {p.status === 'approved' && p.role !== 'admin' && p.email && (
-                    <a className="mini-btn" href={approvalEmail(p)}>
+                    <a className="button xs ghost" href={approvalEmail(p)}>
                       <span>Email applicant</span><span className="sr-only">{` ${p.business || p.name}`}</span>
                     </a>
                   )}
@@ -633,7 +634,7 @@ function AccountsTab({ currentAdminId }) {
                   <label className="account-note" htmlFor={`note-${p.id}`}>Verification note
                     <input id={`note-${p.id}`} value={noteDraft} onChange={e => setNoteDraft(e.target.value)} />
                   </label>
-                  <button className="mini-btn" type="button" onClick={() => updateProfile(p, { verification_note: noteDraft || null })}>Save note</button>
+                  <button className="button xs ghost" type="button" onClick={() => updateProfile(p, { verification_note: noteDraft || null })}>Save note</button>
                 </td>
               </tr>
             )}
@@ -784,8 +785,8 @@ function ProductsTab({ onCatalogChange }) {
                 </td>
                 <td>
                   <div className="inline-actions">
-                    <button className="mini-btn primary" type="button" onClick={() => saveEditing(p.id)}>Save</button>
-                    <button className="mini-btn quiet" type="button" onClick={() => { setEditing(null); setSaveError(null); }}>Cancel</button>
+                    <button className="button xs" type="button" onClick={() => saveEditing(p.id)}>Save</button>
+                    <button className="button xs text" type="button" onClick={() => { setEditing(null); setSaveError(null); }}>Cancel</button>
                   </div>
                 </td>
               </tr>
@@ -799,7 +800,7 @@ function ProductsTab({ onCatalogChange }) {
                 <td>{p.tag || '—'}</td>
                 <td>{p.active ? 'Yes' : 'No'}</td>
                 <td>
-                  <button className="mini-btn" type="button" onClick={() => { setEditing({ ...p, priceText: priceInput(p.price) }); setSaveError(null); }}>Edit</button>
+                  <button className="button xs ghost" type="button" onClick={() => { setEditing({ ...p, priceText: priceInput(p.price) }); setSaveError(null); }}>Edit</button>
                 </td>
               </tr>
             ))}

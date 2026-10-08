@@ -13,6 +13,7 @@ import { getSearchMatches } from '../lib/search.js';
 import { catLabel } from '../lib/format.js';
 import { Link, navigate, useLocation } from '../lib/router.js';
 import { MobileMenu } from './MobileMenu.jsx';
+import { Icon } from './Icon.jsx';
 import { MissingPhoto } from './MissingPhoto.jsx';
 
 export function Header({ cartCount, onCart, products, departments, user, isAdmin, onLoginClick, onSignupClick, onLogout, signingOut = false, onHelp }) {
@@ -100,7 +101,7 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
       <div className="aw-masthead">
         <button className="aw-menu-toggle" type="button" aria-label="Menu" aria-expanded={menuOpen} aria-controls={menuOpen ? 'aw-mobile-menu' : undefined}
                 onClick={() => { setResultsOpen(false); setMenuOpen(true); }}>
-          <span className="aw-menu-bars" aria-hidden="true"><i></i><i></i><i></i></span>
+          <Icon name="menu" />
           <span>Menu</span>
         </button>
         <Link className="aw-logo" to="/" onClick={closeMenus} aria-label="Alabama Wholesale home">
@@ -111,12 +112,12 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
                  autoComplete="off" aria-label="Search products"
                  onChange={(e) => { setQuery(e.target.value); setResultsOpen(true); }}
                  onFocus={() => { setMegaOpen(false); if (query.trim().length >= 2) setResultsOpen(true); }} />
-          <button type="submit" aria-label="Search"><span className="search-icon" aria-hidden="true"></span></button>
+          <button type="submit" aria-label="Search"><Icon name="search" /></button>
           {resultsOpen && query.trim().length >= 2 && (
             <div className="aw-search-results">
               <div className="aw-search-heading">
                 <p role="status">{hits.length ? `${hits.length} result${hits.length > 1 ? 's' : ''}` : 'No matches'}</p>
-                <button type="button" aria-label="Close search results" onClick={() => setResultsOpen(false)}>×</button>
+                <button className="icon-btn" type="button" aria-label="Close search results" onClick={() => setResultsOpen(false)}><Icon name="close" /></button>
               </div>
               <div className="aw-search-list">
                 {hits.length === 0 && <p>Try a brand (Geekbar, Backwoods, BIC) or a line (&quot;energy drinks&quot;, &quot;wraps&quot;).</p>}
@@ -144,10 +145,10 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
             <>
               <button className="aw-signin" type="button" onClick={() => runNav(onLoginClick)}>Sign In</button>
               <span className="aw-account-or">or</span>
-              <button className="aw-signup aw-desktop-only" type="button" onClick={() => runNav(onSignupClick)}>Sign Up <span aria-hidden="true">↗</span></button>
+              <button className="button aw-desktop-only" type="button" onClick={() => runNav(onSignupClick)}>Sign Up</button>
             </>
           )}
-          <button className="aw-cart-btn" type="button" onClick={() => runNav(onCart)} aria-label={`Cart, ${cartCount} items`}>
+          <button className="button ghost sm aw-cart-btn" type="button" onClick={() => runNav(onCart)} aria-label={`Cart, ${cartCount} items`}>
             Cart
             {cartCount > 0 && <span className="aw-cart-count">{cartCount}</span>}
           </button>
@@ -167,13 +168,13 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
       <div className="aw-navigation">
         <button className="aw-category-toggle" type="button" aria-expanded={megaOpen} aria-controls="aw-mega-menu" ref={categoryToggleRef}
                 onClick={() => { setResultsOpen(false); setMegaOpen(o => !o); }}>
-          <span className="grid-symbol" aria-hidden="true">⊞</span>Categories <span className="aw-chevron" aria-hidden="true">⌄</span>
+          <Icon name="grid" />Categories<Icon name="chevron-down" className="aw-chevron" />
         </button>
         {megaOpen && (
           <section className="aw-mega-menu" id="aw-mega-menu" aria-labelledby="aw-menu-heading">
             <div className="aw-menu-heading">
               <div><p className="eyebrow">WHOLESALE CATALOG</p><h2 id="aw-menu-heading">Browse by department.</h2></div>
-              <button className="aw-menu-close" type="button" aria-label="Close categories" onClick={closeMega}>×</button>
+              <button className="icon-btn" type="button" aria-label="Close categories" onClick={closeMega}><Icon name="close" /></button>
             </div>
             <div className="aw-menu-grid">
               {departments.map((c, i) => (
@@ -182,15 +183,15 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
                   {c.subs.slice(0, 3).map(s => (
                     <Link key={s} to={{ page: 'category', category: c.key, sub: s }} onClick={closeMenus}>{s}</Link>
                   ))}
-                  <Link className="aw-department-all" to={{ page: 'category', category: c.key }} onClick={closeMenus}>{`All ${c.label} →`}</Link>
+                  <Link className="aw-department-all" to={{ page: 'category', category: c.key }} onClick={closeMenus}>{`All ${c.label}`}</Link>
                 </nav>
               ))}
               <Link className="aw-menu-feature" to={{ page: 'category', category: 'NOVELTIES' }} onClick={closeMenus}>
-                <div><p className="eyebrow">FEATURED</p><h3>Exotics &amp;<br />novelties.</h3><span>Explore the department <b aria-hidden="true">↗</b></span></div>
+                <div><p className="eyebrow">FEATURED</p><h3>Exotics &amp;<br />novelties.</h3><span>Explore the department</span></div>
               </Link>
             </div>
             <div className="aw-menu-footer">
-              <Link to="/catalog" onClick={closeMenus}>View full catalog <span aria-hidden="true">↗</span></Link>
+              <Link to="/catalog" onClick={closeMenus}>View full catalog</Link>
               <span>{`${departments.length} departments · ${products.length} SKUs`}</span>
             </div>
           </section>
@@ -198,11 +199,11 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
         <nav className="aw-discovery-nav" aria-label="Main navigation">
           <Link to="/#new-arrivals" onClick={closeMenus}><span className="aw-new-dot" aria-hidden="true"></span>New Arrivals</Link>
           <Link to="/#bestsellers" onClick={closeMenus}>Bestsellers</Link>
-          <Link className="aw-exotics-link" to={{ page: 'category', category: 'NOVELTIES' }} onClick={closeMenus}>Exotics <span aria-hidden="true">↗</span></Link>
+          <Link className="aw-exotics-link" to={{ page: 'category', category: 'NOVELTIES' }} onClick={closeMenus}>Exotics</Link>
         </nav>
         <div className="aw-service-nav">
           <Link to="/account" onClick={closeMenus}>Quick Reorder</Link>
-          <button type="button" onClick={() => runNav(onHelp)}>Help <span className="aw-help-icon" aria-hidden="true">?</span></button>
+          <button type="button" onClick={() => runNav(onHelp)}>Help <Icon name="help" /></button>
         </div>
       </div>
     </header>

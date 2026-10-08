@@ -61,7 +61,7 @@ export function HeroCarousel({ slides }) {
                 />
               ) : slide.picture ? (
                 <Picture picture={slide.picture} alt={isActive ? (slide.title || '') : ''}
-                         sizes={`(max-width: 600px) 100vw, ${slide.picture.width || 720}px`}
+                         sizes={`(max-width: 37.5em) 100vw, ${slide.picture.width || 720}px`}
                          priority={i === 0} loading={i === 0 ? 'eager' : 'lazy'} />
               ) : (
                 <img src={slide.img} alt={isActive ? (slide.title || '') : ''} />
@@ -72,9 +72,9 @@ export function HeroCarousel({ slides }) {
       </div>
       <div className="home-carousel-controls">
         <p aria-live="polite">{`Slide ${safeIndex + 1} of ${count}`}</p>
-        <button type="button" onClick={() => go(-1)} aria-label="Previous slide">Previous</button>
-        <button type="button" aria-pressed={paused} onClick={() => setPaused(value => !value)}>{paused ? 'Play' : 'Pause'}</button>
-        <button type="button" onClick={() => go(1)} aria-label="Next slide">Next</button>
+        <button className="button ghost sm" type="button" onClick={() => go(-1)} aria-label="Previous slide">Previous</button>
+        <button className="button ghost sm" type="button" aria-pressed={paused} onClick={() => setPaused(value => !value)}>{paused ? 'Play' : 'Pause'}</button>
+        <button className="button ghost sm" type="button" onClick={() => go(1)} aria-label="Next slide">Next</button>
       </div>
       {/* The vape slide carries the FDA statement (AW-026). */}
       {active.nicotineWarning && <NicotineWarning />}

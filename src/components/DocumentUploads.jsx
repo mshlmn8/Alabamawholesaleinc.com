@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { COMPANY } from '../data/content.js';
 import { useAuth } from '../lib/auth.jsx';
+import { Icon } from './Icon.jsx';
 import {
   DOCUMENT_ACCEPT,
   DOCUMENT_TYPES,
@@ -101,6 +102,7 @@ function DocumentFields({
             <small className="field-hint" id={hintId}>PDF, JPG, PNG, or HEIC. 10 MB maximum. One file; choosing another replaces it.</small>
             {showStatus && (
               <p className={`doc-status${record ? '' : ' is-missing'}`} id={statusId} data-document-status={record ? 'uploaded' : 'missing'} aria-live="polite">
+                {record && <Icon name="check" />}
                 <span>{status}</span>
                 {record && !isBusy && (
                   <button type="button" className="text-link doc-view" onClick={() => openFile(doc, record)}>

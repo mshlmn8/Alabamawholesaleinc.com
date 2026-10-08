@@ -46,7 +46,7 @@ function ErrorFallback() {
       <h1 id="error-fallback-title" ref={titleRef} tabIndex={-1}>Something went wrong loading this page</h1>
       <p>Reload to try again, or go to the home page. If it keeps happening, <CallOrEmail before="call" after=" and a trade rep will help you." /></p>
       <div className="dialog-actions">
-        <button className="button" type="button" onClick={() => window.location.reload()}>Reload <span aria-hidden="true">↗</span></button>
+        <button className="button" type="button" onClick={() => window.location.reload()}>Reload</button>
         {/* A full page load, so nothing from the broken page carries over. */}
         <a className="button ghost" href="/">Go to home</a>
       </div>

@@ -48,8 +48,8 @@ export function ApplyPage({ profile, account = profile ? 'ready' : 'signed-out',
             <p className="checklist-note">Read the <Link className="text-link" to={{ page: 'terms' }}>Trade terms</Link> and <Link className="text-link" to={{ page: 'privacy' }}>Privacy policy</Link> before you apply.</p>
             <div className="dialog-actions">
               {isBackendConfigured
-                ? <button className="button" type="button" onClick={onApplyClick}>Start application <span aria-hidden="true">↗</span></button>
-                : <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Apply by phone · {COMPANY.phone} <span aria-hidden="true">↗</span></a>}
+                ? <button className="button" type="button" onClick={onApplyClick}>Start application</button>
+                : <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Apply by phone · {COMPANY.phone}</a>}
               {!profile && <button className="text-link" type="button" onClick={onLoginClick}>Already applied? Sign in</button>}
             </div>
           </section>
@@ -91,7 +91,7 @@ function StatusPanel({ profile }) {
         )}
       </div>
       <div className="contact-strip-actions">
-        <Link className="button" to="/account"><span>{status === 'approved' ? 'My account' : 'View account'}</span> <span aria-hidden="true">↗</span></Link>
+        <Link className="button" to="/account"><span>{status === 'approved' ? 'My account' : 'View account'}</span></Link>
         <Link className="button ghost" to="/catalog">Browse the catalog</Link>
       </div>
     </section>

@@ -60,6 +60,11 @@ describe('ApplicationDocuments', () => {
     panel();
     await waitFor(() => expect(screen.getByRole('status').textContent).toBe('1 of 2 documents received.'));
     expect(screen.queryByRole('button', { name: 'View your resale certificate' })).toBeNull();
+    // The received file's status starts with the drawn check, not a text glyph (AW-293).
+    const received = document.querySelector('.doc-status[data-document-status="uploaded"]');
+    expect(received.firstElementChild.matches('svg.icon')).toBe(true);
+    expect(received.textContent).not.toMatch(/✓/);
+    expect(document.querySelector('.doc-status.is-missing svg')).toBeNull();
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'View your state retail tobacco license' })); });
     expect(tab.close).toHaveBeenCalled();
     expect(screen.getByRole('alert').textContent).toBe('Couldn’t open your state retail tobacco license. Try again.');

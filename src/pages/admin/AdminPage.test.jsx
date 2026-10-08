@@ -69,7 +69,10 @@ describe('Admin accounts', () => {
     await openAccounts();
     const row = rowFor('Alpha Food Mart');
     expect(within(row).getByText('On file')).toBeTruthy();
-    expect(await within(row).findByRole('link', { name: /^View ?.* for Alpha Food Mart$/ })).toBeTruthy();
+    // A new-tab link that leaves the site: the external icon, and the screen
+    // reader hears that it opens a new tab (AW-218).
+    const view = await within(row).findByRole('link', { name: /^View ?.* for Alpha Food Mart \(opens in a new tab\)$/ });
+    expect(view.querySelector('svg.icon')).toBeTruthy();
     // No proof on file for the pending account yet.
     expect(within(rowFor('Bravo Tobacco Outlet')).getAllByText('Not on file').length).toBe(2);
   });

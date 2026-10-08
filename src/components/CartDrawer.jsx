@@ -11,6 +11,7 @@ import { Link } from '../lib/router.js';
 import { CallOrEmail } from './ContactLinks.jsx';
 import { ModalLayer } from './ModalLayer.jsx';
 import { CartLine } from './CartLine.jsx';
+import { Icon } from './Icon.jsx';
 import { SavedLinesNotice, UnavailableNotice } from './CartNotices.jsx';
 
 export function CartDrawer({
@@ -32,7 +33,7 @@ export function CartDrawer({
       <aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title">
         <div className="drawer-head">
           <h2 id="cart-title">Your order</h2>
-          <button className="dialog-close" onClick={onClose} aria-label="Close cart">×</button>
+          <button className="icon-btn" type="button" onClick={onClose} aria-label="Close cart"><Icon name="close" /></button>
         </div>
         <div className="drawer-body">
           <SavedLinesNotice items={legacy} onDismiss={onDismissLegacy} onChoose={onClose} />
@@ -60,9 +61,9 @@ export function CartDrawer({
           )}
           {items.length > 0 && !isSuspended && (
             isApprovedBuyer
-              ? <Link className="button wide" to="/quote" onClick={onClose}>Checkout <span aria-hidden="true">↗</span></Link>
+              ? <Link className="button wide" to="/quote" onClick={onClose}>Checkout</Link>
               : <>
-                  <Link className="button wide" to="/quote" onClick={onClose}>Request quote <span aria-hidden="true">↗</span></Link>
+                  <Link className="button wide" to="/quote" onClick={onClose}>Request quote</Link>
                   {!pendingBuyer && <button className="drawer-signin text-link" type="button" onClick={onLoginClick}>Sign in for account pricing</button>}
                 </>
           )}

@@ -84,7 +84,7 @@ export function AccountPage({
           {account === 'signed-out' && <p>Sign in to view your account, order history, and quick reorder.</p>}
           {account === 'signed-out' && onSignIn && (
             <div className="dialog-actions compact-actions">
-              <button className="button" type="button" onClick={onSignIn}>Sign in <span aria-hidden="true">↗</span></button>
+              <button className="button" type="button" onClick={onSignIn}>Sign in</button>
             </div>
           )}
         </div>
@@ -181,7 +181,7 @@ export function AccountPage({
                     </div>
                     <div className="order-actions">
                       <span className={`status-pill ${tone}`}>{label}</span>
-                      <button className="mini-btn" type="button" onClick={() => reorder(o)} disabled={!(o.order_items || []).length}>
+                      <button className="button xs ghost" type="button" onClick={() => reorder(o)} disabled={!(o.order_items || []).length}>
                         Reorder
                       </button>
                     </div>
@@ -199,7 +199,7 @@ export function AccountPage({
                   {note && (
                     <div className="order-foot" role="status">
                       <p>{reorderMessage(note, target)}</p>
-                      {note.lines > 0 && <button className="mini-btn primary" type="button" onClick={onOpenCart}>Review cart</button>}
+                      {note.lines > 0 && <button className="button xs" type="button" onClick={onOpenCart}>Review cart</button>}
                     </div>
                   )}
                 </article>

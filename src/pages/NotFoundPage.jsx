@@ -69,13 +69,13 @@ export function NotFoundPage({ kind = 'page', category = null, products, departm
         {failed && onRetry && (
           <div className="dialog-actions compact-actions not-found-retry">
             <button className="button" type="button" onClick={onRetry} disabled={retrying}>
-              <span>{retrying ? 'Trying again…' : 'Try again'}</span> <span aria-hidden="true">↗</span>
+              <span>{retrying ? 'Trying again…' : 'Try again'}</span>
             </button>
           </div>
         )}
         {dept && !loading && (
           <p>
-            <Link className="text-link" to={{ page: 'category', category: dept.key }}><span>{`Browse all ${dept.label}`}</span> <span aria-hidden="true">↗</span></Link>
+            <Link className="text-link" to={{ page: 'category', category: dept.key }}><span>{`Browse all ${dept.label}`}</span></Link>
           </p>
         )}
       </div>

@@ -23,11 +23,17 @@ The app's `src/index.css` imports the local stylesheet before the page styles:
 ```
 
 ```css
-body { font-family: 'DM Sans', Arial, sans-serif; }
-h1, h2, h3 { font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; }
+:root {
+  --display: 'Barlow Condensed', 'Barlow Condensed Fallback', sans-serif;
+  --body: 'DM Sans', 'DM Sans Fallback', sans-serif;
+}
 ```
 
 Every face uses `font-display: swap`. All font URLs inside `fonts.css` are relative to this directory. Text outside the provided Latin subset falls back to the next font in the CSS stack.
+
+`fonts.css` also defines the two fallback families, `DM Sans Fallback` (local Arial) and `Barlow Condensed Fallback` (local Arial Narrow, or a condensed system face), with measured `size-adjust`, `ascent-override`, `descent-override` and `line-gap-override` values. They keep text the same width and height while the bundled files load or when they are blocked, so the page doesn't shift when the web fonts swap in (AW-178). The comment above them records how the values were measured; measure again if a font file changes.
+
+`index.html` preloads `dm-sans-latin-variable.woff2` and `barlow-condensed-latin-700.woff2`, the body font and the heading weight, so they download with the HTML. Vite rewrites both links to the hashed `/assets/` files the stylesheet uses.
 
 ## Official sources and licensing
 

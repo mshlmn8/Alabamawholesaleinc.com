@@ -35,6 +35,7 @@ import { photoCredit, photoCreditSource } from '../data/photoCredits.js';
 import { ProductCard } from '../components/ProductCard.jsx';
 import { NicotineWarning } from '../components/NicotineWarning.jsx';
 import { showsNicotineWarning } from '../lib/regulated.js';
+import { Icon } from '../components/Icon.jsx';
 
 const NO_PRICES = () => null;
 
@@ -100,7 +101,7 @@ export function ProductPage({
           {credit && (
             <figcaption className="photo-credit">
               <span>{credit}</span>
-              {creditSource && <> <a href={creditSource} target="_blank" rel="noopener noreferrer">Wikimedia Commons<span className="sr-only"> (opens in a new tab)</span></a></>}
+              {creditSource && <> <a href={creditSource} target="_blank" rel="noopener noreferrer">Wikimedia Commons<Icon name="external" /><span className="sr-only"> (opens in a new tab)</span></a></>}
             </figcaption>
           )}
         </figure>
@@ -131,12 +132,12 @@ export function ProductPage({
               : <><b>Sign in</b><span>Wholesale pricing is visible to approved trade accounts</span></>}
           </div>
           <div className="qty-row">
-            <div className="qty-stepper" role="group" aria-label="Quantity to add">
-              <button type="button" onClick={() => setDesiredQty(q => Math.max(1, q - 1))} aria-label="Decrease quantity">−</button>
+            <div className="stepper" role="group" aria-label="Quantity to add">
+              <button type="button" onClick={() => setDesiredQty(q => Math.max(1, q - 1))} aria-label="Decrease quantity"><Icon name="minus" /></button>
               <b aria-live="polite">{desiredQty}</b>
-              <button type="button" onClick={() => setDesiredQty(q => q + 1)} aria-label="Increase quantity">+</button>
+              <button type="button" onClick={() => setDesiredQty(q => q + 1)} aria-label="Increase quantity"><Icon name="plus" /></button>
             </div>
-            <button className="button" type="button" onClick={handleAdd} disabled={(choiceRequired && !chosen) || soleUnavailable}><span>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</span> <span aria-hidden="true">↗</span></button>
+            <button className="button" type="button" onClick={handleAdd} disabled={(choiceRequired && !chosen) || soleUnavailable}><span>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</span></button>
           </div>
           {qty > 0 && <p className="in-cart-note"><span>{`Already in ${isApprovedBuyer ? 'order' : 'quote'}: `}</span><strong>{qty}</strong><span>{selected ? ` · ${selected}` : ''}</span></p>}
           {!profile && (
@@ -156,7 +157,7 @@ export function ProductPage({
         <section className="section">
           <div className="section-head">
             <div><p className="eyebrow">SAME LINE</p><h2>{`More ${p.sub.toLowerCase()}`}</h2></div>
-            <Link to={department}>View department <span aria-hidden="true">↗</span></Link>
+            <Link to={department}>View department</Link>
           </div>
           <div className="card-grid">
             {related.map(r => <ProductCard key={r.id} p={r} profile={profile} isApprovedBuyer={isApprovedBuyer} priceOf={priceOf} pricesStatus={pricesStatus} cart={cart} addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} />)}

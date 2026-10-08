@@ -1,6 +1,8 @@
 // The product card's detail line counts variants by their axis only when
 // there is a choice (AW-233, AW-332, AW-128) and says what quantity 1 means
 // (AW-031); its price follows the variants (AW-030). Prices are test values.
+// The add control (AW-143): one button style, sentence-case labels, and the
+// card title as the button's description.
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ProductCard } from './ProductCard.jsx';
@@ -99,5 +101,82 @@ describe('ProductCard', () => {
   it('doesn’t print the placeholder brand "Assorted" (AW-286)', () => {
     render(card({ ...base, brand: 'Assorted', variants: ['S', 'M'], variantAxis: 'Size' }));
     expect(detail()).toBe('2 sizes · AW-SS');
+  });
+});
+
+// The add control (AW-143). Fixtures carry no prices.
+const KITE = { id: 14, sku: 'AW-KITE', name: 'Kite cigarette tobacco', brand: 'Kite', cat: 'TOBACCO', sub: 'Cigarettes' };
+const SWISHER = { id: 1, sku: 'AW-SS', name: 'Swisher Sweets cigarillos', brand: 'Swisher Sweets', cat: 'TOBACCO', sub: 'Cigars & Cigarillos', variants: ['Diamond', 'Red'] };
+const APPROVED_PROFILE = { status: 'approved', pricing_tier: 'standard' };
+const PENDING = { status: 'pending', pricing_tier: 'standard' };
+
+const addCard = (props) => render(
+  <ProductCard p={KITE} profile={null} isApprovedBuyer={false} cart={{}} addLine={vi.fn()} decLine={vi.fn()} onLoginClick={vi.fn()} {...props} />,
+);
+const describedBy = (el) => document.getElementById(el.getAttribute('aria-describedby'));
+
+describe('ProductCard add control', () => {
+  it('says "Add to quote" to guests and pending accounts, and adds one', () => {
+    const addLine = vi.fn();
+    addCard({ addLine });
+    const add = screen.getByRole('button', { name: 'Add to quote' });
+    expect(add.className).toBe('button ghost sm card-add');
+    fireEvent.click(add);
+    expect(addLine).toHaveBeenCalledWith(14, null);
+
+    addCard({ profile: PENDING });
+    expect(screen.getAllByRole('button', { name: 'Add to quote' })).toHaveLength(2);
+  });
+
+  it('says "Add to order" to approved buyers', () => {
+    addCard({ profile: APPROVED_PROFILE, isApprovedBuyer: true });
+    expect(screen.getByRole('button', { name: 'Add to order' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /quote/i })).toBeNull();
+  });
+
+  it('asks for a variant (Cursor\'s "Select options", AW-057) with a link to the product, counting what is already in the cart', () => {
+    const view = addCard({ p: SWISHER });
+    const choose = screen.getByRole('link', { name: 'Select options' });
+    expect(choose.getAttribute('href')).toBe('/product/1');
+    expect(choose.className).toBe('button ghost sm card-add');
+
+    view.rerender(<ProductCard p={SWISHER} profile={null} isApprovedBuyer={false} cart={{ '1::red': 2, '1::diamond': 1, 14: 5 }} addLine={vi.fn()} decLine={vi.fn()} onLoginClick={vi.fn()} />);
+    expect(screen.getByRole('link', { name: 'Select options · 3' })).toBeTruthy();
+  });
+
+  it('is described by the card title, so the button says which product without changing its name', () => {
+    addCard();
+    const add = screen.getByRole('button', { name: 'Add to quote' });
+    expect(describedBy(add).tagName).toBe('H3');
+    expect(describedBy(add).textContent).toBe('Kite cigarette tobacco');
+
+    addCard({ p: SWISHER });
+    const choose = screen.getByRole('link', { name: 'Select options' });
+    expect(describedBy(choose).textContent).toBe('Swisher Sweets cigarillos');
+    // Each card has its own title id.
+    expect(choose.getAttribute('aria-describedby')).not.toBe(add.getAttribute('aria-describedby'));
+  });
+
+  it('turns into a stepper once the product is in the cart', () => {
+    const addLine = vi.fn();
+    const decLine = vi.fn();
+    addCard({ cart: { 14: 4 }, addLine, decLine });
+    const group = screen.getByRole('group', { name: 'Kite cigarette tobacco quantity' });
+    expect(group.className).toBe('stepper card-stepper');
+    expect(group.querySelector('b').textContent).toBe('4');
+    fireEvent.click(screen.getByRole('button', { name: 'Increase quantity' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Decrease quantity' }));
+    expect(addLine).toHaveBeenCalledWith(14, null);
+    expect(decLine).toHaveBeenCalledWith('14');
+    // The + and − are drawn icons, not text.
+    expect(group.querySelectorAll('button svg.icon')).toHaveLength(2);
+    expect(group.querySelector('button').textContent).toBe('');
+  });
+
+  it('still asks guests to sign in for pricing', () => {
+    const onLoginClick = vi.fn();
+    addCard({ onLoginClick });
+    fireEvent.click(screen.getByRole('button', { name: /Sign in for pricing/ }));
+    expect(onLoginClick).toHaveBeenCalledTimes(1);
   });
 });
