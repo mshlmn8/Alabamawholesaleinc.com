@@ -1,6 +1,8 @@
 // Which products carry the FDA nicotine statement (AW-026) and which quote
 // lines need a tobacco licence (AW-014). Includes every check from Cursor's
 // scripts/test-part1.mjs (PR #12), which this file replaces.
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { PRODUCTS } from '../data/products.js';
 import { normalizeCart, resolveCartItems } from './lines.js';
@@ -54,10 +56,16 @@ describe('cartNeedsTobaccoLicense', () => {
     expect(lineNeedsTobaccoLicense(null)).toBe(false);
   });
 
-  it('matches the rule submit_quote applies (20261008190000_quote_tobacco_license.sql)', () => {
-    // pr.cat = 'TOBACCO' or pr.sub in ('Disposable Vapes', 'Vape Pods')
+  it('matches the rule the current submit_quote applies (20261009130000_submit_quote_v3.sql)', () => {
+    // The rule as the migration writes it: pr.cat = '<dept>' or pr.sub in ('<line>', …).
+    const sqlText = readFileSync(resolve(process.cwd(), 'supabase/migrations/20261009130000_submit_quote_v3.sql'), 'utf8');
+    const rule = sqlText.match(/where pr\.cat = '([^']+)'\s+or pr\.sub in \(([^)]+)\)/);
+    expect(rule).not.toBeNull();
+    const cat = rule[1];
+    const subs = [...rule[2].matchAll(/'([^']+)'/g)].map(m => m[1]);
+    expect([cat, subs]).toEqual(['TOBACCO', ['Disposable Vapes', 'Vape Pods']]);
     for (const p of PRODUCTS) {
-      const sql = p.cat === 'TOBACCO' || p.sub === 'Disposable Vapes' || p.sub === 'Vape Pods';
+      const sql = p.cat === cat || subs.includes(p.sub);
       expect([p.id, lineNeedsTobaccoLicense(p)]).toEqual([p.id, sql]);
     }
   });

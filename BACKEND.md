@@ -32,25 +32,37 @@ supabase/migrations/20261008192000_profile_self_update_guard.sql
 supabase/migrations/20261008193000_profile_approval_audit.sql
 supabase/migrations/20261008194000_strip_signup_metadata.sql
 supabase/migrations/20261008195000_application_consent.sql
+supabase/migrations/20261009100000_price_boundary.sql
+supabase/migrations/20261009110000_variant_model.sql
+supabase/migrations/20261009120000_catalog_corrections.sql
+supabase/migrations/20261009130000_submit_quote_v3.sql
+supabase/migrations/20261009140000_profile_and_document_boundaries.sql
 supabase/seed/products.sql
 ```
 
+On a project that is already running, apply only the migrations it doesn't
+have yet, in that order, then the seed, then deploy the frontend (see the
+release checklist at the end of this file). The live project has the files
+up to `20260927180000`; the eleven `20261008…`/`20261009…` files are new.
+Review them before applying them; the site keeps working without them (see
+`docs/OWNER-TODO.md` and "Before and after" in the release checklist).
+
 The six `20261008…` files are part 1 of the tobacco, vapor and licence review
-(Cursor's PR #12). Review them before applying them to the live project; the
-site keeps working without them (see `docs/OWNER-TODO.md`):
+(Cursor's PR #12):
 
 - `20261008190000_quote_tobacco_license.sql`: `orders.license_no`,
   `resale_cert_no`, `purchasers_21`, and a `submit_quote` that refuses a quote
   with a tobacco or vape line from a guest or an unapproved account unless it
   names a licence and a resale certificate and confirms 21+ (AW-014). It
-  replaces the 13-argument `submit_quote` with a 16-argument one. Until it is
-  applied, the storefront falls back to the old function and puts the licence
-  answers in the quote's notes.
+  replaces the 13-argument `submit_quote` with a 16-argument one
+  (`20261009130000` turns both into wrappers of the new function).
 - `20261008191000_profile_store_address.sql`: the store street, city and ZIP
   from the application (AW-092).
 - `20261008192000_profile_self_update_guard.sql`: a trigger keeps a
   customer's email, role, status, tier, licence, EIN and resale certificate as
-  they were when the customer edits their own profile (AW-196).
+  they were when the customer edits their own profile (AW-196;
+  `20261009140000` extends it to every column but name, phone and store
+  address).
 - `20261008193000_profile_approval_audit.sql`: `approved_at`, `approved_by`,
   `verification_note`, the `profile_status_log` and
   `profile_document_history` tables (admin-read), and proof that only a
@@ -61,17 +73,11 @@ site keeps working without them (see `docs/OWNER-TODO.md`):
   confirmation onto the profile, then removes EIN, licence, resale
   certificate, phone, volume, address and consent keys from the auth metadata
   (AW-348, AW-019).
-supabase/migrations/20260928120000_price_boundary.sql
-supabase/migrations/20260928121000_variant_model.sql
-supabase/migrations/20260928122000_catalog_corrections.sql
-supabase/migrations/20260928123000_submit_quote_v2.sql
-supabase/migrations/20260928124000_profile_and_document_boundaries.sql
-supabase/seed/products.sql
-```
 
-On a project that is already running, apply only the migrations it doesn't
-have yet, then the seed, then deploy the frontend (see the release checklist
-at the end of this file).
+The five `20261009…` files are the site review's backend changes (prices,
+variants, catalog corrections, `submit_quote` v3, profile and document
+boundaries), built on the schema the `20261008…` files create; the release
+checklist below says what each one changes.
 
 Before applying a new migration, run `npm run test:db`. It replays every
 migration and the seed in an in-memory Postgres with stubbed Supabase `auth`
@@ -93,7 +99,7 @@ migration in `supabase/migrations/`, next to the `products.js` edit.
 The seed has no `price` column: prices are set only in the database (see
 "Loading your list prices" below), and a product the seed adds starts with
 no price, which approved buyers see as "Price on request". Because
-`products.price` was `not null` before `20260928120000_price_boundary.sql`,
+`products.price` was `not null` before `20261009100000_price_boundary.sql`,
 apply that migration first: Postgres checks NOT NULL before ON CONFLICT, so
 on an older database every row of the seed fails, even ids that already exist.
 
@@ -107,13 +113,14 @@ Confirm in **Storage** that the bucket is not public. No extra environment
 variables. Applicants may upload a state retail tobacco license and a resale
 certificate from the application form once they have a session, or later from
 `/apply` (any signed-in account, so an approved or suspended store can send a
-renewal). The license number and resale
-certificate number stay required. Proof can also be emailed to the trade desk.
-Once the account is approved the proof is locked
-(`20260928124000_profile_and_document_boundaries.sql`): the applicant can
-still see it, admins still open it from Admin → Accounts, but nobody can
-replace or delete it through the site; a renewed license is emailed to the
-trade desk for now.
+renewal). The license number and resale certificate number stay required.
+Proof can also be emailed to the trade desk. Every upload is a new file
+(`{user id}/{document type}/{upload time}-{filename}`); a replaced file stays
+in the bucket and in `profile_document_history`
+(`20261008193000_profile_approval_audit.sql`), and only a pending applicant
+can delete proof. Since `20261009140000_profile_and_document_boundaries.sql`
+files and rows must use that layout, and an account can upload at most 10
+files in 24 hours.
 
 A trigger on `auth.users` auto-creates a `profiles` row on signup. **Every
 signup starts as `customer` / `pending`.** Public signup never creates an
@@ -235,7 +242,7 @@ changed price.
 List prices are stored only in the database, in `products.price`. They are
 not in `src/data/products.js`, the seed or the built site, and guests and
 signed-in accounts cannot read the column through the API
-(`20260928120000_price_boundary.sql` moves `products` to column privileges;
+(`20261009100000_price_boundary.sql` moves `products` to column privileges;
 a request that names `price`, or `select=*`, is refused). A product without a
 price (`null`) shows as "Price on request".
 
@@ -289,7 +296,7 @@ people who must not see trade prices.
 
 ## Variants, availability and sell units
 
-`20260928121000_variant_model.sql` gives variants a data model without
+`20261009110000_variant_model.sql` gives variants a data model without
 changing their shape: `products.variants` is still a list of label strings,
 and cart lines, Quick Reorder and order history keep working with them.
 
@@ -353,7 +360,7 @@ it also works while the database still has the old values. `npm run seed`
 refuses an alias that points at a code or label the catalog doesn't have.
 Saved orders keep their own `sku`, `product_name` and `variant`.
 
-`20260928122000_catalog_corrections.sql` applied the first set (AW-135,
+`20261009120000_catalog_corrections.sql` applied the first set (AW-135,
 AW-138, AW-126): SKUs cut at 17 characters or ending in a hyphen, misspelled
 codes, and inconsistent or abbreviated labels. A renamed label also renames
 its `product_variant_prices` row and its `unavailable_variants` entry.
@@ -361,7 +368,7 @@ its `product_variant_prices` row and its `unavailable_variants` entry.
 ## Quotes and orders (`submit_quote`)
 
 The storefront saves a quote (or an approved buyer's order) with one call,
-`submit_quote`. Since `20260928123000_submit_quote_v2.sql`:
+`submit_quote`. Since `20261009130000_submit_quote_v3.sql`:
 
 - **The reference number is made by the server** (AW-049): `ALW-Q-` for a
   quote, `ALW-O-` for an approved buyer's order, then 10 random hex digits.
@@ -382,48 +389,58 @@ The storefront saves a quote (or an approved buyer's order) with one call,
   honeypot field that simple bots fill in.
 - **Suspended accounts can't submit** (AW-201, hint `account_suspended`);
   the cart and checkout tell them ordering is paused.
-- **License details** (AW-014): the checkout asks visitors who aren't
-  approved buyers for the store's tobacco/retail license number, resale
-  certificate number and a license statement when the cart has a Tobacco or
-  Novelties line. They are optional for now and stored with the order
-  (`orders.license_no`, `resale_cert_no`, `license_attested_at`); Admin →
-  Orders shows them.
+- **Tobacco license answers** (AW-014, PR #12's rule, unchanged): a quote
+  with a tobacco line (department Tobacco) or a vape line (Disposable Vapes
+  or Vape Pods) from a guest or an account that isn't approved must name a
+  state tobacco/retail license number and a sales-tax / resale certificate
+  number and confirm "all purchasers are 21+" (hint `license_required`).
+  The checkout asks for them only then (`cartNeedsTobaccoLicense` in
+  `src/lib/regulated.js`, whose test reads the rule from the migration). They
+  are stored with the order (`orders.license_no`, `resale_cert_no`,
+  `purchasers_21`); Admin → Orders shows them.
 
-<!-- TODO(owner): Should guests (and accounts not approved yet) have to give the license number, resale certificate number and the statement to quote tobacco or novelty items, or should those carts require signing in as an approved buyer? Which departments count, and what should the statement say? (AW-014) -->
+<!-- TODO(owner): Confirm guest tobacco and vape quotes may collect a license number, resale certificate and 21+ attestation instead of requiring an approved sign-in. (AW-014) -->
 <!-- TODO(owner): confirm route states: do the delivery routes cover exactly Alabama, Mississippi and Georgia? (AW-198) -->
 
-The rules the checkout mirrors live in `src/data/quoteRules.js`, and each
-has a twin at the top of `submit_quote`: the delivery-route states
-(`DELIVERY_ROUTE_STATES` / `v_route_states`), the departments that ask for
-license details (`AGE_RESTRICTED_DEPARTMENTS` / `v_restricted_departments`)
-and whether those details are required (`LICENSE_FIELDS_FOR_GUESTS =
-'required'` / `v_require_license := true`). Change both together; the
+The delivery-route states the checkout mirrors are
+`DELIVERY_ROUTE_STATES` in `src/data/quoteRules.js`, twin of
+`v_route_states` at the top of `submit_quote`. Change both together; the
 database side is a new migration that recreates `submit_quote` from its
 newest definition.
 
-The older 13-argument `submit_quote(p_ref_num, …)` still exists as a thin
-wrapper that ignores `p_ref_num`, so the frontend deployed before the
-migration keeps working until the new one is live. Drop it later (release
-checklist).
+Three signatures exist. The current one has no `p_ref_num` and takes the
+license answers last (15 arguments). PR #12's 16-argument
+`submit_quote(p_ref_num, …, p_license_no, p_resale_cert, p_purchasers_21)`
+and the original 13-argument `submit_quote(p_ref_num, …)` are thin wrappers
+that ignore `p_ref_num` and run the current one, so frontends deployed
+before the migration keep working (with the new checks and the license
+rule). Drop the wrappers later (release checklist).
+
+The storefront (`src/lib/orders.js`) calls the current signature and, when
+the database doesn't have it (`PGRST202`), the 16-argument one and then the
+13-argument one, with a client-made `ALW-Q-` reference (40 random bits), the
+warehouse address for will-call, and, for the 13-argument call, the license
+answers in the notes. It remembers which signature worked for the rest of the
+visit.
 
 ## Row-level security summary
 
 - **Admins**: `is_admin()` is true only for a profile with role `admin`
-  **and** status `approved`, so a suspended or pending admin has no admin
-  rights anywhere below.
-- **profiles**: a user reads their own row; admins read any. A signed-in
-  customer may change only their name, phone and store address (street,
-  city, ZIP); anything else (email, business, state, license, EIN, resale
-  certificate, tier, status, role, consent and approval records) is refused
-  with `insufficient_privilege` by the `profiles_guard` trigger. Admins
-  update any row, except their own role and status, and can't edit the
-  consent (`terms_*`, `age_confirmed_at`) or approval (`approved_at`,
-  `approved_by`) records, which only the signup and approval triggers write.
-  `profiles.email` always follows the sign-in email (a trigger on
-  `auth.users` copies changes). The SQL editor is not limited.
-  `verification_note` is readable by the account holder.
-- **profile_status_log**: one row per status change (who, when, from, to),
-  written by a trigger; admins read it, nobody can add, change or delete rows.
+  **and** status `approved` (`20261009140000`), so a suspended or pending
+  admin has no admin rights anywhere below.
+- **profiles**: a user reads their own row; admins read any. In a signed-in
+  customer's own update, every column but the name, phone and store address
+  (street, city, ZIP) keeps its value (Cursor's `a_protect_profile_columns`
+  trigger, extended in `20261009140000`): the update succeeds, those columns
+  don't change. Admins update any row, but changing their own role or status,
+  the consent (`terms_*`, `age_confirmed_at`) or approval (`approved_at`,
+  `approved_by`) records, or an email to anything but the account's sign-in
+  email is refused with `insufficient_privilege`; only the signup and
+  approval triggers write those records. `profiles.email` follows the sign-in
+  email (a trigger on `auth.users` copies changes). The SQL editor is not
+  limited. `verification_note` is readable by the account holder.
+- **profile_status_log / profile_document_history**: written by triggers;
+  admins read them, nobody can add, change or delete rows.
 - **profile_admin_notes**: internal notes about an account; admins only (the
   account holder can't read them).
 - **products**: anyone reads `active = true` rows, and every column except
@@ -444,16 +461,17 @@ checklist).
   policies, privileges revoked); only `submit_quote` uses it.
 - **pricing_tiers**: readable by admins and approved buyers only;
   admin-writable. `profiles.pricing_tier` must name one of its rows.
-- **profile_documents**: a user reads their own rows (one tobacco license
-  and one resale certificate); admins read every row. A user inserts,
-  replaces or deletes their rows only while their account is **pending**, and
-  a row's `storage_path` must be `{their id}/{its document type}/{file}`.
+- **profile_documents**: a user reads, inserts and replaces their own rows
+  (one tobacco license and one resale certificate), whatever the account's
+  status, and a row's `storage_path` must be
+  `{their id}/{its document type}/{file}`. Only a pending applicant can
+  delete; approved and suspended accounts can file a renewal. Admins read
+  every row.
 - **storage `application-documents`**: private. Object paths are
-  `{user id}/{document type}/{filename}`, where the type folder is
-  `tobacco_license` or `resale_certificate`. A user reads their own folder;
-  while their account is pending they can upload and replace files at that
-  layout only, at most 10 files each, and delete files in their folder. After
-  approval their files are read-only. Admins can read every object, which is
+  `{user id}/{document type}/{upload time}-{filename}`, where the type folder
+  is `tobacco_license` or `resale_certificate`. A user reads their own folder
+  and uploads there at that layout only, at most 10 files in 24 hours; only a
+  pending applicant deletes there. Admins can read every object, which is
   what the Accounts tab uses to mint a signed View link.
 
 ## Resetting
@@ -479,29 +497,37 @@ For each release:
    inserts products whose id is new.
 4. Deploy the frontend.
 
-Every migration ends with a commented reverse-SQL block for rolling it back.
+The live project needs all eleven, in this order (Cursor's six `20261008…`
+files, then the five `20261009…` ones, which build on them). Each
+`20261009…` migration ends with a commented reverse-SQL block for rolling it
+back.
 
 | Migration | What it changes | Before and after |
 | --- | --- | --- |
-| `20260928120000_price_boundary.sql` | `products.price` becomes nullable and unreadable to guests and signed-in accounts (column privileges); approved buyers' prices come from `my_prices()`, admins' from `admin_product_prices()`; the order trigger rounds with `tier_unit_price()`; `pricing_tiers` is readable by admins and approved buyers only; `profiles.pricing_tier` is a foreign key to `pricing_tiers`. The prices already stored are not changed. | Apply before the new seed (the seed has no price column). The frontend deployed before it reads `select=*`, which is now refused: it falls back to the catalog bundled with it, with a "couldn't load the latest catalog" notice, until the new frontend is deployed, so deploy right after. The new frontend also works before this migration (when `my_prices()` is missing it reads the prices the old way). |
-| `20260928121000_variant_model.sql` | Adds `products.variant_axis` and `products.unavailable_variants` (readable by everyone), the private `product_variant_prices` table and `order_items.sell_unit`; recreates the order trigger (variant prices, unavailable variants refused with hint `variant_unavailable`, no variant kept on a product without variants, the sell unit saved with the line), `my_prices()` and `admin_product_prices()` (per-variant prices); drops `products.flavors`; fills the variant axis, the sell units the catalog states and 20 corrected descriptions on existing rows, only where nobody has set them (see "Variants, availability and sell units"). | Apply after `20260928120000` and before the new seed (the seed has `variant_axis` and no `flavors`). The frontend deployed before `20260928120000` is unaffected beyond what that migration already did. The new frontend also works before this migration: it reads the columns every database has, takes the axis and sell units from its bundled catalog, and treats every variant as available at its product's price. |
-| `20260928122000_catalog_corrections.sql` | Data only: completes 86 SKUs (cut at 17 characters, a trailing hyphen, misspelled, or #329's bare `AW-RAW`), corrects the variant labels of 33 products (spelled-out sizes, fixed spellings, #62's merged flavor split, one-item non-choices removed, #60's profanity starred out), their descriptions, #354's name and #123/#124's sell unit; renames the matching `product_variant_prices` rows and `unavailable_variants` entries. Each row changes only while it still has the value the seed wrote, so admin edits are kept (see "Changing a SKU or a variant label"). | Apply after `20260928121000` and before the new seed. The new frontend also works before it (its aliases read the old codes and labels). Deploy the new frontend right after: the frontend deployed before it doesn't know the new labels, and a quote it sends with a renamed variant is refused ("Unknown variant"). Stored carts, Quick Reorder codes and order history keep working with the new frontend. |
-| `20260928123000_submit_quote_v2.sql` | Recreates `submit_quote` without `p_ref_num` and with three optional license arguments: the server makes the reference (`ALW-Q-`/`ALW-O-` and 10 hex digits), checks lengths, email, ZIP, state, route state and date, throttles (new private table `quote_throttle`), refuses suspended accounts, needs an address only for delivery, and stores the license details (new `orders.license_no`, `resale_cert_no`, `license_attested_at`); every refusal has a typed hint. Keeps the 13-argument signature as a wrapper that ignores `p_ref_num` (see "Quotes and orders"). | Apply after `20260928122000`, before the new frontend. The frontend deployed before it keeps working through the wrapper (its reference is ignored, and a will-call quote sends the address it always required). The new frontend also works before it: when the new signature is missing it calls the old one with a long random reference, and sends the warehouse address for will-call. **Later step:** once the new frontend has been live for a few days, drop the wrapper (below). |
-
-| `20260928124000_profile_and_document_boundaries.sql` | `is_admin()` requires an approved admin; the `profiles_guard` trigger limits what each caller may change on a profile (customers: name, phone, store address; admins: not their own role or status, not the consent or approval records); `profiles.email` follows the sign-in email (a trigger on `auth.users`, and existing rows are realigned); new profile columns for the store address, consent record (`terms_version`, `terms_accepted_at`, `age_confirmed_at`), approval (`approved_at`, `approved_by`) and `verification_note`; new tables `profile_status_log` (status history) and `profile_admin_notes` (internal notes, admins only); the signup trigger copies the store address and consent, then strips the EIN, license, resale certificate, phone, volume, address and consent keys from auth metadata, and the same keys are moved to the profiles and stripped for existing accounts; license documents and files are locked after approval, must sit at `{user id}/{type}/{file}`, and a user may keep at most 10 files. | Apply after `20260928123000`, before the new frontend. Before running it, check with `select id, email, status from public.profiles where role = 'admin';` that every real admin is `approved`: the others lose admin rights. The frontend deployed before it keeps working (its admins must be approved; a customer's profile edits aren't part of it). The new frontend also works before it: the old database keeps the store address and consent in auth metadata (this migration moves them to the profiles), the new columns are simply absent, and document paths are unchanged. Then run `supabase/seed/provision_owner.sql`'s admin list once. |
+| `20261008190000_quote_tobacco_license.sql` | PR #12: `orders.license_no`, `resale_cert_no`, `purchasers_21`; a 16-argument `submit_quote` that refuses a guest's or unapproved account's tobacco or vape quote without a license, a resale certificate and 21+; drops the 13-argument one. | The frontend deployed before PR #12 calls the 13-argument function, so apply `20261009130000` in the same session (it brings that signature back as a wrapper). The new frontend works before and after (it falls back to the 13-argument call with the answers in the notes). |
+| `20261008191000_profile_store_address.sql` | PR #12: `profiles.store_street`, `store_city`, `store_zip`; the signup trigger copies them. | Until applied, the application's store address stays in auth metadata; `20261009140000` moves it to the profile. |
+| `20261008192000_profile_self_update_guard.sql` | PR #12: the `a_protect_profile_columns` trigger keeps a customer's verified columns in their own update. | No frontend change needed. `20261009140000` extends the same trigger. |
+| `20261008193000_profile_approval_audit.sql` | PR #12: `approved_at`, `approved_by`, `verification_note`, `profile_status_log`, `profile_document_history`; only a pending applicant deletes proof. | Admin → Accounts shows '—' and can't save a note until it is applied. |
+| `20261008194000_strip_signup_metadata.sql` | PR #12: the signup trigger strips EIN, license, resale certificate, phone and volume from auth metadata. | Only new signups; `20261009140000` strips older accounts. |
+| `20261008195000_application_consent.sql` | PR #12: `terms_accepted_at`, `terms_version`, `age_confirmed_at`, copied at signup; the address and consent keys are stripped too. | Until applied, consent stays in auth metadata; `20261009140000` moves it for accounts made meanwhile. |
+| `20261009100000_price_boundary.sql` | `products.price` becomes nullable and unreadable to guests and signed-in accounts (column privileges); approved buyers' prices come from `my_prices()`, admins' from `admin_product_prices()`; the order trigger rounds with `tier_unit_price()`; `pricing_tiers` is readable by admins and approved buyers only; `profiles.pricing_tier` is a foreign key to `pricing_tiers`. The prices already stored are not changed. | Apply before the new seed (the seed has no price column). The frontend deployed before it reads `select=*`, which is now refused: it falls back to the catalog bundled with it, with a "couldn't load the latest catalog" notice, until the new frontend is deployed, so deploy right after. The new frontend also works before this migration (when `my_prices()` is missing it reads the prices the old way). |
+| `20261009110000_variant_model.sql` | Adds `products.variant_axis` and `products.unavailable_variants` (readable by everyone), the private `product_variant_prices` table and `order_items.sell_unit`; recreates the order trigger (variant prices, unavailable variants refused with hint `variant_unavailable`, no variant kept on a product without variants, the sell unit saved with the line), `my_prices()` and `admin_product_prices()` (per-variant prices); drops `products.flavors`; fills the variant axis, the sell units the catalog states and 20 corrected descriptions on existing rows, only where nobody has set them (see "Variants, availability and sell units"). | Apply after `20261009100000` and before the new seed (the seed has `variant_axis` and no `flavors`). The frontend deployed before `20261009100000` is unaffected beyond what that migration already did. The new frontend also works before this migration: it reads the columns every database has, takes the axis and sell units from its bundled catalog, and treats every variant as available at its product's price. |
+| `20261009120000_catalog_corrections.sql` | Data only: completes 86 SKUs (cut at 17 characters, a trailing hyphen, misspelled, or #329's bare `AW-RAW`), corrects the variant labels of 33 products (spelled-out sizes, fixed spellings, #62's merged flavor split, one-item non-choices removed, #60's profanity starred out), their descriptions, #354's name and #123/#124's sell unit; renames the matching `product_variant_prices` rows and `unavailable_variants` entries. Each row changes only while it still has the value the seed wrote, so admin edits are kept (see "Changing a SKU or a variant label"). | Apply after `20261009110000` and before the new seed. The new frontend also works before it (its aliases read the old codes and labels). Deploy the new frontend right after: the frontend deployed before it doesn't know the new labels, and a quote it sends with a renamed variant is refused ("Unknown variant"). Stored carts, Quick Reorder codes and order history keep working with the new frontend. |
+| `20261009130000_submit_quote_v3.sql` | Recreates `submit_quote` without `p_ref_num` and with the license answers last (`p_license_no`, `p_resale_cert`, `p_purchasers_21`, with defaults): the server makes the reference (`ALW-Q-`/`ALW-O-` and 10 hex digits), checks lengths, email, ZIP, state, route state and date, throttles (new private table `quote_throttle`), refuses suspended accounts, needs an address only for delivery, and keeps PR #12's license rule and columns; every refusal has a typed hint. Turns PR #12's 16-argument function into a wrapper and brings back the 13-argument one as a wrapper; both ignore `p_ref_num` (see "Quotes and orders"). | Apply after `20261009120000`, before the new frontend. Frontends deployed before it keep working through the wrappers (their reference is ignored; a will-call quote sends the address they always required; the 13-argument call has no license answers, so its guest tobacco and vape quotes are refused, as `20261008190000` intends). The new frontend also works before it: it falls back to the 16-argument call, then the 13-argument one, with a long random reference and the warehouse address for will-call. **Later step:** drop the wrappers (below). |
+| `20261009140000_profile_and_document_boundaries.sql` | `is_admin()` requires an approved admin; Cursor's self-update guard keeps every column but name, phone and store address in a customer's own update, and refuses an admin's change to their own role or status, the consent or approval records, or a made-up email; `profiles.email` follows the sign-in email (a trigger on `auth.users`, and existing rows are realigned); new table `profile_admin_notes` (internal notes, admins only) and an index for `profile_status_log`; accounts from before `20261008194000` get their metadata answers, store address and consent copied to the profile (`backfill_profiles_from_metadata()`, run once) and the keys stripped; license rows and files must sit at `{user id}/{type}/{file}`, with at most 10 uploads per account in 24 hours. | Apply after `20261009130000`, before the new frontend. Before running it, check with `select id, email, status from public.profiles where role = 'admin';` that every real admin is `approved`: the others lose admin rights. The frontend deployed before it keeps working (its admins must be approved). The new frontend also works before it: the store address and consent stay in auth metadata until this migration moves them, Admin → Accounts shows '—' for the missing columns, and the document paths it uploads already match the layout. Then run `supabase/seed/provision_owner.sql`'s admin list once. |
 
 ### Later steps
 
-- **Drop the old `submit_quote` signature** (after
-  `20260928123000_submit_quote_v2.sql`). Once the frontend that calls the new
-  signature has been live for a few days, so no open tab still runs the one
-  before it, run in the SQL editor:
+- **Drop the old `submit_quote` signatures** (after
+  `20261009130000_submit_quote_v3.sql`). Once the frontend that calls the
+  current signature has been live for a few days, so no open tab still runs
+  an older one, run in the SQL editor:
 
   ```sql
   drop function if exists public.submit_quote(text, text, text, text, text, text, date, text, text, text, text, text, jsonb);
+  drop function if exists public.submit_quote(text, text, text, text, text, text, date, text, text, text, text, text, jsonb, text, text, boolean);
   ```
 
-  In the same change, the new frontend's fallback to that signature (for a
-  database without the migration: `legacyQuoteParams` and the retry in
+  In the same change, the frontend's fallbacks to those signatures
+  (`licensedQuoteParams`, `legacyQuoteParams` and the signature chain in
   `submitOrder`, `src/lib/orders.js`) can go.
-

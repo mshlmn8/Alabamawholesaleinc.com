@@ -1,8 +1,17 @@
--- submit_quote v2 (AW-049, AW-198, AW-201, AW-079, AW-014): one rewrite of
--- the quote function, as plan/conflicts.md asks, recreated from the
--- 20260925120000 definition. Lines are still priced, and variants still
--- checked, by the order_items trigger (20260928121000).
+-- submit_quote v3 (AW-049, AW-198, AW-201, AW-079, AW-014): one rewrite of
+-- the quote function, as plan/conflicts.md asks, built on the definition in
+-- 20261008190000_quote_tobacco_license.sql (Cursor's PR #12). Lines are
+-- still named, priced and checked by the order_items trigger
+-- (20261009110000).
 --
+--   AW-014  kept exactly as 20261008190000 has it: a quote with a tobacco
+--           line (cat TOBACCO) or a vape line (sub Disposable Vapes or Vape
+--           Pods) from a guest or an account that isn't approved must name a
+--           tobacco license and a resale certificate and confirm purchasers
+--           are 21+; the answers are stored in orders.license_no,
+--           resale_cert_no and purchasers_21 (columns from 20261008190000).
+--           cartNeedsTobaccoLicense in src/lib/regulated.js is the same rule
+--           (src/lib/regulated.test.js reads it from this file).
 --   AW-049  the reference number is made here, from 40 random bits
 --           ('ALW-Q-' for a quote, 'ALW-O-' for an approved buyer's order),
 --           and returned; a caller can no longer choose or pre-claim one
@@ -12,9 +21,6 @@
 --   AW-201  a suspended account can't submit
 --   AW-079  a ship-to address is required only for delivery; will-call
 --           stores the fields it was given, or null
---   AW-014  the store's tobacco/retail license, resale certificate and
---           attestation are stored with the quote; requiring them for
---           guests' tobacco and novelty lines waits on the owner
 --
 -- Errors carry a typed hint (raise ... using hint = '...'), which the
 -- storefront maps to its own text (quoteErrorMessage in src/lib/orders.js):
@@ -23,32 +29,30 @@
 --   invalid_zip, invalid_state, delivery_state, past_date, license_required,
 --   rate_limited, ref_unavailable
 --
--- Deliberate deviation from conflicts.md ("drops the 13-argument function"):
--- the 13-argument submit_quote(p_ref_num, …) stays, as a thin wrapper that
--- ignores p_ref_num and calls the new function. The frontend deployed before
--- this migration still sends p_ref_num; without the wrapper every quote from
--- it would fail between this migration and the new frontend's deploy. The
--- wrapper can't choose a reference either. PostgREST picks the overload by
--- the argument names in the request (only the wrapper has p_ref_num, and it
--- has no license arguments), so the two never both match. Dropping the
--- wrapper is a later step in BACKEND.md's release checklist.
+-- Signatures. The new function has no p_ref_num and takes the license
+-- answers last, with defaults (15 arguments). The two signatures earlier
+-- frontends call stay as thin wrappers that IGNORE p_ref_num and run the new
+-- function, so the license rule, the checks and the server reference apply
+-- to them too:
+--   16 arguments (p_ref_num … p_license_no, p_resale_cert, p_purchasers_21),
+--      20261008190000's function, now a wrapper: the frontend built with PR
+--      #12 calls it;
+--   13 arguments (p_ref_num … p_items), which 20261008190000 dropped, back as
+--      a wrapper: the frontend deployed before PR #12 calls it (its tobacco
+--      and vape quotes from guests are refused, as 20261008190000 intends).
+-- PostgREST picks the function by the argument names in the request: only
+-- the wrappers have p_ref_num, and only the 16-argument one also has the
+-- license names, so a request matches one signature. Dropping the wrappers
+-- is a later step in BACKEND.md's release checklist.
 --
--- Release order: after 20260928122000, before the new frontend. The new
--- frontend also works before this migration: when the new signature is
--- missing (PGRST202) it calls the old one with a long random reference, and
--- sends the warehouse address for will-call.
+-- Release order: after 20261009120000, before the new frontend. The new
+-- frontend also works before this migration: when the 15-argument call is
+-- missing (PGRST202) it sends the 16-argument call, then the 13-argument
+-- one, with a long random reference and, for will-call, the warehouse
+-- address (src/lib/orders.js).
 
 -- ---------------------------------------------------------------------------
--- (a) The license details a quote was sent with (AW-014). Admins read them
--- with the order; the buyer's own read-back (orders_self_read) includes them.
--- ---------------------------------------------------------------------------
-alter table public.orders
-  add column if not exists license_no text,
-  add column if not exists resale_cert_no text,
-  add column if not exists license_attested_at timestamptz;
-
--- ---------------------------------------------------------------------------
--- (b) Recent quotes per caller, for the throttle (AW-198). A key is the
+-- (a) Recent quotes per caller, for the throttle (AW-198). A key is the
 -- SHA-256 hex digest of the account id, or of the guest's address and email,
 -- or of the guest's address alone, so the table holds no personal data in
 -- the clear. Rows older than a day are deleted by submit_quote itself. Only
@@ -71,8 +75,7 @@ revoke all on public.quote_throttle from public, anon, authenticated;
 grant all on public.quote_throttle to service_role;
 
 -- ---------------------------------------------------------------------------
--- (c) The new submit_quote. No p_ref_num; three license arguments with
--- defaults at the end. Returns
+-- (b) The new submit_quote. Returns
 --   { id, ref_num, kind: 'order' | 'quote', total_units, subtotal,
 --     priced_lines, unpriced_lines }
 -- where subtotal is the sum of the priced lines, or null when none is priced.
@@ -91,8 +94,8 @@ create or replace function public.submit_quote(
   p_ship_zip text,
   p_items jsonb,
   p_license_no text default null,
-  p_resale_cert_no text default null,
-  p_license_attested boolean default false
+  p_resale_cert text default null,
+  p_purchasers_21 boolean default false
 )
 returns jsonb
 language plpgsql
@@ -102,14 +105,11 @@ as $$
 declare
   -- TODO(owner): confirm route states: do the delivery routes cover exactly Alabama, Mississippi and Georgia, as the site says? DELIVERY_ROUTE_STATES in src/data/quoteRules.js must match. (AW-198)
   v_route_states text[] := array['AL', 'MS', 'GA'];
-  -- TODO(owner): Should a guest (or an account that isn't approved yet) have to give the store's tobacco/retail license number, resale certificate number and the attestation to quote tobacco or novelty items, or should those carts require signing in as an approved buyer? Until you decide, the details are optional and only stored; true requires all three. LICENSE_FIELDS_FOR_GUESTS in src/data/quoteRules.js is the storefront's side of this switch. (AW-014)
-  v_require_license boolean := false;
-  -- TODO(owner): Which departments count as age-restricted for the license rule? AGE_RESTRICTED_DEPARTMENTS in src/data/quoteRules.js must match. (AW-014)
-  v_restricted_departments text[] := array['TOBACCO', 'NOVELTIES'];
 
   v_uid uuid := auth.uid();
   v_status text;
   v_approved boolean := false;
+  v_restricted boolean := false;
   v_business text := btrim(coalesce(p_business, ''));
   v_contact text := btrim(coalesce(p_contact, ''));
   v_email text := btrim(coalesce(p_email, ''));
@@ -120,8 +120,8 @@ declare
   v_state text := nullif(upper(btrim(coalesce(p_ship_state, ''))), '');
   v_zip text := nullif(btrim(coalesce(p_ship_zip, '')), '');
   v_license text := nullif(btrim(coalesce(p_license_no, '')), '');
-  v_resale text := nullif(btrim(coalesce(p_resale_cert_no, '')), '');
-  v_attested boolean := coalesce(p_license_attested, false);
+  v_resale text := nullif(btrim(coalesce(p_resale_cert, '')), '');
+  v_adults boolean := coalesce(p_purchasers_21, false);
 
   v_headers json;
   v_ip text;
@@ -146,7 +146,7 @@ begin
     v_approved := coalesce(v_status = 'approved', false);
   end if;
 
-  -- The checks the 20260925120000 version made, now with hints.
+  -- The checks 20261008190000 made, now with hints.
   if p_delivery is null or p_delivery not in ('delivery', 'willcall') then
     raise exception using message = 'Invalid delivery method', hint = 'invalid_delivery';
   end if;
@@ -161,7 +161,7 @@ begin
   end if;
 
   -- AW-198 (a): lengths, as the storefront's maxLength attributes; the
-  -- license details (AW-014) are 64 characters at most.
+  -- license answers (AW-014) are 64 characters at most.
   if length(v_business) > 200 or length(v_contact) > 120 or length(v_email) > 254
      or length(v_phone) > 40 or length(coalesce(v_notes, '')) > 2000
      or length(coalesce(v_street, '')) > 200 or length(coalesce(v_city, '')) > 100
@@ -203,18 +203,20 @@ begin
     raise exception using message = 'Choose a date from today on', hint = 'past_date';
   end if;
 
-  -- AW-014: once the owner requires it, a caller who isn't an approved buyer
-  -- needs all three license details for a cart with a restricted line.
-  if v_require_license and not v_approved
-     and (v_license is null or v_resale is null or not v_attested)
-     and exists (
-       select 1
-       from jsonb_array_elements(p_items) as i(item)
-       join public.products p on p.id = (i.item->>'product_id')::integer
-       where p.cat = any (v_restricted_departments)
-     ) then
+  -- AW-014, unchanged from 20261008190000: tobacco and vape lines from a
+  -- guest or an unapproved account need all three answers. Approved buyers
+  -- were checked when they applied.
+  select exists (
+    select 1
+    from jsonb_array_elements(p_items) as item
+    join public.products pr on pr.id = (item->>'product_id')::integer
+    where pr.cat = 'TOBACCO'
+       or pr.sub in ('Disposable Vapes', 'Vape Pods')
+  ) into v_restricted;
+  if v_restricted and not v_approved
+     and (v_license is null or v_resale is null or v_adults is not true) then
     raise exception using
-      message = 'A tobacco/retail license number, a resale certificate number and the attestation are required',
+      message = 'A tobacco license, resale certificate, and 21+ confirmation are required',
       hint = 'license_required';
   end if;
 
@@ -273,11 +275,11 @@ begin
       insert into public.orders (
         ref_num, business, contact, email, phone, delivery, preferred_date, notes,
         ship_street, ship_city, ship_state, ship_zip,
-        license_no, resale_cert_no, license_attested_at
+        license_no, resale_cert_no, purchasers_21
       ) values (
         v_ref, v_business, v_contact, v_email, v_phone, p_delivery, p_preferred_date, v_notes,
         v_street, v_city, v_state, v_zip,
-        v_license, v_resale, case when v_attested then now() end
+        v_license, v_resale, v_adults
       ) returning id into v_order_id;
       exit;
     exception when unique_violation then
@@ -287,7 +289,7 @@ begin
     end;
   end loop;
 
-  -- The trigger names, prices and checks each line (20260928121000).
+  -- The trigger names, prices and checks each line (20261009110000).
   for v_item in select value from jsonb_array_elements(p_items)
   loop
     insert into public.order_items (order_id, product_id, product_name, sku, variant, qty)
@@ -330,12 +332,60 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- (d) The 13-argument signature the frontend deployed before this migration
--- calls. It keeps its name and arguments, IGNORES p_ref_num and runs the new
--- function, so old clients keep working through the deploy gap and still
--- can't choose a reference. Security invoker: the new function does the
--- privileged work. Drop it once no visitor runs the old frontend (BACKEND.md,
--- release checklist).
+-- (c) 20261008190000's 16-argument signature, which the frontend built with
+-- PR #12 calls. Same name and arguments; it now IGNORES p_ref_num and runs
+-- the new function. Security invoker: the new function does the privileged
+-- work.
+-- ---------------------------------------------------------------------------
+create or replace function public.submit_quote(
+  p_ref_num text,
+  p_business text,
+  p_contact text,
+  p_email text,
+  p_phone text,
+  p_delivery text,
+  p_preferred_date date,
+  p_notes text,
+  p_ship_street text,
+  p_ship_city text,
+  p_ship_state text,
+  p_ship_zip text,
+  p_items jsonb,
+  p_license_no text,
+  p_resale_cert text,
+  p_purchasers_21 boolean
+)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  return public.submit_quote(
+    p_business => p_business,
+    p_contact => p_contact,
+    p_email => p_email,
+    p_phone => p_phone,
+    p_delivery => p_delivery,
+    p_preferred_date => p_preferred_date,
+    p_notes => p_notes,
+    p_ship_street => p_ship_street,
+    p_ship_city => p_ship_city,
+    p_ship_state => p_ship_state,
+    p_ship_zip => p_ship_zip,
+    p_items => p_items,
+    p_license_no => p_license_no,
+    p_resale_cert => p_resale_cert,
+    p_purchasers_21 => p_purchasers_21
+  );
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- (d) The 13-argument signature the frontend deployed before PR #12 calls,
+-- back as a wrapper (20261008190000 dropped the function). It IGNORES
+-- p_ref_num and sends no license answers, so the new function refuses its
+-- tobacco and vape quotes from guests and unapproved accounts.
 -- ---------------------------------------------------------------------------
 create or replace function public.submit_quote(
   p_ref_num text,
@@ -376,10 +426,13 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- (e) Grants: both signatures, for guests and signed-in accounts.
+-- (e) Grants: all three signatures, for guests and signed-in accounts.
 -- ---------------------------------------------------------------------------
 revoke all on function public.submit_quote(text, text, text, text, text, date, text, text, text, text, text, jsonb, text, text, boolean) from public;
 grant execute on function public.submit_quote(text, text, text, text, text, date, text, text, text, text, text, jsonb, text, text, boolean) to anon, authenticated, service_role;
+
+revoke all on function public.submit_quote(text, text, text, text, text, text, date, text, text, text, text, text, jsonb, text, text, boolean) from public;
+grant execute on function public.submit_quote(text, text, text, text, text, text, date, text, text, text, text, text, jsonb, text, text, boolean) to anon, authenticated, service_role;
 
 revoke all on function public.submit_quote(text, text, text, text, text, text, date, text, text, text, text, text, jsonb) from public;
 grant execute on function public.submit_quote(text, text, text, text, text, text, date, text, text, text, text, text, jsonb) to anon, authenticated, service_role;
@@ -387,17 +440,10 @@ grant execute on function public.submit_quote(text, text, text, text, text, text
 -- ---------------------------------------------------------------------------
 -- (f) Reverse (AW-213). Not run; copy into the SQL editor to undo this
 -- migration. The new frontend keeps working after it (it falls back to the
--- 13-argument call); a frontend older than that needs nothing either. Orders
--- saved meanwhile keep their references; their license details go with the
--- columns.
+-- 16-argument call). Orders saved meanwhile keep their references.
 --
+-- drop function if exists public.submit_quote(text, text, text, text, text, text, date, text, text, text, text, text, jsonb);
 -- drop function if exists public.submit_quote(text, text, text, text, text, date, text, text, text, text, text, jsonb, text, text, boolean);
--- create or replace function public.submit_quote(p_ref_num text, …) … -- the
---   20260925120000 definition (security definer, inserts p_ref_num)
--- revoke all on function public.submit_quote(text, text, text, text, text, text, date, text, text, text, text, text, jsonb) from public;
--- grant execute on function public.submit_quote(text, text, text, text, text, text, date, text, text, text, text, text, jsonb) to anon, authenticated;
+-- create or replace function public.submit_quote(p_ref_num text, …, p_purchasers_21 boolean) … -- the
+--   20261008190000 definition (security definer, inserts p_ref_num)
 -- drop table if exists public.quote_throttle;
--- alter table public.orders
---   drop column if exists license_attested_at,
---   drop column if exists resale_cert_no,
---   drop column if exists license_no;

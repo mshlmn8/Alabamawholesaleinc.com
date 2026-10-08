@@ -1,7 +1,7 @@
 -- Signup creates a pending customer; users see and edit only their own
--- profile and cannot promote themselves. Since 20260928124000 a customer may
--- change only name, phone and store address (the rest raises
--- insufficient_privilege from the profiles_guard trigger; see 08).
+-- profile and cannot promote themselves. Since 20261008192000 (extended in
+-- 20261009140000) a trigger keeps every column but name, phone and the store
+-- address as it was in a customer's own update; see 10 and 08.
 insert into auth.users (id, email, raw_user_meta_data) values
   ('00000000-0000-4000-8000-0000000002a1', 'a@example.com', '{"name": "Buyer A", "business": "Store A", "license_no": "L-A", "ein": "E-A"}'),
   ('00000000-0000-4000-8000-0000000002b1', 'b@example.com', '{"name": "Buyer B"}'),

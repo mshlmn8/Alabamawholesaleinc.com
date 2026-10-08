@@ -28,7 +28,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(ROOT, 'supabase/seed/products.sql');
 
 // No price: prices live only in the database (see BACKEND.md, "How pricing
-// tiers work"). No flavors count: 20260928121000_variant_model.sql drops the
+// tiers work"). No flavors count: 20261009110000_variant_model.sql drops the
 // column (AW-332). unavailable_variants keeps its database default ([]).
 const COLUMNS = ['id', 'name', 'brand', 'cat', 'sub', 'sku', 'variants', 'variant_axis', 'img', 'tag', 'active', 'description', 'sell_unit'];
 
@@ -92,7 +92,7 @@ const sql = [
   '-- row starts with a null price, which the storefront shows as "Price on request".',
   '--',
   '-- Needs supabase/migrations/20260927120000_product_copy.sql (description, sell_unit),',
-  '-- 20260928120000_price_boundary.sql (price nullable) and 20260928121000_variant_model.sql',
+  '-- 20261009100000_price_boundary.sql (price nullable) and 20261009110000_variant_model.sql',
   '-- (variant_axis; no flavors column). Postgres checks NOT NULL before ON CONFLICT, so on a',
   '-- database without the price-boundary migration every row fails, including ids that',
   '-- already exist.',

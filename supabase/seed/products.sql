@@ -11,7 +11,7 @@
 -- row starts with a null price, which the storefront shows as "Price on request".
 --
 -- Needs supabase/migrations/20260927120000_product_copy.sql (description, sell_unit),
--- 20260928120000_price_boundary.sql (price nullable) and 20260928121000_variant_model.sql
+-- 20261009100000_price_boundary.sql (price nullable) and 20261009110000_variant_model.sql
 -- (variant_axis; no flavors column). Postgres checks NOT NULL before ON CONFLICT, so on a
 -- database without the price-boundary migration every row fails, including ids that
 -- already exist.

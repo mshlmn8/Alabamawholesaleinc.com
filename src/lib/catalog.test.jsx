@@ -143,7 +143,7 @@ describe('loadCatalog', () => {
     expect(list(CATALOG_BASE_COLUMNS)).toEqual(expect.arrayContaining(['variants', 'sell_unit', 'description']));
     for (const columns of CATALOG_COLUMN_FALLBACKS) expect(list(columns)).not.toContain('flavors');
     for (const columns of [CATALOG_COLUMNS, CATALOG_BASE_COLUMNS]) expect(list(columns)).not.toContain('price');
-    // The live database before 20260928121000: no variant_axis yet.
+    // The live database before 20261009110000: no variant_axis yet.
     const missing = { data: null, error: { message: 'column products.variant_axis does not exist', code: '42703' } };
     const old = fakeClient({ respond: (q, n, serve) => (q.columns === CATALOG_COLUMNS ? missing : serve(q)) });
     const result = await loadCatalog(old);
@@ -184,7 +184,7 @@ describe('hydrateProducts', () => {
     const [own, fallback, old] = hydrateProducts([
       row(bundled.id, { variant_axis: 'Flavor', unavailable_variants: ['Big'] }),
       row(bundled.id, { variant_axis: null, unavailable_variants: null }),
-      // select('*') on a database from before 20260928121000.
+      // select('*') on a database from before 20261009110000.
       { ...row(bundled.id), variant_axis: undefined, unavailable_variants: undefined, flavors: 2 },
     ]);
     expect(own).toMatchObject({ variantAxis: 'Flavor', unavailableVariants: ['Big'] });

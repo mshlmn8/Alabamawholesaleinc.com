@@ -2,7 +2,7 @@
 // in Supabase: guests and signed-in accounts cannot read products.price, and
 // nothing in the site's bundle carries a price. An approved buyer's prices
 // come from one database function, my_prices() (supabase/migrations/
-// 20260928120000_price_boundary.sql), which applies the buyer's tier on the
+// 20261009100000_price_boundary.sql), which applies the buyer's tier on the
 // server and rounds each unit price to cents exactly as the order trigger
 // does. This module is the adapter over it; src/lib/prices.jsx loads it for
 // the signed-in account (usePrices()).
@@ -13,7 +13,7 @@
 import { formatMoney } from './format.js';
 import { variantSlug } from './lines.js';
 
-// "No such function": the live database before 20260928120000 has no
+// "No such function": the live database before 20261009100000 has no
 // my_prices(). PostgREST answers PGRST202; Postgres itself says 42883.
 export const MISSING_FUNCTION_CODES = ['PGRST202', '42883'];
 
@@ -110,7 +110,7 @@ export function variantPriceRange(units) {
   return { unit: fromCents(low), from: !same };
 }
 
-// The live database before 20260928120000 has no my_prices(), and there the
+// The live database before 20261009100000 has no my_prices(), and there the
 // price column and pricing_tiers are still readable, so the same prices are
 // worked out here from them and the account's tier. Remove this path once
 // that migration is applied everywhere.

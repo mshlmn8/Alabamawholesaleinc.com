@@ -1,10 +1,11 @@
--- submit_quote v2 (20260928123000; AW-049, AW-198, AW-201, AW-079, AW-014).
+-- submit_quote v3 (20261009130000; AW-049, AW-198, AW-201, AW-079, AW-014).
 -- Server-made references, the typed error hints, will-call without an
--- address, suspended accounts, the throttle, the legacy 13-argument wrapper,
--- the stored license details and the owner's license switch. Test accounts
--- ...0007a1/b1/c1, test products 90701 (TOBACCO, synthetic price) and 90702
--- (CANDIES, no price) and every order below are removed at the end. The
--- throttle is cleared as the superuser before each block.
+-- address, suspended accounts, the throttle, the 16- and 13-argument
+-- wrappers, and PR #12's license rule with its hint (09 covers the rule in
+-- full). Test accounts ...0007a1/b1/c1, test products 90701 (TOBACCO,
+-- synthetic price) and 90702 (CANDIES, no price) and every order below are
+-- removed at the end. The throttle is cleared as the superuser before each
+-- block. Quotes use the candy product unless a test is about tobacco.
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('00000000-0000-4000-8000-0000000007a1', 'p7-pending@example.com', '{"name": "P7 Pending"}'),
@@ -27,16 +28,16 @@ create or replace function pg_temp.q(
   zip text default '35203',
   pdate date default null,
   business text default 'P7 Store',
-  items jsonb default '[{"product_id": 90701, "qty": 2}]',
+  items jsonb default '[{"product_id": 90702, "qty": 2}]',
   license text default null,
   resale text default null,
-  attested boolean default false
+  adults boolean default false
 ) returns jsonb language sql as $$
   select public.submit_quote(
     p_business => business, p_contact => 'P7 Contact', p_email => email, p_phone => '205-555-0107',
     p_delivery => delivery, p_preferred_date => pdate, p_notes => null,
     p_ship_street => street, p_ship_city => city, p_ship_state => state, p_ship_zip => zip,
-    p_items => items, p_license_no => license, p_resale_cert_no => resale, p_license_attested => attested);
+    p_items => items, p_license_no => license, p_resale_cert => resale, p_purchasers_21 => adults);
 $$;
 
 -- The hint a statement fails with, or null when it succeeds.
@@ -140,7 +141,6 @@ select test_anon();
 do $$ begin
   assert pg_temp.hint_of($s$select pg_temp.q(business => repeat('x', 201))$s$) = 'field_too_long', 'a 201-character business name';
   assert pg_temp.hint_of($s$select pg_temp.q(street => repeat('x', 201))$s$) = 'field_too_long', 'a 201-character street';
-  assert pg_temp.hint_of($s$select pg_temp.q(license => repeat('x', 65))$s$) = 'field_too_long', 'a 65-character license number';
   assert pg_temp.hint_of($s$select pg_temp.q(email => 'not-an-email')$s$) = 'invalid_email', 'an email without @';
   assert pg_temp.hint_of($s$select pg_temp.q(email => 'a b@example.com')$s$) = 'invalid_email', 'an email with a space';
   assert pg_temp.hint_of($s$select pg_temp.q(zip => '3520')$s$) = 'invalid_zip', 'a four-digit ZIP';
@@ -269,8 +269,10 @@ end $$;
 select test_reset();
 
 -- ---------------------------------------------------------------------------
--- The legacy 13-argument call (the frontend deployed before this migration)
--- still works and ignores its p_ref_num, also when it repeats one.
+-- The 13- and 16-argument calls (the frontends deployed before this
+-- migration) still work, ignore their p_ref_num, also when it repeats, and
+-- get the same checks: the 13-argument one has no license answers, so its
+-- guest tobacco quotes are refused.
 -- ---------------------------------------------------------------------------
 delete from public.quote_throttle;
 select test_anon();
@@ -282,16 +284,36 @@ begin
       p_ref_num => 'T-P7-LEGACY', p_business => 'P7 Store', p_contact => 'P7 Contact', p_email => 'p7-legacy@example.com',
       p_phone => '205-555-0107', p_delivery => 'willcall', p_preferred_date => null, p_notes => null,
       p_ship_street => '613 Graymont Ave N', p_ship_city => 'Birmingham', p_ship_state => 'AL', p_ship_zip => '35203',
-      p_items => '[{"product_id": 90701, "qty": 1}]');
+      p_items => '[{"product_id": 90702, "qty": 1}]');
+    assert r->>'ref_num' ~ '^ALW-Q-[0-9A-F]{10}$', r->>'ref_num';
+    r := public.submit_quote(
+      p_ref_num => 'T-P7-LICENSED', p_business => 'P7 Store', p_contact => 'P7 Contact', p_email => 'p7-licensed@example.com',
+      p_phone => '205-555-0107', p_delivery => 'delivery', p_preferred_date => null, p_notes => null,
+      p_ship_street => '1 Test Way', p_ship_city => 'Birmingham', p_ship_state => 'AL', p_ship_zip => '35203',
+      p_items => '[{"product_id": 90701, "qty": 1}]', p_license_no => ' TL-16 ', p_resale_cert => 'RS-16', p_purchasers_21 => true);
     assert r->>'ref_num' ~ '^ALW-Q-[0-9A-F]{10}$', r->>'ref_num';
   end loop;
+  assert pg_temp.hint_of($s$select public.submit_quote('T-P7-OLD', 'P7 Store', 'P7 Contact', 'p7-old@example.com', '205-555-0107', 'delivery', null, null,
+    '1 Test Way', 'Birmingham', 'AL', '35203', '[{"product_id": 90701, "qty": 1}]'::jsonb)$s$) = 'license_required',
+    'a guest tobacco quote through the 13-argument call is refused';
+  assert pg_temp.hint_of($s$select public.submit_quote('T-P7-OLD', 'P7 Store', 'P7 Contact', 'p7-old@example.com', '205-555-0107', 'delivery', null, null,
+    '1 Test Way', 'Birmingham', 'TN', '35203', '[{"product_id": 90702, "qty": 1}]'::jsonb)$s$) = 'delivery_state',
+    'the 13-argument call gets the new checks';
 end $$;
 select test_reset();
 do $$ begin
-  assert not exists (select 1 from public.orders where ref_num = 'T-P7-LEGACY'), 'the client reference is ignored';
+  assert not exists (select 1 from public.orders where ref_num in ('T-P7-LEGACY', 'T-P7-LICENSED')), 'the client reference is ignored';
   assert (select count(*) from public.orders where email = 'p7-legacy@example.com') = 2, 'a repeated client reference is no conflict';
+  assert (select count(*) from public.orders where email = 'p7-licensed@example.com'
+            and license_no = 'TL-16' and resale_cert_no = 'RS-16' and purchasers_21) = 2, 'the 16-argument call stores the answers, trimmed';
+  assert (select count(*) from pg_proc where proname = 'submit_quote' and pronamespace = 'public'::regnamespace) = 3,
+    'the new function and the two wrappers';
+  assert (select count(*) from pg_proc where proname = 'submit_quote' and pronamespace = 'public'::regnamespace and prosecdef) = 1,
+    'only the new function is security definer';
   assert has_function_privilege('anon', 'public.submit_quote(text, text, text, text, text, text, date, text, text, text, text, text, jsonb)', 'execute'),
-    'guests can call the legacy signature';
+    'guests can call the 13-argument signature';
+  assert has_function_privilege('anon', 'public.submit_quote(text, text, text, text, text, text, date, text, text, text, text, text, jsonb, text, text, boolean)', 'execute'),
+    'guests can call the 16-argument signature';
   assert has_function_privilege('anon', 'public.submit_quote(text, text, text, text, text, date, text, text, text, text, text, jsonb, text, text, boolean)', 'execute'),
     'guests can call the new signature';
   assert has_function_privilege('authenticated', 'public.submit_quote(text, text, text, text, text, date, text, text, text, text, text, jsonb, text, text, boolean)', 'execute'),
@@ -299,57 +321,32 @@ do $$ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- AW-014: the license details are stored, trimmed; the attestation as a time.
+-- AW-014: PR #12's rule, now with a hint. A guest's tobacco line needs all
+-- three answers; approved buyers and carts without restricted lines need
+-- none (09 covers the rest).
 -- ---------------------------------------------------------------------------
 delete from public.quote_throttle;
 select test_anon();
 do $$
-declare r jsonb;
+declare
+  msg text;
+  h text;
 begin
-  r := pg_temp.q(email => 'p7-license@example.com', license => '  TL-0001  ', resale => 'RS-0002 ', attested => true);
-  perform set_config('test.p7_license', r->>'id', false);
-  r := pg_temp.q(email => 'p7-nolicense@example.com', license => '', resale => null);
-  perform set_config('test.p7_nolicense', r->>'id', false);
+  begin
+    perform pg_temp.q(email => 'p7-req-1@example.com', items => '[{"product_id": 90701, "qty": 1}]');
+  exception when raise_exception then
+    get stacked diagnostics msg = message_text, h = pg_exception_hint;
+  end;
+  assert h = 'license_required', coalesce(h, 'a guest tobacco quote without answers was saved');
+  assert msg = 'A tobacco license, resale certificate, and 21+ confirmation are required', msg;
+  assert pg_temp.hint_of($s$select pg_temp.q(email => 'p7-req-1@example.com', items => '[{"product_id": 90701, "qty": 1}]', license => 'TL-1', resale => 'RS-1')$s$)
+    = 'license_required', 'and the 21+ confirmation';
+  assert pg_temp.hint_of($s$select pg_temp.q(email => 'p7-req-1@example.com', items => '[{"product_id": 90701, "qty": 1}]', license => 'TL-1', resale => 'RS-1', adults => true)$s$)
+    is null, 'all three pass';
+  assert pg_temp.hint_of($s$select pg_temp.q(email => 'p7-req-2@example.com')$s$) is null, 'a cart without restricted lines needs none';
+  assert pg_temp.hint_of($s$select pg_temp.q(email => 'p7-req-2@example.com', license => repeat('x', 65))$s$) = 'field_too_long', 'a 65-character license number';
 end $$;
 select test_reset();
-do $$ begin
-  assert (select license_no = 'TL-0001' and resale_cert_no = 'RS-0002' and license_attested_at is not null
-          from public.orders where id = current_setting('test.p7_license')::uuid), 'license details are stored';
-  assert (select license_no is null and resale_cert_no is null and license_attested_at is null
-          from public.orders where id = current_setting('test.p7_nolicense')::uuid), 'no details, nulls';
-end $$;
-
--- The owner's switch (v_require_license): with it on, a caller who isn't an
--- approved buyer needs all three details for a tobacco or novelty line. The
--- function is recreated with the switch on, then put back.
-select set_config('test.p7_def', pg_get_functiondef(
-  'public.submit_quote(text, text, text, text, text, date, text, text, text, text, text, jsonb, text, text, boolean)'::regprocedure), false);
-do $$ begin
-  assert position('v_require_license boolean := false;' in current_setting('test.p7_def')) > 0, 'the switch ships off';
-  execute replace(current_setting('test.p7_def'), 'v_require_license boolean := false;', 'v_require_license boolean := true;');
-end $$;
-delete from public.quote_throttle;
-select test_anon();
-do $$ begin
-  assert pg_temp.hint_of($s$select pg_temp.q(email => 'p7-req-1@example.com')$s$) = 'license_required', 'a tobacco line needs the details';
-  assert pg_temp.hint_of($s$select pg_temp.q(email => 'p7-req-1@example.com', license => 'TL-1', resale => 'RS-1')$s$) = 'license_required', 'and the attestation';
-  assert pg_temp.hint_of($s$select pg_temp.q(email => 'p7-req-1@example.com', license => 'TL-1', resale => 'RS-1', attested => true)$s$) is null, 'all three pass';
-  assert pg_temp.hint_of($s$select pg_temp.q(email => 'p7-req-2@example.com', items => '[{"product_id": 90702, "qty": 1}]')$s$) is null, 'a cart without restricted lines needs none';
-end $$;
-select test_reset();
-select test_login('00000000-0000-4000-8000-0000000007b1');
-do $$ begin
-  assert pg_temp.hint_of($s$select pg_temp.q(email => 'p7-approved@example.com')$s$) is null, 'an approved buyer needs none';
-end $$;
-select test_reset();
-do $$ begin
-  execute current_setting('test.p7_def');
-  assert position('v_require_license boolean := false;' in pg_get_functiondef(
-    'public.submit_quote(text, text, text, text, text, date, text, text, text, text, text, jsonb, text, text, boolean)'::regprocedure)) > 0,
-    'the switch is off again';
-  assert has_function_privilege('anon', 'public.submit_quote(text, text, text, text, text, date, text, text, text, text, text, jsonb, text, text, boolean)', 'execute'),
-    'recreating kept the grant';
-end $$;
 
 -- Leave the shared database as later test files expect it.
 delete from public.orders where email like 'p7-%@example.com' or email like 'P7-%@example.com';

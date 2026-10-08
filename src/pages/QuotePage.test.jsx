@@ -1,5 +1,5 @@
 // Checkout while the account changes underneath it (AW-186, AW-190, AW-048),
-// and against submit_quote v2 (AW-049, AW-079, AW-198, AW-201, AW-014).
+// and against submit_quote v3 (AW-049, AW-079, AW-198, AW-201, AW-014).
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { QuotePage } from './QuotePage.jsx';

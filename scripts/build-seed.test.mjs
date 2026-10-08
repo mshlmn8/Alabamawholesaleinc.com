@@ -27,7 +27,7 @@ describe('supabase/seed/products.sql', () => {
   });
 
   it('says it needs the price-boundary migration, and build-seed refuses rows with a price', () => {
-    expect(SEED).toMatch(/20260928120000_price_boundary\.sql/);
+    expect(SEED).toMatch(/20261009100000_price_boundary\.sql/);
     expect(SCRIPT).toMatch(/validateCatalog\(rows, \{ aliases: \{ skuAliases: SKU_ALIASES, variantAliases: VARIANT_ALIASES \} \}\)/);
     expect(validateCatalog([{ ...ROW, price: 1.1 }]).problems).toEqual([expect.stringMatching(/has a price/)]);
   });
@@ -38,7 +38,7 @@ describe('supabase/seed/products.sql', () => {
     expect(columns).not.toContain('flavors');
     // unavailable_variants keeps its database default.
     expect(columns).not.toContain('unavailable_variants');
-    expect(SEED).toMatch(/20260928121000_variant_model\.sql/);
+    expect(SEED).toMatch(/20261009110000_variant_model\.sql/);
   });
 });
 

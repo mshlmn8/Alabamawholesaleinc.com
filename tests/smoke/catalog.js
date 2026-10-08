@@ -4,7 +4,7 @@
 // seeded database would serve. Without it the catalog request fails, and
 // every page shows the "couldn't load the latest catalog" notice.
 //
-// Like the database after 20260928120000_price_boundary.sql, the table has no
+// Like the database after 20261009100000_price_boundary.sql, the table has no
 // readable price: a request that names price, or asks for *, is refused with
 // 42501, so a price request shows up as a failed catalog load. Approved
 // buyers' prices come from fulfillMyPrices() instead (obviously synthetic
@@ -52,7 +52,7 @@ export function seedRows() {
 // Columns guests and signed-in accounts may not read (column privileges).
 export const REVOKED_COLUMNS = ['price'];
 // Every column of public.products the database has (after
-// 20260928121000_variant_model.sql: variant_axis and unavailable_variants,
+// 20261009110000_variant_model.sql: variant_axis and unavailable_variants,
 // no flavors). Columns the seed leaves out (unavailable_variants) come back
 // null, which the storefront reads as "every variant is available".
 const TABLE_COLUMNS = [

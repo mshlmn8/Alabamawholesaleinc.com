@@ -26,7 +26,7 @@
 -- snapshots (sku, product_name, variant), so order history still shows the
 -- codes and labels an order was placed with.
 --
--- Release order: after 20260928121000_variant_model.sql, before the
+-- Release order: after 20261009110000_variant_model.sql, before the
 -- regenerated seed and the frontend. The new frontend also works before this
 -- migration (the aliases resolve the old labels and SKUs the live catalog
 -- still has). Deploy it right after: the frontend deployed before it doesn't

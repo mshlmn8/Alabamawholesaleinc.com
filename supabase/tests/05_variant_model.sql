@@ -1,4 +1,4 @@
--- The variant model (20260928121000; AW-030, AW-332, AW-233, AW-128, AW-031).
+-- The variant model (20261009110000; AW-030, AW-332, AW-233, AW-128, AW-031).
 -- Variant axis and availability are public; a variant's own price is private
 -- (admins write it, approved buyers see their tier's unit price through
 -- my_prices()), and the order trigger prices, checks and labels lines with
@@ -139,7 +139,7 @@ begin
       {"product_id": 90501, "variant": "Small", "qty": 2},
       {"product_id": 90502, "variant": "Stray", "qty": 4}]'::jsonb);
   o := (r->>'id')::uuid;
-  -- References are made by the server since 20260928123000 (AW-049); the
+  -- References are made by the server since 20261009130000 (AW-049); the
   -- last block below finds this order by its id.
   perform set_config('test.p5_order', o::text, false);
   assert (select unit_price from public.order_items where order_id = o and variant = 'Big') = 19.29,

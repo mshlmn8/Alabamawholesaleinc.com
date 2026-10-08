@@ -13,7 +13,7 @@ export const COMPANY = {
   addressLine1: '613 Graymont Ave N',
   addressLine2: 'Birmingham, AL 35203',
   // The same address in parts: the will-call address a quote sends to a
-  // database without submit_quote v2 (src/lib/orders.js, AW-079).
+  // database without submit_quote v3 (src/lib/orders.js, AW-079).
   addressStreet: '613 Graymont Ave N',
   addressCity: 'Birmingham',
   addressState: 'AL',

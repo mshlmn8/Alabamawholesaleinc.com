@@ -1,21 +1,25 @@
--- Profile and document boundaries (20260928124000): what a signed-in account
--- may change on its profile, admin rights only for approved admins, the
--- approval stamp and status history, the signup's store address and consent
--- record, auth metadata without the sensitive keys, the email sync, and
--- license proof that is locked after approval.
+-- Profile and document boundaries on top of Cursor's 20261008191000–195000
+-- (20261009140000): admin rights only for approved admins (AW-352), what a
+-- signed-in account may change on its profile (AW-196), admins can't edit
+-- their own role or status or the consent and approval records, the email
+-- sync, the metadata backfill for older accounts (AW-348), admin-only
+-- internal notes (AW-197), and the license proof layout and upload cap
+-- (AW-207) with renewals after approval (AW-254). 10 and 11 cover Cursor's
+-- signup copy, approval stamp, status log and document history.
 --
--- Users 0008a1..0008f1 and emails p8-* are this file's own.
+-- Users 0008a1..0008f1 and 0008a2, and emails p8-*, are this file's own.
 --   a1 pending applicant (signs up with store address and consent)
 --   b1 approved customer with a license on file
 --   c1 approved admin
 --   d1 suspended admin
 --   e1 pending, approved by c1 below
 --   f1 signup that did not accept the terms
+--   a2 an older account whose answers are still in its auth metadata
 insert into auth.users (id, email, raw_user_meta_data, email_confirmed_at) values
   ('00000000-0000-4000-8000-0000000008a1', 'p8-a@example.test',
    '{"name": "P8 Buyer A", "business": "P8 Store A", "phone": "205-555-0801", "license_no": "TL-P8-A",
      "ein": "12-3456781", "resale_cert_no": "RS-P8-A", "business_type": "Smoke Shop", "state": "AL",
-     "expected_volume": "$5K — $15K", "store_street": " 1 Test Way ", "store_city": "Testville",
+     "expected_volume": "$5K — $15K", "store_street": "1 Test Way", "store_city": "Testville",
      "store_zip": "35203", "terms_version": "2026-09", "terms_accepted": true, "age_confirmed": true}', now()),
   ('00000000-0000-4000-8000-0000000008b1', 'p8-b@example.test', '{"name": "P8 Buyer B"}', now()),
   ('00000000-0000-4000-8000-0000000008c1', 'p8-admin@example.test', '{"name": "P8 Admin"}', now()),
@@ -24,8 +28,7 @@ insert into auth.users (id, email, raw_user_meta_data, email_confirmed_at) value
   ('00000000-0000-4000-8000-0000000008f1', 'p8-f@example.test',
    '{"name": "P8 Buyer F", "terms_version": "2026-09", "terms_accepted": false}', now());
 
--- The SQL editor (no auth.uid()) may change anything; approving stamps the
--- time but no approver, and the change is logged.
+-- The SQL editor (no auth.uid()) may change anything.
 update public.profiles set role = 'admin', status = 'approved' where id = '00000000-0000-4000-8000-0000000008c1';
 update public.profiles set role = 'admin', status = 'suspended' where id = '00000000-0000-4000-8000-0000000008d1';
 update public.profiles set status = 'approved' where id = '00000000-0000-4000-8000-0000000008b1';
@@ -33,31 +36,42 @@ update public.profiles set status = 'approved' where id = '00000000-0000-4000-80
 do $$ begin
   assert (select store_street = '1 Test Way' and store_city = 'Testville' and store_zip = '35203'
             and terms_version = '2026-09' and terms_accepted_at is not null and age_confirmed_at is not null
-            and ein = '12-3456781' and license_no = 'TL-P8-A' and resale_cert_no = 'RS-P8-A'
-            and phone = '205-555-0801' and expected_volume = '$5K — $15K' and status = 'pending'
+            and ein = '12-3456781' and license_no = 'TL-P8-A' and status = 'pending'
           from public.profiles where id = '00000000-0000-4000-8000-0000000008a1'),
     'signup copies the application, the store address and the consent record';
-  assert (select not (raw_user_meta_data ?| array['ein', 'license_no', 'resale_cert_no', 'phone', 'expected_volume',
-                                                  'store_street', 'store_city', 'store_zip',
-                                                  'terms_version', 'terms_accepted', 'age_confirmed'])
-          from auth.users where id = '00000000-0000-4000-8000-0000000008a1'),
-    'the EIN, license and the other copied keys leave the auth metadata';
-  assert (select raw_user_meta_data->>'name' = 'P8 Buyer A' and raw_user_meta_data->>'business' = 'P8 Store A'
-          from auth.users where id = '00000000-0000-4000-8000-0000000008a1'),
-    'name and business stay in the auth metadata';
-  assert (select terms_version is null and terms_accepted_at is null and age_confirmed_at is null
+  assert (select terms_accepted_at is null and age_confirmed_at is null
           from public.profiles where id = '00000000-0000-4000-8000-0000000008f1'),
     'no consent is recorded unless the form sent terms_accepted true';
-  assert (select approved_at is not null and approved_by is null
-          from public.profiles where id = '00000000-0000-4000-8000-0000000008b1'),
-    'an approval from the SQL editor is stamped, with no approver';
-  assert (select count(*) = 1 from public.profile_status_log
-          where profile_id = '00000000-0000-4000-8000-0000000008b1'
-            and old_status = 'pending' and new_status = 'approved' and changed_by is null),
-    'the status change is logged';
+  assert not has_function_privilege('anon', 'public.backfill_profiles_from_metadata()', 'execute')
+     and not has_function_privilege('authenticated', 'public.backfill_profiles_from_metadata()', 'execute'),
+    'only the SQL editor and the service role run the backfill';
+  assert not has_function_privilege('authenticated', 'public.protect_profile_columns()', 'execute'), 'trigger functions are not callable';
 end $$;
 
--- A customer changes only their name, phone and store address.
+-- AW-348: an account from before 20261008194000 still has its answers in the
+-- auth metadata (signup copied none of the newer ones). The backfill fills
+-- what the profile lacks, keeps what it has, and strips the keys.
+insert into auth.users (id, email, raw_user_meta_data, email_confirmed_at, created_at) values
+  ('00000000-0000-4000-8000-0000000008a2', 'p8-g@example.test', '{"name": "P8 Older"}', now(), '2026-09-01T12:00:00Z');
+update auth.users set raw_user_meta_data = '{"name": "P8 Older", "business": "P8 Old Store", "ein": "12-0000008",
+    "license_no": "TL-P8-G", "store_street": " 8 Old Rd ", "store_city": "Oldtown", "store_zip": "35208",
+    "terms_accepted": "true", "terms_version": "2026-09", "age_confirmed": "true", "phone": "205-555-0808"}'::jsonb
+  where id = '00000000-0000-4000-8000-0000000008a2';
+update public.profiles set license_no = 'TL-P8-KEPT' where id = '00000000-0000-4000-8000-0000000008a2';
+do $$ begin
+  assert public.backfill_profiles_from_metadata() = 1, 'one account had keys to strip';
+  assert (select ein = '12-0000008' and license_no = 'TL-P8-KEPT' and phone = '205-555-0808'
+            and store_street = '8 Old Rd' and store_city = 'Oldtown' and store_zip = '35208'
+            and terms_version = '2026-09' and terms_accepted_at = '2026-09-01T12:00:00Z' and age_confirmed_at is not null
+          from public.profiles where id = '00000000-0000-4000-8000-0000000008a2'),
+    'empty profile columns are filled from the metadata, the profile''s own values win, consent dates from the signup';
+  assert (select raw_user_meta_data = '{"name": "P8 Older", "business": "P8 Old Store"}'::jsonb
+          from auth.users where id = '00000000-0000-4000-8000-0000000008a2'), 'only name and business stay in the metadata';
+  assert public.backfill_profiles_from_metadata() = 0, 'running it again changes nothing';
+end $$;
+
+-- A customer changes only their name, phone and store address. Anything else
+-- keeps its value (the update still succeeds, Cursor's semantics).
 select test_login('00000000-0000-4000-8000-0000000008a1');
 do $$
 declare
@@ -67,34 +81,17 @@ begin
   set name = 'P8 Buyer A2', phone = '205-555-0802', store_street = '2 Test Way', store_city = 'Testburg', store_zip = '35204'
   where id = '00000000-0000-4000-8000-0000000008a1';
   assert found, 'a customer updates their name, phone and store address';
-  update public.profiles set email = 'p8-a@example.test' where id = '00000000-0000-4000-8000-0000000008a1';
-  assert found, 'keeping the sign-in email is allowed';
 
   foreach v_sql in array array[
     $q$update public.profiles set email = 'p8-other@example.test' where id = '00000000-0000-4000-8000-0000000008a1'$q$,
-    $q$update public.profiles set license_no = 'TL-P8-FAKE' where id = '00000000-0000-4000-8000-0000000008a1'$q$,
-    $q$update public.profiles set ein = '98-7654321' where id = '00000000-0000-4000-8000-0000000008a1'$q$,
-    $q$update public.profiles set resale_cert_no = 'RS-P8-FAKE' where id = '00000000-0000-4000-8000-0000000008a1'$q$,
-    $q$update public.profiles set business = 'P8 Other Store' where id = '00000000-0000-4000-8000-0000000008a1'$q$,
-    $q$update public.profiles set state = 'GA' where id = '00000000-0000-4000-8000-0000000008a1'$q$,
-    $q$update public.profiles set business_type = 'Vape Shop' where id = '00000000-0000-4000-8000-0000000008a1'$q$,
-    $q$update public.profiles set expected_volume = '$100K+' where id = '00000000-0000-4000-8000-0000000008a1'$q$,
-    $q$update public.profiles set terms_version = '1999-01' where id = '00000000-0000-4000-8000-0000000008a1'$q$,
-    $q$update public.profiles set terms_accepted_at = null where id = '00000000-0000-4000-8000-0000000008a1'$q$,
-    $q$update public.profiles set age_confirmed_at = now() - interval '1 year' where id = '00000000-0000-4000-8000-0000000008a1'$q$,
-    $q$update public.profiles set approved_at = now() where id = '00000000-0000-4000-8000-0000000008a1'$q$,
-    $q$update public.profiles set approved_by = '00000000-0000-4000-8000-0000000008c1' where id = '00000000-0000-4000-8000-0000000008a1'$q$,
-    $q$update public.profiles set verification_note = 'looks fine' where id = '00000000-0000-4000-8000-0000000008a1'$q$,
-    $q$update public.profiles set pricing_tier = 'gold' where id = '00000000-0000-4000-8000-0000000008a1'$q$,
-    $q$update public.profiles set status = 'approved' where id = '00000000-0000-4000-8000-0000000008a1'$q$,
-    $q$update public.profiles set role = 'admin' where id = '00000000-0000-4000-8000-0000000008a1'$q$,
+    $q$update public.profiles set license_no = 'TL-P8-FAKE', ein = '98-7654321', resale_cert_no = 'RS-P8-FAKE' where id = '00000000-0000-4000-8000-0000000008a1'$q$,
+    $q$update public.profiles set business = 'P8 Other Store', state = 'GA', business_type = 'Vape Shop', expected_volume = '$100K+' where id = '00000000-0000-4000-8000-0000000008a1'$q$,
+    $q$update public.profiles set terms_version = '1999-01', terms_accepted_at = null, age_confirmed_at = now() - interval '1 year' where id = '00000000-0000-4000-8000-0000000008a1'$q$,
+    $q$update public.profiles set approved_at = now(), approved_by = '00000000-0000-4000-8000-0000000008c1', verification_note = 'looks fine' where id = '00000000-0000-4000-8000-0000000008a1'$q$,
+    $q$update public.profiles set pricing_tier = 'gold', status = 'approved', role = 'admin' where id = '00000000-0000-4000-8000-0000000008a1'$q$,
     $q$update public.profiles set created_at = now() - interval '1 day' where id = '00000000-0000-4000-8000-0000000008a1'$q$
   ] loop
-    begin
-      execute v_sql;
-      raise exception 'a customer should not be able to run: %', v_sql;
-    exception when insufficient_privilege then null;
-    end;
+    execute v_sql;
   end loop;
 
   assert not public.is_admin(), 'a customer is not an admin';
@@ -119,10 +116,14 @@ end $$;
 select test_reset();
 
 do $$ begin
-  assert (select name = 'P8 Buyer A2' and store_street = '2 Test Way' and license_no = 'TL-P8-A' and ein = '12-3456781'
-            and email = 'p8-a@example.test' and status = 'pending' and role = 'customer'
+  assert (select name = 'P8 Buyer A2' and phone = '205-555-0802' and store_street = '2 Test Way' and store_city = 'Testburg' and store_zip = '35204'
+            and email = 'p8-a@example.test' and license_no = 'TL-P8-A' and ein = '12-3456781' and resale_cert_no = 'RS-P8-A'
+            and business = 'P8 Store A' and state = 'AL' and business_type = 'Smoke Shop' and expected_volume = '$5K — $15K'
+            and terms_version = '2026-09' and terms_accepted_at is not null and age_confirmed_at > now() - interval '1 day'
+            and approved_at is null and approved_by is null and verification_note is null
+            and pricing_tier = 'standard' and status = 'pending' and role = 'customer' and created_at > now() - interval '1 hour'
           from public.profiles where id = '00000000-0000-4000-8000-0000000008a1'),
-    'only the allowed fields changed';
+    'only the name, phone and store address changed';
 end $$;
 
 select test_anon();
@@ -137,18 +138,17 @@ end $$;
 select test_reset();
 
 -- A pending applicant's license proof: only at {own id}/{type}/{file}, at
--- most 10 files.
+-- most 10 uploads in 24 hours.
 select test_login('00000000-0000-4000-8000-0000000008a1');
 do $$
 declare
   v_sql text;
 begin
-  assert public.is_pending_applicant(), 'a1 is a pending applicant';
   insert into storage.objects (bucket_id, name)
-    values ('application-documents', '00000000-0000-4000-8000-0000000008a1/tobacco_license/license.pdf');
+    values ('application-documents', '00000000-0000-4000-8000-0000000008a1/tobacco_license/1-license.pdf');
   insert into public.profile_documents (profile_id, document_type, storage_path, original_filename)
     values ('00000000-0000-4000-8000-0000000008a1', 'tobacco_license',
-            '00000000-0000-4000-8000-0000000008a1/tobacco_license/license.pdf', 'license.pdf');
+            '00000000-0000-4000-8000-0000000008a1/tobacco_license/1-license.pdf', 'license.pdf');
 
   foreach v_sql in array array[
     -- a folder that is not a document type
@@ -180,66 +180,80 @@ begin
   end loop;
 
   update public.profile_documents
-  set storage_path = '00000000-0000-4000-8000-0000000008a1/tobacco_license/license-2.pdf', original_filename = 'license-2.pdf'
+  set storage_path = '00000000-0000-4000-8000-0000000008a1/tobacco_license/2-license.pdf', original_filename = 'license-2.pdf'
   where profile_id = '00000000-0000-4000-8000-0000000008a1' and document_type = 'tobacco_license';
   assert found, 'a pending applicant replaces their license row';
 
   -- One file so far; nine more make ten, and the eleventh is refused.
   for i in 2..10 loop
     insert into storage.objects (bucket_id, name)
-      values ('application-documents', '00000000-0000-4000-8000-0000000008a1/resale_certificate/f' || i || '.pdf');
+      values ('application-documents', '00000000-0000-4000-8000-0000000008a1/resale_certificate/' || i || '-f.pdf');
   end loop;
-  assert public.application_document_count('00000000-0000-4000-8000-0000000008a1') = 10, 'ten files';
+  assert public.recent_application_uploads() = 10, 'ten uploads today';
   begin
     insert into storage.objects (bucket_id, name)
-      values ('application-documents', '00000000-0000-4000-8000-0000000008a1/resale_certificate/f11.pdf');
-    raise exception 'the eleventh file was accepted';
+      values ('application-documents', '00000000-0000-4000-8000-0000000008a1/resale_certificate/11-f.pdf');
+    raise exception 'the eleventh upload in 24 hours was accepted';
   exception when insufficient_privilege then null;
   end;
-  delete from storage.objects where name = '00000000-0000-4000-8000-0000000008a1/resale_certificate/f10.pdf';
+  delete from storage.objects where name = '00000000-0000-4000-8000-0000000008a1/resale_certificate/10-f.pdf';
   assert found, 'a pending applicant deletes their own file';
   insert into storage.objects (bucket_id, name)
-    values ('application-documents', '00000000-0000-4000-8000-0000000008a1/resale_certificate/f11.pdf');
-  assert public.application_document_count('00000000-0000-4000-8000-0000000008b1') = 0,
-    'the file count tells nobody about another account';
+    values ('application-documents', '00000000-0000-4000-8000-0000000008a1/resale_certificate/11-f.pdf');
 end $$;
 select test_reset();
 
--- An approved account's proof is locked: it can read it, not add, replace or
--- delete it.
+-- Uploads older than 24 hours don't count, so a license renewed next year is
+-- accepted however many files the account has (AW-254).
+update storage.objects set created_at = now() - interval '2 days'
+where name like '00000000-0000-4000-8000-0000000008a1/%';
+select test_login('00000000-0000-4000-8000-0000000008a1');
+do $$ begin
+  assert public.recent_application_uploads() = 0, 'uploads from two days ago don''t count';
+  insert into storage.objects (bucket_id, name)
+    values ('application-documents', '00000000-0000-4000-8000-0000000008a1/tobacco_license/12-renewal.pdf');
+end $$;
+select test_reset();
+
+-- An approved account can upload and file a renewal at the same layout, but
+-- not delete proof (20261008193000).
 insert into storage.objects (bucket_id, name)
-  values ('application-documents', '00000000-0000-4000-8000-0000000008b1/tobacco_license/l.pdf');
+  values ('application-documents', '00000000-0000-4000-8000-0000000008b1/tobacco_license/1-l.pdf');
 insert into public.profile_documents (profile_id, document_type, storage_path, original_filename)
-  values ('00000000-0000-4000-8000-0000000008b1', 'tobacco_license', '00000000-0000-4000-8000-0000000008b1/tobacco_license/l.pdf', 'l.pdf');
+  values ('00000000-0000-4000-8000-0000000008b1', 'tobacco_license', '00000000-0000-4000-8000-0000000008b1/tobacco_license/1-l.pdf', 'l.pdf');
 
 select test_login('00000000-0000-4000-8000-0000000008b1');
 do $$ begin
-  assert not public.is_pending_applicant(), 'b1 is approved';
   assert (select count(*) from public.profile_documents) = 1, 'an approved account reads its document row';
-  assert (select count(*) from storage.objects where bucket_id = 'application-documents') = 1, 'and its file';
+  insert into storage.objects (bucket_id, name)
+    values ('application-documents', '00000000-0000-4000-8000-0000000008b1/tobacco_license/2-renewed.pdf');
+  update public.profile_documents
+  set storage_path = '00000000-0000-4000-8000-0000000008b1/tobacco_license/2-renewed.pdf', original_filename = 'renewed.pdf'
+  where profile_id = '00000000-0000-4000-8000-0000000008b1' and document_type = 'tobacco_license';
+  assert found, 'an approved account files a renewed license';
+  insert into public.profile_documents (profile_id, document_type, storage_path, original_filename)
+    values ('00000000-0000-4000-8000-0000000008b1', 'resale_certificate', '00000000-0000-4000-8000-0000000008b1/resale_certificate/3-r.pdf', 'r.pdf');
   begin
     insert into storage.objects (bucket_id, name)
-      values ('application-documents', '00000000-0000-4000-8000-0000000008b1/resale_certificate/r.pdf');
-    raise exception 'an approved account uploaded a file';
+      values ('application-documents', '00000000-0000-4000-8000-0000000008b1/other/r.pdf');
+    raise exception 'an approved account uploaded outside the layout';
   exception when insufficient_privilege then null;
   end;
-  update storage.objects set name = '00000000-0000-4000-8000-0000000008b1/tobacco_license/l2.pdf'
-  where name = '00000000-0000-4000-8000-0000000008b1/tobacco_license/l.pdf';
-  assert not found, 'an approved account cannot replace its file';
-  delete from storage.objects where name = '00000000-0000-4000-8000-0000000008b1/tobacco_license/l.pdf';
+  delete from storage.objects where name = '00000000-0000-4000-8000-0000000008b1/tobacco_license/1-l.pdf';
   assert not found, 'an approved account cannot delete its file';
-  begin
-    insert into public.profile_documents (profile_id, document_type, storage_path, original_filename)
-      values ('00000000-0000-4000-8000-0000000008b1', 'resale_certificate', '00000000-0000-4000-8000-0000000008b1/resale_certificate/r.pdf', 'r.pdf');
-    raise exception 'an approved account added a document row';
-  exception when insufficient_privilege then null;
-  end;
-  update public.profile_documents set original_filename = 'other.pdf' where profile_id = '00000000-0000-4000-8000-0000000008b1';
-  assert not found, 'an approved account cannot change its document row';
   delete from public.profile_documents where profile_id = '00000000-0000-4000-8000-0000000008b1';
-  assert not found, 'an approved account cannot delete its document row';
+  assert not found, 'an approved account cannot delete its document rows';
 end $$;
 select test_reset();
+
+do $$ begin
+  assert exists (select 1 from public.profile_document_history
+                 where profile_id = '00000000-0000-4000-8000-0000000008b1'
+                   and storage_path = '00000000-0000-4000-8000-0000000008b1/tobacco_license/1-l.pdf'),
+    'the replaced license stays in the history';
+  assert exists (select 1 from storage.objects where name = '00000000-0000-4000-8000-0000000008b1/tobacco_license/1-l.pdf'),
+    'and its file stays in the bucket';
+end $$;
 
 -- A suspended admin has no admin rights (AW-352).
 select test_login('00000000-0000-4000-8000-0000000008d1');
@@ -251,25 +265,23 @@ do $$ begin
   assert (select count(*) from public.profile_status_log) = 0, 'or status history';
   update public.profiles set status = 'approved' where id = '00000000-0000-4000-8000-0000000008e1';
   assert not found, 'a suspended admin cannot approve an account';
-  begin
-    update public.profiles set status = 'approved' where id = '00000000-0000-4000-8000-0000000008d1';
-    raise exception 'a suspended admin reinstated themself';
-  exception when insufficient_privilege then null;
-  end;
+  update public.profiles set status = 'approved' where id = '00000000-0000-4000-8000-0000000008d1';
+  assert (select status from public.profiles where id = '00000000-0000-4000-8000-0000000008d1') = 'suspended',
+    'a suspended admin cannot reinstate themself';
 end $$;
 select test_reset();
 
 -- An approved admin: approving stamps who and when and is logged; their own
--- role and status and the consent and approval records stay put.
+-- role and status, the consent and approval records and a made-up email are
+-- refused with insufficient_privilege.
 select test_login('00000000-0000-4000-8000-0000000008c1');
 do $$
 declare
   v_sql text;
 begin
   assert public.is_admin(), 'an approved admin is an admin';
-  assert (select count(*) from public.profile_documents where profile_id = '00000000-0000-4000-8000-0000000008b1') = 1,
+  assert (select count(*) from public.profile_documents where profile_id = '00000000-0000-4000-8000-0000000008b1') = 2,
     'an admin reads an approved account''s documents';
-  assert public.application_document_count('00000000-0000-4000-8000-0000000008a1') = 10, 'an admin can count any account''s files';
   update public.profiles set status = 'approved', verification_note = 'P8: license checked'
   where id = '00000000-0000-4000-8000-0000000008e1';
   assert found, 'an admin approves an account';
@@ -280,8 +292,9 @@ begin
           where profile_id = '00000000-0000-4000-8000-0000000008e1' and old_status = 'pending' and new_status = 'approved'
             and changed_by = '00000000-0000-4000-8000-0000000008c1' and note = 'P8: license checked'),
     'the approval is in the status history, with the note';
-  update public.profiles set pricing_tier = 'silver', business = 'P8 Store E' where id = '00000000-0000-4000-8000-0000000008e1';
-  assert found, 'an admin edits another account';
+  update public.profiles set pricing_tier = 'silver', business = 'P8 Store E', email = 'p8-e@example.test'
+  where id = '00000000-0000-4000-8000-0000000008e1';
+  assert found, 'an admin edits another account (its own sign-in email is fine)';
   update public.profiles set name = 'P8 Admin Renamed' where id = '00000000-0000-4000-8000-0000000008c1';
   assert found, 'an admin edits their own name';
   insert into public.profile_admin_notes (profile_id, body) values ('00000000-0000-4000-8000-0000000008e1', 'P8 internal note');
@@ -294,6 +307,7 @@ begin
     $q$update public.profiles set approved_at = now() - interval '1 day' where id = '00000000-0000-4000-8000-0000000008e1'$q$,
     $q$update public.profiles set approved_by = null where id = '00000000-0000-4000-8000-0000000008e1'$q$,
     $q$update public.profiles set terms_accepted_at = now() where id = '00000000-0000-4000-8000-0000000008f1'$q$,
+    $q$update public.profiles set age_confirmed_at = null where id = '00000000-0000-4000-8000-0000000008a1'$q$,
     $q$update public.profiles set email = 'p8-elsewhere@example.test' where id = '00000000-0000-4000-8000-0000000008e1'$q$,
     $q$delete from public.profile_status_log$q$
   ] loop
@@ -332,4 +346,5 @@ update auth.users set email = 'p8-f@example.test' where id = '00000000-0000-4000
 -- Leave the shared database as later test files expect it.
 delete from public.profile_admin_notes where profile_id::text like '00000000-0000-4000-8000-0000000008%';
 delete from public.profile_documents where profile_id::text like '00000000-0000-4000-8000-0000000008%';
+delete from public.profile_document_history where profile_id::text like '00000000-0000-4000-8000-0000000008%';
 delete from storage.objects where name like '00000000-0000-4000-8000-0000000008%';

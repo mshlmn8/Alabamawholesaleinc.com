@@ -15,9 +15,9 @@
 -- and the flavors count goes (AW-332): it only ever repeated the length of
 -- variants, and the storefront counts the variants itself now.
 --
--- Release order: after 20260928120000_price_boundary.sql, before the
+-- Release order: after 20261009100000_price_boundary.sql, before the
 -- regenerated seed (it has variant_axis and no flavors) and before the
--- frontend. The frontend deployed before 20260928120000 already falls back to
+-- frontend. The frontend deployed before 20261009100000 already falls back to
 -- its bundled catalog once that migration is in; this one changes nothing for
 -- it. The new frontend also works without this migration: its catalog query
 -- falls back to the columns every database has (42703), takes the variant
@@ -41,7 +41,7 @@ alter table public.products drop constraint if exists products_unavailable_varia
 alter table public.products add constraint products_unavailable_variants_array
   check (jsonb_typeof(unavailable_variants) = 'array');
 
--- products uses column privileges since 20260928120000: a new column is
+-- products uses column privileges since 20261009100000: a new column is
 -- invisible to the storefront until it is granted.
 grant select (variant_axis, unavailable_variants) on public.products to anon, authenticated;
 
@@ -95,7 +95,7 @@ grant all on public.product_variant_prices to service_role;
 alter table public.order_items add column if not exists sell_unit text;
 
 -- ---------------------------------------------------------------------------
--- (d) The order-line trigger, recreated from 20260928120000. Changes:
+-- (d) The order-line trigger, recreated from 20261009100000. Changes:
 --   - a product without variants drops a variant label sent with it (it used
 --     to be kept and added to the line's name and SKU);
 --   - a variant listed in unavailable_variants is refused, with the hint
@@ -209,11 +209,11 @@ end;
 $$;
 
 -- A trigger function: nobody calls it directly. The order_items_price
--- trigger from 20260928120000 keeps using it.
+-- trigger from 20261009100000 keeps using it.
 revoke all on function public.enforce_order_item_price() from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------------
--- (e) The signed-in buyer's prices, recreated from 20260928120000. "variants"
+-- (e) The signed-in buyer's prices, recreated from 20261009100000. "variants"
 -- now holds each variant's own price, keyed by the product's label:
 --   { "tier": …, "tier_label": …, "discount_pct": …,
 --     "products": { "<id>": { "list": …, "unit": …,
@@ -281,7 +281,7 @@ grant execute on function public.my_prices() to authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
 -- (e, continued) List prices for Admin -> Products, recreated from
--- 20260928120000, with
+-- 20261009100000, with
 -- every product_variant_prices row under its product, as stored:
 --   { "<id>": { "list": …, "variants": { "<label>": { "list": … } } } }
 -- ---------------------------------------------------------------------------
@@ -469,11 +469,11 @@ where p.id = v.id and p.description = v.old_text;
 -- update public.products set flavors = jsonb_array_length(variants);
 -- grant select (flavors) on public.products to anon, authenticated;
 -- create or replace function public.admin_product_prices() ... -- the
---   20260928120000 definition ('variants', '{}'::jsonb)
--- create or replace function public.my_prices() ... -- the 20260928120000
+--   20261009100000 definition ('variants', '{}'::jsonb)
+-- create or replace function public.my_prices() ... -- the 20261009100000
 --   definition ('variants', '{}'::jsonb)
 -- create or replace function public.enforce_order_item_price() ... -- the
---   20260928120000 definition
+--   20261009100000 definition
 -- alter table public.order_items drop column if exists sell_unit;
 -- drop table if exists public.product_variant_prices;
 -- alter table public.products drop constraint if exists products_unavailable_variants_array;

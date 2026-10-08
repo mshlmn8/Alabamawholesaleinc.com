@@ -1,4 +1,4 @@
--- Catalog corrections (20260928122000; AW-135, AW-138, AW-126), checked on
+-- Catalog corrections (20261009120000; AW-135, AW-138, AW-126), checked on
 -- the seeded catalog. The data migration itself was replayed against the
 -- previous seed (every row matches the new seed); here the seed's values
 -- must follow the rules scripts/validate-catalog.mjs enforces for

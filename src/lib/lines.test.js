@@ -158,7 +158,7 @@ describe('SKU entry', () => {
 // Corrected SKUs and variant labels keep resolving (AW-135, AW-138, AW-126).
 // Each alias works both ways: the bundle has the new values, and the live
 // catalog keeps the old ones until the owner applies
-// 20260928122000_catalog_corrections.sql. The fixtures use the real product
+// 20261009120000_catalog_corrections.sql. The fixtures use the real product
 // ids, because aliases are kept per product.
 describe('catalog corrections (AW-135, AW-138, AW-126)', () => {
   // The old #60 label, rebuilt from its alias key so it is spelled out only there.

@@ -1,8 +1,12 @@
--- 20261008190000_quote_tobacco_license.sql (AW-014, Cursor's PR #12): a quote
--- with a tobacco or vape line from a guest or an unapproved account must name
--- a tobacco licence and a resale certificate and confirm purchasers are 21+.
--- Approved accounts were checked when they applied. The rule matches
--- cartNeedsTobaccoLicense in src/lib/regulated.js.
+-- 20261008190000_quote_tobacco_license.sql (AW-014, Cursor's PR #12), kept
+-- by 20261009130000_submit_quote_v3.sql: a quote with a tobacco or vape line
+-- from a guest or an unapproved account must name a tobacco license and a
+-- resale certificate and confirm purchasers are 21+. Approved accounts were
+-- checked when they applied. The rule matches cartNeedsTobaccoLicense in
+-- src/lib/regulated.js. Calls go through PR #12's 16-argument signature (now
+-- a wrapper); the server makes the references, so orders are found by the
+-- one each call returns, kept in test.t9_<name>.
+delete from public.quote_throttle;
 insert into auth.users (id, email, raw_user_meta_data) values
   ('00000000-0000-4000-8000-0000000009a1', 'tl-pending@example.com', '{"name": "Pending TL"}'),
   ('00000000-0000-4000-8000-0000000009b1', 'tl-approved@example.com', '{"name": "Approved TL"}');
@@ -23,17 +27,24 @@ select set_config('test.t9_plain', (
 do $$ begin
   assert current_setting('test.t9_tobacco') <> '' and current_setting('test.t9_vape') <> '' and current_setting('test.t9_plain') <> '',
     'the seed has a tobacco, a vape and an unrestricted product without variants';
-  assert (select count(*) from pg_proc where proname = 'submit_quote' and pronamespace = 'public'::regnamespace) = 1,
-    'only the licence-aware submit_quote remains';
   assert has_function_privilege('anon', 'public.submit_quote(text, text, text, text, text, text, date, text, text, text, text, text, jsonb, text, text, boolean)', 'execute'),
     'guests can call submit_quote';
 end $$;
 
-create or replace function pg_temp.tquote(ref text, product text, lic text, resale text, adult boolean) returns jsonb language sql as $$
-  select public.submit_quote(ref, 'Store', 'Contact', 'buyer@example.com', '205-555-0100', 'delivery', null, null,
+-- Each call uses its own email, so the guest throttle (5 per email in 15
+-- minutes) never applies; the returned reference is kept under the name.
+create or replace function pg_temp.tquote(ref text, product text, lic text, resale text, adult boolean) returns jsonb language plpgsql as $$
+declare r jsonb;
+begin
+  r := public.submit_quote(ref, 'Store', 'Contact', lower(ref) || '@example.com', '205-555-0100', 'delivery', null, null,
     '1 Main St', 'Birmingham', 'AL', '35203',
     jsonb_build_array(jsonb_build_object('product_id', current_setting(product)::int, 'qty', 1)),
     lic, resale, adult);
+  perform set_config('test.t9_' || lower(replace(ref, '-', '_')), r->>'ref_num', false);
+  return r;
+end $$;
+create or replace function pg_temp.t9ref(ref text) returns text language sql as $$
+  select current_setting('test.t9_' || lower(replace(ref, '-', '_')), true);
 $$;
 
 create or replace function pg_temp.refused(ref text, product text, lic text, resale text, adult boolean) returns boolean language plpgsql as $$
@@ -71,11 +82,12 @@ end $$;
 select test_reset();
 
 do $$ begin
-  assert (select count(*) from public.orders where ref_num like 'T9-GUEST-_') = 0, 'refused quotes leave no order';
-  assert (select license_no = 'TL-1' and resale_cert_no = 'RC-1' and purchasers_21 from public.orders where ref_num = 'T9-GUEST-OK'),
+  assert (select count(*) from public.orders where email like 't9-guest-_@example.com') = 0, 'refused quotes leave no order';
+  assert (select license_no = 'TL-1' and resale_cert_no = 'RC-1' and purchasers_21 from public.orders where ref_num = pg_temp.t9ref('T9-GUEST-OK')),
     'the answers are stored, trimmed';
-  assert (select license_no is null and resale_cert_no is null and purchasers_21 = false from public.orders where ref_num = 'T9-GUEST-PLAIN'),
+  assert (select license_no is null and resale_cert_no is null and purchasers_21 = false from public.orders where ref_num = pg_temp.t9ref('T9-GUEST-PLAIN')),
     'a quote without restricted lines stores no answers';
-  assert (select user_id from public.orders where ref_num = 'T9-PENDING-OK') = '00000000-0000-4000-8000-0000000009a1', 'the pending quote is the account''s';
-  assert exists (select 1 from public.orders where ref_num = 'T9-APPROVED-1' and license_no is null), 'an approved buyer is not asked again';
+  assert (select user_id from public.orders where ref_num = pg_temp.t9ref('T9-PENDING-OK')) = '00000000-0000-4000-8000-0000000009a1', 'the pending quote is the account''s';
+  assert exists (select 1 from public.orders where ref_num = pg_temp.t9ref('T9-APPROVED-1') and license_no is null), 'an approved buyer is not asked again';
+  assert not exists (select 1 from public.orders where ref_num like 'T9-%'), 'the references are the server''s, not the caller''s';
 end $$;

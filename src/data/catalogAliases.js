@@ -5,7 +5,7 @@
 // (src/lib/lines.js). When a SKU or a variant label changes, the old key has
 // to keep working: in carts stored in browsers, in the codes buyers copy from
 // their order history, and while the live database still has the old values
-// (until the owner applies supabase/migrations/20260928122000_catalog_corrections.sql,
+// (until the owner applies supabase/migrations/20261009120000_catalog_corrections.sql,
 // the storefront reads the old labels and SKUs from Supabase and the new ones
 // from this bundle). So every alias is an equivalence, used in both
 // directions: an old key finds the new label, and a new key finds the old

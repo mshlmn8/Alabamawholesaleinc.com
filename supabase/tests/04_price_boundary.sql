@@ -1,4 +1,4 @@
--- The price boundary (20260928120000; AW-003, AW-002, AW-077, AW-351).
+-- The price boundary (20261009100000; AW-003, AW-002, AW-077, AW-351).
 -- Prices are readable only through my_prices() (approved buyers) and
 -- admin_product_prices() (admins); the tier list only by those two; the
 -- order trigger and my_prices() round the same way; a profile's tier must be

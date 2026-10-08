@@ -1,9 +1,10 @@
-// Checkout against submit_quote v2 (AW-049, AW-079, AW-198, AW-014): a guest
-// will-call quote sends no address and no reference and shows the one the
-// server made; on a database without v2 the quote goes out once more the old
-// way; a refusal names the problem. Products come from the seeded catalog
-// (./catalog.js), submit_quote is answered here, and every other request
-// that leaves the preview server is aborted.
+// Checkout against submit_quote v3 (AW-049, AW-079, AW-198, AW-014): a guest
+// will-call quote for a tobacco line sends the license answers, no address
+// and no reference, and shows the one the server made; on the live database
+// (neither v3 nor PR #12's function) the quote goes out the 13-argument way
+// with the answers in the notes; a refusal names the problem. Products come
+// from the seeded catalog (./catalog.js), submit_quote is answered here, and
+// every other request that leaves the preview server is aborted.
 import { test, expect } from '@playwright/test';
 import { serveCatalog } from './catalog.js';
 
@@ -46,6 +47,13 @@ async function fillGuest(page) {
   }
 }
 
+// Product 14 is a tobacco line, so a guest gives the license answers (PR #12).
+async function fillLicense(page) {
+  await page.getByLabel('State tobacco/retail license #').fill('TL-SMOKE-1');
+  await page.getByLabel('Sales-tax / resale certificate #').fill('RS-SMOKE-1');
+  await page.getByRole('checkbox', { name: /all purchasers are 21\+/ }).check();
+}
+
 test.beforeEach(async ({ context }) => {
   await context.route('**/*', (route) => (isLocal(route.request().url()) ? route.continue() : route.abort()));
   await serveCatalog(context);
@@ -65,15 +73,15 @@ test('a guest will-call quote sends no address or reference, and shows the serve
   const sent = await quoteApi(page, { json: { id: 'smoke-order', ref_num: 'ALW-Q-5E4F3A2B1C', kind: 'quote', total_units: 2, subtotal: null, priced_lines: 0, unpriced_lines: 1 } });
   await page.goto('/quote');
   await expect(page.getByRole('heading', { level: 1, name: 'Request your quote' })).toBeVisible();
-  // Guests can sign in or apply first (AW-014), and the tobacco line asks for the license details, optional for now.
-  await expect(page.getByRole('link', { name: 'Apply for a trade account' })).toHaveAttribute('href', '/apply');
-  await expect(page.getByLabel('State tobacco/retail license # (optional)')).toBeVisible();
+  // Guests can sign in or apply first (AW-014), and the tobacco line asks for the license answers, all required.
+  await expect(page.getByRole('button', { name: 'New? Apply for a trade account' })).toBeVisible();
+  await expect(page.getByLabel('State tobacco/retail license #')).toHaveAttribute('required', '');
   await fillGuest(page);
   await page.getByLabel('Street', { exact: true }).fill('1 Test Way');
   await page.getByLabel('Delivery method').selectOption('willcall');
   await expect(page.getByLabel('Street', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Pickup at 613 Graymont Ave N, Birmingham AL 35203 during business hours.')).toBeVisible();
-  await page.getByLabel('State tobacco/retail license # (optional)').fill('TL-SMOKE-1');
+  await fillLicense(page);
   await page.getByRole('button', { name: /Submit quote request/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: /Thank you/ })).toBeVisible();
   await expect(page.getByText('ALW-Q-5E4F3A2B1C')).toBeVisible();
@@ -81,26 +89,31 @@ test('a guest will-call quote sends no address or reference, and shows the serve
   expect(sent[0]).not.toHaveProperty('p_ref_num');
   expect(sent[0]).toMatchObject({
     p_delivery: 'willcall', p_ship_street: null, p_ship_city: null, p_ship_state: null, p_ship_zip: null,
-    p_license_no: 'TL-SMOKE-1', p_resale_cert_no: null, p_license_attested: false,
+    p_license_no: 'TL-SMOKE-1', p_resale_cert: 'RS-SMOKE-1', p_purchasers_21: true,
     p_items: [{ product_id: 14, variant: null, qty: 2 }],
   });
   expect(errors).toEqual([]);
 });
 
-test('on a database without submit_quote v2, the quote goes out once more the old way', async ({ page }) => {
+test('on the live database (no v3, no PR #12 function), the quote goes out the 13-argument way', async ({ page }) => {
   const errors = trackErrors(page);
-  const sent = await quoteApi(page,
-    { status: 404, json: { code: 'PGRST202', message: 'Could not find the function public.submit_quote(...) in the schema cache' } },
+  const missing = { status: 404, json: { code: 'PGRST202', message: 'Could not find the function public.submit_quote(...) in the schema cache' } };
+  const sent = await quoteApi(page, missing, missing,
     { json: { id: 'smoke-order', ref_num: 'ALW-Q-FROMCLIENT', total_units: 2, subtotal: null } });
   await page.goto('/quote');
   await fillGuest(page);
   await page.getByLabel('Delivery method').selectOption('willcall');
+  await fillLicense(page);
   await page.getByRole('button', { name: /Submit quote request/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: /Thank you/ })).toBeVisible();
-  expect(sent).toHaveLength(2);
-  expect(sent[1].p_ref_num).toMatch(/^ALW-Q-[0-9A-F]{10}$/);
-  expect(sent[1]).not.toHaveProperty('p_license_no');
-  expect([sent[1].p_ship_street, sent[1].p_ship_city, sent[1].p_ship_state, sent[1].p_ship_zip]).toEqual(WAREHOUSE);
+  expect(sent).toHaveLength(3);
+  // PR #12's 16-argument call, then the 13-argument one, with one client reference.
+  expect(sent[1]).toMatchObject({ p_license_no: 'TL-SMOKE-1', p_purchasers_21: true });
+  expect(sent[2].p_ref_num).toMatch(/^ALW-Q-[0-9A-F]{10}$/);
+  expect(sent[2].p_ref_num).toBe(sent[1].p_ref_num);
+  expect(sent[2]).not.toHaveProperty('p_license_no');
+  expect(sent[2].p_notes).toContain('State tobacco/retail license #: TL-SMOKE-1');
+  expect([sent[2].p_ship_street, sent[2].p_ship_city, sent[2].p_ship_state, sent[2].p_ship_zip]).toEqual(WAREHOUSE);
   // The receipt shows what the database saved.
   await expect(page.getByText('ALW-Q-FROMCLIENT')).toBeVisible();
   expect(errors).toEqual([]);
@@ -114,6 +127,7 @@ test('a refusal says what to fix and cites no reference (AW-198)', async ({ page
   for (const [label, value] of [['Street', '1 Test Way'], ['City', 'Nashville'], ['State', 'tn'], ['ZIP', '37201']]) {
     await page.getByLabel(label, { exact: true }).fill(value);
   }
+  await fillLicense(page);
   await page.getByRole('button', { name: /Submit quote request/ }).click();
   const alert = page.getByRole('alert');
   await expect(alert).toHaveText('Delivery routes cover AL, MS and GA. For another state, choose will-call pickup.');

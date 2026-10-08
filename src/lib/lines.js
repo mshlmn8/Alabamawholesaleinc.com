@@ -47,7 +47,7 @@ export function requiresVariantChoice(product) {
 // these labels, with the words the storefront uses for it. A product without
 // one (or with a value the storefront doesn't know) gets the neutral
 // DEFAULT_AXIS: "Choose a variant", "3 variants". The database accepts the
-// same labels (supabase/migrations/20260928121000_variant_model.sql).
+// same labels (supabase/migrations/20261009110000_variant_model.sql).
 export const VARIANT_AXES = Object.freeze({
   Flavor: { noun: 'flavor', plural: 'flavors' },
   Size: { noun: 'size', plural: 'sizes' },

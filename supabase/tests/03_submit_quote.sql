@@ -1,10 +1,10 @@
 -- submit_quote is the only way to create orders. It prices lines on the
 -- server: guests and pending accounts get unpriced lines, approved accounts
 -- get list price less their tier discount. The seed carries no prices
--- (20260928120000), so the product used here gets an obviously synthetic
+-- (20261009100000), so the product used here gets an obviously synthetic
 -- price first; expected values are computed from it and pricing_tiers.
 --
--- Since 20260928123000 the server makes the reference number (AW-049), so
+-- Since 20261009130000 the server makes the reference number (AW-049), so
 -- there is no duplicate-reference case any more, and orders are found by the
 -- reference submit_quote returns. Each caller uses its own email, and the
 -- throttle is cleared first, so no call here is throttled (AW-198).
@@ -16,11 +16,11 @@ insert into auth.users (id, email, raw_user_meta_data) values
 update public.profiles set status = 'approved', pricing_tier = 'gold' where id = '00000000-0000-4000-8000-0000000003b1';
 
 -- An active product with at most one variant, so no variant choice is needed,
--- and outside tobacco and vapes, so no licence is needed (04_tobacco_license.sql
+-- and outside tobacco and vapes, so no license is needed (09_quote_tobacco_license.sql
 -- covers those).
 select set_config('test.product_id', (
   select id::text from public.products
-  where active and jsonb_array_length(variants) <= 1 and price is not null
+  where active and jsonb_array_length(variants) <= 1
     and cat <> 'TOBACCO' and sub not in ('Disposable Vapes', 'Vape Pods')
   order by id limit 1
 ), false);
