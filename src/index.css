@@ -462,7 +462,7 @@ p > .text-link { min-height: 0; }
 .aw-table input[type="number"] { max-width: 110px; }
 .aw-table input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--button-orange); }
 .inline-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.mini-btn { border: 1px solid var(--purple); background: #fff; color: var(--purple); font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 6px 10px; }
+.mini-btn { border: 1px solid var(--purple); background: #fff; color: var(--purple); font-size: 0.75rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 6px 10px; }
 .mini-btn:hover { background: var(--purple); color: #fff; }
 .mini-btn.primary { background: var(--button-orange); border-color: var(--button-orange); color: #fff; }
 .mini-btn.primary:hover { background: var(--orange-dark); }
@@ -474,10 +474,24 @@ p > .text-link { min-height: 0; }
 .doc-status .doc-view { margin-left: 8px; }
 .doc-status[data-document-status="uploaded"] { font-weight: 600; color: var(--purple); }
 .doc-status[data-document-status="uploaded"]::before { content: '✓ '; }
-.order-kind { display: inline-block; margin-right: 8px; padding: 2px 8px; background: var(--cream); color: var(--purple); font-size: 11px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; }
-.order-edit { display: grid; gap: 8px; margin-top: 12px; }
-.order-edit label { display: grid; grid-template-columns: minmax(0, 1fr) 72px 110px; gap: 8px; align-items: center; font-size: 13px; }
-.order-edit input { height: 36px; padding: 0 8px; border: 1px solid #d8d1c9; }
+.order-kind { display: inline-block; margin-right: 8px; padding: 2px 8px; background: var(--cream); color: var(--purple); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; }
+.order-head small a { color: var(--purple); text-decoration: underline; text-underline-offset: 2px; }
+/* Admin -> Orders: editing a quote's quantities and prices (AW-024). */
+.order-edit { display: grid; gap: 10px; padding: 12px 16px; }
+.order-edit-line { display: grid; grid-template-columns: minmax(0, 1fr) 88px 120px; gap: 8px 12px; align-items: end; font-size: 0.8125rem; }
+.order-edit-line .sku { color: var(--muted); }
+.order-edit-line label { display: grid; gap: 4px; font-size: 0.75rem; font-weight: 700; color: var(--muted); }
+.order-edit-line input { width: 100%; min-width: 0; height: var(--tap); padding: 0 8px; border: 1px solid #dcd5cc; background: #fff; color: var(--ink); font-size: 0.875rem; }
+.order-edit-note, .order-edit-total { margin: 0; font-size: 0.8125rem; color: var(--muted); }
+.order-edit-total { font-weight: 700; color: var(--purple); }
+.order-actions-row { padding: 0 16px 14px; }
+.order-actions-row .mini-btn { display: inline-flex; align-items: center; min-height: var(--tap); }
+.mini-btn:disabled { opacity: .5; cursor: not-allowed; }
+.order-error { margin: 0 16px 10px; }
+@media (max-width: 600px) {
+  .order-edit-line { grid-template-columns: 1fr 1fr; }
+  .order-edit-name { grid-column: 1 / -1; }
+}
 .account-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px 16px; margin: 0 0 12px; }
 .account-facts p { margin: 0; font-size: 0.875rem; overflow-wrap: anywhere; }
 .account-facts .fact-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }

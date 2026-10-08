@@ -9,7 +9,10 @@
 --   products.unavailable_variants  labels that can't be ordered right now
 --                                  (AW-030); readable by everyone
 --   product_variant_prices         a variant's own list price (AW-030),
---                                  private like products.price
+--                                  private like products.price; it takes
+--                                  over the values of Cursor's public
+--                                  products.variant_prices column
+--                                  (20261008200000), which is dropped
 --   order_items.sell_unit          what quantity 1 meant when the line was
 --                                  saved (AW-031)
 -- and the flavors count goes (AW-332): it only ever repeated the length of
@@ -66,6 +69,40 @@ create table if not exists public.product_variant_prices (
 create unique index if not exists product_variant_prices_label_key
   on public.product_variant_prices (product_id, lower(variant));
 
+-- Cursor's 20261008200000 kept the same prices in products.variant_prices, a
+-- jsonb object { "<label>": <price> } on the products table (empty unless
+-- someone filled it). One place is kept, and it is this private table: a
+-- column on products would be one grant away from every visitor, has no
+-- per-variant constraints, and my_prices() and the order trigger already
+-- read the table. Its values move here (a key matched to the product's
+-- label case-insensitively; a key naming no variant, or a value that isn't
+-- a price, is dropped; a row already here wins), and the column goes.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'products' and column_name = 'variant_prices'
+  ) then
+    insert into public.product_variant_prices (product_id, variant, price)
+    select p.id, label.value, round((e.value #>> '{}')::numeric, 2)
+    from public.products p
+    cross join lateral jsonb_each(
+      case when jsonb_typeof(p.variant_prices) = 'object' then p.variant_prices else '{}'::jsonb end
+    ) as e(key, value)
+    cross join lateral (
+      select v.value
+      from jsonb_array_elements_text(case when jsonb_typeof(p.variants) = 'array' then p.variants else '[]'::jsonb end) as v(value)
+      where lower(v.value) = lower(e.key)
+      limit 1
+    ) as label
+    where jsonb_typeof(e.value) in ('number', 'string')
+      and (e.value #>> '{}') ~ '^[0-9]{1,8}([.][0-9]+)?$'
+    on conflict do nothing;
+
+    alter table public.products drop column variant_prices;
+  end if;
+end $$;
+
 alter table public.product_variant_prices enable row level security;
 
 drop policy if exists product_variant_prices_admin_read on public.product_variant_prices;
@@ -95,12 +132,13 @@ grant all on public.product_variant_prices to service_role;
 alter table public.order_items add column if not exists sell_unit text;
 
 -- ---------------------------------------------------------------------------
--- (d) The order-line trigger, recreated from 20261009100000. Changes:
+-- (d) The order-line trigger, recreated from 20261009100000. It runs on
+-- INSERT only (Cursor's 20261008200000), so a saved line keeps what staff
+-- set with admin_price_order. Changes:
 --   - a product without variants drops a variant label sent with it (it used
 --     to be kept and added to the line's name and SKU);
 --   - a variant listed in unavailable_variants is refused, with the hint
---     variant_unavailable, on a new line (or when a line's product or
---     variant changes, so saved lines stay editable);
+--     variant_unavailable (saved lines stay editable);
 --   - the line keeps the product's sell unit;
 --   - an approved buyer's unit price starts from the variant's own list
 --     price when product_variant_prices has one, else the product's.
@@ -119,7 +157,6 @@ declare
   v_variants text[];
   v_variant text;
   v_suffix text;
-  v_check_available boolean;
   v_list numeric;
   v_own_price numeric;
 begin
@@ -161,13 +198,7 @@ begin
     where lower(label) = lower(v_variant)
     limit 1;
 
-    if tg_op = 'INSERT' then
-      v_check_available := true;
-    else
-      v_check_available := new.product_id is distinct from old.product_id
-        or new.variant is distinct from old.variant;
-    end if;
-    if v_check_available and exists (
+    if exists (
       select 1 from jsonb_array_elements_text(coalesce(v_product.unavailable_variants, '[]'::jsonb)) as u(label)
       where lower(u.label) = lower(v_variant)
     ) then
@@ -209,7 +240,7 @@ end;
 $$;
 
 -- A trigger function: nobody calls it directly. The order_items_price
--- trigger from 20261009100000 keeps using it.
+-- trigger (BEFORE INSERT, 20261008200000) keeps using it.
 revoke all on function public.enforce_order_item_price() from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------------
@@ -475,6 +506,11 @@ where p.id = v.id and p.description = v.old_text;
 -- create or replace function public.enforce_order_item_price() ... -- the
 --   20261009100000 definition
 -- alter table public.order_items drop column if exists sell_unit;
+-- alter table public.products add column if not exists variant_prices jsonb not null default '{}'::jsonb;
+-- update public.products p set variant_prices = coalesce((
+--   select jsonb_object_agg(vp.variant, vp.price) from public.product_variant_prices vp
+--   where vp.product_id = p.id and vp.price is not null), '{}'::jsonb);
+--   -- (20261008200000's column; like price, keep it out of the anon grant)
 -- drop table if exists public.product_variant_prices;
 -- alter table public.products drop constraint if exists products_unavailable_variants_array;
 -- alter table public.products drop constraint if exists products_variant_axis_chk;

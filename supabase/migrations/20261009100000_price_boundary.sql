@@ -17,6 +17,11 @@
 -- Gotcha for every later migration: a column added to products is invisible
 -- to the storefront until it gets its own
 --   grant select (<column>) on public.products to anon, authenticated;
+--
+-- Cursor's 20261008200000 runs just before this file and adds
+-- products.variant_prices (per-variant list prices). It is left out of the
+-- grant below, so it is as private as price; 20261009110000 moves its
+-- values into product_variant_prices and drops it.
 
 -- ---------------------------------------------------------------------------
 -- (a) A null price means "price on request": the seed inserts new rows without
@@ -28,7 +33,8 @@ alter table public.products drop constraint if exists products_price_nonnegative
 alter table public.products add constraint products_price_nonnegative check (price >= 0);
 
 -- ---------------------------------------------------------------------------
--- (b) Column privileges: every column but price. Table-level UPDATE, INSERT
+-- (b) Column privileges: every column but price (and Cursor's variant_prices,
+-- see above). Table-level UPDATE, INSERT
 -- and DELETE are unchanged; RLS (products_admin_write) still limits them to
 -- admins, and an admin's PATCH ... ?id=eq.N needs SELECT on id only.
 -- ---------------------------------------------------------------------------
@@ -80,10 +86,14 @@ revoke all on function public.is_approved_buyer() from public;
 grant execute on function public.is_approved_buyer() to anon, authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
--- (d) The order-line trigger, recreated from 20260925120000. Only the pricing
--- step changes: it uses tier_unit_price(), so a product without a price gives
--- an unpriced line instead of failing, and the rounding is the one
--- my_prices() shows.
+-- (d) The order-line trigger function, recreated from 20261008200000 (Cursor's,
+-- which made the trigger fire on INSERT only, so a price staff set with
+-- admin_price_order is kept). Only the pricing step changes: it uses
+-- tier_unit_price(), so a product without a price gives an unpriced line
+-- instead of failing, and the rounding is the one my_prices() shows. The
+-- per-variant price step comes back in 20261009110000, from
+-- product_variant_prices. The trigger itself (order_items_price, BEFORE
+-- INSERT) is Cursor's and is not recreated here.
 -- ---------------------------------------------------------------------------
 create or replace function public.enforce_order_item_price()
 returns trigger
@@ -160,12 +170,6 @@ $$;
 
 -- A trigger function: nobody calls it directly.
 revoke all on function public.enforce_order_item_price() from public, anon, authenticated;
-
-drop trigger if exists order_items_price on public.order_items;
-create trigger order_items_price
-  before insert or update of product_id, variant, qty, unit_price, sku, product_name
-  on public.order_items
-  for each row execute function public.enforce_order_item_price();
 
 -- ---------------------------------------------------------------------------
 -- (e) The signed-in buyer's prices. Null unless the caller has an approved
@@ -289,7 +293,7 @@ alter table public.profiles
 -- drop function if exists public.admin_product_prices();
 -- drop function if exists public.my_prices();
 -- create or replace function public.enforce_order_item_price() ... -- the
---   20260925120000 definition (unit_price := round(price * (1 - discount), 2))
+--   20261008200000 definition (variant_prices, round(list * (1 - discount), 2))
 -- drop function if exists public.is_approved_buyer();
 -- drop function if exists public.tier_unit_price(numeric, numeric);
 -- grant select on public.products to anon, authenticated;

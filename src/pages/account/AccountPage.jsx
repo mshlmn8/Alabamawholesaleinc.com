@@ -20,6 +20,7 @@ import { QuickReorder } from './QuickReorder.jsx';
 const STATUS_CLASS = {
   new: '',
   contacted: 'contacted',
+  quoted: 'contacted',
   fulfilled: 'fulfilled',
   cancelled: 'cancelled',
 };

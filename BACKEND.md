@@ -8,6 +8,8 @@ falls back to its old static-only behavior (catalog only, no sign-in, quotes or
 admin). A production build (`npm run build`) refuses to run without them; see
 section 4.
 
+<!-- TODO(owner): Will production be on Supabase Pro (backups, no pausing), and will deploy previews use a separate project? (AW-213) -->
+
 ## 1. Create a Supabase project
 
 1. Sign up at [supabase.com](https://supabase.com) and create a new project.
@@ -32,18 +34,20 @@ supabase/migrations/20261008192000_profile_self_update_guard.sql
 supabase/migrations/20261008193000_profile_approval_audit.sql
 supabase/migrations/20261008194000_strip_signup_metadata.sql
 supabase/migrations/20261008195000_application_consent.sql
+supabase/migrations/20261008200000_variant_prices_and_quote_workflow.sql
 supabase/migrations/20261009100000_price_boundary.sql
 supabase/migrations/20261009110000_variant_model.sql
 supabase/migrations/20261009120000_catalog_corrections.sql
 supabase/migrations/20261009130000_submit_quote_v3.sql
 supabase/migrations/20261009140000_profile_and_document_boundaries.sql
+supabase/migrations/20261009150000_quote_workflow.sql
 supabase/seed/products.sql
 ```
 
 On a project that is already running, apply only the migrations it doesn't
 have yet, in that order, then the seed, then deploy the frontend (see the
 release checklist at the end of this file). The live project has the files
-up to `20260927180000`; the eleven `20261008…`/`20261009…` files are new.
+up to `20260927180000`; the thirteen `20261008…`/`20261009…` files are new.
 Review them before applying them; the site keeps working without them (see
 `docs/OWNER-TODO.md` and "Before and after" in the release checklist).
 
@@ -74,10 +78,20 @@ The six `20261008…` files are part 1 of the tobacco, vapor and licence review
   certificate, phone, volume, address and consent keys from the auth metadata
   (AW-348, AW-019).
 
-The five `20261009…` files are the site review's backend changes (prices,
+`20261008200000_variant_prices_and_quote_workflow.sql` is part 2 (Cursor's PR
+#13): a `products.variant_prices` column for per-variant prices, and the
+quote workflow (`orders.kind`, the statuses quoted, confirmed, picking, ready
+and out_for_delivery, `quoted_at`/`quoted_by`, `order_items.original_qty`, the
+order-line trigger on INSERT only, `admin_price_order()` and
+`admin_convert_quote()`) (AW-030, AW-024). The `20261009…` files build on it:
+`20261009110000` moves `variant_prices` into the private
+`product_variant_prices` table and drops the column, and `20261009150000`
+makes the workflow agree with `submit_quote` v3.
+
+The six `20261009…` files are the site review's backend changes (prices,
 variants, catalog corrections, `submit_quote` v3, profile and document
-boundaries), built on the schema the `20261008…` files create; the release
-checklist below says what each one changes.
+boundaries, the quote workflow), built on the schema the `20261008…` files
+create; the release checklist below says what each one changes.
 
 Before applying a new migration, run `npm run test:db`. It replays every
 migration and the seed in an in-memory Postgres with stubbed Supabase `auth`
@@ -169,8 +183,12 @@ silently disabled. To build a static-only preview on purpose, set
 
 Under **Authentication → URL Configuration**:
 
-- Set the **Site URL** to the production domain. Sign-up confirmation links
-  return there.
+- Set the **Site URL** to the production domain.
+- Add `https://<production domain>/` to the **Redirect URLs** allow list.
+  Sign-up confirmation links (and a resent confirmation) ask to return to the
+  site the applicant signed up on (`emailRedirectTo`, AW-051); an address
+  that isn't allowed falls back to the Site URL. Add each deploy-preview
+  origin you test sign-up on too.
 - Add `https://<production domain>/reset-password` to the **Redirect URLs**
   allow list. Password-reset emails link to `/reset-password`. Until that
   address is allowed, Supabase sends the reset link to the Site URL instead,
@@ -185,6 +203,23 @@ new-password page. An expired or already used link shows a notice with
 Sign in and Reset password, and never the text Supabase put in the link.
 A buyer whose sign-up confirmation expired can ask for a new one from the
 sign-in dialog (`auth.resend`).
+
+### Production email (owner set-up, AW-051)
+
+<!-- TODO(owner): Set up an SMTP provider with a sender address on the business domain (SPF/DKIM), and confirm the sender name for the confirmation and reset emails. (AW-051, AW-093) -->
+
+Supabase's built-in mailer is rate-limited and meant for testing, so
+confirmation and password-reset emails may not reach customers until a
+custom SMTP sender is set up:
+
+1. Pick a provider (Resend, Postmark, Amazon SES or similar) and verify a
+   sender address on the business domain, with its SPF and DKIM records.
+2. Enter it under **Authentication → Emails → SMTP Settings**.
+3. Raise **Authentication → Rate Limits → emails sent** to fit your
+   sign-ups.
+4. Keep **Confirm email** on in production.
+5. Put the business name in the **Confirm signup** and **Reset password**
+   templates.
 
 ### Sessions and sign-out
 
@@ -311,7 +346,12 @@ and cart lines, Quick Reorder and order history keep working with them.
   chosen) and the saved line agree. A row with a null price is "price on
   request" for that variant; a variant without a row costs the product's
   price. Labels match case-insensitively. Only admins read or write the
-  table; it is private like `products.price`.
+  table; it is private like `products.price`. This is the only place for
+  variant prices: Cursor's `products.variant_prices` column
+  (`20261008200000`) sat on the public `products` table (one grant away from
+  every visitor, with no per-variant checks), so `20261009110000` moves any
+  values it holds here and drops it. Don't fill `variant_prices` between
+  those two migrations; apply them in one session.
 - **Availability** (`products.unavailable_variants`): labels that can't be
   ordered right now. The product page shows them as disabled choices that
   say so, a cart line with one is flagged like a variant that went away, and
@@ -423,6 +463,44 @@ warehouse address for will-call, and, for the 13-argument call, the license
 answers in the notes. It remembers which signature worked for the rest of the
 visit.
 
+### Pricing quotes and converting them (Admin → Orders)
+
+<!-- TODO(owner): Confirm how quotes should work: should staff price and answer guest quotes and convert them to orders, and should orders go through 'quoted' and 'confirmed' stages before picking? (AW-024) -->
+
+Cursor's `20261008200000` and `20261009150000_quote_workflow.sql` give the
+saved requests one workflow (AW-024):
+
+- **kind**: `order` when an approved account placed it (its lines were
+  priced when it was saved, `ALW-O-` reference); `quote` for a guest or an
+  account that isn't approved (unpriced, `ALW-Q-`). `submit_quote` returns
+  the same kind it stores.
+- **Statuses**: new, contacted, quoted ("Quote ready" on the customer's
+  account page), confirmed, picking, ready, out_for_delivery, fulfilled,
+  cancelled.
+- **Edit quantities and prices** calls `admin_price_order(order, lines)`
+  (admins only): each line's quantity (0 removes it) and unit price (blank
+  for none). Empty prices are suggested from the list price and the
+  account's tier (a guest's at standard); staff check them before saving.
+  The totals are recomputed, `quoted_at`/`quoted_by` recorded, and
+  `order_items.original_qty` keeps the quantity the customer asked for. A
+  new or contacted quote becomes quoted; an order keeps its status. The
+  order-line trigger runs on INSERT only, so the prices staff set stay.
+- **Email the quote** opens a message to the customer with the lines and
+  the total, from the desk's own mail (nothing is sent by the site).
+- **Convert to order** calls `admin_convert_quote(order)` (admins only) once
+  every line is priced: the quote becomes a confirmed order. The function
+  can also attach a guest quote to an existing account
+  (`p_user_id`); Admin doesn't offer that yet.
+- Refusals carry a hint (`order_closed`, `no_items`, `invalid_line`,
+  `unknown_line`, `not_a_quote`, `unpriced_lines`, `unknown_account`,
+  `account_mismatch`, `admin_only`) that Admin → Orders turns into a
+  sentence.
+
+Before these migrations, Admin → Orders offers the four old statuses, treats
+a guest's or an unpriced request as a quote, and can still email a quote with
+prices typed in the editor; saving prices and converting say the database
+update is needed.
+
 ## Row-level security summary
 
 - **Admins**: `is_admin()` is true only for a profile with role `admin`
@@ -453,10 +531,13 @@ visit.
   privileges on it at all. Approved buyers get its prices, at their tier,
   from `my_prices()`.
 - **orders / order_items**: a user reads their own orders; admins read and
-  update all. Customers and guests do not insert rows directly. `submit_quote`
-  saves the header and lines together, sets `user_id` from the session,
-  makes the reference number and calculates prices. Guest quotes are stored
-  with `user_id` null.
+  update all orders. Customers and guests do not insert rows directly.
+  `submit_quote` saves the header and lines together, sets `user_id` from the
+  session, makes the reference number, stamps `kind` and calculates prices.
+  Guest quotes are stored with `user_id` null. Nobody updates `order_items`
+  directly; staff change lines only through `admin_price_order()` and
+  `admin_convert_quote()`, which check `is_admin()` and can't be called by
+  guests.
 - **quote_throttle**: no access for guests or signed-in accounts (RLS on, no
   policies, privileges revoked); only `submit_quote` uses it.
 - **pricing_tiers**: readable by admins and approved buyers only;
@@ -497,10 +578,28 @@ For each release:
    inserts products whose id is new.
 4. Deploy the frontend.
 
-The live project needs all eleven, in this order (Cursor's six `20261008…`
-files, then the five `20261009…` ones, which build on them). Each
-`20261009…` migration ends with a commented reverse-SQL block for rolling it
-back.
+The live project needs all thirteen, in this order (Cursor's seven
+`20261008…` files, then the six `20261009…` ones, which build on them). Apply
+`20261008200000` and `20261009100000`–`20261009150000` in one session: the
+price boundary hides `products.variant_prices` and `20261009110000` moves it.
+Each `20261009…` migration ends with a commented reverse-SQL block for
+rolling it back.
+
+1. `20261008190000_quote_tobacco_license.sql`
+2. `20261008191000_profile_store_address.sql`
+3. `20261008192000_profile_self_update_guard.sql`
+4. `20261008193000_profile_approval_audit.sql`
+5. `20261008194000_strip_signup_metadata.sql`
+6. `20261008195000_application_consent.sql`
+7. `20261008200000_variant_prices_and_quote_workflow.sql`
+8. `20261009100000_price_boundary.sql`
+9. `20261009110000_variant_model.sql`
+10. `20261009120000_catalog_corrections.sql`
+11. `20261009130000_submit_quote_v3.sql`
+12. `20261009140000_profile_and_document_boundaries.sql`
+13. `20261009150000_quote_workflow.sql`
+
+Then `supabase/seed/products.sql`, then the frontend.
 
 | Migration | What it changes | Before and after |
 | --- | --- | --- |
@@ -510,11 +609,13 @@ back.
 | `20261008193000_profile_approval_audit.sql` | PR #12: `approved_at`, `approved_by`, `verification_note`, `profile_status_log`, `profile_document_history`; only a pending applicant deletes proof. | Admin → Accounts shows '—' and can't save a note until it is applied. |
 | `20261008194000_strip_signup_metadata.sql` | PR #12: the signup trigger strips EIN, license, resale certificate, phone and volume from auth metadata. | Only new signups; `20261009140000` strips older accounts. |
 | `20261008195000_application_consent.sql` | PR #12: `terms_accepted_at`, `terms_version`, `age_confirmed_at`, copied at signup; the address and consent keys are stripped too. | Until applied, consent stays in auth metadata; `20261009140000` moves it for accounts made meanwhile. |
-| `20261009100000_price_boundary.sql` | `products.price` becomes nullable and unreadable to guests and signed-in accounts (column privileges); approved buyers' prices come from `my_prices()`, admins' from `admin_product_prices()`; the order trigger rounds with `tier_unit_price()`; `pricing_tiers` is readable by admins and approved buyers only; `profiles.pricing_tier` is a foreign key to `pricing_tiers`. The prices already stored are not changed. | Apply before the new seed (the seed has no price column). The frontend deployed before it reads `select=*`, which is now refused: it falls back to the catalog bundled with it, with a "couldn't load the latest catalog" notice, until the new frontend is deployed, so deploy right after. The new frontend also works before this migration (when `my_prices()` is missing it reads the prices the old way). |
-| `20261009110000_variant_model.sql` | Adds `products.variant_axis` and `products.unavailable_variants` (readable by everyone), the private `product_variant_prices` table and `order_items.sell_unit`; recreates the order trigger (variant prices, unavailable variants refused with hint `variant_unavailable`, no variant kept on a product without variants, the sell unit saved with the line), `my_prices()` and `admin_product_prices()` (per-variant prices); drops `products.flavors`; fills the variant axis, the sell units the catalog states and 20 corrected descriptions on existing rows, only where nobody has set them (see "Variants, availability and sell units"). | Apply after `20261009100000` and before the new seed (the seed has `variant_axis` and no `flavors`). The frontend deployed before `20261009100000` is unaffected beyond what that migration already did. The new frontend also works before this migration: it reads the columns every database has, takes the axis and sell units from its bundled catalog, and treats every variant as available at its product's price. |
-| `20261009120000_catalog_corrections.sql` | Data only: completes 86 SKUs (cut at 17 characters, a trailing hyphen, misspelled, or #329's bare `AW-RAW`), corrects the variant labels of 33 products (spelled-out sizes, fixed spellings, #62's merged flavor split, one-item non-choices removed, #60's profanity starred out), their descriptions, #354's name and #123/#124's sell unit; renames the matching `product_variant_prices` rows and `unavailable_variants` entries. Each row changes only while it still has the value the seed wrote, so admin edits are kept (see "Changing a SKU or a variant label"). | Apply after `20261009110000` and before the new seed. The new frontend also works before it (its aliases read the old codes and labels). Deploy the new frontend right after: the frontend deployed before it doesn't know the new labels, and a quote it sends with a renamed variant is refused ("Unknown variant"). Stored carts, Quick Reorder codes and order history keep working with the new frontend. |
+| `20261008200000_variant_prices_and_quote_workflow.sql` | PR #13 (Cursor, unchanged): `products.variant_prices` (per-variant list prices; moved and dropped by `20261009110000`); `orders.kind`, the statuses quoted … out_for_delivery, `quoted_at`, `quoted_by`; `order_items.original_qty`; the order-line trigger on INSERT only; `stamp_order_kind()`, `admin_price_order()`, `admin_convert_quote()` (both redefined by `20261009150000`). | Apply in the same session as `20261009100000`–`20261009150000`. On its own, `variant_prices` would be readable by guests like `price` still is, and every signed-in request would be stamped `order`. The new frontend works before and after (Admin → Orders feature-detects the `kind` column). |
+| `20261009100000_price_boundary.sql` | `products.price` becomes nullable and unreadable to guests and signed-in accounts (column privileges; `variant_prices` isn't granted either); approved buyers' prices come from `my_prices()`, admins' from `admin_product_prices()`; the order trigger function rounds with `tier_unit_price()` (the trigger stays Cursor's INSERT-only one); `pricing_tiers` is readable by admins and approved buyers only; `profiles.pricing_tier` is a foreign key to `pricing_tiers`. The prices already stored are not changed. | Apply before the new seed (the seed has no price column). The frontend deployed before it reads `select=*`, which is now refused: it falls back to the catalog bundled with it, with a "couldn't load the latest catalog" notice, until the new frontend is deployed, so deploy right after. The new frontend also works before this migration (when `my_prices()` is missing it reads the prices the old way). |
+| `20261009110000_variant_model.sql` | Adds `products.variant_axis` and `products.unavailable_variants` (readable by everyone), the private `product_variant_prices` table (taking over any values in Cursor's `products.variant_prices`, which is dropped) and `order_items.sell_unit`; recreates the order trigger (variant prices, unavailable variants refused with hint `variant_unavailable`, no variant kept on a product without variants, the sell unit saved with the line), `my_prices()` and `admin_product_prices()` (per-variant prices); drops `products.flavors`; fills the variant axis, the sell units the catalog states and 20 corrected descriptions on existing rows, only where nobody has set them (see "Variants, availability and sell units"). | Apply after `20261009100000` and before the new seed (the seed has `variant_axis` and no `flavors`). The frontend deployed before `20261009100000` is unaffected beyond what that migration already did. The new frontend also works before this migration: it reads the columns every database has, takes the axis and sell units from its bundled catalog, and treats every variant as available at its product's price. |
+| `20261009120000_catalog_corrections.sql` | Data only: completes 86 SKUs (cut at 17 characters, a trailing hyphen, misspelled, or #329's bare `AW-RAW`), corrects the variant labels of 33 products (spelled-out sizes, fixed spellings, #62's merged flavor split, one-item non-choices removed, #60's profanity starred out), their descriptions, #354's name and #123/#124's sell unit, and aligns five names and brands with the packshot (#44, #98, #191, #192, #248; AW-286, PR #13); renames the matching `product_variant_prices` rows and `unavailable_variants` entries. Each row changes only while it still has the value the seed wrote, so admin edits are kept (see "Changing a SKU or a variant label"). | Apply after `20261009110000` and before the new seed. The new frontend also works before it (its aliases read the old codes and labels). Deploy the new frontend right after: the frontend deployed before it doesn't know the new labels, and a quote it sends with a renamed variant is refused ("Unknown variant"). Stored carts, Quick Reorder codes and order history keep working with the new frontend. |
 | `20261009130000_submit_quote_v3.sql` | Recreates `submit_quote` without `p_ref_num` and with the license answers last (`p_license_no`, `p_resale_cert`, `p_purchasers_21`, with defaults): the server makes the reference (`ALW-Q-`/`ALW-O-` and 10 hex digits), checks lengths, email, ZIP, state, route state and date, throttles (new private table `quote_throttle`), refuses suspended accounts, needs an address only for delivery, and keeps PR #12's license rule and columns; every refusal has a typed hint. Turns PR #12's 16-argument function into a wrapper and brings back the 13-argument one as a wrapper; both ignore `p_ref_num` (see "Quotes and orders"). | Apply after `20261009120000`, before the new frontend. Frontends deployed before it keep working through the wrappers (their reference is ignored; a will-call quote sends the address they always required; the 13-argument call has no license answers, so its guest tobacco and vape quotes are refused, as `20261008190000` intends). The new frontend also works before it: it falls back to the 16-argument call, then the 13-argument one, with a long random reference and the warehouse address for will-call. **Later step:** drop the wrappers (below). |
 | `20261009140000_profile_and_document_boundaries.sql` | `is_admin()` requires an approved admin; Cursor's self-update guard keeps every column but name, phone and store address in a customer's own update, and refuses an admin's change to their own role or status, the consent or approval records, or a made-up email; `profiles.email` follows the sign-in email (a trigger on `auth.users`, and existing rows are realigned); new table `profile_admin_notes` (internal notes, admins only) and an index for `profile_status_log`; accounts from before `20261008194000` get their metadata answers, store address and consent copied to the profile (`backfill_profiles_from_metadata()`, run once) and the keys stripped; license rows and files must sit at `{user id}/{type}/{file}`, with at most 10 uploads per account in 24 hours. | Apply after `20261009130000`, before the new frontend. Before running it, check with `select id, email, status from public.profiles where role = 'admin';` that every real admin is `approved`: the others lose admin rights. The frontend deployed before it keeps working (its admins must be approved). The new frontend also works before it: the store address and consent stay in auth metadata until this migration moves them, Admin → Accounts shows '—' for the missing columns, and the document paths it uploads already match the layout. Then run `supabase/seed/provision_owner.sql`'s admin list once. |
+| `20261009150000_quote_workflow.sql` | One quote workflow (see "Pricing quotes and converting them"): `kind` is `order` only for an approved account's request, as `submit_quote` returns it (existing unpriced requests become quotes); `quoted_by` is set to null when that admin's profile is deleted; `admin_price_order()` and `admin_convert_quote()` check their input, keep an order's status, need every line priced before converting, and refuse guests (EXECUTE revoked from anon), with typed hints. | Apply after `20261009140000`, before the new frontend. The frontend deployed before it doesn't use these functions. The new frontend also works before it (and before `20261008200000`): Admin → Orders offers the old four statuses and says saving prices and converting need the update. |
 
 ### Later steps
 
