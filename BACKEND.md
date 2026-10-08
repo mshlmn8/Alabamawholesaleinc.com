@@ -26,8 +26,41 @@ supabase/migrations/20260925120000_launch_order_boundaries.sql
 supabase/migrations/20260927000000_application_fields.sql
 supabase/migrations/20260927120000_product_copy.sql
 supabase/migrations/20260927180000_application_documents.sql
+supabase/migrations/20261008190000_quote_tobacco_license.sql
+supabase/migrations/20261008191000_profile_store_address.sql
+supabase/migrations/20261008192000_profile_self_update_guard.sql
+supabase/migrations/20261008193000_profile_approval_audit.sql
+supabase/migrations/20261008194000_strip_signup_metadata.sql
+supabase/migrations/20261008195000_application_consent.sql
 supabase/seed/products.sql
 ```
+
+The six `20261008…` files are part 1 of the tobacco, vapor and licence review
+(Cursor's PR #12). Review them before applying them to the live project; the
+site keeps working without them (see `docs/OWNER-TODO.md`):
+
+- `20261008190000_quote_tobacco_license.sql`: `orders.license_no`,
+  `resale_cert_no`, `purchasers_21`, and a `submit_quote` that refuses a quote
+  with a tobacco or vape line from a guest or an unapproved account unless it
+  names a licence and a resale certificate and confirms 21+ (AW-014). It
+  replaces the 13-argument `submit_quote` with a 16-argument one. Until it is
+  applied, the storefront falls back to the old function and puts the licence
+  answers in the quote's notes.
+- `20261008191000_profile_store_address.sql`: the store street, city and ZIP
+  from the application (AW-092).
+- `20261008192000_profile_self_update_guard.sql`: a trigger keeps a
+  customer's email, role, status, tier, licence, EIN and resale certificate as
+  they were when the customer edits their own profile (AW-196).
+- `20261008193000_profile_approval_audit.sql`: `approved_at`, `approved_by`,
+  `verification_note`, the `profile_status_log` and
+  `profile_document_history` tables (admin-read), and proof that only a
+  pending applicant can delete (AW-197, AW-254).
+- `20261008194000_strip_signup_metadata.sql` and
+  `20261008195000_application_consent.sql`: the signup trigger copies the
+  answers and the Trade terms / Privacy consent (with its version) and 21+
+  confirmation onto the profile, then removes EIN, licence, resale
+  certificate, phone, volume, address and consent keys from the auth metadata
+  (AW-348, AW-019).
 
 Before applying a new migration, run `npm run test:db`. It replays every
 migration and the seed in an in-memory Postgres with stubbed Supabase `auth`
@@ -51,7 +84,8 @@ bucket named `application-documents` (PDF, JPG, PNG, and HEIC, 10 MB maximum).
 Confirm in **Storage** that the bucket is not public. No extra environment
 variables. Applicants may upload a state retail tobacco license and a resale
 certificate from the application form once they have a session, or later from
-`/apply` while the account is pending. The license number and resale
+`/apply` (any signed-in account, so an approved or suspended store can send a
+renewal). The license number and resale
 certificate number stay required. Proof can also be emailed to the trade desk.
 
 A trigger on `auth.users` auto-creates a `profiles` row on signup. **Every
@@ -148,6 +182,11 @@ changed price.
    - **Orders** — every quote submitted via the storefront, with status dropdown.
    - **Accounts** — every trade account; flip `pending → approved`, change
      pricing tier (`standard` / `silver` / `gold`), or grant admin role.
+     Licence documents show for every status, and **Details** opens the
+     application answers (EIN, licence, resale certificate, phone, store
+     address, volume, approval, consent) and a verification note. The
+     approval, consent and note fields fill in once the 2026-10-08
+     migrations are applied.
    - **Products** — edit name/price/tag/active flag for any of the 368 SKUs.
 
 ## How pricing tiers work
@@ -172,7 +211,12 @@ To add new tiers: insert a row in `pricing_tiers` and add the discount to
 
 - **profiles**: a user reads/updates their own row; admins read/update any.
   Users cannot self-promote (the policy explicitly blocks changing role,
-  status, or pricing_tier in self-updates).
+  status, or pricing_tier in self-updates). Since
+  `20261008192000_profile_self_update_guard.sql`, a trigger also keeps email,
+  licence, EIN, resale certificate and the approval fields as they were in a
+  customer's own update (the update succeeds; those columns don't change).
+- **profile_status_log / profile_document_history**: written by triggers;
+  admins read them, nobody edits them.
 - **products**: anyone reads `active = true`; admins read/write everything.
 - **orders / order_items**: a user reads their own orders; admins read and
   update all. Customers and guests do not insert rows directly. `submit_quote`
@@ -180,11 +224,15 @@ To add new tiers: insert a row in `pricing_tiers` and add the discount to
   calculates prices. Guest quotes are stored with `user_id` null.
 - **pricing_tiers**: world-readable; admin-writable.
 - **profile_documents**: a user reads, inserts, and replaces only their own
-  rows (one tobacco license and one resale certificate). Admins read every row.
+  rows (one tobacco license and one resale certificate). Only a pending
+  applicant can delete; approved and suspended accounts can upload a renewal.
+  Admins read every row.
 - **storage `application-documents`**: private. Object paths are
-  `{user id}/{document type}/{filename}`. A user can upload, read, replace,
-  and delete only inside their own folder. Admins can read every object, which
-  is what the Accounts tab uses to mint a signed View link.
+  `{user id}/{document type}/{upload time}-{filename}`, so a renewal keeps
+  the previous file. A user can upload, read and replace only inside their own
+  folder, and delete there only while the application is pending. Admins can
+  read every object, which is what the Accounts tab uses to mint a signed
+  View link.
 
 ## Resetting
 
