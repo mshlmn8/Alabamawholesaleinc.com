@@ -7,6 +7,8 @@ import { formatMoney, initials } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { Picture } from './Picture.jsx';
+import { NicotineWarning } from './NicotineWarning.jsx';
+import { showsNicotineWarning } from '../lib/regulated.js';
 
 export function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLine, onLoginClick }) {
   const productRoute = { page: 'product', productId: p.id };
@@ -30,6 +32,7 @@ export function ProductCard({ p, profile, isApprovedBuyer, cart, addLine, decLin
         <h3>{p.name}</h3>
         <p className="card-detail">{`${p.brand}${p.flavors ? ` · ${p.flavors} variants` : ''} · ${p.sku}`}</p>
       </Link>
+      {showsNicotineWarning(p) && <NicotineWarning compact />}
       <span className="card-meta card-actions">
         {isApprovedBuyer && price != null ? (
           <span>{formatMoney(price)}</span>

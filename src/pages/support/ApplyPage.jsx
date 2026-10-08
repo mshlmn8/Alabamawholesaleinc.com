@@ -26,7 +26,8 @@ export function ApplyPage({ profile, account = profile ? 'ready' : 'signed-out',
 
       {profile && <StatusPanel profile={profile} />}
 
-      {profile?.status === 'pending' && <ApplicationDocuments disabled={!isBackendConfigured} />}
+      {/* Every signed-in account can see and renew its proof (AW-254). */}
+      {profile && <ApplicationDocuments status={profile.status} disabled={!isBackendConfigured} />}
 
       {!isBackendConfigured && <ServiceUnavailable what="The online application" className="form-error support-alert" />}
 
@@ -44,6 +45,7 @@ export function ApplyPage({ profile, account = profile ? 'ready' : 'signed-out',
               ))}
             </ul>
             <p className="checklist-note">Missing one of these? <CallOrEmail before="Call" after=" and a trade rep can talk you through it." /></p>
+            <p className="checklist-note">Read the <Link className="text-link" to={{ page: 'terms' }}>Trade terms</Link> and <Link className="text-link" to={{ page: 'privacy' }}>Privacy policy</Link> before you apply.</p>
             <div className="dialog-actions">
               {isBackendConfigured
                 ? <button className="button" type="button" onClick={onApplyClick}>Start application <span aria-hidden="true">↗</span></button>
@@ -85,7 +87,7 @@ function StatusPanel({ profile }) {
           <p>{`${profile.business || profile.name} is approved for wholesale pricing and ordering. Prices show on every product while you are signed in.`}</p>
         )}
         {status === 'suspended' && (
-          <p>Ordering is paused on this account. <CallOrEmail before="Call" after=" and a trade rep will help you sort it out." /></p>
+          <p>Ordering is paused on this account. <CallOrEmail before="Call" after=" and a trade rep will help you sort it out." /> If your license or resale certificate has changed, upload the new one below.</p>
         )}
       </div>
       <div className="contact-strip-actions">

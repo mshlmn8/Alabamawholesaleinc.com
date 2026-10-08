@@ -2,8 +2,8 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { STORAGE } from '../data/content.js';
 import {
-  AGE_CONFIRMATION_MAX_AGE_MS, CLEAR_AGE_CONFIRMATION_ON_SIGN_OUT, ageGateState, ageRecord, clearAgeConfirmation,
-  confirmAge, declineAge, endAgeConfirmationOnSignOut, parseAgeRecord, reconsiderAge, useAgeGate,
+  AGE_CONFIRMATION_MAX_AGE_MS, AGE_VERIFIED_TTL_MS, CLEAR_AGE_CONFIRMATION_ON_SIGN_OUT, ageGateState, ageRecord, clearAgeConfirmation,
+  confirmAge, declineAge, endAgeConfirmationOnSignOut, isAgeVerifiedValue, parseAgeRecord, reconsiderAge, useAgeGate,
 } from './ageGate.js';
 
 const NOW = Date.UTC(2026, 8, 28, 12);
@@ -43,8 +43,21 @@ describe('parseAgeRecord', () => {
     }
   });
 
-  it('treats the old undated "yes" as a confirmation to migrate', () => {
-    expect(parseAgeRecord('yes', NOW)).toEqual({ confirmed: true, legacy: true });
+  it('treats the old undated "yes" as expired (PR #12, AW-340)', () => {
+    expect(parseAgeRecord('yes', NOW)).toEqual({ confirmed: false, legacy: true });
+  });
+
+  // The checks from Cursor's scripts/test-part1.mjs (PR #12), against the
+  // names it used.
+  it('keeps PR #12\'s isAgeVerifiedValue and AGE_VERIFIED_TTL_MS', () => {
+    const now = 1_800_000_000_000;
+    expect(AGE_VERIFIED_TTL_MS).toBe(AGE_CONFIRMATION_MAX_AGE_MS);
+    expect(isAgeVerifiedValue('yes', now)).toBe(false);
+    expect(isAgeVerifiedValue(null, now)).toBe(false);
+    expect(isAgeVerifiedValue('{', now)).toBe(false);
+    expect(isAgeVerifiedValue(JSON.stringify({ ok: true, at: now - 1000 }), now)).toBe(true);
+    expect(isAgeVerifiedValue(JSON.stringify({ ok: true, at: now - AGE_VERIFIED_TTL_MS }), now)).toBe(false);
+    expect(isAgeVerifiedValue(JSON.stringify({ ok: false, at: now }), now)).toBe(false);
   });
 
   it('defaults to a 30-day period (owner to confirm, AW-340)', () => {
@@ -65,11 +78,20 @@ describe('age gate state', () => {
     expect(ageGateState().confirmed).toBe(true);
   });
 
-  it('migrates the old "yes" to a record dated now, which then expires', () => {
-    vi.useFakeTimers({ now: NOW });
+  it('asks a visitor with the old undated "yes" again, and removes it (PR #12)', () => {
     window.localStorage.setItem(STORAGE.age, 'yes');
+    expect(ageGateState().confirmed).toBe(false);
+    expect(stored()).toBeNull();
+    confirmAge();
+    expect(JSON.parse(stored())).toMatchObject({ ok: true });
     expect(ageGateState().confirmed).toBe(true);
-    expect(JSON.parse(stored())).toEqual({ ok: true, at: NOW });
+  });
+
+  it('expires a confirmation after 30 days', () => {
+    vi.useFakeTimers({ now: NOW });
+    confirmAge();
+    vi.setSystemTime(NOW + AGE_CONFIRMATION_MAX_AGE_MS - 1);
+    expect(ageGateState().confirmed).toBe(true);
     vi.setSystemTime(NOW + AGE_CONFIRMATION_MAX_AGE_MS);
     expect(ageGateState().confirmed).toBe(false);
     expect(stored()).toBeNull();
@@ -95,6 +117,14 @@ describe('age gate state', () => {
     confirmAge();
     expect(ageGateState()).toEqual({ confirmed: true, declined: false });
     expect(window.sessionStorage.getItem(STORAGE.ageDeclined)).toBeNull();
+  });
+
+  it('keeps an exit screen saved by the PR #12 build, which stored "yes"', () => {
+    window.sessionStorage.setItem(STORAGE.ageDeclined, 'yes');
+    expect(ageGateState()).toEqual({ confirmed: false, declined: true });
+    reconsiderAge();
+    expect(window.sessionStorage.getItem(STORAGE.ageDeclined)).toBeNull();
+    expect(ageGateState().declined).toBe(false);
   });
 
   it('forgets the confirmation on sign-out', () => {

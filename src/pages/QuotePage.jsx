@@ -16,6 +16,11 @@
 // lines, when one can no longer be ordered, needs a variant or has a new
 // price. When the catalog can't be loaded, nothing is sent against the old
 // copy.
+//
+// Tobacco and vape lines from a guest or an unapproved account need a
+// tobacco licence number, a resale certificate number and a 21+ attestation
+// (AW-014, PR #12). submit_quote checks them once the 2026-10-08 migration is
+// applied; until then src/lib/orders.js keeps the answers in the notes.
 
 import { useState } from 'react';
 import { COMPANY, ORDER_MINIMUM } from '../data/content.js';
@@ -29,6 +34,7 @@ import { CartLine } from '../components/CartLine.jsx';
 import { SavedLinesNotice, UnavailableNotice } from '../components/CartNotices.jsx';
 import { AccountLoading } from '../components/AccountStatus.jsx';
 import { initialQuoteForm, quoteFormForAccount } from '../lib/quoteForm.js';
+import { cartNeedsTobaccoLicense } from '../lib/regulated.js';
 
 const UNAVAILABLE_ERROR = 'Remove the items that are no longer available before you submit.';
 
@@ -38,7 +44,7 @@ const itemsSignature = (items) => items.map((it) => `${it.lineKey}|${it.qty}|${i
 
 export function QuotePage({
   items, total, addLine, decLine, removeLine, removeLines, clearCart, legacy = [], onDismissLegacy,
-  profile, account = profile ? 'ready' : 'signed-out', signedIn = !!profile, onSignIn, isApprovedBuyer, isBackendConfigured,
+  profile, account = profile ? 'ready' : 'signed-out', signedIn = !!profile, onSignIn, onApplyClick, isApprovedBuyer, isBackendConfigured,
   checkCart = null,
 }) {
   const [step, setStep] = useState('review');
@@ -77,6 +83,7 @@ export function QuotePage({
   const orderable = items.filter(it => !it.unavailable);
   const totalUnits = orderable.reduce((s, i) => s + i.qty, 0);
   const needsVariant = items.some(it => it.needsVariant);
+  const needsLicense = !isApprovedBuyer && cartNeedsTobaccoLicense(orderable);
   const pricedBelowMinimum = isApprovedBuyer && Number(total) < ORDER_MINIMUM;
   let submitLabel = isApprovedBuyer ? 'Submit order' : 'Submit quote request';
   if (phase === 'checking') submitLabel = 'Checking the catalog…';
@@ -118,7 +125,12 @@ export function QuotePage({
         lines = check.items.filter(it => !it.unavailable);
       }
       setPhase('sending');
-      const r = await submitOrder({ refNum, formData: data, items: lines });
+      // Licence answers go only with lines that need them, from a buyer who
+      // isn't approved (approved accounts were checked when they applied).
+      const formData = !isApprovedBuyer && cartNeedsTobaccoLicense(lines)
+        ? data
+        : { ...data, licenseNo: '', resaleCert: '', purchasers21: false };
+      const r = await submitOrder({ refNum, formData, items: lines });
       if (!r?.ok || !r.order?.id) throw new Error('The quote was not saved.');
       setReceipt({ ...r.order, asOrder: isApprovedBuyer });
       setStep('submitted');
@@ -201,6 +213,13 @@ export function QuotePage({
         </div>
         <form onSubmit={handleQuoteSubmit} aria-labelledby="quote-form-title">
           <h2 id="quote-form-title" className="checkout-form-title">Your details</h2>
+          {!signedIn && (
+            <p className="fine quote-account-links">
+              {onSignIn && <button className="text-link" type="button" onClick={onSignIn}>Have an account? Sign in</button>}
+              <span aria-hidden="true"> · </span>
+              {onApplyClick && <button className="text-link" type="button" onClick={onApplyClick}>New? Apply for a trade account</button>}
+            </p>
+          )}
           <div className="form-grid checkout-form-grid">
             <div><label htmlFor="quote-business">Business</label><input id="quote-business" name="business" value={data.business} onChange={set('business')} required autoComplete="organization" /></div>
             <div><label htmlFor="quote-contact">Contact</label><input id="quote-contact" name="contact" value={data.contact} onChange={set('contact')} required autoComplete="name" /></div>
@@ -218,6 +237,19 @@ export function QuotePage({
             </div>
             <div><label htmlFor="quote-date">Preferred date</label><input id="quote-date" name="preferredDate" type="date" value={data.preferredDate} onChange={set('preferredDate')} autoComplete="off" /></div>
             <div className="full"><label htmlFor="quote-notes">Notes</label><input id="quote-notes" name="notes" value={data.notes} onChange={set('notes')} placeholder="Dock hours, pallet needs, substitutions…" autoComplete="off" /></div>
+            {/* TODO(owner): Confirm guest tobacco and vape quotes may collect a license number, resale certificate, and 21+ attestation instead of requiring an approved sign-in. (AW-014) */}
+            {needsLicense && (
+              <div className="full"><label htmlFor="quote-license">State tobacco/retail license #</label><input id="quote-license" name="licenseNo" value={data.licenseNo} onChange={set('licenseNo')} required autoComplete="off" /></div>
+            )}
+            {needsLicense && (
+              <div className="full"><label htmlFor="quote-resale">Sales-tax / resale certificate #</label><input id="quote-resale" name="resaleCert" value={data.resaleCert} onChange={set('resaleCert')} required autoComplete="off" /></div>
+            )}
+            {needsLicense && (
+              <div className="full consent">
+                <input id="quote-age" name="purchasers21" type="checkbox" checked={data.purchasers21} onChange={e => setData({ ...data, purchasers21: e.target.checked })} required />
+                <label htmlFor="quote-age">I confirm this business holds a valid tobacco retail license and all purchasers are 21+</label>
+              </div>
+            )}
           </div>
           <div className="drawer-total checkout-total">
             <span>{`${totalUnits} ${totalUnits === 1 ? 'unit' : 'units'}`}</span>

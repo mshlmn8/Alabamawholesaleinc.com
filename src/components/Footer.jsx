@@ -4,6 +4,7 @@
 
 import { COMPANY } from '../data/content.js';
 import { Link } from '../lib/router.js';
+import { NicotineWarning } from './NicotineWarning.jsx';
 
 export function Footer({ departments, onLoginClick, onApplyClick }) {
   return (
@@ -46,8 +47,10 @@ export function Footer({ departments, onLoginClick, onApplyClick }) {
           <p>Sales to licensed retail businesses only · 21+ · No consumer orders</p>
         </div>
       </div>
+      {/* The FDA statement, verbatim (AW-026). The last band of the page,
+          flush with its bottom edge (AW-144). */}
       <div className="fda-note">
-        <div className="container">WARNING: Tobacco products sold by Alabama Wholesale Inc. contain nicotine. Nicotine is an addictive chemical. Products are distributed exclusively to licensed retail businesses for lawful resale. Not for sale to minors.</div>
+        <div className="container"><NicotineWarning /></div>
       </div>
     </footer>
   );

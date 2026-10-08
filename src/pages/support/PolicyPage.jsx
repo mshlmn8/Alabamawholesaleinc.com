@@ -40,6 +40,7 @@ const POLICIES = {
     intro: 'What Alabama Wholesale collects from trade customers, and why.',
     updated: true,
     sections: [
+      // TODO(owner): Provide or approve the privacy policy details: service providers used, data sharing, retention periods for uploaded license and EIN documents, and the contact method for access or deletion requests. Published sections below are unchanged. (AW-027)
       { heading: 'What we collect', body: [
         { list: [
           'Application details: your name, business name, phone, business email, business type, store state, federal EIN, state retail tobacco license number, resale certificate number and expected monthly volume.',
@@ -64,6 +65,7 @@ const POLICIES = {
     updated: true,
     sections: [
       { heading: 'Who can buy', body: [
+        // TODO(owner): Is a tobacco license required for every trade account, or only for tobacco, vapor, and nicotine? This sentence is unchanged until you decide. (AW-129)
         'Alabama Wholesale sells to licensed retail businesses only. We do not sell to consumers. Applicants must be 21 or older and provide a federal EIN, a state retail tobacco license number for the store, and a resale certificate number. We verify these before the first order.',
       ] },
       { heading: 'Account approval', body: [

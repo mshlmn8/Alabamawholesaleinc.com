@@ -36,7 +36,8 @@ test.beforeEach(async ({ context }) => {
 });
 
 // The age gate is a layer over the page, not a replacement for it (AW-044,
-// AW-176, AW-156, AW-339, AW-340).
+// AW-176, AW-156, AW-339, AW-340, AW-040), with the behaviour of Cursor's
+// PR #12 where it differed from Phase 1.
 test.describe('age gate', () => {
   test('a fresh browser gets the page beneath the gate, and "Yes" reveals it', async ({ page }) => {
     const errors = trackErrors(page);
@@ -57,6 +58,8 @@ test.describe('age gate', () => {
     await expect(yes).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(gate).toBeVisible();
+    // A white ring on the purple gate (AW-040).
+    expect(await yes.evaluate((el) => getComputedStyle(el).outlineColor)).toBe('rgb(255, 255, 255)');
 
     await yes.click();
     await expect(gate).toBeHidden();
@@ -74,12 +77,14 @@ test.describe('age gate', () => {
     const errors = trackErrors(page);
     await page.goto('/');
     await page.getByRole('button', { name: 'No, exit' }).click();
-    const exit = page.getByRole('dialog', { name: 'Sorry, you must be 21 or older to enter' });
+    const exit = page.getByRole('dialog', { name: "We're sorry" });
     await expect(exit).toBeVisible();
-    await expect(exit.getByRole('heading')).toBeFocused();
+    const back = page.getByRole('button', { name: 'Back to the age question' });
+    await expect(back).toBeFocused();
     await page.reload();
     await expect(exit).toBeVisible();
-    await page.getByRole('button', { name: 'Answered by mistake? Go back' }).click();
+    await expect(back).toBeFocused();
+    await back.click();
     await expect(page.getByRole('dialog', { name: 'Are you 21 or older?' })).toBeVisible();
     await expect(page.getByRole('button', { name: /Yes, I am 21\+/ })).toBeFocused();
     expect(errors).toEqual([]);
@@ -98,14 +103,14 @@ test.describe('age gate', () => {
     expect(errors).toEqual([]);
   });
 
-  test('an old undated confirmation still counts and is rewritten with a date', async ({ page }) => {
+  test('an old undated confirmation counts as expired and is removed (PR #12)', async ({ page }) => {
     await page.goto('/contact');
     await page.evaluate((key) => localStorage.setItem(key, 'yes'), AGE_KEY);
     await page.reload();
-    await expect(page.getByRole('heading', { level: 1, name: /Contact/ })).toBeVisible();
-    await expect(page.getByRole('dialog')).toHaveCount(0);
-    const stored = JSON.parse(await page.evaluate((key) => localStorage.getItem(key), AGE_KEY));
-    expect(stored).toEqual({ ok: true, at: expect.any(Number) });
+    await expect(page.getByRole('dialog', { name: 'Are you 21 or older?' })).toBeVisible();
+    // The loading shell was purple too: the boot script agrees.
+    expect(await page.evaluate(() => document.documentElement.classList.contains('aw-gate'))).toBe(true);
+    expect(await page.evaluate((key) => localStorage.getItem(key), AGE_KEY)).toBeNull();
   });
 
   test('an expired confirmation asks again', async ({ page }) => {
@@ -376,4 +381,48 @@ test('the app replaces the loading shell once it renders', async ({ page }) => {
   await expect(page.getByRole('dialog', { name: /21 or older/i })).toBeVisible();
   await expect(page.locator('#root .boot')).toHaveCount(0);
   expect(errors).toEqual([]);
+});
+
+// Cursor's PR #12 in the Phase 1 structure: the FDA nicotine statement
+// (AW-026, AW-144) and the licence questions on a guest tobacco quote (AW-014).
+test.describe('tobacco and vapor', () => {
+  const FDA = 'WARNING: This product contains nicotine. Nicotine is an addictive chemical. Not for sale to anyone under 21.';
+
+  test.beforeEach(async ({ context }) => {
+    await context.addInitScript(([key, value]) => {
+      try { localStorage.setItem(key, value); } catch { /* storage blocked */ }
+    }, [AGE_KEY, ageRecord(Date.now())]);
+  });
+
+  test('the nicotine statement is on vape pages, tobacco cards and the footer, not on hemp wraps', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/product/61');
+    await expect(page.locator('.pd-info .nicotine-warning')).toHaveText(FDA);
+    // The footer band is the last thing on the page, flush with its bottom.
+    const band = page.locator('footer .fda-note');
+    await expect(band).toHaveText(FDA);
+    const gap = await band.evaluate((el) => document.documentElement.scrollHeight - (el.getBoundingClientRect().bottom + window.scrollY));
+    expect(Math.abs(gap)).toBeLessThan(1);
+    await page.goto('/product/330');
+    await expect(page.locator('.pd-info .nicotine-warning')).toHaveCount(0);
+    await page.goto('/category/tobacco/cigars-and-cigarillos');
+    const cards = page.locator('.content-card');
+    await expect(cards.first().locator('.nicotine-warning')).toHaveText(FDA);
+    expect(await cards.count()).toBe(await page.locator('.content-card .nicotine-warning').count());
+    expect(errors).toEqual([]);
+  });
+
+  test('a guest quote with a cigarette line asks for the licence, resale certificate and 21+', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/product/14');
+    await page.getByRole('button', { name: /^Add to (quote|order)/ }).click();
+    await page.goto('/quote');
+    await expect(page.getByLabel('State tobacco/retail license #')).toHaveAttribute('required', '');
+    await expect(page.getByLabel('Sales-tax / resale certificate #')).toHaveAttribute('required', '');
+    await expect(page.getByRole('checkbox', { name: /all purchasers are 21\+/ })).toHaveAttribute('required', '');
+    await expect(page.getByRole('button', { name: 'Have an account? Sign in' })).toBeVisible();
+    await page.getByRole('button', { name: 'New? Apply for a trade account' }).click();
+    await expect(page.getByRole('dialog', { name: /Apply for an account/ })).toBeVisible();
+    expect(errors).toEqual([]);
+  });
 });

@@ -1,14 +1,14 @@
 // The 21+ age confirmation behind the age gate (AW-044, AW-176, AW-339,
-// AW-340).
+// AW-340). This merges the Phase 1 store with the behaviour of Cursor's
+// PR #12, which the owner merged; where the two differed, PR #12 wins.
 //
 // - "Yes" stores a dated record, {"ok":true,"at":<ms>}, in localStorage under
 //   STORAGE.age. It counts for AGE_CONFIRMATION_MAX_AGE_MS; after that, or
 //   when the value is damaged, the gate asks again and the value is removed.
-// - Earlier versions stored a bare 'yes' with no date. It is migrated to a
-//   record dated the first time this version reads it, so those visitors are
-//   asked again one full period later.
-// - "No, exit" is remembered in sessionStorage for this tab's session, so a
-//   reload keeps the exit screen; the exit screen can take it back.
+// - Earlier versions stored a bare 'yes' with no date. It counts as expired
+//   (PR #12): the visitor sees the gate once more, and the value is removed.
+// - "No, exit" is remembered in sessionStorage for this browser session, so
+//   a reload keeps the exit screen; the exit screen can take it back.
 // - Tabs follow each other: confirming in one tab, or signing out (which
 //   clears the confirmation, see CLEAR_AGE_CONFIRMATION_ON_SIGN_OUT), updates
 //   the others through the 'storage' event. The check runs again when a tab
@@ -26,6 +26,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // TODO(owner): How long should a visitor's 21+ confirmation stay valid before the site asks again (for example 30 days, or every browser session)? 30 days is a placeholder. (AW-340)
 export const AGE_CONFIRMATION_DAYS = 30;
 export const AGE_CONFIRMATION_MAX_AGE_MS = AGE_CONFIRMATION_DAYS * DAY_MS;
+// PR #12's name for the same period.
+export const AGE_VERIFIED_TTL_MS = AGE_CONFIRMATION_MAX_AGE_MS;
 
 // TODO(owner): Should signing out clear the 21+ confirmation, so the next person on a shared computer is asked again? It does for now. (AW-340)
 export const CLEAR_AGE_CONFIRMATION_ON_SIGN_OUT = true;
@@ -35,19 +37,25 @@ export const CLEAR_AGE_CONFIRMATION_ON_SIGN_OUT = true;
 const MAX_CLOCK_SKEW_MS = DAY_MS;
 const LEGACY_VALUE = 'yes';
 const DECLINED_VALUE = '1';
+// PR #12 stored "No, exit" as 'yes'; a tab that answered under that build
+// keeps its exit screen.
+const DECLINED_VALUES = new Set([DECLINED_VALUE, 'yes']);
 
 export const ageRecord = (at) => JSON.stringify({ ok: true, at });
 
 // Reads a stored confirmation. Returns { confirmed, legacy }: legacy is true
-// for the old undated 'yes', which counts and should be rewritten as a record.
+// for the old undated 'yes', which no longer counts (PR #12, AW-340).
 export function parseAgeRecord(raw, now = Date.now()) {
-  if (raw === LEGACY_VALUE) return { confirmed: true, legacy: true };
+  if (raw === LEGACY_VALUE) return { confirmed: false, legacy: true };
   let data = null;
   try { data = typeof raw === 'string' ? JSON.parse(raw) : null; } catch { /* damaged value */ }
   const at = data && data.ok === true ? data.at : NaN;
   const confirmed = Number.isFinite(at) && at <= now + MAX_CLOCK_SKEW_MS && now - at < AGE_CONFIRMATION_MAX_AGE_MS;
   return { confirmed, legacy: false };
 }
+
+// PR #12's reader: true only for a dated record within the period.
+export const isAgeVerifiedValue = (raw, now = Date.now()) => parseAgeRecord(raw, now).confirmed;
 
 // Storage access that never throws: undefined means the store is unavailable
 // (blocked cookies, private modes, sandboxed frames).
@@ -68,15 +76,14 @@ let memoryDeclined = false;
 function readConfirmed(now) {
   const raw = storageGet('localStorage', STORAGE.age);
   if (raw !== undefined && raw !== null) {
-    const { confirmed, legacy } = parseAgeRecord(raw, now);
-    if (legacy) storageSet('localStorage', STORAGE.age, ageRecord(now));
-    else if (!confirmed) storageRemove('localStorage', STORAGE.age);
-    if (confirmed) return true;
+    if (parseAgeRecord(raw, now).confirmed) return true;
+    // Expired, damaged, or the old undated 'yes': ask again.
+    storageRemove('localStorage', STORAGE.age);
   }
   return memoryAt !== null && now - memoryAt < AGE_CONFIRMATION_MAX_AGE_MS;
 }
 
-const readDeclined = () => memoryDeclined || storageGet('sessionStorage', STORAGE.ageDeclined) === DECLINED_VALUE;
+const readDeclined = () => memoryDeclined || DECLINED_VALUES.has(storageGet('sessionStorage', STORAGE.ageDeclined));
 
 // The gate's state as a small external store, read with useSyncExternalStore.
 let snapshot = null;
@@ -148,7 +155,7 @@ export function confirmAge() {
   refresh();
 }
 
-// "No, exit": the exit screen, for the rest of this tab's session.
+// "No, exit": the exit screen, for the rest of this browser session.
 export function declineAge() {
   memoryDeclined = !storageSet('sessionStorage', STORAGE.ageDeclined, DECLINED_VALUE);
   refresh();

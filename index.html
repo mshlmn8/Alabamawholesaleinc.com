@@ -48,17 +48,17 @@
     <noscript><style>#root .boot { display: none; }</style></noscript>
     <script>
       // Visitors the age gate will ask get its purple, so the shell does not
-      // flash white first. Same test as src/lib/ageGate.js: the old undated
-      // 'yes', or a record from the last 30 days (2592000000 ms) dated no more
-      // than a day (86400000 ms) ahead. The trade desk line appears if the app
-      // has not rendered after 8s.
+      // flash white first. Same test as src/lib/ageGate.js: a record from the
+      // last 30 days (2592000000 ms) dated no more than a day (86400000 ms)
+      // ahead; the old undated 'yes' no longer counts. The trade desk line
+      // appears if the app has not rendered after 8s.
       (function () {
         var gate = true;
         try {
           var raw = localStorage.getItem('aw-age-verified'), rec = null, now = Date.now();
           try { rec = JSON.parse(raw); } catch (e) {}
           var at = rec && rec.ok === true ? rec.at : NaN;
-          gate = !(raw === 'yes' || (typeof at === 'number' && isFinite(at) && at <= now + 86400000 && now - at < 2592000000));
+          gate = !(typeof at === 'number' && isFinite(at) && at <= now + 86400000 && now - at < 2592000000);
         } catch (e) {}
         if (gate) document.documentElement.classList.add('aw-gate');
       })();

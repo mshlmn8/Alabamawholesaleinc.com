@@ -47,7 +47,7 @@ describe('AgeGate', () => {
     const gate = screen.getByRole('dialog', { name: 'Are you 21 or older?' });
     expect(gate.getAttribute('aria-modal')).toBe('true');
     expect(gate.getAttribute('aria-describedby')).toBe('age-gate-text');
-    expect(document.getElementById('age-gate-text').textContent).toMatch(/licensed retail businesses only/);
+    expect(document.getElementById('age-gate-text').textContent).toBe('This site is for licensed retail businesses. You must be 21 or older to enter.');
     // The page is still in the document, but inert and hidden from assistive technology.
     expect(root.querySelector('main h1').textContent).toBe('Tobacco');
     expect(root.hasAttribute('inert')).toBe(true);
@@ -69,23 +69,27 @@ describe('AgeGate', () => {
     expect(JSON.parse(window.localStorage.getItem(STORAGE.age))).toMatchObject({ ok: true });
   });
 
-  it('"No, exit" shows a labelled exit screen that can be taken back', () => {
+  it('"No, exit" shows a labelled exit screen that can be taken back (PR #12 copy)', () => {
     const { unmount } = renderSite();
     fireEvent.click(screen.getByRole('button', { name: 'No, exit' }));
-    const heading = screen.getByRole('heading', { name: 'Sorry, you must be 21 or older to enter' });
-    expect(screen.getByRole('dialog', { name: 'Sorry, you must be 21 or older to enter' })).toBeTruthy();
-    expect(document.activeElement).toBe(heading);
-    expect(document.getElementById('age-gate-text').textContent).toMatch(/only open to visitors 21 or older/);
+    const heading = screen.getByRole('heading', { name: "We're sorry" });
+    expect(screen.getByRole('dialog', { name: "We're sorry" })).toBeTruthy();
+    expect(document.getElementById('age-gate-text').textContent).toBe('You must be 21 or older to enter this site. The catalog is for licensed retailers.');
     expect(heading.textContent).not.toMatch(/—\s*$/);
+    // Focus moves to the way back, which reads out the exit message.
+    const back = screen.getByRole('button', { name: 'Back to the age question' });
+    expect(document.activeElement).toBe(back);
+    expect(back.getAttribute('aria-describedby')).toBe('age-gate-title age-gate-text');
 
-    // A reload in the same session keeps the exit screen.
+    // A reload in the same session keeps the exit screen, focus on the way back.
     unmount();
     root.remove();
     newRoot();
     renderSite();
-    expect(screen.getByRole('dialog', { name: 'Sorry, you must be 21 or older to enter' })).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: "We're sorry" })).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Back to the age question' }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Answered by mistake? Go back' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the age question' }));
     expect(screen.getByRole('dialog', { name: 'Are you 21 or older?' })).toBeTruthy();
     expect(document.activeElement).toBe(screen.getByRole('button', { name: /Yes, I am 21\+/ }));
     expect(window.sessionStorage.getItem(STORAGE.ageDeclined)).toBeNull();

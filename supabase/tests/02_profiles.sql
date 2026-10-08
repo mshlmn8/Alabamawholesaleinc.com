@@ -18,21 +18,24 @@ do $$ begin
   assert found, 'a customer can edit their own contact fields';
   update public.profiles set name = 'x' where id = '00000000-0000-4000-8000-0000000002b1';
   assert not found, 'a customer cannot edit another profile';
+  -- Since 20261008192000_profile_self_update_guard.sql a trigger keeps these
+  -- columns as they were instead of the policy rejecting the update, so
+  -- check the outcome: either way nothing changes.
   begin
     update public.profiles set status = 'approved' where id = '00000000-0000-4000-8000-0000000002a1';
-    raise exception 'self-approval should have failed';
   exception when insufficient_privilege then null;
   end;
   begin
     update public.profiles set role = 'admin' where id = '00000000-0000-4000-8000-0000000002a1';
-    raise exception 'self-promotion to admin should have failed';
   exception when insufficient_privilege then null;
   end;
   begin
     update public.profiles set pricing_tier = 'gold' where id = '00000000-0000-4000-8000-0000000002a1';
-    raise exception 'choosing a pricing tier should have failed';
   exception when insufficient_privilege then null;
   end;
+  assert (select status = 'pending' and role = 'customer' and pricing_tier = 'standard'
+          from public.profiles where id = '00000000-0000-4000-8000-0000000002a1'),
+    'a customer cannot approve or promote themselves or choose a pricing tier';
   assert not public.is_admin(), 'a customer is not an admin';
 end $$;
 select test_reset();

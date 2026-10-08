@@ -330,13 +330,23 @@ export function AuthProvider({ client = defaultClient, link = null, children }) 
     };
   }, [client, userId, profileStatus, refreshProfile]);
 
-  const signUp = useCallback(async ({ email, password, name, business, phone, license_no, ein, resale_cert_no, business_type, state, expected_volume }) => {
+  const signUp = useCallback(async ({
+    email, password, name, business, phone, license_no, ein, resale_cert_no,
+    business_type, state, expected_volume, store_street, store_city, store_zip,
+    terms_accepted, terms_version, age_confirmed,
+  }) => {
     if (!client) throw new Error(UNAVAILABLE);
     const { data, error } = await client.auth.signUp({
       email,
       password,
       options: {
-        data: { name, business, phone, license_no, ein, resale_cert_no, business_type, state, expected_volume },
+        // The signup trigger copies these into profiles. Once the 2026-10-08
+        // migrations are applied it also removes the sensitive keys from the
+        // auth metadata (AW-092, AW-019, AW-348); until then they stay there.
+        data: {
+          name, business, phone, license_no, ein, resale_cert_no, business_type, state, expected_volume,
+          store_street, store_city, store_zip, terms_accepted, terms_version, age_confirmed,
+        },
       },
     });
     if (error) throw error;

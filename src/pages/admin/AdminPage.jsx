@@ -1,7 +1,7 @@
 // Admin dashboard: orders, account approvals, product catalog edits.
 // All write paths use the row-level-security policies in 20260517000001_rls_policies.sql.
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { DOCUMENT_TYPES, createDocumentViewUrl, listAllProfileDocuments } from '../../lib/documents.js';
 import { formatMoney } from '../../lib/format.js';
@@ -141,6 +141,9 @@ function OrdersTab() {
                 <small>
                   <span>{`${new Date(o.created_at).toLocaleString()} · ${o.business} · ${o.contact} · ${o.email} · ${o.phone}`}</span>
                   {o.ship_street && <span>{` · Deliver to ${o.ship_street}, ${o.ship_city} ${o.ship_state} ${o.ship_zip}`}</span>}
+                  {o.license_no && <span>{` · Tobacco license ${o.license_no}`}</span>}
+                  {o.resale_cert_no && <span>{` · Resale certificate ${o.resale_cert_no}`}</span>}
+                  {o.purchasers_21 && <span> · 21+ purchasers confirmed</span>}
                   {o.profiles?.pricing_tier && <span> · tier: <b>{o.profiles.pricing_tier}</b></span>}
                 </small>
               </div>
@@ -170,6 +173,8 @@ function AccountsTab() {
   const [documents, setDocuments] = useState([]);
   const [signedUrls, setSignedUrls] = useState({});
   const [viewError, setViewError] = useState(null);
+  const [openId, setOpenId] = useState(null);
+  const [noteDraft, setNoteDraft] = useState('');
   const reload = () => {
     supabase.from('profiles').select('*').order('created_at', { ascending: false }).then(({ data }) => setProfiles(data || []));
     listAllProfileDocuments().then(setDocuments).catch(() => setDocuments([]));
@@ -205,7 +210,9 @@ function AccountsTab() {
   };
 
   const updateProfile = async (id, patch) => {
-    await supabase.from('profiles').update(patch).eq('id', id);
+    setViewError(null);
+    const { error } = await supabase.from('profiles').update(patch).eq('id', id);
+    if (error) setViewError(profileSaveError(error));
     reload();
   };
 
@@ -224,7 +231,8 @@ function AccountsTab() {
         </thead>
         <tbody>
           {profiles.map(p => (
-            <tr key={p.id}>
+            <Fragment key={p.id}>
+            <tr>
               <td>{p.business || '—'}</td>
               <td>{p.name}</td>
               <td className="muted">{p.email}</td>
@@ -249,46 +257,102 @@ function AccountsTab() {
                 </select>
               </td>
               <td>
-                {p.status === 'pending' ? (
-                  <ul className="doc-admin">
-                    {DOCUMENT_TYPES.map(doc => {
-                      const row = documents.find(item => item.profile_id === p.id && item.document_type === doc.id);
-                      return (
-                        <li key={doc.id}>
-                          <span>{doc.label}</span>
-                          {row ? (
-                            <>
-                              <span>On file</span>
-                              {signedUrls[`${p.id}:${doc.id}`] ? (
-                                <a href={signedUrls[`${p.id}:${doc.id}`]} target="_blank" rel="noopener noreferrer">
-                                  View<span className="sr-only">{` ${doc.label} for ${p.business || p.name}`}</span>
-                                </a>
-                              ) : (
-                                <button type="button" className="text-link" onClick={() => viewDocument(row, p, doc.label)}>
-                                  View<span className="sr-only">{` ${doc.label} for ${p.business || p.name}`}</span>
-                                </button>
-                              )}
-                            </>
-                          ) : (
-                            <span className="muted">Not on file</span>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : '—'}
+                <ul className="doc-admin">
+                  {DOCUMENT_TYPES.map(doc => {
+                    const row = documents.find(item => item.profile_id === p.id && item.document_type === doc.id);
+                    return (
+                      <li key={doc.id}>
+                        <span>{doc.label}</span>
+                        {row ? (
+                          <>
+                            <span>On file</span>
+                            {signedUrls[`${p.id}:${doc.id}`] ? (
+                              <a href={signedUrls[`${p.id}:${doc.id}`]} target="_blank" rel="noopener noreferrer">
+                                View<span className="sr-only">{` ${doc.label} for ${p.business || p.name}`}</span>
+                              </a>
+                            ) : (
+                              <button type="button" className="text-link" onClick={() => viewDocument(row, p, doc.label)}>
+                                View<span className="sr-only">{` ${doc.label} for ${p.business || p.name}`}</span>
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <span className="muted">Not on file</span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
               </td>
               <td>
-                {p.status === 'pending' && (
-                  <button className="mini-btn primary" type="button" onClick={() => updateProfile(p.id, { status: 'approved' })}>
-                    Approve
+                <div className="inline-actions">
+                  <button
+                    className="mini-btn"
+                    type="button"
+                    aria-expanded={openId === p.id}
+                    aria-controls={openId === p.id ? `account-details-${p.id}` : undefined}
+                    onClick={() => { setOpenId(openId === p.id ? null : p.id); setNoteDraft(p.verification_note || ''); }}
+                  >
+                    <span>{openId === p.id ? 'Hide' : 'Details'}</span>
+                    <span className="sr-only">{` for ${p.business || p.name}`}</span>
                   </button>
-                )}
+                  {p.status === 'pending' && (
+                    <button className="mini-btn primary" type="button" onClick={() => updateProfile(p.id, { status: 'approved' })}>
+                      Approve
+                    </button>
+                  )}
+                </div>
               </td>
             </tr>
+            {openId === p.id && (
+              <tr className="account-detail-row" id={`account-details-${p.id}`}>
+                <td colSpan={8}>
+                  <div className="account-facts">
+                    <Fact label="EIN" value={p.ein} />
+                    <Fact label="Tobacco license" value={p.license_no} />
+                    <Fact label="Resale certificate" value={p.resale_cert_no} />
+                    <Fact label="Phone" value={p.phone} />
+                    <Fact label="Store state" value={p.state} />
+                    <Fact label="Street" value={p.store_street} />
+                    <Fact label="City" value={p.store_city} />
+                    <Fact label="ZIP" value={p.store_zip} />
+                    <Fact label="Business type" value={p.business_type} />
+                    <Fact label="Monthly volume" value={p.expected_volume} />
+                    <Fact label="Approved" value={p.approved_at ? new Date(p.approved_at).toLocaleString() : ''} />
+                    <Fact label="Approved by" value={profiles.find(row => row.id === p.approved_by)?.name || p.approved_by || ''} />
+                    <Fact label="Terms accepted" value={p.terms_accepted_at ? `${new Date(p.terms_accepted_at).toLocaleString()}${p.terms_version ? ` · ${p.terms_version}` : ''}` : ''} />
+                    <Fact label="21+ confirmed" value={p.age_confirmed_at ? new Date(p.age_confirmed_at).toLocaleString() : ''} />
+                  </div>
+                  <label className="account-note" htmlFor={`note-${p.id}`}>Verification note
+                    <input id={`note-${p.id}`} value={noteDraft} onChange={e => setNoteDraft(e.target.value)} />
+                  </label>
+                  <button className="mini-btn" type="button" onClick={() => updateProfile(p.id, { verification_note: noteDraft || null })}>Save note</button>
+                </td>
+              </tr>
+            )}
+            </Fragment>
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// The live database gets the approval and consent columns from the
+// 2026-10-08 migrations (AW-197, AW-019); until then they read as '—' and a
+// note cannot be saved.
+function profileSaveError(error) {
+  const text = `${error?.code || ''} ${error?.message || ''}`;
+  if (/PGRST204|42703/.test(text)) return 'Saving this needs the October 2026 database update (see BACKEND.md).';
+  return error?.message || 'That change was not saved.';
+}
+
+// One application answer in the details row (AW-017).
+function Fact({ label, value }) {
+  return (
+    <div>
+      <p className="fact-label">{label}</p>
+      <p>{value || '—'}</p>
     </div>
   );
 }

@@ -264,7 +264,7 @@ export default function App() {
         return (
           <QuotePage items={cart.items} total={cart.total} addLine={cart.addLine} decLine={cart.decLine} removeLine={cart.removeLine}
                      removeLines={cart.removeLines} clearCart={cart.clearCart} legacy={cart.legacy} onDismissLegacy={cart.dismissLegacy}
-                     profile={profile} account={account} signedIn={!!session} onSignIn={openSignin}
+                     profile={profile} account={account} signedIn={!!session} onSignIn={openSignin} onApplyClick={openSignup}
                      isApprovedBuyer={isApprovedBuyer} isBackendConfigured={isBackendConfigured} checkCart={checkCart} />
         );
       case 'account':

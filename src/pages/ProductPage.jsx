@@ -15,6 +15,8 @@ import { Link } from '../lib/router.js';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 import { Picture } from '../components/Picture.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
+import { NicotineWarning } from '../components/NicotineWarning.jsx';
+import { showsNicotineWarning } from '../lib/regulated.js';
 
 export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine, decLine, products, onLoginClick, onApplyClick, savedQty = 0 }) {
   const [desiredQty, setDesiredQty] = useState(() => savedQty || 1);
@@ -57,6 +59,7 @@ export function ProductPage({ productId, profile, isApprovedBuyer, cart, addLine
           {p.picture ? <Picture picture={p.picture} alt={p.name} sizes={SIZES.detail} priority /> : <span className="card-initials" aria-hidden="true">{initials(p.name)}</span>}
         </div>
         <div className="pd-info">
+          {showsNicotineWarning(p) && <NicotineWarning />}
           <p className="pd-brand">{`${p.brand} · ${p.sub}`}</p>
           <h1>{p.name}</h1>
           <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()} from ${p.brand}.`}</p>

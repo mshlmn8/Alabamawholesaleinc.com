@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { linesFromOrder } from '../../lib/lines.js';
 import { formatMoney } from '../../lib/format.js';
+import { Link } from '../../lib/router.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
 import { QuickReorder } from './QuickReorder.jsx';
@@ -113,6 +114,9 @@ export function AccountPage({
         <Stat label="Pricing tier" value={profile.pricing_tier} />
         <Stat label="Role" value={profile.role} />
       </div>
+
+      {/* Licence proof stays reachable after approval (AW-254). */}
+      <p className="notice">License and resale documents: <Link className="text-link" to="/apply">view or replace</Link></p>
 
       {profile.status === 'pending' && (
         <p className="notice">Your account is awaiting approval. A trade rep will verify your retail license and activate pricing within one business day.</p>

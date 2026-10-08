@@ -7,17 +7,23 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('00000000-0000-4000-8000-0000000003b1', 'gold@example.com', '{"name": "Gold"}');
 update public.profiles set status = 'approved', pricing_tier = 'gold' where id = '00000000-0000-4000-8000-0000000003b1';
 
--- An active product with at most one variant, so no variant choice is needed.
+-- An active product with at most one variant, so no variant choice is needed,
+-- and outside tobacco and vapes, so no licence is needed (04_tobacco_license.sql
+-- covers those).
 select set_config('test.product_id', (
   select id::text from public.products
   where active and jsonb_array_length(variants) <= 1 and price is not null
+    and cat <> 'TOBACCO' and sub not in ('Disposable Vapes', 'Vape Pods')
   order by id limit 1
 ), false);
 
+-- The signature since 20261008190000_quote_tobacco_license.sql: the last three
+-- arguments are the licence, the resale certificate and the 21+ attestation.
 create or replace function pg_temp.quote(ref text) returns jsonb language sql as $$
   select public.submit_quote(ref, 'Store', 'Contact', 'buyer@example.com', '205-555-0100', 'delivery', null, null,
     '1 Main St', 'Birmingham', 'AL', '35203',
-    jsonb_build_array(jsonb_build_object('product_id', current_setting('test.product_id')::int, 'qty', 2)));
+    jsonb_build_array(jsonb_build_object('product_id', current_setting('test.product_id')::int, 'qty', 2)),
+    null, null, false);
 $$;
 
 select test_anon();

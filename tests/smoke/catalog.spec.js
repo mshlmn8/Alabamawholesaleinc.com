@@ -165,6 +165,10 @@ test('checkout checks the catalog again and names a line that was taken out (AW-
     ['Street', '1 Test Way'], ['City', 'Birmingham'], ['State', 'AL'], ['ZIP', '35203']]) {
     await page.getByLabel(label, { exact: true }).fill(value);
   }
+  // Tobacco lines from a guest: the licence questions (AW-014, PR #12).
+  await page.getByLabel('State tobacco/retail license #').fill('TL-SMOKE');
+  await page.getByLabel('Sales-tax / resale certificate #').fill('RC-SMOKE');
+  await page.getByRole('checkbox', { name: /all purchasers are 21\+/ }).check();
   await expect.poll(() => calls.length).toBe(1);
 
   drop = true;
@@ -179,5 +183,6 @@ test('checkout checks the catalog again and names a line that was taken out (AW-
   await page.getByRole('button', { name: /Submit quote request/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: /Thank you/ })).toBeVisible();
   expect(sent.map((body) => body.p_items)).toEqual([[{ product_id: 1, variant: 'Red', qty: 1 }]]);
+  expect(sent[0]).toMatchObject({ p_license_no: 'TL-SMOKE', p_resale_cert: 'RC-SMOKE', p_purchasers_21: true });
   expect(errors).toEqual([]);
 });

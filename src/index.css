@@ -59,6 +59,13 @@ button { cursor: pointer; }
 input[type="search"]:focus-visible, .aw-search input:focus-visible { outline-offset: -3px; }
 .trade-bar, .footer-main, .age-gate, .fda-note { --focus-ring: #ffcdb5; }
 .button:focus-visible, .aw-signup:focus-visible, .filter-toggle:focus-visible, .aw-category-toggle:focus-visible, .active-filters button:focus-visible, .sub-pill.active:focus-visible { outline-color: var(--purple); }
+.age-gate .button:focus-visible,
+.contact-strip .button:focus-visible,
+.contact-strip a:focus-visible,
+.contact-strip .text-link:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
 .aw-layer:focus { outline: none; }
 /* Where the router puts focus after a page change (AW-041): the page heading,
    or <main>. They are not controls, so they get no ring. */
@@ -435,9 +442,18 @@ p > .text-link { min-height: 0; }
 .mini-btn.quiet { border-color: transparent; background: none; color: var(--muted); padding-inline: 6px; }
 .mini-btn.quiet:hover { background: none; color: var(--purple); text-decoration: underline; text-underline-offset: 3px; }
 .admin-search { max-width: 420px; margin-bottom: 8px; }
+.account-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px 16px; margin: 0 0 12px; }
+.account-facts p { margin: 0; font-size: 0.875rem; overflow-wrap: anywhere; }
+.account-facts .fact-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+.account-detail-row td { background: var(--paper); }
+/* The details row spans the whole (scrolling) table; its content stays in
+   view at the left edge and wraps to the screen on phones. */
+.account-detail-row td > * { position: sticky; left: 12px; max-width: calc(100vw - 64px); }
+.account-note { display: grid; gap: 6px; max-width: 420px; margin-bottom: 8px; font-size: 0.75rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+.account-note input { height: var(--tap); padding: 0 8px; border: 1px solid #d8d1c9; background: #fff; text-transform: none; letter-spacing: 0; font-size: 0.875rem; font-weight: 500; color: var(--ink); }
 
 /* ============================ footer ============================ */
-.footer-main { margin-top: calc(var(--section-gap) + 16px); background: var(--purple); color: #fff; padding: 44px 0 30px; }
+.footer-main { margin-top: calc(var(--section-gap) + 16px); background: var(--purple); color: #fff; padding: 44px 0 0; }
 .footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 32px; }
 .footer-grid h4 { font: 700 var(--text-xs)/1 var(--body); letter-spacing: 2px; color: #cbb8ec; text-transform: uppercase; margin: 0 0 12px; }
 .footer-grid p { font-size: var(--text-md); color: #e9e2f5; line-height: 1.8; margin: 0; }
@@ -450,10 +466,15 @@ p > .text-link { min-height: 0; }
 }
 .footer-brand > span { font: 700 26px/1 var(--body); letter-spacing: -1.2px; color: var(--orange); display: block; }
 .footer-brand > small { font: 700 var(--text-xs)/1.4 var(--body); letter-spacing: 2.4px; color: #cbb8ec; display: block; margin-top: 6px; }
-.footer-legal { border-top: 1px solid #3a2270; margin-top: 30px; padding-top: 18px; display: flex; justify-content: space-between; gap: 20px; font-size: var(--text-xs); color: #b4a1d9; flex-wrap: wrap; }
+.footer-legal { border-top: 1px solid #3a2270; margin-top: 30px; padding: 18px 0 24px; display: flex; justify-content: space-between; gap: 20px; font-size: var(--text-xs); color: #b4a1d9; flex-wrap: wrap; }
 .footer-legal p { margin: 0; }
-.fda-note { background: var(--purple-deep); color: #cbb8ec; font-size: var(--text-xs); line-height: 1.7; padding: 14px 0; text-align: center; }
+.fda-note { background: var(--purple-deep); color: #fff; font-size: 0.875rem; line-height: 1.45; padding: 16px 0; text-align: center; }
 .fda-note .container { max-width: 900px; }
+.fda-note .nicotine-warning { margin: 0; padding: 0; background: transparent; color: #fff; font-size: 0.875rem; line-height: 1.45; }
+.nicotine-warning { margin: 0 0 14px; padding: 12px 14px; background: var(--purple-deep); color: #fff; font-size: 0.875rem; font-weight: 700; line-height: 1.45; text-align: center; }
+.nicotine-warning.is-compact { margin: 8px 0 0; padding: 8px 10px; font-size: 0.8125rem; }
+/* The vape hero slide's warning is the carousel's last band. */
+.home-carousel .nicotine-warning { margin: 0; }
 
 /* ============================ overlays: drawer / modal / gate ============================ */
 .aw-layer { position: relative; z-index: 60; }
@@ -472,6 +493,14 @@ p > .text-link { min-height: 0; }
 .form-grid label, .contact-grid dt { display: block; font-size: var(--text-xs); font-weight: 700; letter-spacing: 1.2px; color: var(--purple); text-transform: uppercase; margin-bottom: 6px; }
 .form-grid input, .form-grid select { width: 100%; height: var(--tap); border: 1px solid #dcd5cc; background: #f8f6f2; border-radius: 2px; padding: 0 12px; font-size: var(--text-base); color: var(--ink); }
 .form-grid .full { grid-column: 1 / -1; }
+.form-grid .consent { display: flex; align-items: flex-start; gap: 10px; }
+.form-grid .consent input[type="checkbox"] { width: 18px; height: 18px; margin-top: 2px; flex: 0 0 auto; accent-color: var(--button-orange); }
+.form-grid .consent label { margin: 0; letter-spacing: 0; text-transform: none; font-size: 0.875rem; font-weight: 600; line-height: 1.45; color: var(--ink); }
+.consent-block { display: grid; gap: 12px; margin: 14px 0 4px; }
+.consent-block .consent { display: flex; align-items: flex-start; gap: 10px; font-size: 0.875rem; line-height: 1.45; }
+.consent-block .consent input { width: 18px; height: 18px; margin-top: 2px; flex: 0 0 auto; accent-color: var(--button-orange); }
+.consent-block .consent a { color: var(--purple); text-decoration: underline; text-underline-offset: 2px; }
+.quote-account-links { margin: 0 0 10px; }
 .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0 6px; }
 .contact-grid > div { min-width: 0; }
 .contact-grid dd { margin: 0; font-size: var(--text-base); line-height: 1.5; overflow-wrap: anywhere; }
@@ -533,14 +562,10 @@ p > .text-link { min-height: 0; }
 .age-gate .brand small { font: 700 0.75rem/1.4 var(--body); letter-spacing: 3px; color: #e9e2f5; display: block; margin-top: 10px; }
 .age-gate h2 { font-size: clamp(2.625rem, 5.5vw, 3.75rem); color: #fff; margin: 34px 0 16px; }
 .age-gate h2 em { color: var(--orange); font-style: normal; }
-/* The exit screen's heading takes focus when it appears; it is not a control. */
-.age-gate h2[tabindex="-1"]:focus { outline: none; }
 .age-gate p { color: #e9e2f5; font-size: 0.9375rem; line-height: 1.8; max-width: 46ch; margin: 0 auto 32px; }
 .age-gate .btn-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
 .age-gate .button { font-size: 0.8125rem; padding: 16px 26px; }
 .age-gate .button.ghost { color: #fff; border-color: #ffffff88; background: transparent; }
-/* The purple ring other buttons get would vanish on the purple gate. */
-.age-gate .button:focus-visible { outline-color: var(--focus-ring); }
 @media (hover: hover) {
   .age-gate .button.ghost:hover { background: #ffffff1f; border-color: #fff; }
 }
@@ -634,8 +659,8 @@ p > .text-link { min-height: 0; }
   .editorial-card { padding: 24px; }
   .editorial-card h2 { font-size: 36px; }
   .footer-grid { grid-template-columns: 1fr; gap: 24px; }
-  .footer-main { padding: 32px 0 22px; }
-  .footer-legal { flex-direction: column; gap: 8px; }
+  .footer-main { padding: 32px 0 0; }
+  .footer-legal { flex-direction: column; gap: 8px; padding-bottom: 20px; }
   .dialog { padding: 24px 20px; }
   .dialog h2 { font-size: 32px; }
   .form-grid, .contact-grid { grid-template-columns: 1fr; }

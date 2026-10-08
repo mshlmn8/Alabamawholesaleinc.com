@@ -124,3 +124,36 @@ describe('AuthModal and a sign-in in another tab (AW-335)', () => {
     expect(screen.getByLabelText('Your name').value).toBe('Typed');
   });
 });
+
+// The application asks for the store address, consent to the Trade terms and
+// Privacy policy, and 21+ (AW-092, AW-019; Cursor's PR #12).
+describe('AuthModal application form', () => {
+  it('asks for the store address, consent and 21+, and sends them with the sign-up', async () => {
+    const signUp = vi.fn(async () => ({ session: null }));
+    setup({ signUp }, { initialMode: 'application' });
+    const street = screen.getByLabelText('Store street address');
+    const city = screen.getByLabelText('City');
+    const zip = screen.getByLabelText('ZIP');
+    const terms = screen.getByRole('checkbox', { name: /I agree to the Trade terms/ });
+    const age = screen.getByRole('checkbox', { name: 'I am 21 or older' });
+    for (const input of [street, city, zip, terms, age]) expect(input.required).toBe(true);
+    expect([street.autocomplete, city.autocomplete, zip.autocomplete]).toEqual(['address-line1', 'address-level2', 'postal-code']);
+    expect(zip.getAttribute('pattern')).toBe('[0-9]{5}');
+    // Real links to the policies, opening in a new tab so the form stays.
+    const termsLink = screen.getByRole('link', { name: /Trade terms/ });
+    const privacyLink = screen.getByRole('link', { name: /Privacy policy/ });
+    expect([termsLink.getAttribute('href'), privacyLink.getAttribute('href')]).toEqual(['/terms', '/privacy']);
+    expect(termsLink.getAttribute('target')).toBe('_blank');
+
+    fireEvent.change(street, { target: { value: '1 Test St' } });
+    fireEvent.change(city, { target: { value: 'Birmingham' } });
+    fireEvent.change(zip, { target: { value: '35203' } });
+    fireEvent.click(terms);
+    fireEvent.click(age);
+    await act(async () => { fireEvent.submit(street.closest('form')); });
+    expect(signUp).toHaveBeenCalledWith(expect.objectContaining({
+      store_street: '1 Test St', store_city: 'Birmingham', store_zip: '35203',
+      terms_accepted: true, terms_version: '2026-09', age_confirmed: true,
+    }));
+  });
+});

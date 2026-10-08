@@ -5,9 +5,11 @@ import { QuotePage } from './QuotePage.jsx';
 
 // submitOrder is the only way out; record what it is asked to send.
 const sent = vi.hoisted(() => []);
+const forms = vi.hoisted(() => []);
 vi.mock('../lib/orders.js', () => ({
-  submitOrder: vi.fn(async ({ refNum, items }) => {
+  submitOrder: vi.fn(async ({ refNum, items, formData }) => {
     sent.push(items);
+    forms.push(formData);
     return { ok: true, order: { id: 'o1', ref_num: refNum } };
   }),
 }));
@@ -150,3 +152,60 @@ describe('QuotePage and a catalog that changed', () => {
   });
 });
 
+// A guest or unapproved account quoting tobacco or vape lines gives a
+// tobacco licence, a resale certificate and a 21+ attestation (AW-014,
+// Cursor's PR #12). Approved buyers are not asked again.
+describe('QuotePage and tobacco licences', () => {
+  const CIGARETTES = [{ ...ITEMS[0], cat: 'TOBACCO', sub: 'Cigarettes' }];
+  const CANDY = [{ lineKey: '200', productId: 200, variant: null, name: 'Chocolate bar', sku: 'AW-CHOC', qty: 1, cat: 'CANDIES', sub: 'Chocolate Bars' }];
+  const licence = () => document.getElementById('quote-license');
+  const fillAll = () => {
+    for (const [id, value] of [['quote-business', 'Test Market'], ['quote-contact', 'Test Buyer'], ['quote-email', 'buyer@example.test'],
+      ['quote-phone', '205-000-0000'], ['ship-street', '1 Test Way'], ['ship-city', 'Birmingham'], ['ship-state', 'AL'], ['ship-zip', '35203']]) {
+      fireEvent.change(document.getElementById(id), { target: { value } });
+    }
+  };
+
+  it('asks a guest with a cigarette line for the licence, resale certificate and 21+, and links to sign-in and apply', async () => {
+    forms.length = 0;
+    const onSignIn = vi.fn();
+    const onApplyClick = vi.fn();
+    render(page({ items: CIGARETTES, profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false, onSignIn, onApplyClick }));
+    expect(licence().required).toBe(true);
+    expect(screen.getByLabelText('Sales-tax / resale certificate #').required).toBe(true);
+    const attest = screen.getByRole('checkbox', { name: 'I confirm this business holds a valid tobacco retail license and all purchasers are 21+' });
+    expect(attest.required).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Have an account? Sign in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'New? Apply for a trade account' }));
+    expect(onSignIn).toHaveBeenCalled();
+    expect(onApplyClick).toHaveBeenCalled();
+
+    fillAll();
+    fireEvent.change(licence(), { target: { value: 'TL-123' } });
+    fireEvent.change(screen.getByLabelText('Sales-tax / resale certificate #'), { target: { value: 'RC-456' } });
+    fireEvent.click(attest);
+    await act(async () => { fireEvent.submit(licence().closest('form')); });
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Thank you/));
+    expect(forms.at(-1)).toMatchObject({ licenseNo: 'TL-123', resaleCert: 'RC-456', purchasers21: true });
+  });
+
+  it('asks a pending account too, but not an approved buyer', () => {
+    const view = render(page({ items: CIGARETTES, profile: B, account: 'ready', signedIn: true, isApprovedBuyer: false }));
+    expect(licence()).not.toBeNull();
+    // Signed in: no sign-in or apply links.
+    expect(screen.queryByRole('button', { name: 'Have an account? Sign in' })).toBeNull();
+    view.rerender(page({ items: CIGARETTES, profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true }));
+    expect(licence()).toBeNull();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+  });
+
+  it('asks nothing for a cart without tobacco or vape lines, and sends no licence answers', async () => {
+    forms.length = 0;
+    render(page({ items: CANDY, profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false }));
+    expect(licence()).toBeNull();
+    fillAll();
+    await act(async () => { fireEvent.submit(document.querySelector('form[aria-labelledby="quote-form-title"]')); });
+    await waitFor(() => expect(forms.length).toBe(1));
+    expect(forms[0]).toMatchObject({ licenseNo: '', resaleCert: '', purchasers21: false });
+  });
+});

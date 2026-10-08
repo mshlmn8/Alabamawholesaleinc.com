@@ -292,3 +292,30 @@ describe('clearStoredSession', () => {
     expect(window.localStorage.getItem('aw-age-verified')).toBe('z');
   });
 });
+
+// The application's extra answers ride in the sign-up metadata, where the
+// signup trigger copies them into profiles (AW-092, AW-019; PR #12).
+describe('signUp', () => {
+  it('sends the store address, consent and 21+ answers with the application', async () => {
+    const client = fakeClient();
+    client.auth.signUp = vi.fn(async () => ({ data: { session: null, user: { id: 'u9' } }, error: null }));
+    renderWith(client);
+    await waitFor(() => expect(seen.auth?.account).toBe('signed-out'));
+    await act(async () => {
+      await seen.auth.signUp({
+        email: 'new@example.test', password: 'test-password-1', name: 'New Buyer', business: 'New Market', phone: '205-000-0009',
+        ein: '12-3456789', license_no: 'L-1', resale_cert_no: 'R-1', business_type: 'Convenience Store', state: 'AL',
+        expected_volume: 'Under $5K', store_street: '1 Test St', store_city: 'Birmingham', store_zip: '35203',
+        terms_accepted: true, terms_version: '2026-09', age_confirmed: true, agreeTerms: true,
+      });
+    });
+    const [{ email, options }] = client.auth.signUp.mock.calls[0];
+    expect(email).toBe('new@example.test');
+    expect(options.data).toMatchObject({
+      store_street: '1 Test St', store_city: 'Birmingham', store_zip: '35203',
+      terms_accepted: true, terms_version: '2026-09', age_confirmed: true, license_no: 'L-1',
+    });
+    // Form-only state does not leave the browser.
+    expect(options.data).not.toHaveProperty('agreeTerms');
+  });
+});

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Picture } from './Picture.jsx';
+import { NicotineWarning } from './NicotineWarning.jsx';
 
 export function HeroCarousel({ slides }) {
   const media = slides.filter(slide => slide.img || slide.videoUrl);
@@ -75,6 +76,8 @@ export function HeroCarousel({ slides }) {
         <button type="button" aria-pressed={paused} onClick={() => setPaused(value => !value)}>{paused ? 'Play' : 'Pause'}</button>
         <button type="button" onClick={() => go(1)} aria-label="Next slide">Next</button>
       </div>
+      {/* The vape slide carries the FDA statement (AW-026). */}
+      {active.nicotineWarning && <NicotineWarning />}
     </section>
   );
 }

@@ -32,4 +32,22 @@ describe('quoteForm', () => {
       business: 'Bravo Tobacco Outlet', contact: 'Bea Bravo', email: 'bravo@example.test', phone: '', shipStreet: '',
     });
   });
+
+  // PR #12: the store address from the application fills the ship-to address.
+  it('fills the ship-to address from the store address on the profile', () => {
+    const withStore = { ...A, store_street: '1 Alpha Way', store_city: 'Birmingham', state: 'AL', store_zip: '35203' };
+    expect(initialQuoteForm(withStore)).toMatchObject({ shipStreet: '1 Alpha Way', shipCity: 'Birmingham', shipState: 'AL', shipZip: '35203' });
+    // Typed values stay; 'Other' is not a state.
+    const typed = { ...EMPTY_QUOTE_FORM, shipStreet: '9 Typed Rd' };
+    expect(quoteFormForAccount(typed, { ...withStore, state: 'Other' }, null)).toMatchObject({ shipStreet: '9 Typed Rd', shipCity: 'Birmingham', shipState: '' });
+    // A live database without the store columns fills nothing.
+    expect(initialQuoteForm(A)).toMatchObject({ shipStreet: '', shipCity: '', shipZip: '' });
+  });
+
+  it('starts the tobacco licence answers empty and clears them for the next buyer (AW-014)', () => {
+    expect(EMPTY_QUOTE_FORM).toMatchObject({ licenseNo: '', resaleCert: '', purchasers21: false });
+    const filled = { ...initialQuoteForm(B), licenseNo: 'L-1', resaleCert: 'R-1', purchasers21: true };
+    expect(quoteFormForAccount(filled, B, 'b')).toMatchObject({ licenseNo: 'L-1', resaleCert: 'R-1', purchasers21: true });
+    expect(quoteFormForAccount(filled, null, 'b')).toMatchObject({ licenseNo: '', resaleCert: '', purchasers21: false });
+  });
 });
