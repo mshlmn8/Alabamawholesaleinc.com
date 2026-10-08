@@ -439,7 +439,7 @@ test.describe('tobacco and vapor', () => {
   test('a guest quote with a cigarette line asks for the licence, resale certificate and 21+', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/product/14');
-    await page.getByRole('button', { name: /^Add to (quote|order)/ }).click();
+    await page.locator('.pd-info').getByRole('button', { name: /^Add to (quote|order)/ }).click();
     await page.goto('/quote');
     await expect(page.getByLabel('State tobacco/retail license #')).toHaveAttribute('required', '');
     await expect(page.getByLabel('Sales-tax / resale certificate #')).toHaveAttribute('required', '');
@@ -447,6 +447,65 @@ test.describe('tobacco and vapor', () => {
     await expect(page.getByRole('button', { name: 'Have an account? Sign in' })).toBeVisible();
     await page.getByRole('button', { name: 'New? Apply for a trade account' }).click();
     await expect(page.getByRole('dialog', { name: /Apply for an account/ })).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+});
+
+// Cursor's PR #13 in the current structure: card buttons and "Added"
+// (AW-057), "Photo coming soon" (AW-029), featured filters (AW-139), the
+// Wikimedia credit (AW-033), and photos drawn no larger than their pixels
+// (AW-073).
+test.describe('part 2 catalog', () => {
+  test.beforeEach(async ({ context }) => {
+    await context.addInitScript(([key, value]) => {
+      try { localStorage.setItem(key, value); } catch { /* storage blocked */ }
+    }, [AGE_KEY, ageRecord(Date.now())]);
+  });
+
+  test('cards say "Select options" or "Add to quote", and "Added" after an add', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/category/tobacco/cigarettes');
+    const kite = page.locator('.content-card', { hasText: 'Kite cigarette tobacco' });
+    await kite.getByRole('button', { name: 'Add to quote' }).click();
+    await expect(kite.locator('.added-note')).toHaveText('Added');
+    await expect(kite.getByRole('group', { name: 'Kite cigarette tobacco quantity' })).toBeVisible();
+    await expect(page.locator('#aw-announcer')).toHaveText('Added Kite cigarette tobacco to your quote.');
+    await expect(kite.locator('.added-note')).toHaveText('', { timeout: 4000 });
+    await page.goto('/category/tobacco/cigars-and-cigarillos');
+    await expect(page.locator('.content-card', { hasText: 'Royal Blunts EZ Roll' }).getByRole('link', { name: 'Select options' })).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+
+  test('a product without a photo says so, and only tags with products are offered', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/product/9');
+    await expect(page.locator('.pd-media .photo-soon-label')).toHaveText('Photo coming soon');
+    // On phones the filters are in the Filter & Sort drawer.
+    const openFilters = async () => {
+      const toggle = page.getByRole('button', { name: /Filter/ });
+      if (await toggle.count()) await toggle.click();
+    };
+    await page.goto('/category/grocery');
+    await openFilters();
+    await expect(page.getByRole('group', { name: 'Variants' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Featured' })).toHaveCount(0);
+    await page.goto('/category/tobacco');
+    await openFilters();
+    await expect(page.getByRole('checkbox', { name: /^Bestsellers \(\d+\)$/ })).toBeVisible();
+    await expect(page.getByRole('checkbox', { name: /^New/ })).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
+  test('the Wikimedia photo is credited, and a small photo isn’t enlarged', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/product/149');
+    await expect(page.locator('.photo-credit')).toContainText('Photo: Dietmar Rabich, CC BY-SA 4.0.');
+    await expect(page.locator('.photo-credit a')).toHaveAttribute('href', /^https:\/\/commons\.wikimedia\.org\/wiki\/File:/);
+    await page.goto('/product/263');
+    const img = page.locator('.pd-media img');
+    await expect(img).toBeVisible();
+    const { attr, shown } = await img.evaluate((el) => ({ attr: Number(el.getAttribute('width')), shown: el.getBoundingClientRect().width }));
+    expect(shown).toBeLessThanOrEqual(attr + 0.5);
     expect(errors).toEqual([]);
   });
 });

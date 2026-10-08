@@ -27,7 +27,7 @@ function trackErrors(page) {
 
 const stored = (page, key) => page.evaluate((k) => localStorage.getItem(k), key);
 const cartButton = (page) => page.getByRole('button', { name: /^Cart, \d+ items$/ });
-const addButton = (page) => page.getByRole('button', { name: /^Add to (quote|order)/ });
+const addButton = (page) => page.locator('.pd-info').getByRole('button', { name: /^Add to (quote|order)/ });
 
 test.beforeEach(async ({ context }) => {
   await context.route('**/*', (route) => (isLocal(route.request().url()) ? route.continue() : route.abort()));
