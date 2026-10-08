@@ -210,7 +210,7 @@ export function QuotePage({
         <p style={{ margin: '0 auto 14px' }}>
           <span>{asOrder ? 'Your order has been saved.' : 'Your quote request has been saved.'}</span> A trade desk rep will reach out within one business day at <strong style={{ color: 'var(--purple)' }}>{data.phone || data.email}</strong> to confirm details.
         </p>
-        <p className="result-note" style={{ fontSize: 13 }}>Reference number: <strong>{receipt?.ref_num}</strong></p>
+        <p className="result-note">Reference number: <strong>{receipt?.ref_num}</strong></p>
         {/* The total the server saved (AW-351), priced by submit_quote. */}
         {receipt?.subtotal != null && <p className="result-note">{`Saved total: ${formatMoney(receipt.subtotal)} · ${receipt.total_units} ${Number(receipt.total_units) === 1 ? 'unit' : 'units'}`}</p>}
         <div className="dialog-actions" style={{ justifyContent: 'center' }}>

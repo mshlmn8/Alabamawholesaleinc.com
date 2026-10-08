@@ -491,6 +491,20 @@ describe('the markup uses the design system (merged PR #12, PR #13 and lane p2 p
     expect(seen).toBe(5);
   });
 
+  it('sets no inline px font size in any component (AW-162)', () => {
+    for (const { file, text } of jsx) expect(text, file).not.toMatch(/fontSize:\s*\d/);
+  });
+
+  it('gives the compact admin buttons a full-size target on touch screens', () => {
+    const coarse = mediaBlocks(css).filter((b) => b.prelude === '(pointer: coarse)').flatMap((b) => rules(b.body));
+    expect(declarations(coarse.find((r) => r.selectors.join() === '.button.xs').body)).toEqual({ 'min-height': 'var(--tap)' });
+  });
+
+  it('keeps a wide admin table from widening the page: its .sr-only labels stay inside the scroller', () => {
+    const scroller = declarations(rules(css).find((r) => r.selectors.join() === '.table-scroll').body);
+    expect(scroller).toMatchObject({ position: 'relative', 'overflow-x': 'auto' });
+  });
+
   it('styles the card buttons, the sold-out state and the order actions with .button', () => {
     const card = code(read('src/components/ProductCard.jsx'));
     expect(card.match(/className="button ghost sm card-add"/g)).toHaveLength(3);
