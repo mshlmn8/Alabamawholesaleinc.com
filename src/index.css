@@ -1743,7 +1743,8 @@ address.info-lead-small { font-style: normal; }
   .info-grid { grid-template-columns: 1fr; }
   .support-columns, .apply-layout, .policy-layout { grid-template-columns: minmax(0, 1fr); gap: 28px; }
   .contact-strip, .support-cta, .status-panel, .eligibility { flex-direction: column; align-items: stretch; gap: 20px; padding: 24px; margin-top: 30px; }
-  .doc-panel { padding: 24px; }
+  /* main: the base .doc-panel rule comes later in the file (AW-258). */
+  main .doc-panel { padding: 24px; }
   .eligibility-form { flex-basis: auto; }
   .policy-nav { position: static; display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 14px 18px; }
   .policy-nav .eyebrow { flex-basis: 100%; }
