@@ -92,6 +92,35 @@ test.describe('with the age confirmed', () => {
     expect(errors).toEqual([]);
   });
 
+  test('a bare line gets its variant in the drawer and keeps its quantity, so the quote can be sent (AW-011)', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/');
+    await page.evaluate((k) => localStorage.setItem(k, JSON.stringify({ 1: 12, 14: 2 })), GUEST_CART);
+    await page.reload();
+    await expect(cartButton(page)).toHaveAccessibleName('Cart, 14 items');
+    await cartButton(page).click();
+    const drawer = page.getByRole('dialog', { name: 'Your order' });
+    await expect(drawer.getByText('12 units · choose a variety')).toBeVisible();
+    const set = drawer.getByRole('button', { name: 'Set variety' });
+    await expect(set).toBeDisabled();
+    await drawer.getByRole('combobox', { name: 'Choose a variety for Swisher Sweets cigarillos' }).selectOption('Red');
+    // Choosing alone changes nothing (WCAG 3.2.2); Set does.
+    expect(JSON.parse(await stored(page, GUEST_CART))).toEqual({ 1: 12, 14: 2 });
+    await set.click();
+    const moved = drawer.getByRole('textbox', { name: 'Quantity of Swisher Sweets cigarillos — Red' });
+    await expect(moved).toHaveValue('12');
+    await expect(moved).toBeFocused();
+    expect(JSON.parse(await stored(page, GUEST_CART))).toEqual({ '1::red': 12, 14: 2 });
+    await drawer.getByRole('button', { name: 'Close cart' }).click();
+    await expect(cartButton(page)).toHaveAccessibleName('Cart, 14 items');
+
+    // Nothing left to choose: the quote can go (not sent here).
+    await page.goto('/quote');
+    await expect(page.getByText('Choose a variant for every product that has more than one.')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Submit quote request' })).toBeEnabled();
+    expect(errors).toEqual([]);
+  });
+
   test('a typed quantity goes in whole, and stops at 100,000 (AW-013)', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/product/14');

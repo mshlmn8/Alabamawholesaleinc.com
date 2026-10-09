@@ -28,7 +28,7 @@ const B = { id: 'b', business: 'Bravo Tobacco Outlet', name: 'Bea Bravo', email:
 
 function page(props) {
   const base = {
-    items: ITEMS, total: 20, setLine: vi.fn(), removeLine: vi.fn(), clearCart: vi.fn(),
+    items: ITEMS, total: 20, setLine: vi.fn(), chooseVariant: vi.fn(), removeLine: vi.fn(), clearCart: vi.fn(),
     isBackendConfigured: true, onSignIn: vi.fn(),
   };
   return <QuotePage {...base} {...props} />;
@@ -101,13 +101,23 @@ describe('QuotePage and the account', () => {
     expect(submit().disabled).toBe(true);
   });
 
-  it('sets a line’s quantity on the page (AW-013)', () => {
+  it('sets a line’s quantity and a bare line’s variant on the page (AW-013, AW-011)', () => {
     const setLine = vi.fn();
-    render(page({ setLine, profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true }));
+    const chooseVariant = vi.fn(() => ({ key: '1::red', qty: 12 }));
+    const bare = {
+      lineKey: '1', productId: 1, variant: null, needsVariant: true, unavailable: null, name: 'Swisher Sweets cigarillos', sku: 'AW-SS', cat: 'TOBACCO', qty: 12, price: null,
+      axis: { label: 'Flavor', noun: 'flavor', plural: 'flavors' }, variants: [{ label: 'Red', available: true }],
+    };
+    render(page({ items: [...ITEMS, bare], setLine, chooseVariant, profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true }));
+    expect(submit().disabled).toBe(true);
+    expect(screen.getByText('12 units · choose a flavor')).toBeTruthy();
     const input = screen.getByRole('textbox', { name: 'Quantity of Kite cigarette tobacco' });
     fireEvent.focus(input);
     fireEvent.change(input, { target: { value: '48' } });
     expect(setLine).toHaveBeenCalledWith('14', 48);
+    fireEvent.change(screen.getByRole('combobox', { name: 'Choose a flavor for Swisher Sweets cigarillos' }), { target: { value: 'Red' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Set flavor' }));
+    expect(chooseVariant).toHaveBeenCalledWith('1', 'Red');
   });
 
   it('lists an old cart’s products that need a variant, also when the cart is empty (AW-354)', () => {

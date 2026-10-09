@@ -336,10 +336,11 @@ describe('one field system (AW-146, AW-172, AW-147, AW-309)', () => {
   // With the fields PR #12, PR #13 and lane p2 added: the delivery ZIP check
   // (.eligibility-form input) and the admin quote editor (.order-edit-line).
   // The admin verification note is an .aw-table input.
-  // The commerce lane added the stepper's quantity box (AW-013).
+  // The commerce lane added the stepper's quantity box (AW-013) and a cart
+  // line's variant select (AW-011).
   const FIELD_CONTROLS = ['.form-grid :is(input, select, textarea)', '.filter-search input', '.category-sort select', '.eligibility-form :is(input, select)',
     '.qr-field input', '.qr-choice select', '.order-head select', '.order-edit-line input', '.aw-table :is(input, select)', '.doc-file',
-    '.stepper input'];
+    '.stepper input', '.drawer-line select'];
   const EXCLUDE = ':not([type=checkbox]):not([type=radio])';
   // The selector list inside `:where(:is(<list>)<suffix>)`, or null.
   const innerList = (selector, suffix) => {

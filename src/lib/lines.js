@@ -314,10 +314,25 @@ const labelFromSlug = (slug) => {
   return text ? text[0].toUpperCase() + text.slice(1) : '';
 };
 
+// The variants a buyer can move a line to in the cart (AW-011): every label
+// with whether it can be ordered now, the axis words ("Choose a flavor") and
+// the product's own name (a 'variant' line's name carries its old variant).
+// Only for a product the catalog lists with variants.
+function variantChoice(product) {
+  const labels = variantList(product);
+  if (!labels.length) return {};
+  return {
+    variants: labels.map((label) => ({ label, available: isVariantAvailable(product, label) })),
+    axis: variantAxis(product),
+    productName: product.name,
+  };
+}
+
 // A line the cart keeps but cannot order (AW-083): its product is no longer
 // in the catalog ('product') or its variant is not offered any more
 // ('variant'). `known` supplies the name of a product that has left the
-// live catalog (the bundled catalog still lists it).
+// live catalog (the bundled catalog still lists it). A 'variant' line of a
+// listed product carries the variants to choose from instead (AW-011).
 function unavailableLine(key, productId, qty, product, variantLabel, reason) {
   const name = product ? product.name : `Product #${productId}`;
   return {
@@ -333,6 +348,7 @@ function unavailableLine(key, productId, qty, product, variantLabel, reason) {
     sub: product?.sub || null,
     qty,
     img: product?.img || null,
+    ...(reason === 'variant' && product ? variantChoice(product) : {}),
   };
 }
 
@@ -342,6 +358,10 @@ function unavailableLine(key, productId, qty, product, variantLabel, reason) {
 // cart.js adds them.
 //   needsVariant  a bare line of a product with several variants (a reorder
 //                 that lost its variant); the buyer chooses one
+//   variants      on a needsVariant line, and on a 'variant' line of a
+//                 listed product: [{ label, available }] to choose from in
+//                 the cart, with `axis` (variantAxis) for the words and
+//                 `productName` (AW-011)
 //   unavailable   null, or 'product' / 'variant' for a line that can no
 //                 longer be ordered (AW-083): the product left the catalog,
 //                 or its variant did or is marked not available (AW-030)
@@ -385,6 +405,7 @@ export function resolveCartItems(cart, products, { settled = true, known = [] } 
         sub: product.sub,
         qty: n,
         img: product.img,
+        ...variantChoice(product),
       }];
     }
     // A slug the product no longer lists, unless an alias says what it
@@ -396,14 +417,15 @@ export function resolveCartItems(cart, products, { settled = true, known = [] } 
       const old = find(known, productId);
       return [unavailableLine(key, product.id, n, product, (old && canonicalVariant(old, slug)) || labelFromSlug(slug), 'variant')];
     }
+    // A variant the catalog still lists but marks not available keeps its
+    // line, flagged like one that went away, and can move to another.
+    const offered = isVariantAvailable(product, variant);
     return [{
       lineKey: lineKey(product.id, variant),
       productId: product.id,
       variant,
       needsVariant: false,
-      // A variant the catalog still lists but marks not available keeps its
-      // line, flagged like one that went away.
-      unavailable: isVariantAvailable(product, variant) ? null : 'variant',
+      unavailable: offered ? null : 'variant',
       name: variant ? `${product.name} — ${variant}` : product.name,
       sku: variantSku(product.sku, variant),
       sellUnit: product.sellUnit || '',
@@ -411,6 +433,7 @@ export function resolveCartItems(cart, products, { settled = true, known = [] } 
       sub: product.sub,
       qty: n,
       img: product.img,
+      ...(offered ? {} : variantChoice(product)),
     }];
   });
   const byKey = new Map();

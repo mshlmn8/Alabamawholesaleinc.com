@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   NO_PRICES, addableLineKey, cartChanges, cartCount, cartTotal, decrementLine, deleteLine, describeCartChanges, incrementLine, mergeLines,
-  priceCartItems, setLineQuantity,
+  moveLineToVariant, priceCartItems, setLineQuantity,
 } from './cart.js';
 
 const P = [
@@ -28,6 +28,12 @@ describe('addableLineKey', () => {
     expect(addableLineKey(P, 99, null)).toBeNull();
     expect(addableLineKey(P, 40, null)).toBeNull();
     expect(addableLineKey(P, 1, null)).toBeNull();
+  });
+
+  it('refuses a variant the product doesn’t have (AW-011)', () => {
+    expect(addableLineKey(P, 1, 'Purple')).toBeNull();
+    expect(addableLineKey(P, 14, 'Red')).toBeNull();
+    expect(addableLineKey(P, 1, 'red')).toBe('1::red');
   });
 
   it('refuses a variant marked not available (AW-030)', () => {
@@ -89,6 +95,15 @@ describe('line updates', () => {
     expect(setLineQuantity(cart, '20::only', 5)).toBe(cart);
     expect(setLineQuantity(cart, '14', 3)).toBe(cart);
     expect(cart).toEqual({ 14: 3, '1::red': 2 });
+  });
+
+  it('moves a bare line onto a variant, adding to that variant’s line up to the limit (AW-011)', () => {
+    expect(moveLineToVariant({ 1: 12, 14: 2 }, '1', '1::red')).toEqual({ 14: 2, '1::red': 12 });
+    expect(moveLineToVariant({ 1: 12, '1::red': 3 }, '1', '1::red')).toEqual({ '1::red': 15 });
+    expect(moveLineToVariant({ 1: 60000, '1::red': 60000 }, '1', '1::red')).toEqual({ '1::red': 100000 });
+    const cart = { 14: 2 };
+    expect(moveLineToVariant(cart, '1', '1::red')).toBe(cart);
+    expect(moveLineToVariant({ '1::red': 2 }, '1::red', '1::red')).toEqual({ '1::red': 2 });
   });
 
   it('counts units', () => {

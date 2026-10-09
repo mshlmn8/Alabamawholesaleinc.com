@@ -16,7 +16,9 @@
 // disabled chip that says so (AW-030). A product with one variant has no
 // chips; its variant shows as text when the name doesn't already say it.
 //
-// The quantity to add is typed or stepped (QuantityInput, AW-013).
+// The quantity to add is typed or stepped (QuantityInput, AW-013), and
+// a bare cart line of this product (AW-011) doesn't count as "Already in"
+// any variant.
 //
 // From Cursor's PR #13: "Photo coming soon" without a photo (AW-029), the
 // sell unit badged on a photo other rows share (AW-136), the Wikimedia credit
@@ -70,7 +72,9 @@ export function ProductPage({
   const soleUnavailable = variants.length === 1 && !available(variants[0]);
   const soleShown = soleUnavailable ? variants[0] : informativeVariant(p);
   const key = lineKey(p.id, selected);
-  const qty = cart[key] || 0;
+  // Before a variant is chosen, the key is the bare product id: a bare cart
+  // line (a reorder that needs its variant, AW-011) is not "already in" it.
+  const qty = choiceRequired && !selected ? 0 : (cart[key] || 0);
   const related = products.filter(x => x.sub === p.sub && Number(x.id) !== Number(p.id)).slice(0, 4);
   const brand = brandLabel(p.brand);
   const credit = p.picture ? photoCredit(p) : '';

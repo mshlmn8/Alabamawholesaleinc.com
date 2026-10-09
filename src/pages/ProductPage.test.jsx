@@ -146,7 +146,7 @@ describe('ProductPage and a saved quantity', () => {
   });
 });
 
-describe('ProductPage quantity (AW-013)', () => {
+describe('ProductPage quantity (AW-013) and a bare cart line (AW-011)', () => {
   it('can’t go below 1, and takes a typed quantity', () => {
     const addLine = vi.fn(() => ({ key: '1::red', qty: 48, capped: false }));
     render(page({ addLine }));
@@ -163,5 +163,14 @@ describe('ProductPage quantity (AW-013)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Add to quote/ }));
     expect(addLine).toHaveBeenCalledWith(1, 'Red', 48);
     expect(qty()).toBe('1');
+  });
+
+  it('doesn’t show a bare line’s quantity as already in the quote, only the chosen variant’s', () => {
+    const view = render(page({ cart: { 1: 12 } }));
+    expect(screen.queryByText(/Already in/)).toBeNull();
+    view.rerender(page({ cart: { 1: 12, '1::red': 3 } }));
+    expect(screen.queryByText(/Already in/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Red' }));
+    expect([...document.querySelectorAll('.in-cart-note')].map((n) => n.textContent)).toContain('Already in quote: 3 · Red');
   });
 });

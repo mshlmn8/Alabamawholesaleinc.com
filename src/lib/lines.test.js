@@ -86,6 +86,31 @@ describe('stored carts', () => {
     expect(normalizeCart(cart, P)).toBe(cart);
   });
 
+  it('gives a bare line the variants to choose from in the cart, with their axis (AW-011)', () => {
+    const products = [{ ...P[0], variants: ['Diamond', 'Red', 'Grape'], unavailableVariants: ['Grape'], variantAxis: 'Flavor' }, P[1]];
+    const [bare, kite] = resolveCartItems({ 1: 12, 14: 2 }, products);
+    expect(bare).toMatchObject({ lineKey: '1', needsVariant: true, qty: 12 });
+    expect(bare.variants).toEqual([
+      { label: 'Diamond', available: true }, { label: 'Red', available: true }, { label: 'Grape', available: false },
+    ]);
+    expect(bare.axis).toEqual({ label: 'Flavor', noun: 'flavor', plural: 'flavors' });
+    // A line that can be ordered has nothing to choose.
+    expect(kite).not.toHaveProperty('variants');
+    expect(resolveCartItems({ '1::red': 1 }, products)[0]).not.toHaveProperty('variants');
+  });
+
+  it('lets a line whose variant went away, or is marked not available, choose another; not one whose product went (AW-011)', () => {
+    const products = [{ ...P[0], unavailableVariants: ['Red'] }];
+    const known = [{ id: 999, sku: 'AW-OLD', name: 'Old product', variants: ['A', 'B'] }];
+    const items = resolveCartItems({ '1::purple': 3, '1::red': 2, '999::a': 1 }, products, { known });
+    expect(items.map((i) => [i.lineKey, i.unavailable, i.variants?.map((v) => `${v.label}:${v.available}`)])).toEqual([
+      ['1::purple', 'variant', ['Diamond:true', 'Red:false']],
+      ['1::red', 'variant', ['Diamond:true', 'Red:false']],
+      ['999::a', 'product', undefined],
+    ]);
+    expect(items[0].axis).toEqual(DEFAULT_AXIS);
+  });
+
   it('never adds two stored keys of one line past 100,000 (AW-013)', () => {
     const products = [{ id: 20, sku: 'AW-ONE', name: 'One', variants: ['Only'] }];
     expect(resolveCartItems({ 20: 60000, '20::only': 60000 }, products)[0].qty).toBe(100000);

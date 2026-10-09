@@ -174,6 +174,28 @@ describe('useCart', () => {
     expect(result.current.legacy.map((l) => l.qty)).toEqual([4]);
   });
 
+  it('moves a bare line to the chosen variant, quantity and all (AW-011)', () => {
+    store(cartKey(GUEST), { 1: 12, 14: 2 });
+    const { result } = renderHook(() => useTestCart({ owner: GUEST }));
+    expect(result.current.items[0]).toMatchObject({
+      lineKey: '1', needsVariant: true, qty: 12,
+      variants: [{ label: 'Diamond', available: true }, { label: 'Red', available: true }],
+    });
+    let moved;
+    act(() => { moved = result.current.chooseVariant('1', 'Red'); });
+    expect(moved).toEqual({ key: '1::red', qty: 12 });
+    expect(stored(cartKey(GUEST))).toEqual({ 14: 2, '1::red': 12 });
+    expect(result.current.count).toBe(14);
+    // Onto a variant already in the cart: the quantities add up.
+    store(cartKey(GUEST), { 1: 3, '1::red': 12 });
+    act(() => { moved = result.current.chooseVariant('1', 'Red'); });
+    expect(moved).toEqual({ key: '1::red', qty: 15 });
+    // Not a variant of the product, or one marked not available: nothing moves.
+    act(() => { moved = result.current.chooseVariant('1::red', 'Purple'); });
+    expect(moved).toBeNull();
+    expect(stored(cartKey(GUEST))).toEqual({ '1::red': 15 });
+  });
+
   it('prices the stored cart against a catalog and prices loaded again (AW-191)', () => {
     const { result } = renderHook(() => useTestCart({ owner: GUEST, priceOf: PRICE_OF }));
     act(() => result.current.addLine(14, null, 2));

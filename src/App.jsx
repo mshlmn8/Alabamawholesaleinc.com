@@ -278,7 +278,7 @@ export default function App() {
         );
       case 'quote':
         return (
-          <QuotePage items={cart.items} total={cart.total} setLine={cart.setLine} removeLine={cart.removeLine}
+          <QuotePage items={cart.items} total={cart.total} setLine={cart.setLine} chooseVariant={cart.chooseVariant} removeLine={cart.removeLine}
                      removeLines={cart.removeLines} clearCart={cart.clearCart} legacy={cart.legacy} onDismissLegacy={cart.dismissLegacy}
                      profile={profile} account={account} signedIn={!!session} onSignIn={openSignin} onApplyClick={openSignup}
                      isApprovedBuyer={isApprovedBuyer} isSuspended={isSuspended} pricesStatus={prices.status} isBackendConfigured={isBackendConfigured} checkCart={checkCart} />
@@ -344,7 +344,7 @@ export default function App() {
       <Footer departments={departments} onLoginClick={openSignin} onApplyClick={openSignup} />
 
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} items={cart.items} total={cart.total}
-                  setLine={cart.setLine} removeLine={cart.removeLine} removeLines={cart.removeLines}
+                  setLine={cart.setLine} chooseVariant={cart.chooseVariant} removeLine={cart.removeLine} removeLines={cart.removeLines}
                   legacy={cart.legacy} onDismissLegacy={cart.dismissLegacy}
                   profile={profile} isApprovedBuyer={isApprovedBuyer} isSuspended={isSuspended} pricesStatus={prices.status} onLoginClick={openCartSignin} />
       {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} onApply={() => { setHelpOpen(false); openSignup(); }} />}

@@ -9,7 +9,7 @@ const ITEMS = [{ lineKey: '14', productId: 14, variant: null, name: 'Kite cigare
 
 function drawer(props) {
   const base = {
-    open: true, onClose: vi.fn(), items: ITEMS, total: 0, setLine: vi.fn(), removeLine: vi.fn(), removeLines: vi.fn(),
+    open: true, onClose: vi.fn(), items: ITEMS, total: 0, setLine: vi.fn(), chooseVariant: vi.fn(), removeLine: vi.fn(), removeLines: vi.fn(),
     onLoginClick: vi.fn(),
   };
   return <CartDrawer {...base} {...props} />;

@@ -673,20 +673,21 @@ p > .text-link { min-height: 0; }
    sit inside :where(), at zero specificity, so each control's own rule (its
    width, the SKU's capitals) still applies. Checkboxes and radios keep theirs.
    Placeholders are muted at full opacity from the reset. The quantity box in
-   every stepper (AW-013) is a field too, compact-height like the admin's. */
-:where(:is(.form-grid :is(input, select, textarea), .filter-search input, .category-sort select, .eligibility-form :is(input, select), .qr-field input, .qr-choice select, .order-head select, .order-edit-line input, .aw-table :is(input, select), .doc-file, .stepper input):not([type=checkbox]):not([type=radio])) {
+   every stepper (AW-013) and a cart line's variant select (AW-011) are
+   fields too; the stepper's box is compact-height like the admin's. */
+:where(:is(.form-grid :is(input, select, textarea), .filter-search input, .category-sort select, .eligibility-form :is(input, select), .qr-field input, .qr-choice select, .order-head select, .order-edit-line input, .aw-table :is(input, select), .doc-file, .stepper input, .drawer-line select):not([type=checkbox]):not([type=radio])) {
   min-height: var(--field-h); padding: 0 .75rem; border: 1px solid var(--field-border); border-radius: var(--field-radius);
   background-color: var(--field-bg); color: var(--ink); font-size: var(--field-font); font-weight: 400; letter-spacing: 0; text-transform: none;
 }
 :where(:is(.aw-table :is(input, select), .order-head select, .stepper input):not([type=checkbox]):not([type=radio])) { min-height: var(--field-h-compact); }
 /* The border turns purple under the global focus ring. */
-:where(:is(.form-grid :is(input, select, textarea), .filter-search input, .category-sort select, .eligibility-form :is(input, select), .qr-field input, .qr-choice select, .order-head select, .order-edit-line input, .aw-table :is(input, select), .doc-file, .stepper input):focus) { border-color: var(--purple); }
+:where(:is(.form-grid :is(input, select, textarea), .filter-search input, .category-sort select, .eligibility-form :is(input, select), .qr-field input, .qr-choice select, .order-head select, .order-edit-line input, .aw-table :is(input, select), .doc-file, .stepper input, .drawer-line select):focus) { border-color: var(--purple); }
 /* Selects draw the same box in every engine (AW-309): no native menulist, which
    in WebKit dropped the padding and rounded the corners, and the site's
    chevron instead (a file, not a data: URI, so the CSP needs no data: images).
    The colour stays in background-color. Forced colours get the native arrow
    back, which brings its own room, so the chevron's padding goes. */
-:where(.form-grid select, .category-sort select, .eligibility-form select, .qr-choice select, .order-head select, .aw-table select) {
+:where(.form-grid select, .category-sort select, .eligibility-form select, .qr-choice select, .order-head select, .aw-table select, .drawer-line select) {
   -webkit-appearance: none; appearance: none; padding-right: 2.25rem;
   background-image: url('./assets/icons/chevron-down.svg'); background-repeat: no-repeat; background-position: right .75rem center; background-size: .75rem .5rem;
 }
@@ -731,6 +732,9 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
 .drawer-line .info b { display: block; font-size: var(--text-sm); color: var(--ink); line-height: 1.4; }
 .drawer-line .info small { display: block; font-size: var(--text-sm); color: var(--muted); margin-top: 2px; }
 .drawer-line .qty, .drawer-line .choose { grid-area: qty; justify-self: start; }
+/* A bare line's variant select and its Set button (AW-011). */
+.variant-choose { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; max-width: 100%; min-width: 0; }
+.drawer-line select { min-width: 0; max-width: 100%; }
 .drawer-remove { grid-area: remove; }
 .drawer-total { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; font-size: var(--text-base); font-weight: 700; color: var(--purple); margin-bottom: 12px; }
 .drawer-total-note { flex: 1 1 auto; text-align: right; font-size: var(--text-sm); font-weight: 600; color: var(--muted); }

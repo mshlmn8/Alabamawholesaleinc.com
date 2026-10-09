@@ -15,7 +15,7 @@ import { Icon } from './Icon.jsx';
 import { SavedLinesNotice, UnavailableNotice } from './CartNotices.jsx';
 
 export function CartDrawer({
-  open, onClose, items, total, setLine, removeLine, removeLines, legacy = [], onDismissLegacy,
+  open, onClose, items, total, setLine, chooseVariant, removeLine, removeLines, legacy = [], onDismissLegacy,
   profile, isApprovedBuyer, pricesStatus = 'ready', onLoginClick, isSuspended = false,
 }) {
   if (!open) return null;
@@ -43,7 +43,7 @@ export function CartDrawer({
             <ul className="drawer-lines" aria-label="Items in your order">
               {items.map(it => (
                 <CartLine key={it.lineKey} item={it} layout="drawer" showPrice={isApprovedBuyer} pricesStatus={pricesStatus}
-                          onSetQty={(n) => setLine(it.lineKey, n)}
+                          onSetQty={(n) => setLine(it.lineKey, n)} onChooseVariant={chooseVariant}
                           onRemove={() => removeLine(it.lineKey)} onChoose={onClose} />
               ))}
             </ul>

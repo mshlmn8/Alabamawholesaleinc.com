@@ -9,8 +9,9 @@
 //
 // Lines that can no longer be ordered (AW-083) are listed with a notice and
 // block the submit until they are removed; products from an older cart that
-// still need a variant (AW-354) are listed at the top. Quantities are typed
-// or stepped, 1 to 100,000 (AW-013).
+// still need a variant (AW-354) are listed at the top. A bare line gets its
+// variant on the line itself (AW-011), and quantities are typed or stepped,
+// 1 to 100,000 (AW-013).
 //
 // The catalog may have changed since the page was opened (AW-191, AW-204):
 // Submit first loads it again (checkCart, from App) and stops, naming the
@@ -59,7 +60,7 @@ const QTY_ERROR = `Quantities must be ${QTY_RANGE_TEXT}.`;
 const itemsSignature = (items) => items.map((it) => `${it.lineKey}|${it.qty}|${it.unavailable || ''}|${it.needsVariant ? 1 : 0}|${it.price ?? ''}`).join(',');
 
 export function QuotePage({
-  items, total, setLine, removeLine, removeLines, clearCart, legacy = [], onDismissLegacy,
+  items, total, setLine, chooseVariant, removeLine, removeLines, clearCart, legacy = [], onDismissLegacy,
   profile, account = profile ? 'ready' : 'signed-out', signedIn = !!profile, onSignIn, onApplyClick, isApprovedBuyer, isBackendConfigured,
   checkCart = null, pricesStatus = 'ready', isSuspended = false,
 }) {
@@ -261,7 +262,7 @@ export function QuotePage({
           <ul className="checkout-lines" aria-label="Items in this request">
             {items.map(it => (
               <CartLine key={it.lineKey} item={it} layout="checkout" showPrice={isApprovedBuyer} pricesStatus={pricesStatus}
-                        onSetQty={(n) => setLine(it.lineKey, n)}
+                        onSetQty={(n) => setLine(it.lineKey, n)} onChooseVariant={chooseVariant}
                         onRemove={() => removeLine(it.lineKey)} />
             ))}
           </ul>

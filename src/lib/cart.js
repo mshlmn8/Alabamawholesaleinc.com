@@ -5,7 +5,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { PRODUCTS as BUNDLED_PRODUCTS } from '../data/products.js';
-import { isVariantAvailable, lineKey, requiresVariantChoice, normalizeCart, resolveCartItems } from './lines.js';
+import { canonicalVariant, isVariantAvailable, lineKey, parseLineKey, requiresVariantChoice, normalizeCart, resolveCartItems } from './lines.js';
 import { sumLines } from './pricing.js';
 import { formatMoney } from './format.js';
 import { MAX_QTY, addableQty, clampQty } from './quantity.js';
@@ -18,13 +18,16 @@ export const cartCount = (cart) => Object.values(cart).reduce((a, b) => a + Numb
 
 // The line key a product-page or card add goes to, or null when the product
 // is unknown, inactive, or has several variants and none was chosen, or the
-// variant is marked not available (AW-030).
+// variant is not one of the product's (AW-011) or is marked not available
+// (AW-030).
 export function addableLineKey(products, productId, variant) {
   const product = products.find(p => Number(p.id) === Number(productId));
   if (!product || product.active === false) return null;
   if (requiresVariantChoice(product) && !variant) return null;
-  if (!isVariantAvailable(product, variant)) return null;
-  return lineKey(product.id, variant || null);
+  const label = variant ? canonicalVariant(product, variant) : null;
+  if (variant && !label) return null;
+  if (!isVariantAvailable(product, label)) return null;
+  return lineKey(product.id, label);
 }
 
 // Quantities stay whole numbers from 1 to MAX_QTY, the database's limit
@@ -65,6 +68,17 @@ export function setLineQuantity(cart, key, n) {
   if (!(value >= 1) || !Object.prototype.hasOwnProperty.call(cart, key)) return cart;
   const qty = clampQty(value);
   return Number(cart[key]) === qty ? cart : { ...cart, [key]: qty };
+}
+
+// A bare line's quantity moved onto the variant the buyer chose (AW-011),
+// added to that variant's line when there is one, up to the limit.
+export function moveLineToVariant(cart, fromKey, toKey) {
+  const qty = Number(cart[fromKey]) || 0;
+  if (!(qty > 0) || fromKey === toKey) return cart;
+  const next = { ...cart };
+  delete next[fromKey];
+  next[toKey] = Math.min(MAX_QTY, (Number(next[toKey]) || 0) + qty);
+  return next;
 }
 
 export function deleteLine(cart, key) {
@@ -184,7 +198,8 @@ export function resolveLegacyList(list, products) {
 // changes.
 //
 // Returns { cart, count, items, total, legacy, addLine, addLines, decLine,
-// setLine, removeLine, removeLines, clearCart, dismissLegacy, itemsFor }. items carry needsVariant and unavailable flags
+// setLine, chooseVariant, removeLine, removeLines, clearCart, dismissLegacy,
+// itemsFor }. items carry needsVariant and unavailable flags
 // (src/lib/lines.js); legacy is the old cart's list of products to choose a
 // variant for. The actions write through to storage at once, so they belong
 // in event handlers. Quantities follow src/lib/quantity.js (AW-013):
@@ -195,6 +210,9 @@ export function resolveLegacyList(list, products) {
 //   decLine(key, n = 1)                 n fewer; the line goes at 0
 //   setLine(key, n)                     a typed quantity, clamped; below 1
 //                                       changes nothing
+//   chooseVariant(key, variant)         a bare line moves to the variant
+//                                       (AW-011): { key, qty } of the line
+//                                       it joined, or null
 // itemsFor(products, priceOf) prices the cart as stored now against another
 // product list and prices, e.g. the catalog and prices loaded again right
 // before a submit (AW-191); it also reads storage, so it is for event
@@ -251,11 +269,17 @@ export function useCart({ products, priceOf = NO_PRICES, owner = GUEST, catalogS
   const addLines = (lines) => update(c => mergeLines(c, products, lines));
   const decLine = (key, n = 1) => update(c => decrementLine(c, key, n));
   const setLine = (key, n) => update(c => setLineQuantity(c, key, n));
+  const chooseVariant = (key, variant) => {
+    const toKey = addableLineKey(products, parseLineKey(key).productId, variant);
+    if (!toKey) return null;
+    const next = update(c => moveLineToVariant(c, key, toKey));
+    return next[toKey] ? { key: toKey, qty: Number(next[toKey]) } : null;
+  };
   const removeLine = (key) => update(c => deleteLine(c, key));
   const removeLines = (keys) => update(c => keys.reduce(deleteLine, c));
   const clearCart = () => updateCart(owner, () => ({}));
   const dismissLegacy = () => writeLegacyList(owner, []);
   const itemsFor = (nextProducts, nextPriceOf = priceOf) => priceCartItems(readCart(owner), nextProducts, nextPriceOf, { settled: true, known: BUNDLED_PRODUCTS });
 
-  return { cart, count, items, total, legacy, addLine, addLines, decLine, setLine, removeLine, removeLines, clearCart, dismissLegacy, itemsFor };
+  return { cart, count, items, total, legacy, addLine, addLines, decLine, setLine, chooseVariant, removeLine, removeLines, clearCart, dismissLegacy, itemsFor };
 }
