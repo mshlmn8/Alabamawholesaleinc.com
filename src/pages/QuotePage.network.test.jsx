@@ -75,11 +75,53 @@ describe('QuotePage while a send runs (AW-194)', () => {
     fill();
     submitOrder.mockImplementationOnce(async () => { throw timeoutError(); });
     await act(async () => { fireEvent.submit(form()); });
-    expect(submitError().textContent).toMatch(/^This is taking longer than expected, and the request may have been saved\. Call \(205\) .* before you submit it again, so it isn’t sent twice\.$/);
+    expect(submitError().textContent).toMatch(/^We stopped waiting for an answer, and the request may have been saved\. Call \(205\) .* before you submit it again, so it isn’t sent twice\.$/);
     expect(submitError().textContent).not.toMatch(/ALW-/);
     submitOrder.mockImplementationOnce(async () => { throw Object.assign(timeoutError(), { refNum: 'ALW-Q-0A1B2C3D4E' }); });
     await act(async () => { fireEvent.submit(form()); });
     expect(submitError().textContent).toMatch(/ and give quote reference ALW-Q-0A1B2C3D4E before you submit it again\.$/);
+  });
+});
+
+// A connection lost while the request was on its way may have delivered it
+// (NEW-061): the buyer is told to call before sending it again, never
+// "We couldn’t save this quote" or "nothing was sent".
+describe('QuotePage when the connection drops during the send (NEW-061)', () => {
+  const MAY_HAVE = /^The connection dropped before an answer came back, and the request may have been saved\. Call \(205\) .* before you submit it again, so it isn’t sent twice\.$/;
+
+  it('says a send whose connection failed may have been saved', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
+    submitOrder.mockImplementationOnce(async () => { throw { message: 'TypeError: Failed to fetch', code: '', hint: '', details: '' }; });
+    render(page());
+    fill();
+    await act(async () => { fireEvent.submit(form()); });
+    expect(submitError().textContent).toMatch(MAY_HAVE);
+    vi.restoreAllMocks();
+  });
+
+  it('says the same when the browser went offline only after the send started', async () => {
+    const onLine = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
+    submitOrder.mockImplementationOnce(async () => {
+      onLine.mockReturnValue(false);
+      throw new Error('The quote was not saved.');
+    });
+    render(page());
+    fill();
+    await act(async () => { fireEvent.submit(form()); });
+    expect(submitError().textContent).toMatch(MAY_HAVE);
+    expect(submitError().textContent).not.toBe(QUOTE_OFFLINE);
+    vi.restoreAllMocks();
+  });
+
+  it('says nothing was sent when the catalog check itself threw', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
+    vi.mocked(submitOrder).mockClear();
+    render(page({ checkCart: vi.fn(async () => { throw new TypeError('Failed to fetch'); }) }));
+    fill();
+    await act(async () => { fireEvent.submit(form()); });
+    expect(submitError().textContent).toMatch(/^We couldn’t check the latest prices and availability, so nothing was sent\./);
+    expect(submitOrder).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
   });
 });
 

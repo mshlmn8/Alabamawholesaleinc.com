@@ -28,6 +28,8 @@
 // it is never sent again with an older signature: the buyer is told to call
 // before submitting again, with the reference an older signature was sent
 // with (the only reference ever shown for a quote that wasn't confirmed).
+// A call whose connection dropped before the answer came back is just as
+// uncertain, and is worded the same way (NEW-061).
 
 import { COMPANY } from '../data/content.js';
 import { DELIVERY_STATE_NOTE } from '../data/quoteRules.js';
@@ -40,6 +42,15 @@ const text = (value) => String(value ?? '').trim();
 const textOrNull = (value) => text(value) || null;
 
 const isMissingFunction = (error) => MISSING_FUNCTION_CODES.includes(error?.code);
+
+// A request that got no answer because the connection failed (NEW-061):
+// postgrest-js resolves a fetch that threw as { code: '', hint: '', message:
+// 'TypeError: Failed to fetch' } (Chrome; Safari says 'Load failed', Firefox
+// 'NetworkError when attempting to fetch resource.'). It may have reached
+// the server before the connection dropped. A server's refusal always has a
+// code.
+const TRANSPORT_FAILURE = /^TypeError\b|Failed to fetch|Load failed|NetworkError/;
+export const isTransportFailure = (err) => !!err && !err.hint && !err.code && TRANSPORT_FAILURE.test(String(err.message || ''));
 
 // The arguments of the current call. Will-call sends no address, whatever
 // the hidden address fields still hold. The state is sent upper-case. The
@@ -159,6 +170,11 @@ export async function submitOrder({ formData, items }, { client = supabase, time
       if (signature !== 'current') late.refNum = refNum;
       throw late;
     }
+    // Lost on the way: never sent again, and an older signature's reference
+    // goes with it, as for a timeout (NEW-061).
+    if (error && signature !== 'current' && isTransportFailure(error)) {
+      throw Object.assign(new Error(String(error.message)), { code: '', cause: error, refNum });
+    }
     if (error) throw error;
     if (!data?.id) throw new Error('The quote was not saved.');
     workingSignature = signature;
@@ -264,27 +280,33 @@ export const QUOTE_ERROR_GENERIC = { before: 'We couldn’t save this quote. Ple
 export const QUOTE_UNAVAILABLE = { before: 'Quote requests can’t be saved right now. Call', after: ' and the trade desk will write it up with you.' };
 export const QUOTE_OFFLINE = 'You’re offline, so nothing was sent. Reconnect and submit again.';
 
-// A submit that took too long may have been saved (AW-194). With the
-// reference an older signature was sent, the trade desk can look it up.
-export function quoteTimeoutMessage(refNum = null) {
-  const before = 'This is taking longer than expected, and the request may have been saved. Call';
-  return refNum
-    ? { before, after: ` and give quote reference ${refNum} before you submit it again.` }
-    : { before, after: ' before you submit it again, so it isn’t sent twice.' };
-}
+// A submit that may have been saved (AW-194, NEW-061): it took too long and
+// the page stopped waiting, or the connection dropped before the answer.
+// With the reference an older signature was sent, the trade desk can look
+// it up.
+const mayHaveBeenSaved = (before, refNum) => (refNum
+  ? { before, after: ` and give quote reference ${refNum} before you submit it again.` }
+  : { before, after: ' before you submit it again, so it isn’t sent twice.' });
+export const quoteTimeoutMessage = (refNum = null) =>
+  mayHaveBeenSaved('We stopped waiting for an answer, and the request may have been saved. Call', refNum);
+export const quoteConnectionMessage = (refNum = null) =>
+  mayHaveBeenSaved('The connection dropped before an answer came back, and the request may have been saved. Call', refNum);
 
 // What to tell the buyer when submitOrder() failed: a timeout first, then
 // the text for its hint (naming the product from `items`, the lines that
-// were sent), then that the browser is offline, else the generic "call the
-// trade desk" copy. Never a reference number for a quote that failed; a
-// timed-out one may have been saved, and is cited only with "may".
+// were sent), then a request whose connection failed, else the generic
+// "call the trade desk" copy. A request that got no answer (a transport
+// failure, or the browser went offline while it was on its way: checkout
+// sends nothing while offline) may have been saved (NEW-061). Never a
+// reference number for a quote that failed; one that may have been saved
+// is cited only with "may".
 export function quoteErrorMessage(err, { items = [] } = {}) {
   if (isTimeoutError(err)) return quoteTimeoutMessage(err.refNum || null);
   if (err?.code === 'unavailable') return QUOTE_UNAVAILABLE;
   const hint = hintOf(err);
   if (hint && PRODUCT_HINT_MESSAGES[hint]) return PRODUCT_HINT_MESSAGES[hint](productNameOf(err, items || []));
   if (hint && HINT_MESSAGES[hint]) return HINT_MESSAGES[hint];
-  if (isOffline()) return QUOTE_OFFLINE;
+  if (isTransportFailure(err) || (!err?.code && isOffline())) return quoteConnectionMessage(err?.refNum || null);
   return QUOTE_ERROR_GENERIC;
 }
 

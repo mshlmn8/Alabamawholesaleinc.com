@@ -456,6 +456,9 @@ export function QuotePage({
     setChangeNote(null);
     let saved = null;
     let lines = orderable;
+    // Whether submitOrder was called: only then may a failure have saved
+    // anything (NEW-061).
+    let sendStarted = false;
     try {
       if (checkCart) {
         const check = await checkCart();
@@ -479,6 +482,7 @@ export function QuotePage({
       const formData = !isApprovedBuyer && cartNeedsTobaccoLicense(lines)
         ? sent
         : { ...sent, licenseNo: '', resaleCert: '', purchasers21: false };
+      sendStarted = true;
       const r = await submitOrder({ formData, items: lines });
       if (!r?.ok || !r.order?.id) throw new Error('The quote was not saved.');
       // The server says whether it saved an order or a quote (v2); an older
@@ -487,8 +491,11 @@ export function QuotePage({
       saved = buildReceipt({ order: r.order, lines, data: formData, asOrder });
     } catch (err) {
       // What the server refused and why, never a reference: a failed quote
-      // has none (AW-049). One that took too long may have been saved.
-      setSubmitError(quoteErrorMessage(err, { items: lines }));
+      // has none (AW-049). One that took too long, or lost its connection,
+      // may have been saved. A check that threw before anything was sent
+      // says so.
+      if (sendStarted) setSubmitError(quoteErrorMessage(err, { items: lines }));
+      else setSubmitError(isOffline() ? QUOTE_OFFLINE : CHECK_FAILED);
       setErrorField(quoteErrorField(err));
       focusWhenDone(returnFocusTo, 'error');
     } finally {

@@ -6,8 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { COMPANY } from '../data/content.js';
 import { QUOTE_SUBMIT_TIMEOUT_MS } from './network.js';
 import {
-  QUOTE_ERROR_GENERIC, QUOTE_OFFLINE, QUOTE_UNAVAILABLE, legacyQuoteParams, licensedQuoteParams, makeClientRef, quoteErrorField, quoteErrorMessage,
-  quoteParams, quoteTimeoutMessage, resetQuoteSignatureForTests, submitOrder, todayInBirmingham,
+  QUOTE_ERROR_GENERIC, QUOTE_OFFLINE, QUOTE_UNAVAILABLE, isTransportFailure, legacyQuoteParams, licensedQuoteParams, makeClientRef, quoteConnectionMessage,
+  quoteErrorField, quoteErrorMessage, quoteParams, quoteTimeoutMessage, resetQuoteSignatureForTests, submitOrder, todayInBirmingham,
 } from './orders.js';
 
 const FORM = {
@@ -214,7 +214,7 @@ describe('quoteErrorMessage', () => {
   });
 
   it('falls back to "call the trade desk", with no reference number', () => {
-    for (const err of [new Error('TypeError: Failed to fetch'), { code: 'P0001', hint: 'something_new' }, null]) {
+    for (const err of [new Error('boom'), { code: 'XX000', message: 'boom', hint: '' }, { code: 'P0001', hint: 'something_new' }, null]) {
       const message = quoteErrorMessage(err);
       expect(message).toBe(QUOTE_ERROR_GENERIC);
       expect(`${message.before}${message.after}`).not.toMatch(/ALW-|reference/);
@@ -249,8 +249,9 @@ describe('submitOrder time limit (AW-194)', () => {
     expect(err.refNum).toBeUndefined();
     expect(client.calls).toHaveLength(1);
     expect(client.calls[0].signal.aborted).toBe(true);
+    // Past tense: the page has stopped waiting (NEW-061).
     expect(quoteErrorMessage(err)).toEqual({
-      before: 'This is taking longer than expected, and the request may have been saved. Call',
+      before: 'We stopped waiting for an answer, and the request may have been saved. Call',
       after: ' before you submit it again, so it isn’t sent twice.',
     });
   });
@@ -266,6 +267,51 @@ describe('submitOrder time limit (AW-194)', () => {
     expect(err.refNum).toBe(client.calls[1].args.p_ref_num);
     expect(quoteErrorMessage(err)).toEqual(quoteTimeoutMessage(err.refNum));
     expect(quoteErrorMessage(err).after).toBe(` and give quote reference ${err.refNum} before you submit it again.`);
+  });
+});
+
+// A connection that failed before the answer came back (NEW-061): the
+// request may have reached the server, so it is worded like a timeout.
+describe('quoteErrorMessage for a lost connection (NEW-061)', () => {
+  it('recognises the browsers’ transport failures as postgrest-js passes them on, and nothing else', () => {
+    for (const message of ['TypeError: Failed to fetch', 'TypeError: Load failed', 'TypeError: NetworkError when attempting to fetch resource.', 'Failed to fetch']) {
+      expect(isTransportFailure({ message, code: '', hint: '', details: '' })).toBe(true);
+    }
+    expect(isTransportFailure(new TypeError('Failed to fetch'))).toBe(true);
+    // A server's answer has a code; a refusal has a hint.
+    expect(isTransportFailure({ message: 'TypeError: Failed to fetch', code: 'XX000' })).toBe(false);
+    expect(isTransportFailure({ message: 'Failed to fetch', hint: 'rate_limited' })).toBe(false);
+    expect(isTransportFailure({ message: 'boom', code: '' })).toBe(false);
+    expect(isTransportFailure(null)).toBe(false);
+  });
+
+  it('says it may have been saved, with no reference, instead of “We couldn’t save this quote”', () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
+    const message = quoteErrorMessage({ message: 'TypeError: Failed to fetch', code: '', hint: '', details: '' });
+    expect(message).toEqual({
+      before: 'The connection dropped before an answer came back, and the request may have been saved. Call',
+      after: ' before you submit it again, so it isn’t sent twice.',
+    });
+    expect(message).not.toEqual(QUOTE_ERROR_GENERIC);
+    expect(quoteErrorMessage({ message: 'TypeError: Load failed', code: '' }, { items: [] }).before).toMatch(/may have been saved/);
+    vi.restoreAllMocks();
+  });
+
+  it('never tries an older signature after one, and gives the reference an older one was sent with', async () => {
+    const LOST = { message: 'TypeError: Failed to fetch', code: '', hint: '', details: '' };
+    const current = fakeClient({ data: null, error: LOST }, { data: SAVED, error: null });
+    const err = await submitOrder({ formData: FORM, items: ITEMS }, { client: current }).catch((e) => e);
+    expect(current.calls).toHaveLength(1);
+    expect(err).toBe(LOST);
+    expect(quoteErrorMessage(err)).toEqual(quoteConnectionMessage());
+
+    resetQuoteSignatureForTests();
+    const older = fakeClient({ data: null, error: MISSING }, { data: null, error: LOST }, { data: SAVED, error: null });
+    const late = await submitOrder({ formData: FORM, items: ITEMS }, { client: older }).catch((e) => e);
+    expect(older.calls).toHaveLength(2);
+    expect(late.refNum).toBe(older.calls[1].args.p_ref_num);
+    expect(quoteErrorMessage(late)).toEqual(quoteConnectionMessage(late.refNum));
+    expect(quoteErrorMessage(late).after).toBe(` and give quote reference ${late.refNum} before you submit it again.`);
   });
 });
 
@@ -332,11 +378,17 @@ describe('quoteErrorMessage for the remaining refusals (AW-200)', () => {
     expect(quoteErrorField({ message: 'A ship-to address is required' })).toBe('shipStreet');
   });
 
-  it('says nothing was sent while offline, and still prefers a server’s answer', () => {
+  // Checkout sends nothing while offline (QUOTE_OFFLINE); a browser that
+  // went offline during the send can't tell whether it arrived (NEW-061).
+  it('says a send that went offline on its way may have been saved, and still prefers a server’s answer', () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     expect(QUOTE_OFFLINE).toBe('You’re offline, so nothing was sent. Reconnect and submit again.');
-    expect(quoteErrorMessage({ message: 'TypeError: Failed to fetch', code: '' })).toBe(QUOTE_OFFLINE);
+    expect(quoteErrorMessage({ message: 'TypeError: Failed to fetch', code: '' })).toEqual(quoteConnectionMessage());
+    expect(quoteErrorMessage({ message: 'The quote was not saved.' })).toEqual(quoteConnectionMessage());
     expect(quoteErrorMessage({ hint: 'invalid_zip' })).toBe('Enter a 5-digit ZIP code (or ZIP+4).');
+    // A server that answered with an error code was reached: nothing saved.
+    expect(quoteErrorMessage({ code: 'XX000', message: 'boom', hint: '' })).toBe(QUOTE_ERROR_GENERIC);
+    vi.restoreAllMocks();
   });
 
   it('never cites a reference for a refusal', () => {
