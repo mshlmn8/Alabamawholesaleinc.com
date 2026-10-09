@@ -333,6 +333,33 @@ test.describe('after age confirmation', () => {
     expect(errors).toEqual([]);
   });
 
+  test('/search?q= lists every match as product cards, noindex, also after a reload (AW-007)', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/search?q=cigar');
+    for (let pass = 0; pass < 2; pass++) {
+      await expect(page.getByRole('heading', { level: 1, name: 'Results for “cigar”' })).toBeVisible();
+      expect(await page.locator('main .card-grid .content-card').count()).toBeGreaterThanOrEqual(30);
+      await expect(page).toHaveTitle(/Results for/);
+      await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
+      await expect(page.locator('link[rel="canonical"]')).toHaveCount(0);
+      if (!pass) await page.reload();
+    }
+    expect(errors).toEqual([]);
+  });
+
+  test('Enter in the header search opens the results page and keeps the text (AW-007)', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/');
+    // exact: the results page has its own 'Search products, brands or SKUs' box.
+    const box = page.getByRole('searchbox', { name: 'Search products', exact: true });
+    await box.fill('cigar');
+    await box.press('Enter');
+    await expect(page).toHaveURL((url) => url.pathname === '/search' && url.searchParams.get('q') === 'cigar');
+    await expect(page.getByRole('heading', { level: 1, name: 'Results for “cigar”' })).toBeFocused();
+    await expect(box).toHaveValue('cigar');
+    expect(errors).toEqual([]);
+  });
+
   test('variants are named by what they differ in, and a single one is no choice (AW-128, AW-233, AW-031)', async ({ page }) => {
     const errors = trackErrors(page);
     // Swisher Sweets Leaf: flavors, with the flavor note.

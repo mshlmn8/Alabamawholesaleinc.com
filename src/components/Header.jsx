@@ -4,23 +4,32 @@
 //
 // Every destination is a real link (AW-043); buttons are kept for actions
 // (open a dialog, sign in or out, toggle a menu).
+//
+// The search lists the best 8 matches (src/lib/search.js) with the total and
+// a link to all of them; Enter opens /search?q= and keeps the text in the box
+// (AW-007, AW-063, AW-064). It never changes the page title (AW-338).
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { IMG } from '../data/theme.js';
 import { COMPANY } from '../data/content.js';
 import { useMediaQuery, MOBILE_QUERY } from '../lib/useMediaQuery.js';
-import { getSearchMatches } from '../lib/search.js';
+import { MIN_QUERY_LENGTH, searchProducts } from '../lib/search.js';
 import { catLabel } from '../lib/format.js';
 import { Link, navigate, useLocation } from '../lib/router.js';
 import { MobileMenu } from './MobileMenu.jsx';
 import { Icon } from './Icon.jsx';
 import { MissingPhoto } from './MissingPhoto.jsx';
 
+// Products listed in the search dropdown.
+const SEARCH_PREVIEW = 8;
+
 export function Header({ cartCount, onCart, products, departments, user, isAdmin, onLoginClick, onSignupClick, onLogout, signingOut = false, onHelp }) {
   const [megaOpen, setMegaOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [resultsOpen, setResultsOpen] = useState(false);
+  // Enter on a query shorter than MIN_QUERY_LENGTH says so in the panel.
+  const [tooShort, setTooShort] = useState(false);
   const isMobile = useMediaQuery(MOBILE_QUERY);
   const categoryToggleRef = useRef(null);
   const megaOpenRef = useRef(false);
@@ -66,7 +75,15 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
     return () => document.removeEventListener('click', onDoc);
   }, []);
 
-  const hits = useMemo(() => getSearchMatches(products, query), [products, query]);
+  const search = useMemo(() => searchProducts(products, query), [products, query]);
+  const hits = search.items.slice(0, SEARCH_PREVIEW);
+  const searchText = query.trim();
+  const searching = searchText.length >= MIN_QUERY_LENGTH;
+  let searchStatus = 'No matches';
+  if (!searching) searchStatus = `Type at least ${MIN_QUERY_LENGTH} characters`;
+  else if (search.related) searchStatus = 'No exact matches — related products';
+  else if (search.total > SEARCH_PREVIEW) searchStatus = `Showing ${SEARCH_PREVIEW} of ${search.total} results`;
+  else if (search.total) searchStatus = `${search.total} result${search.total > 1 ? 's' : ''}`;
   // Closes the menus before an action or a followed link.
   const closeMenus = () => {
     setMegaOpen(false);
@@ -82,13 +99,17 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
     categoryToggleRef.current?.focus();
   };
 
+  // Enter (or the magnifier) opens every result and keeps the text.
   const submitSearch = (e) => {
     e.preventDefault();
-    if (hits.length) {
-      setQuery('');
-      closeMenus();
-      navigate({ page: 'product', productId: hits[0].id });
+    if (!searching) {
+      setMegaOpen(false);
+      setTooShort(true);
+      setResultsOpen(true);
+      return;
     }
+    closeMenus();
+    navigate({ page: 'search', q: searchText });
   };
   const pickResult = () => { setQuery(''); closeMenus(); };
 
@@ -108,26 +129,33 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
           <img src={IMG.logo} alt="" />
         </Link>
         <form className="aw-search" role="search" onSubmit={submitSearch}>
-          <input type="search" value={query} placeholder={`Search ${products.length} SKUs — cigars, disposables, candy, drinks…`}
+          <input type="search" value={query} placeholder="Search products, brands or SKUs"
                  autoComplete="off" aria-label="Search products"
-                 onChange={(e) => { setQuery(e.target.value); setResultsOpen(true); }}
-                 onFocus={() => { setMegaOpen(false); if (query.trim().length >= 2) setResultsOpen(true); }} />
+                 onChange={(e) => { setQuery(e.target.value); setTooShort(false); setResultsOpen(true); }}
+                 onFocus={() => { setMegaOpen(false); if (searching) setResultsOpen(true); }} />
           <button type="submit" aria-label="Search"><Icon name="search" /></button>
-          {resultsOpen && query.trim().length >= 2 && (
+          {resultsOpen && (searching || tooShort) && (
             <div className="aw-search-results">
               <div className="aw-search-heading">
-                <p role="status">{hits.length ? `${hits.length} result${hits.length > 1 ? 's' : ''}` : 'No matches'}</p>
+                <p role="status">{searchStatus}</p>
                 <button className="icon-btn" type="button" aria-label="Close search results" onClick={() => setResultsOpen(false)}><Icon name="close" /></button>
               </div>
-              <div className="aw-search-list">
-                {hits.length === 0 && <p>Try a brand (Geekbar, Backwoods, BIC) or a line (&quot;energy drinks&quot;, &quot;wraps&quot;).</p>}
-                {hits.map(p => (
-                  <Link key={p.id} to={{ page: 'product', productId: p.id }} onClick={pickResult}>
-                    <span className="sr-thumb">{p.img ? <img src={p.img} alt="" loading="lazy" /> : <MissingPhoto compact />}</span>
-                    <span><strong>{p.name}</strong><small>{`${catLabel(p.cat)} · ${p.sub} · ${p.sku}`}</small></span>
-                  </Link>
-                ))}
-              </div>
+              {searching && (
+                <div className="aw-search-list">
+                  {hits.length === 0 && <p>Try a brand (Geekbar, Backwoods, BIC) or a line (&quot;energy drinks&quot;, &quot;wraps&quot;).</p>}
+                  {hits.map(p => (
+                    <Link key={p.id} to={{ page: 'product', productId: p.id }} onClick={pickResult}>
+                      <span className="sr-thumb">{p.img ? <img src={p.img} alt="" loading="lazy" /> : <MissingPhoto compact />}</span>
+                      <span><strong>{p.name}</strong><small>{`${catLabel(p.cat)} · ${p.sub} · ${p.sku}`}</small></span>
+                    </Link>
+                  ))}
+                  {search.total > 0 && (
+                    <Link className="aw-search-all" to={{ page: 'search', q: searchText }} onClick={closeMenus}>
+                      {search.total === 1 ? `See 1 result for “${searchText}”` : `See all ${search.total} results for “${searchText}”`}
+                    </Link>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </form>

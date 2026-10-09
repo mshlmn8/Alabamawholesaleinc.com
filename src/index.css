@@ -259,6 +259,8 @@ input[type="search"]:focus-visible, .aw-search input:focus-visible { outline-off
 .aw-search-list strong { display: block; color: var(--purple); }
 .aw-search-list small { display: block; font-size: var(--text-xs); color: var(--muted); margin-top: 3px; }
 .aw-search-list > p { font-size: var(--text-base); margin: 14px 0 7px; color: var(--muted); }
+/* "See all N results" (AW-007): the last row, a link to /search. */
+.aw-search-list > a.aw-search-all { font-weight: 700; color: var(--purple); text-decoration: underline; text-underline-offset: 4px; }
 .sr-thumb { flex: 0 0 40px; height: 40px; display: grid; place-items: center; background: var(--tile); border: 1px solid var(--line); overflow: hidden; font: 600 .875rem/1 var(--display); color: var(--orange-dark); }
 .sr-thumb img { width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; }
 
@@ -1096,9 +1098,21 @@ ul.sub-pills { list-style: none; padding: 0; }
 .not-found-browse .sub-pills { margin: 16px 0 12px; }
 .not-found-links { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 0; }
 .not-found .not-found-retry { margin-bottom: 24px; }
+
+/* Search results (AW-007): the query box with its button, the count, the
+   cards, "Show all" and the empty state. */
+.search-page { padding-bottom: 24px; }
+.search-page h1, .search-empty h2 { overflow-wrap: anywhere; }
+.search-form { display: flex; align-items: flex-end; gap: 8px; max-width: 37.5rem; margin: 18px 0 8px; }
+.search-form .filter-search { flex: 1 1 auto; min-width: 0; margin-top: 0; }
+.search-toolbar { display: flex; align-items: center; min-height: var(--tap); margin-bottom: var(--block-gap); padding-block: 8px; border-block: 1px solid var(--line); }
+.search-more { display: flex; justify-content: center; margin-top: var(--block-gap); }
+.search-empty .sub-pills { justify-content: center; }
+.search-empty-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 24px; }
+.search-empty-links .text-link { min-height: var(--tap); }
 @media (max-width: 53.125em), (hover: none) and (pointer: coarse) and (max-height: 31.25em) {
   .not-found-layout { grid-template-columns: 1fr; }
-  .not-found-browse .sub-pills { flex-wrap: wrap; overflow-x: visible; padding: 0; margin-inline: 0; }
+  .not-found-browse .sub-pills, .search-empty .sub-pills { flex-wrap: wrap; overflow-x: visible; padding: 0; margin-inline: 0; }
 }
 
 /* Account notices and states (AW-015, AW-048, AW-089, AW-186, AW-336, AW-337) */

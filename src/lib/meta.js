@@ -3,12 +3,15 @@
 // is built from one SITE_URL, which VITE_SITE_URL overrides.
 //
 // Only the route decides the metadata. The header search is a dropdown, not
-// a page, so what is typed there never reaches the title or history entries.
+// a page, so what is typed there never reaches the title or history entries;
+// only the /search?q= results page names its query, clipped and noindex
+// (AW-007, AW-338).
 
 import { COMPANY } from '../data/content.js';
 import { POLICY_TITLES, POLICY_INTROS } from '../pages/support/PolicyPage.jsx';
 import { brandLabel, catLabel } from './format.js';
 import { NOINDEX_PAGES, pathFor, siteUrl } from './routes.js';
+import { MIN_QUERY_LENGTH } from './search.js';
 
 export const SITE_URL = siteUrl(import.meta.env.VITE_SITE_URL);
 export const DEFAULT_IMAGE = { url: `${SITE_URL}/og.jpg`, width: 1200, height: 630, alt: `${COMPANY.name} logo` };
@@ -72,7 +75,14 @@ function pageText(route, products, departments) {
     const text = NOT_FOUND[route.kind] || NOT_FOUND.page;
     return { title: `${text.title} · ${site}`, description: text.description };
   }
-  if (route.page === 'search') return { title: `Search · ${site}`, description: `Search the ${site} wholesale catalog.` };
+  if (route.page === 'search') {
+    const q = String(route.q || '').trim();
+    if (q.length < MIN_QUERY_LENGTH) return { title: `Search · ${site}`, description: `Search the ${site} wholesale catalog.` };
+    return {
+      title: `Results for “${clip(q, 40)}” · ${site}`,
+      description: clip(`Search results for “${q}” in the ${site} wholesale catalog.`),
+    };
+  }
   if (route.page === 'category') {
     const dept = departments.find(d => d.key === route.category);
     const label = catLabel(route.category);

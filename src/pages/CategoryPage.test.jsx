@@ -90,6 +90,15 @@ describe('CategoryPage', () => {
     expect(note()).toBe('Showing 1 of 3 items');
   });
 
+  it('searches with the catalog search rules: a straight apostrophe finds a curly one (AW-064)', () => {
+    const list = [...products, { id: 7, name: 'Reese’s', brand: 'Reese’s', cat: 'CANDIES', sub: 'Chocolate', sku: 'AW-REESE-S', variants: ['Cups'], tag: null }];
+    act(() => navigate("/category/candies?q=reese's", { replace: true }));
+    render(<Harness list={list} />);
+    expect(screen.getByRole('searchbox', { name: 'Search in Candies' }).value).toBe("reese's");
+    expect(cardNames()).toEqual(['Reese’s']);
+    expect(note()).toBe('Showing 1 of 2 items');
+  });
+
   it('sorts by the buyer’s prices, products without one last (AW-003)', () => {
     act(() => navigate('/category/tobacco?sort=price-low', { replace: true }));
     const view = render(<Harness buyer={BUYER} />);

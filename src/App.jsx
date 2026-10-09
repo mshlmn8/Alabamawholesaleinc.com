@@ -41,6 +41,7 @@ import { CategoryPage } from './pages/CategoryPage.jsx';
 import { ProductPage } from './pages/ProductPage.jsx';
 import { QuotePage } from './pages/QuotePage.jsx';
 import { NotFoundPage } from './pages/NotFoundPage.jsx';
+import { SearchPage } from './pages/SearchPage.jsx';
 import { AccountPage } from './pages/account/AccountPage.jsx';
 import { AdminPage } from './pages/admin/AdminPage.jsx';
 import { CatalogIndexPage } from './pages/support/CatalogIndexPage.jsx';
@@ -50,7 +51,6 @@ import { PolicyPage } from './pages/support/PolicyPage.jsx';
 import { ApplyPage } from './pages/support/ApplyPage.jsx';
 import { ResetPasswordPage } from './pages/support/ResetPasswordPage.jsx';
 
-const SEARCH_NOT_READY = { page: 'not-found', kind: 'page' };
 // Not-found routes that depend on what is in the catalog.
 const CATALOG_KINDS = ['product', 'department', 'line'];
 // Sign Out leads home, and its notice shows there.
@@ -110,9 +110,7 @@ export default function App() {
   const { location, raw } = useRoute();
   const resolved = useMemo(() => resolveRoute(raw, { departments, products }), [raw, departments, products]);
   const canonicalPath = pathFor(resolved);
-  // /search is reserved for the search results page (AW-007); until it
-  // exists it shows NotFound.
-  const found = resolved.page === 'search' ? SEARCH_NOT_READY : resolved;
+  const found = resolved;
   // A product, department or line that isn't in the bundled catalog may be in
   // the live one (AW-204): until that is on screen the page says it is
   // loading, or that the catalog didn't load, instead of "not found".
@@ -276,6 +274,9 @@ export default function App() {
           <CategoryPage key={route.category} category={route.category} sub={route.sub} query={route.query}
                         products={products} departments={departments} {...cardProps} />
         );
+      case 'search':
+        // Keyed by URL (AW-007): each query starts with a fresh page.
+        return <SearchPage key={routeKey(route)} q={route.q} products={products} departments={departments} {...cardProps} />;
       case 'quote':
         return (
           <QuotePage items={cart.items} total={cart.total} addLine={cart.addLine} decLine={cart.decLine} removeLine={cart.removeLine}

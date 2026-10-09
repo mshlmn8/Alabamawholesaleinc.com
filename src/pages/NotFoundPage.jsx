@@ -2,7 +2,8 @@
 // departments or product lines that are not in the catalog. Instead of a
 // dead end it offers a catalog search, the departments and the full catalog.
 // The page is marked noindex (src/lib/meta.js). Nothing from the unknown URL
-// is echoed into the heading, breadcrumb or title.
+// is echoed into the heading, breadcrumb or title. Its search lists the best
+// 8 matches as you type; Enter opens every result on /search (AW-007).
 //
 // A product, department or line that isn't in the copy of the catalog
 // bundled with the site may still be in the live one (AW-204): while that
@@ -12,7 +13,7 @@
 
 import { useMemo, useState } from 'react';
 import { Link, navigate } from '../lib/router.js';
-import { getSearchMatches } from '../lib/search.js';
+import { getSearchMatches, MIN_QUERY_LENGTH } from '../lib/search.js';
 import { catLabel } from '../lib/format.js';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 
@@ -47,14 +48,20 @@ export function NotFoundPage({ kind = 'page', category = null, products, departm
     crumb = 'Catalog unavailable';
   }
   const [query, setQuery] = useState('');
+  // Enter on a query that is too short says so instead of doing nothing.
+  const [tooShort, setTooShort] = useState(false);
   const hits = useMemo(() => getSearchMatches(products, query, 8), [products, query]);
-  const searching = query.trim().length >= 2;
+  const searching = query.trim().length >= MIN_QUERY_LENGTH;
   const dept = category ? departments.find(d => d.key === category) : null;
-  const status = !searching ? '' : hits.length ? `${hits.length} matching product${hits.length === 1 ? '' : 's'}` : 'No matches. Try a brand, a product line or a SKU.';
+  let status = '';
+  if (searching) status = hits.length ? `${hits.length} matching product${hits.length === 1 ? '' : 's'}` : 'No matches. Try a brand, a product line or a SKU.';
+  else if (tooShort) status = `Type at least ${MIN_QUERY_LENGTH} characters.`;
 
-  const openFirst = (e) => {
+  const openResults = (e) => {
     e.preventDefault();
-    if (hits.length) navigate({ page: 'product', productId: hits[0].id });
+    const q = query.trim();
+    if (q.length >= MIN_QUERY_LENGTH) navigate({ page: 'search', q });
+    else setTooShort(true);
   };
 
   return (
@@ -84,9 +91,9 @@ export function NotFoundPage({ kind = 'page', category = null, products, departm
         <div className="not-found-layout">
           <section className="not-found-search" aria-labelledby="not-found-search-title">
             <h2 id="not-found-search-title">Search the catalog</h2>
-            <form role="search" aria-labelledby="not-found-search-title" onSubmit={openFirst}>
+            <form role="search" aria-labelledby="not-found-search-title" onSubmit={openResults}>
               <label className="filter-search" htmlFor="not-found-search"><span>Product, brand or SKU</span>
-                <input id="not-found-search" type="search" value={query} onChange={(e) => setQuery(e.target.value)}
+                <input id="not-found-search" type="search" value={query} onChange={(e) => { setQuery(e.target.value); setTooShort(false); }}
                        placeholder="Backwoods, energy drinks, AW-KITE…" autoComplete="off" />
               </label>
             </form>

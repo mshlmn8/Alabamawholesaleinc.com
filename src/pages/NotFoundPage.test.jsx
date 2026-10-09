@@ -43,6 +43,20 @@ describe('NotFoundPage', () => {
     expect(screen.getByRole('status').textContent).toMatch(/^No matches/);
   });
 
+  it('opens every result on the search page on Enter (AW-007)', () => {
+    window.history.replaceState(null, '', '/no-such-page');
+    render(<NotFoundPage products={products} departments={departments} />);
+    const box = screen.getByRole('searchbox', { name: 'Product, brand or SKU' });
+    // Too short: it says so and stays.
+    fireEvent.change(box, { target: { value: 'k' } });
+    fireEvent.submit(screen.getByRole('search'));
+    expect(screen.getByRole('status').textContent).toBe('Type at least 2 characters.');
+    expect(window.location.pathname).toBe('/no-such-page');
+    fireEvent.change(box, { target: { value: ' kite tobacco ' } });
+    fireEvent.submit(screen.getByRole('search'));
+    expect(window.location.pathname + window.location.search).toBe('/search?q=kite+tobacco');
+  });
+
   it('says it is loading, not "not found", while the live catalog loads (AW-204)', () => {
     const view = render(<NotFoundPage kind="product" catalog="loading" products={products} departments={departments} />);
     const h1 = screen.getByRole('heading', { level: 1 });
