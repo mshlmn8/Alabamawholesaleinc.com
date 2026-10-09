@@ -94,7 +94,10 @@ test('a signed-in password change needs the current password and signs out the o
   await form(page).getByLabel('New password', { exact: true }).fill('new-pass-123');
   await form(page).getByLabel('Confirm new password').fill('new-pass-123');
   await form(page).getByRole('button', { name: 'Save new password' }).click();
-  await expect(form(page).getByRole('alert')).toHaveText('That isn’t the current password for this account.');
+  // Said under Current password, not in the form's alert after the last field (NEW-026).
+  await expect(form(page).locator('#reset-current-error')).toHaveText('That isn’t the current password for this account.');
+  await expect(current).toHaveAccessibleDescription('That isn’t the current password for this account.');
+  await expect(form(page).locator('#reset-error')).toHaveText('');
   await expect(current).toBeFocused();
   await expect(current).toHaveAttribute('aria-invalid', 'true');
   expect(calls.filter((c) => c.startsWith('PUT'))).toEqual([]);
