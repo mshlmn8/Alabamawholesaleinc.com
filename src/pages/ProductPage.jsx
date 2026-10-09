@@ -20,6 +20,10 @@
 // a bare cart line of this product (AW-011) doesn't count as "Already in"
 // any variant.
 //
+// An add is confirmed by the toast (AW-072, AW-042): the quantity, the
+// product and its variant, and "View quote", also read out once
+// (src/lib/toast.js). Focus stays on the add button.
+//
 // From Cursor's PR #13: "Photo coming soon" without a photo (AW-029), the
 // sell unit badged on a photo other rows share (AW-136), the Wikimedia credit
 // under the photo (AW-033), and no placeholder brand "Assorted" (AW-286).
@@ -41,7 +45,7 @@ import { NicotineWarning } from '../components/NicotineWarning.jsx';
 import { showsNicotineWarning } from '../lib/regulated.js';
 import { Icon } from '../components/Icon.jsx';
 import { QuantityInput } from '../components/QuantityInput.jsx';
-import { announce } from '../lib/announce.js';
+import { showToast } from '../lib/toast.js';
 import { maxPerLineText } from '../lib/quantity.js';
 
 const NO_PRICES = () => null;
@@ -92,8 +96,15 @@ export function ProductPage({
     }
     if (soleUnavailable) return;
     const added = addLine(p.id, selected, desiredQty);
-    // The line was already near the limit (AW-013): say what it holds now.
-    if (added?.capped) announce(`${maxPerLineText()} This line now has ${added.qty.toLocaleString('en-US')}.`);
+    if (!added) return;
+    const target = isApprovedBuyer ? 'order' : 'quote';
+    const what = `${p.name}${selected ? ` — ${selected}` : ''}`;
+    // A line already near the limit takes only what fits (AW-013).
+    const count = added.capped ? Math.max(0, added.qty - qty) : desiredQty;
+    const text = count > 0
+      ? `Added ${count.toLocaleString('en-US')} × ${what} to your ${target}.`
+      : `Your ${target} already has ${added.qty.toLocaleString('en-US')} × ${what}.`;
+    showToast({ text: added.capped ? `${text} ${maxPerLineText()}` : text, action: { id: 'open-cart', label: `View ${target}` } });
     setDesiredQty(1);
   };
 

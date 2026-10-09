@@ -36,6 +36,7 @@ import { AuthModal } from './components/AuthModal.jsx';
 import { ModalLayer } from './components/ModalLayer.jsx';
 import { ErrorBoundary } from './components/ErrorBoundary.jsx';
 import { SiteNotices } from './components/SiteNotices.jsx';
+import { Toast } from './components/Toast.jsx';
 import { HomePage } from './pages/HomePage.jsx';
 import { CategoryPage } from './pages/CategoryPage.jsx';
 import { ProductPage } from './pages/ProductPage.jsx';
@@ -342,6 +343,9 @@ export default function App() {
       </main>
 
       <Footer departments={departments} onLoginClick={openSignin} onApplyClick={openSignup} />
+
+      {/* Confirms an add (AW-072); its action opens the cart. */}
+      <Toast onAction={(id) => { if (id === 'open-cart') setCartOpen(true); }} />
 
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} items={cart.items} total={cart.total}
                   setLine={cart.setLine} chooseVariant={cart.chooseVariant} removeLine={cart.removeLine} removeLines={cart.removeLines}

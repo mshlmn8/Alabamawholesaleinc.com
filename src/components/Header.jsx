@@ -150,7 +150,7 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
           )}
           <button className="button ghost sm aw-cart-btn" type="button" onClick={() => runNav(onCart)} aria-label={`Cart, ${cartCount} items`}>
             Cart
-            {cartCount > 0 && <span className="aw-cart-count">{cartCount}</span>}
+            {cartCount > 0 && <span key={cartCount} className="aw-cart-count">{cartCount}</span>}
           </button>
         </div>
       </div>

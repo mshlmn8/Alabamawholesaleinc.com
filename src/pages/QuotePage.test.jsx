@@ -1,10 +1,15 @@
 // Checkout while the account changes underneath it (AW-186, AW-190, AW-048),
-// and against submit_quote v3 (AW-049, AW-079, AW-198, AW-201, AW-014).
+// against submit_quote v3 (AW-049, AW-079, AW-198, AW-201, AW-014), and
+// removing lines (AW-042).
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { useState } from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { announce } from '../lib/announce.js';
 import { QuotePage } from './QuotePage.jsx';
 import { submitOrder, todayInBirmingham } from '../lib/orders.js';
 import { COMPANY } from '../data/content.js';
+
+vi.mock('../lib/announce.js', async (importOriginal) => ({ ...(await importOriginal()), announce: vi.fn() }));
 
 // submitOrder is the only way out; record what it is asked to send. The
 // reference comes back from the server (AW-049).
@@ -495,5 +500,55 @@ describe('QuotePage and submit_quote', () => {
     await act(async () => { submitForm(); });
     await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Thank you/));
     expect(calls[0].formData).toMatchObject({ licenseNo: '', resaleCert: '', purchasers21: false });
+  });
+});
+
+// Removing lines and clearing the cart (AW-042): announced, and focus moves
+// to a neighbour line or to the empty page's heading, never to <body>.
+describe('QuotePage removals', () => {
+  const LINES = [
+    ITEMS[0],
+    { lineKey: '45', productId: 45, variant: null, name: 'Argo corn starch', sku: 'AW-ARGO-CORN-STARCH', cat: 'FOOD STUFF', qty: 1, price: 10 },
+  ];
+  function Checkout(props) {
+    const [items, setItems] = useState(LINES);
+    return (
+      <main id="main">
+        {page({
+          items, total: 0, removeLine: (key) => setItems((list) => list.filter((it) => it.lineKey !== key)), clearCart: () => setItems([]), ...props,
+        })}
+      </main>
+    );
+  }
+  const announced = () => vi.mocked(announce).mock.calls.map(([text]) => text);
+  const removeButton = (name) => screen.getByRole('button', { name: `Remove ${name}` });
+
+  afterEach(() => vi.mocked(announce).mockClear());
+
+  it('focuses the next line’s quantity after ×, then the empty page’s heading', async () => {
+    render(<Checkout />);
+    removeButton('Kite cigarette tobacco').focus();
+    fireEvent.click(removeButton('Kite cigarette tobacco'));
+    expect(announced()).toEqual(['Removed Kite cigarette tobacco.']);
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Quantity of Argo corn starch' })));
+    fireEvent.click(removeButton('Argo corn starch'));
+    expect(announced().at(-1)).toBe('Removed Argo corn starch.');
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Your cart is empty' }));
+  });
+
+  it('says every item went with "Clear all items", and focuses the empty page’s heading', () => {
+    render(<Checkout />);
+    const clear = screen.getByRole('button', { name: 'Clear all items' });
+    clear.focus();
+    fireEvent.click(clear);
+    expect(announced()).toEqual(['Removed all items from your quote.']);
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Your cart is empty' }));
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
+  it('says "order" to an approved buyer', () => {
+    render(<Checkout profile={A} isApprovedBuyer />);
+    fireEvent.click(screen.getByRole('button', { name: 'Clear all items' }));
+    expect(announced()).toEqual(['Removed all items from your order.']);
   });
 });

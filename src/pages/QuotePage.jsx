@@ -11,7 +11,9 @@
 // block the submit until they are removed; products from an older cart that
 // still need a variant (AW-354) are listed at the top. A bare line gets its
 // variant on the line itself (AW-011), and quantities are typed or stepped,
-// 1 to 100,000 (AW-013).
+// 1 to 100,000 (AW-013). Removing a line or clearing them all is read out,
+// and focus moves to the next line (else the one before), or to the empty
+// page's heading, never to <body> (AW-042).
 //
 // The catalog may have changed since the page was opened (AW-191, AW-204):
 // Submit first loads it again (checkCart, from App) and stops, naming the
@@ -34,7 +36,7 @@
 // buyer below it is told "You can still submit this order" only while the
 // submit button can actually be used (Cursor's PR #13).
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../data/content.js';
 import { QUOTE_ERROR_GENERIC, quoteErrorField, quoteErrorMessage, submitOrder, todayInBirmingham } from '../lib/orders.js';
 import { cartChanges, describeCartChanges } from '../lib/cart.js';
@@ -42,7 +44,9 @@ import { QTY_RANGE_TEXT, isOrderableQty } from '../lib/quantity.js';
 import { formatMoney, formatMoneyShort } from '../lib/format.js';
 import { totalLabel } from '../lib/pricing.js';
 import { cartNeedsTobaccoLicense } from '../lib/regulated.js';
-import { Link } from '../lib/router.js';
+import { Link, focusPageHeading } from '../lib/router.js';
+import { announce } from '../lib/announce.js';
+import { LINE_CONTROL, focusLineSoon, neighbourKey } from '../lib/focus.js';
 import { CallOrEmail } from '../components/ContactLinks.jsx';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 import { CartLine } from '../components/CartLine.jsx';
@@ -99,6 +103,28 @@ export function QuotePage({
   if (isApprovedBuyer && sendAsQuote) setSendAsQuote(false);
   // A suspended account is told ordering is paused instead (AW-201).
   const lostOrdering = orderingSeen && !isApprovedBuyer && !sendAsQuote && account !== 'loading' && !isSuspended;
+
+  // Removing lines (AW-042). With none left, the page turns into the empty
+  // cart, and its heading takes focus once it is on screen.
+  const linesRef = useRef(null);
+  const focusHeadingNext = useRef(false);
+  useEffect(() => {
+    if (!focusHeadingNext.current) return;
+    focusHeadingNext.current = false;
+    focusPageHeading();
+  }, [items.length]);
+  const removeItem = (it) => {
+    const next = neighbourKey(items.map(x => x.lineKey), it.lineKey);
+    if (!next) focusHeadingNext.current = true;
+    removeLine(it.lineKey);
+    announce(`Removed ${it.name}.`);
+    if (next) focusLineSoon(linesRef.current, next, { selector: LINE_CONTROL, fallback: focusPageHeading });
+  };
+  const clearAll = () => {
+    focusHeadingNext.current = true;
+    clearCart();
+    announce(`Removed all items from your ${isApprovedBuyer ? 'order' : 'quote'}.`);
+  };
 
   const [receipt, setReceipt] = useState(null);
   const [submitError, setSubmitError] = useState(null);
@@ -259,14 +285,14 @@ export function QuotePage({
         <div>
           <SavedLinesNotice items={legacy} onDismiss={onDismissLegacy} />
           <UnavailableNotice items={unavailable} onRemoveAll={removeLines} />
-          <ul className="checkout-lines" aria-label="Items in this request">
+          <ul className="checkout-lines" aria-label="Items in this request" ref={linesRef}>
             {items.map(it => (
               <CartLine key={it.lineKey} item={it} layout="checkout" showPrice={isApprovedBuyer} pricesStatus={pricesStatus}
                         onSetQty={(n) => setLine(it.lineKey, n)} onChooseVariant={chooseVariant}
-                        onRemove={() => removeLine(it.lineKey)} />
+                        onRemove={() => removeItem(it)} />
             ))}
           </ul>
-          <button className="text-link checkout-clear" type="button" onClick={clearCart}>Clear all items</button>
+          <button className="text-link checkout-clear" type="button" onClick={clearAll}>Clear all items</button>
         </div>
         <form onSubmit={handleQuoteSubmit} aria-labelledby="quote-form-title">
           <h2 id="quote-form-title" className="checkout-form-title">Your details</h2>

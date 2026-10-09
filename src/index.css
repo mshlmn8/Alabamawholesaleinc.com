@@ -1159,3 +1159,33 @@ ul.sub-pills { list-style: none; padding: 0; }
 .quote-account-links .text-link { min-height: var(--tap); }
 .quote-paused { margin: 16px 0 0; }
 .drawer-paused { margin: 4px 0 0; }
+
+/* ============================ toast (AW-072) ============================
+   The cart toast (src/components/Toast.jsx), fixed at the bottom of the
+   window: above the page, the header (20), the mega menu (25) and the search
+   results (35); below the dialog layers (.aw-layer 60, whose scrim covers it)
+   and the age gate (100). The light edge keeps it apart from the purple
+   footer. Its motion stops in the prefers-reduced-motion block, and it is
+   not printed. Spoken through announce(), so no live region. */
+.toast-root { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; justify-content: center; padding: 0 0 max(16px, env(safe-area-inset-bottom)); pointer-events: none; }
+.toast { --focus-ring: var(--focus-on-dark); pointer-events: auto; display: flex; align-items: center; gap: 12px; width: min(28rem, 100% - 32px); padding: 10px 10px 10px 16px; background: var(--purple-deep); color: #fff; border: 1px solid var(--on-dark-line); border-radius: 2px; box-shadow: 0 12px 30px var(--shadow-popover); font-size: var(--text-base); line-height: 1.45; animation: toast-in .2s ease-out both; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.toast-text { flex: 1 1 auto; min-width: 0; margin: 0; font-weight: 600; }
+.toast .toast-action { flex: none; }
+.toast .button:focus-visible { outline-color: var(--focus-on-dark); }
+.toast .icon-btn { background: transparent; color: #fff; border-color: var(--on-dark-line); }
+@media (hover: hover) {
+  .toast .icon-btn:not(:disabled):hover { background: var(--on-dark-fill); }
+}
+/* 44px targets on touch screens. */
+@media (pointer: coarse) {
+  .toast .toast-action { min-height: var(--tap); }
+  .toast .icon-btn { width: var(--tap); height: var(--tap); }
+}
+/* The header's cart count bumps when it changes (AW-072): Header keys it by
+   the count, so each change starts the animation again. */
+.aw-cart-btn .aw-cart-count { animation: cart-bump .35s ease-out; }
+@keyframes cart-bump { 40% { transform: scale(1.3); } }
+@media print {
+  .toast-root { display: none; }
+}
