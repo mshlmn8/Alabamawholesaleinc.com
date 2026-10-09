@@ -8,13 +8,16 @@
 // or a dialog that has its own h2. children is the line of text. actions are
 // the buttons and links (a list of links can go there too); they wrap and
 // stay centred. className adds a modifier, such as 'is-boxed' for the framed
-// box used where a list would be.
+// box used where a list would be. notice goes right under the heading, the
+// next thing after it in the tab order (the checkout page's Undo after
+// "Clear all items", AW-082).
 
-export function EmptyState({ title, level = 2, children, actions, className }) {
+export function EmptyState({ title, level = 2, children, actions, className, notice = null }) {
   const Heading = `h${level}`;
   return (
     <div className={className ? `empty-state ${className}` : 'empty-state'}>
       <Heading className="empty-state-title">{title}</Heading>
+      {notice && <div className="empty-state-notice">{notice}</div>}
       {children && <p className="empty-state-text">{children}</p>}
       {actions && <div className="empty-state-actions">{actions}</div>}
     </div>

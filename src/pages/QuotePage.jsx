@@ -416,18 +416,20 @@ export function QuotePage({
     return (
       <section className="page-head is-centered">
         {/* The shared empty state (AW-299), in the basket's words (AW-132);
-            its h1 takes focus when the last line goes. */}
-        <EmptyState level={1} title={basket.empty} actions={<Link className="button" to="/catalog">Browse the catalog</Link>}>
+            its h1 takes focus when the last line goes, and the undo offer
+            after "Clear all items" is the next stop (AW-082). */}
+        <EmptyState
+          level={1} title={basket.empty} actions={<Link className="button" to="/catalog">Browse the catalog</Link>}
+          notice={undo && (
+            <p className="notice cart-cleared">
+              <span id="cart-cleared-text">{`Removed ${undo.n.toLocaleString('en-US')} ${undo.n === 1 ? 'item' : 'items'}.`}</span>
+              {' '}
+              <button className="text-link" type="button" onClick={undoClear} aria-describedby="cart-cleared-text">Undo</button>
+            </p>
+          )}
+        >
           {`Add products, then come back to review your ${basket.noun}.`}
         </EmptyState>
-        {/* The undo offer after "Clear all items" (AW-082). */}
-        {undo && (
-          <p className="notice cart-cleared">
-            <span id="cart-cleared-text">{`Removed ${undo.n.toLocaleString('en-US')} ${undo.n === 1 ? 'item' : 'items'}.`}</span>
-            {' '}
-            <button className="text-link" type="button" onClick={undoClear} aria-describedby="cart-cleared-text">Undo</button>
-          </p>
-        )}
         {/* Why items added on a phone aren't here on a computer (AW-334). */}
         <p className="fine cart-device-note">{cartDeviceNote(signedIn)}</p>
         {legacy.length > 0 && (
