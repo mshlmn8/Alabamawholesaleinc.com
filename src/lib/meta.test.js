@@ -8,7 +8,7 @@ import { PRODUCTS } from '../data/products.js';
 import { departmentsFor } from './departments.js';
 import { brandLabel } from './format.js';
 import {
-  applyPageMeta, clip, DEFAULT_IMAGE, fitSentences, fitTitle, HOME_DESCRIPTION, inSentence, nameHasBrand, pageMeta,
+  applyPageMeta, clip, DEFAULT_IMAGE, fitSentences, fitTitle, HOME_DESCRIPTION, inSentence, lineInSentence, nameHasBrand, pageMeta,
   sentencesOf, SITE_URL,
 } from './meta.js';
 import { normalizeSearchText } from './search.js';
@@ -58,6 +58,9 @@ describe('clip, fitSentences and fitTitle (AW-319)', () => {
     expect(inSentence('Cigars & Cigarillos')).toBe('cigars & cigarillos');
     expect(inSentence('Pouches & ZYN')).toBe('pouches & ZYN');
     expect(inSentence('OTC & Health')).toBe('OTC & health');
+    expect(lineInSentence('Other Grocery')).toBe('grocery');
+    expect(lineInSentence('Cigars & Cigarillos')).toBe('cigars & cigarillos');
+    expect(lineInSentence('Other')).toBe('other');
   });
 
   it('tells whether a product name already says its brand, as whole words', () => {
@@ -153,6 +156,12 @@ describe('pageMeta', () => {
     // A line named like its department names it once.
     const oil = [{ id: 7, name: 'Castrol', brand: 'Castrol', cat: 'MOTOR OIL', sub: 'Motor Oil' }];
     expect(pageMeta({ page: 'category', category: 'MOTOR OIL', sub: 'Motor Oil', query: EMPTY }, oil, departmentsFor(oil)).title).toBe('Motor Oil · Alabama Wholesale Inc');
+    // A catch-all line reads as its goods, not 'Wholesale other grocery'.
+    const other = [{ id: 8, name: 'Home air fresheners', brand: 'Assorted', cat: 'GROCERY', sub: 'Other Grocery', sku: 'AW-HOME', description: 'Home air fresheners.' }];
+    expect(pageMeta({ page: 'category', category: 'GROCERY', sub: 'Other Grocery', query: EMPTY }, other, departmentsFor(other)).description)
+      .toBe('Wholesale grocery from our Grocery department: 1 product. Sign in for account pricing.');
+    expect(pageMeta({ page: 'product', productId: 8 }, other, departmentsFor(other)).description)
+      .toBe('Home air fresheners. Wholesale grocery for licensed retailers. SKU AW-HOME.');
   });
 
   it('counts only products outside the legal review toward the lines a department description names (AW-001)', () => {

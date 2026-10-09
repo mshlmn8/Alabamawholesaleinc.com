@@ -86,6 +86,10 @@ export function fitTitle(parts, max = TITLE_MAX) {
 // ('Pouches & ZYN' -> 'pouches & ZYN', 'OTC & Health' -> 'OTC & health').
 export const inSentence = (label) => String(label || '').replace(/\b[A-Z][a-z]+\b/g, (word) => word.toLowerCase());
 
+// A product line inside a sentence. A catch-all line reads as its goods:
+// 'Other Grocery' -> 'grocery', not 'Wholesale other grocery' (AW-319).
+export const lineInSentence = (sub) => inSentence(sub).replace(/^other\s+(?=\S)/, '');
+
 // 'A, B and C', or 'A, B, C and more' when there are more than those named.
 const listOf = (items, more) => {
   if (more) return `${items.join(', ')} and more`;
@@ -224,7 +228,7 @@ function pageText(route, products, departments) {
       title: fitTitle([p.name, ownBrand, site]),
       description: fitSentences([
         ...sentencesOf(p.description || generated),
-        p.sub ? `Wholesale ${inSentence(p.sub)} for licensed retailers.` : '',
+        p.sub ? `Wholesale ${lineInSentence(p.sub)} for licensed retailers.` : '',
         p.sku ? `SKU ${p.sku}.` : '',
       ]),
       image: imageOf(p, p.name),
@@ -269,7 +273,7 @@ function categoryText(route, products, departments, site) {
     const first = firstThatFits(3, (k) => {
       const named = brands.slice(0, k);
       const from = named.length ? ` from ${listOf(named, unbranded || brands.length > named.length)}` : '';
-      return `Wholesale ${inSentence(route.sub)} from our ${label} department: ${productCount(rows.length)}${from}.`;
+      return `Wholesale ${lineInSentence(route.sub)} from our ${label} department: ${productCount(rows.length)}${from}.`;
     });
     return {
       // 'Motor Oil · Motor Oil' names the department once.
