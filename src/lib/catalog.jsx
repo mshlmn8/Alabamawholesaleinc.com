@@ -47,6 +47,7 @@ import { supabase as defaultClient } from './supabase.js';
 import { productImage, sharedImageFiles } from './images.js';
 import { isNetworkError } from './errors.js';
 import { PRODUCTS as STATIC_PRODUCTS } from '../data/products.js';
+import { currentImageFile } from '../data/catalogAliases.js';
 
 // A tab that comes back into view (or moves to another page) loads the
 // catalog again once it is older than this.
@@ -93,12 +94,15 @@ const STATIC_BY_ID = new Map(STATIC_PRODUCTS.map((p) => [Number(p.id), p]));
 // dropped: prices come only from usePrices(); so is the old flavors count
 // (AW-332: variantCount() in lines.js counts the variants).
 export function hydrateProducts(rows, bundled = STATIC_BY_ID) {
-  const shared = sharedImageFiles(rows);
+  // A row may still name a photo by a file name that has since changed
+  // (AW-290; until 20261010131000_photo_filenames.sql is applied).
+  const shared = sharedImageFiles(rows.map((row) => ({ img: currentImageFile(row?.img) })));
   return rows.map((row) => {
     const p = { ...row };
     delete p.price;
     delete p.flavors;
     const local = bundled.get(Number(p.id));
+    const img = currentImageFile(p.img);
     return {
       ...p,
       variants: Array.isArray(p.variants) ? p.variants : [],
@@ -107,9 +111,9 @@ export function hydrateProducts(rows, bundled = STATIC_BY_ID) {
       description: p.description || local?.description || '',
       sellUnit: p.sell_unit || p.sellUnit || local?.sellUnit || '',
       // img is a filename in src/assets/products, or a full URL (e.g. Supabase Storage)
-      ...productImage(p.img),
+      ...productImage(img),
       // Another row uses the same photo file (AW-136).
-      sharedPhoto: p.img != null && shared.has(String(p.img).trim()),
+      sharedPhoto: img != null && shared.has(String(img).trim()),
     };
   });
 }

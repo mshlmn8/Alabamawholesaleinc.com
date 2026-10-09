@@ -100,7 +100,7 @@ export const CATALOG = [
     description: "ZYN 3mg nicotine pouches. Six flavors: Cinnamon, Wintergreen, Citrus, Peppermint, Chill and Spearmint." },
   { id:  20, name: "Vaseline healing jelly", brand: "Vaseline", cat: "GROCERY", sub: "Personal Care", sku: "AW-VASELINE", sellUnit: "", variantAxis: "Size", variants: ["Big", "Small"], img: "vaseline_jelly.webp", tag: null,
     description: "Vaseline Original healing jelly. Two sizes: Big and Small." },
-  { id:  21, name: "Speed Stick men's deodorant", brand: "Speed Stick", cat: "GROCERY", sub: "Personal Care", sku: "AW-MEN-DEODORANT", sellUnit: "", variantAxis: "Size", variants: ["Small", "Big"], img: "men_s_deodorant.jpg", tag: null,
+  { id:  21, name: "Speed Stick men's deodorant", brand: "Speed Stick", cat: "GROCERY", sub: "Personal Care", sku: "AW-MEN-DEODORANT", sellUnit: "", variantAxis: "Size", variants: ["Small", "Big"], img: "p21-speed-stick-mens-deodorant.jpg", tag: null,
     description: "Speed Stick men's deodorant. Two sizes: Small and Big." },
   { id:  22, name: "Tweaker energy shots", brand: "Tweaker", cat: "MERCHANDISE", sub: "OTC & Health", sku: "AW-TWEAKER", sellUnit: "", variantAxis: "Variety", variants: ["Berry", "Grape", "Watermelon", "Peach", "Freedom pop", "Tropical", "Sour apple"], img: "tweaker.webp", tag: null,
     description: "Tweaker energy shots. Seven varieties: Berry, Grape, Watermelon, Peach, Freedom pop, Tropical and Sour apple." },
@@ -291,10 +291,11 @@ export const CATALOG = [
     description: "Tampax tampons from the personal care line in our Grocery department. Two colors: Yellow and Green." },
   { id: 109, name: "Ajax dish liquid", brand: "Ajax", cat: "GROCERY", sub: "Cleaning", sku: "AW-AJAX-DISH-LIQUID", sellUnit: "", variantAxis: "Color", variants: ["Blue", "Red", "Yellow", "Orange", "Green", "Purple"], img: "p109-ajax-dish-liquid.png", tag: null,
     description: "Ajax dish liquid. Six colors: Blue, Red, Yellow, Orange, Green and Purple." },
-  { id: 110, name: "Brillo Basics dish liquid", brand: "Brillo", cat: "GROCERY", sub: "Cleaning", sku: "AW-BRILLO-DISH-LIQUID", sellUnit: "", variantAxis: "Color", variants: ["Blue", "Yellow", "Orange", "Green"], img: "brillo_dishwasher.png", tag: null,
+  { id: 110, name: "Brillo Basics dish liquid", brand: "Brillo", cat: "GROCERY", sub: "Cleaning", sku: "AW-BRILLO-DISH-LIQUID", sellUnit: "", variantAxis: "Color", variants: ["Blue", "Yellow", "Orange", "Green"], img: "p110-brillo-basics-dish-liquid.png", tag: null,
     description: "Brillo Basics dish liquid. Four colors: Blue, Yellow, Orange and Green." },
   { id: 111, name: "Tide liquid detergent", brand: "Tide", cat: "GROCERY", sub: "Laundry & Detergent", sku: "AW-TIDE-LIQUID", sellUnit: "", variantAxis: "Size", variants: ["Big", "Small"], img: "tide.jpg", tag: null,
     description: "Tide liquid laundry detergent. Two sizes: Big and Small." },
+  // TODO(owner): #112 Gain liquid detergent and #333 Gain dish liquid share gain.jpg, the laundry detergent bottle (../assets/products/sources/grocery.md). A photo of each product, saved as p112-<slug> and p333-<slug>, replaces it (AW-290, see AW-136)
   { id: 112, name: "Gain liquid detergent", brand: "Gain", cat: "GROCERY", sub: "Laundry & Detergent", sku: "AW-GAIN-LIQUID", sellUnit: "", variantAxis: "Size", variants: ["Big", "Small"], img: "gain.jpg", tag: null,
     description: "Gain liquid laundry detergent. Two sizes: Big and Small." },
   { id: 113, name: "Clorox", brand: "Clorox", cat: "GROCERY", sub: "Cleaning", sku: "AW-CLOROX", sellUnit: "", variantAxis: "Size", variants: ["Big", "Medium", "Small"], img: "p113-clorox.png", tag: null,
@@ -328,7 +329,7 @@ export const CATALOG = [
     description: "Baby wipes from the personal care line in our Grocery department. Two varieties: Boys and Girls." },
   { id: 127, name: "Drain opener", brand: "Assorted", cat: "GROCERY", sub: "Cleaning", sku: "AW-DRAIN-OPENER", sellUnit: "", variants: [], img: null, tag: null,
     description: "Drain opener from the cleaning line in our Grocery department." },
-  { id: 128, name: "Fabuloso", brand: "Fabuloso", cat: "GROCERY", sub: "Cleaning", sku: "AW-FABULOSO", sellUnit: "", variantAxis: "Size", variants: ["Small", "Big"], img: "fabulouso.avif", tag: null,
+  { id: 128, name: "Fabuloso", brand: "Fabuloso", cat: "GROCERY", sub: "Cleaning", sku: "AW-FABULOSO", sellUnit: "", variantAxis: "Size", variants: ["Small", "Big"], img: "p128-fabuloso.avif", tag: null,
     description: "Fabuloso multi-purpose cleaner. Two sizes: Small and Big." },
   { id: 129, name: "Home air fresheners", brand: "Assorted", cat: "GROCERY", sub: "Other Grocery", sku: "AW-HOME-AIR-FRESHENERS", sellUnit: "", variants: [], img: null, tag: null,
     description: "Home air fresheners, from the grocery line in our Grocery department." },
@@ -526,7 +527,7 @@ export const CATALOG = [
     description: "Bayer aspirin for the OTC shelf, from the OTC and health line in our Merchandise department." },
   { id: 224, name: "Mucinex DM", brand: "Mucinex", cat: "MERCHANDISE", sub: "OTC & Health", sku: "AW-MUCINEX-DM", sellUnit: "", variants: [], img: "p224-mucinex-dm.jpg", tag: null,
     description: "Mucinex DM cough and chest congestion relief." },
-  { id: 225, name: "Lady Speed Stick women's deodorant", brand: "Lady Speed Stick", cat: "GROCERY", sub: "Personal Care", sku: "AW-WOMEN-DEODORANT", sellUnit: "", variants: [], img: "women_s_deodorant.webp", tag: null,
+  { id: 225, name: "Lady Speed Stick women's deodorant", brand: "Lady Speed Stick", cat: "GROCERY", sub: "Personal Care", sku: "AW-WOMEN-DEODORANT", sellUnit: "", variants: [], img: "p225-lady-speed-stick-deodorant.webp", tag: null,
     description: "Lady Speed Stick women's deodorant, from the personal care line in our Grocery department." },
   { id: 226, name: "Excedrin", brand: "Excedrin", cat: "MERCHANDISE", sub: "OTC & Health", sku: "AW-EXCEDRIN", sellUnit: "", variantAxis: "Variety", variants: ["Extra", "Migraine"], img: "p226-excedrin.jpg", tag: null,
     description: "Excedrin headache relief for the OTC shelf. Two varieties: Extra and Migraine." },
@@ -640,7 +641,7 @@ export const CATALOG = [
     description: "Van Holten's whole pickles in pouches. Five flavors: Big papa, Hot mama, Garlic Joe, Kosher and Dill." },
   { id: 279, name: "Maruchan Yakisoba", brand: "Maruchan", cat: "FOOD STUFF", sub: "Quick Meals", sku: "AW-YAKISOBA", sellUnit: "", variantAxis: "Flavor", variants: ["Beef", "Chicken"], img: "yakisoba_noodles.jpg", tag: null,
     description: "Maruchan Yakisoba noodle trays. Two flavors: Beef and Chicken." },
-  { id: 280, name: "Coastal motor oil", brand: "Coastal", cat: "MOTOR OIL", sub: "Motor Oil", sku: "AW-COASTAL", sellUnit: "", variantAxis: "Type", variants: ["5W-30", "5W-20"], img: "coastal_moto_oil.jpg", tag: null,
+  { id: 280, name: "Coastal motor oil", brand: "Coastal", cat: "MOTOR OIL", sub: "Motor Oil", sku: "AW-COASTAL", sellUnit: "", variantAxis: "Type", variants: ["5W-30", "5W-20"], img: "p280-coastal-motor-oil.jpg", tag: null,
     description: "Coastal synthetic blend motor oil in quarts. Two grades: 5W-30 and 5W-20." },
   // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
   { id: 281, name: "Hush hit pre rolls 2pk", brand: "Hush Hit", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-HUSH-HIT-PRE-ROLLS", sellUnit: "2-pack", variants: ["Blue dream"], img: "p281-hush-hit-pre-rolls-2pk.jpg", tag: null,
@@ -668,7 +669,7 @@ export const CATALOG = [
     description: "Powerade in the big bottle. Four flavors: Blue, Red, Grape and Yellow." },
   { id: 291, name: "Powerade small", brand: "Powerade", cat: "DRINKS & BAGS", sub: "Sports Drinks", sku: "AW-POWERADE-SMALL", sellUnit: "", variantAxis: "Flavor", variants: ["Blue", "Red", "Grape", "Yellow"], img: "powerade_20oz.webp", tag: null,
     description: "Powerade in the small bottle. Four flavors: Blue, Red, Grape and Yellow." },
-  { id: 292, name: "Electrolit", brand: "Electrolit", cat: "DRINKS & BAGS", sub: "Energy Drinks", sku: "AW-ELECTROLIT", sellUnit: "", variants: ["Blue"], img: "electrolyte.webp", tag: null,
+  { id: 292, name: "Electrolit", brand: "Electrolit", cat: "DRINKS & BAGS", sub: "Energy Drinks", sku: "AW-ELECTROLIT", sellUnit: "", variants: ["Blue"], img: "p292-electrolit.webp", tag: null,
     description: "Electrolit electrolyte hydration drink. Stocked in one variety: Blue." },
   // TODO(owner): May this Kratom & Kava item be sold and advertised from Alabama? Awaiting legal/compliance review; kept as it is until then (AW-001)
   { id: 293, name: "Sip happens", brand: "Sip Happens", cat: "NOVELTIES", sub: "Kratom & Kava", sku: "AW-SIP-HAPPENS", sellUnit: "", variants: [], img: null, tag: null,
@@ -768,12 +769,15 @@ export const CATALOG = [
   // TODO(owner): Is this Honey & Energy enhancement item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
   { id: 332, name: "Black Tiger Honey", brand: "Black Tiger", cat: "MERCHANDISE", sub: "Honey & Energy", sku: "AW-BLACK-TIGER-HONEY", sellUnit: "", variantAxis: "Format", variants: ["Flat box", "Round box"], img: "black_tiger_honey.jpg", tag: "PREMIUM",
     description: "Black Tiger Honey sachets with ashwagandha. Two flavors: Flat box and Round box." },
+  // TODO(owner): #112 Gain liquid detergent and #333 Gain dish liquid share gain.jpg, the laundry detergent bottle (../assets/products/sources/grocery.md). A photo of each product, saved as p112-<slug> and p333-<slug>, replaces it (AW-290, see AW-136)
   { id: 333, name: "Gain dish liquid", brand: "Gain", cat: "GROCERY", sub: "Laundry & Detergent", sku: "AW-GAIN-DISH-LIQUID", sellUnit: "", variants: [], img: "gain.jpg", tag: null,
     description: "Gain dish liquid, from the laundry and detergent line in our Grocery department." },
   { id: 334, name: "Bandaids", brand: "Assorted", cat: "MERCHANDISE", sub: "OTC & Health", sku: "AW-BANDAIDS", sellUnit: "", variants: [], img: "p334-bandaids.jpg", tag: null,
     description: "Adhesive bandages, from the OTC and health line in our Merchandise department." },
+  // TODO(owner): #335 Gatorade small and #336 Gatorade big share p_gatorade.jpg, so both sizes show the same photo. A photo of each size, saved as p335-<slug> and p336-<slug>, replaces it (AW-290, see AW-136)
   { id: 335, name: "Gatorade small", brand: "Gatorade", cat: "DRINKS & BAGS", sub: "Sports Drinks", sku: "AW-GATORADE-SMALL", sellUnit: "", variants: ["Blue"], img: "p_gatorade.jpg", tag: null,
     description: "Gatorade in the small bottle. Stocked in one variety: Blue." },
+  // TODO(owner): #335 Gatorade small and #336 Gatorade big share p_gatorade.jpg, so both sizes show the same photo. A photo of each size, saved as p335-<slug> and p336-<slug>, replaces it (AW-290, see AW-136)
   { id: 336, name: "Gatorade big", brand: "Gatorade", cat: "DRINKS & BAGS", sub: "Sports Drinks", sku: "AW-GATORADE-BIG", sellUnit: "", variants: ["Blue"], img: "p_gatorade.jpg", tag: "BESTSELLER",
     description: "Gatorade in the big bottle. Stocked in one variety: Blue." },
   { id: 337, name: "Bob Marley rolling papers", brand: "Bob Marley", cat: "TOBACCO", sub: "Papers & Cones", sku: "AW-BOB-MARLEY-PAPERS", sellUnit: "", variantAxis: "Variety", variants: ["Yellow small", "Yellow big", "Yellow big with tips", "Organic small", "Organic big", "Organic big with tips", "Silver small", "Silver big"], img: "bob_marley_papers.jpg", tag: null,

@@ -1,5 +1,7 @@
 // The catalog provider (AW-204, AW-191): status, errors, paging, refreshes.
 // Rows are test values. The catalog never asks for or keeps a price (AW-003).
+import { readdirSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { StrictMode, useEffect } from 'react';
 import { act, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,7 +9,8 @@ import {
   CATALOG_BASE_COLUMNS, CATALOG_COLUMNS, CATALOG_COLUMN_FALLBACKS, CATALOG_MAX_AGE_MS, CATALOG_RETRY_MS, CATALOG_SLOW_MS, CatalogProvider,
   catalogIsStale, fetchCatalogRows, hydrateProducts, loadCatalog, useCatalog,
 } from './catalog.jsx';
-import { PRODUCTS as BUNDLED } from '../data/products.js';
+import { CATALOG, PRODUCTS as BUNDLED } from '../data/products.js';
+import { IMAGE_FILE_ALIASES, currentImageFile } from '../data/catalogAliases.js';
 
 const row = (id, extra = {}) => ({
   id, name: `Product ${id}`, brand: 'Brand', cat: 'TOBACCO', sub: 'Line', sku: `AW-T${id}`, variants: [], variant_axis: null,
@@ -177,6 +180,39 @@ describe('hydrateProducts', () => {
     expect(BUNDLED.filter((p) => p.sharedPhoto).length).toBeGreaterThan(1);
     expect(BUNDLED.find((p) => p.id === 11).sharedPhoto).toBe(true);
     expect(BUNDLED.find((p) => p.id === 16).sharedPhoto).toBe(true);
+  });
+
+  it('builds the picture of a row that still names a renamed photo file from the new file (AW-290)', () => {
+    // The live table keeps the old names until 20261010131000_photo_filenames.sql runs.
+    const fabuloso = BUNDLED.find((p) => p.id === 128);
+    const [live, renamed, url] = hydrateProducts([
+      row(128, { img: 'fabulouso.avif' }),
+      row(128, { img: 'p128-fabuloso.avif' }),
+      row(3, { img: 'https://example.test/photo.jpg' }),
+    ]);
+    expect(live.picture.src).toMatch(/p128-fabuloso/);
+    expect(live.picture).toEqual(fabuloso.picture);
+    expect(live.img).toBe(fabuloso.img);
+    expect(renamed.picture).toEqual(fabuloso.picture);
+    expect(url.img).toBe('https://example.test/photo.jpg');
+    // An old and a new name for the same file count as one shared photo (AW-136).
+    expect(hydrateProducts([row(1, { img: 'electrolyte.webp' }), row(2, { img: 'p292-electrolit.webp' })]).map((p) => p.sharedPhoto)).toEqual([true, true]);
+    expect(hydrateProducts([row(1, { img: 'electrolyte.webp' }), row(2, { img: null })]).map((p) => p.sharedPhoto)).toEqual([false, false]);
+  });
+
+  it('renamed photo files: each new file exists and is a row’s img, and no row or file keeps an old name (AW-290)', () => {
+    const files = new Set(readdirSync(resolve(process.cwd(), 'src/assets/products')));
+    const imgs = new Set(CATALOG.map((p) => p.img));
+    for (const [from, to] of Object.entries(IMAGE_FILE_ALIASES)) {
+      expect(files.has(to), to).toBe(true);
+      expect(imgs.has(to), to).toBe(true);
+      expect(files.has(from), from).toBe(false);
+      expect(imgs.has(from), from).toBe(false);
+      expect(to).toMatch(/^p\d+-[a-z0-9]+(-[a-z0-9]+)*\.[a-z]+$/);
+    }
+    expect(currentImageFile(' fabulouso.avif ')).toBe('p128-fabuloso.avif');
+    expect(currentImageFile('gain.jpg')).toBe('gain.jpg');
+    expect(currentImageFile(null)).toBe(null);
   });
 
   it('fills an empty description and sell unit from the bundled copy of the same id', () => {

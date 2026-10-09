@@ -151,3 +151,28 @@ export const VARIANT_ALIASES = Object.freeze({
   356: Object.freeze({ '2gal': '2 gal' }), // Gas cans
   362: Object.freeze({ 'm-size': 'Medium', 'l-size': 'Large' }), // Disposable gloves
 });
+
+// Photo files renamed to the p<id>-<slug> convention (AW-290), old filename ->
+// new filename. Unlike the keys above this is one-way: only the new file
+// ships with the site, but rows in the live products table keep the old name
+// until the owner applies supabase/migrations/20261010131000_photo_filenames.sql,
+// and the storefront builds each picture from the row's img
+// (hydrateProducts in src/lib/catalog.jsx). So every img goes through
+// currentImageFile(). Never reuse an old name for a different photo.
+export const IMAGE_FILE_ALIASES = Object.freeze({
+  'men_s_deodorant.jpg': 'p21-speed-stick-mens-deodorant.jpg', // #21
+  'brillo_dishwasher.png': 'p110-brillo-basics-dish-liquid.png', // #110
+  'fabulouso.avif': 'p128-fabuloso.avif', // #128
+  'women_s_deodorant.webp': 'p225-lady-speed-stick-deodorant.webp', // #225
+  'coastal_moto_oil.jpg': 'p280-coastal-motor-oil.jpg', // #280
+  'electrolyte.webp': 'p292-electrolit.webp', // #292
+});
+
+// The photo file a catalog row's img names today: the new name for a renamed
+// file, otherwise img as it is (another filename, a URL, null). Not
+// Object.hasOwn, which is newer than the browsers the build targets.
+export function currentImageFile(img) {
+  if (typeof img !== 'string') return img;
+  const name = img.trim();
+  return Object.prototype.hasOwnProperty.call(IMAGE_FILE_ALIASES, name) ? IMAGE_FILE_ALIASES[name] : img;
+}
