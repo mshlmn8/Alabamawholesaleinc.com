@@ -38,6 +38,14 @@ jobs:
       - name: Audit shipped dependencies
         run: npm audit --omit=dev --audit-level=high
 
+      # The build and test tools too (NEW-045: a high-severity advisory in
+      # source-map-js, a dev-only dependency, passed the step above). It shows
+      # as a warning, not a failure: an advisory in a dev tool shouldn't block
+      # a release, but it should be seen and fixed with `npm update <pkg>`.
+      - name: Audit all dependencies (non-blocking)
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
       - name: Lint
         run: npm run lint
 
