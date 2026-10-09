@@ -283,7 +283,7 @@ export function QuotePage({
     return (
       <section className="page-head is-centered">
         {/* The shared empty state (AW-299); its h1 takes focus when the last line goes. */}
-        <EmptyState level={1} title="Your cart is empty" actions={<Link className="button" to="/catalog">Browse catalog</Link>}>
+        <EmptyState level={1} title="Your cart is empty" actions={<Link className="button" to="/catalog">Browse the catalog</Link>}>
           Add products, then come back to checkout.
         </EmptyState>
         {legacy.length > 0 && (
