@@ -61,9 +61,28 @@
    Liberation Sans (Linux) has Arial's advance widths, so Arial's values fit it.
    The condensed alternates share Arial Narrow's values: iOS Helvetica Neue
    Condensed Bold measured 2% wider than Arial Narrow Bold; Android Roboto
-   Condensed is not installed here and is unmeasured. Where none of these
-   exist, text falls back to the plain sans-serif. Impact and Verdana are no
-   longer in the stacks. */
+   Condensed is not installed here and is unmeasured. Impact and Verdana are no
+   longer in the stacks.
+
+   Last resorts for devices with no condensed face at all (AW-178: Windows
+   without Office has no Arial Narrow; Android has no Arial Narrow or Arial),
+   where the display text used to fall back to the plain, much wider
+   sans-serif: a wide face scaled down to Barlow Condensed's widths. --display
+   is 'Barlow Condensed', 'Barlow Condensed Fallback', 'Barlow Condensed
+   Fallback Wide', 'Barlow Condensed Fallback Roboto', sans-serif.
+   Measured the same way (Chromium, 2026-10-09, /tmp/aw-final-fix-7/
+   fontmetrics.mjs and fontcalc.mjs): 700 on the 67 heading strings of the
+   storefront's pages (h1 to h3; 'Wholesale for licensed retailers.', 'Shop by
+   department', 'Contact & visit', …), 500 and 600 on the initials and
+   numbers above plus '01 02 … 08' and 'AL MS GA'. On the heading strings this
+   method gives Arial Narrow Bold 92.27%, against 92.81% above. Arial Bold and
+   Roboto Bold differ by 5% (700: 75.67% and 80.66%), so each has its own
+   family; Liberation Sans shares Arial's values. The Roboto files measured
+   were Roboto 2 (static Regular and Bold); Android's own Roboto is unmeasured.
+   Ascent and descent follow from Barlow Condensed's 1.00 and 0.20 as above.
+   Bahnschrift SemiBold Condensed (Windows 10 and later) would be a closer
+   shape, but it isn't installed here, so it is unmeasured and left out. Where
+   none of these exist, text falls back to the plain sans-serif. */
 @font-face {
   font-family: 'DM Sans Fallback';
   font-weight: 400;
@@ -120,5 +139,61 @@
   size-adjust: 92.81%;
   ascent-override: 107.74%;
   descent-override: 21.55%;
+  line-gap-override: 0%;
+}
+/* Wide last resort: Arial (Windows, macOS) or Liberation Sans (Linux). */
+@font-face {
+  font-family: 'Barlow Condensed Fallback Wide';
+  font-weight: 500;
+  src: local('Arial'), local('ArialMT'), local('Liberation Sans'), local('LiberationSans');
+  size-adjust: 71.16%;
+  ascent-override: 140.53%;
+  descent-override: 28.11%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Barlow Condensed Fallback Wide';
+  font-weight: 600;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('LiberationSans-Bold');
+  size-adjust: 71.42%;
+  ascent-override: 140.01%;
+  descent-override: 28%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Barlow Condensed Fallback Wide';
+  font-weight: 700;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('LiberationSans-Bold');
+  size-adjust: 75.67%;
+  ascent-override: 132.16%;
+  descent-override: 26.43%;
+  line-gap-override: 0%;
+}
+/* Wide last resort on Android and Chrome OS: Roboto. */
+@font-face {
+  font-family: 'Barlow Condensed Fallback Roboto';
+  font-weight: 500;
+  src: local('Roboto'), local('Roboto-Regular');
+  size-adjust: 73.44%;
+  ascent-override: 136.17%;
+  descent-override: 27.23%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Barlow Condensed Fallback Roboto';
+  font-weight: 600;
+  src: local('Roboto Bold'), local('Roboto-Bold');
+  size-adjust: 73.66%;
+  ascent-override: 135.76%;
+  descent-override: 27.15%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Barlow Condensed Fallback Roboto';
+  font-weight: 700;
+  src: local('Roboto Bold'), local('Roboto-Bold');
+  size-adjust: 80.66%;
+  ascent-override: 123.98%;
+  descent-override: 24.8%;
   line-gap-override: 0%;
 }

@@ -56,7 +56,7 @@
   --scrim-soft: #170e2977;
   /* Metric-matched fallbacks (src/fonts/fonts.css) keep the layout still while
      the bundled fonts load, or when they are blocked (AW-178). */
-  --display: 'Barlow Condensed', 'Barlow Condensed Fallback', sans-serif;
+  --display: 'Barlow Condensed', 'Barlow Condensed Fallback', 'Barlow Condensed Fallback Wide', 'Barlow Condensed Fallback Roboto', sans-serif;
   --body: 'DM Sans', 'DM Sans Fallback', sans-serif;
 
   /* Type scale in rem, so text follows the browser's text-size setting

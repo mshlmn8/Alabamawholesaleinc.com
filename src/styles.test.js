@@ -194,7 +194,8 @@ describe('fonts (AW-178)', () => {
   });
 
   it('stacks each web font on its metric-matched fallback, with no Impact or Verdana', () => {
-    expect(root['--display']).toBe("'Barlow Condensed', 'Barlow Condensed Fallback', sans-serif");
+    // The condensed fallback first, then the wide last resorts (Arial, Roboto) scaled to it.
+    expect(root['--display']).toBe("'Barlow Condensed', 'Barlow Condensed Fallback', 'Barlow Condensed Fallback Wide', 'Barlow Condensed Fallback Roboto', sans-serif");
     expect(root['--body']).toBe("'DM Sans', 'DM Sans Fallback', sans-serif");
     expect(`${css}\n${fontsCss}`).not.toMatch(/Impact|Verdana/);
   });
@@ -204,11 +205,22 @@ describe('fonts (AW-178)', () => {
     const fallback = (family) => faces.filter((f) => f['font-family'] === `'${family}'`);
     expect(fallback('DM Sans Fallback').map((f) => f['font-weight'])).toEqual(expect.arrayContaining(['400', '700']));
     expect(fallback('Barlow Condensed Fallback').map((f) => f['font-weight'])).toEqual(['500', '600', '700']);
-    for (const face of [...fallback('DM Sans Fallback'), ...fallback('Barlow Condensed Fallback')]) {
+    const wide = ['Barlow Condensed Fallback Wide', 'Barlow Condensed Fallback Roboto'];
+    for (const family of wide) expect(fallback(family).map((f) => f['font-weight']), family).toEqual(['500', '600', '700']);
+    for (const face of [...fallback('DM Sans Fallback'), ...fallback('Barlow Condensed Fallback'), ...wide.flatMap(fallback)]) {
       expect(face.src).toMatch(/^local\(/);
       for (const d of ['size-adjust', 'ascent-override', 'descent-override', 'line-gap-override']) expect(face[d], d).toMatch(/^\d+(\.\d+)?%$/);
     }
     expect(fallback('DM Sans Fallback').find((f) => f['font-weight'] === '700').src).toContain("local('Arial Bold')");
+    // The wide last resorts' headings are a real bold (AW-178).
+    expect(fallback('Barlow Condensed Fallback Wide').find((f) => f['font-weight'] === '700').src).toMatch(/^local\('Arial Bold'\)/);
+    expect(fallback('Barlow Condensed Fallback Roboto').find((f) => f['font-weight'] === '700').src).toMatch(/^local\('Roboto Bold'\)/);
+    // Ascent and descent follow from Barlow Condensed's 1.00 and 0.20 at each size-adjust.
+    for (const face of wide.flatMap(fallback)) {
+      const adjust = parseFloat(face['size-adjust']) / 100;
+      expect(parseFloat(face['ascent-override'])).toBeCloseTo(100 / adjust, 1);
+      expect(parseFloat(face['descent-override'])).toBeCloseTo(20 / adjust, 1);
+    }
   });
 });
 
