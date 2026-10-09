@@ -43,9 +43,9 @@ describe('ProductPage prices', () => {
   it('shows no price to guests and accounts awaiting approval, whatever priceOf says', () => {
     const priceOf = () => 12.25;
     const view = render(page({ priceOf }));
-    expect(pd()).toBe('Sign inWholesale pricing is visible to approved trade accounts');
+    expect(pd()).toBe('Wholesale prices show here for approved trade accounts.Sign in to see wholesale pricesApply for a trade account');
     view.rerender(page({ profile: { id: 'p', status: 'pending' }, priceOf }));
-    expect(pd()).toBe('PendingPricing unlocks after your account is approved');
+    expect(pd()).toBe('Pricing unlocks when your account is approved.View approval status');
   });
 });
 

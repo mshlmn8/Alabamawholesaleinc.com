@@ -386,7 +386,7 @@ h2 { font-size: var(--h2); margin-bottom: 0; }
    context goes into this list (and into LINKS in styles.test.js). Links on
    purple surfaces (trade bar, footer, contact strip, collection card) keep
    their light colours with the same offset. */
-.text-link, .support-note a, .checklist a, .checklist-note a, .next-steps a, .policy-body a, .contact-grid a, .doc-uploads-note a, .doc-panel a, .doc-admin a, .status-panel p a, .eligibility-result a, .error-fallback > p a, .dialog > .desc a, .form-error a, .dialog .form-grid a, .consent-block .consent a, .photo-credit a, .order-contact a, .account-link, .order-account-link, .account-contact a, .account-detail-contact a {
+.text-link, .support-note a, .checklist a, .checklist-note a, .next-steps a, .policy-body a, .contact-grid a, .doc-uploads-note a, .doc-panel a, .doc-admin a, .status-panel p a, .eligibility-result a, .error-fallback > p a, .dialog > .desc a, .form-error a, .dialog .form-grid a, .consent-block .consent a, .photo-credit a, .order-contact a, .account-link, .order-account-link, .account-contact a, .account-detail-contact a, .pd-price.is-locked p a {
   color: var(--link-color); font-weight: 600; text-decoration: underline; text-underline-offset: var(--link-offset);
 }
 .text-link { display: inline-flex; align-items: center; min-height: 36px; font-size: var(--text-sm); background: none; border: 0; padding: 0; }
@@ -395,7 +395,7 @@ p > .text-link { min-height: 0; min-width: 0; }
    surfaces alike, so no link turns orange on purple (AW-145). The list is the
    link list above. */
 @media (hover: hover) {
-  .text-link:not(:disabled):hover, .support-note a:hover, .checklist a:hover, .checklist-note a:hover, .next-steps a:hover, .policy-body a:hover, .contact-grid a:hover, .doc-uploads-note a:hover, .doc-panel a:hover, .doc-admin a:hover, .status-panel p a:hover, .eligibility-result a:hover, .error-fallback > p a:hover, .dialog > .desc a:hover, .form-error a:hover, .dialog .form-grid a:hover, .consent-block .consent a:hover, .photo-credit a:hover, .order-contact a:hover, .account-link:hover, .order-account-link:hover, .account-contact a:hover, .account-detail-contact a:hover {
+  .text-link:not(:disabled):hover, .support-note a:hover, .checklist a:hover, .checklist-note a:hover, .next-steps a:hover, .policy-body a:hover, .contact-grid a:hover, .doc-uploads-note a:hover, .doc-panel a:hover, .doc-admin a:hover, .status-panel p a:hover, .eligibility-result a:hover, .error-fallback > p a:hover, .dialog > .desc a:hover, .form-error a:hover, .dialog .form-grid a:hover, .consent-block .consent a:hover, .photo-credit a:hover, .order-contact a:hover, .account-link:hover, .order-account-link:hover, .account-contact a:hover, .account-detail-contact a:hover, .pd-price.is-locked p a:hover {
     text-decoration-thickness: 2px;
   }
 }
@@ -731,6 +731,17 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .pd-price { margin: 22px 0; padding: 18px 0; border-block: 1px solid var(--line); }
 .pd-price b { font: 700 2.125rem/1 var(--display); color: var(--purple); }
 .pd-price span { display: block; font-size: var(--text-xs); letter-spacing: var(--track-label); color: var(--muted); text-transform: uppercase; margin-top: 6px; }
+/* No price to show (AW-133): guests, accounts waiting for approval and
+   suspended accounts get a sentence in body type and the one way forward
+   (sign in, the approval status, the trade desk), not a word in price type.
+   Spans inside it (the trade desk's phone and email) read as running text. */
+.pd-price.is-locked { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+.pd-price.is-locked p { flex: 1 1 100%; margin: 0; color: var(--ink); font-size: var(--text-base); font-weight: 600; line-height: 1.5; }
+.pd-price.is-locked span { display: inline; margin: 0; color: inherit; font-size: inherit; letter-spacing: 0; text-transform: none; }
+/* The email may break anywhere, so large text never widens the column; the
+   phone number stays on one line. */
+.pd-price.is-locked p a { overflow-wrap: anywhere; }
+.pd-price.is-locked a[href^="tel:"] { white-space: nowrap; }
 .variant-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 22px; }
 .variant-chips button { display: inline-flex; align-items: center; min-height: var(--tap-sm); border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-size: var(--text-sm); font-weight: 600; padding: 0 14px; border-radius: 2px; }
 .variant-chips button[aria-pressed="true"] { border-color: var(--purple); background: var(--purple); color: #fff; }
