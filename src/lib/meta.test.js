@@ -1,6 +1,6 @@
 // Page titles, descriptions and the per-route head tags (AW-181, AW-338).
 import { describe, expect, it } from 'vitest';
-import { applyPageMeta, clip, DEFAULT_IMAGE, HOME_DESCRIPTION, pageMeta, SITE_URL } from './meta.js';
+import { APPLY_TITLES, applyPageMeta, clip, DEFAULT_IMAGE, HOME_DESCRIPTION, pageMeta, SITE_URL } from './meta.js';
 
 const products = [
   { id: 7, name: 'Kite', brand: 'Kite', cat: 'TOBACCO', sub: 'Cigarettes', sku: 'AW-KITE', description: '', img: '/assets/kite--320x320-a1.jpg', picture: { src: '/assets/kite--640x640-b2.jpg', width: 1000, height: 1000 } },
@@ -122,6 +122,27 @@ describe('pageMeta', () => {
     const order = pageMeta({ page: 'quote', received: 'order' }, products, departments);
     expect(quote).toMatchObject({ title: 'Quote received · Alabama Wholesale Inc', description: checkout.description, noindex: true, path: null });
     expect(order).toMatchObject({ title: 'Order received · Alabama Wholesale Inc', description: checkout.description, noindex: true, path: null });
+  });
+});
+
+describe('pageMeta for /apply (AW-098)', () => {
+  it('titles the application page by the account’s state, with one description and canonical path', () => {
+    const guest = pageMeta({ page: 'apply' }, products, departments);
+    expect(guest).toMatchObject({ title: 'Apply for a Trade Account · Alabama Wholesale Inc', path: '/apply', noindex: false });
+    const titles = Object.fromEntries(['guest', 'loading', 'pending', 'approved', 'suspended'].map((applyAs) => {
+      const meta = pageMeta({ page: 'apply', applyAs }, products, departments);
+      expect(meta).toMatchObject({ description: guest.description, path: '/apply', noindex: false });
+      return [applyAs, meta.title];
+    }));
+    expect(titles).toEqual({
+      guest: 'Apply for a Trade Account · Alabama Wholesale Inc',
+      loading: 'Trade Account · Alabama Wholesale Inc',
+      pending: 'Application Under Review · Alabama Wholesale Inc',
+      approved: 'Your Trade Account · Alabama Wholesale Inc',
+      suspended: 'Account On Hold · Alabama Wholesale Inc',
+    });
+    expect(pageMeta({ page: 'apply', applyAs: 'mystery' }, products, departments).title).toBe(guest.title);
+    expect(APPLY_TITLES.pending).toBe('Application Under Review');
   });
 });
 

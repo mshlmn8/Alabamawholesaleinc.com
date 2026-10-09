@@ -292,7 +292,8 @@ test('Back on a half-typed application asks first, keeps the answers, and leaves
   await mockSupabase(page);
   await page.goto('/');
   await page.goto('/apply');
-  await page.getByRole('button', { name: 'Start application' }).click();
+  // The page head's Start application (AW-242); the checklist card has one too.
+  await page.locator('.page-head').getByRole('button', { name: 'Start application' }).click();
   const dialog = page.getByRole('dialog', { name: 'Apply for an account' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Your name').fill('Typed Applicant');
@@ -333,6 +334,9 @@ test('a confirmation link for an application under review says what happens next
   await notice.getByRole('button', { name: 'View application status' }).click();
   await expect(page).toHaveURL(/\/apply$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Your trade account' })).toBeVisible();
+  // The head and the title say where the application stands (AW-098).
+  await expect(page.locator('.page-head .eyebrow')).toHaveText('APPLICATION UNDER REVIEW');
+  await expect(page).toHaveTitle(/^Application Under Review · /);
   await expect(page.locator('.site-notice[data-notice="link-confirmed"]')).toHaveCount(0);
   expect(errors).toEqual([]);
 });

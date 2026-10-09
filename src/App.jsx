@@ -23,6 +23,7 @@ import { confirmLeave, focusPageHeading, navigate, pathFor, resolveRoute, routeK
 import { pageKeyFor } from './lib/routes.js';
 import { confirmAge, declineAge, endAgeConfirmationOnSignOut, reconsiderAge, useAgeGate } from './lib/ageGate.js';
 import { pageMeta, applyPageMeta } from './lib/meta.js';
+import { accountStatus } from './lib/accountStatus.js';
 import { departmentsFor } from './lib/departments.js';
 import { accountNotices, signOutMessage } from './lib/accountNotices.js';
 import { catalogNotices } from './lib/catalogNotices.js';
@@ -138,13 +139,16 @@ export default function App() {
     }
   }, [canonicalPath, location]);
 
-  // The title names a saved receipt ('Quote received', AW-022) on /quote, and
-  // the count of orders new since the last visit on /admin (AW-111).
+  // The title names a saved receipt ('Quote received', AW-022) on /quote, the
+  // count of orders new since the last visit on /admin (AW-111), and the
+  // account's state on /apply ('Application Under Review', AW-098).
+  const applyAs = account === 'loading' ? 'loading' : accountStatus(profile);
   const metaRoute = useMemo(() => {
     if (receivedKind) return { ...route, received: receivedKind };
     if (route.page === 'admin' && adminUnseen > 0) return { ...route, unseen: adminUnseen };
+    if (route.page === 'apply') return { ...route, applyAs };
     return route;
-  }, [route, receivedKind, adminUnseen]);
+  }, [route, receivedKind, adminUnseen, applyAs]);
   useEffect(() => {
     applyPageMeta(pageMeta(metaRoute, products, departments));
   }, [metaRoute, products, departments]);

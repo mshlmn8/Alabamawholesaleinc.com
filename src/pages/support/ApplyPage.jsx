@@ -1,8 +1,16 @@
 // Trade account application page: the "what you'll need" checklist, how the
 // process works, and — for a signed-in applicant — the current approval status.
+//
+// The page head, intro and contact strip follow the account (AW-098): a guest
+// is invited to apply, with Start application in the first screen (AW-242);
+// an applicant under review sees where the application stands; an approved
+// account is pointed at the catalog and its account; an account on hold is
+// told who to call. While the account loads the page says nothing it might
+// have to take back. App titles the page the same way (meta.js, route.applyAs).
 
 import { COMPANY } from '../../data/content.js';
 import { APPLICATION_CHECKLIST } from '../../data/onboarding.js';
+import { STATUS_LABEL, accountStatus } from '../../lib/accountStatus.js';
 import { ServiceUnavailable } from '../../components/ServiceUnavailable.jsx';
 import { ApplicationDocuments } from '../../components/DocumentUploads.jsx';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
@@ -10,16 +18,68 @@ import { AccountLoading } from '../../components/AccountStatus.jsx';
 import { Link } from '../../lib/router.js';
 import { PageHead, ContactStrip } from './SupportShell.jsx';
 
+const INTRO_21 = 'Alabama Wholesale sells exclusively to licensed retail businesses — 21+, no consumer sales.';
+
+// Per view ('guest', 'loading' and the three account statuses): the eyebrow,
+// the h1 and the contact strip. A strip left out is the default one.
+const VIEWS = {
+  guest: { eyebrow: 'OPEN AN ACCOUNT', title: 'Apply for a trade account', strip: { eyebrow: 'RATHER TALK IT THROUGH?', title: 'Apply with a trade rep' } },
+  loading: { eyebrow: 'TRADE ACCOUNT', title: 'Trade account' },
+  pending: { eyebrow: 'APPLICATION UNDER REVIEW', title: 'Your trade account', strip: { eyebrow: 'QUESTIONS ABOUT YOUR APPLICATION?', title: 'Talk to a trade rep' } },
+  approved: { eyebrow: 'ACCOUNT ACTIVE', title: 'Your trade account' },
+  suspended: { eyebrow: 'ACCOUNT ON HOLD', title: 'Your trade account', strip: { eyebrow: 'ACCOUNT ON HOLD?', title: 'Talk to a trade rep' } },
+};
+
+// The view for an account: 'loading' until the session and profile are
+// known, then accountStatus() ('guest' also when the profile didn't load).
+export function applyView(profile, account) {
+  return account === 'loading' ? 'loading' : accountStatus(profile);
+}
+
+function ApplyIntro({ view }) {
+  if (view === 'loading') return <p>{INTRO_21}</p>;
+  if (view === 'pending') {
+    return <p>Your application is with a trade rep. Here is where it stands, and the license documents you can add while you wait.</p>;
+  }
+  if (view === 'approved') {
+    return (
+      <p>
+        Your trade account is active. Browse <Link className="text-link" to="/catalog">the catalog</Link> with your pricing,
+        see your orders in <Link className="text-link" to="/account">My account</Link>, or reorder by SKU
+        with <Link className="text-link" to="/account#quick-reorder">Quick Reorder</Link>.
+      </p>
+    );
+  }
+  if (view === 'suspended') {
+    return <p>Ordering is paused on this account. <CallOrEmail after=" and a trade rep will help you sort it out." /></p>;
+  }
+  return <p>{`${INTRO_21} Here is what to have ready, and what happens after you apply.`}</p>;
+}
+
 export function ApplyPage({ profile, account = profile ? 'ready' : 'signed-out', isBackendConfigured, onApplyClick, onLoginClick, onResetClick }) {
-  const status = profile?.status;
   // A signed-in applicant's status, not the application checklist, while
   // their account loads (AW-186).
   const loadingAccount = account === 'loading';
+  const view = applyView(profile, account);
+  const { eyebrow, title, strip } = VIEWS[view];
+  // Start application, or the phone number without a backend.
+  const applyAction = isBackendConfigured
+    ? <button className="button" type="button" onClick={onApplyClick}>Start application</button>
+    : <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Apply by phone · {COMPANY.phone}</a>;
 
   return (
     <section className="support-page">
-      <PageHead crumb="Trade account" eyebrow="OPEN AN ACCOUNT" title={profile ? 'Your trade account' : 'Apply for a trade account'}>
-        <p>Alabama Wholesale sells exclusively to licensed retail businesses — 21+, no consumer sales. Here is what to have ready, and what happens after you apply.</p>
+      <PageHead crumb="Trade account" eyebrow={eyebrow} title={title}>
+        {/* Keyed: each view's sentence is a new paragraph, never a patch
+            of the last one's text nodes (Google Translate, AW-039). */}
+        <ApplyIntro key={view} view={view} />
+        {/* The page's own action in the first screen, not only at the end of the checklist (AW-242). */}
+        {view === 'guest' && (
+          <div className="dialog-actions compact-actions">
+            {applyAction}
+            <button className="text-link" type="button" onClick={onLoginClick}>Already applied? Sign in</button>
+          </div>
+        )}
       </PageHead>
 
       {loadingAccount && <AccountLoading text="Checking for your application…" />}
@@ -31,7 +91,9 @@ export function ApplyPage({ profile, account = profile ? 'ready' : 'signed-out',
 
       {!isBackendConfigured && <ServiceUnavailable what="The online application" className="form-error support-alert" />}
 
-      {!loadingAccount && (!profile || status === 'suspended') && (
+      {/* Only for someone who hasn't applied: an account on hold calls the
+          trade desk instead of applying again (AW-098). */}
+      {view === 'guest' && (
         <div className="apply-layout">
           <section className="checklist-card" aria-labelledby="checklist-title">
             <p className="eyebrow">WHAT YOU’LL NEED</p>
@@ -47,10 +109,8 @@ export function ApplyPage({ profile, account = profile ? 'ready' : 'signed-out',
             <p className="checklist-note">Missing one of these? <CallOrEmail before="Call" after=" and a trade rep can talk you through it." /></p>
             <p className="checklist-note">Read the <Link className="text-link" to={{ page: 'terms' }}>Trade terms</Link> and <Link className="text-link" to={{ page: 'privacy' }}>Privacy policy</Link> before you apply.</p>
             <div className="dialog-actions">
-              {isBackendConfigured
-                ? <button className="button" type="button" onClick={onApplyClick}>Start application</button>
-                : <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Apply by phone · {COMPANY.phone}</a>}
-              {!profile && <button className="text-link" type="button" onClick={onLoginClick}>Already applied? Sign in</button>}
+              {applyAction}
+              <button className="text-link" type="button" onClick={onLoginClick}>Already applied? Sign in</button>
             </div>
           </section>
 
@@ -67,14 +127,14 @@ export function ApplyPage({ profile, account = profile ? 'ready' : 'signed-out',
         </div>
       )}
 
-      <ContactStrip eyebrow="RATHER TALK IT THROUGH?" title="Apply with a trade rep" />
+      <ContactStrip {...strip} />
     </section>
   );
 }
 
 function StatusPanel({ profile }) {
-  const status = profile.status || 'pending';
-  const label = { pending: 'Pending approval', approved: 'Approved', suspended: 'On hold' }[status] || status;
+  const status = accountStatus(profile);
+  const label = STATUS_LABEL[status];
   return (
     <section className={`status-panel status-${status}`} aria-labelledby="status-title">
       <div>
@@ -86,8 +146,9 @@ function StatusPanel({ profile }) {
         {status === 'approved' && (
           <p>{`${profile.business || profile.name} is approved for wholesale pricing and ordering. Prices show on every product while you are signed in.`}</p>
         )}
+        {/* The intro above says who to call (AW-098). */}
         {status === 'suspended' && (
-          <p>Ordering is paused on this account. <CallOrEmail before="Call" after=" and a trade rep will help you sort it out." /> If your license or resale certificate has changed, upload the new one below.</p>
+          <p>Ordering stays paused until a trade rep reactivates the account. If your license or resale certificate has changed, upload the new one below.</p>
         )}
       </div>
       <div className="contact-strip-actions">
