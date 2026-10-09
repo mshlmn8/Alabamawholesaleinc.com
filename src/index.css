@@ -757,7 +757,9 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .compact-actions { margin-top: 0; }
 
 /* ============================ checkout ============================ */
-.checkout-grid { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(300px,1fr); gap: 40px; padding: 0 0 40px; }
+/* A block below the intro (AW-241), so the first line and the form title
+   don't sit on its last line. */
+.checkout-grid { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(300px,1fr); gap: 40px; padding: 0 0 40px; margin-top: var(--block-gap); }
 .checkout-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 /* Two classes, so it outranks .drawer-line's padding (AW-081): the thumbnail
    and the × sit 16px inside the border. */
@@ -770,7 +772,7 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 /* The empty page's undo offer after "Clear all items" (AW-082), as wide as
    the line under it. */
 .cart-cleared { max-width: 560px; margin: 0 auto 1.25rem; }
-.checkout-form-title { font-size: var(--h3); margin: 0 0 4px; }
+.checkout-form-title { font-size: var(--h3); margin: 0 0 4px; line-height: 1; }
 .checkout-form-grid { margin-top: 12px; }
 .checkout-total { margin-top: 18px; }
 
@@ -1435,6 +1437,10 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .dialog { padding: 24px 20px; }
   .dialog h2 { font-size: var(--h2-sm); }
   .form-grid, .contact-grid { grid-template-columns: minmax(0, 1fr); }
+  /* Checkout keeps State and ZIP side by side (AW-241); every other field
+     takes the whole row. After the rule above, which it overrides. */
+  .checkout-form-grid { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+  .checkout-form-grid > :not(.half) { grid-column: 1 / -1; }
   .pd-info h1 { font-size: 2.375rem; }
   .pd-media img { inset: 20px; max-width: calc(100% - 40px); max-height: calc(100% - 40px); }
   .drawer-head { padding: 14px 18px; }
@@ -1449,6 +1455,9 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .aw-menu-toggle span:last-child { display: none; }
   /* The dots move left, clear of the pause toggle. */
   .home-carousel-dots { left: 12px; transform: none; }
+  /* Too narrow (or the text too large) for State and ZIP side by side: the
+     state names and "Choose a state…" would be cut off (AW-241). */
+  .checkout-form-grid { grid-template-columns: minmax(0, 1fr); }
 }
 @media(prefers-reduced-motion:reduce) {
   html { scroll-behavior: auto; }

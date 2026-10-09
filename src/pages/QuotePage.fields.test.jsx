@@ -92,6 +92,12 @@ describe('QuotePage fields (AW-078)', () => {
     expect(vi.mocked(submitOrder).mock.calls[0][0].formData).toMatchObject({ phone: '1 (205) 555-0123', shipState: 'AL' });
   });
 
+  it('marks State and ZIP as the pair that shares a row on phones, and nothing else (AW-241)', () => {
+    render(page());
+    const halves = [...document.querySelectorAll('.checkout-form-grid > .half')];
+    expect(halves.map((div) => div.querySelector('input, select').id)).toEqual(['ship-state', 'ship-zip']);
+  });
+
   it('takes notes in a box of several lines, up to 2,000 characters', () => {
     render(page());
     const notes = screen.getByLabelText('Notes');
