@@ -572,7 +572,10 @@ p > .text-link { min-height: 0; }
 .aw-table tr.editing { background: var(--cream); }
 .aw-table .muted { color: var(--muted); font-size: var(--text-xs); }
 .aw-table .price { font-weight: 700; color: var(--purple); white-space: nowrap; }
-.aw-table input, .aw-table select { width: 100%; max-width: 220px; }
+.aw-table input { width: 100%; max-width: 220px; }
+/* A select is as wide as its longest option, so 'suspended', 'standard' and
+   'customer' are never cut off (AW-021). */
+.aw-table select { width: auto; max-width: none; }
 .aw-table input[type="number"] { max-width: 110px; }
 .aw-table input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--button-orange); }
 .inline-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -1099,7 +1102,7 @@ address.info-lead-small { font-style: normal; }
 .doc-panel .eyebrow { color: var(--orange-dark); margin-bottom: 8px; }
 .doc-panel h2 { margin: 0 0 8px; font-size: var(--h2-sm); }
 .doc-panel .doc-uploads { margin-top: 0; padding-top: 0; border-top: 0; }
-.doc-admin { list-style: none; margin: 0; padding: 0; min-width: 220px; }
+.doc-admin { list-style: none; margin: 0; padding: 0; min-width: 0; }
 .doc-admin li { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; padding: 3px 0; font-size: var(--text-sm); }
 .doc-admin .text-link { min-height: 0; font-size: var(--text-sm); }
 

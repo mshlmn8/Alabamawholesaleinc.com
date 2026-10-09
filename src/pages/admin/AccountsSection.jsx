@@ -156,7 +156,7 @@ export function AccountsTab({ currentAdminId, notify }) {
               <tr>
                 <td>{p.business || '—'}</td>
                 <td>{p.name}</td>
-                <td className="muted">{p.email}</td>
+                <td className="muted"><Email address={p.email} /></td>
                 <td>
                   <select aria-label={`Status for ${p.business || p.name}`} value={p.status} disabled={p.id === currentAdminId} aria-describedby={p.id === currentAdminId ? 'admin-own-row' : undefined} onChange={e => updateProfile(p, { status: e.target.value })}>
                     <option value="pending">pending</option>
@@ -287,6 +287,15 @@ export function profileSaveError(error, who) {
   if (isMissingSchema(error) || /PGRST204|42703/.test(String(error?.message || ''))) return 'Saving this needs the October 2026 database update (see BACKEND.md).';
   if (isRefused(error) && !refusalFor(error)) return `That change to ${who} isn’t allowed.`;
   return adminErrorMessage(error, `The change to ${who} wasn’t saved`);
+}
+
+// An email address that may wrap after its @ (AW-021), so a long address
+// doesn't push the table wider than the screen.
+function Email({ address }) {
+  const text = String(address || '');
+  const at = text.indexOf('@');
+  if (at < 1) return <span>{text}</span>;
+  return <><span>{text.slice(0, at + 1)}</span><wbr /><span>{text.slice(at + 1)}</span></>;
 }
 
 // One application answer in the details row (AW-017).
