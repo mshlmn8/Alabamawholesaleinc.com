@@ -657,6 +657,8 @@ p > .text-link { min-height: 0; min-width: 0; }
   .sub-pill:hover { border-color: var(--orange); }
 }
 .sub-pill.active { background: var(--purple); border-color: var(--purple); color: #fff; }
+/* A line the other filters leave empty (AW-225): still a link, muted, '(0)'. */
+.sub-pill.is-empty:not(.active) { border-style: dashed; color: var(--muted); }
 /* Pressed (AW-160); the current line keeps its purple. */
 .sub-pill:not(.active):active { background: var(--paper); }
 .result-note { font-size: var(--text-sm); color: var(--muted); margin: 0; }
@@ -707,6 +709,8 @@ p > .text-link { min-height: 0; min-width: 0; }
 .filter-panel legend { padding: 0 8px 0 0; }
 .filter-panel fieldset label { display: flex; align-items: center; gap: 10px; min-height: var(--tap-sm); margin: 0; color: var(--ink); font-size: var(--text-sm); cursor: pointer; }
 .filter-panel input[type="checkbox"] { width: 18px; height: 18px; margin: 0; accent-color: var(--button-orange); flex-shrink: 0; }
+/* The Brand box's "Show all N brands" (AW-067). */
+.filter-panel fieldset > .text-link { margin-top: 4px; }
 /* The pricing prompt keeps its own box, in the callout's colours (AW-295); as
    a button, its second line reads as the link. */
 .filter-signin { display: block; width: 100%; margin-top: 20px; padding: 14px; border-left: 4px solid var(--orange); background: var(--cream); color: var(--purple); text-align: left; }

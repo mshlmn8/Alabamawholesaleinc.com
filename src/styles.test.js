@@ -978,3 +978,16 @@ describe('no inline styles (AW-301)', () => {
     expect(compact.start).toBeGreaterThan(css.indexOf('.is-flush {'));
   });
 });
+
+describe('department page controls (AW-225)', () => {
+  const blocks = mediaBlocks(css);
+  const inBlock = (prelude) => blocks.filter((b) => b.prelude === prelude).flatMap((b) => rules(b.body));
+  const outside = rules(outsideMedia);
+
+  it('mutes a product line the filters leave empty, but never the current one, and not as a selected state (AW-225)', () => {
+    expect(outside.find((r) => r.selectors.join() === '.sub-pill.is-empty:not(.active)')).toBeTruthy();
+    expect(ruleFor('.sub-pill.is-empty:not(.active)')).toEqual({ 'border-style': 'dashed', color: 'var(--muted)' });
+    const forced = inBlock('(forced-colors: active)').flatMap((r) => r.selectors);
+    expect(forced.filter((s) => s.includes('is-empty'))).toEqual([]);
+  });
+});
