@@ -15,7 +15,7 @@ Every page has a real path URL (History API router, `src/lib/router.js` and `src
 | `/category/<department>[/<line>]` | Department catalog, optionally one product line, e.g. `/category/drinks-and-bags/energy-drinks`. Search, sort and filters live in the query string (`?q=&sort=&tags=&variants=1`) |
 | `/product/<id>` | Product detail |
 | `/search?q=` | Search results for name, brand, department, SKU and variants (marked `noindex`) |
-| `/quote` | Checkout for a signed-in account, or a quote request for a guest |
+| `/quote` | Checkout: an order from an approved trade account, or a quote request from a guest or an account still waiting for approval (the words come from `basketTerms()` in `src/data/terms.js`) |
 | `/account` | Trade account and order history |
 | `/admin`, `/admin/orders`, `/admin/accounts`, `/admin/products`, `/admin/pricing` | Admin back office: orders (`/admin/orders/<id>/print` for the pick list or packing slip), accounts (`/admin/accounts/<id>`), products (`/admin/products/<id>`, `/admin/products/new`) and pricing tiers. Filters that name no person live in the query string (`src/lib/adminRoutes.js`) |
 | `/contact`, `/delivery`, `/shipping`, `/privacy`, `/terms`, `/apply`, `/reset-password` | Support pages |
