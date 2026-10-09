@@ -23,6 +23,8 @@ describe('SearchPage', () => {
   it('names the query and lists every match as a product card', () => {
     show('cigar');
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Results for “cigar”');
+    // The cards' h3 titles follow an h2, not the h1 directly.
+    expect(screen.getByRole('heading', { level: 2, name: 'Products' })).toBeTruthy();
     const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
     expect(within(crumbs).getByRole('link', { name: 'Home' }).getAttribute('href')).toBe('/');
     expect(within(crumbs).getByText('Search').getAttribute('aria-current')).toBe('page');

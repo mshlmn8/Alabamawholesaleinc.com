@@ -61,6 +61,8 @@ export function SearchPage({ q = '', products, departments, ...cardProps }) {
 
       {ready && result.total > 0 && (
         <>
+          {/* The cards' h3 titles sit under an h2, as on department pages. */}
+          <h2 className="sr-only">Products</h2>
           <div className="card-grid" ref={grid}>
             {/* showSku: search results keep the SKU on the card. */}
             {shown.map(p => <ProductCard key={p.id} p={p} {...cardProps} showSku />)}
