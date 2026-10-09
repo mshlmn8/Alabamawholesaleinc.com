@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from 'react';
 import { COMPANY, HOURS, TIME_ZONE_LABEL, TIME_ZONE_NAME, hoursRange, openStatusNow } from '../../data/content.js';
+import { APPLY_LABEL } from '../../data/terms.js';
 import { Link } from '../../lib/router.js';
 import { Icon } from '../../components/Icon.jsx';
 import { PageHead, DIRECTIONS_URL } from './SupportShell.jsx';
@@ -86,7 +87,7 @@ export function ContactPage({ onApplyClick }) {
         </div>
         <div className="contact-strip-actions">
           <Link className="button" to="/apply">Application checklist</Link>
-          <button className="button ghost" type="button" onClick={onApplyClick}>Start application</button>
+          <button className="button ghost" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button>
         </div>
       </section>
     </section>

@@ -114,7 +114,7 @@ describe('AuthModal and a sign-in in another tab (AW-335)', () => {
 
   it('leaves the application checklist open for a signed-in visitor', () => {
     const t = setup({ session: SESSION, profileReady: true, profile: { id: 'u1', status: 'approved' } }, { initialMode: 'signup' });
-    expect(screen.getByRole('heading', { name: 'Apply for an account' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Apply for a trade account' })).toBeTruthy();
     t.update({ profile: { id: 'u1', status: 'approved', name: 'x' } });
     expect(t.onClose).not.toHaveBeenCalled();
   });
@@ -287,7 +287,7 @@ describe('AuthModal guards a half-typed application (AW-018)', () => {
     fireEvent.click(closeButton());
     expect(discardBar()).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Already approved? Sign in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Already have an account? Sign in' }));
     pressEscape();
     expect(discardBar()).toBeTruthy();
     expect(t.onClose).not.toHaveBeenCalled();
@@ -307,7 +307,7 @@ describe('AuthModal guards a half-typed application (AW-018)', () => {
   it('closes without asking after a sign-in here: that account is the one in use', async () => {
     const t = setup({}, { initialMode: 'application' });
     fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Typed' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Already approved? Sign in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Already have an account? Sign in' }));
     await signInWith();
     t.update({ session: SESSION, profileReady: true, profile: { id: 'u1', status: 'pending', email: 'buyer@example.test' } });
     expect(screen.getByRole('heading', { name: 'Your account is pending approval' })).toBeTruthy();

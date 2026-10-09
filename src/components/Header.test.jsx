@@ -117,7 +117,7 @@ describe('Categories menu (AW-165)', () => {
     // Shift+Tab from the first control back onto the toggle.
     fireEvent.blur(menu().querySelector('button'), { relatedTarget: toggle() });
     expect(menu()).toBeTruthy();
-    fireEvent.blur(links.at(-1), { relatedTarget: screen.getByRole('link', { name: 'New Arrivals' }) });
+    fireEvent.blur(links.at(-1), { relatedTarget: screen.getByRole('link', { name: 'New arrivals' }) });
     expect(menu()).toBeNull();
     expect(toggle().getAttribute('aria-expanded')).toBe('false');
   });

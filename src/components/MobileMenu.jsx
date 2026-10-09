@@ -3,6 +3,7 @@
 // links (AW-043); following one closes the menu (onFollowLink).
 
 import { COMPANY } from '../data/content.js';
+import { APPLY_LABEL, SIGN_IN_LABEL } from '../data/terms.js';
 import { Link } from '../lib/router.js';
 import { ModalLayer } from './ModalLayer.jsx';
 import { Icon } from './Icon.jsx';
@@ -30,7 +31,7 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
           </nav>
           <nav className="menu-group" aria-label="Discover">
             <h3>Discover</h3>
-            <Link to="/#new-arrivals" onClick={onFollowLink}><span><span className="aw-new-dot" aria-hidden="true"></span>New Arrivals</span></Link>
+            <Link to="/#new-arrivals" onClick={onFollowLink}><span><span className="aw-new-dot" aria-hidden="true"></span>New arrivals</span></Link>
             <Link to="/#bestsellers" onClick={onFollowLink}>Bestsellers</Link>
             <Link className="menu-highlight" to={{ page: 'category', category: 'NOVELTIES' }} onClick={onFollowLink}>Exotics</Link>
           </nav>
@@ -38,16 +39,15 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
             <h3>Account</h3>
             {user ? (
               <>
-                <Link to="/account" onClick={onFollowLink}>{user.business || user.name || 'My Account'}</Link>
+                <Link to="/account" onClick={onFollowLink}>{user.business || user.name || 'My account'}</Link>
                 {isAdmin && <Link to="/admin" onClick={onFollowLink}><span>Admin</span><AdminUnseenBadge count={adminUnseen} /></Link>}
-                <Link to="/account" onClick={onFollowLink}>Quick Reorder</Link>
-                <button type="button" onClick={go.logout} disabled={signingOut}><span>{signingOut ? 'Signing out…' : 'Sign Out'}</span></button>
+                <Link to="/account" onClick={onFollowLink}>Quick reorder</Link>
+                <button type="button" onClick={go.logout} disabled={signingOut}><span>{signingOut ? 'Signing out…' : 'Sign out'}</span></button>
               </>
             ) : (
               <>
-                <button type="button" onClick={go.signin}>Sign In</button>
-                <button type="button" onClick={go.signup}>Sign Up</button>
-                <Link to="/account" onClick={onFollowLink}>Quick Reorder</Link>
+                <button type="button" onClick={go.signin}>{SIGN_IN_LABEL}</button>
+                <Link to="/account" onClick={onFollowLink}>Quick reorder</Link>
               </>
             )}
             <button type="button" onClick={go.help}>Help</button>
@@ -55,7 +55,7 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
           <div className="menu-contact">
             <p>{COMPANY.addressShort}<br /><span>{`${departments.length} departments · ${products.length} SKUs`}</span></p>
             <a className="button ghost" href={`tel:${COMPANY.phoneRaw}`}>Call {COMPANY.phone}</a>
-            {!user && <button className="button" type="button" onClick={go.signup}>Apply for a trade account</button>}
+            {!user && <button className="button" type="button" onClick={go.signup}>{APPLY_LABEL}</button>}
           </div>
         </div>
       </aside>

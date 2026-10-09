@@ -44,7 +44,7 @@ async function quoteApi(page, ...answers) {
 }
 
 async function fillGuest(page) {
-  for (const [label, value] of [['Business', 'Test Market LLC'], ['Contact', 'Test Buyer'], ['Email', 'buyer@example.test'], ['Phone', '205-555-0100']]) {
+  for (const [label, value] of [['Business name', 'Test Market LLC'], ['Contact name', 'Test Buyer'], ['Email', 'buyer@example.test'], ['Phone', '205-555-0100']]) {
     await page.getByLabel(label, { exact: true }).fill(value);
   }
 }
@@ -74,9 +74,9 @@ test('a guest will-call quote sends no address or reference, and shows the serve
   const errors = trackErrors(page);
   const sent = await quoteApi(page, { json: { id: 'smoke-order', ref_num: 'ALW-Q-5E4F3A2B1C', kind: 'quote', total_units: 2, subtotal: null, priced_lines: 0, unpriced_lines: 1 } });
   await page.goto('/quote');
-  await expect(page.getByRole('heading', { level: 1, name: 'Request your quote' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Request a quote' })).toBeVisible();
   // Guests can sign in or apply first (AW-014), and the tobacco line asks for the license answers, all required.
-  await expect(page.getByRole('button', { name: 'New? Apply for a trade account' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'New here? Apply for a trade account' })).toBeVisible();
   await expect(page.getByLabel('State tobacco/retail license #')).toHaveAttribute('required', '');
   await fillGuest(page);
   await page.getByLabel('Street', { exact: true }).fill('1 Test Way');
@@ -193,8 +193,8 @@ test('the receipt replaces checkout: the cart empties, and a reload or Back keep
   // address again is a reload in Chromium, which keeps the receipt.)
   await page.goto('/catalog');
   await page.goto('/quote');
-  await expect(page.getByRole('heading', { level: 1, name: 'Your cart is empty' })).toBeVisible();
-  await expect(page).toHaveTitle('Checkout · Alabama Wholesale Inc');
+  await expect(page.getByRole('heading', { level: 1, name: 'Your quote is empty' })).toBeVisible();
+  await expect(page).toHaveTitle('Request a quote · Alabama Wholesale Inc');
   expect(sent).toHaveLength(1);
   expect(errors).toEqual([]);
 });

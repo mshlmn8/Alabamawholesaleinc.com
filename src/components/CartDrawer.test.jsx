@@ -24,22 +24,22 @@ const note = () => document.querySelector('.drawer-total-note')?.textContent;
 describe('CartDrawer', () => {
   it('asks guests to sign in, and offers a quote', () => {
     render(drawer({ profile: null, isApprovedBuyer: false }));
-    expect(note()).toBe('Sign in for pricing');
-    expect(screen.getByRole('link', { name: /Request quote/ })).toBeTruthy();
+    expect(note()).toBe('Prices show for approved trade accounts');
+    expect(screen.getByRole('link', { name: 'Review quote' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sign in for account pricing' })).toBeTruthy();
   });
 
   it('tells a pending account pricing waits on approval', () => {
     render(drawer({ profile: { id: 'p', status: 'pending' }, isApprovedBuyer: false }));
     expect(note()).toBe('Pricing unlocks when your account is approved');
-    expect(screen.getByRole('link', { name: /Request quote/ })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Review quote' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Sign in for account pricing' })).toBeNull();
   });
 
   it('tells a suspended account ordering is paused, instead of a quote button (AW-201)', () => {
     render(drawer({ profile: { id: 's', status: 'suspended' }, isApprovedBuyer: false, isSuspended: true }));
     expect(note()).toBe('Account on hold');
-    expect(screen.queryByRole('link', { name: /Request quote|Checkout/ })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Review/ })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Sign in for account pricing' })).toBeNull();
     const paused = document.querySelector('.drawer-paused');
     expect(paused.textContent).toMatch(/^Ordering is paused on this account\. Call \(205\) 354-4473 or email .* and a trade rep will help you sort it out\.$/);
@@ -85,8 +85,8 @@ describe('CartDrawer removals', () => {
 
     fireEvent.click(removeButton('Retired item'));
     expect(announced().at(-1)).toBe('Removed Retired item.');
-    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Your order' }));
-    expect(screen.getByText(/Your cart is empty/)).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Your quote' }));
+    expect(screen.getByText('Your quote is empty.')).toBeTruthy();
     expect(document.activeElement).not.toBe(document.body);
   });
 

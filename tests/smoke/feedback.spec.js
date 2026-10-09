@@ -67,7 +67,7 @@ test('a card add deep in a category shows the toast in view, and "View quote" op
   await expect(page.locator('.card-stepper input:focus')).toHaveCount(1);
 
   await toast(page).getByRole('button', { name: 'View quote' }).click();
-  await expect(page.getByRole('dialog', { name: 'Your order' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Your quote' })).toBeVisible();
   await expect(toast(page)).toHaveCount(0);
   expect(errors).toEqual([]);
 });
@@ -130,13 +130,13 @@ test('focus stays on the cart controls after adds and removals (AW-042)', async 
   // The drawer: × on a line, then on the last one.
   await page.evaluate((k) => localStorage.setItem(k, JSON.stringify({ 14: 2, 45: 1 })), GUEST_CART);
   await page.goto('/');
-  await page.getByRole('button', { name: /^Cart, \d+ items$/ }).click();
-  const drawer = page.getByRole('dialog', { name: 'Your order' });
+  await page.getByRole('button', { name: /^Quote, [\d,]+ items?$/ }).click();
+  const drawer = page.getByRole('dialog', { name: 'Your quote' });
   await drawer.getByRole('button', { name: 'Remove Kite cigarette tobacco' }).click();
   await expect(drawer.getByRole('textbox', { name: 'Quantity of Argo corn starch' })).toBeFocused();
   await expect.poll(async () => (await said(page)).at(-1)).toBe('Removed Kite cigarette tobacco.');
   await drawer.getByRole('button', { name: 'Remove Argo corn starch' }).click();
-  await expect(drawer.getByRole('heading', { name: 'Your order' })).toBeFocused();
+  await expect(drawer.getByRole('heading', { name: 'Your quote' })).toBeFocused();
   await expect.poll(async () => (await said(page)).at(-1)).toBe('Removed Argo corn starch.');
 
   // Checkout: × on a line, then "Clear all items".
@@ -146,7 +146,7 @@ test('focus stays on the cart controls after adds and removals (AW-042)', async 
   await expect(page.getByRole('textbox', { name: 'Quantity of Argo corn starch' })).toBeFocused();
   await expect.poll(async () => (await said(page)).at(-1)).toBe('Removed Kite cigarette tobacco.');
   await page.getByRole('button', { name: 'Clear all items' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Your cart is empty' })).toBeFocused();
+  await expect(page.getByRole('heading', { level: 1, name: 'Your quote is empty' })).toBeFocused();
   expect(await activeIsBody(page)).toBe(false);
   await expect.poll(async () => (await said(page)).at(-1)).toBe('Removed all items from your quote.');
   expect(errors).toEqual([]);

@@ -1,8 +1,9 @@
 // Site footer: departments, account and help links, contact details, the
 // policy links and the nicotine warning. Destinations are links (AW-043);
-// "Apply for account" and "Sign in" open dialogs and stay buttons.
+// "Apply for a trade account" and "Sign in" open dialogs and stay buttons.
 
 import { COMPANY } from '../data/content.js';
+import { APPLY_LABEL } from '../data/terms.js';
 import { Link } from '../lib/router.js';
 import { NicotineWarning } from './NicotineWarning.jsx';
 
@@ -22,7 +23,7 @@ export function Footer({ departments, onLoginClick, onApplyClick }) {
           </div>
           <div>
             <h4>Account &amp; help</h4>
-            <button type="button" onClick={onApplyClick}>Apply for account</button>
+            <button type="button" onClick={onApplyClick}>{APPLY_LABEL}</button>
             <Link className="footer-link" to="/apply">Application checklist</Link>
             <button type="button" onClick={onLoginClick}>Sign in</button>
             <Link className="footer-link" to="/contact">Contact &amp; visit</Link>

@@ -44,6 +44,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../data/content.js';
+import { APPLY_INSTEAD, SIGN_IN_INSTEAD, basketTerms } from '../data/terms.js';
 import { QUOTE_ERROR_GENERIC, quoteErrorField, quoteErrorMessage, submitOrder, todayInBirmingham } from '../lib/orders.js';
 import { cartChanges, describeCartChanges } from '../lib/cart.js';
 import { QTY_RANGE_TEXT, isOrderableQty } from '../lib/quantity.js';
@@ -77,6 +78,8 @@ export function QuotePage({
   checkCart = null, pricesStatus = 'ready', isSuspended = false,
   savedReceipt = null, entryKey = null, onSubmitted,
 }) {
+  // A quote, or an order for an approved buyer (AW-132, src/data/terms.js).
+  const basket = basketTerms(isApprovedBuyer);
   const [data, setData] = useState(() => initialQuoteForm(profile));
   // The field the last refused submit was about (its hint), marked invalid
   // until it is edited.
@@ -154,7 +157,7 @@ export function QuotePage({
   const clearAll = () => {
     focusHeadingNext.current = true;
     clearCart();
-    announce(`Removed all items from your ${isApprovedBuyer ? 'order' : 'quote'}.`);
+    announce(`Removed all items from your ${basket.noun}.`);
   };
 
   const [submitError, setSubmitError] = useState(null);
@@ -181,7 +184,7 @@ export function QuotePage({
   // What keeps the submit button off (apart from a send in progress). The
   // minimum note says "you can still submit" only when nothing does (AW-076).
   const submitBlocked = isSuspended || !isBackendConfigured || needsVariant || unavailable.length > 0 || invalidQty || lostOrdering;
-  let submitLabel = isApprovedBuyer ? 'Submit order' : 'Submit quote request';
+  let submitLabel = basket.submit;
   if (phase === 'checking') submitLabel = 'Checking the catalog…';
   else if (phase === 'sending') submitLabel = 'Sending…';
 
@@ -236,7 +239,7 @@ export function QuotePage({
         }
         const changes = cartChanges(items, check.items);
         if (changes.length) {
-          setChangeNote({ text: describeCartChanges(changes), forItems: itemsSignature(check.items) });
+          setChangeNote({ text: describeCartChanges(changes, basket.noun), forItems: itemsSignature(check.items) });
           return;
         }
         lines = check.items.filter(it => !it.unavailable);
@@ -280,8 +283,8 @@ export function QuotePage({
   if (items.length === 0) {
     return (
       <section className="page-head is-centered">
-        <h1>Your cart is empty</h1>
-        <p>Add products, then come back to checkout.</p>
+        <h1>{basket.empty}</h1>
+        <p>{`Add products, then come back to review your ${basket.noun}.`}</p>
         <Link className="button" to="/catalog">Browse catalog</Link>
         {legacy.length > 0 && (
           <div className="quote-saved-lines">
@@ -310,15 +313,15 @@ export function QuotePage({
   return (
     <section>
       <div className="page-head">
-        <Breadcrumbs items={[HOME_CRUMB, { label: isApprovedBuyer ? 'Checkout' : 'Request Quote' }]} />
+        <Breadcrumbs items={[HOME_CRUMB, { label: basket.page }]} />
         <p className="eyebrow">{isApprovedBuyer ? 'CHECKOUT' : 'QUOTE REQUEST'}</p>
-        <h1>{isApprovedBuyer ? 'Place your order' : 'Request your quote'}</h1>
+        <h1>{basket.page}</h1>
         <p>{`Review your items and submit. The minimum order is ${formatMoney(ORDER_MINIMUM)}. A trade desk rep will confirm pricing, availability and delivery within one business day.`}</p>
       </div>
       <div className="checkout-grid">
         <div>
           <SavedLinesNotice items={legacy} onDismiss={onDismissLegacy} />
-          <UnavailableNotice items={unavailable} onRemoveAll={removeLines} />
+          <UnavailableNotice items={unavailable} onRemoveAll={removeLines} noun={basket.noun} />
           <ul className="checkout-lines" aria-label="Items in this request" ref={linesRef}>
             {items.map(it => (
               <CartLine key={it.lineKey} item={it} layout="checkout" showPrice={isApprovedBuyer} pricesStatus={pricesStatus}
@@ -333,11 +336,11 @@ export function QuotePage({
           {/* Guests can sign in, or apply, before filling this in (AW-014). */}
           {!signedIn && (
             <p className="fine quote-account-links">
-              {onSignIn && <button className="text-link" type="button" onClick={onSignIn}>Have an account? Sign in</button>}
+              {onSignIn && <button className="text-link" type="button" onClick={onSignIn}>{SIGN_IN_INSTEAD}</button>}
               <span aria-hidden="true"> · </span>
               {onApplyClick
-                ? <button className="text-link" type="button" onClick={onApplyClick}>New? Apply for a trade account</button>
-                : <Link className="text-link" to="/apply">New? Apply for a trade account</Link>}
+                ? <button className="text-link" type="button" onClick={onApplyClick}>{APPLY_INSTEAD}</button>
+                : <Link className="text-link" to="/apply">{APPLY_INSTEAD}</Link>}
             </p>
           )}
           {/* Honeypot (AW-198): out of sight and out of the tab order; people
@@ -347,14 +350,14 @@ export function QuotePage({
             <input id="quote-company-website" name="company_website" type="text" tabIndex={-1} autoComplete="off" defaultValue="" />
           </div>
           <div className="form-grid checkout-form-grid">
-            <div><label htmlFor="quote-business">Business</label><input id="quote-business" name="business" value={data.business} onChange={set('business')} required maxLength={200} autoComplete="organization" {...fieldProps('business')} /></div>
-            <div><label htmlFor="quote-contact">Contact</label><input id="quote-contact" name="contact" value={data.contact} onChange={set('contact')} required maxLength={120} autoComplete="name" {...fieldProps('contact')} /></div>
+            <div><label htmlFor="quote-business">Business name</label><input id="quote-business" name="business" value={data.business} onChange={set('business')} required maxLength={200} autoComplete="organization" {...fieldProps('business')} /></div>
+            <div><label htmlFor="quote-contact">Contact name</label><input id="quote-contact" name="contact" value={data.contact} onChange={set('contact')} required maxLength={120} autoComplete="name" {...fieldProps('contact')} /></div>
             <div><label htmlFor="quote-email">Email</label><input id="quote-email" name="email" type="email" value={data.email} onChange={set('email')} required maxLength={254} autoComplete="email" inputMode="email" {...fieldProps('email')} /></div>
             <div><label htmlFor="quote-phone">Phone</label><input id="quote-phone" name="phone" type="tel" value={data.phone} onChange={set('phone')} required maxLength={40} autoComplete="tel" inputMode="tel" {...fieldProps('phone')} /></div>
             {/* TODO(owner): Confirm guest tobacco and vape quotes may collect a license number, resale certificate, and 21+ attestation instead of requiring an approved sign-in. (AW-014) */}
             {needsLicense && (
               <>
-                <p className="full result-note" id="quote-license-note">Your cart has tobacco or vape items. Tobacco products are supplied to licensed retailers only — 21+.</p>
+                <p className="full result-note" id="quote-license-note">Your quote has tobacco or vape items. Tobacco products are supplied to licensed retailers only — 21+.</p>
                 <div className="full"><label htmlFor="quote-license">State tobacco/retail license #</label><input id="quote-license" name="licenseNo" value={data.licenseNo} onChange={set('licenseNo')} required maxLength={64} autoComplete="off" {...fieldProps('licenseNo', 'quote-license-note')} /></div>
                 <div className="full"><label htmlFor="quote-resale">Sales-tax / resale certificate #</label><input id="quote-resale" name="resaleCert" value={data.resaleCert} onChange={set('resaleCert')} required maxLength={64} autoComplete="off" {...fieldProps('resaleCert', 'quote-license-note')} /></div>
                 <div className="full consent">
@@ -385,7 +388,7 @@ export function QuotePage({
           </div>
           <div className="drawer-total checkout-total">
             <span>{`${totalUnits} ${totalUnits === 1 ? 'unit' : 'units'}`}</span>
-            <span>{isApprovedBuyer ? totalLabel(items, total, pricesStatus) : (isSuspended ? 'Ordering paused' : (signedIn ? 'Pricing after approval' : 'Pricing after sign-in'))}</span>
+            <span>{isApprovedBuyer ? totalLabel(items, total, pricesStatus) : (isSuspended ? 'Ordering paused' : (signedIn ? 'Pricing after approval' : 'Pricing confirmed by the trade desk'))}</span>
           </div>
           {pricedBelowMinimum && !submitBlocked && <p className="notice" role="status">{`The order minimum is ${formatMoney(ORDER_MINIMUM)}. You can still submit this order.`}</p>}
           {!isBackendConfigured && <p className="form-error" role="status"><CallOrEmail before="Quote requests can’t be saved right now. Call" after=" and the trade desk will write it up with you." /></p>}

@@ -3,6 +3,7 @@
 
 import { COMPANY } from '../../data/content.js';
 import { APPLICATION_CHECKLIST } from '../../data/onboarding.js';
+import { APPLY_LABEL, SIGN_IN_INSTEAD } from '../../data/terms.js';
 import { ServiceUnavailable } from '../../components/ServiceUnavailable.jsx';
 import { ApplicationDocuments } from '../../components/DocumentUploads.jsx';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
@@ -18,7 +19,7 @@ export function ApplyPage({ profile, account = profile ? 'ready' : 'signed-out',
 
   return (
     <section className="support-page">
-      <PageHead crumb="Trade account" eyebrow="OPEN AN ACCOUNT" title={profile ? 'Your trade account' : 'Apply for a trade account'}>
+      <PageHead crumb="Trade account" eyebrow="OPEN AN ACCOUNT" title={profile ? 'Your trade account' : APPLY_LABEL}>
         <p>Alabama Wholesale sells exclusively to licensed retail businesses — 21+, no consumer sales. Here is what to have ready, and what happens after you apply.</p>
       </PageHead>
 
@@ -48,9 +49,9 @@ export function ApplyPage({ profile, account = profile ? 'ready' : 'signed-out',
             <p className="checklist-note">Read the <Link className="text-link" to={{ page: 'terms' }}>Trade terms</Link> and <Link className="text-link" to={{ page: 'privacy' }}>Privacy policy</Link> before you apply.</p>
             <div className="dialog-actions">
               {isBackendConfigured
-                ? <button className="button" type="button" onClick={onApplyClick}>Start application</button>
+                ? <button className="button" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button>
                 : <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Apply by phone · {COMPANY.phone}</a>}
-              {!profile && <button className="text-link" type="button" onClick={onLoginClick}>Already applied? Sign in</button>}
+              {!profile && <button className="text-link" type="button" onClick={onLoginClick}>{SIGN_IN_INSTEAD}</button>}
             </div>
           </section>
 

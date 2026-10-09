@@ -8,6 +8,7 @@
 // (AW-007, AW-338).
 
 import { COMPANY, HOME_PITCH, HOURS, ORDER_MINIMUM, hoursLine } from '../data/content.js';
+import { APPLY_LABEL, basketTerms } from '../data/terms.js';
 import { POLICY_TITLES, POLICY_INTROS } from '../pages/support/PolicyPage.jsx';
 import { brandLabel, catLabel, formatMoney } from './format.js';
 import { NOINDEX_PAGES, pathFor, siteUrl } from './routes.js';
@@ -121,9 +122,11 @@ function pageText(route, products, departments) {
       image: imageOf(p, p.name),
     };
   }
-  // After a save, /quote shows the receipt (App sets route.received, AW-022).
-  if (route.page === 'quote') return { title: route.received ? `${route.received === 'order' ? 'Order' : 'Quote'} received · ${site}` : `Checkout · ${site}`, description: `Review your items and submit a wholesale quote or order to ${site}. Minimum order ${formatMoney(ORDER_MINIMUM)}.` };
-  if (route.page === 'account') return { title: `My Account · ${site}`, description: `Your ${site} trade account: order history, reorders and quick entry by SKU.` };
+  // After a save, /quote shows the receipt (App sets route.received, AW-022);
+  // before, its heading, once App knows the account (route.basket 'quote' or
+  // 'order', AW-132).
+  if (route.page === 'quote') return { title: route.received ? `${route.received === 'order' ? 'Order' : 'Quote'} received · ${site}` : `${route.basket ? basketTerms(route.basket === 'order').page : 'Checkout'} · ${site}`, description: `Review your items and submit a wholesale quote or order to ${site}. Minimum order ${formatMoney(ORDER_MINIMUM)}.` };
+  if (route.page === 'account') return { title: `My account · ${site}`, description: `Your ${site} trade account: order history, reorders and quick entry by SKU.` };
   // route.unseen: orders placed since the admin last opened Orders (AW-111,
   // App's useAdminUnseen), as '(2) ' in front.
   if (route.page === 'admin') {
@@ -136,7 +139,7 @@ function pageText(route, products, departments) {
   if (route.page === 'contact') return { title: `Contact & Visit · ${site}`, description: clip(`Call ${COMPANY.phone} or visit ${COMPANY.addressShort}. ${HOURS.map(r => hoursLine(r, { nowrap: false })).join(', ')}.`) };
   if (route.page === 'delivery') return { title: `Delivery & Service Area · ${site}`, description: 'Next-day delivery on our own trucks when your stop is on a route in Alabama, Mississippi or Georgia, plus will-call pickup at the Birmingham warehouse.' };
   if (POLICY_TITLES[route.page]) return { title: `${POLICY_TITLES[route.page]} · ${site}`, description: clip(POLICY_INTROS[route.page]) };
-  if (route.page === 'apply') return { title: `Apply for a Trade Account · ${site}`, description: `What licensed retailers need to open a ${site} trade account: EIN, state retail tobacco license, resale certificate and store details.` };
+  if (route.page === 'apply') return { title: `${APPLY_LABEL} · ${site}`, description: `What licensed retailers need to open a ${site} trade account: EIN, state retail tobacco license, resale certificate and store details.` };
   if (route.page === 'reset-password') return { title: `Reset Password · ${site}`, description: `Choose a new password for your ${site} trade account.` };
   return { title: `${site} · Wholesale Distributor — Birmingham, AL`, description: HOME_DESCRIPTION };
 }

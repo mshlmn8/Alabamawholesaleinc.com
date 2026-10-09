@@ -23,6 +23,7 @@ import { confirmLeave, focusPageHeading, navigate, pathFor, resolveRoute, routeK
 import { pageKeyFor } from './lib/routes.js';
 import { confirmAge, declineAge, endAgeConfirmationOnSignOut, reconsiderAge, useAgeGate } from './lib/ageGate.js';
 import { pageMeta, applyPageMeta } from './lib/meta.js';
+import { basketTerms } from './data/terms.js';
 import { departmentsFor } from './lib/departments.js';
 import { accountNotices, signOutMessage } from './lib/accountNotices.js';
 import { catalogNotices } from './lib/catalogNotices.js';
@@ -87,6 +88,8 @@ export default function App() {
   // profile, so Sign Out is always within reach (AW-089).
   const user = session ? { name: profile?.name || '', business: profile?.business || '' } : null;
   const isApprovedBuyer = profile?.status === 'approved';
+  // A quote, or an order for an approved buyer (AW-132, src/data/terms.js).
+  const basket = basketTerms(isApprovedBuyer);
   // Ordering is paused on a suspended account (AW-201).
   const isSuspended = profile?.status === 'suspended';
   // Only an approved admin is one; the database's is_admin() says the same
@@ -138,13 +141,15 @@ export default function App() {
     }
   }, [canonicalPath, location]);
 
-  // The title names a saved receipt ('Quote received', AW-022) on /quote, and
-  // the count of orders new since the last visit on /admin (AW-111).
+  // The title names a saved receipt ('Quote received', AW-022) on /quote, or
+  // else its heading once the account is known (AW-132), and the count of
+  // orders new since the last visit on /admin (AW-111).
   const metaRoute = useMemo(() => {
     if (receivedKind) return { ...route, received: receivedKind };
+    if (route.page === 'quote' && account !== 'loading') return { ...route, basket: basket.kind };
     if (route.page === 'admin' && adminUnseen > 0) return { ...route, unseen: adminUnseen };
     return route;
-  }, [route, receivedKind, adminUnseen]);
+  }, [route, receivedKind, adminUnseen, account, basket.kind]);
   useEffect(() => {
     applyPageMeta(pageMeta(metaRoute, products, departments));
   }, [metaRoute, products, departments]);
@@ -359,7 +364,7 @@ export default function App() {
       <Header
         cartCount={cart.count} onCart={() => setCartOpen(true)}
         products={products} departments={departments}
-        user={user} isAdmin={isAdmin} adminUnseen={adminUnseen}
+        user={user} isAdmin={isAdmin} isApprovedBuyer={isApprovedBuyer} adminUnseen={adminUnseen}
         onLoginClick={openSignin} onSignupClick={openSignup} onLogout={signOutHere} signingOut={signingOut}
         onHelp={() => setHelpOpen(true)}
       />

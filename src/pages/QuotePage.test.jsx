@@ -46,7 +46,7 @@ describe('QuotePage and the account', () => {
   it('waits for the account instead of showing the guest form (AW-186)', () => {
     const view = render(page({ profile: null, account: 'loading', signedIn: true, isApprovedBuyer: false }));
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Checkout');
-    expect(screen.queryByText('Request your quote')).toBeNull();
+    expect(screen.queryByText('Request a quote')).toBeNull();
     expect(screen.queryByRole('button', { name: /Submit/ })).toBeNull();
     view.rerender(page({ profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true }));
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Place your order');
@@ -92,7 +92,7 @@ describe('QuotePage and the account', () => {
     const removeLines = vi.fn();
     const gone = { lineKey: '999', productId: 999, variant: null, unavailable: 'product', name: 'Old product', sku: 'AW-OLD', qty: 4, price: null };
     render(page({ items: [...ITEMS, gone], removeLines, profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true }));
-    expect(screen.getByText('1 item in your cart is no longer available.')).toBeTruthy();
+    expect(screen.getByText('1 item in your order is no longer available.')).toBeTruthy();
     expect(screen.getByRole('alert').textContent).toBe('Remove the items that are no longer available before you submit.');
     expect(submit().disabled).toBe(true);
     // Units count only what can be ordered.
@@ -129,7 +129,7 @@ describe('QuotePage and the account', () => {
   it('lists an old cart’s products that need a variant, also when the cart is empty (AW-354)', () => {
     const legacy = [{ productId: 1, qty: 3, name: 'Swisher Sweets cigarillos' }];
     const view = render(page({ items: [], legacy, onDismissLegacy: vi.fn(), profile: null, account: 'signed-out', isApprovedBuyer: false }));
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Your cart is empty');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Your quote is empty');
     // Centred by a class, so the phone page-head padding applies (AW-301).
     const head = screen.getByRole('heading', { level: 1 }).closest('section');
     expect(head.className).toBe('page-head is-centered');
@@ -249,8 +249,8 @@ describe('QuotePage and tobacco licenses', () => {
     expect(screen.getByLabelText('Sales-tax / resale certificate #').required).toBe(true);
     const attest = screen.getByRole('checkbox', { name: 'I confirm this business holds a valid tobacco retail license and all purchasers are 21+' });
     expect(attest.required).toBe(true);
-    fireEvent.click(screen.getByRole('button', { name: 'Have an account? Sign in' }));
-    fireEvent.click(screen.getByRole('button', { name: 'New? Apply for a trade account' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Already have an account? Sign in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'New here? Apply for a trade account' }));
     expect(onSignIn).toHaveBeenCalled();
     expect(onApplyClick).toHaveBeenCalled();
 
@@ -267,7 +267,7 @@ describe('QuotePage and tobacco licenses', () => {
     const view = render(page({ items: CIGARETTES, profile: B, account: 'ready', signedIn: true, isApprovedBuyer: false }));
     expect(licence()).not.toBeNull();
     // Signed in: no sign-in or apply links.
-    expect(screen.queryByRole('button', { name: 'Have an account? Sign in' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Already have an account? Sign in' })).toBeNull();
     view.rerender(page({ items: CIGARETTES, profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true }));
     expect(licence()).toBeNull();
     expect(screen.queryByRole('checkbox')).toBeNull();
@@ -458,11 +458,11 @@ describe('QuotePage and submit_quote', () => {
   it('offers guests sign-in and apply links above the form (AW-014)', () => {
     const onSignIn = vi.fn();
     const view = render(page({ ...GUEST, onSignIn }));
-    fireEvent.click(screen.getByRole('button', { name: 'Have an account? Sign in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Already have an account? Sign in' }));
     expect(onSignIn).toHaveBeenCalledTimes(1);
     // Without the apply dialog, the link goes to the apply page.
-    expect(screen.getByRole('link', { name: 'New? Apply for a trade account' }).getAttribute('href')).toBe('/apply');
-    expect(document.querySelector('.quote-account-links').textContent).toBe('Have an account? Sign in · New? Apply for a trade account');
+    expect(screen.getByRole('link', { name: 'New here? Apply for a trade account' }).getAttribute('href')).toBe('/apply');
+    expect(document.querySelector('.quote-account-links').textContent).toBe('Already have an account? Sign in · New here? Apply for a trade account');
     view.rerender(page({ ...PENDING }));
     expect(document.querySelector('.quote-account-links')).toBeNull();
   });
@@ -544,7 +544,7 @@ describe('QuotePage removals', () => {
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Quantity of Argo corn starch' })));
     fireEvent.click(removeButton('Argo corn starch'));
     expect(announced().at(-1)).toBe('Removed Argo corn starch.');
-    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Your cart is empty' }));
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Your quote is empty' }));
   });
 
   it('says every item went with "Clear all items", and focuses the empty page’s heading', () => {
@@ -553,7 +553,7 @@ describe('QuotePage removals', () => {
     clear.focus();
     fireEvent.click(clear);
     expect(announced()).toEqual(['Removed all items from your quote.']);
-    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Your cart is empty' }));
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Your quote is empty' }));
     expect(document.activeElement).not.toBe(document.body);
   });
 
@@ -758,11 +758,11 @@ describe('QuotePage receipt', () => {
     const view = render(page({ ...GUEST, items: [], savedReceipt: SAVED, entryKey: 'k1' }));
     expect(heading().textContent).toBe('Thank you, Saved Buyer.');
     expect(screen.getByText('ALW-Q-SAVED00001')).toBeTruthy();
-    expect(screen.queryByText('Your cart is empty')).toBeNull();
+    expect(screen.queryByText('Your quote is empty')).toBeNull();
     expect(screen.queryByRole('button', { name: /Submit/ })).toBeNull();
     // A fresh visit to /quote (another entry): no saved receipt, so the empty cart.
     view.rerender(page({ ...GUEST, items: [], savedReceipt: null, entryKey: 'k2' }));
-    expect(heading().textContent).toBe('Your cart is empty');
+    expect(heading().textContent).toBe('Your quote is empty');
   });
 
   it('forgets a receipt it showed when the history entry changes', async () => {
@@ -772,7 +772,7 @@ describe('QuotePage receipt', () => {
     await act(async () => { submitForm(); });
     await waitFor(() => expect(heading().textContent).toMatch(/Thank you/));
     view.rerender(page({ ...props, items: [], entryKey: 'k2' }));
-    expect(heading().textContent).toBe('Your cart is empty');
+    expect(heading().textContent).toBe('Your order is empty');
   });
 
   it('copies the reference where the browser allows it, and says so once', async () => {

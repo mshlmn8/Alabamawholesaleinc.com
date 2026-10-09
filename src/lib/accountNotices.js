@@ -16,7 +16,7 @@
 
 // Said when a buyer signs out with items in the cart: the cart is kept for
 // the account on this device, out of sight of the next person (AW-189).
-export const CART_KEPT_NOTE = 'Your cart is saved on this computer for your next sign-in.';
+export const CART_KEPT_NOTE = 'The items you added are saved on this computer for your next sign-in.';
 
 // What a finished sign-out says. A local sign-out that could not reach
 // Supabase still cleared this browser (AW-047); a global one may have left

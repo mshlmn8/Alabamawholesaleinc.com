@@ -12,6 +12,7 @@
 
 import { useEffect, useRef } from 'react';
 import { FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../data/content.js';
+import { basketTerms } from '../data/terms.js';
 import { announce } from '../lib/announce.js';
 import { LINE_CONTROL, focusLineSoon, keepFocusNear, neighbourKey } from '../lib/focus.js';
 import { formatMoney, formatMoneyShort } from '../lib/format.js';
@@ -46,11 +47,14 @@ export function CartDrawer({
     if (next) focusLineSoon(listRef.current, next, { selector: LINE_CONTROL, fallback: () => keepFocusNear(dialog) });
   };
   const unavailable = items.filter(it => it.unavailable);
-  // Guests are asked to sign in; signed-in buyers who are not approved yet are
-  // told pricing is waiting on approval instead, and suspended ones that the
-  // account is on hold.
+  // A quote, or an order for an approved buyer (AW-132, src/data/terms.js).
+  const basket = basketTerms(isApprovedBuyer);
+  // Guests are told prices are for approved trade accounts, with a way to
+  // sign in; signed-in buyers who are not approved yet are told pricing is
+  // waiting on approval instead, and suspended ones that the account is on
+  // hold.
   const pendingBuyer = Boolean(profile) && !isApprovedBuyer;
-  let note = 'Sign in for pricing';
+  let note = 'Prices show for approved trade accounts';
   if (isSuspended) note = 'Account on hold';
   else if (pendingBuyer) note = 'Pricing unlocks when your account is approved';
   return (
@@ -58,15 +62,15 @@ export function CartDrawer({
       <div className="overlay overlay-soft" aria-hidden="true" onClick={onClose} />
       <aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title">
         <div className="drawer-head">
-          <h2 id="cart-title">Your order</h2>
-          <button className="icon-btn" type="button" onClick={onClose} aria-label="Close cart"><Icon name="close" /></button>
+          <h2 id="cart-title">{basket.title}</h2>
+          <button className="icon-btn" type="button" onClick={onClose} aria-label="Close"><Icon name="close" /></button>
         </div>
         <div className="drawer-body">
           <SavedLinesNotice items={legacy} onDismiss={onDismissLegacy} onChoose={onClose} />
-          <UnavailableNotice items={unavailable} onRemoveAll={removeLines} />
-          {items.length === 0 && <p className="empty-note">Your cart is empty.<br />Browse the catalog and add items to build an order.</p>}
+          <UnavailableNotice items={unavailable} onRemoveAll={removeLines} noun={basket.noun} />
+          {items.length === 0 && <p className="empty-note"><span>{`${basket.empty}.`}</span><br /><span>{`Browse the catalog and add items to build ${basket.noun === 'order' ? 'an order' : 'a quote'}.`}</span></p>}
           {items.length > 0 && (
-            <ul className="drawer-lines" aria-label="Items in your order" ref={listRef}>
+            <ul className="drawer-lines" aria-label={basket.items} ref={listRef}>
               {items.map(it => (
                 <CartLine key={it.lineKey} item={it} layout="drawer" showPrice={isApprovedBuyer} pricesStatus={pricesStatus}
                           onSetQty={(n) => setLine(it.lineKey, n)} onChooseVariant={chooseVariant}
@@ -87,9 +91,9 @@ export function CartDrawer({
           )}
           {items.length > 0 && !isSuspended && (
             isApprovedBuyer
-              ? <Link className="button wide" to="/quote" onClick={onClose}>Checkout</Link>
+              ? <Link className="button wide" to="/quote" onClick={onClose}>{basket.cta}</Link>
               : <>
-                  <Link className="button wide" to="/quote" onClick={onClose}>Request quote</Link>
+                  <Link className="button wide" to="/quote" onClick={onClose}>{basket.cta}</Link>
                   {!pendingBuyer && <button className="drawer-signin text-link" type="button" onClick={onLoginClick}>Sign in for account pricing</button>}
                 </>
           )}

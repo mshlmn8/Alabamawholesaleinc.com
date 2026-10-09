@@ -74,7 +74,7 @@ export function AccountPage({
     return (
       <section>
         <div className="page-head">
-          <Breadcrumbs items={[HOME_CRUMB, { label: 'My Account' }]} />
+          <Breadcrumbs items={[HOME_CRUMB, { label: 'My account' }]} />
           <p className="eyebrow">TRADE ACCOUNT</p>
           <h1>My account</h1>
           {account === 'loading' && <AccountLoading />}
@@ -110,7 +110,7 @@ export function AccountPage({
   return (
     <section>
       <div className="page-head">
-        <Breadcrumbs items={[HOME_CRUMB, { label: 'My Account' }]} />
+        <Breadcrumbs items={[HOME_CRUMB, { label: 'My account' }]} />
         <p className="eyebrow">TRADE ACCOUNT</p>
         <h1>{profile.business || profile.name}</h1>
         <p>{profile.email}</p>
@@ -134,7 +134,7 @@ export function AccountPage({
           <button className="button ghost" type="button" onClick={onSignOutEverywhere} disabled={signingOut}>
             <span>{signingOut ? 'Signing out…' : 'Sign out of all devices'}</span>
           </button>
-          <p className="result-note">Ends your sessions on every computer and phone, including this one. Sign Out in the header only signs out this browser.</p>
+          <p className="result-note">Ends your sessions on every computer and phone, including this one. Sign out in the header only signs out this browser.</p>
         </div>
       )}
 
