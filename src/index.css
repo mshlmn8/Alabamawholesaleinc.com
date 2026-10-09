@@ -974,6 +974,13 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 }
 .variant-chips button:not(:disabled):not([aria-checked="true"]):active { background: var(--line); }
 .qty-row { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
+/* While the live catalog is checked (AW-232): "Checking availability…" over
+   the add row, which keeps its place unseen, so the line has the row's
+   height at any width or text size and nothing moves when the row returns. */
+.pd-add-hold { display: grid; margin-bottom: 16px; }
+.pd-add-hold > * { grid-area: 1 / 1; }
+.pd-add-hold > .qty-row { visibility: hidden; margin-bottom: 0; }
+.pd-checking { align-self: center; margin: 0; color: var(--muted); font-weight: 600; }
 .in-cart-note { margin: -5px 0 12px; color: var(--muted); font-size: var(--text-sm); }
 .in-cart-note strong { color: var(--orange-dark); }
 .compact-actions { margin-top: 0; }

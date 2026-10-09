@@ -54,6 +54,15 @@
 // when it failed to load, there is no button (index.css hides it next to
 // "Photo coming soon").
 //
+// Until the live catalog has answered (AW-232), the page is drawn from the
+// copy bundled with the site, which still lists a product staff have since
+// deactivated. So while the first live load runs (catalogStatus 'loading',
+// not settled) the add row is held: "Checking availability…" in its place, at
+// its height, and nothing can be added. When the live catalog arrives the row
+// comes back, or a product it doesn't have becomes "Product not found"
+// (App). If that load fails (status 'error') the bundled copy is all there
+// is, and adding works as before, so the page never waits for good.
+//
 // From Cursor's PR #13: "Photo coming soon" without a photo (AW-029), the
 // sell unit badged on a photo other rows share (AW-136), the Wikimedia credit
 // under the photo (AW-033), and no placeholder brand "Assorted" (AW-286).
@@ -84,6 +93,8 @@ import { maxPerLineText } from '../lib/quantity.js';
 import { relatedProducts } from '../lib/related.js';
 
 const NO_PRICES = () => null;
+// What the add row says while the live catalog is checked (AW-232).
+export const CHECKING_AVAILABILITY_TEXT = 'Checking availability…';
 
 // The photo credit, under the photo and in the enlarged view.
 function PhotoCreditText({ credit, creditSource }) {
@@ -97,7 +108,7 @@ function PhotoCreditText({ credit, creditSource }) {
 
 export function ProductPage({
   productId, profile, account = profile ? 'ready' : 'signed-out', isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', listOf = NO_PRICES, priceTier = null,
-  cart, addLine, decLine, products, onLoginClick, onApplyClick, savedQty = 0,
+  cart, addLine, decLine, products, onLoginClick, onApplyClick, savedQty = 0, catalogStatus = 'ready', catalogSettled = true,
 }) {
   const [desiredQty, setDesiredQty] = useState(() => savedQty || 1);
   // What is left of the saved quantity after each add becomes the next one.
@@ -113,6 +124,8 @@ export function ProductPage({
   const p = products.find(x => Number(x.id) === Number(productId));
   // App renders NotFound for ids that are not in the catalog.
   if (!p) return null;
+  // Shown from the bundled copy while the first live load runs (AW-232).
+  const provisional = catalogStatus === 'loading' && !catalogSettled;
   const variants = variantList(p);
   const axis = variantAxis(p);
   const available = (v) => isVariantAvailable(p, v);
@@ -206,6 +219,7 @@ export function ProductPage({
   };
   const closeZoom = () => setZoomOpen(false);
   const handleAdd = () => {
+    if (provisional) return;
     if (choiceRequired && !chosen) {
       setVariantError(true);
       chipFor(choosable[0])?.focus();
@@ -224,6 +238,13 @@ export function ProductPage({
     showToast({ text: added.capped ? `${text} ${maxPerLineText()}` : text, action: { id: 'open-cart', label: `View ${target}` } });
     setDesiredQty(1);
   };
+  const addRow = (
+    <div className="qty-row" aria-hidden={provisional || undefined}>
+      {/* Typed or stepped, 1 to 100,000 (AW-013). */}
+      <QuantityInput value={desiredQty} onChange={setDesiredQty} min={1} label={`Quantity of ${p.name} to add`} groupLabel="Quantity to add" />
+      <button className="button" type="button" onClick={handleAdd} disabled={provisional || soleUnavailable || (choiceRequired && choosable.length === 0)}><span>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</span></button>
+    </div>
+  );
 
   return (
     <section>
@@ -276,11 +297,15 @@ export function ProductPage({
             )}
           </div>
           {p.sellUnit && <p className="pd-unit">{`Sold by the ${p.sellUnit} — quantity 1 is one ${p.sellUnit}.`}</p>}
-          <div className="qty-row">
-            {/* Typed or stepped, 1 to 100,000 (AW-013). */}
-            <QuantityInput value={desiredQty} onChange={setDesiredQty} min={1} label={`Quantity of ${p.name} to add`} groupLabel="Quantity to add" />
-            <button className="button" type="button" onClick={handleAdd} disabled={soleUnavailable || (choiceRequired && choosable.length === 0)}><span>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</span></button>
-          </div>
+          {provisional ? (
+            // While the live catalog is checked (AW-232) the row is there but
+            // unseen, so the line over it has its height, and the page doesn't
+            // move when it comes back.
+            <div className="pd-add-hold">
+              <p className="pd-checking" role="status">{CHECKING_AVAILABILITY_TEXT}</p>
+              {addRow}
+            </div>
+          ) : addRow}
           {qtyTotal && <p className="in-cart-note pd-line-total">{qtyTotal}</p>}
           {qty > 0 && <p className="in-cart-note"><span>{`Already in ${isApprovedBuyer ? 'order' : 'quote'}: `}</span><strong>{qty}</strong><span>{selected ? ` · ${selected}` : ''}</span></p>}
           {/* The SKU for everyone, and the chosen variant's once there is one

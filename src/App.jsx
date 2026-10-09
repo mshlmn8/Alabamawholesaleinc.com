@@ -396,7 +396,8 @@ export default function App() {
       case 'product':
         return (
           <ProductPage key={route.productId} productId={route.productId} products={products} {...cardProps} onApplyClick={openSignup}
-                       savedQty={cart.legacy.find(entry => entry.productId === route.productId)?.qty || 0} />
+                       savedQty={cart.legacy.find(entry => entry.productId === route.productId)?.qty || 0}
+                       catalogStatus={catalog.status} catalogSettled={catalog.settled} />
         );
       case 'category':
         // Keyed by department (AW-228): another department starts with a fresh page.

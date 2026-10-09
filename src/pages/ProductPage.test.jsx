@@ -6,7 +6,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { announce } from '../lib/announce.js';
 import { dismissToast, getToast } from '../lib/toast.js';
-import { ProductPage } from './ProductPage.jsx';
+import { CHECKING_AVAILABILITY_TEXT, ProductPage } from './ProductPage.jsx';
 
 vi.mock('../lib/announce.js', async (importOriginal) => ({ ...(await importOriginal()), announce: vi.fn() }));
 
@@ -451,5 +451,59 @@ describe('ProductPage add feedback', () => {
     const note = [...document.querySelectorAll('.in-cart-note')].find((n) => /Already in/.test(n.textContent));
     expect(note.getAttribute('aria-live')).toBeNull();
     expect(note.getAttribute('role')).toBeNull();
+  });
+});
+
+// The bundled catalog is on screen until the live one answers, and it still
+// lists products staff have deactivated since (AW-232).
+describe('ProductPage while the live catalog is checked (AW-232)', () => {
+  const single = [{ ...P[0], variants: [] }];
+  const addRow = () => document.querySelector('.qty-row');
+
+  it('while the first live load runs, holds the add row: "Checking availability…" in its place, and nothing can be added', () => {
+    const addLine = vi.fn(() => ({ key: '1', qty: 1, capped: false }));
+    render(page({ products: single, addLine, catalogStatus: 'loading', catalogSettled: false }));
+    expect(screen.getByRole('status')).toHaveProperty('textContent', CHECKING_AVAILABILITY_TEXT);
+    expect(CHECKING_AVAILABILITY_TEXT).toBe('Checking availability…');
+    // The row keeps its place unseen (index.css), out of the accessibility tree.
+    expect(addRow().parentElement.className).toBe('pd-add-hold');
+    expect(addRow().getAttribute('aria-hidden')).toBe('true');
+    expect(screen.queryByRole('button', { name: /Add to quote/ })).toBeNull();
+    const hidden = addRow().querySelector('.button');
+    expect(hidden.disabled).toBe(true);
+    fireEvent.click(hidden);
+    expect(addLine).not.toHaveBeenCalled();
+    // The rest of the page is there: the name, the SKU and the description.
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Swisher Sweets cigarillos');
+    expect(document.querySelector('.pd-sku').textContent).toBe('SKU AW-SS');
+  });
+
+  it('gives the row back when the live catalog arrives', () => {
+    const addLine = vi.fn(() => ({ key: '1', qty: 1, capped: false }));
+    const view = render(page({ products: single, addLine, catalogStatus: 'loading', catalogSettled: false }));
+    view.rerender(page({ products: single, addLine, catalogStatus: 'ready', catalogSettled: true }));
+    expect(screen.queryByText(CHECKING_AVAILABILITY_TEXT)).toBeNull();
+    expect(document.querySelector('.pd-add-hold')).toBeNull();
+    expect(addRow().getAttribute('aria-hidden')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Add to quote/ }));
+    expect(addLine).toHaveBeenCalledWith(1, null, 1);
+    dismissToast();
+  });
+
+  it('when the live load failed, adds from the bundled copy as before, so the page never waits for good', () => {
+    const addLine = vi.fn(() => ({ key: '1', qty: 1, capped: false }));
+    render(page({ products: single, addLine, catalogStatus: 'error', catalogSettled: false }));
+    expect(screen.queryByText(CHECKING_AVAILABILITY_TEXT)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Add to quote/ }));
+    expect(addLine).toHaveBeenCalledWith(1, null, 1);
+    dismissToast();
+  });
+
+  it('without a backend (the bundled copy is the catalog) or by default, the row is there', () => {
+    const view = render(page({ products: single, catalogStatus: 'static', catalogSettled: true }));
+    expect(screen.getByRole('button', { name: /Add to quote/ })).not.toBeNull();
+    view.rerender(page({ products: single }));
+    expect(screen.getByRole('button', { name: /Add to quote/ })).not.toBeNull();
+    expect(screen.queryByText(CHECKING_AVAILABILITY_TEXT)).toBeNull();
   });
 });
