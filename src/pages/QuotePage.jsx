@@ -9,7 +9,11 @@
 //
 // Lines that can no longer be ordered (AW-083) are listed with a notice and
 // block the submit until they are removed; products from an older cart that
-// still need a variant (AW-354) are listed at the top.
+// still need a variant (AW-354) are listed at the top. A bare line gets its
+// variant on the line itself (AW-011), and quantities are typed or stepped,
+// 1 to 100,000 (AW-013). Removing a line or clearing them all is read out,
+// and focus moves to the next line (else the one before), or to the empty
+// page's heading, never to <body> (AW-042).
 //
 // The catalog may have changed since the page was opened (AW-191, AW-204):
 // Submit first loads it again (checkCart, from App) and stops, naming the
@@ -31,34 +35,48 @@
 // The $500 minimum is not enforced (AW-076, owner question). An approved
 // buyer below it is told "You can still submit this order" only while the
 // submit button can actually be used (Cursor's PR #13).
+//
+// After the save (AW-012, AW-022): one send at a time, the lines that were
+// sent leave the cart, and the page shows a receipt (QuoteReceipt.jsx) built
+// from what was sent and what submit_quote answered. App keeps that receipt
+// for this history entry (src/lib/receipt.js) and passes it back as
+// savedReceipt, so a reload or Back shows it again instead of checkout.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../data/content.js';
 import { QUOTE_ERROR_GENERIC, quoteErrorField, quoteErrorMessage, submitOrder, todayInBirmingham } from '../lib/orders.js';
 import { cartChanges, describeCartChanges } from '../lib/cart.js';
+import { QTY_RANGE_TEXT, isOrderableQty } from '../lib/quantity.js';
 import { formatMoney, formatMoneyShort } from '../lib/format.js';
 import { totalLabel } from '../lib/pricing.js';
 import { cartNeedsTobaccoLicense } from '../lib/regulated.js';
-import { Link } from '../lib/router.js';
+import { Link, focusPageHeading, scrollToTop } from '../lib/router.js';
+import { DELIVERY_LABELS, buildReceipt } from '../lib/receipt.js';
+import { announce } from '../lib/announce.js';
+import { LINE_CONTROL, focusLineSoon, neighbourKey } from '../lib/focus.js';
 import { CallOrEmail } from '../components/ContactLinks.jsx';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 import { CartLine } from '../components/CartLine.jsx';
 import { SavedLinesNotice, UnavailableNotice } from '../components/CartNotices.jsx';
 import { AccountLoading } from '../components/AccountStatus.jsx';
 import { initialQuoteForm, quoteFormForAccount } from '../lib/quoteForm.js';
+import { QuoteReceipt } from './QuoteReceipt.jsx';
 
 const UNAVAILABLE_ERROR = 'Remove the items that are no longer available before you submit.';
+// Never shown for a cart read from storage, which is repaired on read; a
+// guard in case a quantity the database would refuse gets through (AW-013).
+const QTY_ERROR = `Quantities must be ${QTY_RANGE_TEXT}.`;
 
 // Identifies what the buyer is looking at: which lines, how many, whether
 // each can be ordered and at what price.
 const itemsSignature = (items) => items.map((it) => `${it.lineKey}|${it.qty}|${it.unavailable || ''}|${it.needsVariant ? 1 : 0}|${it.price ?? ''}`).join(',');
 
 export function QuotePage({
-  items, total, addLine, decLine, removeLine, removeLines, clearCart, legacy = [], onDismissLegacy,
+  items, total, setLine, chooseVariant, removeLine, removeLines, clearCart, legacy = [], onDismissLegacy,
   profile, account = profile ? 'ready' : 'signed-out', signedIn = !!profile, onSignIn, onApplyClick, isApprovedBuyer, isBackendConfigured,
   checkCart = null, pricesStatus = 'ready', isSuspended = false,
+  savedReceipt = null, entryKey = null, onSubmitted,
 }) {
-  const [step, setStep] = useState('review');
   const [data, setData] = useState(() => initialQuoteForm(profile));
   // The field the last refused submit was about (its hint), marked invalid
   // until it is edited.
@@ -75,6 +93,27 @@ export function QuotePage({
     return { 'aria-invalid': errorField === k ? true : undefined, 'aria-describedby': ids || undefined };
   };
 
+  // The receipt of the quote just saved (AW-022). It belongs to the history
+  // entry it was shown on: another entry starts again (App passes the saved
+  // copy for this one as savedReceipt).
+  const [receipt, setReceipt] = useState(null);
+  const [receiptFor, setReceiptFor] = useState(entryKey);
+  if (receiptFor !== entryKey) {
+    setReceiptFor(entryKey);
+    setReceipt(null);
+  }
+  const shownReceipt = receipt || savedReceipt;
+  // After a save, the receipt's heading takes focus, at the top of the page
+  // (at once, like a page change: the form it replaced is gone).
+  const receiptHeading = useRef(null);
+  const focusReceiptNext = useRef(false);
+  useEffect(() => {
+    if (!shownReceipt || !focusReceiptNext.current) return;
+    focusReceiptNext.current = false;
+    scrollToTop();
+    receiptHeading.current?.focus({ preventScroll: true });
+  }, [shownReceipt]);
+
   // The details follow the signed-in account (AW-190), also when its profile
   // arrives after the page opened (AW-186).
   const profileId = profile?.id ?? null;
@@ -82,6 +121,8 @@ export function QuotePage({
   if (formFor !== profileId) {
     setFormFor(profileId);
     setData((current) => quoteFormForAccount(current, profile, formFor));
+    // The receipt on screen was the last account's.
+    setReceipt(null);
   }
 
   // Ordering lost mid-checkout (AW-048): a buyer who was placing an order and
@@ -94,7 +135,28 @@ export function QuotePage({
   // A suspended account is told ordering is paused instead (AW-201).
   const lostOrdering = orderingSeen && !isApprovedBuyer && !sendAsQuote && account !== 'loading' && !isSuspended;
 
-  const [receipt, setReceipt] = useState(null);
+  // Removing lines (AW-042). With none left, the page turns into the empty
+  // cart, and its heading takes focus once it is on screen.
+  const linesRef = useRef(null);
+  const focusHeadingNext = useRef(false);
+  useEffect(() => {
+    if (!focusHeadingNext.current) return;
+    focusHeadingNext.current = false;
+    focusPageHeading();
+  }, [items.length]);
+  const removeItem = (it) => {
+    const next = neighbourKey(items.map(x => x.lineKey), it.lineKey);
+    if (!next) focusHeadingNext.current = true;
+    removeLine(it.lineKey);
+    announce(`Removed ${it.name}.`);
+    if (next) focusLineSoon(linesRef.current, next, { selector: LINE_CONTROL, fallback: focusPageHeading });
+  };
+  const clearAll = () => {
+    focusHeadingNext.current = true;
+    clearCart();
+    announce(`Removed all items from your ${isApprovedBuyer ? 'order' : 'quote'}.`);
+  };
+
   const [submitError, setSubmitError] = useState(null);
   // null | 'checking' (loading the catalog again) | 'sending'
   const [phase, setPhase] = useState(null);
@@ -107,6 +169,7 @@ export function QuotePage({
   const orderable = items.filter(it => !it.unavailable);
   const totalUnits = orderable.reduce((s, i) => s + i.qty, 0);
   const needsVariant = items.some(it => it.needsVariant);
+  const invalidQty = orderable.some(it => !isOrderableQty(it.qty));
   const willCall = data.delivery === 'willcall';
   // The tobacco license answers (AW-014): asked of a visitor who isn't an
   // approved buyer when a line needs them (not of a suspended account, which
@@ -117,13 +180,17 @@ export function QuotePage({
   const pricedBelowMinimum = isApprovedBuyer && pricesStatus !== 'loading' && Number(total) < ORDER_MINIMUM;
   // What keeps the submit button off (apart from a send in progress). The
   // minimum note says "you can still submit" only when nothing does (AW-076).
-  const submitBlocked = isSuspended || !isBackendConfigured || needsVariant || unavailable.length > 0 || lostOrdering;
+  const submitBlocked = isSuspended || !isBackendConfigured || needsVariant || unavailable.length > 0 || invalidQty || lostOrdering;
   let submitLabel = isApprovedBuyer ? 'Submit order' : 'Submit quote request';
   if (phase === 'checking') submitLabel = 'Checking the catalog…';
   else if (phase === 'sending') submitLabel = 'Sending…';
 
+  // A send in progress (AW-012). The button is disabled while one runs, but a
+  // fast second Enter or click can arrive before that render.
+  const submittingRef = useRef(false);
   const handleQuoteSubmit = async (e) => {
     e.preventDefault();
+    if (submittingRef.current) return;
     if (isSuspended) return;
     // A person never fills the hidden honeypot field; a bot filling every
     // field does, and is told what a failed save says (AW-198).
@@ -143,10 +210,19 @@ export function QuotePage({
       setSubmitError(UNAVAILABLE_ERROR);
       return;
     }
+    if (invalidQty) {
+      setSubmitError(QTY_ERROR);
+      return;
+    }
+    submittingRef.current = true;
+    // What is sent, and what the receipt shows: edits made while it is on
+    // its way change neither.
+    const sent = data;
     setPhase('checking');
     setSubmitError(null);
     setErrorField(null);
     setChangeNote(null);
+    let saved = null;
     try {
       let lines = orderable;
       if (checkCart) {
@@ -169,24 +245,39 @@ export function QuotePage({
       // License answers go only with lines that need them, from a buyer who
       // isn't approved (approved accounts were checked when they applied).
       const formData = !isApprovedBuyer && cartNeedsTobaccoLicense(lines)
-        ? data
-        : { ...data, licenseNo: '', resaleCert: '', purchasers21: false };
+        ? sent
+        : { ...sent, licenseNo: '', resaleCert: '', purchasers21: false };
       const r = await submitOrder({ formData, items: lines });
       if (!r?.ok || !r.order?.id) throw new Error('The quote was not saved.');
       // The server says whether it saved an order or a quote (v2); an older
       // database doesn't, and the account decides.
-      setReceipt({ ...r.order, asOrder: r.order.kind ? r.order.kind === 'order' : isApprovedBuyer });
-      setStep('submitted');
-      window.scrollTo(0, 0);
+      const asOrder = r.order.kind ? r.order.kind === 'order' : isApprovedBuyer;
+      saved = buildReceipt({ order: r.order, lines, data: formData, asOrder });
     } catch (err) {
       // What the server refused and why, never a reference: a failed quote
       // has none (AW-049).
       setSubmitError(quoteErrorMessage(err));
       setErrorField(quoteErrorField(err));
-    } finally { setPhase(null); }
+    } finally {
+      submittingRef.current = false;
+      setPhase(null);
+    }
+    if (!saved) return;
+    // Saved: show the receipt and let App keep it for this history entry.
+    setReceipt(saved);
+    onSubmitted?.(saved);
+    // Only the lines that were sent leave the cart (not clearCart): a line
+    // another tab added meanwhile stays for the next quote (AW-046).
+    removeLines(saved.lines.map((line) => line.lineKey));
+    focusReceiptNext.current = true;
   };
 
-  if (items.length === 0 && step === 'review') {
+  // Before the empty cart: the receipt's lines have just left the cart.
+  if (shownReceipt) {
+    return <QuoteReceipt receipt={shownReceipt} signedIn={signedIn} headingRef={receiptHeading} />;
+  }
+
+  if (items.length === 0) {
     return (
       <section className="page-head is-centered">
         <h1>Your cart is empty</h1>
@@ -197,26 +288,6 @@ export function QuotePage({
             <SavedLinesNotice items={legacy} onDismiss={onDismissLegacy} />
           </div>
         )}
-      </section>
-    );
-  }
-
-  if (step === 'submitted') {
-    const asOrder = !!receipt?.asOrder;
-    return (
-      <section className="page-head is-centered">
-        <p className="eyebrow">{asOrder ? 'ORDER RECEIVED' : 'QUOTE RECEIVED'}</p>
-        <h1>{`Thank you, ${data.contact || 'partner'}.`}</h1>
-        <p>
-          <span>{asOrder ? 'Your order has been saved.' : 'Your quote request has been saved.'}</span> A trade desk rep will reach out within one business day at <strong>{data.phone || data.email}</strong> to confirm details.
-        </p>
-        <p className="result-note">Reference number: <strong>{receipt?.ref_num}</strong></p>
-        {/* The total the server saved (AW-351), priced by submit_quote. */}
-        {receipt?.subtotal != null && <p className="result-note">{`Saved total: ${formatMoney(receipt.subtotal)} · ${receipt.total_units} ${Number(receipt.total_units) === 1 ? 'unit' : 'units'}`}</p>}
-        <div className="dialog-actions">
-          <a className="button ghost" href={`tel:${COMPANY.phoneRaw}`}>Call to discuss</a>
-          <Link className="button" to="/" onClick={clearCart}>Back to home</Link>
-        </div>
       </section>
     );
   }
@@ -248,14 +319,14 @@ export function QuotePage({
         <div>
           <SavedLinesNotice items={legacy} onDismiss={onDismissLegacy} />
           <UnavailableNotice items={unavailable} onRemoveAll={removeLines} />
-          <ul className="checkout-lines" aria-label="Items in this request">
+          <ul className="checkout-lines" aria-label="Items in this request" ref={linesRef}>
             {items.map(it => (
               <CartLine key={it.lineKey} item={it} layout="checkout" showPrice={isApprovedBuyer} pricesStatus={pricesStatus}
-                        onInc={() => addLine(it.productId, it.variant)} onDec={() => decLine(it.lineKey)}
-                        onRemove={() => removeLine(it.lineKey)} />
+                        onSetQty={(n) => setLine(it.lineKey, n)} onChooseVariant={chooseVariant}
+                        onRemove={() => removeItem(it)} />
             ))}
           </ul>
-          <button className="text-link checkout-clear" type="button" onClick={clearCart}>Clear all items</button>
+          <button className="text-link checkout-clear" type="button" onClick={clearAll}>Clear all items</button>
         </div>
         <form onSubmit={handleQuoteSubmit} aria-labelledby="quote-form-title">
           <h2 id="quote-form-title" className="checkout-form-title">Your details</h2>
@@ -295,8 +366,8 @@ export function QuotePage({
             {/* Delivery method first: will-call needs no address (AW-079). */}
             <div className="full"><label htmlFor="quote-delivery">Delivery method</label>
               <select id="quote-delivery" name="delivery" value={data.delivery} onChange={set('delivery')} aria-describedby={willCall ? 'quote-pickup' : undefined}>
-                <option value="delivery">Next-day delivery (on route)</option>
-                <option value="willcall">Will-call pickup</option>
+                <option value="delivery">{DELIVERY_LABELS.delivery}</option>
+                <option value="willcall">{DELIVERY_LABELS.willcall}</option>
               </select>
             </div>
             {willCall ? (
@@ -320,6 +391,7 @@ export function QuotePage({
           {!isBackendConfigured && <p className="form-error" role="status"><CallOrEmail before="Quote requests can’t be saved right now. Call" after=" and the trade desk will write it up with you." /></p>}
           {needsVariant && <p className="form-error" role="alert">Choose a variant for every product that has more than one.</p>}
           {unavailable.length > 0 && <p className="form-error" role="alert">{UNAVAILABLE_ERROR}</p>}
+          {invalidQty && <p className="form-error" role="alert">{QTY_ERROR}</p>}
           {changeText && <p className="form-error" role="alert">{changeText}</p>}
           {submitError && <p className="form-error" id="quote-submit-error" role="alert">{typeof submitError === 'string' ? submitError : <CallOrEmail before={submitError.before} after={submitError.after} />}</p>}
           {lostOrdering && (
@@ -339,7 +411,7 @@ export function QuotePage({
           <button className="button wide" type="submit" disabled={sending || submitBlocked}>
             <span>{submitLabel}</span></button>
           )}
-          <p className="fine">{`The minimum order is ${formatMoney(ORDER_MINIMUM)}. Orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} qualify for free delivery on a delivery route in AL, MS & GA. Will-call is pickup at the Birmingham warehouse during business hours. Tobacco products supplied to licensed retailers only — 21+.`}</p>
+          <p className="fine">{`Orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} qualify for free delivery on a delivery route in AL, MS & GA. Will-call is pickup at the Birmingham warehouse during business hours. Tobacco products supplied to licensed retailers only — 21+.`}</p>
         </form>
       </div>
     </section>

@@ -1,9 +1,12 @@
 // The sign-in dialog after a sign-in: status, close, or a clear message when
 // the account does not load (AW-089), and a sign-in from another tab (AW-335).
+// Resending the confirmation email (AW-016) and the guard on a half-typed
+// application (AW-018). The dialog renders in its own ModalLayer (a portal
+// on document.body), which screen queries still reach.
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AuthContext } from '../lib/auth.jsx';
-import { AuthModal, CHECKING_TIMEOUT_MS } from './AuthModal.jsx';
+import { AuthModal, CHECKING_TIMEOUT_MS, RESEND_COOLDOWN_MS, RESEND_RATE_LIMITED } from './AuthModal.jsx';
 
 const SESSION = { access_token: 't', user: { id: 'u1', email: 'buyer@example.test' } };
 
@@ -212,3 +215,172 @@ describe('AuthModal application form, more cases (AW-092, AW-019)', () => {
     expect(screen.queryByText(/21\+ licensed businesses only/)).toBeNull();
   });
 });
+
+const pressEscape = () => act(() => { fireEvent.keyDown(document.activeElement || document.body, { key: 'Escape' }); });
+// The × in the dialog's top row (the status screen also has a 'Close' link).
+const closeButton = () => document.querySelector('.dialog-top .icon-btn');
+const discardBar = () => screen.queryByRole('group', { name: /Discard your application\?/ });
+
+// AW-018: a stray click, Escape, × or Back never throws away a half-typed
+// application without asking.
+describe('AuthModal guards a half-typed application (AW-018)', () => {
+  it('closes at once while nothing is typed: ×, Escape and the backdrop', () => {
+    const t = setup({}, { initialMode: 'application' });
+    fireEvent.click(closeButton());
+    expect(t.onClose).toHaveBeenCalledTimes(1);
+    pressEscape();
+    expect(t.onClose).toHaveBeenCalledTimes(2);
+    fireEvent.click(document.querySelector('.overlay'));
+    expect(t.onClose).toHaveBeenCalledTimes(3);
+    expect(discardBar()).toBeNull();
+  });
+
+  it('asks on × and Escape once a name is typed; Keep editing keeps the answers and the focus', () => {
+    const t = setup({}, { initialMode: 'application' });
+    const name = screen.getByLabelText('Your name');
+    name.focus();
+    fireEvent.change(name, { target: { value: 'Typed Name' } });
+
+    fireEvent.click(closeButton());
+    expect(t.onClose).not.toHaveBeenCalled();
+    const bar = discardBar();
+    expect(bar).toBeTruthy();
+    expect(bar.textContent).toContain('What you’ve typed will be lost.');
+    // The bar sits under the dialog's top row, where the × is.
+    expect(bar.previousElementSibling.className).toBe('dialog-top');
+    const keep = screen.getByRole('button', { name: 'Keep editing' });
+    expect(document.activeElement).toBe(keep);
+    expect(keep.getAttribute('aria-describedby')).toBe('aw-discard-title');
+
+    fireEvent.click(keep);
+    expect(discardBar()).toBeNull();
+    expect(screen.getByLabelText('Your name').value).toBe('Typed Name');
+    expect(document.activeElement).toBe(screen.getByLabelText('Your name'));
+
+    pressEscape();
+    expect(t.onClose).not.toHaveBeenCalled();
+    expect(discardBar()).toBeTruthy();
+    // A second Escape answers Keep editing, like the browser's Back would.
+    pressEscape();
+    expect(discardBar()).toBeNull();
+    expect(t.onClose).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(screen.getByLabelText('Your name'));
+
+    pressEscape();
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+    expect(t.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores a backdrop click while there are typed answers', () => {
+    const t = setup({}, { initialMode: 'application' });
+    fireEvent.change(screen.getByLabelText('Federal EIN'), { target: { value: '12-3456789' } });
+    fireEvent.click(document.querySelector('.overlay'));
+    expect(t.onClose).not.toHaveBeenCalled();
+    expect(discardBar()).toBeNull();
+    expect(screen.getByLabelText('Federal EIN').value).toBe('12-3456789');
+  });
+
+  it('keeps guarding the answers on the checklist and the sign-in screen', () => {
+    const t = setup({}, { initialMode: 'application' });
+    fireEvent.change(screen.getByLabelText('Business name'), { target: { value: 'Typed Store' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the checklist' }));
+    fireEvent.click(closeButton());
+    expect(discardBar()).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Already approved? Sign in' }));
+    pressEscape();
+    expect(discardBar()).toBeTruthy();
+    expect(t.onClose).not.toHaveBeenCalled();
+  });
+
+  it('closes without asking once the application is sent', async () => {
+    const signUp = vi.fn(async () => ({ session: null }));
+    const t = setup({ signUp }, { initialMode: 'application' });
+    fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'New Buyer' } });
+    await act(async () => { fireEvent.submit(screen.getByLabelText('Your name').closest('form')); });
+    expect(screen.getByRole('heading', { name: 'Check your inbox' })).toBeTruthy();
+    fireEvent.click(closeButton());
+    expect(discardBar()).toBeNull();
+    expect(t.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes without asking after a sign-in here: that account is the one in use', async () => {
+    const t = setup({}, { initialMode: 'application' });
+    fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Typed' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Already approved? Sign in' }));
+    await signInWith();
+    t.update({ session: SESSION, profileReady: true, profile: { id: 'u1', status: 'pending', email: 'buyer@example.test' } });
+    expect(screen.getByRole('heading', { name: 'Your account is pending approval' })).toBeTruthy();
+    fireEvent.click(closeButton());
+    expect(discardBar()).toBeNull();
+    expect(t.onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+// AW-016: the confirmation email can be sent again from 'Check your inbox'
+// and from 'Confirm your email first', once a minute.
+describe('AuthModal resends the confirmation email (AW-016)', () => {
+  const sendApplication = async (overrides = {}) => {
+    const t = setup({ signUp: vi.fn(async () => ({ session: null })), ...overrides }, { initialMode: 'application' });
+    fireEvent.change(screen.getByLabelText('Business email'), { target: { value: 'new@example.test' } });
+    await act(async () => { fireEvent.submit(screen.getByLabelText('Business email').closest('form')); });
+    expect(screen.getByRole('heading', { name: 'Check your inbox' })).toBeTruthy();
+    return t;
+  };
+  const status = () => screen.getAllByRole('status').find((el) => el.closest('[role="dialog"]'));
+
+  it('sends again from the inbox step, then waits a minute', async () => {
+    vi.useFakeTimers();
+    const t = await sendApplication();
+    const resend = screen.getByRole('button', { name: 'Resend confirmation email' });
+    expect(status().textContent).toBe('');
+    resend.focus(); // a click focuses the button in the browser, not in jsdom
+    await act(async () => { fireEvent.click(resend); });
+    expect(t.value.resendConfirmation).toHaveBeenCalledWith('new@example.test');
+    expect(resend.disabled).toBe(true);
+    expect(status().textContent).toBe('Sent again to new@example.test. It can take a few minutes; check your spam folder too. You can ask for another in a minute.');
+    // Focus left the disabled button for the dialog's heading, not <body>.
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Check your inbox' }));
+    act(() => { vi.advanceTimersByTime(RESEND_COOLDOWN_MS - 1); });
+    expect(resend.disabled).toBe(true);
+    act(() => { vi.advanceTimersByTime(1); });
+    expect(resend.disabled).toBe(false);
+    expect(status().textContent).toBe('');
+  });
+
+  it('says to wait a minute when Supabase refuses another email so soon', async () => {
+    const limited = Object.assign(new Error('For security purposes, you can only request this after 41 seconds.'), { code: 'over_email_send_rate_limit', status: 429 });
+    await sendApplication({ resendConfirmation: vi.fn(async () => { throw limited; }) });
+    const resend = screen.getByRole('button', { name: 'Resend confirmation email' });
+    resend.focus();
+    await act(async () => { fireEvent.click(resend); });
+    expect(screen.getByRole('alert').textContent).toBe(RESEND_RATE_LIMITED);
+    expect(screen.queryByText(/For security purposes/)).toBeNull();
+    // Nothing went, so the button can be used again at once, and has focus.
+    expect(resend.disabled).toBe(false);
+    expect(document.activeElement).toBe(resend);
+  });
+
+  it('brings back “Send a new confirmation link” after the minute, for an unconfirmed sign-in', async () => {
+    vi.useFakeTimers();
+    const t = setup({ signIn: vi.fn(async () => { throw Object.assign(new Error('Email not confirmed'), { code: 'email_not_confirmed' }); }) });
+    await signInWith();
+    screen.getByRole('button', { name: /Send a new confirmation link/ }).focus();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Send a new confirmation link/ })); });
+    expect(t.value.resendConfirmation).toHaveBeenCalledWith('buyer@example.test');
+    expect(screen.queryByRole('button', { name: /Send a new confirmation link/ })).toBeNull();
+    expect(status().textContent).toMatch(/^Sent again to buyer@example.test\./);
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Confirm your email first' }));
+    act(() => { vi.advanceTimersByTime(RESEND_COOLDOWN_MS); });
+    expect(screen.getByRole('button', { name: /Send a new confirmation link/ })).toBeTruthy();
+    expect(status().textContent).toBe('');
+  });
+
+  it('cannot send while the account service is not set up', async () => {
+    const t = await sendApplication();
+    expect(screen.getByRole('button', { name: 'Resend confirmation email' }).disabled).toBe(false);
+    t.update({ isBackendConfigured: false });
+    expect(screen.getByRole('button', { name: 'Resend confirmation email' }).disabled).toBe(true);
+  });
+});
+

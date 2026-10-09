@@ -331,14 +331,18 @@ h2 { font-size: var(--h2); margin-bottom: 0; }
 .button:disabled { opacity: var(--disabled-opacity); cursor: not-allowed; }
 /* Round icon-only button: dialog, menu and search closes, removing a cart line. */
 .icon-btn { display: inline-grid; place-items: center; flex-shrink: 0; width: var(--tap-sm); height: var(--tap-sm); padding: 0; border: 1px solid var(--line); border-radius: 50%; background: #fff; color: var(--purple); font-size: 1.25rem; }
-/* Quantity stepper (cards, product page, cart): − value +. */
+/* Quantity stepper (cards, product page, cart): − typed quantity +
+   (QuantityInput, AW-013). */
 /* It never overflows a narrow card or cart line at a large text size (AW-162):
-   the buttons give way first, the count keeps room for its digits. The
-   count's width (not only its flex basis) sizes the stepper, so the buttons
-   keep their full 40px, or 44px on touch, wherever there is room (AW-302). */
+   the buttons give way first. The box is a field (the field rules below draw
+   it) wide enough for 100000; layout only here. Its width is a percentage
+   capped at that size, because a fixed width also counts towards the
+   narrowest the page around it can be: at 200% text on a 320px phone the
+   product page then scrolled sideways (AW-162). Where there is room the
+   buttons keep their full 40px, or 44px on touch (AW-302). */
 .stepper { display: inline-flex; align-items: center; flex-shrink: 0; max-width: 100%; border: 1px solid var(--line); background: #fff; }
 .stepper button { display: grid; place-items: center; flex: 0 1 auto; min-width: 0; width: var(--tap-sm); height: var(--tap-sm); padding: 0; border: 0; background: #fff; color: var(--purple); font-size: 1.25rem; }
-.stepper b { flex: 0 1 2.5rem; width: 2.5rem; min-width: 1.5em; text-align: center; font-size: var(--text-sm); color: var(--purple); }
+.stepper input { width: 100%; max-width: calc(6ch + 1.5rem + 2px); min-width: 0; flex: 0 1 auto; text-align: center; }
 .icon-btn:disabled, .stepper button:disabled { opacity: var(--disabled-opacity); cursor: not-allowed; }
 @media (hover: hover) {
   .button:not(:disabled):hover { background: var(--orange-dark); border-color: var(--orange-dark); }
@@ -703,14 +707,16 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .quick-reorder { border: 1px solid var(--line); background: var(--paper); padding: 20px 22px 22px; }
 .qr-help { margin: 0 0 6px; font-size: var(--text-sm); line-height: 1.7; color: var(--muted); max-width: 640px; }
 .qr-help code { font: 600 var(--text-xs)/1 var(--body); color: var(--purple); background: #fff; border: 1px solid var(--line); padding: 3px 6px; }
-.qr-row { display: grid; grid-template-columns: minmax(0, 1.2fr) 84px minmax(0, 1.6fr) auto; gap: 8px 16px; align-items: end; padding: 14px 0; border-bottom: 1px solid var(--line); }
+/* The quantity column fits 100000 beside the number box's spin buttons (AW-100). */
+.qr-row { display: grid; grid-template-columns: minmax(0, 1.2fr) 6.5rem minmax(0, 1.6fr) auto; gap: 8px 16px; align-items: end; padding: 14px 0; border-bottom: 1px solid var(--line); }
 .qr-rows .qr-row:last-child { border-bottom: 0; }
 .qr-field span, .qr-choice span { display: block; margin-bottom: 6px; }
 .qr-field input, .qr-choice select { width: 100%; }
 .qr-field input { text-transform: uppercase; }
 .qr-field input::placeholder { text-transform: none; }
 /* As tall as the fields beside it, so a one-line match sits level with them. */
-.qr-status { min-height: var(--field-h); display: flex; align-items: center; }
+/* The match and, below it, a quantity problem (AW-100), centred on the row. */
+.qr-status { min-height: var(--field-h); display: flex; flex-direction: column; justify-content: center; }
 .qr-status > * { width: 100%; }
 .qr-match, .qr-problem { margin: 0; font-size: var(--text-sm); line-height: 1.4; }
 .qr-match b { display: block; color: var(--purple); }
@@ -1057,20 +1063,22 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
    (--field-font), so iOS Safari does not zoom into a focused field. The rules
    sit inside :where(), at zero specificity, so each control's own rule (its
    width, the SKU's capitals) still applies. Checkboxes and radios keep theirs.
-   Placeholders are muted at full opacity from the reset. */
-:where(:is(.form-grid :is(input, select, textarea), .filter-search input, .category-sort select, .eligibility-form :is(input, select), .qr-field input, .qr-choice select, .order-head select, .order-edit-line input, .aw-table :is(input, select), .doc-file, .admin-toolbar :is(input, select)):not([type=checkbox]):not([type=radio])) {
+   Placeholders are muted at full opacity from the reset. The quantity box in
+   every stepper (AW-013) and a cart line's variant select (AW-011) are
+   fields too; the stepper's box is compact-height like the admin's. */
+:where(:is(.form-grid :is(input, select, textarea), .filter-search input, .category-sort select, .eligibility-form :is(input, select), .qr-field input, .qr-choice select, .order-head select, .order-edit-line input, .aw-table :is(input, select), .doc-file, .stepper input, .drawer-line select, .admin-toolbar :is(input, select)):not([type=checkbox]):not([type=radio])) {
   min-height: var(--field-h); padding: 0 .75rem; border: 1px solid var(--field-border); border-radius: var(--field-radius);
   background-color: var(--field-bg); color: var(--ink); font-size: var(--field-font); font-weight: 400; letter-spacing: 0; text-transform: none;
 }
-:where(:is(.aw-table :is(input, select), .order-head select):not([type=checkbox]):not([type=radio])) { min-height: var(--field-h-compact); }
+:where(:is(.aw-table :is(input, select), .order-head select, .stepper input):not([type=checkbox]):not([type=radio])) { min-height: var(--field-h-compact); }
 /* The border turns purple under the global focus ring. */
-:where(:is(.form-grid :is(input, select, textarea), .filter-search input, .category-sort select, .eligibility-form :is(input, select), .qr-field input, .qr-choice select, .order-head select, .order-edit-line input, .aw-table :is(input, select), .doc-file, .admin-toolbar :is(input, select)):focus) { border-color: var(--purple); }
+:where(:is(.form-grid :is(input, select, textarea), .filter-search input, .category-sort select, .eligibility-form :is(input, select), .qr-field input, .qr-choice select, .order-head select, .order-edit-line input, .aw-table :is(input, select), .doc-file, .stepper input, .drawer-line select, .admin-toolbar :is(input, select)):focus) { border-color: var(--purple); }
 /* Selects draw the same box in every engine (AW-309): no native menulist, which
    in WebKit dropped the padding and rounded the corners, and the site's
    chevron instead (a file, not a data: URI, so the CSP needs no data: images).
    The colour stays in background-color. Forced colours get the native arrow
    back, which brings its own room, so the chevron's padding goes. */
-:where(.form-grid select, .category-sort select, .eligibility-form select, .qr-choice select, .order-head select, .aw-table select, .admin-toolbar select) {
+:where(.form-grid select, .category-sort select, .eligibility-form select, .qr-choice select, .order-head select, .aw-table select, .drawer-line select, .admin-toolbar select) {
   -webkit-appearance: none; appearance: none; padding-right: 2.25rem;
   background-image: url('./assets/icons/chevron-down.svg'); background-repeat: no-repeat; background-position: right .75rem center; background-size: .75rem .5rem;
 }
@@ -1125,6 +1133,9 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
 .drawer-line .info b { display: block; font-size: var(--text-sm); color: var(--ink); line-height: 1.4; }
 .drawer-line .info small { display: block; font-size: var(--text-sm); color: var(--muted); margin-top: 2px; }
 .drawer-line .qty, .drawer-line .choose { grid-area: qty; justify-self: start; }
+/* A bare line's variant select and its Set button (AW-011). */
+.variant-choose { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; max-width: 100%; min-width: 0; }
+.drawer-line select { min-width: 0; max-width: 100%; }
 .drawer-remove { grid-area: remove; }
 .drawer-total { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; font-size: var(--text-base); font-weight: 700; color: var(--purple); margin-bottom: 12px; }
 .drawer-total-note { flex: 1 1 auto; text-align: right; font-size: var(--text-sm); font-weight: 600; color: var(--muted); }
@@ -1261,7 +1272,7 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .card-actions > :first-child { flex-basis: auto; }
   .card-add { width: 100%; }
   .card-stepper { width: 100%; justify-content: space-between; }
-  .card-stepper b { flex: 1; }
+  .card-stepper input { flex: 1 1 auto; }
   .editorials { grid-template-columns: 1fr; gap: 16px; }
   .editorial-card { padding: 24px; }
   .footer-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
@@ -1303,7 +1314,9 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
 .info-card { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 26px; background: var(--paper); border: 1px solid var(--line); }
 .info-card .eyebrow { color: var(--orange-dark); margin: 0; }
 .info-card h2 { font-size: var(--h3); margin: 0; }
-.info-card > p:not([class]) { color: var(--muted); font-size: var(--text-base); line-height: 1.7; margin: 0; }
+/* The will-call card's hours never wrap mid-range (AW-275); at a very large
+   text size they may still break rather than widen the card past the screen. */
+.info-card > p:not([class]) { color: var(--muted); font-size: var(--text-base); line-height: 1.7; margin: 0; overflow-wrap: anywhere; }
 .info-card .button, .info-card .text-link { margin-top: auto; }
 .info-lead { font: 700 var(--h2-sm)/1 var(--display); letter-spacing: -.0375rem; color: var(--purple); text-decoration: none; word-break: break-word; }
 /* Only the phone and email are links; the address is text. */
@@ -1390,6 +1403,18 @@ address.info-lead-small { font-style: normal; }
 .field-hint { display: block; margin-top: 5px; font-size: var(--text-xs); line-height: 1.5; color: var(--muted); }
 .form-error:empty { margin: 0; }
 .dialog h2:focus { outline: none; }
+/* Sign-up dialog (AW-016, AW-018). Layout, plus the faded Resend while it
+   waits: .notice draws the discard bar (the foundation lane's .callout can
+   absorb it), .text-link and .checklist-note the resend row. */
+.dialog .discard-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 0 0 16px; }
+.discard-confirm p { flex: 1 1 16em; margin: 0; }
+.discard-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.dialog .resend { margin-top: 14px; }
+/* Resend waits a minute between sends: show that it can't be used yet. */
+.resend .text-link:disabled { opacity: var(--disabled-opacity); cursor: not-allowed; }
+@media (pointer: coarse) {
+  .discard-actions .button, .resend .text-link { min-height: var(--tap); }
+}
 
 /* application page */
 .apply-layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px 40px; margin-top: 22px; align-items: start; }
@@ -1571,3 +1596,63 @@ ul.sub-pills { list-style: none; padding: 0; }
 .quote-account-links .text-link { min-height: var(--tap); }
 .quote-paused { margin: 16px 0 0; }
 .drawer-paused { margin: 4px 0 0; }
+
+/* ============================ toast (AW-072) ============================
+   The cart toast (src/components/Toast.jsx), fixed at the bottom of the
+   window: above the page, the header (20), the mega menu (25) and the search
+   results (35); below the dialog layers (.aw-layer 60, whose scrim covers it)
+   and the age gate (100). The light edge keeps it apart from the purple
+   footer. Its motion stops in the prefers-reduced-motion block, and it is
+   not printed. Spoken through announce(), so no live region. */
+.toast-root { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; justify-content: center; padding: 0 0 max(16px, env(safe-area-inset-bottom)); pointer-events: none; }
+.toast { --focus-ring: var(--focus-on-dark); pointer-events: auto; display: flex; align-items: center; gap: 12px; width: min(28rem, 100% - 32px); padding: 10px 10px 10px 16px; background: var(--purple-deep); color: #fff; border: 1px solid var(--on-dark-line); border-radius: 2px; box-shadow: 0 12px 30px var(--shadow-popover); font-size: var(--text-base); line-height: 1.45; animation: toast-in .2s ease-out both; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.toast-text { flex: 1 1 auto; min-width: 0; margin: 0; font-weight: 600; }
+.toast .toast-action { flex: none; }
+.toast .button:focus-visible { outline-color: var(--focus-on-dark); }
+.toast .icon-btn { background: transparent; color: #fff; border-color: var(--on-dark-line); }
+@media (hover: hover) {
+  .toast .icon-btn:not(:disabled):hover { background: var(--on-dark-fill); }
+}
+/* 44px targets on touch screens. */
+@media (pointer: coarse) {
+  .toast .toast-action { min-height: var(--tap); }
+  .toast .icon-btn { width: var(--tap); height: var(--tap); }
+}
+/* The header's cart count bumps when it changes (AW-072): Header keys it by
+   the count, so each change starts the animation again. */
+.aw-cart-btn .aw-cart-count { animation: cart-bump .35s ease-out; }
+@keyframes cart-bump { 40% { transform: scale(1.3); } }
+
+/* ============================ receipt (AW-012, AW-022, AW-108) ============================
+   The confirmation after a quote or order is saved (src/pages/QuoteReceipt.jsx).
+   The heading block is centred by its class: '.page-head > p:not([class])'
+   alone left the eyebrow and the reference pinned to the left on wide
+   screens. The lines and details below read left to right in one column. */
+.receipt-head { text-align: center; }
+.receipt-head > p { margin-inline: auto; }
+.receipt-head > p:not([class]) { margin-bottom: 14px; }
+/* The phone or email moves to the next line whole, and breaks only when it
+   is wider than the line. */
+.receipt-head > p:not([class]) strong { display: inline-block; max-width: 100%; color: var(--purple); overflow-wrap: anywhere; }
+.receipt-from { display: none; }
+.receipt-ref { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px 8px; margin-block: 22px 10px; }
+.receipt-ref-label { flex: 0 0 100%; font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted); }
+.receipt-ref-number { min-width: 0; font: 700 var(--h3)/1.15 var(--display); color: var(--purple); overflow-wrap: anywhere; }
+.receipt-body { max-width: 40rem; margin: 32px auto 0; text-align: left; }
+.receipt-subhead { margin: 26px 0 8px; font: 700 var(--text-xs)/1.4 var(--body); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted); }
+.receipt-subhead:first-child { margin-top: 0; }
+.receipt-items { border: 1px solid var(--line); background: #fff; }
+.receipt-details { margin-top: 0; }
+.receipt-details > .receipt-wide { grid-column: 1 / -1; }
+.receipt-line { display: block; }
+.receipt-actions { margin-top: 28px; }
+
+@media print {
+  .toast-root { display: none; }
+  /* The receipt prints on its own (AW-022): the company line instead of the
+     site's header, notices, footer and dialogs, and no buttons. */
+  .receipt-from { display: block; margin-bottom: 18px; font-size: var(--text-sm); font-weight: 700; color: var(--purple); }
+  .receipt-actions, .receipt-copy { display: none; }
+  body:has(.receipt-head) :is(.trade-bar, .trade-only, .aw-header, .site-notices, .footer-main, #aw-toasts, #aw-layers) { display: none; }
+}

@@ -3,11 +3,20 @@
 // older cart that still need a variant (AW-354) and lines that can no longer
 // be ordered (AW-083). A suspended account sees that ordering is paused, with
 // the trade desk's phone and email, instead of the quote button (AW-201).
+//
+// Removing a line (AW-042) is read out, and focus moves to the next line's
+// quantity (else the line before), or to the drawer's heading when it was
+// the last one, never to <body>. Closing hands focus back to the control
+// that opened the drawer (ModalLayer); when that control has gone (the card
+// stepper of a product just removed here), the page's heading takes it.
 
+import { useEffect, useRef } from 'react';
 import { FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../data/content.js';
+import { announce } from '../lib/announce.js';
+import { LINE_CONTROL, focusLineSoon, keepFocusNear, neighbourKey } from '../lib/focus.js';
 import { formatMoney, formatMoneyShort } from '../lib/format.js';
 import { totalLabel } from '../lib/pricing.js';
-import { Link } from '../lib/router.js';
+import { Link, focusPageHeading } from '../lib/router.js';
 import { CallOrEmail } from './ContactLinks.jsx';
 import { ModalLayer } from './ModalLayer.jsx';
 import { CartLine } from './CartLine.jsx';
@@ -15,10 +24,27 @@ import { Icon } from './Icon.jsx';
 import { SavedLinesNotice, UnavailableNotice } from './CartNotices.jsx';
 
 export function CartDrawer({
-  open, onClose, items, total, addLine, decLine, removeLine, removeLines, legacy = [], onDismissLegacy,
+  open, onClose, items, total, setLine, chooseVariant, removeLine, removeLines, legacy = [], onDismissLegacy,
   profile, isApprovedBuyer, pricesStatus = 'ready', onLoginClick, isSuspended = false,
 }) {
+  const listRef = useRef(null);
+  const wasOpen = useRef(open);
+  useEffect(() => {
+    const closed = wasOpen.current && !open;
+    wasOpen.current = open;
+    if (closed && (!document.activeElement || document.activeElement === document.body)) focusPageHeading();
+  }, [open]);
   if (!open) return null;
+  // × on a line. The button goes with its line, so focus moves first (to the
+  // heading) when no line is left, or after the redraw to a neighbour.
+  const remove = (it, event) => {
+    const next = neighbourKey(items.map(x => x.lineKey), it.lineKey);
+    const dialog = event.currentTarget.closest('[role="dialog"]');
+    if (!next) keepFocusNear(dialog);
+    removeLine(it.lineKey);
+    announce(`Removed ${it.name}.`);
+    if (next) focusLineSoon(listRef.current, next, { selector: LINE_CONTROL, fallback: () => keepFocusNear(dialog) });
+  };
   const unavailable = items.filter(it => it.unavailable);
   // Guests are asked to sign in; signed-in buyers who are not approved yet are
   // told pricing is waiting on approval instead, and suspended ones that the
@@ -40,11 +66,11 @@ export function CartDrawer({
           <UnavailableNotice items={unavailable} onRemoveAll={removeLines} />
           {items.length === 0 && <p className="empty-note">Your cart is empty.<br />Browse the catalog and add items to build an order.</p>}
           {items.length > 0 && (
-            <ul className="drawer-lines" aria-label="Items in your order">
+            <ul className="drawer-lines" aria-label="Items in your order" ref={listRef}>
               {items.map(it => (
                 <CartLine key={it.lineKey} item={it} layout="drawer" showPrice={isApprovedBuyer} pricesStatus={pricesStatus}
-                          onInc={() => addLine(it.productId, it.variant)} onDec={() => decLine(it.lineKey)}
-                          onRemove={() => removeLine(it.lineKey)} onChoose={onClose} />
+                          onSetQty={(n) => setLine(it.lineKey, n)} onChooseVariant={chooseVariant}
+                          onRemove={(event) => remove(it, event)} onChoose={onClose} />
               ))}
             </ul>
           )}

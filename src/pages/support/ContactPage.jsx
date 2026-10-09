@@ -1,15 +1,27 @@
 // Contact & visit: click-to-call, email, warehouse address with directions,
-// hours, and will-call pickup. Facts come from COMPANY in data/content.js.
+// hours, and will-call pickup. Facts come from COMPANY and HOURS in
+// data/content.js.
 
-import { COMPANY } from '../../data/content.js';
+import { useEffect, useState } from 'react';
+import { COMPANY, HOURS, TIME_ZONE_LABEL, TIME_ZONE_NAME, hoursRange, openStatusNow } from '../../data/content.js';
 import { Link } from '../../lib/router.js';
 import { Icon } from '../../components/Icon.jsx';
 import { PageHead, DIRECTIONS_URL } from './SupportShell.jsx';
 
-const HOURS = [
-  { days: 'Monday – Friday', time: '7:00 AM – 6:00 PM' },
-  { days: 'Saturday – Sunday', time: '8:00 AM – 5:30 PM' },
-];
+// 'Open now · closes 6:00 PM CT' or 'Closed · opens 8:00 AM CT' (AW-275),
+// filled in after mount and kept current each minute. Until then the line
+// holds a no-break space, so the text arriving moves nothing below it.
+const OPEN_STATUS_REFRESH_MS = 60 * 1000;
+function OpenStatus() {
+  const [label, setLabel] = useState('');
+  useEffect(() => {
+    const update = () => setLabel(openStatusNow());
+    const first = window.setTimeout(update, 0);
+    const timer = window.setInterval(update, OPEN_STATUS_REFRESH_MS);
+    return () => { window.clearTimeout(first); window.clearInterval(timer); };
+  }, []);
+  return <p className="support-note">{label || '\u00A0'}</p>;
+}
 
 export function ContactPage({ onApplyClick }) {
   return (
@@ -45,9 +57,12 @@ export function ContactPage({ onApplyClick }) {
           <h2 id="hours-title">When we’re open</h2>
           <dl className="hours-list">
             {HOURS.map(row => (
-              <div key={row.days}><dt>{row.days}</dt><dd>{row.time}</dd></div>
+              <div key={row.days}><dt>{row.long}</dt><dd>{hoursRange(row)}</dd></div>
             ))}
           </dl>
+          <p className="support-note">{`All times are ${TIME_ZONE_NAME} (${TIME_ZONE_LABEL}).`}</p>
+          <OpenStatus />
+          {/* TODO(owner): The warehouse's holiday closure dates, to print here instead of the general note. (AW-275) */}
           <p className="support-note">Holiday hours can differ — call ahead if you are making a special trip.</p>
         </section>
 

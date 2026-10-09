@@ -10,16 +10,9 @@
 import { useId } from 'react';
 import { Link } from '../lib/router.js';
 import { announce } from '../lib/announce.js';
-
-// The notice's button is about to disappear: keep focus in the drawer (on
-// its heading) or on the page.
-function keepFocusNear(button) {
-  const dialog = button?.closest('[role="dialog"]');
-  const target = dialog ? (dialog.querySelector('h2') || dialog) : document.getElementById('main');
-  if (!target) return;
-  if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
-  target.focus({ preventScroll: true });
-}
+// A notice's button is about to disappear: keepFocusNear keeps focus in the
+// drawer (on its heading) or on the page.
+import { keepFocusNear } from '../lib/focus.js';
 
 // items: [{ productId, qty, name }]. onChoose runs when a Choose link is
 // followed (the drawer closes itself).

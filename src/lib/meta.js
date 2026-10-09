@@ -5,9 +5,9 @@
 // Only the route decides the metadata. The header search is a dropdown, not
 // a page, so what is typed there never reaches the title or history entries.
 
-import { COMPANY } from '../data/content.js';
+import { COMPANY, HOURS, ORDER_MINIMUM, hoursLine } from '../data/content.js';
 import { POLICY_TITLES, POLICY_INTROS } from '../pages/support/PolicyPage.jsx';
-import { brandLabel, catLabel } from './format.js';
+import { brandLabel, catLabel, formatMoney } from './format.js';
 import { NOINDEX_PAGES, pathFor, siteUrl } from './routes.js';
 
 export const SITE_URL = siteUrl(import.meta.env.VITE_SITE_URL);
@@ -110,7 +110,8 @@ function pageText(route, products, departments) {
       image: imageOf(p, p.name),
     };
   }
-  if (route.page === 'quote') return { title: `Checkout · ${site}`, description: `Review your items and submit a wholesale quote or order to ${site}. Minimum order $500.00.` };
+  // After a save, /quote shows the receipt (App sets route.received, AW-022).
+  if (route.page === 'quote') return { title: route.received ? `${route.received === 'order' ? 'Order' : 'Quote'} received · ${site}` : `Checkout · ${site}`, description: `Review your items and submit a wholesale quote or order to ${site}. Minimum order ${formatMoney(ORDER_MINIMUM)}.` };
   if (route.page === 'account') return { title: `My Account · ${site}`, description: `Your ${site} trade account: order history, reorders and quick entry by SKU.` };
   // route.unseen: orders placed since the admin last opened Orders (AW-111,
   // App's useAdminUnseen), as '(2) ' in front.
@@ -120,7 +121,8 @@ function pageText(route, products, departments) {
   }
   // Support pages (src/pages/support/).
   if (route.page === 'catalog') return { title: `All Products · Wholesale Catalog · ${site}`, description: clip(`Every department and product line ${site} stocks — ${products.length} wholesale SKUs for licensed retailers, from the Birmingham warehouse.`) };
-  if (route.page === 'contact') return { title: `Contact & Visit · ${site}`, description: clip(`Call ${COMPANY.phone}, email ${COMPANY.email}, or visit ${COMPANY.addressShort}. ${COMPANY.hoursLine1}, ${COMPANY.hoursLine2}.`) };
+  // Short enough that both hours lines fit whole (the email is on the page).
+  if (route.page === 'contact') return { title: `Contact & Visit · ${site}`, description: clip(`Call ${COMPANY.phone} or visit ${COMPANY.addressShort}. ${HOURS.map(r => hoursLine(r, { nowrap: false })).join(', ')}.`) };
   if (route.page === 'delivery') return { title: `Delivery & Service Area · ${site}`, description: 'Next-day delivery on our own trucks when your stop is on a route in Alabama, Mississippi or Georgia, plus will-call pickup at the Birmingham warehouse.' };
   if (POLICY_TITLES[route.page]) return { title: `${POLICY_TITLES[route.page]} · ${site}`, description: clip(POLICY_INTROS[route.page]) };
   if (route.page === 'apply') return { title: `Apply for a Trade Account · ${site}`, description: `What licensed retailers need to open a ${site} trade account: EIN, state retail tobacco license, resale certificate and store details.` };

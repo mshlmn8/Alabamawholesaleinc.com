@@ -3,12 +3,16 @@
 // variants by their axis (AW-233, AW-128). Products carry no prices; the
 // amounts are test values.
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { announce } from '../lib/announce.js';
+import { dismissToast, getToast } from '../lib/toast.js';
 import { ProductPage } from './ProductPage.jsx';
+
+vi.mock('../lib/announce.js', async (importOriginal) => ({ ...(await importOriginal()), announce: vi.fn() }));
 
 const P = [{ id: 1, sku: 'AW-SS', name: 'Swisher Sweets cigarillos', brand: 'Swisher Sweets', cat: 'TOBACCO', sub: 'Cigars & Cigarillos', variants: ['Diamond', 'Red'] }];
 const page = (props) => <ProductPage productId={1} products={P} cart={{}} addLine={vi.fn()} decLine={vi.fn()} profile={null} isApprovedBuyer={false} {...props} />;
-const qty = () => screen.getByRole('group', { name: 'Quantity to add' }).querySelector('b').textContent;
+const qty = () => screen.getByRole('group', { name: 'Quantity to add' }).querySelector('input').value;
 
 const pd = () => document.querySelector('.pd-price').textContent;
 const APPROVED = { id: 'a', status: 'approved' };
@@ -143,5 +147,96 @@ describe('ProductPage and a saved quantity', () => {
     render(page({}));
     expect(qty()).toBe('1');
     expect(screen.queryByText(/From your last visit/)).toBeNull();
+  });
+});
+
+describe('ProductPage quantity (AW-013) and a bare cart line (AW-011)', () => {
+  it('can’t go below 1, and takes a typed quantity', () => {
+    const addLine = vi.fn(() => ({ key: '1::red', qty: 48, capped: false }));
+    render(page({ addLine }));
+    const group = screen.getByRole('group', { name: 'Quantity to add' });
+    expect(group.className).toBe('stepper');
+    expect(screen.getByRole('button', { name: 'Decrease quantity' }).disabled).toBe(true);
+    const input = screen.getByRole('textbox', { name: 'Quantity of Swisher Sweets cigarillos to add' });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: '48' } });
+    fireEvent.blur(input);
+    expect(qty()).toBe('48');
+    expect(screen.getByRole('button', { name: 'Decrease quantity' }).disabled).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Red' }));
+    fireEvent.click(screen.getByRole('button', { name: /Add to quote/ }));
+    expect(addLine).toHaveBeenCalledWith(1, 'Red', 48);
+    expect(qty()).toBe('1');
+  });
+
+  it('doesn’t show a bare line’s quantity as already in the quote, only the chosen variant’s', () => {
+    const view = render(page({ cart: { 1: 12 } }));
+    expect(screen.queryByText(/Already in/)).toBeNull();
+    view.rerender(page({ cart: { 1: 12, '1::red': 3 } }));
+    expect(screen.queryByText(/Already in/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Red' }));
+    expect([...document.querySelectorAll('.in-cart-note')].map((n) => n.textContent)).toContain('Already in quote: 3 · Red');
+  });
+});
+
+// The add is confirmed by the toast, with the quantity and the variant, and
+// focus stays on the button (AW-072, AW-042).
+describe('ProductPage add feedback', () => {
+  afterEach(() => {
+    dismissToast();
+    vi.mocked(announce).mockClear();
+  });
+  const typeQty = (n) => {
+    const input = screen.getByRole('textbox', { name: 'Quantity of Swisher Sweets cigarillos to add' });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: String(n) } });
+    fireEvent.blur(input);
+  };
+
+  it('names the quantity, the product and its variant, spoken once, and keeps focus on the button', () => {
+    const addLine = vi.fn(() => ({ key: '1::red', qty: 3, capped: false }));
+    render(page({ addLine }));
+    fireEvent.click(screen.getByRole('button', { name: 'Red' }));
+    typeQty(3);
+    const add = screen.getByRole('button', { name: /Add to quote/ });
+    add.focus();
+    fireEvent.click(add);
+    expect(getToast()).toMatchObject({ text: 'Added 3 × Swisher Sweets cigarillos — Red to your quote.', action: { id: 'open-cart', label: 'View quote' } });
+    expect(vi.mocked(announce).mock.calls).toEqual([['Added 3 × Swisher Sweets cigarillos — Red to your quote.']]);
+    expect(document.activeElement).toBe(add);
+  });
+
+  it('says "order" to an approved buyer, and leaves out a variant the product doesn’t have', () => {
+    const addLine = vi.fn(() => ({ key: '1', qty: 1, capped: false }));
+    render(page({ addLine, profile: APPROVED, isApprovedBuyer: true, products: [{ ...P[0], variants: [] }] }));
+    fireEvent.click(screen.getByRole('button', { name: /Add to order/ }));
+    expect(getToast()).toMatchObject({ text: 'Added 1 × Swisher Sweets cigarillos to your order.', action: { label: 'View order' } });
+  });
+
+  it('says what fits when the line reaches the 100,000 limit (AW-013)', () => {
+    const addLine = vi.fn(() => ({ key: '1::red', qty: 100000, capped: true }));
+    const view = render(page({ addLine, cart: { '1::red': 99990 } }));
+    fireEvent.click(screen.getByRole('button', { name: 'Red' }));
+    typeQty(48);
+    fireEvent.click(screen.getByRole('button', { name: /Add to quote/ }));
+    expect(getToast().text).toBe('Added 10 × Swisher Sweets cigarillos — Red to your quote. The most per line is 100,000.');
+    view.rerender(page({ addLine, cart: { '1::red': 100000 } }));
+    fireEvent.click(screen.getByRole('button', { name: /Add to quote/ }));
+    expect(getToast().text).toBe('Your quote already has 100,000 × Swisher Sweets cigarillos — Red. The most per line is 100,000.');
+    expect(announce).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows nothing when nothing could be added', () => {
+    render(page({ addLine: vi.fn(() => null), products: [{ ...P[0], variants: [] }] }));
+    fireEvent.click(screen.getByRole('button', { name: /Add to quote/ }));
+    expect(getToast()).toBeNull();
+  });
+
+  it('keeps the "Already in" note plain text, not a live region', () => {
+    render(page({ cart: { '1::red': 3 } }));
+    fireEvent.click(screen.getByRole('button', { name: 'Red' }));
+    const note = [...document.querySelectorAll('.in-cart-note')].find((n) => /Already in/.test(n.textContent));
+    expect(note.getAttribute('aria-live')).toBeNull();
+    expect(note.getAttribute('role')).toBeNull();
   });
 });

@@ -458,9 +458,10 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
     // A link inside a sentence and the collection cards' link stay inline.
     expect(own('p > .text-link')).toEqual({ 'min-height': '0', 'min-width': '0' });
     expect(own('.editorial-card .text-link')).toMatchObject({ 'min-height': '0' });
-    // The stepper's count has a width, so the stepper is as wide as its
-    // buttons need and they keep their size wherever there is room.
-    expect(own('.stepper b')).toMatchObject({ flex: '0 1 2.5rem', width: '2.5rem', 'min-width': '1.5em' });
+    // The stepper's quantity box (AW-013) has a capped width, so the stepper
+    // is as wide as its buttons need and they keep their size wherever there
+    // is room; the percentage lets it give way first in a narrow line.
+    expect(own('.stepper input')).toMatchObject({ width: '100%', 'max-width': 'calc(6ch + 1.5rem + 2px)', 'min-width': '0' });
   });
 });
 
@@ -540,8 +541,11 @@ describe('one field system (AW-146, AW-172, AW-147, AW-309)', () => {
   // With the fields PR #12, PR #13 and lane p2 added: the delivery ZIP check
   // (.eligibility-form input) and the admin quote editor (.order-edit-line).
   // The admin verification note is an .aw-table input.
+  // The commerce lane added the stepper's quantity box (AW-013) and a cart
+  // line's variant select (AW-011).
   const FIELD_CONTROLS = ['.form-grid :is(input, select, textarea)', '.filter-search input', '.category-sort select', '.eligibility-form :is(input, select)',
     '.qr-field input', '.qr-choice select', '.order-head select', '.order-edit-line input', '.aw-table :is(input, select)', '.doc-file',
+    '.stepper input', '.drawer-line select',
     // The admin lists' filter rows (AW-115).
     '.admin-toolbar :is(input, select)'];
   const EXCLUDE = ':not([type=checkbox]):not([type=radio])';
@@ -589,7 +593,7 @@ describe('one field system (AW-146, AW-172, AW-147, AW-309)', () => {
     });
     // background-color, not the shorthand, so the select chevron survives.
     expect(declarations(base.body)).not.toHaveProperty('background');
-    const compact = all.find(({ selectors }) => innerList(selectors[0], EXCLUDE)?.join() === '.aw-table :is(input, select),.order-head select');
+    const compact = all.find(({ selectors }) => innerList(selectors[0], EXCLUDE)?.join() === '.aw-table :is(input, select),.order-head select,.stepper input');
     expect(declarations(compact.body)).toEqual({ 'min-height': 'var(--field-h-compact)' });
     const focus = all.find(({ selectors }) => innerList(selectors[0], ':focus'));
     expect(innerList(focus.selectors[0], ':focus')).toEqual(FIELD_CONTROLS);
@@ -708,6 +712,13 @@ describe('the markup uses the design system (merged PR #12, PR #13 and lane p2 p
     const coarse = mediaBlocks(css).filter((b) => b.prelude === '(pointer: coarse)').flatMap((b) => rules(b.body));
     expect(declarations(coarse.find((r) => r.selectors.join() === '.button.xs').body)).toEqual({ 'min-height': 'var(--tap)' });
     expect(declarations(coarse.find((r) => r.selectors.join() === '.stepper button').body)).toEqual({ width: 'var(--tap)', height: 'var(--tap)' });
+  });
+
+  it('sizes the stepper’s quantity box as a capped percentage, so it never widens the page at a large text size (AW-162, AW-013)', () => {
+    // A fixed width counts towards the page's narrowest layout; a percentage
+    // width on a form control does not.
+    const box = declarations(rules(css).find((r) => r.selectors.join() === '.stepper input').body);
+    expect(box).toMatchObject({ width: '100%', 'max-width': 'calc(6ch + 1.5rem + 2px)', 'min-width': '0' });
   });
 
   it('keeps a wide admin table from widening the page: its .sr-only labels stay inside the scroller', () => {
@@ -922,7 +933,10 @@ describe('no inline styles (AW-301)', () => {
     expect(ruleFor('.is-centered .dialog-actions')).toEqual({ 'justify-content': 'center' });
     expect(code(read('src/App.jsx'))).toMatch(/<div className="app-shell">/);
     expect(code(read('src/pages/ProductPage.jsx'))).toMatch(/className="page-head is-flush"/);
-    expect(code(read('src/pages/QuotePage.jsx')).match(/className="page-head is-centered"/g)).toHaveLength(2);
+    // The empty cart; the thank-you is the receipt (AW-022), centred by its own class.
+    expect(code(read('src/pages/QuotePage.jsx')).match(/className="page-head is-centered"/g)).toHaveLength(1);
+    expect(code(read('src/pages/QuoteReceipt.jsx'))).toMatch(/<section className="page-head receipt-head">/);
+    expect(ruleFor('.receipt-head')).toEqual({ 'text-align': 'center' });
   });
 
   it('lets the phone page-head padding win over the centred message', () => {

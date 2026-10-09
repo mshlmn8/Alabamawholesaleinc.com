@@ -209,7 +209,14 @@ and the browser history. Only a password-recovery link opens the
 new-password page. An expired or already used link shows a notice with
 Sign in and Reset password, and never the text Supabase put in the link.
 A buyer whose sign-up confirmation expired can ask for a new one from the
-sign-in dialog (`auth.resend`).
+sign-in dialog (`auth.resend`), and an applicant can send it again from the
+dialog's "Check your inbox" step (AW-016). Either button then waits a
+minute (`RESEND_COOLDOWN_MS` in `src/components/AuthModal.jsx`, matching
+Supabase's default minimum interval between emails to one address); when
+Supabase still refuses (`over_email_send_rate_limit` / HTTP 429) the dialog
+says to wait a minute instead of showing Supabase's text. After a
+confirmation link, an account under review gets a notice that leads to its
+status and documents on `/apply`.
 
 ### Production email (owner set-up, AW-051)
 

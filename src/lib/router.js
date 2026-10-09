@@ -453,6 +453,12 @@ export function focusPageHeading() {
   focusWithoutScroll(document.querySelector('main h1') || document.querySelector('main'));
 }
 
+// Jumps to the top of the page at once, as a page change does (AW-037), for
+// a view that replaces the page without a navigation (the quote receipt).
+export function scrollToTop() {
+  if (hasWindow) scrollToPosition(0, 0);
+}
+
 // Runs the page-change behaviour for every navigation. App calls it once,
 // after the effect that writes the page title.
 export function useNavigationEffects() {

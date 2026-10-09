@@ -138,6 +138,64 @@ describe('useCart', () => {
     expect(result.current.count).toBe(0);
   });
 
+  it('adds, steps and sets whole quantities from 1 to 100,000, and says when an add was capped (AW-013)', () => {
+    const { result } = renderHook(() => useTestCart({ owner: GUEST }));
+    let added;
+    act(() => { added = result.current.addLine(14, null, 48); });
+    expect(added).toEqual({ key: '14', qty: 48, capped: false });
+    act(() => { added = result.current.addLine(14, null, 150000); });
+    expect(added).toEqual({ key: '14', qty: 100000, capped: true });
+    // Nothing to add: a multi-variant product without its variant, or a quantity that isn't whole.
+    act(() => { added = result.current.addLine(1, null, 2); });
+    expect(added).toBeNull();
+    act(() => { added = result.current.addLine(20, 'Only', 2.5); });
+    expect(added).toBeNull();
+    act(() => result.current.decLine('14', 99952));
+    expect(result.current.cart).toEqual({ 14: 48 });
+    act(() => result.current.decLine('14'));
+    expect(result.current.cart).toEqual({ 14: 47 });
+    act(() => result.current.setLine('14', 12));
+    expect(result.current.cart).toEqual({ 14: 12 });
+    act(() => result.current.setLine('14', 0));
+    expect(result.current.cart).toEqual({ 14: 12 });
+    act(() => result.current.setLine('14', 1e9));
+    expect(stored(cartKey(GUEST))).toEqual({ 14: 100000 });
+    act(() => result.current.decLine('14', 100000));
+    expect(result.current.count).toBe(0);
+  });
+
+  it('uses up only what an add actually added of an old cart’s saved quantity (AW-354, AW-013)', () => {
+    store(cartKey(GUEST), { '1::red': 99999 });
+    store(legacyListKey(GUEST), [{ productId: 1, qty: 5 }]);
+    const { result } = renderHook(() => useTestCart({ owner: GUEST }));
+    let added;
+    act(() => { added = result.current.addLine(1, 'Red', 5); });
+    expect(added).toEqual({ key: '1::red', qty: 100000, capped: true });
+    expect(result.current.legacy.map((l) => l.qty)).toEqual([4]);
+  });
+
+  it('moves a bare line to the chosen variant, quantity and all (AW-011)', () => {
+    store(cartKey(GUEST), { 1: 12, 14: 2 });
+    const { result } = renderHook(() => useTestCart({ owner: GUEST }));
+    expect(result.current.items[0]).toMatchObject({
+      lineKey: '1', needsVariant: true, qty: 12,
+      variants: [{ label: 'Diamond', available: true }, { label: 'Red', available: true }],
+    });
+    let moved;
+    act(() => { moved = result.current.chooseVariant('1', 'Red'); });
+    expect(moved).toEqual({ key: '1::red', qty: 12 });
+    expect(stored(cartKey(GUEST))).toEqual({ 14: 2, '1::red': 12 });
+    expect(result.current.count).toBe(14);
+    // Onto a variant already in the cart: the quantities add up.
+    store(cartKey(GUEST), { 1: 3, '1::red': 12 });
+    act(() => { moved = result.current.chooseVariant('1', 'Red'); });
+    expect(moved).toEqual({ key: '1::red', qty: 15 });
+    // Not a variant of the product, or one marked not available: nothing moves.
+    act(() => { moved = result.current.chooseVariant('1::red', 'Purple'); });
+    expect(moved).toBeNull();
+    expect(stored(cartKey(GUEST))).toEqual({ '1::red': 15 });
+  });
+
   it('prices the stored cart against a catalog and prices loaded again (AW-191)', () => {
     const { result } = renderHook(() => useTestCart({ owner: GUEST, priceOf: PRICE_OF }));
     act(() => result.current.addLine(14, null, 2));

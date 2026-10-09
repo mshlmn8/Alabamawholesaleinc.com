@@ -15,3 +15,8 @@ export const unavailableMessage = (what) =>
 // failures, otherwise the error's own message, otherwise the fallback.
 export const describeError = (err, what, fallback) =>
   (isNetworkError(err) ? unavailableMessage(what) : (err?.message || fallback));
+
+// Supabase refuses to send another auth email this soon (AW-016): its
+// over_email_send_rate_limit error, or any HTTP 429. The caller says what to
+// do instead of showing Supabase's own text.
+export const isRateLimitError = (err) => err?.code === 'over_email_send_rate_limit' || err?.status === 429;

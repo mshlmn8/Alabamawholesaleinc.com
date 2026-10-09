@@ -8,18 +8,29 @@
 // profile that does not load gets a message with Try again and Sign out
 // instead of a silent close (AW-089). A sign-in finished in another tab
 // closes the password form here too (AW-335).
+//
+// The dialog owns its ModalLayer. Every way out (×, Escape, Back, the
+// backdrop, Done) goes through requestClose, which asks before a half-typed
+// application is thrown away (AW-018); the backdrop is ignored while there
+// are typed answers. The answers are not kept between openings on purpose:
+// an EIN and licence numbers held in memory or sessionStorage would show to
+// the next person on a shared store computer.
+//
+// 'Check your inbox' and 'Confirm your email first' can send the
+// confirmation email again, once a minute (AW-016).
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth.jsx';
 import { COMPANY, TERMS_VERSION } from '../data/content.js';
-import { describeError } from '../lib/errors.js';
-import { Link } from '../lib/router.js';
+import { describeError, isRateLimitError } from '../lib/errors.js';
+import { Link, restoreOverlayEntry } from '../lib/router.js';
 import { APPLICATION_CHECKLIST } from '../data/onboarding.js';
 import { DOCUMENT_TYPES, documentErrorMessage, uploadSelectedProof } from '../lib/documents.js';
 import { ServiceUnavailable } from './ServiceUnavailable.jsx';
 import { CallOrEmail } from './ContactLinks.jsx';
 import { DocumentUploads } from './DocumentUploads.jsx';
 import { Icon } from './Icon.jsx';
+import { ModalLayer } from './ModalLayer.jsx';
 
 const STATES = ['AL','GA','MS','TN','FL','LA','SC','NC','KY','Other'];
 const BUSINESS_TYPES = ['Convenience Store','Smoke Shop','Vape Shop','Liquor Store','Grocery / Bodega','Auto Parts','Hookah Lounge','Other'];
@@ -27,10 +38,17 @@ const VOLUMES = ['Under $5K','$5K — $15K','$15K — $50K','$50K — $100K','$1
 
 // How long "Signing you in…" waits for the account before saying so.
 export const CHECKING_TIMEOUT_MS = 10000;
+// How long Resend waits before it can send the confirmation email again
+// (AW-016). Supabase limits these emails too; see RESEND_RATE_LIMITED.
+export const RESEND_COOLDOWN_MS = 60000;
+export const RESEND_RATE_LIMITED = 'We just sent one. Wait a minute, then try again.';
 // Screens that ask a signed-out visitor for something. When a session appears
 // while one is open (a sign-in in another tab), the dialog moves on. The
 // application form and checklist are left alone, so typed answers stay.
 const SIGNED_OUT_MODES = ['signin', 'reset', 'reset-sent', 'unconfirmed'];
+// Screens after a sign-in here (or in another tab): that account is the one
+// in use, so typed application answers no longer need guarding.
+const SIGNED_IN_MODES = ['checking', 'status', 'profile-error'];
 
 const isUnconfirmedEmail = (err) => err?.code === 'email_not_confirmed' || /email not confirmed/i.test(err?.message || '');
 
@@ -75,7 +93,20 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
   const [proofErrors, setProofErrors] = useState({});
   const [proofWaiting, setProofWaiting] = useState(false);
   const [resent, setResent] = useState(false);
+  // A confirmation email sent again: to whom, and whether the minute before
+  // the next one is still running (AW-016).
+  const [resentTo, setResentTo] = useState('');
+  const [cooling, setCooling] = useState(false);
+  // The 'Discard your application?' bar (AW-018).
+  const [confirming, setConfirming] = useState(false);
   const titleRef = useRef(null);
+  const dialogRef = useRef(null);
+  const keepEditingRef = useRef(null);
+  const resendRef = useRef(null);
+  // Where focus was when the discard bar opened, for Keep editing.
+  const focusBeforeConfirm = useRef(null);
+  // A resend is running; see the focus effect below.
+  const resending = useRef(false);
   const onCloseRef = useRef(onClose);
   // Keep the latest onClose for the timers and effects below.
   useLayoutEffect(() => { onCloseRef.current = onClose; });
@@ -113,7 +144,62 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
     return () => window.clearTimeout(id);
   }, [mode]);
 
+  // Resend can be used again a minute after it sent (AW-016).
+  useEffect(() => {
+    if (!cooling) return undefined;
+    const id = window.setTimeout(() => setCooling(false), RESEND_COOLDOWN_MS);
+    return () => window.clearTimeout(id);
+  }, [cooling]);
+  // A Resend button disabled (or hidden) while it had focus drops focus to
+  // <body> (Chrome) or leaves it on a dead control. When the send has
+  // finished, focus goes back to it if it can be used again (it failed),
+  // else to the dialog's heading.
+  useEffect(() => {
+    if (!resending.current || submitting) return;
+    resending.current = false;
+    const active = document.activeElement;
+    if (active && active !== document.body && !active.disabled && dialogRef.current?.contains(active)) return;
+    const button = resendRef.current;
+    (button && !button.disabled ? button : titleRef.current)?.focus({ preventScroll: true });
+  }, [submitting, cooling]);
+
+  // Typed application answers (AW-018). Guarded in every mode, so they stay
+  // guarded after 'Back to the checklist' or 'Already approved? Sign in',
+  // until the application is sent or a sign-in here makes it moot.
+  const touched = Object.keys(EMPTY_SIGNUP).some((k) => signup[k] !== EMPTY_SIGNUP[k]) || Object.values(proof).some(Boolean);
+  const dirty = touched && !afterSignup && !SIGNED_IN_MODES.includes(mode);
+  if (confirming && !dirty) setConfirming(false);
+  // The bar's first button takes focus, which also scrolls the bar into view.
+  useEffect(() => {
+    if (confirming) keepEditingRef.current?.focus();
+  }, [confirming]);
+
   if (!open) return null;
+
+  const keepEditing = () => {
+    setConfirming(false);
+    const back = focusBeforeConfirm.current;
+    focusBeforeConfirm.current = null;
+    const target = back && back !== document.body && back.isConnected && dialogRef.current?.contains(back) ? back : titleRef.current;
+    // Scrolls the field back into view if the bar's focus scrolled it away.
+    target?.focus();
+  };
+  // ×, Escape, Back, Done: close, unless that would throw away typed
+  // answers. Then the bar asks first, and a second Escape or Back answers
+  // Keep editing. restoreOverlayEntry() puts back the history entry Back
+  // took, so the next Back still belongs to the dialog (AW-065).
+  const requestClose = () => {
+    if (confirming) {
+      keepEditing();
+      restoreOverlayEntry();
+    } else if (dirty) {
+      focusBeforeConfirm.current = document.activeElement;
+      setConfirming(true);
+      restoreOverlayEntry();
+    } else {
+      onClose();
+    }
+  };
 
   const setS = (k) => (e) => setSignin({ ...signin, [k]: e.target.value });
   const setU = (k) => (e) => setSignup({ ...signup, [k]: e.target.value });
@@ -131,11 +217,20 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
     finally { setSubmitting(false); }
   };
 
-  const handleResend = async () => {
+  // Sends the sign-up confirmation email to `email` again (AW-015, AW-016).
+  const handleResend = async (email) => {
+    resending.current = true;
     setSubmitting(true); setError(null);
-    try { await resendConfirmation(signin.email); setResent(true); }
-    catch (err) { setError(describeError(err, 'Email confirmation', 'We couldn’t send a new confirmation link')); }
-    finally { setSubmitting(false); }
+    try {
+      await resendConfirmation(email);
+      setResent(true);
+      setResentTo(email);
+      setCooling(true);
+    } catch (err) {
+      setError(isRateLimitError(err)
+        ? RESEND_RATE_LIMITED
+        : describeError(err, 'Email confirmation', 'We couldn’t send a new confirmation link'));
+    } finally { setSubmitting(false); }
   };
 
   const retryProfile = () => {
@@ -215,18 +310,32 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
     + `${applicantBusiness ? `We have the application for ${applicantBusiness}. ` : ''}`
     + `A trade rep is reviewing your license information and will contact you at ${profile?.email || signup.email} when your account is approved. Wholesale pricing and ordering unlock at that point.`;
   const unavailableWhat = { signin: 'Account sign-in', checking: 'Account sign-in', checklist: 'The online application', signup: 'The online application', reset: 'Password reset', unconfirmed: 'Email confirmation' }[mode];
+  // Said once a confirmation email has gone again, until Resend can be used again.
+  const resendStatus = cooling
+    ? `Sent again to ${resentTo}. It can take a few minutes; check your spam folder too. You can ask for another in a minute.`
+    : '';
 
-  return (
+  const dialog = (
     // Backdrop click is a mouse shortcut; Escape (ModalLayer) and the Close button are the keyboard paths.
-    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-    <div className="overlay" onClick={onClose}>
+    // With typed answers it does nothing: a stray click must not end the application (AW-018).
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events
+    <div className="overlay" onClick={dirty ? undefined : onClose}>
       {/* Keeps clicks inside the dialog from reaching the backdrop. */}
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
-      <div className="dialog scale-in" role="dialog" aria-modal="true" aria-labelledby="auth-title" onClick={(e) => e.stopPropagation()}>
+      <div className="dialog scale-in" role="dialog" aria-modal="true" aria-labelledby="auth-title" ref={dialogRef} onClick={(e) => e.stopPropagation()}>
         <div className="dialog-top">
           <p className="eyebrow">TRADE ACCOUNT</p>
-          <button className="icon-btn" type="button" onClick={onClose} aria-label="Close"><Icon name="close" /></button>
+          <button className="icon-btn" type="button" onClick={requestClose} aria-label="Close"><Icon name="close" /></button>
         </div>
+        {confirming && (
+          <div className="notice discard-confirm" role="group" aria-labelledby="aw-discard-title">
+            <p id="aw-discard-title">Discard your application? What you’ve typed will be lost.</p>
+            <div className="discard-actions">
+              <button ref={keepEditingRef} className="button ghost sm" type="button" aria-describedby="aw-discard-title" onClick={keepEditing}>Keep editing</button>
+              <button className="button sm" type="button" onClick={onClose}>Discard</button>
+            </div>
+          </div>
+        )}
         <p className="kicker">{kicker}</p>
         <h2 id="auth-title" ref={titleRef} tabIndex={-1}>{title}</h2>
 
@@ -240,7 +349,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
         {mode === 'profile-error' && <p className="desc">We signed you in but couldn’t load your account. <CallOrEmail before="Try again, or call" after=" and a trade rep will help you." /></p>}
         {mode === 'unconfirmed' && (
           <p className="desc">{resent
-            ? `We sent a new confirmation link to ${signin.email}. Open it on this device, then sign in. If it doesn’t arrive within a few minutes, check your spam folder.`
+            ? `We sent a new confirmation link to ${signin.email}. Open it on this device, then sign in.`
             : `${signin.email} isn’t confirmed yet. Open the confirmation link we emailed when you applied, or send a new one. Links work once and expire after a while.`}</p>
         )}
         {mode === 'reset' && <p className="desc">Enter the business email on your account and we’ll send a link to choose a new password.</p>}
@@ -274,7 +383,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
 
         {mode === 'checking' && (
           <div className="dialog-actions">
-            <button className="text-link" type="button" onClick={onClose}>Continue browsing</button>
+            <button className="text-link" type="button" onClick={requestClose}>Continue browsing</button>
           </div>
         )}
 
@@ -284,7 +393,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             {onSignOut && (
               <button className="text-link" type="button" onClick={onSignOut} disabled={signingOut}><span>{signingOut ? 'Signing out…' : 'Sign out'}</span></button>
             )}
-            <button className="text-link" type="button" onClick={onClose}>Continue browsing</button>
+            <button className="text-link" type="button" onClick={requestClose}>Continue browsing</button>
           </div>
         )}
 
@@ -292,13 +401,15 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
           <>
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
-              {!resent && (
-                <button className="button" type="button" onClick={handleResend} disabled={submitting || !isBackendConfigured} data-autofocus>
+              {/* Back once the minute after a send is over (AW-016). */}
+              {!cooling && (
+                <button ref={resendRef} className="button" type="button" onClick={() => handleResend(signin.email)} disabled={submitting || !isBackendConfigured} data-autofocus>
                   <span>{submitting ? 'Sending…' : 'Send a new confirmation link'}</span>
                 </button>
               )}
               <button className="text-link" type="button" onClick={() => switchMode('signin')}>Back to sign in</button>
             </div>
+            <p className="checklist-note" role="status">{resendStatus}</p>
           </>
         )}
 
@@ -406,9 +517,16 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             {proofWaiting && (
               <p className="checklist-note">Your files stay on this device until you are signed in. After you confirm your email, upload them from your application status, or send proof later to <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.</p>
             )}
-            {error && <p className="form-error" role="alert">{error}</p>}
+            {/* No email? Send it again, once a minute (AW-016). */}
+            <div className="resend">
+              <button ref={resendRef} className="text-link" type="button" onClick={() => handleResend(signup.email)} disabled={submitting || cooling || !isBackendConfigured}>
+                <span>{submitting ? 'Sending…' : 'Resend confirmation email'}</span>
+              </button>
+              <p className="checklist-note" role="status">{resendStatus}</p>
+            </div>
+            <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
-              <button className="button" type="button" onClick={onClose} data-autofocus>Done</button>
+              <button className="button" type="button" onClick={requestClose} data-autofocus>Done</button>
               <button className="text-link" type="button" onClick={() => switchMode('signin')}>Sign in</button>
             </div>
           </>
@@ -430,7 +548,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             <div className="dialog-actions">
               <Link className="button" to="/account" onClick={onClose} data-autofocus>View account status</Link>
               <Link className="text-link" to="/catalog" onClick={onClose}>Browse the catalog</Link>
-              <button className="text-link" type="button" onClick={onClose}>Close</button>
+              <button className="text-link" type="button" onClick={requestClose}>Close</button>
             </div>
           </>
         )}
@@ -452,7 +570,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
 
         {mode === 'reset-sent' && (
           <div className="dialog-actions">
-            <button className="button" type="button" onClick={onClose} data-autofocus>Done</button>
+            <button className="button" type="button" onClick={requestClose} data-autofocus>Done</button>
             <button className="text-link" type="button" onClick={() => switchMode('signin')}>Back to sign in</button>
           </div>
         )}
@@ -461,4 +579,5 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
       </div>
     </div>
   );
+  return <ModalLayer onClose={requestClose}>{dialog}</ModalLayer>;
 }

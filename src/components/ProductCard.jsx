@@ -14,9 +14,17 @@
 //
 // The add and choose controls are .button.ghost.sm and are described by the
 // card's title, so "Add to quote" says which product (AW-143). Cursor's
-// "Select options" label (AW-057) is kept for products with a choice.
+// "Select options" label (AW-057) is kept for products with a choice. Once
+// the product is in the cart the control is the shared QuantityInput
+// (AW-013): typed or stepped, with − removing the line from 1.
+//
+// Feedback (AW-042, AW-072): an add shows the toast ("Added … to your
+// quote", with "View quote"), which is also what is read out, once
+// (src/lib/toast.js). Focus moves to the stepper that replaces the button
+// (its + after a tap, so a phone's keyboard doesn't open), and back to the
+// add button when − at 1 removes the product, which is announced.
 
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import {
   isVariantAvailable, lineKey, parseLineKey, requiresVariantChoice, variantAxis, variantCount, variantList,
 } from '../lib/lines.js';
@@ -25,10 +33,11 @@ import { brandLabel } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { announce } from '../lib/announce.js';
+import { showToast } from '../lib/toast.js';
 import { ProductPhoto } from './ProductPhoto.jsx';
 import { NicotineWarning } from './NicotineWarning.jsx';
 import { showsNicotineWarning } from '../lib/regulated.js';
-import { Icon } from './Icon.jsx';
+import { QuantityInput } from './QuantityInput.jsx';
 
 const NO_PRICES = () => null;
 
@@ -71,11 +80,45 @@ export function ProductCard({ p, profile, isApprovedBuyer, priceOf = NO_PRICES, 
       ? variantPriceRange(variants.filter(v => isVariantAvailable(p, v)).map(v => priceOf(p.id, v)))
       : { unit: priceOf(p.id, onlyVariant), from: false };
   }
-  const add = ({ say = false } = {}) => {
-    addLine(p.id, onlyVariant);
+  const target = isApprovedBuyer ? 'order' : 'quote';
+  // Where focus goes once the control has changed: 'input' or 'plus' (the
+  // stepper), 'add' (the add button), or nothing.
+  const pendingFocus = useRef(null);
+  const stepperRef = useRef(null);
+  const addRef = useRef(null);
+  // How the add button was last pressed (a pointer type, or '' for a key).
+  const pressedWith = useRef('');
+  useEffect(() => {
+    const pending = pendingFocus.current;
+    if (!pending) return;
+    pendingFocus.current = null;
+    if (pending === 'add') addRef.current?.focus();
+    else if (pending === 'plus') stepperRef.current?.parentElement?.querySelector('button:last-of-type')?.focus();
+    else stepperRef.current?.focus();
+  }, [qty]);
+  const add = () => {
+    const tapped = pressedWith.current === 'touch' || pressedWith.current === 'pen';
+    pressedWith.current = '';
+    pendingFocus.current = tapped ? 'plus' : 'input';
+    const added = addLine(p.id, onlyVariant);
+    if (!added) {
+      pendingFocus.current = null;
+      return;
+    }
     setAdds(n => n + 1);
-    // The stepper's own count is a live region; the first add is announced here.
-    if (say) announce(`Added ${p.name} to your ${isApprovedBuyer ? 'order' : 'quote'}.`);
+    // Seen and heard once; the stepper announces its own steps.
+    showToast({ text: `Added ${p.name} to your ${target}.`, action: { id: 'open-cart', label: `View ${target}` } });
+  };
+  const remove = () => {
+    pendingFocus.current = 'add';
+    decLine(key, qty);
+    announce(`Removed ${p.name} from your ${target}.`);
+  };
+  // A typed or stepped quantity, as a change from the one in the cart, with
+  // the actions every page already passes (AW-013).
+  const setQty = (n) => {
+    if (n > qty) addLine(p.id, onlyVariant, n - qty);
+    else if (n < qty) decLine(key, qty - n);
   };
   const titleId = useId();
   return (
@@ -106,13 +149,11 @@ export function ProductCard({ p, profile, isApprovedBuyer, priceOf = NO_PRICES, 
         ) : soldOut ? (
           <button className="button ghost sm card-add" type="button" disabled aria-describedby={titleId}>Not available</button>
         ) : qty > 0 ? (
-          <span className="stepper card-stepper" role="group" aria-label={`${p.name} quantity`}>
-            <button type="button" onClick={() => decLine(key)} aria-label="Decrease quantity"><Icon name="minus" /></button>
-            <b aria-live="polite">{qty}</b>
-            <button type="button" onClick={() => add()} aria-label="Increase quantity"><Icon name="plus" /></button>
-          </span>
+          <QuantityInput ref={stepperRef} className="card-stepper" value={qty} onChange={setQty} onRemove={remove} removeLabel={`Remove ${p.name}`}
+                         label={`Quantity of ${p.name}`} groupLabel={`${p.name} quantity`} />
         ) : (
-          <button className="button ghost sm card-add" type="button" onClick={() => add({ say: true })} aria-describedby={titleId}>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</button>
+          <button ref={addRef} className="button ghost sm card-add" type="button" onClick={add} onPointerDown={(event) => { pressedWith.current = event.pointerType; }}
+                  aria-describedby={titleId}>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</button>
         )}
         <span className="added-note" aria-hidden="true">{adds ? 'Added' : ''}</span>
       </span>
