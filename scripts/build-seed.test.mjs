@@ -168,17 +168,36 @@ describe('product names (AW-071)', () => {
     expect([290, 291, 335, 336, 190, 132, 133].map((id) => byId(id).name)).toEqual([
       'Powerade (big)', 'Powerade (small)', 'Gatorade (small)', 'Gatorade (big)', 'Mamba (small)', 'Charcoal bags (small)', 'Charcoal bags (big)',
     ]);
-    expect([25, 350, 355, 58, 93, 286].map((id) => byId(id).name)).toEqual([
-      'Claritin allergy relief', "Uncle Al's cookies", 'Gold Band lubricants', 'Faygo bottles 20 oz', '6-pack beer carriers', 'AA Cellular Bluetooth headphones',
+    expect([25, 355, 58, 93, 286, 65].map((id) => byId(id).name)).toEqual([
+      'Claritin allergy relief', 'Gold Band lubricants', 'Faygo bottles 20 oz', '6-pack beer carriers', 'AA Cellular Bluetooth headphones', 'RAZ Vue full kit',
     ]);
+    // #350 keeps "Uncle Al's": "Uncle Al's cookies" is #351's name (NEW-023;
+    // whether they are one product is TODO(owner) AW-140).
+    expect([350, 351].map((id) => byId(id).name)).toEqual(["Uncle Al's", "Uncle Al's cookies"]);
     // Descriptions spell the product as its name does.
     expect(byId(9).description).toMatch(/^EZ Roll from/);
     expect(byId(274).description).toMatch(/^RAW Guarana wraps from/);
     expect(byId(310).description).toMatch(/^Geek Bar Mate from/);
     expect(byId(311).description).toMatch(/^Geek Bar Mate pods from/);
+    expect(byId(65).description).toMatch(/^RAZ Vue full kit from/);
+    // The brand as the row's brand and name spell it (AW-075).
+    expect([13, 183, 193, 213, 260].map((id) => byId(id).description.split(' from ')[0])).toEqual([
+      'Havana Leaf wraps', 'Extra Gum', 'Pure Eyes', 'Lil Leaf wraps', 'Backwoods True Wraps',
+    ]);
     // A cart key and a price-point product stay (TODO(owner) AW-071).
     expect(byId(252).variants).toEqual(['Aviator', 'Cheap']);
     expect(byId(40).name).toBe("Wrigley's 50¢ gum");
+  });
+
+  it('gives no two products the same name, so buyers can tell them apart (NEW-023)', () => {
+    const seen = new Map();
+    const same = [];
+    for (const p of CATALOG) {
+      const key = p.name.trim().toLowerCase();
+      if (seen.has(key)) same.push(`#${seen.get(key)} and #${p.id}: ${p.name}`);
+      else seen.set(key, p.id);
+    }
+    expect(same).toEqual([]);
   });
 
   it('leaves the names of the lines under legal review as they are (decision 2)', () => {

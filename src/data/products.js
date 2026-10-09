@@ -57,8 +57,8 @@
 
 // TODO(owner): Packshots for the products without a photo (they show "Photo coming soon" and stay off the home rails, AW-029), for the rows that share a photo with a different size or pack (AW-136), and to replace the mismatched (AW-010), retailer-copied (AW-033), banner or collage (AW-034), low-resolution (AW-073) and dark or full-bleed (AW-141) photos; for each photo that shows a flavor the row doesn't list, is that flavor stocked (AW-142)? Photos are unchanged until then.
 // TODO(owner): Which brand is actually stocked for each "Assorted" row (the storefront doesn't print that placeholder), and for #343, which mixes eFrutti and SpongeBob? (AW-286)
-// TODO(owner): Pack size, case count, dimensions and attributes for each product, so the descriptions can be rewritten. (AW-075)
-// TODO(owner): Is #366 Game Palma Green, are trash bags #95 and #107 the same stock, and which other Uncle Al's flavors are stocked? No rows were removed or renamed. (AW-140)
+// TODO(owner): Pack size, case count, dimensions and attributes for each product, so the descriptions can be rewritten. Until then they stay as written from the name, brand, line and variants; only five were changed, to spell the product the way its brand and name do (#13 "Havana Leaf", #183 "Extra Gum", #193 "Pure Eyes", #213 "Lil Leaf", #260 "Backwoods True Wraps"; 20261012130000_catalog_fixups.sql). (AW-075)
+// TODO(owner): Is #366 Game Palma Green, are trash bags #95 and #107 the same stock, and which other Uncle Al's flavors are stocked? No rows were removed. #350 "Uncle Al's" (no flavor) still duplicates #351 "Uncle Al's cookies" (Lemon ice, the same photo): is it the same product, another flavor, or a different Uncle Al's item? #350 keeps its own name until then: AW-071 had named it "Uncle Al's cookies", #351's name, and NEW-023 put "Uncle Al's" back. (AW-140)
 // TODO(owner): Approve department renames, and a lawful name for the Honey & Energy line after legal review; names are unchanged until then. (AW-134)
 //
 // Names (AW-071): one style, taken from each row's own name and description:
@@ -67,11 +67,13 @@
 // like "Minute Maid 20 oz") and a size word in brackets ("Powerade (big)",
 // like "Tums (small)"), "6-pack", the brand's own casing ("AA Cellular", and
 // "EZ Roll", "RAW Guarana", "Geek Bar Mate" in descriptions), and a product
-// noun where a name was only the brand (#25, #350, #355). Ids, SKUs (the
+// noun where a name was only the brand (#25, #355). Ids, SKUs (the
 // AW-CHEAP-* codes are Quick Reorder codes) and variant labels are unchanged;
 // supabase/migrations/20261011130000_catalog_names.sql brings rows already in
-// a database in line.
-// TODO(owner): The rows in the lines under legal review keep their names and descriptions (decision 2), so they still mix casing and pack notation: #69-#75, #219, #258, #281, #285, #288, #289, #293, #296, #298-#304, #306, #313 and #341 (e.g. "Shroom puff Gummies", "Hush hit pre rolls 2pk", "Sip happens", "Psyched blue lotus gummies 25ct box"). May they follow the same style after the legal review? May #252's "Cheap" playing cards variant be renamed (its label is a cart key, so it needs an alias), and the AW-CHEAP-* SKUs of #100, #221, #246 and #250 (Quick Reorder codes, so aliases too)? #40 "Wrigley's 50¢ gum" keeps its price point: the 50¢ pack is the product. (AW-071)
+// a database in line. Then (20261012130000_catalog_fixups.sql): #65 "RAZ Vue
+// full kit", and #350 is "Uncle Al's" again, as "Uncle Al's cookies" is
+// #351's name (NEW-023, see AW-140 above).
+// TODO(owner): The rows in the lines under legal review keep their names and descriptions (decision 2), so they still mix casing and pack notation: #69-#75, #219, #258, #281, #285, #288, #289, #293, #296, #298-#304, #306, #313 and #341 (e.g. "Shroom puff Gummies", "Hush hit pre rolls 2pk", "Sip happens", "Psyched blue lotus gummies 25ct box"). May they follow the same style after the legal review? May #252's "Cheap" playing cards variant be renamed (its label is a cart key, so it needs an alias), and the AW-CHEAP-* SKUs of #100, #221, #246 and #250 (Quick Reorder codes, so aliases too)? Is #235 "Kuii nata" a nata de coco drink, so it can be named "Kuii nata de coco drink"? #40 "Wrigley's 50¢ gum" keeps its price point: the 50¢ pack is the product. The live database has these names once 20261011130000_catalog_names.sql and 20261012130000_catalog_fixups.sql are applied (BACKEND.md checklist items 21 and 26). (AW-071)
 
 import { productImage, sharedImageFiles } from '../lib/images.js';
 
@@ -105,7 +107,7 @@ export const CATALOG = [
   { id:  12, name: "LooseLeaf wraps 2-pack", brand: "LooseLeaf", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-LOOSE-LEAFS-2PK", sellUnit: "2-pack", variantAxis: "Flavor", variants: ["Cinnamon milk", "Sweet", "Honey", "Cookies & cream", "Natural", "Amber dream"], img: "loose_leafs_2_99_1_99.webp", tag: null,
     description: "LooseLeaf flavored wraps in 2-packs, stocked at the $2.99 and $1.99 price points. Six flavors: Cinnamon milk, Sweet, Honey, Cookies & cream, Natural and Amber dream." },
   { id:  13, name: "Havana Leaf little wraps", brand: "Havana Leaf", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-HAVANA-LEAF", sellUnit: "", variantAxis: "Flavor", variants: ["Milk cookies", "Sweet aromatic", "Strawberry", "8 Miles", "Russian cream", "Purple", "Yellow", "Honey bourbon"], img: null, tag: null,
-    description: "Havana leaf wraps from the wraps and leaf line in our Tobacco department. Eight flavors: Milk cookies, Sweet aromatic, Strawberry, 8 Miles, Russian cream, Purple, Yellow and Honey bourbon." },
+    description: "Havana Leaf wraps from the wraps and leaf line in our Tobacco department. Eight flavors: Milk cookies, Sweet aromatic, Strawberry, 8 Miles, Russian cream, Purple, Yellow and Honey bourbon." },
   { id:  14, name: "Kite cigarette tobacco", brand: "Kite", cat: "TOBACCO", sub: "Cigarettes", sku: "AW-KITE", sellUnit: "", variants: [], img: "kite.png", tag: null,
     description: "Kite mentholated cigarette tobacco pouches for roll-your-own customers." },
   { id:  15, name: "Royal Blunts mini", brand: "Royal Blunts", cat: "TOBACCO", sub: "Cigars & Cigarillos", sku: "AW-ROYAL-BLUNTS-MINI", sellUnit: "", variantAxis: "Variety", variants: ["Naked", "Sweet", "OGK"], img: "p15-royal-blunts-mini.jpg", tag: null,
@@ -212,8 +214,8 @@ export const CATALOG = [
     description: "Foger Switch Pro replacement pods for the Switch Pro charging device. Eight flavors: Sour apple ice, Vanilla ice cream, Pineapple coconut, Kiwi dragon berry, White gummy, California cherry, Strawberry watermelon and Strawberry ice." },
   { id:  64, name: "RAZ 25K", brand: "RAZ", cat: "NOVELTIES", sub: "Disposable Vapes", sku: "AW-RAZ-25K", sellUnit: "", variants: [], img: "p64-raz-25k.webp", tag: "NEW",
     description: "RAZ 25K from the disposable vape line in our Novelties department." },
-  { id:  65, name: "RAZ Vue Full kit", brand: "RAZ", cat: "NOVELTIES", sub: "Disposable Vapes", sku: "AW-RAZ-VUE-FULL-KIT", sellUnit: "", variants: [], img: "p65-raz-vue-full-kit.webp", tag: null,
-    description: "RAZ Vue Full kit from the disposable vape line in our Novelties department." },
+  { id:  65, name: "RAZ Vue full kit", brand: "RAZ", cat: "NOVELTIES", sub: "Disposable Vapes", sku: "AW-RAZ-VUE-FULL-KIT", sellUnit: "", variants: [], img: "p65-raz-vue-full-kit.webp", tag: null,
+    description: "RAZ Vue full kit from the disposable vape line in our Novelties department." },
   { id:  66, name: "RAZ Vue Pods", brand: "RAZ", cat: "NOVELTIES", sub: "Vape Pods", sku: "AW-RAZ-VUE-PODS", sellUnit: "", variants: [], img: "p66-raz-vue-pods.webp", tag: null,
     description: "RAZ Vue Pods from the vape pod line in our Novelties department." },
   { id:  67, name: "Kangvape 8000", brand: "Kangvape", cat: "NOVELTIES", sub: "Disposable Vapes", sku: "AW-KANG-8000", sellUnit: "", variants: [], img: "kang_vape_65k.jpg", tag: null,
@@ -463,7 +465,7 @@ export const CATALOG = [
   { id: 182, name: "Sour Punch candy", brand: "Sour Punch", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-SOUR-PUNCH", sellUnit: "", variantAxis: "Flavor", variants: ["Blue raspberry", "Strawberry", "Watermelon", "Grape", "Rainbow"], img: "sour_punch_jar.webp", tag: null,
     description: "Sour Punch sour candy. Five flavors: Blue raspberry, Strawberry, Watermelon, Grape and Rainbow." },
   { id: 183, name: "Extra Gum", brand: "Extra", cat: "CANDIES", sub: "Gum & Mints", sku: "AW-EXTRA-GUM", sellUnit: "", variantAxis: "Flavor", variants: ["Watermelon", "Spearmint", "Peppermint", "Polar ice", "Winterfresh"], img: "p183-extra-gum.jpg", tag: null,
-    description: "Extra gum from the gum and mints line in our Candies department. Five flavors: Watermelon, Spearmint, Peppermint, Polar ice and Winterfresh." },
+    description: "Extra Gum from the gum and mints line in our Candies department. Five flavors: Watermelon, Spearmint, Peppermint, Polar ice and Winterfresh." },
   { id: 184, name: "Tueni chews", brand: "Tueni", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-TUENI", sellUnit: "", variantAxis: "Flavor", variants: ["Lemon", "Tropical", "Blue raspberry", "Green apple", "Mango", "Pineapple", "Banana", "Grape"], img: "tueni_chews.jpg", tag: "NEW",
     description: "Tueni fruit chews in counter boxes. Eight flavors: Lemon, Tropical, Blue raspberry, Green apple, Mango, Pineapple, Banana and Grape." },
   { id: 185, name: "Tootsie Frooties", brand: "Tootsie", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-FROOTIES", sellUnit: "", variants: [], img: "frooties.webp", tag: null,
@@ -483,7 +485,7 @@ export const CATALOG = [
   { id: 192, name: "Cherry candy lumps", brand: "Candyman's", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-CHERRY-LUMPS", sellUnit: "", variants: [], img: "cherry_lumps.jpg", tag: null,
     description: "Cherry candy lumps in the counter dispenser box." },
   { id: 193, name: "Pure Eyes redness relief", brand: "Pure Eyes", cat: "MERCHANDISE", sub: "OTC & Health", sku: "AW-PURE-EYES", sellUnit: "", variants: [], img: "p193-pure-eyes.avif", tag: null,
-    description: "Pure eyes from the OTC and health line in our Merchandise department." },
+    description: "Pure Eyes from the OTC and health line in our Merchandise department." },
   { id: 194, name: "5-hour Energy Extra Strength", brand: "5-hour Energy", cat: "MERCHANDISE", sub: "Energy Shots", sku: "AW-5-HOUR-EXTRA", sellUnit: "", variantAxis: "Flavor", variants: ["Berry", "Blue raspberry", "Grape", "Mango peach", "Strawberry watermelon", "Strawberry banana", "Tidal twist"], img: "5_hour_extra.jpg", tag: null,
     description: "5-hour Energy Extra Strength shots. Seven flavors: Berry, Blue raspberry, Grape, Mango peach, Strawberry watermelon, Strawberry banana and Tidal twist." },
   { id: 195, name: "5-hour Energy Regular Strength", brand: "5-hour Energy", cat: "MERCHANDISE", sub: "Energy Shots", sku: "AW-5-HOUR-REGULAR", sellUnit: "", variantAxis: "Flavor", variants: ["Berry", "Grape"], img: "p195-5-hour-energy-regular.jpg", tag: null,
@@ -523,7 +525,7 @@ export const CATALOG = [
   { id: 212, name: "Ice bags", brand: "Assorted", cat: "DRINKS & BAGS", sub: "Bags & Carriers", sku: "AW-ICE-BAGS", sellUnit: "", variantAxis: "Size", variants: ["8 lb", "10 lb"], img: null, tag: null,
     description: "Ice bags from the bags and carriers line in our Drinks & Bags department. Two sizes: 8 lb and 10 lb." },
   { id: 213, name: "Lil Leaf wraps", brand: "Lil Leaf", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-LIL-LEAF-WRAPS", sellUnit: "", variants: ["Original"], img: null, tag: null,
-    description: "Lil leaf wraps from the wraps and leaf line in our Tobacco department. Stocked in one variety: Original." },
+    description: "Lil Leaf wraps from the wraps and leaf line in our Tobacco department. Stocked in one variety: Original." },
   { id: 214, name: "Tropicana juice (big)", brand: "Tropicana", cat: "DRINKS & BAGS", sub: "Juices & Teas", sku: "AW-TROPICANA-BIG", sellUnit: "", variantAxis: "Flavor", variants: ["Orange", "Cranberry", "Apple", "Ruby red"], img: "p214-tropicana-juice-big.jpg", tag: null,
     description: "Tropicana juice in the big bottle. Four flavors: Orange, Cranberry, Apple and Ruby red." },
   { id: 215, name: "Al Capone Leaf Wraps", brand: "Al Capone", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-ALCAPONE-LEAFS", sellUnit: "", variantAxis: "Flavor", variants: ["Rum", "Original", "Cognac"], img: "alcapone_wraps.jpg", tag: null,
@@ -620,7 +622,7 @@ export const CATALOG = [
   { id: 259, name: "Paper plates", brand: "Assorted", cat: "GROCERY", sub: "Paper & Plastic", sku: "AW-PAPER-PLATES", sellUnit: "", variantAxis: "Size", variants: ["Big", "Small"], img: null, tag: null,
     description: "Paper plates from the paper and plastic line in our Grocery department. Two sizes: Big and Small." },
   { id: 260, name: "Backwoods True Wraps", brand: "Backwoods", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-BACKWOODS-TRUE", sellUnit: "", variantAxis: "Flavor", variants: ["Original", "Vanilla", "Aromatic"], img: "p260-backwoods-true-wraps.webp", tag: null,
-    description: "Backwoods true wraps from the wraps and leaf line in our Tobacco department. Three flavors: Original, Vanilla and Aromatic." },
+    description: "Backwoods True Wraps from the wraps and leaf line in our Tobacco department. Three flavors: Original, Vanilla and Aromatic." },
   { id: 261, name: "Lighter Leash", brand: "Lighter Leash", cat: "MERCHANDISE", sub: "Lighters & Torches", sku: "AW-LIGHTER-LEASH", sellUnit: "", variantAxis: "Variety", variants: ["Regular", "With clip", "With design"], img: "p261-lighter-leash.jpg", tag: null,
     description: "Lighter Leash retractable lighter holders. Three varieties: Regular, With clip and With design." },
   { id: 262, name: "eFrutti jar", brand: "eFrutti", cat: "CANDIES", sub: "Jars", sku: "AW-EFRUTTI-JAR", sellUnit: "jar", variants: ["Blue"], img: "efrutti_jar.webp", tag: null,
@@ -827,7 +829,7 @@ export const CATALOG = [
     description: "Oreo cookies in single-serve packs. Stocked in one variety: Regular." },
   { id: 349, name: "Nutter Butter cookies", brand: "Nutter Butter", cat: "FOOD STUFF", sub: "Cookies", sku: "AW-NUTTER-BUTTER", sellUnit: "", variants: ["Regular"], img: "p349-nutter-butter-cookies.png", tag: null,
     description: "Nutter Butter peanut butter sandwich cookies. Stocked in one variety: Regular." },
-  { id: 350, name: "Uncle Al's cookies", brand: "Uncle Al's", cat: "FOOD STUFF", sub: "Cookies", sku: "AW-UNCLE-AL-S", sellUnit: "", variants: [], img: "uncle_al_s_cookies.jpg", tag: null,
+  { id: 350, name: "Uncle Al's", brand: "Uncle Al's", cat: "FOOD STUFF", sub: "Cookies", sku: "AW-UNCLE-AL-S", sellUnit: "", variants: [], img: "uncle_al_s_cookies.jpg", tag: null,
     description: "Uncle Al's cookies, from the cookie line in our Food Stuff department." },
   { id: 351, name: "Uncle Al's cookies", brand: "Uncle Al's", cat: "FOOD STUFF", sub: "Cookies", sku: "AW-UNCLE-AL-S-COOKIES", sellUnit: "", variants: ["Lemon ice"], img: "uncle_al_s_cookies.jpg", tag: null,
     description: "Uncle Al's cookies in single-serve packs. Stocked in one variety: Lemon ice." },

@@ -1,10 +1,11 @@
--- Catalog fix-ups (20261012130000_catalog_fixups.sql): SKUs (AW-135).
+-- Catalog fix-ups (20261012130000_catalog_fixups.sql): SKUs (AW-135), names
+-- (AW-071, NEW-023) and the brand's spelling in five descriptions (AW-075).
 --
 -- After the migrations and the seed, the rows have the values
 -- src/data/products.js gives them. The migration's updates, run again, change
 -- nothing; run over the values the live database still has, they bring the
--- rows to the same values, once; and they leave an admin's own value, or a
--- code another product already has, alone.
+-- rows to the same values, once; and they leave an admin's own value, a blank
+-- description, or a code another product already has, alone.
 --
 -- pg_temp.p22_apply() runs the migration's update statements word for word
 -- (scripts/catalog-fixups.test.mjs checks they match the file) and returns
@@ -29,29 +30,55 @@ begin
   update public.products set sku = 'AW-REDBULL-12OZ' where id = 143 and sku = 'AW-RED-BULL-12OZ'
     and not exists (select 1 from public.products o where upper(btrim(o.sku)) = 'AW-REDBULL-12OZ');
   get diagnostics n = row_count; total := total + n;
+  -- (b) Names (AW-071, NEW-023).
+  update public.products set name = 'RAZ Vue full kit' where id = 65 and name = 'RAZ Vue Full kit';
+  get diagnostics n = row_count; total := total + n;
+  update public.products set description = 'RAZ Vue full kit from the disposable vape line in our Novelties department.' where id = 65 and description = 'RAZ Vue Full kit from the disposable vape line in our Novelties department.';
+  get diagnostics n = row_count; total := total + n;
+  update public.products set name = 'Uncle Al''s' where id = 350 and name = 'Uncle Al''s cookies';
+  get diagnostics n = row_count; total := total + n;
+  -- (c) The brand's spelling in five descriptions (AW-075).
+  update public.products set description = 'Havana Leaf wraps from the wraps and leaf line in our Tobacco department. Eight flavors: Milk cookies, Sweet aromatic, Strawberry, 8 Miles, Russian cream, Purple, Yellow and Honey bourbon.' where id = 13 and description = 'Havana leaf wraps from the wraps and leaf line in our Tobacco department. Eight flavors: Milk cookies, Sweet aromatic, Strawberry, 8 Miles, Russian cream, Purple, Yellow and Honey bourbon.';
+  get diagnostics n = row_count; total := total + n;
+  update public.products set description = 'Extra Gum from the gum and mints line in our Candies department. Five flavors: Watermelon, Spearmint, Peppermint, Polar ice and Winterfresh.' where id = 183 and description = 'Extra gum from the gum and mints line in our Candies department. Five flavors: Watermelon, Spearmint, Peppermint, Polar ice and Winterfresh.';
+  get diagnostics n = row_count; total := total + n;
+  update public.products set description = 'Pure Eyes from the OTC and health line in our Merchandise department.' where id = 193 and description = 'Pure eyes from the OTC and health line in our Merchandise department.';
+  get diagnostics n = row_count; total := total + n;
+  update public.products set description = 'Lil Leaf wraps from the wraps and leaf line in our Tobacco department. Stocked in one variety: Original.' where id = 213 and description = 'Lil leaf wraps from the wraps and leaf line in our Tobacco department. Stocked in one variety: Original.';
+  get diagnostics n = row_count; total := total + n;
+  update public.products set description = 'Backwoods True Wraps from the wraps and leaf line in our Tobacco department. Three flavors: Original, Vanilla and Aromatic.' where id = 260 and description = 'Backwoods true wraps from the wraps and leaf line in our Tobacco department. Three flavors: Original, Vanilla and Aromatic.';
+  get diagnostics n = row_count; total := total + n;
   return total;
 end $fn$;
 
--- The values the seed wrote before this migration, as the live database
--- still has them.
+-- The values the rows had before this migration, as the live database still
+-- has them (#350's after 20261011130000_catalog_names.sql).
 create or replace function pg_temp.p22_old() returns void language sql as $fn$
   update public.products set sku = 'AW-DUTCH-MASTER' where id = 83;
   update public.products set sku = 'AW-BAGS' where id = 90;
   update public.products set sku = 'AW-PLASTIC' where id = 121;
   update public.products set sku = 'AW-RED-BULL-12OZ' where id = 143;
+  update public.products set name = 'RAZ Vue Full kit', description = 'RAZ Vue Full kit from the disposable vape line in our Novelties department.' where id = 65;
+  update public.products set name = 'Uncle Al''s cookies' where id = 350;
+  update public.products set description = replace(description, 'Havana Leaf wraps', 'Havana leaf wraps') where id = 13;
+  update public.products set description = replace(description, 'Extra Gum from', 'Extra gum from') where id = 183;
+  update public.products set description = replace(description, 'Pure Eyes from', 'Pure eyes from') where id = 193;
+  update public.products set description = replace(description, 'Lil Leaf wraps', 'Lil leaf wraps') where id = 213;
+  update public.products set description = replace(description, 'Backwoods True Wraps', 'Backwoods true wraps') where id = 260;
 $fn$;
 
 -- The columns the migration changes, on the rows it changes.
 create or replace function pg_temp.p22_rows() returns text language sql as $fn$
   select string_agg(format('%s|%s|%s|%s|%s', id, sku, name, description, sell_unit), E'\n' order by id)
-  from public.products where id in (83, 90, 121, 143)
+  from public.products where id in (13, 65, 83, 90, 121, 143, 183, 193, 213, 260, 350)
 $fn$;
 
 do $$
 declare
   seeded text := pg_temp.p22_rows();
+  dupes text;
 begin
-  -- The seed's values (products.js).
+  -- (a) The seed's codes (products.js).
   assert (select sku from public.products where id = 83) = 'AW-DUTCH-MASTERS', '#83 is AW-DUTCH-MASTERS';
   assert (select sku from public.products where id = 90) = 'AW-T-SHIRT-BAGS', '#90 is AW-T-SHIRT-BAGS';
   assert (select sku from public.products where id = 121) = 'AW-PLASTIC-CUTLERY', '#121 is AW-PLASTIC-CUTLERY';
@@ -61,6 +88,23 @@ begin
   assert not exists (select 1 from public.products where sku in ('AW-DUTCH-MASTER', 'AW-BAGS', 'AW-PLASTIC', 'AW-RED-BULL-12OZ')),
     'no product has an old code';
 
+  -- (b) Names: no two products are called the same (NEW-023).
+  assert (select name from public.products where id = 65) = 'RAZ Vue full kit', '#65 is RAZ Vue full kit';
+  assert (select description from public.products where id = 65) like 'RAZ Vue full kit from %', 'and its description says so';
+  assert (select name from public.products where id = 350) = 'Uncle Al''s', '#350 is Uncle Al''s again';
+  assert (select name from public.products where id = 351) = 'Uncle Al''s cookies', '#351 keeps its name';
+  select string_agg(name, ', ') into dupes from (
+    select lower(btrim(name)) as name from public.products where id < 90000 and active group by 1 having count(*) > 1
+  ) d;
+  assert dupes is null, 'products sharing a name: ' || dupes;
+
+  -- (c) The brand's spelling, as in each row's brand and name (AW-075).
+  assert (select description like 'Havana Leaf wraps from %' and brand = 'Havana Leaf' from public.products where id = 13), '#13 Havana Leaf';
+  assert (select description like 'Extra Gum from %' and name = 'Extra Gum' from public.products where id = 183), '#183 Extra Gum';
+  assert (select description like 'Pure Eyes from %' and brand = 'Pure Eyes' from public.products where id = 193), '#193 Pure Eyes';
+  assert (select description like 'Lil Leaf wraps from %' and brand = 'Lil Leaf' from public.products where id = 213), '#213 Lil Leaf';
+  assert (select description like 'Backwoods True Wraps from %' and name = 'Backwoods True Wraps' from public.products where id = 260), '#260 Backwoods True Wraps';
+
   -- Run again over the seed: nothing changes.
   assert pg_temp.p22_apply() = 0, 'a re-run changes no row';
   assert pg_temp.p22_rows() = seeded, 'and no value';
@@ -68,21 +112,30 @@ begin
   -- Over the live database's values: the same result, once.
   perform pg_temp.p22_old();
   assert pg_temp.p22_rows() <> seeded, 'the old values are back';
-  assert pg_temp.p22_apply() = 4, 'four codes change';
+  assert pg_temp.p22_apply() = 12, 'four codes, two names and six descriptions change';
   assert pg_temp.p22_rows() = seeded, 'to the seed''s values';
   assert pg_temp.p22_apply() = 0, 'and a second run changes nothing';
 
-  -- An admin's own value is kept.
+  -- An admin's own value is kept, and so is a blank description (the
+  -- storefront shows the bundled copy for it).
+  perform pg_temp.p22_old();
   update public.products set sku = 'AW-DM-STAFF' where id = 83;
-  assert pg_temp.p22_apply() = 0, 'a code staff changed is not matched';
-  assert (select sku from public.products where id = 83) = 'AW-DM-STAFF', 'and stays';
+  update public.products set name = 'Uncle Al''s cookies (staff)' where id = 350;
+  update public.products set description = '' where id = 193;
+  assert pg_temp.p22_apply() = 9, 'the other nine change';
+  assert (select sku from public.products where id = 83) = 'AW-DM-STAFF', 'a code staff changed stays';
+  assert (select name from public.products where id = 350) = 'Uncle Al''s cookies (staff)', 'so does a name staff changed';
+  assert (select description from public.products where id = 193) = '', 'and a blank description';
   update public.products set sku = 'AW-DUTCH-MASTERS' where id = 83;
+  update public.products set name = 'Uncle Al''s' where id = 350;
+  update public.products set description = 'Pure Eyes from the OTC and health line in our Merchandise department.' where id = 193;
+  assert pg_temp.p22_rows() = seeded, 'put back';
 
   -- A code another product already has is never written twice.
   perform pg_temp.p22_old();
   insert into public.products (id, name, brand, cat, sub, sku, active)
   values (92201, 'P22 staff cutlery', 'P22', 'GROCERY', 'Paper & Plastic', ' aw-plastic-cutlery ', true);
-  assert pg_temp.p22_apply() = 3, 'the other three codes change';
+  assert pg_temp.p22_apply() = 11, 'everything else changes';
   assert (select sku from public.products where id = 121) = 'AW-PLASTIC', '#121 keeps its old code while another product has the new one';
   delete from public.products where id = 92201;
   assert pg_temp.p22_apply() = 1, 'and takes it once that product is gone';
