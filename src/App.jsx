@@ -322,7 +322,7 @@ export default function App() {
         // Keyed by account: another buyer never sees the last one's orders (AW-190).
         return (
           <AccountPage key={session?.user?.id || 'guest'} {...accountProps} products={products}
-                       addLines={cart.addLines} onOpenCart={() => setCartOpen(true)} isApprovedBuyer={isApprovedBuyer}
+                       addLines={cart.addLines} onOpenCart={() => setCartOpen(true)} isApprovedBuyer={isApprovedBuyer} isBackendConfigured={isBackendConfigured}
                        onSignOutEverywhere={() => handleLogout({ scope: 'global' })} />
         );
       case 'admin':

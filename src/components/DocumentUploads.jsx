@@ -2,9 +2,9 @@
 // files can be added now or emailed later. Controls stay disabled when the
 // account backend is not configured.
 //
-// On the apply page (ApplicationDocuments) the panel says how many of the two
-// files are on file, and each one on file can be opened (AW-099, Cursor PR
-// #13).
+// On the apply page and a pending account's My account (ApplicationDocuments)
+// the panel says how many of the two files are on file, and each one on file
+// can be opened (AW-099, Cursor PR #13).
 //
 // Each document is its own small state machine there (AW-095): idle, then
 // uploading the file just chosen, then idle with the new record, or failed
@@ -252,7 +252,8 @@ export function documentsSummary(records, status = 'pending') {
 // `attempt`, or failed with `attempt` kept for Try again and `error` said.
 const IDLE = { status: 'idle', attempt: null, error: null };
 
-export function ApplicationDocuments({ disabled = false, status = 'pending' }) {
+// `id` goes on the panel, for links to it (/account#documents, AW-085).
+export function ApplicationDocuments({ disabled = false, status = 'pending', id }) {
   const { session, loading, isBackendConfigured } = useAuth();
   const [records, setRecords] = useState(null);
   const [docs, setDocs] = useState({});
@@ -338,7 +339,7 @@ export function ApplicationDocuments({ disabled = false, status = 'pending' }) {
   const eyebrow = PROOF_EYEBROW[status];
 
   return (
-    <section className="doc-panel" aria-labelledby="proof-title">
+    <section className="doc-panel" id={id} aria-labelledby="proof-title">
       {eyebrow && <p className="eyebrow">{eyebrow}</p>}
       <h2 id="proof-title">License documents</h2>
       {/* Always rendered, so the count is announced when it changes. */}

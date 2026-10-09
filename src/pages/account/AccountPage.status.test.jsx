@@ -16,6 +16,14 @@ vi.mock('../../lib/supabase.js', () => {
   return { supabase: { from: () => query }, isBackendConfigured: true, AUTH_STORAGE_KEY: 'aw-auth' };
 });
 
+// The documents panel needs the auth provider (DocumentUploads.test covers
+// it); here it shows what it was given.
+vi.mock('../../components/DocumentUploads.jsx', () => ({
+  ApplicationDocuments: ({ status, disabled, id }) => (
+    <section id={id} data-testid="documents" data-status={status} data-disabled={String(disabled)}><h2>License documents</h2></section>
+  ),
+}));
+
 const { AccountPage, ORDERS_LOAD_ERROR } = await import('./AccountPage.jsx');
 
 const PROFILE = { id: 'u1', business: 'Test Market LLC', name: 'Test Buyer', email: 'buyer@example.test', status: 'approved', role: 'customer', pricing_tier: 'silver' };
@@ -53,5 +61,35 @@ describe('AccountPage order history that did not load (AW-084)', () => {
     expect([...error.querySelectorAll('a')].map((a) => a.getAttribute('href'))).toEqual([expect.stringMatching(/^tel:/), expect.stringMatching(/^mailto:/)]);
     expect(screen.queryByText(/permission denied|Couldn't load orders/)).toBeNull();
     expect(screen.queryByText('Loading…')).toBeNull();
+  });
+});
+
+// A pending applicant adds license documents on My account, where the
+// application dialog sends them (AW-085).
+describe('AccountPage license documents (AW-085)', () => {
+  it('gives a pending account the documents panel at #documents, after the notices', async () => {
+    render(<AccountPage profile={{ ...PROFILE, status: 'pending' }} account="ready" products={[]} />);
+    const panel = screen.getByTestId('documents');
+    expect(panel.id).toBe('documents');
+    expect(panel.dataset).toMatchObject({ status: 'pending', disabled: 'false' });
+    expect(panel.previousElementSibling.textContent).toMatch(/^Your account is awaiting approval\./);
+    expect(screen.queryByRole('link', { name: 'view or replace' })).toBeNull();
+    await screen.findByText('No orders yet');
+  });
+
+  it('disables the panel without the account backend', async () => {
+    render(<AccountPage profile={{ ...PROFILE, status: 'pending' }} account="ready" products={[]} isBackendConfigured={false} />);
+    expect(screen.getByTestId('documents').dataset.disabled).toBe('true');
+    await screen.findByText('No orders yet');
+  });
+
+  it('keeps the one-line link to /apply for approved and suspended accounts', async () => {
+    for (const status of ['approved', 'suspended']) {
+      const view = render(<AccountPage profile={{ ...PROFILE, status }} account="ready" products={[]} />);
+      expect(screen.queryByTestId('documents')).toBeNull();
+      expect(screen.getByRole('link', { name: 'view or replace' }).getAttribute('href')).toBe('/apply');
+      await screen.findByText('No orders yet');
+      view.unmount();
+    }
   });
 });

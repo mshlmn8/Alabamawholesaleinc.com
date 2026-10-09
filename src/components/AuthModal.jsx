@@ -19,6 +19,14 @@
 // 'Check your inbox' and 'Confirm your email first' can send the
 // confirmation email again, once a minute (AW-016); the password reset step
 // can send its link again, on its own minute (AW-259).
+//
+// License documents chosen on the application (AW-085) upload right after a
+// sign-up that returns a session; one that fails is listed with Try again.
+// With email confirmation on there is no session yet: the files stay in
+// this dialog's state (never in localStorage or sessionStorage) and upload
+// here once the applicant confirms the email in this browser, which signs
+// in another tab and reaches this one (AW-335). A session for any other
+// email never gets them.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth.jsx';
@@ -29,7 +37,7 @@ import { announce } from '../lib/announce.js';
 import { PHONE_ERROR, PHONE_EXAMPLE, PHONE_PATTERN, PHONE_TITLE, usPhone } from '../lib/phone.js';
 import { Link, restoreOverlayEntry } from '../lib/router.js';
 import { APPLICATION_CHECKLIST } from '../data/onboarding.js';
-import { DOCUMENT_TYPES, documentErrorMessage, uploadSelectedProof } from '../lib/documents.js';
+import { DOCUMENT_TYPES, documentErrorMessage, shortFileName, uploadSelectedProof } from '../lib/documents.js';
 import { ServiceUnavailable } from './ServiceUnavailable.jsx';
 import { CallOrEmail } from './ContactLinks.jsx';
 import { DocumentUploads } from './DocumentUploads.jsx';
@@ -101,6 +109,23 @@ function Field({ id, label, hint, error, full = false, children }) {
 // A select's first, unpickable option, shown until the applicant chooses (AW-091).
 const choose = <option value="" disabled>Select…</option>;
 
+// The chosen files of `types`, for uploadSelectedProof.
+const filesOf = (proof, types) => Object.fromEntries(types.map((type) => [type, proof[type]]));
+const PROOF_UPLOADING = 'Uploading your documents…';
+// What an upload of the application's documents came to (AW-085): per
+// failed document type its sentence, and one line for the status.
+function proofOutcome(results) {
+  const done = DOCUMENT_TYPES.filter((doc) => results?.[doc.id]?.ok);
+  const missed = DOCUMENT_TYPES.filter((doc) => results?.[doc.id] && !results[doc.id].ok);
+  const failed = Object.fromEntries(missed.map((doc) => [doc.id, documentErrorMessage(results[doc.id].error)]));
+  const name = (doc) => doc.label.toLowerCase();
+  let status = '';
+  if (done.length && missed.length) status = `Your ${name(done[0])} is uploaded. Your ${name(missed[0])} didn’t upload.`;
+  else if (missed.length) status = missed.length === 1 ? `Your ${name(missed[0])} didn’t upload.` : 'Your documents didn’t upload.';
+  else if (done.length) status = done.length === 1 ? `Your ${name(done[0])} is uploaded.` : 'Your documents are uploaded.';
+  return { failed, status };
+}
+
 export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, signingOut = false }) {
   const {
     signIn, signUp, resetPassword, resendConfirmation, refreshProfile,
@@ -120,7 +145,14 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
   const [phoneError, setPhoneError] = useState('');
   const [proof, setProof] = useState({});
   const [proofErrors, setProofErrors] = useState({});
+  // Files chosen on an application that returned no session, held until
+  // the applicant's own session reaches this tab (AW-085).
   const [proofWaiting, setProofWaiting] = useState(false);
+  // Per document type, why its file didn't upload; the line that says how
+  // the last upload went; and a Try again running.
+  const [proofFailed, setProofFailed] = useState({});
+  const [proofStatus, setProofStatus] = useState('');
+  const [proofBusy, setProofBusy] = useState(false);
   const [resent, setResent] = useState(false);
   // A confirmation email sent again: to whom, and whether the minute before
   // the next one is still running (AW-016). The reset link has its own
@@ -140,6 +172,10 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
   const focusBeforeConfirm = useRef(null);
   // A resend is running; see the focus effect below.
   const resending = useRef(false);
+  // The session the application's files went up with, for Try again; and
+  // whether the held files have been sent.
+  const proofSession = useRef(null);
+  const heldSent = useRef(false);
   const onCloseRef = useRef(onClose);
   // Keep the latest onClose for the timers and effects below.
   useLayoutEffect(() => { onCloseRef.current = onClose; });
@@ -195,6 +231,24 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
     const button = resendRef.current;
     (button && !button.disabled ? button : titleRef.current)?.focus({ preventScroll: true });
   }, [submitting, cooling, resetCooling]);
+
+  // Held files go up once, when a session for the email that applied
+  // appears while 'Check your inbox' is open (AW-085).
+  const heldEmail = signup.email.trim().toLowerCase();
+  const sessionEmail = String(session?.user?.email || '').toLowerCase();
+  const heldReady = mode === 'sent' && proofWaiting && !!session?.user?.id && sessionEmail !== '' && sessionEmail === heldEmail;
+  useEffect(() => {
+    if (!heldReady || heldSent.current) return;
+    heldSent.current = true;
+    proofSession.current = session;
+    const types = DOCUMENT_TYPES.filter((doc) => proof[doc.id]).map((doc) => doc.id);
+    uploadSelectedProof(session, filesOf(proof, types)).then(({ results }) => {
+      const outcome = proofOutcome(results);
+      setProofFailed(outcome.failed);
+      setProofStatus(outcome.status);
+      setProofWaiting(false);
+    });
+  }, [heldReady, session, proof]);
 
   // Typed application answers (AW-018). Guarded in every mode, so they stay
   // guarded after 'Back to the checklist' or 'Already approved? Sign in',
@@ -303,20 +357,42 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
         terms_version: TERMS_VERSION,
         age_confirmed: signup.ageConfirmed,
       });
-      const chosen = DOCUMENT_TYPES.some(doc => proof[doc.id]);
-      let uploadError = null;
-      // Email confirmation leaves no session. Hold the files and do not call storage.
-      if (data?.session && chosen) {
-        try { await uploadSelectedProof(data.session, proof); }
-        catch (err) { uploadError = documentErrorMessage(err); }
+      const chosen = DOCUMENT_TYPES.filter(doc => proof[doc.id]).map(doc => doc.id);
+      // Each chosen file goes up now when there is a session; one that fails
+      // doesn't stop the other (AW-085). Email confirmation leaves no
+      // session: the files are held, and storage isn't called.
+      if (data?.session && chosen.length) {
+        proofSession.current = data.session;
+        const { results } = await uploadSelectedProof(data.session, filesOf(proof, chosen));
+        const outcome = proofOutcome(results);
+        setProofFailed(outcome.failed);
+        setProofStatus(outcome.status);
       }
-      setProofWaiting(chosen && !data?.session);
+      setProofWaiting(chosen.length > 0 && !data?.session);
       setAfterSignup(true);
       setMode(data?.session ? 'status' : 'sent');
-      if (uploadError) setError(uploadError);
     }
     catch (err) { setError(friendlyAuthError(err, { what: 'The online application', fallback: 'We couldn’t send your application. Try again in a moment.' })); }
     finally { setSubmitting(false); }
+  };
+
+  // Try again for the application's files that didn't upload: only those,
+  // with the session they went up with (the current one, once refreshed).
+  // When none is left to retry, focus goes to the heading, as the button
+  // that had it is gone.
+  const retryProof = async () => {
+    const types = DOCUMENT_TYPES.filter((doc) => proofFailed[doc.id] && proof[doc.id]).map((doc) => doc.id);
+    const held = proofSession.current;
+    const withSession = session?.user?.id && session.user.id === held?.user?.id ? session : held;
+    if (proofBusy || !types.length || !withSession) return;
+    setProofBusy(true);
+    setProofStatus(PROOF_UPLOADING);
+    const { results } = await uploadSelectedProof(withSession, filesOf(proof, types));
+    const outcome = proofOutcome(results);
+    setProofFailed(outcome.failed);
+    setProofStatus(outcome.status);
+    setProofBusy(false);
+    if (!Object.keys(outcome.failed).length) titleRef.current?.focus({ preventScroll: true });
   };
 
   // Sends the password reset link to resetEmail, from the form or from Send
@@ -390,6 +466,32 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
     : '';
   // Said once Send again has sent the reset link, for that minute (AW-259).
   const resetStatus = resetCooling && resetAgain ? `Sent again to ${resetEmail}. You can ask for another in a minute.` : '';
+
+  // The application's files that didn't upload, each with its reason, then
+  // Try again or My account (AW-085). Shown on 'Check your inbox' after the
+  // held files went up, and on the status step after a sign-up.
+  const failedProof = DOCUMENT_TYPES.filter((doc) => proofFailed[doc.id]);
+  const proofProblem = failedProof.length > 0 && (
+    <div className="proof-failed">
+      <ul className="proof-failed-list">
+        {failedProof.map((doc) => (
+          <li key={doc.id}>
+            <b title={proof[doc.id]?.name}>{`${doc.label}: ${shortFileName(proof[doc.id]?.name)}`}</b>
+            <span>{proofFailed[doc.id]}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="checklist-note">
+        <button className="text-link" type="button" onClick={retryProof} aria-disabled={proofBusy ? 'true' : undefined}>
+          <span>{proofBusy ? 'Trying again…' : 'Try again'}</span>
+        </button>
+        {' '}<span>{failedProof.length === 1 ? 'or add it from' : 'or add them from'}</span>{' '}
+        <Link to="/account#documents" onClick={onClose}>My account</Link>.
+      </p>
+    </div>
+  );
+  // Always rendered on those two steps, so each outcome is read out.
+  const proofLine = <p className="checklist-note proof-status" role="status">{heldReady ? PROOF_UPLOADING : proofStatus}</p>;
 
   const dialog = (
     // Backdrop click is a mouse shortcut; Escape (ModalLayer) and the Close button are the keyboard paths.
@@ -603,9 +705,12 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
               {/* The application went with a checked number (AW-247), shown as sent. */}
               <li><b>You hear from us.</b><span>{`We’ll email you or call ${usPhone(signup.phone)?.formatted ?? signup.phone} when your account is approved. Wholesale pricing and ordering unlock then.`}</span></li>
             </ol>
+            {/* The files aren't sent yet (AW-085). */}
             {proofWaiting && (
-              <p className="checklist-note">Your files stay on this device until you are signed in. After you confirm your email, upload them from your application status, or send proof later to <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.</p>
+              <p className="checklist-note">Your documents aren’t sent yet. Keep this page open: once you confirm your email in this browser, they upload here. Otherwise, add them later from My account, under License documents, or email them to <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.</p>
             )}
+            {proofLine}
+            {proofProblem}
             {/* No email? Send it again, once a minute (AW-016). */}
             <div className="resend">
               <button ref={resendRef} className="text-link" type="button" onClick={() => handleResend(signup.email)} disabled={submitting || cooling || !isBackendConfigured}>
@@ -624,6 +729,8 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
         {mode === 'status' && (
           <>
             {error && <p className="form-error" role="alert">{error}</p>}
+            {proofLine}
+            {proofProblem}
             {status !== 'suspended' && (
               <>
                 <h3 className="checklist-heading">While you wait</h3>
@@ -643,7 +750,8 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
                 </>
               ) : (
                 <>
-                  <Link className="button" to="/account" onClick={onClose} data-autofocus>View account status</Link>
+                  {/* My account's documents panel (AW-085). */}
+                  <Link className="button" to="/account#documents" onClick={onClose} data-autofocus>View account status</Link>
                   <Link className="text-link" to="/catalog" onClick={onClose}>Browse the catalog</Link>
                 </>
               )}

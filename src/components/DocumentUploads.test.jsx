@@ -201,6 +201,13 @@ describe('ApplicationDocuments uploads (AW-095, AW-257, AW-264)', () => {
     expect(screen.getByRole('alert').textContent).toBe('notes.txt isn’t a PDF, JPG, PNG or HEIC file.');
     expect(docs.uploads).toEqual([]);
   });
+
+  it('puts the panel id on the section, for /account#documents (AW-085)', async () => {
+    docs.rows = [];
+    panel({ id: 'documents' });
+    expect(document.querySelector('section.doc-panel').id).toBe('documents');
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('No documents yet.'));
+  });
 });
 
 describe('DocumentUploads on the application (AW-244)', () => {

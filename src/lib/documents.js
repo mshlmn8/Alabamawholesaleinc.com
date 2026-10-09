@@ -202,16 +202,25 @@ export async function uploadProfileDocument(session, documentType, file) {
   return { attempted: true, ...row };
 }
 
+// Uploads each chosen file in turn. One that fails doesn't stop the next
+// (AW-085): results says, per document type, { ok: true, record } or
+// { ok: false, error } (the error as thrown; show documentErrorMessage(error)).
 export async function uploadSelectedProof(session, filesByType) {
-  if (!supabase || !session?.user?.id) return { attempted: false };
+  if (!supabase || !session?.user?.id) return { attempted: false, results: {} };
   let attempted = false;
+  const results = {};
   for (const doc of DOCUMENT_TYPES) {
     const file = filesByType?.[doc.id];
     if (!file) continue;
     attempted = true;
-    await uploadProfileDocument(session, doc.id, file);
+    try {
+      const record = await uploadProfileDocument(session, doc.id, file);
+      results[doc.id] = { ok: true, record };
+    } catch (error) {
+      results[doc.id] = { ok: false, error };
+    }
   }
-  return { attempted };
+  return { attempted, results };
 }
 
 // A signed URL for a stored document, valid for `expiresIn` seconds.

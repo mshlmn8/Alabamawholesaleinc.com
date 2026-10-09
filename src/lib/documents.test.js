@@ -3,7 +3,7 @@
 // the document history, and a refusal by the database names the upload limit.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mock = vi.hoisted(() => ({ existing: null, uploadError: null, rowError: null, removeError: null, signError: null, calls: [] }));
+const mock = vi.hoisted(() => ({ existing: null, uploadError: null, rowError: null, removeError: null, signError: null, calls: [], uploadErrors: {} }));
 
 vi.mock('./supabase.js', () => {
   const table = () => {
@@ -16,7 +16,11 @@ vi.mock('./supabase.js', () => {
     return q;
   };
   const bucket = {
-    upload: async (path, _file, options) => { mock.calls.push(['upload', path, options]); return { error: mock.uploadError }; },
+    upload: async (path, _file, options) => {
+      mock.calls.push(['upload', path, options]);
+      const type = path.split('/')[1];
+      return { error: mock.uploadErrors[type] || mock.uploadError };
+    },
     remove: async (paths) => { mock.calls.push(['remove', paths]); return { data: null, error: mock.removeError }; },
     createSignedUrl: async (path, expiresIn) => {
       mock.calls.push(['sign', path, expiresIn]);
@@ -33,7 +37,7 @@ vi.mock('./supabase.js', () => {
 const {
   DOCUMENTS_REFUSED_MESSAGE, DOCUMENT_UPLOAD_FAILED_MESSAGE, FILE_MISSING_MESSAGE, FILE_TOO_LARGE_MESSAGE, FILE_TYPE_MESSAGE,
   createDocumentViewUrl, documentErrorMessage, isDocumentPermissionError, openDocument, shortFileName,
-  uploadProfileDocument, validateDocumentFile,
+  uploadProfileDocument, uploadSelectedProof, validateDocumentFile,
 } = await import('./documents.js');
 const { unavailableMessage } = await import('./errors.js');
 
@@ -41,7 +45,7 @@ const SESSION = { user: { id: 'u1' } };
 const file = (name) => ({ name, type: 'application/pdf', size: 1000 });
 
 beforeEach(() => {
-  Object.assign(mock, { existing: null, uploadError: null, rowError: null, removeError: null, signError: null, calls: [] });
+  Object.assign(mock, { existing: null, uploadError: null, rowError: null, removeError: null, signError: null, calls: [], uploadErrors: {} });
 });
 
 describe('uploadProfileDocument', () => {
@@ -104,6 +108,24 @@ describe('validateDocumentFile (AW-244)', () => {
     expect(validateDocumentFile({ name: 'scan.pdf', type: 'application/pdf', size: 11 * 1024 * 1024 })).toBe('scan.pdf is over the 10 MB limit.');
     expect(validateDocumentFile({ name: `${'x'.repeat(60)}.docx`, type: '', size: 10 })).toBe('xxxxxxxxxxxxxxxxxxxxxxxxxx…xxxxx.docx isn’t a PDF, JPG, PNG or HEIC file.');
     expect(validateDocumentFile({ name: 'IMG_0001.HEIC', type: 'image/heic-sequence', size: 10 })).toBeNull();
+  });
+});
+
+describe('uploadSelectedProof (AW-085)', () => {
+  it('uploads every chosen file, past one that fails, and says how each went', async () => {
+    mock.uploadErrors = { tobacco_license: { statusCode: '413', status: 400, message: 'The object exceeded the maximum allowed size' } };
+    const outcome = await uploadSelectedProof(SESSION, { tobacco_license: file('license.pdf'), resale_certificate: file('resale.pdf') });
+    expect(outcome.attempted).toBe(true);
+    expect(outcome.results.tobacco_license).toEqual({ ok: false, error: mock.uploadErrors.tobacco_license });
+    expect(documentErrorMessage(outcome.results.tobacco_license.error)).toBe(FILE_TOO_LARGE_MESSAGE);
+    expect(outcome.results.resale_certificate).toMatchObject({ ok: true, record: { document_type: 'resale_certificate', original_filename: 'resale.pdf' } });
+    expect(mock.calls.filter(([kind]) => kind === 'upload').map(([, path]) => path.split('/')[1])).toEqual(['tobacco_license', 'resale_certificate']);
+  });
+
+  it('sends nothing without a session or a file', async () => {
+    expect(await uploadSelectedProof(null, { tobacco_license: file('l.pdf') })).toEqual({ attempted: false, results: {} });
+    expect(await uploadSelectedProof(SESSION, { tobacco_license: null })).toEqual({ attempted: false, results: {} });
+    expect(mock.calls).toEqual([]);
   });
 });
 

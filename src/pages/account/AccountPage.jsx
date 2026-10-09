@@ -6,6 +6,10 @@
 // Sign out (AW-089). App keys this page by account (AW-190). "Sign out of all
 // devices" ends the buyer's sessions everywhere (AW-337); the header's Sign
 // Out only ends this browser's.
+//
+// A pending applicant uploads license documents right here (AW-085): the
+// application dialog's 'View account status' and its failed-upload notes
+// link to #documents. Approved and suspended accounts keep a link to /apply.
 
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
@@ -16,6 +20,7 @@ import { lineTotal } from '../../lib/pricing.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
+import { ApplicationDocuments } from '../../components/DocumentUploads.jsx';
 import { QuickReorder } from './QuickReorder.jsx';
 
 const STATUS_CLASS = {
@@ -56,7 +61,7 @@ const reorderMessage = (note, target) => (note.lines > 0
 
 export function AccountPage({
   profile, account = profile ? 'ready' : 'signed-out', onSignIn, onRetry, retrying = false, onSignOut, onSignOutEverywhere,
-  signingOut = false, products = [], addLines, onOpenCart, isApprovedBuyer,
+  signingOut = false, products = [], addLines, onOpenCart, isApprovedBuyer, isBackendConfigured = true,
 }) {
   const [orders, setOrders] = useState(null);
   const [error, setError] = useState(null);
@@ -137,11 +142,15 @@ export function AccountPage({
       )}
 
       {/* Licence proof stays reachable after approval (AW-254). */}
-      <p className="notice">License and resale documents: <Link className="text-link" to="/apply">view or replace</Link></p>
+      {profile.status !== 'pending' && (
+        <p className="notice">License and resale documents: <Link className="text-link" to="/apply">view or replace</Link></p>
+      )}
 
       {profile.status === 'pending' && (
         <p className="notice">Your account is awaiting approval. A trade rep will verify your retail license and activate pricing within one business day.</p>
       )}
+
+      {profile.status === 'pending' && <ApplicationDocuments status="pending" disabled={!isBackendConfigured} id="documents" />}
 
       {onSignOutEverywhere && (
         <div className="account-signout">

@@ -7,7 +7,23 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthContext } from '../lib/auth.jsx';
+import { FILE_TOO_LARGE_MESSAGE, uploadSelectedProof } from '../lib/documents.js';
 import { AuthModal, CHECKING_TIMEOUT_MS, RESEND_COOLDOWN_MS, RESEND_RATE_LIMITED } from './AuthModal.jsx';
+
+// The application's documents (AW-085): each test says how an upload goes;
+// by default every file goes up.
+const proofMock = vi.hoisted(() => ({ fail: {} }));
+vi.mock('../lib/documents.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  uploadSelectedProof: vi.fn(async (session, files) => {
+    const results = {};
+    for (const [type, file] of Object.entries(files || {})) {
+      if (!file) continue;
+      results[type] = proofMock.fail[type] ? { ok: false, error: proofMock.fail[type] } : { ok: true, record: { document_type: type } };
+    }
+    return { attempted: Object.keys(results).length > 0, results };
+  }),
+}));
 
 const SESSION = { access_token: 't', user: { id: 'u1', email: 'buyer@example.test' } };
 
@@ -346,7 +362,8 @@ describe('AuthModal resends the confirmation email (AW-016)', () => {
     expect(screen.getByRole('heading', { name: 'Check your inbox' })).toBeTruthy();
     return t;
   };
-  const status = () => screen.getAllByRole('status').find((el) => el.closest('[role="dialog"]'));
+  // The resend line, not the documents' upload line (AW-085).
+  const status = () => screen.getAllByRole('status').find((el) => el.closest('[role="dialog"]') && !el.classList.contains('proof-status'));
 
   it('sends again from the inbox step, then waits a minute', async () => {
     vi.useFakeTimers();
@@ -861,5 +878,110 @@ describe('AuthModal password fields (AW-248)', () => {
     expect(rule.textContent).toBe('At least 8 characters: done');
     expect(rule.querySelector('svg.icon')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Show password' }).getAttribute('aria-controls')).toBe('aw-su-pass');
+  });
+});
+
+// AW-085: the application's documents upload after a sign-up with a session,
+// with Try again for one that failed; without a session they are held in the
+// dialog and upload when the applicant's own session reaches this tab.
+describe('AuthModal application documents (AW-085)', () => {
+  const NEW = { access_token: 'n', user: { id: 'u-new', email: 'new@example.test' } };
+  const TOO_LARGE = { statusCode: '413', status: 400, message: 'The object exceeded the maximum allowed size' };
+  const license = new File(['l'], 'license.pdf', { type: 'application/pdf' });
+  const resale = new File(['r'], 'resale.pdf', { type: 'application/pdf' });
+  const choose = async (id, file) => {
+    await act(async () => { fireEvent.change(document.getElementById(id), { target: { files: [file] } }); });
+  };
+  const apply = async (signUp) => {
+    const t = setup({ signUp }, { initialMode: 'application' });
+    fireEvent.change(screen.getByLabelText('Business email'), { target: { value: 'New@Example.test' } });
+    typePhone();
+    await choose('aw-doc-tobacco_license', license);
+    await choose('aw-doc-resale_certificate', resale);
+    await act(async () => { fireEvent.submit(screen.getByLabelText('Business email').closest('form')); });
+    return t;
+  };
+  const proofLine = () => document.querySelector('[role="dialog"] .proof-status');
+
+  beforeEach(() => {
+    proofMock.fail = {};
+    uploadSelectedProof.mockClear();
+  });
+
+  it('uploads both files after a sign-up with a session, and lists one that failed with Try again', async () => {
+    proofMock.fail = { tobacco_license: TOO_LARGE };
+    const t = await apply(vi.fn(async () => ({ session: NEW })));
+    expect(screen.getByRole('heading', { name: 'Your account is pending approval' })).toBeTruthy();
+    expect(uploadSelectedProof).toHaveBeenCalledWith(NEW, { tobacco_license: license, resale_certificate: resale });
+    expect(proofLine().textContent).toBe('Your resale certificate is uploaded. Your state retail tobacco license didn’t upload.');
+    const items = [...document.querySelectorAll('.proof-failed-list li')].map((li) => [...li.children].map((el) => el.textContent));
+    expect(items).toEqual([['State retail tobacco license: license.pdf', FILE_TOO_LARGE_MESSAGE]]);
+    expect(screen.getByRole('link', { name: 'My account' }).getAttribute('href')).toBe('/account#documents');
+    expect(document.querySelector('.proof-failed .checklist-note').textContent).toBe('Try again or add it from My account.');
+    // Try again sends only the one that failed, with the sign-up's session.
+    proofMock.fail = {};
+    t.update({ session: NEW });
+    const retry = screen.getByRole('button', { name: 'Try again' });
+    retry.focus();
+    await act(async () => { fireEvent.click(retry); });
+    expect(uploadSelectedProof).toHaveBeenLastCalledWith(NEW, { tobacco_license: license });
+    expect(proofLine().textContent).toBe('Your state retail tobacco license is uploaded.');
+    expect(document.querySelector('.proof-failed')).toBeNull();
+    // The button is gone; focus is on the heading, not <body>.
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Your account is pending approval' }));
+  });
+
+  it('holds the files without a session, and never uploads them for another account', async () => {
+    const setItem = vi.spyOn(Storage.prototype, 'setItem');
+    const t = await apply(vi.fn(async () => ({ session: null })));
+    expect(screen.getByRole('heading', { name: 'Check your inbox' })).toBeTruthy();
+    expect(uploadSelectedProof).not.toHaveBeenCalled();
+    const note = screen.getByText(/^Your documents aren’t sent yet\./);
+    expect(note.textContent).toMatch(/Keep this page open: once you confirm your email in this browser, they upload here\. Otherwise, add them later from My account, under License documents, or email them to .+\.$/);
+    expect(note.querySelector('a').getAttribute('href')).toMatch(/^mailto:/);
+    // Another account signs in (in another tab): nothing goes up.
+    t.update({ session: { access_token: 'o', user: { id: 'u-other', email: 'other@example.test' } } });
+    await act(async () => {});
+    expect(uploadSelectedProof).not.toHaveBeenCalled();
+    expect(screen.getByRole('heading', { name: 'Check your inbox' })).toBeTruthy();
+    // The files were never written to browser storage.
+    for (const [, value] of setItem.mock.calls) expect(String(value)).not.toMatch(/license\.pdf|resale\.pdf/);
+    setItem.mockRestore();
+  });
+
+  it('uploads the held files once when the applicant’s own session appears, whatever the email’s case', async () => {
+    const t = await apply(vi.fn(async () => ({ session: null })));
+    t.update({ session: NEW });
+    await act(async () => {});
+    expect(uploadSelectedProof).toHaveBeenCalledTimes(1);
+    expect(uploadSelectedProof).toHaveBeenCalledWith(NEW, { tobacco_license: license, resale_certificate: resale });
+    expect(proofLine().textContent).toBe('Your documents are uploaded.');
+    expect(screen.queryByText(/^Your documents aren’t sent yet\./)).toBeNull();
+    // A refreshed session is not a second upload.
+    t.update({ session: { ...NEW, access_token: 'n2' } });
+    await act(async () => {});
+    expect(uploadSelectedProof).toHaveBeenCalledTimes(1);
+  });
+
+  it('lists a held file that failed, with Try again', async () => {
+    proofMock.fail = { resale_certificate: { status: 500, message: 'Internal Server Error' } };
+    const t = await apply(vi.fn(async () => ({ session: null })));
+    t.update({ session: NEW });
+    await act(async () => {});
+    expect(proofLine().textContent).toBe('Your state retail tobacco license is uploaded. Your resale certificate didn’t upload.');
+    expect(screen.getByText('Resale certificate: resale.pdf')).toBeTruthy();
+    proofMock.fail = {};
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Try again' })); });
+    expect(uploadSelectedProof).toHaveBeenLastCalledWith(NEW, { resale_certificate: resale });
+    expect(proofLine().textContent).toBe('Your resale certificate is uploaded.');
+  });
+
+  it('points View account status at the documents on My account', () => {
+    const t = setup();
+    t.update({ session: SESSION, profileReady: true, profile: { id: 'u1', status: 'pending', email: 'buyer@example.test' } });
+    expect(screen.getByRole('link', { name: 'View account status' }).getAttribute('href')).toBe('/account#documents');
+    // Signed in without an application here: no upload line to read.
+    expect(proofLine().textContent).toBe('');
+    expect(document.querySelector('.proof-failed')).toBeNull();
   });
 });
