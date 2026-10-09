@@ -16,9 +16,11 @@
          src/lib/meta.test.js checks they match, AW-318). -->
     <title>Wholesale Tobacco, Vapes &amp; Candy · Alabama Wholesale Inc</title>
     <meta name="description" content="Wholesale tobacco, vapes, candy, drinks, grocery and motor oil for licensed retailers. Next-day delivery on our routes in Alabama, Mississippi and Georgia." />
-    <!-- Every path serves this file, so the canonical link and og:url are set per
-         page by the app (src/lib/meta.js, AW-181) instead of pointing every URL
-         at the homepage here. -->
+    <!-- Every path without a page file of its own serves this file, so the
+         canonical link and og:url are set per page: in the page files the
+         build writes (scripts/build-route-heads.mjs) and by the app
+         (src/lib/meta.js, AW-181), instead of pointing every URL at the
+         homepage here. -->
 
     <!-- Favicons and share image are rendered from src/assets/logo.jpg by scripts/build-images.mjs -->
     <!-- TODO(owner): A vector logo with a transparent background, and a warehouse or assortment photo for the share card. The vector logo also gives an SVG favicon (/favicon.svg, linked above favicon.ico). (AW-035, AW-288, AW-289) -->
@@ -27,7 +29,10 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
 
-    <!-- Open Graph / social previews. The app updates them per page. -->
+    <!-- Open Graph / social previews: the home page's. The build writes each
+         catalog and support page's own into its page file
+         (scripts/build-route-heads.mjs, AW-181), and the app updates them as
+         it moves between pages (src/lib/meta.js). -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Alabama Wholesale Inc" />
     <meta property="og:title" content="Wholesale Tobacco, Vapes &amp; Candy · Alabama Wholesale Inc" />
@@ -38,6 +43,8 @@
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="Alabama Wholesale Inc logo" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Wholesale Tobacco, Vapes &amp; Candy · Alabama Wholesale Inc" />
+    <meta name="twitter:description" content="Wholesale tobacco, vapes, candy, drinks, grocery and motor oil for licensed retailers. Next-day delivery on our routes in Alabama, Mississippi and Georgia." />
     <meta name="twitter:image" content="https://alabamawholesaleinc.com/og.jpg" />
     <!-- Fonts (Barlow Condensed + DM Sans) are bundled locally in src/fonts — no external font dependency. -->
 

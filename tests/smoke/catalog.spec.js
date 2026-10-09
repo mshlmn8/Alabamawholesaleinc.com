@@ -13,7 +13,9 @@ const ageRecord = (at) => JSON.stringify({ ok: true, at });
 
 const isLocal = (url) => /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(url) || url.startsWith('data:') || url.startsWith('blob:');
 
-function trackErrors(page) {
+// `pages404`: the test loads pages that are answered with status 404 on
+// purpose (NEW-088, AW-181), which the browser reports in the console.
+function trackErrors(page, { pages404 = false } = {}) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   page.on('console', (m) => {
@@ -21,6 +23,7 @@ function trackErrors(page) {
     const source = m.location()?.url || '';
     // Aborted remote requests, and the failed catalog loads this spec causes.
     if (/Failed to load resource/.test(m.text()) && (!source || !isLocal(source))) return;
+    if (pages404 && /^Failed to load resource: the server responded with a status of 404/.test(m.text()) && /\/(product|category)(\/|$)/.test(new URL(source).pathname)) return;
     errors.push(`console: ${m.text()}`);
   });
   return errors;
@@ -73,10 +76,14 @@ test('a catalog that fails to load is labelled, and "Try again" loads it (AW-204
 });
 
 test('a product only the live catalog has shows "Loading product…", not "not found" (AW-204)', async ({ page }) => {
-  const errors = trackErrors(page);
+  const errors = trackErrors(page, { pages404: true });
   let fail = false;
   await catalog(page, () => (fail ? { fail } : { rows: [...seedRows(), EXTRA], delay: 1500 }));
-  await page.goto('/product/9001');
+  // The build wrote no page file for it (a product added in Admin since the
+  // last deploy), so it is answered with index.html and status 404 until the
+  // next one (AW-181, NEW-088); the app still shows it.
+  const response = await page.goto('/product/9001');
+  expect(response.status()).toBe(404);
   await expect(page.getByRole('heading', { level: 1, name: 'Loading product…' })).toBeVisible();
   await expect(page).toHaveTitle(/^Loading product…/);
   const loaded = page.getByRole('heading', { level: 1, name: 'Catalog test product' });
@@ -95,11 +102,12 @@ test('a product only the live catalog has shows "Loading product…", not "not f
 });
 
 test('an address that cannot name a product is "not found" at once, also while the catalog loads (AW-188)', async ({ page }) => {
-  const errors = trackErrors(page);
+  const errors = trackErrors(page, { pages404: true });
   let fail = false;
   await catalog(page, () => (fail ? { fail } : { delay: 3000 }));
   for (const url of ['/product/abc', '/product/0', '/product', '/category']) {
-    await page.goto(url);
+    const response = await page.goto(url);
+    expect([url, response.status()]).toEqual([url, 404]);
     await expect(page.getByRole('heading', { level: 1, name: /not found$/ })).toBeVisible({ timeout: 1000 });
   }
   // Nor does a failed catalog load turn it into "couldn't load".

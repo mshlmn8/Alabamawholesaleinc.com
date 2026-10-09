@@ -44,10 +44,9 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase as defaultClient } from './supabase.js';
-import { productImage, sharedImageFiles } from './images.js';
 import { isNetworkError } from './errors.js';
 import { PRODUCTS as STATIC_PRODUCTS } from '../data/products.js';
-import { currentImageFile } from '../data/catalogAliases.js';
+import { hydrateProducts } from './catalogRows.js';
 
 // A tab that comes back into view (or moves to another page) loads the
 // catalog again once it is older than this.
@@ -122,48 +121,9 @@ function rememberColumnList(fallbacks, index, now) {
   else if (workingColumns?.index !== index) workingColumns = { index, at: now };
 }
 
-const STATIC_BY_ID = new Map(STATIC_PRODUCTS.map((p) => [Number(p.id), p]));
-
-// Live rows in the shape the storefront uses. Rows saved before the product
-// copy columns were filled (supabase/migrations/20260927120000_product_copy.sql
-// adds them with '' as the default) take the bundled copy's description and
-// sell unit for the same id, and a row without a variant axis (a database
-// from before 20261009110000, or a row nobody set one on) takes the bundled
-// copy's. Without unavailable_variants every variant is available, and
-// without featured_rank a product has no homepage rank. A price
-// that came along (select('*') on a database from before 20261009100000) is
-// dropped: prices come only from usePrices(); so is the old flavors count
-// (AW-332: variantCount() in lines.js counts the variants).
-export function hydrateProducts(rows, bundled = STATIC_BY_ID) {
-  // A row may still name a photo by a file name that has since changed
-  // (AW-290; until 20261010131000_photo_filenames.sql is applied).
-  const shared = sharedImageFiles(rows.map((row) => ({ img: currentImageFile(row?.img) })));
-  return rows.map((row) => {
-    const p = { ...row };
-    delete p.price;
-    delete p.flavors;
-    const local = bundled.get(Number(p.id));
-    const img = currentImageFile(p.img);
-    return {
-      ...p,
-      variants: Array.isArray(p.variants) ? p.variants : [],
-      variantAxis: p.variant_axis || p.variantAxis || local?.variantAxis || '',
-      unavailableVariants: Array.isArray(p.unavailable_variants) ? p.unavailable_variants : [],
-      // Staff can show no description at all (AW-023): an empty one alone
-      // takes the bundled copy's, as rows saved before 20260927120000 have ''.
-      description: p.description_hidden === true ? '' : (p.description || local?.description || ''),
-      descriptionHidden: p.description_hidden === true,
-      sellUnit: p.sell_unit || p.sellUnit || local?.sellUnit || '',
-      // Staff's homepage rank (AW-119); null without one or before
-      // 20261010120000. Read by src/lib/merchandising.js.
-      featuredRank: Number.isInteger(p.featured_rank) ? p.featured_rank : null,
-      // img is a filename in src/assets/products, or a full URL (e.g. Supabase Storage)
-      ...productImage(img),
-      // Another row uses the same photo file (AW-136).
-      sharedPhoto: img != null && shared.has(String(img).trim()),
-    };
-  });
-}
+// Live rows in the storefront's shape: src/lib/catalogRows.js, which the
+// build also loads for each page's head tags (AW-181).
+export { hydrateProducts };
 
 // Every active product, a page at a time. Returns { rows } or { error }.
 export async function fetchCatalogRows(client, { signal = null, columns = CATALOG_COLUMNS, pageSize = CATALOG_PAGE_SIZE } = {}) {

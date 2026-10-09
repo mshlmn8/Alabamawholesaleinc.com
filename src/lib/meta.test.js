@@ -139,6 +139,8 @@ describe('pageMeta', () => {
     expect(tag(/<meta name="description" content="([^"]*)"/)).toBe(home.description);
     expect(tag(/<meta property="og:title" content="([^"]*)"/)).toBe(home.title);
     expect(tag(/<meta property="og:description" content="([^"]*)"/)).toBe(home.description);
+    expect(tag(/<meta name="twitter:title" content="([^"]*)"/)).toBe(home.title);
+    expect(tag(/<meta name="twitter:description" content="([^"]*)"/)).toBe(home.description);
     expect(tag(/<meta property="og:site_name" content="([^"]*)"/)).toBe('Alabama Wholesale Inc');
   });
 

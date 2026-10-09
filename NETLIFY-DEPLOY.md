@@ -31,7 +31,8 @@ set it only if the site moves to another domain. It reaches every absolute
 URL a crawler reads without running the app (AW-052): `index.html`'s share
 image (`og:image`, `twitter:image`) and structured data
 (`scripts/site-url.mjs`, a Vite plugin), `dist/robots.txt`'s `Sitemap` line
-and `dist/sitemap.xml` (`scripts/build-sitemap.mjs`). `public/robots.txt` is
+and `dist/sitemap.xml` (`scripts/build-sitemap.mjs`), and the page files'
+canonical links and share tags (`scripts/build-route-heads.mjs`). `public/robots.txt` is
 the production domain's copy, for the dev server only.
 
 <!-- TODO(owner): Register the production domain (or name the final one), connect it in Netlify as the primary domain with HTTPS, add the www name so Netlify redirects it to the primary one, and set the Supabase Auth Site URL once the domain resolves. (AW-052) -->
@@ -46,13 +47,17 @@ and loading or reloading one must serve `index.html`, which starts the app.
 1. A missing file under `/assets` or `/img` gets `public/404.html` with
    status 404 ("Headers and caching").
 2. Each page path of the app gets `index.html` with status 200: `/`,
-   `/index.html`, `/catalog`, `/category/*`, `/product/*`, `/search`,
-   `/quote`, `/account`, `/admin`, `/admin/*`, `/contact`, `/delivery`,
-   `/shipping`, `/privacy`, `/terms`, `/apply` and `/reset-password`.
+   `/index.html`, `/catalog`, `/search`, `/quote`, `/account`, `/admin`,
+   `/admin/*`, `/contact`, `/delivery`, `/shipping`, `/privacy`, `/terms`,
+   `/apply` and `/reset-password`. The catalog's pages, `/product/<id>` and
+   `/category/<department>[/<line>]`, have no rule: each is a file the build
+   writes ("Pages and the catalog" below).
 3. Last, `/*` gets `index.html` with status **404**. The visitor still sees
    the app's "Page not found" page, with a search box and the departments,
    but a mistyped or retired link is a real 404 for search engines, link
-   checkers and Search Console instead of a page that only says so.
+   checkers and Search Console instead of a page that only says so. That
+   includes a product, department or line the build wrote no file for:
+   `/product/99999`, a deactivated product, a mistyped department.
 
 Netlify serves a file that exists in the deploy before any of these rules
 (none is forced), and matches a path with or without a trailing slash alike.
@@ -65,6 +70,60 @@ for visitors but is a 404 for crawlers: `scripts/netlify-redirects.test.mjs`
 fails until the rule is there (it walks `PATH_SECTIONS` in
 `src/lib/routes.js`). `npm run preview` and the Playwright smoke tests answer
 with the same statuses (`aw-preview-redirects` in `vite.config.js`).
+
+## Pages and the catalog
+
+Crawlers and link previews (Facebook, iMessage, WhatsApp, Slack, LinkedIn)
+run no script, so they see only the HTML Netlify sends. After `vite build`
+and the sitemap, `npm run build` writes a page file for every URL in the
+sitemap but the home page (`scripts/build-route-heads.mjs`, AW-181):
+`dist/product/61.html`, `dist/category/tobacco.html`,
+`dist/category/tobacco/cigarettes.html`, `dist/contact.html` and so on. Each
+is `index.html` with that page's own `<title>`, description, canonical link,
+`og:url`, `og:title`, `og:description`, `og:image` (the product's photo on a
+product page), `twitter:*` tags and, on catalog pages, its BreadcrumbList
+(AW-320), from the same `src/lib/meta.js` code the app runs. In the browser
+the app starts from it as from `index.html`. The boot script is byte for
+byte the same in every file; `scripts/check-headers.mjs` checks each one
+against the Content-Security-Policy, and fails the build if a sitemap URL
+has no file.
+
+**File names.** Netlify serves a file that exists before any redirect rule,
+and with its default settings answers `/product/61` from `product/61.html`
+with no redirect, while it would redirect `/product/61` to `/product/61/`
+from `product/61/index.html` (Netlify's support guide "How can I alter
+trailing slash behaviour in my URLs?"). The site's paths have no trailing
+slash, so the files are `<path>.html`, and `/product/61/` is redirected to
+`/product/61`. Netlify's documentation does not describe a `<path>.html`
+file next to a folder of the same name (`category/tobacco.html` beside
+`category/tobacco/`, as static exports of other frameworks also write);
+after the first deploy, check that
+`curl -sI https://<site>/category/tobacco` answers 200 without a redirect.
+**Pretty URLs** (post processing) can stay on: per the same guide it only
+adds a redirect from `/product/61.html` to `/product/61` and rewrites links
+to `.html` files, which the site has none of. `vite preview` (and the smoke
+tests) serves the same files the same way, but answers `/product/61/` with
+`index.html` instead of a redirect. Another spelling of a catalog path
+(`/category/DRINKS%20%26%20BAGS`, `/product/012`) has no file, so it is a 404
+that still shows the page and moves the address to the canonical one; a
+spelling that differs only in letter case may find its file, as Netlify
+lowercases static file paths (a staff answer on Netlify's support forum).
+
+**The catalog is the one of the build** (NEW-087). The sitemap and the page
+files come from the live products table, read at build time with the anon
+key (`scripts/catalog-source.mjs`), or from the bundled
+`src/data/products.js`, with a warning in the deploy log, when the build
+can't read it. So after staff **add, deactivate, rename or re-file a
+product** in Admin, redeploy (**Deploys → Trigger deploy → Deploy site**):
+until then a new product works for buyers but its address answers with
+status 404 and the home page's head, so search engines skip it and a shared
+link previews as the home page; a deactivated product keeps its page file
+(the app shows "Product not found", noindex). A Netlify **build hook**
+(Project configuration → Build & deploy → Build hooks) gives a URL that
+starts a deploy; a scheduled job that calls it every night keeps the
+sitemap and page files within a day of Admin.
+
+<!-- TODO(owner): Should a Netlify build hook redeploy the site on a schedule (for example nightly) so products added or deactivated in Admin reach the sitemap and page files without a manual deploy? Each deploy uses build minutes. (NEW-087) -->
 
 ## Build cache for photos
 

@@ -3,13 +3,16 @@
 // answered with index.html and status 200, and every other path with a real
 // 404, so a mistyped or retired link shows as broken to crawlers and link
 // checkers. A page path without its rewrite would be a 404 on Netlify, so
-// these tests walk every page shape routes.js knows.
+// these tests walk every page shape routes.js knows. The catalog's pages
+// (/product/<id>, /category/<department>[/<line>]) are the files the build
+// writes for them (scripts/build-route-heads.mjs, AW-181) and have no rule.
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ADMIN_SECTIONS } from '../src/lib/adminRoutes.js';
 import { NOINDEX_PAGES, PATH_SECTIONS, SUPPORT_PAGES, hrefFor, parseUrl } from '../src/lib/routes.js';
 import { SITEMAP_PAGES } from './build-sitemap.mjs';
+import { routeFile } from './build-route-heads.mjs';
 import { netlifyResponse, readNetlifyRedirects } from './netlify-headers.mjs';
 
 // Vitest runs from the repository root.
@@ -33,6 +36,11 @@ const SHAPES = {
   ],
 };
 const shapesOf = (section) => SHAPES[section] || [`/${section}`];
+// Sections whose pages are the build's page files, one per catalog entry.
+const CATALOG_SECTIONS = ['product', 'category'];
+const isCatalogPath = (path) => CATALOG_SECTIONS.some((section) => path.startsWith(`/${section}/`));
+// The deploy's files plus a page file for each catalog path above.
+const BUILT_FILES = new Set([...DEPLOY_FILES, ...CATALOG_SECTIONS.flatMap(shapesOf).map((p) => `/${routeFile(p)}`)]);
 const PAGE_PATHS = [
   '/', '/index.html',
   ...PATH_SECTIONS.flatMap(shapesOf),
@@ -110,13 +118,26 @@ describe('netlify.toml page rewrites (NEW-088)', () => {
   });
 
   it('answers every page path with index.html and status 200, with or without a trailing slash', () => {
-    for (const path of PAGE_PATHS) {
+    for (const path of PAGE_PATHS.filter((p) => !isCatalogPath(p))) {
       const pathname = path.split('?')[0];
       for (const p of new Set([pathname, pathname.endsWith('/') ? pathname : `${pathname}/`])) {
         const got = answer(p);
         expect([p, got.status, got.to || got.file]).toEqual([p, 200, '/index.html']);
       }
     }
+  });
+
+  it('answers a catalog page with its page file, and any other /product or /category path with a 404 (AW-181)', () => {
+    for (const path of PAGE_PATHS.filter(isCatalogPath)) {
+      expect([path, answer(path, BUILT_FILES)]).toEqual([path, { status: 200, file: `/${routeFile(path)}` }]);
+      // A product or line the build didn't write (deactivated, mistyped, or
+      // added in Admin since the last deploy).
+      expect([path, answer(path)]).toEqual([path, { status: 404, to: '/index.html' }]);
+    }
+    for (const path of ['/product/99999', '/category/nope', '/category/tobacco/no-such-line', '/product/abc', '/product', '/category']) {
+      expect([path, answer(path, BUILT_FILES)]).toEqual([path, { status: 404, to: '/index.html' }]);
+    }
+    expect(redirects.filter((r) => CATALOG_SECTIONS.some((section) => r.from.startsWith(`/${section}`)))).toEqual([]);
   });
 
   it('answers any other path with index.html and status 404, which the app shows as not found', () => {
@@ -138,8 +159,7 @@ describe('netlify.toml page rewrites (NEW-088)', () => {
     expect(pageRules.length).toBeGreaterThan(0);
     for (const r of pageRules) {
       expect([r.from, r.to, r.force]).toEqual([r.from, '/index.html', false]);
-      const sample = r.from.replace(/\/\*$/, '/x');
-      const pathname = r.from.startsWith('/admin/') ? '/admin/orders' : r.from.startsWith('/product/') ? '/product/1' : sample;
+      const pathname = r.from.startsWith('/admin/') ? '/admin/orders' : r.from;
       expect([r.from, parseUrl({ pathname }).page]).not.toEqual([r.from, 'not-found']);
     }
     expect(new Set(redirects.map((r) => r.from)).size).toBe(redirects.length);

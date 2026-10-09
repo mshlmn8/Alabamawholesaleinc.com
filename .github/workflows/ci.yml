@@ -87,6 +87,11 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          # The placeholder project doesn't exist: the sitemap and the page
+          # files come from the bundled catalog without asking it
+          # (scripts/catalog-source.mjs, NEW-087), as the smoke tests expect.
+          ALLOW_NO_BACKEND: '1'
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium

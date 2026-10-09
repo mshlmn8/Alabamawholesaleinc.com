@@ -165,18 +165,26 @@ test.describe('after age confirmation', () => {
 
   test('old #/ links and other spellings land on the canonical path', async ({ page }) => {
     const errors = trackErrors(page);
-    for (const [from, to] of [
-      ['/#/category/TOBACCO', '/category/tobacco'],
-      ['/#/product/12', '/product/12'],
-      ['/#/category/DRINKS%20%26%20BAGS/Energy%20Drinks', '/category/drinks-and-bags/energy-drinks'],
-      ['/category/TOBACCO', '/category/tobacco'],
-      ['/product/012', '/product/12'],
+    const missing = new Set();
+    for (const [from, to, status] of [
+      ['/#/category/TOBACCO', '/category/tobacco', 200],
+      ['/#/product/12', '/product/12', 200],
+      ['/#/category/DRINKS%20%26%20BAGS/Energy%20Drinks', '/category/drinks-and-bags/energy-drinks', 200],
+      // Another spelling of a catalog path has no page file of its own, so
+      // it answers with a 404 (AW-181, NEW-088); the app still shows the page
+      // at its canonical path. Only the letter case may still find the file:
+      // on a case-insensitive disk (macOS), and on Netlify, which lowercases
+      // static file paths.
+      ['/category/TOBACCO', '/category/tobacco', [200, 404]],
+      ['/product/012', '/product/12', 404],
     ]) {
-      await page.goto(from);
+      const response = await page.goto(from);
+      expect([from, [status].flat().includes(response.status())]).toEqual([from, true]);
+      if (response.status() === 404) missing.add(`HTTP 404 ${response.url()}`);
       await expect(page).toHaveURL((url) => url.pathname === to && url.hash === '');
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     }
-    expect(errors).toEqual([]);
+    expect(errors.filter((e) => !missing.has(e) && !/^console: Failed to load resource: the server responded with a status of 404/.test(e))).toEqual([]);
   });
 
   // `vite preview` answers with netlify.toml's statuses (NEW-088): a path
@@ -187,9 +195,11 @@ test.describe('after age confirmation', () => {
     const missing = new Set();
     for (const [path, heading, status] of [
       ['/no-such-page', 'Page not found', 404],
-      ['/product/99999', 'Product not found', 200],
-      ['/category/nope', 'Department not found', 200],
-      ['/category/tobacco/no-such-line', 'Product line not found', 200],
+      // The catalog's pages are files the build writes (AW-181): a product,
+      // department or line it didn't write is a 404 too.
+      ['/product/99999', 'Product not found', 404],
+      ['/category/nope', 'Department not found', 404],
+      ['/category/tobacco/no-such-line', 'Product line not found', 404],
     ]) {
       const response = await page.goto(path);
       expect([path, response.status()]).toEqual([path, status]);
@@ -490,6 +500,54 @@ test.describe('after age confirmation', () => {
     await page.goto('/category/tobacco/tubes-and-filters');
     await expect(page.locator('.card-detail').filter({ hasText: 'AW-GAMBLER-TUBES' }))
       .toHaveText('Gambler · 6 varieties · Sold by the box of 200 · AW-GAMBLER-TUBES');
+    expect(errors).toEqual([]);
+  });
+});
+
+// Crawlers and link previews run no script (AW-181): each catalog and
+// support page is a file with its own head tags, and the browser then runs
+// the app from it as from index.html.
+test.describe('page files', () => {
+  test.beforeEach(async ({ context }) => {
+    await context.addInitScript(([key, value]) => {
+      try { localStorage.setItem(key, value); } catch { /* storage blocked */ }
+    }, [AGE_KEY, ageRecord(Date.now())]);
+  });
+
+  const tag = (html, attr, key) => new RegExp(`<meta ${attr}="${key}" content="([^"]*)" />`).exec(html)?.[1] ?? null;
+
+  test('a product, a department, a line and a support page each answer with their own title and share tags', async ({ request }) => {
+    for (const [path, title] of [
+      ['/product/61', /^Geek Bar Pulse X 25K · /],
+      ['/category/tobacco', /^Tobacco · Wholesale catalog · /],
+      ['/category/tobacco/cigarettes', /^Cigarettes · Tobacco · /],
+      ['/contact', /^Contact &amp; visit · /],
+    ]) {
+      const response = await request.get(path);
+      expect([path, response.status()]).toEqual([path, 200]);
+      const html = await response.text();
+      expect(html).toMatch(new RegExp(`<title>${title.source.slice(1)}`));
+      expect(tag(html, 'property', 'og:title')).toMatch(title);
+      expect(tag(html, 'name', 'twitter:title')).toMatch(title);
+      expect(tag(html, 'property', 'og:url')).toBe(`https://alabamawholesaleinc.com${path}`);
+      expect(html).toContain(`<link rel="canonical" href="https://alabamawholesaleinc.com${path}" />`);
+      expect(html.includes('id="aw-breadcrumbs"')).toBe(path !== '/contact');
+    }
+    // The product's own photo is its share image.
+    expect(tag(await (await request.get('/product/61')).text(), 'property', 'og:image')).toMatch(/^https:\/\/alabamawholesaleinc\.com\/img\/.+\.jpg$/);
+  });
+
+  test('the app starts from a page file as from index.html', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/category/tobacco/cigarettes');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await expect(page).toHaveTitle(/^Cigarettes · Tobacco · /);
+    // Moving on in the app rewrites the head the file came with.
+    await page.locator('main a.card-link').first().click();
+    await expect(page).toHaveURL(/\/product\/\d+$/);
+    await expect.poll(() => page.locator('link[rel="canonical"]').getAttribute('href')).toBe(`https://alabamawholesaleinc.com${new URL(page.url()).pathname}`);
+    await expect(page.locator('link[rel="canonical"]')).toHaveCount(1);
+    await expect(page.locator('#aw-breadcrumbs')).toHaveCount(1);
     expect(errors).toEqual([]);
   });
 });

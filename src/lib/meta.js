@@ -395,11 +395,46 @@ function setCanonical(href) {
   el.setAttribute('href', href);
 }
 
+// The head tags of a pageMeta() result, the same for the browser
+// (applyPageMeta) and the page files the build writes for crawlers and link
+// previews that run no script (scripts/build-route-heads.mjs, AW-181):
+//   title, canonical (absolute URL or null),
+//   meta: [attribute, key, content] rows, a null content meaning no such tag,
+//   breadcrumbs: the BreadcrumbList JSON (scriptJson) or null.
+// A product share image is resolved on `imageBase`: in the browser the
+// current origin, where this build's hashed file exists; in the build,
+// SITE_URL.
+export function headTags({ title, description, path = null, image = null, breadcrumbs = null, noindex = false }, { imageBase = SITE_URL } = {}) {
+  const url = path ? absoluteUrl(path) : null;
+  const img = image ? { ...image, url: absoluteUrl(image.url, imageBase) } : DEFAULT_IMAGE;
+  const text = (value) => (value == null || value === '' ? null : String(value));
+  return {
+    title,
+    canonical: url,
+    meta: [
+      ['name', 'description', text(description)],
+      ['property', 'og:url', url],
+      ['property', 'og:title', text(title)],
+      ['property', 'og:description', text(description)],
+      ['property', 'og:image', img.url],
+      ['property', 'og:image:type', image ? null : 'image/jpeg'],
+      ['property', 'og:image:width', text(img.width)],
+      ['property', 'og:image:height', text(img.height)],
+      ['property', 'og:image:alt', text(img.alt)],
+      ['name', 'twitter:title', text(title)],
+      ['name', 'twitter:description', text(description)],
+      ['name', 'twitter:image', img.url],
+      ['name', 'robots', noindex ? 'noindex' : null],
+    ],
+    breadcrumbs: breadcrumbs?.length ? scriptJson(breadcrumbList(breadcrumbs)) : null,
+  };
+}
+
 // The BreadcrumbList script in the head: written for a page with a trail,
 // removed for any other.
-function setBreadcrumbs(trail) {
+function setBreadcrumbs(json) {
   let el = document.getElementById(BREADCRUMBS_ID);
-  if (!trail?.length) {
+  if (!json) {
     el?.remove();
     return;
   }
@@ -409,28 +444,14 @@ function setBreadcrumbs(trail) {
     el.id = BREADCRUMBS_ID;
     document.head.appendChild(el);
   }
-  el.textContent = scriptJson(breadcrumbList(trail));
+  el.textContent = json;
 }
 
-// Writes a pageMeta() result into the document head. A product share image
-// is resolved on the current origin, where this build's hashed file exists.
-export function applyPageMeta({ title, description, path = null, image = null, breadcrumbs = null, noindex = false }) {
-  document.title = title;
-  const url = path ? absoluteUrl(path) : null;
-  setMeta('name', 'description', description);
-  setCanonical(url);
-  setMeta('property', 'og:url', url);
-  setMeta('property', 'og:title', title);
-  setMeta('property', 'og:description', description);
-  setMeta('name', 'twitter:title', title);
-  setMeta('name', 'twitter:description', description);
-  const img = image ? { ...image, url: absoluteUrl(image.url, window.location.origin) } : DEFAULT_IMAGE;
-  setMeta('property', 'og:image', img.url);
-  setMeta('property', 'og:image:type', image ? null : 'image/jpeg');
-  setMeta('property', 'og:image:width', img.width);
-  setMeta('property', 'og:image:height', img.height);
-  setMeta('property', 'og:image:alt', img.alt);
-  setMeta('name', 'twitter:image', img.url);
-  setMeta('name', 'robots', noindex ? 'noindex' : null);
-  setBreadcrumbs(breadcrumbs);
+// Writes a pageMeta() result into the document head.
+export function applyPageMeta(meta) {
+  const tags = headTags(meta, { imageBase: window.location.origin });
+  document.title = tags.title;
+  setCanonical(tags.canonical);
+  for (const [attr, key, content] of tags.meta) setMeta(attr, key, content);
+  setBreadcrumbs(tags.breadcrumbs);
 }

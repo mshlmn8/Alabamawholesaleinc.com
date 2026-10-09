@@ -37,6 +37,15 @@
 # slash alike. A new route needs its rule here, above "/*", or it is a 404:
 # scripts/netlify-redirects.test.mjs checks every page path against these
 # rules, and `vite preview` answers with the same statuses.
+#
+# The catalog's own pages, /product/<id> and /category/<department>[/<line>],
+# have no rule: the build writes a file for each one in the catalog
+# (product/61.html, category/tobacco.html, category/tobacco/cigarettes.html;
+# scripts/build-route-heads.mjs, AW-181), which Netlify serves before any
+# rule. Any other /product or /category path, such as a deactivated product
+# or a mistyped department, is a 404. scripts/check-headers.mjs fails the
+# build if a sitemap URL has no file. A product added in Admin gets its file
+# with the next deploy (NETLIFY-DEPLOY.md, "Pages and the catalog").
 [[redirects]]
   from = "/"
   to = "/index.html"
@@ -49,16 +58,6 @@
 
 [[redirects]]
   from = "/catalog"
-  to = "/index.html"
-  status = 200
-
-[[redirects]]
-  from = "/category/*"
-  to = "/index.html"
-  status = 200
-
-[[redirects]]
-  from = "/product/*"
   to = "/index.html"
   status = 200
 

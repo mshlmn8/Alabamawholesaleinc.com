@@ -371,6 +371,22 @@ reach tabs that were already open. Checkout loads it once more before sending
 and stops, naming the lines, when one was deactivated, lost its variant or
 changed price.
 
+**The sitemap and the page files are a build-time copy (NEW-087, AW-181).**
+`npm run build` reads the same active rows, read-only with the anon key
+(`id`, the names, department and line, SKU, photo, description and
+`updated_at`; `scripts/catalog-source.mjs`), and writes from them
+`dist/sitemap.xml` (each product dated by its `updated_at`) and a page file
+for every product, department and line (`scripts/build-route-heads.mjs`),
+which is what search engines and link previews see. So **adding,
+deactivating, renaming or re-filing a product in Admin reaches the sitemap,
+the share previews and the page files only with the next deploy**: until
+then a new product works for buyers but its address answers with status 404
+and the generic home-page head, and a deactivated one keeps its page file.
+Redeploy after catalog changes (Netlify: **Deploys → Trigger deploy**), or
+let a Netlify build hook do it (NETLIFY-DEPLOY.md, "Pages and the catalog").
+A build that can't reach the database (or has `ALLOW_NO_BACKEND=1`) uses the
+bundled `src/data/products.js` and prints a warning saying so.
+
 ## 5. First-run sanity check
 
 1. Open the site, click **SIGN IN → Open a trade account**.
