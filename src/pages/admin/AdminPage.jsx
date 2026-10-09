@@ -11,11 +11,12 @@
 // Every admin URL is the same page to the router (pageKey 'admin'), so moving
 // between sections and filters keeps the scroll position and focus, and Back
 // returns to the previous section. A detail view (the product editor,
-// /admin/products/:id and /new; an order's print view) moves focus itself,
-// and hands back a returnFocusId that its list focuses when it shows again.
+// /admin/products/:id and /new; an order's print view; an account's page,
+// /admin/accounts/:id, AW-113) moves focus itself, and hands back a
+// returnFocusId that its list focuses when it shows again.
 //
-// The Orders search is kept here, not in the URL (it names people), so it
-// survives a visit to a print view. Opening Orders (a print view included)
+// The Orders and Accounts searches are kept here, not in the URL (they name
+// people), so they survive a visit to a print view or an account's page. Opening Orders (a print view included)
 // is a visit: orders placed since the previous one are marked New (AW-111,
 // ordersSeen.js).
 
@@ -70,6 +71,7 @@ export function AdminPage({
   // ({ path, linkId }), so Back from it goes back in history to the list.
   const [orderSearch, setOrderSearch] = useState('');
   const [printFrom, setPrintFrom] = useState(null);
+  const [accountSearch, setAccountSearch] = useState('');
   const approvedAdmin = profile?.role === 'admin' && profile?.status === 'approved';
   const ordersSince = useOrdersSeen(approvedAdmin && account === 'ready' && section === 'orders', supabase);
   // A filter change replaces the history entry and keeps the scroll position.
@@ -174,7 +176,10 @@ export function AdminPage({
           onOpenPrint={(href, linkId) => setPrintFrom({ path: href.split('?')[0], linkId })}
           returnFocusId={returnFocusId} onReturnFocus={setReturnFocusId} />
       )}
-      {section === 'accounts' && <AccountsTab currentAdminId={profile.id} notify={status.show} />}
+      {section === 'accounts' && (
+        <AccountsTab route={route} currentAdminId={profile.id} notify={status.show} search={accountSearch} onSearch={setAccountSearch}
+          returnFocusId={returnFocusId} onReturnFocus={setReturnFocusId} />
+      )}
       {section === 'products' && (
         <ProductsTab route={route} query={query} onQuery={setQuery} onCatalogChange={onCatalogChange} notify={status.show}
           returnFocusId={returnFocusId} onReturnFocus={setReturnFocusId} />

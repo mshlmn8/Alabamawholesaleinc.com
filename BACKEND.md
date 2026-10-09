@@ -688,6 +688,49 @@ count, and the list refreshes every minute instead of at once. Realtime also
 needs the site's Content-Security-Policy to allow
 `wss://<project-ref>.supabase.co` in `connect-src`.
 
+### Accounts and their pages (Admin → Accounts)
+
+Admin → Accounts (AW-113, AW-112) has a **Search accounts** box that looks in
+the business, name, email and phone of the loaded accounts; what is typed
+stays on the page and never goes into the address bar. Each business links
+to its own page, `/admin/accounts/<profile id>`, and each order card's
+account line links there too. The page shows:
+
+- **Status, tier and role**, with the list's rules (an admin can't change
+  their own status or role; the database refuses it too).
+- **Contact and store**: business, contact name, phone, business type, store
+  street, city, state (two letters) and ZIP, saved to the profile's own
+  columns (`store_*` are the store address). Only the changed columns are
+  sent. The email is read only: it follows the sign-in email.
+- **Verification**: the application answers and the verification note (which
+  the account holder can read).
+- **Licence documents**, signed when View is clicked.
+- **Internal notes** (`profile_admin_notes`): staff only, with the author's
+  name and the date; 1 to 2,000 characters.
+- **Orders**: the newest 50 with the last order's date and the total of the
+  priced orders that weren't cancelled; every link opens Admin → Orders for
+  the account (`?account=<profile id>`).
+- **Status history** (`profile_status_log`).
+
+Status, tier and role changes (on the list and the page) show at once, with
+Undo for 8 seconds, and go back with the reason if the database refuses
+them; one request per account at a time. **Suspending** asks for a reason,
+which is saved as an internal note ("Suspended: …"). **Cancelling an order**
+asks for a reason that goes in its history (`admin_set_order_status`); other
+order status changes keep the card where it is, tagged "Moved to …", until
+Refresh or another filter, with Undo.
+
+No migration is needed: the page uses `20261008191000` (store address),
+`20261008193000` (approval stamp, status history) and `20261009140000`
+(internal notes). Before those are applied, saving a column the database
+doesn't have says it needs the October 2026 update, the notes say so too
+(and a suspension says its reason wasn't saved), the status history is left
+out, and a cancellation's reason is optional because it can't be stored.
+
+Staff can't create or invite an account from Admin yet: that needs a
+Supabase Edge Function with the service-role key and an email provider (see
+docs/OWNER-TODO.md, AW-113 and AW-088).
+
 ## Row-level security summary
 
 - **Admins**: `is_admin()` is true only for a profile with role `admin`

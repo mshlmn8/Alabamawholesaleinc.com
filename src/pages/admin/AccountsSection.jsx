@@ -1,89 +1,65 @@
 // Admin -> Accounts: every account with its status, tier, role and licence
 // documents, the details row with the application answers (AW-017), Approve
-// and Email applicant.
+// and Email applicant; a search box, and each business's own page
+// (/admin/accounts/:id, AccountDetail.jsx, AW-113). Status, tier and role
+// changes show at once, with Undo; suspending asks for a reason
+// (AccountChanges.jsx, AW-112).
 
 import { Fragment, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
-import { DOCUMENT_TYPES, DOCUMENT_VIEW_SECONDS, listAllProfileDocuments, openDocument } from '../../lib/documents.js';
-import { Icon } from '../../components/Icon.jsx';
+import { Link } from '../../lib/router.js';
+import { DOCUMENT_TYPES, listAllProfileDocuments } from '../../lib/documents.js';
 import { useLeaveGuard } from './useLeaveGuard.js';
-import { adminErrorMessage, checkedWrite, isMissingSchema, isRefused, refusalFor, withStatus } from './adminData.js';
+import { adminErrorMessage, withStatus } from './adminData.js';
 import { LoadProblem } from './AdminStatus.jsx';
+import { AccountFacts, DocumentView, Email, approvalLine, useDocumentViewer } from './accountParts.jsx';
+import { AccountChangeDialog, accountControlId, useAccountChanges } from './AccountChanges.jsx';
+import { AccountDetail } from './AccountDetail.jsx';
+import { MAX_ACCOUNT_SEARCH, accountHref, accountLinkId, matchesAccountSearch } from './accountDetail.js';
+
+export { approvalLine, profileChangeText, profileSaveError } from './accountParts.jsx';
 
 // The tiers before pricing_tiers could be read here (AW-351): the options when
 // that table can't be loaded.
 const FALLBACK_TIERS = ['standard', 'silver', 'gold'];
+const currentUrl = () => window.location.pathname + window.location.search;
+// A phone number as a tel: link wants it: digits and a leading +.
+export const telHref = (phone) => `tel:${String(phone ?? '').replace(/[^\d+]/g, '')}`;
 
-// Who approved an account, and when (AW-197): the approver's name from the
-// accounts already loaded. Accounts approved before 20261008193000, or on a
-// database without it, have no approved_at, and show nothing.
-export function approvalLine(p, profiles) {
-  if (!p.approved_at) return null;
-  const at = new Date(p.approved_at);
-  if (Number.isNaN(at.getTime())) return null;
-  const when = at.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const approver = p.approved_by ? profiles.find(x => x.id === p.approved_by) : null;
-  const by = approver ? (approver.name || approver.email) : null;
-  return by ? `Approved ${when} by ${by}` : `Approved ${when}`;
-}
-
-// What Admin -> Accounts says after a change was saved.
-export function profileChangeText(who, patch) {
-  if (patch.role === 'admin') return `${who} is now an admin.`;
-  if (patch.role === 'customer') return `${who} is now a customer account.`;
-  if ('status' in patch) return `${who} is now ${patch.status}.`;
-  if ('pricing_tier' in patch) return `${who} is now on the ${patch.pricing_tier} tier.`;
-  if ('verification_note' in patch) return `Saved the verification note for ${who}.`;
-  return `Saved the change to ${who}.`;
-}
-
+// route: the admin route; route.id is an account's id for its page.
 // currentAdminId: the signed-in admin, whose own status and role can't be
 // changed here (AW-352); the database refuses it too (profiles_guard).
-// notify: shows what a change did (useAdminStatus).
-export function AccountsTab({ currentAdminId, notify }) {
+// notify: shows what a change did (useAdminStatus). search/onSearch: the
+// search box, kept by AdminPage (never in the URL: it names people).
+// returnFocusId/onReturnFocus: the business link the list focuses when an
+// account's page closes.
+export function AccountsTab({
+  route = {}, currentAdminId, notify, search = '', onSearch, returnFocusId = null, onReturnFocus,
+}) {
   const [profiles, setProfiles] = useState(null);
   const [profilesError, setProfilesError] = useState(null);
   const [retrying, setRetrying] = useState(false);
-  // The licence documents: null while loading. They load once (and on Try
-  // again), not after every change to an account.
-  const [documents, setDocuments] = useState(null);
-  const [documentsError, setDocumentsError] = useState(null);
-  const [documentsRetrying, setDocumentsRetrying] = useState(false);
-  const [viewError, setViewError] = useState(null);
-  // A document whose tab the browser blocked: { key, url }, offered as a
-  // link until its signed URL expires.
-  const [blockedLink, setBlockedLink] = useState(null);
-  const [openId, setOpenId] = useState(null);
-  const [noteDraft, setNoteDraft] = useState('');
-  const [updateError, setUpdateError] = useState(null);
   const [tiers, setTiers] = useState(FALLBACK_TIERS);
-  // A verification note typed but not saved: leaving the page asks first (AW-118).
-  const openProfile = openId && profiles ? profiles.find(row => row.id === openId) : null;
-  useLeaveGuard(!!openProfile && noteDraft !== (openProfile.verification_note || ''), 'The verification note isn’t saved. Leave without saving it?');
+  // The account page the list opened, so leaving it goes Back to the list
+  // (its search and scroll position); a page opened any other way goes to
+  // the list by its link.
+  const [openedFrom, setOpenedFrom] = useState(null);
+  const changes = useAccountChanges({ setProfiles, currentAdminId, notify });
+  const detail = route.id != null;
+
   // A failed load says so, with Try again, instead of an empty table or
-  // "Not on file" for every account (AW-202).
+  // "Not on file" for every account (AW-202). Changes patch the rows where
+  // they are (AccountChanges.jsx), so this runs once, and on Try again.
   const reload = () => supabase.from('profiles').select('*').order('created_at', { ascending: false }).then((result) => {
     const error = withStatus(result);
     setProfilesError(error ? adminErrorMessage(error, 'The accounts didn’t load') : null);
     if (!error) setProfiles(result.data || []);
   });
-  const loadDocuments = () => listAllProfileDocuments().then(
-    (rows) => { setDocuments(rows); setDocumentsError(null); },
-    (error) => setDocumentsError(adminErrorMessage(error, 'The licence documents didn’t load')),
-  );
-  useEffect(() => {
-    reload();
-    loadDocuments();
-  }, []);
+  useEffect(() => { reload(); }, []);
   const retry = async () => {
     setRetrying(true);
     await reload();
     setRetrying(false);
-  };
-  const retryDocuments = async () => {
-    setDocumentsRetrying(true);
-    await loadDocuments();
-    setDocumentsRetrying(false);
   };
   // The tier options are the pricing_tiers rows (AW-351): adding a tier is one
   // row there.
@@ -95,178 +71,237 @@ export function AccountsTab({ currentAdminId, notify }) {
     return () => { cancelled = true; };
   }, []);
 
-  // View signs the document's URL when it is clicked, for a minute, and
-  // opens it in a new tab (AW-208). Nothing is signed when the page loads.
-  const viewDocument = async (row, profile, label) => {
-    setViewError(null);
-    setBlockedLink(null);
-    const result = await openDocument(row.storage_path);
-    if (!result.ok) {
-      setViewError(adminErrorMessage(result.error, `Couldn’t open the ${label.toLowerCase()} for ${profile.business || profile.name}`));
-      return;
+  // Back from an account's page: its business link takes the focus.
+  const leaveDetail = (event) => {
+    onReturnFocus?.(accountLinkId(route.id));
+    const back = openedFrom && openedFrom === currentUrl();
+    setOpenedFrom(null);
+    if (back) {
+      event.preventDefault();
+      window.history.back();
     }
-    if (result.blocked) setBlockedLink({ key: `${row.profile_id}:${row.document_type}`, url: result.url });
   };
-  useEffect(() => {
-    if (!blockedLink) return undefined;
-    const timer = setTimeout(() => setBlockedLink(null), (DOCUMENT_VIEW_SECONDS - 5) * 1000);
-    return () => clearTimeout(timer);
-  }, [blockedLink]);
+  const patchProfile = (id, patch) => setProfiles((list) => list?.map((p) => (p.id === id ? { ...p, ...patch } : p)) ?? list);
 
-  // A refused or failed change is shown, not ignored: the database refuses
-  // some changes with 42501 (20261009140000), and an update that reaches no
-  // row (RLS) returns no error, so the changed row is read back.
-  const updateProfile = async (row, patch) => {
-    setUpdateError(null);
-    const who = row.business || row.name || row.email;
-    if (row.id === currentAdminId && ('status' in patch || 'role' in patch)) {
-      setUpdateError('You can’t change your own status or role.');
-      return;
-    }
-    const { error } = await checkedWrite(supabase.from('profiles').update(patch).eq('id', row.id));
-    if (error) setUpdateError(profileSaveError(error, who));
-    else notify?.(profileChangeText(who, patch));
-    // Reloaded either way: a refused change visibly goes back to the saved
-    // value, beside the error.
-    reload();
+  return (
+    <>
+      {detail ? (
+        <AccountDetail
+          key={route.id} id={route.id} profiles={profiles} loadError={profilesError} onRetry={retry} retrying={retrying} tiers={tiers}
+          currentAdminId={currentAdminId} changes={changes} notify={notify} onPatch={patchProfile} onBack={leaveDetail}
+        />
+      ) : (
+        <AccountsList
+          profiles={profiles} profilesError={profilesError} onRetry={retry} retrying={retrying} tiers={tiers} currentAdminId={currentAdminId}
+          changes={changes} search={search} onSearch={onSearch} onOpen={setOpenedFrom} returnFocusId={returnFocusId} onReturnFocus={onReturnFocus}
+        />
+      )}
+      <AccountChangeDialog changes={changes} />
+    </>
+  );
+}
+
+function AccountsList({
+  profiles, profilesError, onRetry, retrying, tiers, currentAdminId, changes, search, onSearch, onOpen, returnFocusId, onReturnFocus,
+}) {
+  // The licence documents: null while loading. They load once when the list
+  // first shows (and on Try again), never after a change to an account.
+  const [documents, setDocuments] = useState(null);
+  const [documentsError, setDocumentsError] = useState(null);
+  const [documentsRetrying, setDocumentsRetrying] = useState(false);
+  const viewer = useDocumentViewer();
+  const [openId, setOpenId] = useState(null);
+  const [noteDraft, setNoteDraft] = useState('');
+  // A verification note typed but not saved: leaving the page asks first (AW-118).
+  const openProfile = openId && profiles ? profiles.find(row => row.id === openId) : null;
+  useLeaveGuard(!!openProfile && noteDraft !== (openProfile.verification_note || ''), 'The verification note isn’t saved. Leave without saving it?');
+  const loadDocuments = () => listAllProfileDocuments().then(
+    (rows) => { setDocuments(rows); setDocumentsError(null); },
+    (error) => setDocumentsError(adminErrorMessage(error, 'The licence documents didn’t load')),
+  );
+  useEffect(() => { loadDocuments(); }, []);
+  const retryDocuments = async () => {
+    setDocumentsRetrying(true);
+    await loadDocuments();
+    setDocumentsRetrying(false);
   };
+
+  // Back from an account's page: its business link takes the focus again.
+  useEffect(() => {
+    if (!returnFocusId || !profiles) return;
+    const target = document.getElementById(returnFocusId);
+    onReturnFocus?.(null);
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    target.scrollIntoView?.({ block: 'nearest' });
+  }, [returnFocusId, profiles, onReturnFocus]);
 
   if (!profiles) {
-    return profilesError ? <LoadProblem message={profilesError} onRetry={retry} retrying={retrying} /> : <p className="result-note">Loading…</p>;
+    return profilesError ? <LoadProblem message={profilesError} onRetry={onRetry} retrying={retrying} /> : <p className="result-note">Loading…</p>;
   }
+
+  const shown = profiles.filter((p) => matchesAccountSearch(p, search));
+  const searching = search.trim() !== '';
+  const plural = profiles.length === 1 ? 'account' : 'accounts';
+  // A change on its way: the account's selects take no other change until
+  // it is answered (aria-disabled keeps the keyboard focus on them).
+  const busy = (p) => !!changes.saving(p.id);
+  const chooseStatus = (p) => (e) => {
+    if (!busy(p)) changes.setStatus(p, e.target.value, { focusId: accountControlId(p.id, 'status') });
+  };
+  const approve = async (p) => {
+    const ok = await changes.change(p, { status: 'approved' }, { kind: 'approve', focusId: accountControlId(p.id, 'status') });
+    // Approve is gone once the account is approved: the status select takes the focus.
+    document.getElementById(accountControlId(p.id, ok ? 'status' : 'approve'))?.focus();
+  };
 
   return (
     <div>
-      {profilesError && <LoadProblem message={profilesError} onRetry={retry} retrying={retrying} />}
-      {documentsError && <LoadProblem message={documentsError} onRetry={retryDocuments} retrying={documentsRetrying} />}
-      {viewError && <p className="form-error" role="alert">{viewError}</p>}
-      {updateError && <p className="form-error" role="alert">{updateError}</p>}
-      <div className="table-scroll">
-        <table className="aw-table">
-          <thead>
-            <tr>
-              {['Business', 'Contact', 'Email', 'Status', 'Tier', 'Role', 'Documents', 'Actions'].map(h => (
-                <th key={h}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {profiles.map(p => (
-              <Fragment key={p.id}>
-              <tr>
-                <td>{p.business || '—'}</td>
-                <td>{p.name}</td>
-                <td className="muted"><Email address={p.email} /></td>
-                <td>
-                  <select aria-label={`Status for ${p.business || p.name}`} value={p.status} disabled={p.id === currentAdminId} aria-describedby={p.id === currentAdminId ? 'admin-own-row' : undefined} onChange={e => updateProfile(p, { status: e.target.value })}>
-                    <option value="pending">pending</option>
-                    <option value="approved">approved</option>
-                    <option value="suspended">suspended</option>
-                  </select>
-                  {p.id === currentAdminId && <small className="field-hint" id="admin-own-row">Your own status and role can’t be changed here.</small>}
-                  {p.approved_at && <small className="field-hint">{approvalLine(p, profiles)}</small>}
-                </td>
-                <td>
-                  <select aria-label={`Tier for ${p.business || p.name}`} value={p.pricing_tier} onChange={e => updateProfile(p, { pricing_tier: e.target.value })}>
-                    {(tiers.includes(p.pricing_tier) ? tiers : [...tiers, p.pricing_tier]).map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </td>
-                <td>
-                  {/* An admin must be an approved account (is_admin()), so
-                      making a pending or suspended account an admin approves it. */}
-                  <select aria-label={`Role for ${p.business || p.name}`} value={p.role} disabled={p.id === currentAdminId} aria-describedby={p.id === currentAdminId ? 'admin-own-row' : undefined}
-                    onChange={e => updateProfile(p, e.target.value === 'admin' && p.status !== 'approved' ? { role: 'admin', status: 'approved' } : { role: e.target.value })}>
-                    <option value="customer">customer</option>
-                    <option value="admin">admin</option>
-                  </select>
-                </td>
-                <td>
-                  {/* Every status: the proof stays on file after approval (AW-197). */}
-                  <ul className="doc-admin">
-                    {DOCUMENT_TYPES.map(doc => {
-                      const row = documents?.find(item => item.profile_id === p.id && item.document_type === doc.id);
-                      return (
-                        <li key={doc.id}>
-                          <span>{doc.label}</span>
-                          {row ? (
-                            <>
-                              <span>On file</span>
-                              <button type="button" className="text-link" onClick={() => viewDocument(row, p, doc.label)}>
-                                View<Icon name="external" /><span className="sr-only">{` ${doc.label} for ${p.business || p.name} (opens in a new tab)`}</span>
-                              </button>
-                              {/* The browser blocked the new tab: the freshly signed URL as a link instead. */}
-                              {blockedLink?.key === `${p.id}:${doc.id}` && (
-                                <a href={blockedLink.url} target="_blank" rel="noopener noreferrer">
-                                  <span>{`Open the ${doc.label.toLowerCase()}`}</span><Icon name="external" /><span className="sr-only">{` for ${p.business || p.name} (opens in a new tab)`}</span>
-                                </a>
-                              )}
-                            </>
-                          ) : (
-                            <span className="muted">{documents ? 'Not on file' : documentsError ? 'Couldn’t check' : 'Checking…'}</span>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </td>
-                <td>
-                  <div className="inline-actions">
-                    <button
-                      className="button xs ghost"
-                      type="button"
-                      aria-expanded={openId === p.id}
-                      aria-controls={openId === p.id ? `account-details-${p.id}` : undefined}
-                      onClick={() => { setOpenId(openId === p.id ? null : p.id); setNoteDraft(p.verification_note || ''); }}
-                    >
-                      <span>{openId === p.id ? 'Hide' : 'Details'}</span>
-                      <span className="sr-only">{` for ${p.business || p.name}`}</span>
-                    </button>
-                    {p.status === 'pending' && (
-                      <button className="button xs" type="button" onClick={() => updateProfile(p, { status: 'approved' })}>
-                        <span>Approve</span><span className="sr-only">{` ${p.business || p.name}`}</span>
-                      </button>
-                    )}
-                    {/* No mail goes out on its own (AW-088): after approving,
-                        staff send this from the desk's own mail. */}
-                    {p.status === 'approved' && p.role !== 'admin' && p.email && (
-                      <a className="button xs ghost" href={approvalEmail(p)}>
-                        <span>Email applicant</span><span className="sr-only">{` ${p.business || p.name}`}</span>
-                      </a>
-                    )}
-                  </div>
-                </td>
-              </tr>
-              {openId === p.id && (
-                <tr className="account-detail-row" id={`account-details-${p.id}`}>
-                  <td colSpan={8}>
-                    <div className="account-facts">
-                      <Fact label="EIN" value={p.ein} />
-                      <Fact label="Tobacco license" value={p.license_no} />
-                      <Fact label="Resale certificate" value={p.resale_cert_no} />
-                      <Fact label="Phone" value={p.phone} />
-                      <Fact label="Store state" value={p.state} />
-                      <Fact label="Street" value={p.store_street} />
-                      <Fact label="City" value={p.store_city} />
-                      <Fact label="ZIP" value={p.store_zip} />
-                      <Fact label="Business type" value={p.business_type} />
-                      <Fact label="Monthly volume" value={p.expected_volume} />
-                      <Fact label="Approved" value={p.approved_at ? new Date(p.approved_at).toLocaleString() : ''} />
-                      <Fact label="Approved by" value={profiles.find(row => row.id === p.approved_by)?.name || p.approved_by || ''} />
-                      <Fact label="Terms accepted" value={p.terms_accepted_at ? `${new Date(p.terms_accepted_at).toLocaleString()}${p.terms_version ? ` · ${p.terms_version}` : ''}` : ''} />
-                      <Fact label="21+ confirmed" value={p.age_confirmed_at ? new Date(p.age_confirmed_at).toLocaleString() : ''} />
-                    </div>
-                    <label className="account-note" htmlFor={`note-${p.id}`}>Verification note
-                      <input id={`note-${p.id}`} value={noteDraft} onChange={e => setNoteDraft(e.target.value)} />
-                    </label>
-                    <button className="button xs ghost" type="button" onClick={() => updateProfile(p, { verification_note: noteDraft || null })}>Save note</button>
-                  </td>
-                </tr>
-              )}
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
+      {/* TODO(owner): Should staff be able to set up and invite accounts for stores that phone in, and through which email service? (AW-113) */}
+      <div className="admin-toolbar admin-account-toolbar">
+        <label className="admin-account-search">Search accounts
+          <input type="search" placeholder="Business, name, email or phone" maxLength={MAX_ACCOUNT_SEARCH} autoComplete="off"
+            value={search} onChange={(e) => onSearch?.(e.target.value)} />
+        </label>
       </div>
+      <p className="result-note admin-count" aria-live="polite">{searching ? `${shown.length} of ${profiles.length} ${plural}` : `${profiles.length} ${plural}`}</p>
+      {profilesError && <LoadProblem message={profilesError} onRetry={onRetry} retrying={retrying} />}
+      {documentsError && <LoadProblem message={documentsError} onRetry={retryDocuments} retrying={documentsRetrying} />}
+      {viewer.viewError && <p className="form-error" role="alert">{viewer.viewError}</p>}
+      {changes.error && <p className="form-error" role="alert">{changes.error}</p>}
+      {shown.length === 0 ? (
+        <div className="empty-results">
+          <p>{`No account matches “${search.trim()}”.`}</p>
+          <button className="text-link" type="button" onClick={() => onSearch?.('')}>Clear the search</button>
+        </div>
+      ) : (
+        <div className="table-scroll">
+          <table className="aw-table">
+            <thead>
+              <tr>
+                {['Business', 'Contact', 'Status', 'Tier', 'Role', 'Documents', 'Actions'].map(h => (
+                  <th key={h}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map(p => (
+                <Fragment key={p.id}>
+                  <tr>
+                    <td>
+                      <Link id={accountLinkId(p.id)} className="account-link" to={accountHref(p.id)} onClick={() => onOpen?.(accountHref(p.id))}>
+                        {p.business || p.name || p.email || 'Unnamed account'}
+                      </Link>
+                    </td>
+                    <td>
+                      <span className="account-contact">
+                        <span>{p.name || '—'}</span>
+                        {p.email && <a href={`mailto:${p.email}`}><Email address={p.email} /></a>}
+                        {p.phone && <a href={telHref(p.phone)}>{p.phone}</a>}
+                      </span>
+                    </td>
+                    <td>
+                      <select id={accountControlId(p.id, 'status')} aria-label={`Status for ${p.business || p.name}`} value={p.status}
+                        disabled={p.id === currentAdminId} aria-disabled={busy(p) || undefined}
+                        aria-describedby={p.id === currentAdminId ? 'admin-own-row' : undefined} onChange={chooseStatus(p)}>
+                        <option value="pending">pending</option>
+                        <option value="approved">approved</option>
+                        <option value="suspended">suspended</option>
+                      </select>
+                      {p.id === currentAdminId && <small className="field-hint" id="admin-own-row">Your own status and role can’t be changed here.</small>}
+                      {p.approved_at && <small className="field-hint">{approvalLine(p, profiles)}</small>}
+                    </td>
+                    <td>
+                      <select id={accountControlId(p.id, 'tier')} aria-label={`Tier for ${p.business || p.name}`} value={p.pricing_tier} aria-disabled={busy(p) || undefined}
+                        onChange={e => { if (!busy(p)) changes.change(p, { pricing_tier: e.target.value }, { kind: 'tier', focusId: accountControlId(p.id, 'tier') }); }}>
+                        {(tiers.includes(p.pricing_tier) ? tiers : [...tiers, p.pricing_tier]).map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </td>
+                    <td>
+                      {/* An admin must be an approved account (is_admin()), so
+                          making a pending or suspended account an admin approves it. */}
+                      <select id={accountControlId(p.id, 'role')} aria-label={`Role for ${p.business || p.name}`} value={p.role}
+                        disabled={p.id === currentAdminId} aria-disabled={busy(p) || undefined}
+                        aria-describedby={p.id === currentAdminId ? 'admin-own-row' : undefined}
+                        onChange={e => {
+                          if (busy(p)) return;
+                          changes.change(p, e.target.value === 'admin' && p.status !== 'approved' ? { role: 'admin', status: 'approved' } : { role: e.target.value },
+                            { kind: 'role', focusId: accountControlId(p.id, 'role') });
+                        }}>
+                        <option value="customer">customer</option>
+                        <option value="admin">admin</option>
+                      </select>
+                    </td>
+                    <td>
+                      {/* Every status: the proof stays on file after approval (AW-197). */}
+                      <ul className="doc-admin">
+                        {DOCUMENT_TYPES.map(doc => {
+                          const row = documents?.find(item => item.profile_id === p.id && item.document_type === doc.id);
+                          return (
+                            <li key={doc.id}>
+                              <span>{doc.label}</span>
+                              {row ? (
+                                <>
+                                  <span>On file</span>
+                                  <DocumentView row={row} doc={doc} who={p.business || p.name} viewer={viewer} />
+                                </>
+                              ) : (
+                                <span className="muted">{documents ? 'Not on file' : documentsError ? 'Couldn’t check' : 'Checking…'}</span>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </td>
+                    <td>
+                      <div className="inline-actions">
+                        <button
+                          className="button xs ghost"
+                          type="button"
+                          aria-expanded={openId === p.id}
+                          aria-controls={openId === p.id ? `account-details-${p.id}` : undefined}
+                          onClick={() => { setOpenId(openId === p.id ? null : p.id); setNoteDraft(p.verification_note || ''); }}
+                        >
+                          <span>{openId === p.id ? 'Hide' : 'Details'}</span>
+                          <span className="sr-only">{` for ${p.business || p.name}`}</span>
+                        </button>
+                        {/* Approve stays (disabled) while its request is out, so
+                            a double click sends one. */}
+                        {(p.status === 'pending' || changes.saving(p.id) === 'approve') && (
+                          <button id={accountControlId(p.id, 'approve')} className="button xs" type="button" disabled={busy(p)} onClick={() => approve(p)}>
+                            <span>{changes.saving(p.id) === 'approve' ? 'Approving…' : 'Approve'}</span><span className="sr-only">{` ${p.business || p.name}`}</span>
+                          </button>
+                        )}
+                        {/* No mail goes out on its own (AW-088): after approving,
+                            staff send this from the desk's own mail. */}
+                        {p.status === 'approved' && p.role !== 'admin' && p.email && !busy(p) && (
+                          <a className="button xs ghost" href={approvalEmail(p)}>
+                            <span>Email applicant</span><span className="sr-only">{` ${p.business || p.name}`}</span>
+                          </a>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                  {openId === p.id && (
+                    <tr className="account-detail-row" id={`account-details-${p.id}`}>
+                      <td colSpan={7}>
+                        <AccountFacts profile={p} profiles={profiles} />
+                        <label className="account-note" htmlFor={`note-${p.id}`}>Verification note
+                          <input id={`note-${p.id}`} value={noteDraft} onChange={e => setNoteDraft(e.target.value)} />
+                        </label>
+                        <button className="button xs ghost" type="button" disabled={busy(p)}
+                          onClick={async () => {
+                            if (await changes.change(p, { verification_note: noteDraft.trim() || null }, { kind: 'note', undoable: false })) setNoteDraft(noteDraft.trim());
+                          }}>Save note</button>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -277,33 +312,4 @@ export function approvalEmail(p) {
   const subject = 'Your Alabama Wholesale trade account';
   const body = 'Your Alabama Wholesale trade account is approved. Sign in to see pricing.';
   return `mailto:${p.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-}
-
-// The live database gets the approval and consent columns from the
-// 2026-10-08 migrations (AW-197, AW-019); until then they read as '—' and a
-// note cannot be saved. The database refuses some admin changes with 42501
-// and a hint (20261009140000); one with no hint names the account.
-export function profileSaveError(error, who) {
-  if (isMissingSchema(error) || /PGRST204|42703/.test(String(error?.message || ''))) return 'Saving this needs the October 2026 database update (see BACKEND.md).';
-  if (isRefused(error) && !refusalFor(error)) return `That change to ${who} isn’t allowed.`;
-  return adminErrorMessage(error, `The change to ${who} wasn’t saved`);
-}
-
-// An email address that may wrap after its @ (AW-021), so a long address
-// doesn't push the table wider than the screen.
-function Email({ address }) {
-  const text = String(address || '');
-  const at = text.indexOf('@');
-  if (at < 1) return <span>{text}</span>;
-  return <><span>{text.slice(0, at + 1)}</span><wbr /><span>{text.slice(at + 1)}</span></>;
-}
-
-// One application answer in the details row (AW-017).
-function Fact({ label, value }) {
-  return (
-    <div>
-      <p className="fact-label">{label}</p>
-      <p>{value || '—'}</p>
-    </div>
-  );
 }

@@ -2,7 +2,7 @@
 // approval record, documents for every status, the admin's own row and
 // refused changes (AW-197, AW-352), with the fake client (fakeSupabase.js).
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../lib/supabase.js', async () => {
   const { createFakeSupabase } = await import('./fakeSupabase.js');
@@ -34,6 +34,10 @@ beforeEach(() => {
     pricing_tiers: [{ tier: 'standard', discount_pct: 0 }, { tier: 'silver', discount_pct: 5 }],
   };
   fake.respond = (request) => (request.op === 'update' && db.updateResult ? db.updateResult : undefined);
+});
+afterEach(async () => {
+  // ConfirmDialog's history entry is removed asynchronously.
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
 });
 const updates = () => fake.find({ op: 'update' }).map(({ table, filters, patch }) => ({ table, id: filters.find(([name]) => name === 'eq')[2], patch }));
 
@@ -88,10 +92,16 @@ describe('AdminPage accounts', () => {
     });
     expect(updates().at(-1)).toEqual({ table: 'profiles', id: 'buyer-2', patch: { role: 'admin', status: 'approved' } });
     db.updateResult = { data: null, error: { code: '42501', message: 'Only your name, phone and store address can be changed here' } };
+    // Suspending asks for a reason first (AW-112).
     await act(async () => {
       fireEvent.change(screen.getByRole('combobox', { name: 'Status for Test Market LLC' }), { target: { value: 'suspended' } });
     });
+    fireEvent.change(screen.getByLabelText('Reason for suspending'), { target: { value: 'Licence expired' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Suspend the account' })); });
     expect(screen.getByRole('alert').textContent).toBe('That change to Test Market LLC isn’t allowed.');
+    // The refused change goes back, and no note is written for it.
+    expect(screen.getByRole('combobox', { name: 'Status for Test Market LLC' }).value).toBe('approved');
+    expect(fake.find({ table: 'profile_admin_notes' })).toHaveLength(0);
     db.updateResult = { data: [], error: null };
     await act(async () => {
       fireEvent.change(screen.getByRole('combobox', { name: 'Tier for Test Market LLC' }), { target: { value: 'standard' } });

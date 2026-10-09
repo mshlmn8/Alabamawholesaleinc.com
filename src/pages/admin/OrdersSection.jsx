@@ -566,7 +566,8 @@ function OrderCard({
               {o.phone && <a href={`tel:${String(o.phone).replace(/[^\d+]/g, '')}`}>{o.phone}</a>}
             </dd>
           </div>
-          <div><dt>Account</dt><dd>{orderAccount(o)}</dd></div>
+          {/* The account's page (AW-113), when the order came from one. */}
+          <div><dt>Account</dt><dd>{o.user_id ? <Link className="order-account-link" to={adminHref({ section: 'accounts', id: o.user_id })}>{orderAccount(o)}</Link> : orderAccount(o)}</dd></div>
           {o.assigned_to && (
             <div><dt>Assigned to</dt><dd>{staffName((admins || []).find((a) => a.id === o.assigned_to)) || 'A former admin'}</dd></div>
           )}

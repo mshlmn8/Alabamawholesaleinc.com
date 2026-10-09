@@ -1,6 +1,8 @@
 // A confirmation for an admin action that discards or changes something
 // (AW-118, AW-202): a title, what will happen, and two buttons. With
-// `reasonLabel` it also asks for a reason, which it requires. Focus starts on
+// `reasonLabel` it also asks for a reason, which it requires (unless
+// `reasonOptional`: onConfirm then gets null for a blank one), at most
+// `reasonMax` characters when that is set (AW-112). Focus starts on
 // the cancel button; Escape, Back and the backdrop cancel; ModalLayer gives
 // focus back to the control that opened it. historyEntry={false}: Back
 // doesn't close it (its own history entry would be in the way when its
@@ -13,8 +15,8 @@ import { useId, useRef, useState } from 'react';
 import { ModalLayer } from '../../components/ModalLayer.jsx';
 
 export function ConfirmDialog({
-  title, body, confirmLabel, cancelLabel = 'Cancel', reasonLabel = null, reasonHint = null, busy = false, onConfirm, onCancel,
-  historyEntry = true,
+  title, body, confirmLabel, cancelLabel = 'Cancel', reasonLabel = null, reasonHint = null, reasonOptional = false, reasonMax = null,
+  busy = false, onConfirm, onCancel, historyEntry = true,
 }) {
   const id = useId();
   const cancelRef = useRef(null);
@@ -28,12 +30,17 @@ export function ConfirmDialog({
       return;
     }
     const text = reason.trim();
-    if (!text) {
-      setReasonError(`Enter ${reasonLabel.toLowerCase()} to continue.`);
+    const problem = !text && !reasonOptional
+      ? `Enter ${reasonLabel.toLowerCase()} to continue.`
+      : reasonMax && text.length > reasonMax
+        ? `Keep it to ${reasonMax.toLocaleString('en-US')} characters or fewer (it has ${text.length.toLocaleString('en-US')}).`
+        : '';
+    if (problem) {
+      setReasonError(problem);
       reasonRef.current?.focus();
       return;
     }
-    onConfirm(text);
+    onConfirm(text || null);
   };
   const describedBy = [reasonHint ? `${id}-hint` : null, `${id}-error`].filter(Boolean).join(' ');
 
@@ -53,7 +60,7 @@ export function ConfirmDialog({
               <div className="full">
                 <label htmlFor={`${id}-reason`}>{reasonLabel}</label>
                 <textarea
-                  id={`${id}-reason`} ref={reasonRef} rows={3} required value={reason}
+                  id={`${id}-reason`} ref={reasonRef} rows={3} required={!reasonOptional} value={reason}
                   aria-invalid={reasonError ? true : undefined} aria-describedby={describedBy}
                   onChange={(e) => { setReason(e.target.value); if (reasonError) setReasonError(''); }}
                 />

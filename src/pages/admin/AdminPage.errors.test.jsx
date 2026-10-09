@@ -139,7 +139,8 @@ describe('checked writes (AW-202)', () => {
   it('approving is announced', async () => {
     await open('accounts');
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^Approve ?Test Market LLC$/ })); });
-    expect(fake.find({ op: 'update' })[0]).toMatchObject({ table: 'profiles', patch: { status: 'approved' }, returning: 'id' });
+    // The whole row comes back, with the approval stamp.
+    expect(fake.find({ op: 'update' })[0]).toMatchObject({ table: 'profiles', patch: { status: 'approved' }, returning: '*' });
     expect(statusText()).toBe('Test Market LLC is now approved.');
   });
 
