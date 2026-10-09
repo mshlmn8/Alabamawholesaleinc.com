@@ -64,7 +64,8 @@ const volumeLabel = (value) => value.replace(' — ', '–');
 // state chosen yet (an empty default) is no store off the routes.
 // TODO(owner): Do you accept trade accounts from stores outside AL, MS and GA, for will-call only? (AW-282)
 const ROUTE_STATE_NAMES = DELIVERY_ROUTE_STATES.map(stateName);
-const ROUTE_STATES_TEXT = `${ROUTE_STATE_NAMES.slice(0, -1).join(', ')} and ${ROUTE_STATE_NAMES.at(-1)}`;
+// No Array.prototype.at: the build targets Safari 14, which lacks it (NEW-019).
+const ROUTE_STATES_TEXT = `${ROUTE_STATE_NAMES.slice(0, -1).join(', ')} and ${ROUTE_STATE_NAMES[ROUTE_STATE_NAMES.length - 1]}`;
 const outOfAreaHint = (code) => (!code || DELIVERY_ROUTE_STATES.includes(code)
   ? null
   : `Our delivery routes cover ${ROUTE_STATES_TEXT}. For a store in ${stateName(code) || 'another state'}, ask the trade desk how orders would reach you.`);

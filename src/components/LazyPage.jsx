@@ -9,12 +9,14 @@
 //                      the router focuses <main> meanwhile;
 //   <LazyDialog>       a dialog's own error boundary and Suspense: a small
 //                      'Loading…' dialog while its code downloads, and a
-//                      'This didn't open' dialog with Reload when it can't.
+//                      'This didn't open' dialog with Reload when it can't
+//                      (or when it fails some other way, said apart).
 //
 // App's route ErrorBoundary says when a page's code didn't load
 // (isChunkLoadError in src/lib/chunks.js). Nothing reloads by itself.
 
 import { Suspense, lazy, useEffect } from 'react';
+import { isChunkLoadError } from '../lib/chunks.js';
 import { focusPageHeading, useLocation } from '../lib/router.js';
 import { ErrorBoundary } from './ErrorBoundary.jsx';
 import { Icon } from './Icon.jsx';
@@ -86,11 +88,17 @@ export function DialogLoading({ onClose, eyebrow }) {
   );
 }
 
-export function DialogFailed({ onClose, eyebrow }) {
+// Only a file that didn't download blames an update or the connection; any
+// other error (a browser missing something the dialog needs, NEW-019) says
+// only that it went wrong, since a reload alone may not fix it.
+export const DIALOG_NOT_LOADED_TEXT = 'The site may have been updated, or the connection dropped. Reload to try again.';
+export const DIALOG_FAILED_TEXT = 'Something went wrong opening this. Reload to try again.';
+
+export function DialogFailed({ onClose, eyebrow, error = null }) {
   return (
     <DialogShell onClose={onClose} eyebrow={eyebrow} role="alertdialog" labelledBy="lazy-dialog-failed-title" describedBy="lazy-dialog-failed-text">
       <h2 id="lazy-dialog-failed-title">This didn’t open</h2>
-      <p className="desc" id="lazy-dialog-failed-text">The site may have been updated, or the connection dropped. Reload to try again.</p>
+      <p className="desc" id="lazy-dialog-failed-text">{isChunkLoadError(error) ? DIALOG_NOT_LOADED_TEXT : DIALOG_FAILED_TEXT}</p>
       <div className="dialog-actions">
         <button className="button" type="button" data-autofocus onClick={() => window.location.reload()}>Reload</button>
       </div>
@@ -101,7 +109,7 @@ export function DialogFailed({ onClose, eyebrow }) {
 // `children` is the lazy dialog; it brings its own ModalLayer once loaded.
 export function LazyDialog({ onClose, eyebrow, children }) {
   return (
-    <ErrorBoundary fallback={<DialogFailed onClose={onClose} eyebrow={eyebrow} />}>
+    <ErrorBoundary fallback={(error) => <DialogFailed onClose={onClose} eyebrow={eyebrow} error={error} />}>
       <Suspense fallback={<DialogLoading onClose={onClose} eyebrow={eyebrow} />}>
         {children}
       </Suspense>

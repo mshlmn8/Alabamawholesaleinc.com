@@ -44,6 +44,32 @@ export default [
     }
   },
   {
+    // The site's code runs in the browsers vite.config.js build.target names
+    // (Safari 14, Chrome 87, Firefox 78, Edge 88). esbuild rewrites newer
+    // syntax for them but not newer built-ins, so these are refused here
+    // (NEW-019); scripts/check-compat.mjs checks the built files as well.
+    // Tests run in Node and may use them.
+    files: ['src/**/*.{js,jsx}'],
+    ignores: ['src/**/*.test.{js,jsx}', 'src/test/**'],
+    rules: {
+      'no-restricted-properties': ['error',
+        { object: 'Object', property: 'hasOwn', message: 'Safari 14 has no Object.hasOwn: use Object.prototype.hasOwnProperty.call(object, key) (NEW-019).' },
+        { object: 'AbortSignal', property: 'timeout', message: 'Safari 14 has no AbortSignal.timeout: use timeoutSignal() in src/lib/network.js (NEW-019).' },
+        { object: 'AbortSignal', property: 'any', message: 'Safari 14 has no AbortSignal.any (NEW-019).' }],
+      'no-restricted-globals': ['error',
+        { name: 'structuredClone', message: 'Safari 14 has no structuredClone (NEW-019).' }],
+      'no-restricted-syntax': ['error',
+        {
+          selector: 'CallExpression[callee.property.name=/^(at|findLast|findLastIndex|toSorted|toReversed|toSpliced)$/]',
+          message: 'Safari 14 and Chrome 87 lack Array.prototype.at, findLast, findLastIndex, toSorted, toReversed and toSpliced: use an index, a loop or a copy (NEW-019).'
+        },
+        {
+          selector: "NewExpression[callee.property.name='ListFormat']",
+          message: 'Safari 14.0 has no Intl.ListFormat: use listText() in src/components/Footer.jsx (NEW-019).'
+        }]
+    }
+  },
+  {
     files: ['src/**/*.test.{js,jsx}'],
     languageOptions: {
       globals: { ...globals.node }

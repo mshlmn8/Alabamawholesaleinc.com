@@ -22,11 +22,28 @@ import { NicotineWarning } from './NicotineWarning.jsx';
 // The copyright year, read once when the module loads: render may not read
 // the clock (react-hooks/purity).
 const YEAR = new Date().getFullYear();
-const LIST = new Intl.ListFormat('en-US', { style: 'long', type: 'conjunction' });
+
+// 'a', 'a and b', 'a, b, and c': what Intl.ListFormat('en-US') writes for a
+// long conjunction. Safari 14.0 and iOS 14.0–14.4, which the build still
+// targets, have no Intl.ListFormat, so it is used only where it exists and
+// made on first use, never while the module loads: a missing constructor
+// there stopped the whole site from starting (NEW-019). The fallback writes
+// the same words.
+let listFormat = null;
+export function listText(items) {
+  const list = items.map(String);
+  if (typeof Intl === 'object' && typeof Intl.ListFormat === 'function') {
+    // eslint-disable-next-line no-restricted-syntax -- guarded above: only where the browser has Intl.ListFormat (NEW-019)
+    if (!listFormat) listFormat = new Intl.ListFormat('en-US', { style: 'long', type: 'conjunction' });
+    return listFormat.format(list);
+  }
+  if (list.length < 3) return list.join(' and ');
+  return `${list.slice(0, -1).join(', ')}, and ${list[list.length - 1]}`;
+}
 
 // 'Wholesale distributor of tobacco, novelties & vapes, …, and drinks & bags.'
 export function footerBlurb(departments) {
-  const names = LIST.format(departments.map(d => d.label.toLowerCase()));
+  const names = listText(departments.map(d => d.label.toLowerCase()));
   return `Wholesale distributor${names ? ` of ${names}` : ''}. Serving licensed retail stores.`;
 }
 

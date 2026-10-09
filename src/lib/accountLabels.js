@@ -33,7 +33,9 @@ function capitalised(value) {
   const text = String(value ?? '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
   return text ? text[0].toUpperCase() + text.slice(1) : '';
 }
-const labelIn = (labels) => (value) => (Object.hasOwn(labels, String(value ?? '')) ? labels[value] : capitalised(value));
+// Object.hasOwn is newer than the browsers the build targets (Safari 14, NEW-019).
+const has = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
+const labelIn = (labels) => (value) => (has(labels, String(value ?? '')) ? labels[value] : capitalised(value));
 
 export const accountStatusLabel = labelIn(ACCOUNT_STATUS_LABELS);
 export const adminStatusLabel = labelIn(ADMIN_STATUS_LABELS);

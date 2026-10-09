@@ -3,7 +3,9 @@
 // fallback; App wraps the route switch, so a broken page keeps the header
 // and footer. `resetKey` changes on navigation: leaving a broken page clears
 // the error without remounting pages that rendered fine. `fallback` replaces
-// the page fallback (LazyDialog's 'This didn't open' dialog).
+// the page fallback: a node, or a function given the error, `(error) => node`
+// (LazyDialog's 'This didn't open' dialog, which words a failed download
+// apart from any other error, NEW-019).
 //
 // A page whose code didn't download (AW-179: after a new deploy, or with the
 // connection gone) says so, with the same Reload button. It never reloads by
@@ -38,7 +40,9 @@ export class ErrorBoundary extends Component {
 
   render() {
     if (!this.state.error) return this.props.children;
-    if (this.props.fallback !== undefined) return this.props.fallback;
+    const { fallback } = this.props;
+    if (typeof fallback === 'function') return fallback(this.state.error);
+    if (fallback !== undefined) return fallback;
     const notLoaded = isChunkLoadError(this.state.error);
     return this.props.fullPage ? <FullPageFallback notLoaded={notLoaded} /> : <ErrorFallback notLoaded={notLoaded} />;
   }

@@ -109,8 +109,25 @@ describe('LazyDialog', () => {
     });
     const failed = screen.getByRole('alertdialog', { name: 'This didn’t open' });
     expect(failed.getAttribute('aria-describedby')).toBe('lazy-dialog-failed-text');
+    expect(document.getElementById('lazy-dialog-failed-text').textContent).toBe('The site may have been updated, or the connection dropped. Reload to try again.');
     expect(screen.getByRole('button', { name: 'Reload' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('blames an update or the connection only when the code didn’t download (NEW-019)', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    // What an older browser throws while the dialog's code runs: the file
+    // arrived, so a reload alone won't fix it.
+    const load = deferred();
+    const Dialog = lazyPage(() => load.promise);
+    render(<LazyDialog eyebrow="TRADE ACCOUNTS" onClose={() => {}}><Dialog title="Sign in" /></LazyDialog>);
+    await act(async () => {
+      load.reject(new TypeError('Qe.at is not a function'));
+      await load.promise.catch(() => {});
+    });
+    expect(screen.getByRole('alertdialog', { name: 'This didn’t open' })).toBeTruthy();
+    expect(document.getElementById('lazy-dialog-failed-text').textContent).toBe('Something went wrong opening this. Reload to try again.');
+    expect(screen.getByRole('button', { name: 'Reload' })).toBeTruthy();
   });
 });

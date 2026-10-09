@@ -63,6 +63,12 @@ describe('ErrorBoundary', () => {
     expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
   });
 
+  it('passes the error to a fallback given as a function (NEW-019)', () => {
+    quietConsole();
+    render(<ErrorBoundary fallback={(error) => <p>{`Caught: ${error.message}`}</p>}><Page name="Dialog" broken /></ErrorBoundary>);
+    expect(screen.getByText('Caught: Dialog is broken')).toBeTruthy();
+  });
+
   it('shows the logo in the full-page fallback', () => {
     quietConsole();
     render(<ErrorBoundary fullPage><Page name="Home" broken /></ErrorBoundary>);

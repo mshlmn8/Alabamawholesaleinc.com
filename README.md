@@ -63,6 +63,10 @@ The build runs on Vite 7 with `@vitejs/plugin-react` 5 and React 18. Two upgrade
 - **Vite 8 with `@vitejs/plugin-react` 6.** Vite 8 bundles with Rolldown instead of Rollup, so check that the `manualChunks` split in `vite.config.js` still produces the separate `vendor` and `supabase` chunks and that the pages App.jsx loads with `React.lazy` are still files of their own (AW-179), then run the full checks above.
 - **React 19, after launch.** Plan it with the ESLint plugins: `eslint-plugin-react` and `eslint-plugin-jsx-a11y` do not declare ESLint 10 support yet, so ESLint stays on 9 for now.
 
+### Supported browsers
+
+The site supports the browsers `build.target` in `vite.config.js` names: Safari 14, Chrome 87, Edge 88 and Firefox 78, and anything newer. esbuild rewrites newer syntax for them, but not newer built-in functions, so `npm run lint` refuses `Array.prototype.at`, `findLast`, `toSorted` and the like, `Object.hasOwn`, `structuredClone`, `AbortSignal.timeout` and `new Intl.ListFormat` in `src/`, and `scripts/check-compat.mjs` checks the built files after `vite build` (NEW-019). In CSS, give a `dvh` height a `vh` line just before it, and keep `:has()` selectors in rules of their own: a browser that can't read one selector drops the whole list (`src/styles.test.js` checks both). To drop an old browser, raise `build.target` and this list together.
+
 ### Text that Google Translate can break
 
 Translated pages replace React's text nodes, so a string that can change, appear or disappear must be the only child of an element that is always rendered: build one template string (`` {`Showing ${n} of ${total} items`} ``) or give the changing part its own `<span>`. `npm run lint` enforces this with `aw/translate-safe-text` (`scripts/eslint/translate-safe-text.mjs`), and `src/lib/domGuard.js` keeps a missed spot from blanking the page.
@@ -73,7 +77,7 @@ Translated pages replace React's text nodes, so a string that can change, appear
 npm run build
 ```
 
-Output goes to `dist/`; `npm run preview` serves it locally, with the security headers and Content-Security-Policy from `netlify.toml` (NETLIFY-DEPLOY.md, "Headers and caching"). The build also fails when that policy would block an inline script in `dist/index.html` (`scripts/check-headers.mjs`), and without `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (see [BACKEND.md](BACKEND.md)). The site deploys from Git through Netlify; see [NETLIFY-DEPLOY.md](NETLIFY-DEPLOY.md). Do not drag and drop `dist/` onto Netlify.
+Output goes to `dist/`; `npm run preview` serves it locally, with the security headers and Content-Security-Policy from `netlify.toml` (NETLIFY-DEPLOY.md, "Headers and caching"). The build also fails when that policy would block an inline script in `dist/index.html` (`scripts/check-headers.mjs`), when the built JavaScript calls a built-in function the supported browsers lack (`scripts/check-compat.mjs`), and without `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (see [BACKEND.md](BACKEND.md)). The site deploys from Git through Netlify; see [NETLIFY-DEPLOY.md](NETLIFY-DEPLOY.md). Do not drag and drop `dist/` onto Netlify.
 
 ## Customize
 

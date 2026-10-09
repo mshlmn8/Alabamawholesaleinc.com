@@ -978,7 +978,9 @@ describe('one empty state, and a cart drawer that keeps room for its lines (AW-2
     expect(narrow[1]).toBe('19.5rem');
     expect(rules(narrow[0].slice(narrow[0].indexOf('{') + 1)).map((r) => [r.selectors.join(), declarations(r.body)['grid-template-areas']])).toEqual([
       ['.drawer-line', '"thumb info" "thumb qty" "thumb remove"'],
-      ['.drawer-line.checkout-line,.drawer-line:has(> .line-total)', '"thumb info" "thumb total" "thumb qty" "thumb remove"'],
+      // Two rules: a browser without :has() keeps the checkout line's (NEW-019).
+      ['.drawer-line.checkout-line', '"thumb info" "thumb total" "thumb qty" "thumb remove"'],
+      ['.drawer-line:has(> .line-total)', '"thumb info" "thumb total" "thumb qty" "thumb remove"'],
     ]);
   });
 
@@ -1594,5 +1596,38 @@ describe('product photo zoom on phones (AW-236)', () => {
   it('lets the enlarged photo take the screen’s width, so it is never smaller than the photo on the page', () => {
     expect(own('.overlay.pd-zoom-overlay')).toEqual({ padding: '0' });
     expect(own('.dialog.pd-zoom-dialog')).toEqual({ 'max-width': '100%', padding: '8px 8px 12px' });
+  });
+});
+
+// The build targets Safari 14, Chrome 87 and Firefox 78 (vite.config.js
+// build.target), and the stylesheet must hold up there too (NEW-019).
+describe('older browsers the build targets (NEW-019)', () => {
+  it('gives every dvh height a vh line just before it, for browsers without dvh', () => {
+    const dvh = rules(css).flatMap(({ selectors, body }) => body.split(';').map((d) => d.trim())
+      .map((d, i, all) => ({ selector: selectors.join(', '), d, before: all[i - 1] || '' }))
+      .filter(({ d }) => /\bdvh\b|\d+dvh/.test(d)));
+    expect(dvh.map((x) => x.selector)).toEqual(expect.arrayContaining(['.aw-mega-menu', '.aw-search-results', '.pd-zoom-dialog img', '.dialog', '.category-filters']));
+    for (const { selector, d, before } of dvh) {
+      const property = d.slice(0, d.indexOf(':'));
+      expect([selector, before]).toEqual([selector, d.replace(/dvh/g, 'vh')]);
+      expect(property).toBe('max-height');
+    }
+  });
+
+  it('caps the dialog at the window height with or without dvh', () => {
+    expect(css).toMatch(/\.dialog \{[^}]*max-height: calc\(100vh - 48px\); max-height: calc\(100dvh - 48px\);/);
+    expect(css).toMatch(/\.dialog \{[^}]*max-height: calc\(100vh - 2\.25rem\); max-height: calc\(100dvh - 2\.25rem\);/);
+  });
+
+  it('never mixes :has() into a selector list with selectors that work without it', () => {
+    // A browser without :has() (Safari before 15.4, Firefox before 121)
+    // drops the whole list, so each :has() selector is a rule of its own or
+    // shares a list only with other :has() selectors.
+    const mixed = rules(css).map((r) => r.selectors).filter((list) => list.some((s) => s.includes(':has(')) && !list.every((s) => s.includes(':has(')));
+    expect(mixed).toEqual([]);
+    const printBlocks = mediaBlocks(css).filter((b) => b.prelude === 'print');
+    const site = rules(printBlocks[printBlocks.length - 1].body);
+    expect(declarations(site.find((r) => r.selectors.join() === '.support-note:has(> button)').body)).toEqual({ display: 'none' });
+    expect(declarations(site.find((r) => r.selectors.join() === '.pd-grid ~ .section').body)).toEqual({ display: 'none' });
   });
 });
