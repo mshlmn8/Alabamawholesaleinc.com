@@ -142,6 +142,10 @@ describe('colour tokens (AW-292)', () => {
 });
 
 describe('one heading colour (AW-294)', () => {
+  // The one exception: the footer's column labels are h2s since AW-313, in the
+  // small lilac capitals of the purple footer they always were.
+  const EXCEPTIONS = { '.footer-grid h2': 'var(--on-dark-muted)' };
+
   it('sets h1 and h2 purple in one rule, and only white on purple surfaces elsewhere', () => {
     const shared = rules(css).find((r) => r.selectors.join(',') === 'h1,h2');
     expect(declarations(shared.body).color).toBe('var(--purple)');
@@ -149,7 +153,9 @@ describe('one heading colour (AW-294)', () => {
       const color = declarations(body).color;
       if (!color || selectors.join(',') === 'h1,h2') continue;
       for (const selector of selectors) {
-        if (/^h[12]\b/.test(lastCompound(selector))) expect(`${selector} { color: ${color} }`).toMatch(/color: #fff \}$/);
+        if (!/^h[12]\b/.test(lastCompound(selector))) continue;
+        if (selector in EXCEPTIONS) expect(color, selector).toBe(EXCEPTIONS[selector]);
+        else expect(`${selector} { color: ${color} }`).toMatch(/color: #fff \}$/);
       }
     }
   });
@@ -927,6 +933,31 @@ describe('one empty state, and a cart drawer that keeps room for its lines (AW-2
     const drawer = code(read('src/components/CartDrawer.jsx'));
     expect(drawer.indexOf('className="fine drawer-fine"')).toBeGreaterThan(drawer.indexOf('className="drawer-body"'));
     expect(drawer.indexOf('className="fine drawer-fine"')).toBeLessThan(drawer.indexOf('className="drawer-foot"'));
+  });
+});
+
+// The footer (AW-305, AW-313): h2 column labels in the footer's own small
+// capitals, and on phones two columns of links between the brand and the
+// contact details.
+describe('the footer columns and their headings (AW-305, AW-313)', () => {
+  const rule = (selector) => declarations(rules(css).find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+  const phone = () => mediaBlocks(css).filter((b) => b.prelude === '(max-width: 37.5em)').flatMap((b) => rules(b.body));
+  const onPhone = (selector) => phone().filter((r) => r.selectors.join(', ') === selector).map((r) => declarations(r.body));
+
+  it('styles the column labels as h2s, with their own font over the page heading size', () => {
+    expect(rule('.footer-grid h2')).toMatchObject({ font: '700 var(--text-xs)/1 var(--body)', 'letter-spacing': 'var(--track-eyebrow)', 'text-transform': 'uppercase', margin: '0 0 12px' });
+    // No h4 rule is left (the reset's :where() list names every level).
+    expect(rules(css).flatMap((r) => r.selectors).filter((s) => /\bh4\b/.test(s) && !s.startsWith(':where('))).toEqual([]);
+    expect(code(read('src/components/Footer.jsx'))).not.toMatch(/<h[3-6]\b/);
+  });
+
+  it('puts the links in two columns on phones, the brand and the contact details across both, one with large text', () => {
+    // At most two (34%), and one where a column would be under 8.25rem: large text.
+    expect(onPhone('.footer-grid')).toEqual([{ 'grid-template-columns': 'repeat(auto-fit, minmax(max(8.25rem, 34%), 1fr))', gap: '24px 16px' }]);
+    expect(onPhone('.footer-brand, .footer-contact')).toEqual([{ 'grid-column': '1 / -1' }]);
+    // The contact column is found by its class, not by its place among the columns.
+    expect(code(read('src/components/Footer.jsx'))).toMatch(/<div className="footer-contact">\s*<h2>Contact<\/h2>/);
+    expect(css).not.toMatch(/\.footer-grid > div:last-child/);
   });
 });
 

@@ -23,7 +23,7 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
             {departments.map((c, i) => (
               <Link key={c.key} to={{ page: 'category', category: c.key }} onClick={onFollowLink}>
                 <span><span className="menu-index" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span><span>{c.label}</span></span>
-                <span className="menu-count">{c.count}</span>
+                <span className="menu-count"><span>{c.count}</span><span className="sr-only"> products</span></span>
               </Link>
             ))}
             <Link className="menu-highlight" to="/catalog" onClick={onFollowLink}>View full catalog</Link>

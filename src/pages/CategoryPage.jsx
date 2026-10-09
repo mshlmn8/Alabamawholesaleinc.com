@@ -292,6 +292,9 @@ export function CategoryPage({
         )}
 
         <div>
+          {/* The cards' h3 names sit under an h2 in both layouts (AW-313):
+              the compact layout has no Filters heading. */}
+          <h2 className="sr-only">Products</h2>
           {items.length > 0 ? (
             <div className="card-grid category-card-grid">
               {items.map(p => (

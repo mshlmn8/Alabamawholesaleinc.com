@@ -8,7 +8,7 @@ import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 export const DIRECTIONS_URL = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${COMPANY.addressLine1}, ${COMPANY.addressLine2}`)}`;
 
 export const POLICY_LINKS = [
-  { page: 'shipping', label: 'Delivery' },
+  { page: 'shipping', label: 'Delivery policy' },
   { page: 'privacy', label: 'Privacy' },
   { page: 'terms', label: 'Trade terms' },
 ];

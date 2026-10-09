@@ -1182,7 +1182,7 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 /* ============================ footer ============================ */
 .footer-main { margin-top: calc(var(--section-gap) + 16px); background: var(--purple); color: #fff; padding: 44px 0 0; }
 .footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 32px; }
-.footer-grid h4 { font: 700 var(--text-xs)/1 var(--body); letter-spacing: var(--track-eyebrow); color: var(--on-dark-muted); text-transform: uppercase; margin: 0 0 12px; }
+.footer-grid h2 { font: 700 var(--text-xs)/1 var(--body); letter-spacing: var(--track-eyebrow); color: var(--on-dark-muted); text-transform: uppercase; margin: 0 0 12px; }
 .footer-grid p { font-size: var(--text-sm); color: var(--on-dark); line-height: 1.8; margin: 0; }
 .footer-grid a { display: inline-block; max-width: 100%; padding-block: 6px; color: var(--on-dark); text-decoration: underline; text-underline-offset: var(--link-offset); }
 @media (hover: hover) {
@@ -1524,7 +1524,12 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .dept-tile h3 { font-size: 1.25rem; }
   .editorials { grid-template-columns: 1fr; gap: 16px; }
   .editorial-card { padding: 24px; }
-  .footer-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  /* Two columns of links between the brand and the contact details, which
+     span both: about 350px shorter at 390 (AW-305), the links still 44px
+     rows. Never three (34%), and one where a column would be narrower than
+     8.25rem, so large text on a small phone gets the single column. */
+  .footer-grid { grid-template-columns: repeat(auto-fit, minmax(max(8.25rem, 34%), 1fr)); gap: 24px 16px; }
+  .footer-brand, .footer-contact { grid-column: 1 / -1; }
   .footer-main { padding: 32px 0 0; }
   .footer-legal { flex-direction: column; align-items: flex-start; gap: 8px; padding-bottom: 20px; }
   .dialog { padding: 24px 20px; }
