@@ -1640,6 +1640,7 @@ address.info-lead-small { font-style: normal; }
   .info-grid { grid-template-columns: 1fr; }
   .support-columns, .apply-layout, .policy-layout { grid-template-columns: minmax(0, 1fr); gap: 28px; }
   .contact-strip, .support-cta, .status-panel, .eligibility { flex-direction: column; align-items: stretch; gap: 20px; padding: 24px; margin-top: 30px; }
+  .doc-panel { padding: 24px; }
   .eligibility-form { flex-basis: auto; }
   .policy-nav { position: static; display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 14px 18px; }
   .policy-nav .eyebrow { flex-basis: 100%; }
@@ -1648,6 +1649,8 @@ address.info-lead-small { font-style: normal; }
 }
 @media (max-width: 37.5em) {
   .info-card { padding: 20px; }
+  /* Every account status stacks its two buttons the same way (AW-258). */
+  .status-panel .contact-strip-actions .button { flex: 1 1 100%; justify-content: center; }
   .dept-head { flex-direction: column; align-items: flex-start; gap: 8px; }
   .dept-head .text-link { white-space: normal; }
   .sku-list { grid-template-columns: 1fr; }
@@ -1679,7 +1682,8 @@ fieldset:disabled .doc-choose, .doc-file[aria-disabled="true"] + .doc-choose { o
 .doc-status[data-document-status="failed"] { font-weight: 600; }
 .doc-status[data-document-status="failed"] .icon { color: var(--danger); }
 .doc-status .doc-retry, .doc-status .doc-remove { margin-left: 8px; }
-.doc-panel { margin-top: 22px; padding: 28px; background: var(--paper); border: 1px solid var(--line); border-top: 4px solid var(--orange); }
+/* Framed like the status panel above it (AW-258). */
+.doc-panel { margin-top: 22px; padding: 1.875rem 2rem; background: var(--paper); border: 1px solid var(--line); border-left: 6px solid var(--orange); }
 .doc-panel .eyebrow { color: var(--orange-dark); margin-bottom: 8px; }
 .doc-panel h2 { margin: 0 0 8px; font-size: var(--h2-sm); }
 .doc-panel .doc-uploads { margin-top: 0; padding-top: 0; border-top: 0; }

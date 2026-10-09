@@ -107,7 +107,7 @@ describe('ApplicationDocuments', () => {
 });
 
 describe('ApplicationDocuments uploads (AW-095, AW-257, AW-264)', () => {
-  it('names the hidden input by its document and the Choose file label', async () => {
+  it('names the hidden input by its document and the Choose file label, and hides the legend', async () => {
     docs.rows = [];
     panel();
     await waitFor(() => expect(screen.getByRole('status').textContent).toBe('No documents yet.'));
@@ -117,6 +117,9 @@ describe('ApplicationDocuments uploads (AW-095, AW-257, AW-264)', () => {
     expect(computeAccessibleName(input)).toBe('State retail tobacco license Choose file');
     const choose = input.nextElementSibling;
     expect([choose.tagName, choose.className, choose.htmlFor]).toEqual(['LABEL', 'button ghost sm doc-choose', input.id]);
+    expect(document.querySelector('legend').className).toBe('sr-only');
+    // The pending panel has no eyebrow: the page already says so (AW-258).
+    expect(document.querySelector('.doc-panel .eyebrow')).toBeNull();
   });
 
   it('clears the input after every pick, so the same file again uploads again', async () => {

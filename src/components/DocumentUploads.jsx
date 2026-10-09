@@ -98,7 +98,8 @@ function DocumentFields({
 
   return (
     <fieldset className="doc-uploads" disabled={disabled}>
-      <legend>{showStatus ? 'Upload or replace' : 'Optional documents'}</legend>
+      {/* The panel's heading names the documents (AW-258). */}
+      <legend className={showStatus ? 'sr-only' : undefined}>{showStatus ? 'Upload or replace' : 'Optional documents'}</legend>
       <p className="doc-uploads-note" id={`${idPrefix}-later`}>
         {showStatus
           ? 'Uploading a new file replaces the one on file.'
@@ -226,9 +227,10 @@ export function DocumentUploads({ idPrefix = 'aw-doc', disabled = false, files, 
 }
 
 // Signed-in account: status per document, upload or replace now. Approved
-// and suspended accounts can send a renewed license too (AW-254).
+// and suspended accounts can send a renewed license too (AW-254). A pending
+// account's panel has no eyebrow: the page already says it is pending
+// (AW-258).
 const PROOF_EYEBROW = {
-  pending: 'WHILE YOUR APPLICATION IS PENDING',
   approved: 'KEEP YOUR LICENSE ON FILE',
   suspended: 'SEND UPDATED PROOF',
 };
@@ -333,10 +335,11 @@ export function ApplicationDocuments({ disabled = false, status = 'pending' }) {
 
   const summary = documentsSummary(records, status);
   const errors = Object.fromEntries(Object.entries(docs).map(([type, doc]) => [type, doc.error]));
+  const eyebrow = PROOF_EYEBROW[status];
 
   return (
     <section className="doc-panel" aria-labelledby="proof-title">
-      <p className="eyebrow">{PROOF_EYEBROW[status] || PROOF_EYEBROW.pending}</p>
+      {eyebrow && <p className="eyebrow">{eyebrow}</p>}
       <h2 id="proof-title">License documents</h2>
       {/* Always rendered, so the count is announced when it changes. */}
       <p className="doc-summary" role="status">{summary}</p>
