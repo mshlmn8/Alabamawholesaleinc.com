@@ -4,6 +4,11 @@
 //
 //   homeRails(products, { limit, hasPhoto }) -> { newArrivals, bestsellers }
 //
+// `limit` is how many cards each rail shows (the homepage shows RAIL_LENGTH,
+// one row, AW-060). The legal-review guard below compares with the homepage
+// as it was before the tags drove it, which showed RAIL_LIMIT (8) a rail,
+// whatever `limit` is now.
+//
 // New arrivals: active products with a photo tagged NEW, by homepage rank
 // (products.featured_rank, 1 first; unranked last), then by their place in
 // the old hand-picked NEW_ARRIVALS_IDS (kept only to break ties, so today's
@@ -38,7 +43,7 @@ function byRank(a, b) {
   return ra - rb;
 }
 
-export function homeRails(products, { limit = RAIL_LIMIT, hasPhoto = photoOf, legacyNewIds = NEW_ARRIVALS_IDS } = {}) {
+export function homeRails(products, { limit = RAIL_LIMIT, hasPhoto = photoOf, legacyNewIds = NEW_ARRIVALS_IDS, legacyLimit = Math.max(limit, RAIL_LIMIT) } = {}) {
   const shown = (products || []).filter((p) => p && p.active !== false && hasPhoto(p));
   const legacyPlace = new Map(legacyNewIds.map((id, i) => [id, i]));
   const placeOf = (p) => legacyPlace.get(idOf(p)) ?? Number.MAX_SAFE_INTEGER;
@@ -52,8 +57,8 @@ export function homeRails(products, { limit = RAIL_LIMIT, hasPhoto = photoOf, le
   // TODO(owner): After the legal review, may the Kratom & Kava, Mushroom Products, Detox, Wellness Pills and Honey & Energy enhancement items be featured on the homepage rails when they are tagged NEW or BESTSELLER, or only when staff rank them (as now), or never? (AW-119, AW-001)
   const byId = new Map(shown.map((p) => [idOf(p), p]));
   const before = {
-    newArrivals: new Set(legacyNewIds.map((id) => byId.get(id)).filter(Boolean).slice(0, limit).map(idOf)),
-    bestsellers: new Set(shown.filter((p) => p.tag === 'BESTSELLER').sort((a, b) => idOf(a) - idOf(b)).slice(0, limit).map(idOf)),
+    newArrivals: new Set(legacyNewIds.map((id) => byId.get(id)).filter(Boolean).slice(0, legacyLimit).map(idOf)),
+    bestsellers: new Set(shown.filter((p) => p.tag === 'BESTSELLER').sort((a, b) => idOf(a) - idOf(b)).slice(0, legacyLimit).map(idOf)),
   };
   const mayFeature = (p, shownBefore) => rankOf(p) != null || !underLegalReview(p) || shownBefore.has(idOf(p));
 

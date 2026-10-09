@@ -47,9 +47,11 @@ describe('homeRails', () => {
   it('features an unranked product under legal review only where the old homepage did; a staff rank still features it (AW-119, AW-001)', () => {
     const kava = (id, extra) => p(id, 'NEW', { sub: 'Kratom & Kava', ...extra });
     const products = [p(1, 'NEW'), kava(75), kava(76), p(218, 'BESTSELLER', { sub: 'Detox' }), p(10, 'BESTSELLER'), p(11, 'BESTSELLER')];
-    // The old New arrivals showed #75 (in the first `limit` picks), not #76;
-    // the old Bestsellers showed the first `limit` BESTSELLER products by id.
-    expect(rails(products, { legacyNewIds: [1, 75, 76], limit: 2 })).toEqual({ newArrivals: [1, 75], bestsellers: [10, 11] });
+    // The old New arrivals showed #75 (in the first `legacyLimit` picks), not
+    // #76; the old Bestsellers showed the first `legacyLimit` BESTSELLER
+    // products by id.
+    expect(rails(products, { legacyNewIds: [1, 75, 76], limit: 2, legacyLimit: 2 })).toEqual({ newArrivals: [1, 75], bestsellers: [10, 11] });
+    expect(rails(products, { legacyNewIds: [1, 75, 76], limit: 3, legacyLimit: 2 }).newArrivals).toEqual([1, 75]);
     expect(rails(products, { legacyNewIds: [], limit: 2 })).toEqual({ newArrivals: [1], bestsellers: [10, 11] });
     // Where the old homepage did show it, it stays.
     expect(rails(products, { legacyNewIds: [], limit: 3 }).bestsellers).toEqual([10, 11, 218]);
@@ -64,5 +66,11 @@ describe('homeRails', () => {
     expect(ids(newArrivals)).toEqual([62, 64, 184, 75]);
     expect(ids(bestsellers)).toEqual([11, 31, 55, 56, 60, 61, 143, 162]);
     expect(ids(newArrivals).every((id) => PRODUCTS.find((x) => x.id === id).tag === 'NEW')).toBe(true);
+  });
+
+  it('on the bundled catalog, one row of four (AW-060): the guard still compares with the old 8-card homepage', () => {
+    const { newArrivals, bestsellers } = homeRails(PRODUCTS, { limit: 4, hasPhoto });
+    expect(ids(newArrivals)).toEqual([62, 64, 184, 75]);
+    expect(ids(bestsellers)).toEqual([11, 31, 55, 56]);
   });
 });
