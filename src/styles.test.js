@@ -785,8 +785,10 @@ describe('cards with a stretched link (AW-170, AW-154, AW-304, AW-303)', () => {
 });
 
 // The product page (AW-163, AW-150): the purchase column starts 12px under
-// the breadcrumb, and in the compact layout the photo frame is capped, with
-// the name and price beside it on a phone held sideways.
+// the breadcrumb, and in the compact layout the photo frame is capped (36%
+// of the screen, 45% on a phone held sideways, which has the name and price
+// beside it), so the add button, which comes before the price there, is on
+// the first screen of a tablet.
 describe('the product page photo and purchase column (AW-163, AW-150)', () => {
   const all = rules(css);
   const own = (selector) => declarations(all.find((r) => r.selectors.join(', ') === selector)?.body ?? '');
@@ -800,11 +802,28 @@ describe('the product page photo and purchase column (AW-163, AW-150)', () => {
     expect(declared('position').filter(({ selector }) => /pd-(media|figure)/.test(selector)).map(({ value }) => value)).not.toContain('sticky');
   });
 
-  it('caps the compact photo frame at 4:3 and 45% of the screen, full width, with the photo out of the grid flow', () => {
+  it('tightens the purchase column above the price, so the add row is near the first screen of a 1366x650 laptop', () => {
+    expect(own('.pd-info .pd-brand')).toMatchObject({ margin: '0 0 10px' });
+    expect(own('.pd-variant-label')).toEqual({ margin: '10px 0 0' });
+    expect(own('.variant-chips')).toMatchObject({ margin: '8px 0 16px' });
+    expect(own('.variant-chips + .form-error')).toEqual({ margin: '-6px 0 16px' });
+    expect(own('.pd-price')).toMatchObject({ margin: '16px 0', padding: '14px 0' });
+    // The flavor note moved below the description keeps a little space.
+    expect(own('.pd-info .pd-flavor-note')).toEqual({ margin: '8px 0' });
+  });
+
+  it('caps the compact photo frame at 4:3 and 36% of the screen, full width, with the photo out of the grid flow', () => {
     expect(compact).toHaveLength(1);
-    expect(inCompact('.pd-media')).toEqual([{ width: '100%', 'aspect-ratio': '4 / 3', 'max-height': '45svh' }]);
-    // The vh line before it is the fallback for browsers without svh.
-    expect(compact[0].body).toMatch(/\.pd-media \{ width: 100%; aspect-ratio: 4 \/ 3; max-height: 45vh; max-height: 45svh; \}/);
+    expect(inCompact('.pd-media')).toEqual([
+      { width: '100%', 'aspect-ratio': '4 / 3', 'max-height': '36svh' },
+      // On a phone held sideways (nested, below), 45%.
+      { 'max-height': '45svh' },
+    ]);
+    // The vh lines before them are the fallback for browsers without svh.
+    expect(compact[0].body).toMatch(/\.pd-media \{ width: 100%; aspect-ratio: 4 \/ 3; max-height: 36vh; max-height: 36svh; \}/);
+    expect(compact[0].body).toMatch(/\.pd-media \{ max-height: 45vh; max-height: 45svh; \}/);
+    expect(inCompact('.pd-grid')).toEqual([{ 'grid-template-columns': '1fr', 'row-gap': '16px' }, { 'grid-template-columns': 'minmax(0, 2fr) minmax(0, 3fr)' }]);
+    expect(inCompact('.is-flush .crumbs')).toEqual([{ 'margin-bottom': '8px' }]);
     expect(inCompact('.pd-media img')).toEqual([{ inset: '20px', 'max-width': 'calc(100% - 40px)', 'max-height': 'calc(100% - 40px)' }]);
     expect(own('.pd-media img')).toMatchObject({ position: 'absolute' });
     for (const { selector } of declared('width')) expect(selector).not.toMatch(/\.pd-media img/);
@@ -820,7 +839,13 @@ describe('the product page photo and purchase column (AW-163, AW-150)', () => {
     expect(sideways[0].end).toBeLessThan(compact[0].end);
     expect(rules(sideways[0].body).map((r) => [r.selectors.join(', '), declarations(r.body)])).toEqual([
       ['.pd-grid', { 'grid-template-columns': 'minmax(0, 2fr) minmax(0, 3fr)' }],
+      ['.pd-media', { 'max-height': '45svh' }],
     ]);
+  });
+
+  it('starts the product page closer under the masthead on a short screen', () => {
+    const short = blocks.filter((b) => b.prelude === '(max-height: 31.25em)').flatMap((b) => rules(b.body));
+    expect(short.filter((r) => r.selectors.join(', ') === '.page-head.is-flush').map((r) => declarations(r.body))).toEqual([{ 'padding-top': '4px' }]);
   });
 });
 
@@ -1166,6 +1191,52 @@ describe('the footer columns and their headings (AW-305, AW-313)', () => {
   });
 });
 
+// The selected states the print and forced-colours lists style (NEW-031)
+// name the attribute the markup sets: a variant chip is a radio, chosen by
+// aria-checked (AW-235); the current line pill, policy page, hero dot and
+// navigation link carry aria-current. A selector for an attribute nothing
+// sets (aria-pressed on the chips, before AW-235) would match nothing and
+// leave the chosen chip printing as the faintest one.
+describe('selected-state selectors match the markup (NEW-031)', () => {
+  const blocks = mediaBlocks(css);
+  const sitePrint = blocks.filter((b) => b.prelude === 'print').at(-1);
+  const forced = blocks.find((b) => b.prelude === '(forced-colors: active)');
+  const listWith = (block, selector) => rules(block.body).filter((r) => r.selectors.includes(selector)).flatMap((r) => r.selectors);
+  const selected = [
+    ...listWith(sitePrint, '.sub-pill.active'),
+    ...listWith(forced, '.sub-pill.active'),
+    ...listWith(forced, '.sub-pill.active:focus-visible'),
+  ];
+  // Where each kind of selected element is drawn, and the attribute it sets.
+  const SOURCES = [
+    { match: /\.variant-chips/, file: 'src/pages/ProductPage.jsx', attribute: 'aria-checked', markup: /role="radio" aria-checked=\{/ },
+    { match: /\.sub-pill/, file: 'src/pages/CategoryPage.jsx', attribute: 'aria-current', markup: /className=\{`sub-pill[^`]*`\}[^>]*aria-current=\{[^}]*'page'/ },
+    { match: /policy-nav/, file: 'src/pages/support/SupportShell.jsx', attribute: 'aria-current', markup: /aria-current=\{[^}]*'page'/ },
+    { match: /home-carousel-dots/, file: 'src/components/HeroCarousel.jsx', attribute: 'aria-current', markup: /aria-current=\{[^}]*'true'/ },
+    { match: /aw-discovery-nav|aw-service-nav/, file: 'src/components/Header.jsx', attribute: 'aria-current', markup: /aria-current=\{currentFor\(/ },
+    { match: /menu-group/, file: 'src/components/MobileMenu.jsx', attribute: 'aria-current', markup: /aria-current=\{currentFor\(/ },
+  ];
+
+  it('finds the lists', () => {
+    expect(selected).toContain('.variant-chips button[aria-checked="true"]');
+    expect(selected.length).toBeGreaterThan(10);
+  });
+
+  it('styles each selected chip, pill, dot and link by the attribute its markup sets, never aria-pressed', () => {
+    for (const selector of selected) {
+      expect(selector, selector).not.toMatch(/aria-(pressed|selected)/);
+      const attributes = [...selector.matchAll(/\[(aria-[a-z]+)/g)].map((m) => m[1]);
+      if (!attributes.length) continue;
+      const source = SOURCES.find((x) => x.match.test(selector));
+      expect(source, `no source listed for ${selector}`).toBeTruthy();
+      expect(attributes, selector).toEqual([source.attribute]);
+      expect(read(source.file), `${source.file} sets ${source.attribute}`).toMatch(source.markup);
+    }
+    // The chips set no aria-pressed at all.
+    expect(read('src/pages/ProductPage.jsx')).not.toMatch(/aria-pressed/);
+  });
+});
+
 // Every page on paper (AW-148): the last @media print block, after the admin
 // sheets' (AW-110) and the receipt's (AW-022), which keep their own rules.
 describe('the print stylesheet (AW-148)', () => {
@@ -1233,6 +1304,15 @@ describe('the print stylesheet (AW-148)', () => {
     // After every compact block, so it wins at the same specificity.
     const compactEnds = mediaBlocks(css).filter((b) => b.prelude === MOBILE_QUERY).map((b) => b.end);
     expect(site().start).toBeGreaterThan(Math.max(...compactEnds));
+  });
+
+  it('prints the chosen variant as ink in an ink frame, bold, by the attribute its chip sets (NEW-031)', () => {
+    const chosen = inSite().find((r) => r.selectors.includes('.sub-pill.active'));
+    expect(chosen.selectors).toEqual(['.sub-pill.active', '.variant-chips button[aria-checked="true"]', '.home-carousel-caption']);
+    expect(declarations(chosen.body)).toEqual({ background: 'none', color: 'var(--ink)', border: '1px solid var(--ink)' });
+    expect(own('.variant-chips button[aria-checked="true"]')).toEqual({ 'font-weight': '700' });
+    // After the screen rule, which it overrides at the same specificity.
+    expect(site().start).toBeGreaterThan(css.indexOf('.variant-chips button[aria-checked="true"] {'));
   });
 
   it('prints where an outside link or an email button goes', () => {

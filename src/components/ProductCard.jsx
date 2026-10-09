@@ -112,8 +112,12 @@ export function ProductCard({
   const variants = variantList(p);
   const choiceRequired = requiresVariantChoice(p);
   const onlyVariant = variants.length === 1 ? variants[0] : null;
-  // The only variant is marked not available (AW-030): nothing to add.
-  const soldOut = onlyVariant != null && !isVariantAvailable(p, onlyVariant);
+  // Nothing to add (AW-030, NEW-052): the only variant is marked not
+  // available, or every one of a product's variants is. The card says "Not
+  // available" on a disabled button, and shows no price for it.
+  const soldOut = onlyVariant != null
+    ? !isVariantAvailable(p, onlyVariant)
+    : choiceRequired && !variants.some((v) => isVariantAvailable(p, v));
   const key = lineKey(p.id, onlyVariant);
   const qty = choiceRequired
     ? Object.entries(cart).reduce((sum, [k, q]) => (parseLineKey(k).productId === Number(p.id) ? sum + Number(q) : sum), 0)
@@ -179,7 +183,10 @@ export function ProductCard({
       <p className="card-detail"><TextParts parts={cardDetailParts(p, { sku: showSku })} code={showSku ? p.sku : null} /></p>
       {showsNicotineWarning(p) && <NicotineWarning compact />}
       <span className="card-meta card-actions">
-        {isApprovedBuyer && priceDidNotLoad(shown.unit, pricesStatus) ? (
+        {isApprovedBuyer && soldOut ? (
+          // The price row keeps its height, so the cards in a row line up.
+          <span className="card-price" />
+        ) : isApprovedBuyer && priceDidNotLoad(shown.unit, pricesStatus) ? (
           // A sentence in body type, never a word in price type (NEW-054).
           <span className="card-price-failed">{PRICE_FAILED_SENTENCE}</span>
         ) : isApprovedBuyer ? (
@@ -193,10 +200,10 @@ export function ProductCard({
         ) : (
           <span className="lock">{PRICE_LOCK.pending.short}</span>
         )}
-        {choiceRequired ? (
-          <Link className="button ghost sm card-add" to={productRoute}><span>{qty > 0 ? `Select options · ${qty}` : 'Select options'}</span><span className="sr-only">{`, ${p.name}`}</span></Link>
-        ) : soldOut ? (
+        {soldOut ? (
           <button className="button ghost sm card-add" type="button" disabled>Not available<span className="sr-only">{`, ${p.name}`}</span></button>
+        ) : choiceRequired ? (
+          <Link className="button ghost sm card-add" to={productRoute}><span>{qty > 0 ? `Select options · ${qty}` : 'Select options'}</span><span className="sr-only">{`, ${p.name}`}</span></Link>
         ) : qty > 0 ? (
           <QuantityInput ref={stepperRef} className="card-stepper" value={qty} onChange={setQty} onRemove={remove} removeLabel={`Remove ${p.name}`}
                          label={`Quantity of ${p.name}`} groupLabel={`${p.name} quantity`} itemName={p.name} />

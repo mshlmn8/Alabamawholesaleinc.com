@@ -1,6 +1,7 @@
 // The product page's purchase controls on common screens (AW-163, AW-150):
 // the add button on the first screen of a 1366x650 laptop, the name beside a
-// capped photo on a phone held sideways, the name on the first screen of a
+// capped photo on a phone held sideways, the name and the add button (which
+// comes before the price in the compact layout) on the first screen of a
 // tablet, and no photo-sized frame around "Photo coming soon".
 import { test, expect } from '@playwright/test';
 import { serveCatalog } from './catalog.js';
@@ -53,6 +54,11 @@ test('a 1366x650 laptop shows the add button without scrolling (AW-163)', async 
   await expect(page.locator('.pd-info h1')).toHaveText('Snickers bars');
   const at = await layout(page);
   expect(at.add.bottom).toBeLessThanOrEqual(at.vh + 70);
+  // A vape with flavors, its FDA statement and the flavor note (now under the description) too.
+  await page.goto('/product/61');
+  await expect(page.locator('.pd-info h1')).toHaveText('Geek Bar Pulse X 25K');
+  const vape = await layout(page);
+  expect(vape.add.bottom).toBeLessThanOrEqual(vape.vh + 70);
   expect(errors).toEqual([]);
 });
 
@@ -69,14 +75,21 @@ test('a phone held sideways shows the name and price beside a photo no taller th
   expect(errors).toEqual([]);
 });
 
-test('a tablet shows the product name on the first screen, and "Photo coming soon" in a short frame (AW-150)', async ({ page }) => {
+test('a tablet shows the product name and the add button on the first screen, and "Photo coming soon" in a short frame (AW-150)', async ({ page }) => {
   const errors = trackErrors(page);
   await page.setViewportSize({ width: 768, height: 1024 });
   await page.goto('/product/162');
   await expect(page.locator('.pd-info h1')).toHaveText('Snickers bars');
   const at = await layout(page);
-  expect(at.media.height).toBeLessThanOrEqual(0.45 * at.vh + 1);
+  expect(at.media.height).toBeLessThanOrEqual(0.36 * at.vh + 1);
   expect(at.h1.bottom).toBeLessThan(at.vh);
+  // The add button too, before the price, also under two rows of flavors, the FDA statement and a sell unit.
+  await expect(page.locator('.pd-info').getByRole('button', { name: /^Add to quote/ })).toBeInViewport({ ratio: 1 });
+  await page.goto('/product/12');
+  await expect(page.locator('.pd-info h1')).toHaveText('LooseLeaf wraps 2-pack');
+  await expect(page.locator('.pd-info').getByRole('button', { name: /^Add to quote/ })).toBeInViewport({ ratio: 1 });
+  const order = await page.locator('.pd-info > *').evaluateAll((els) => els.map((el) => el.className.split(' ')[0]));
+  expect(order.indexOf('qty-row')).toBeLessThan(order.indexOf('pd-price'));
   // A product without a photo: the placeholder's own height, not a photo frame.
   await page.goto('/product/9');
   await expect(page.locator('.pd-media .photo-soon-label')).toHaveText('Photo coming soon');

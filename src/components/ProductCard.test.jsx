@@ -71,6 +71,34 @@ describe('ProductCard', () => {
     expect(addLine).toHaveBeenCalledWith(1, 'Green');
   });
 
+  it('says "Not available", with no price, when every variant is marked not available (NEW-052)', () => {
+    const p = { ...base, variants: ['Red', 'Grape'], variantAxis: 'Flavor', unavailableVariants: ['Red', 'Grape'] };
+    const addLine = vi.fn();
+    const view = render(card(p, { ...APPROVED, addLine, priceOf: () => null, cart: { '1::red': 2 } }));
+    const button = screen.getByRole('button', { name: 'Not available, Swisher Sweets cigarillos' });
+    expect(button.disabled).toBe(true);
+    fireEvent.click(button);
+    expect(addLine).not.toHaveBeenCalled();
+    // No "Select options" leading to a product that can't be ordered, and no "Price on request".
+    expect(screen.queryByRole('link', { name: /Select options/ })).toBeNull();
+    expect(price()).toBe('');
+    expect(document.querySelector('.card-meta').textContent).not.toMatch(/Price on request/);
+    // The same for a price that did load, and for a product whose only variant is out.
+    view.rerender(card(p, { ...APPROVED, priceOf: () => 12.25 }));
+    expect(price()).toBe('');
+    view.rerender(card({ ...base, variants: ['Green'], unavailableVariants: ['Green'] }, { ...APPROVED, priceOf: () => 14.35 }));
+    expect(price()).toBe('');
+    expect(screen.getByRole('button', { name: 'Not available, Swisher Sweets cigarillos' }).disabled).toBe(true);
+    // A guest keeps the pricing line beside it.
+    view.rerender(card(p));
+    expect(price()).toBe('Pricing after approval');
+    expect(screen.getByRole('button', { name: 'Not available, Swisher Sweets cigarillos' }).disabled).toBe(true);
+    // One variant back: "Select options" again.
+    view.rerender(card({ ...p, unavailableVariants: ['Red'] }, { ...APPROVED, priceOf: () => 12.25 }));
+    expect(screen.getByRole('link', { name: 'Select options, Swisher Sweets cigarillos' })).toBeTruthy();
+    expect(price()).toBe('$12.25');
+  });
+
   // Cursor's PR #13 (AW-057, AW-029, AW-136, AW-286).
   it('says "Select options", "Add to quote" or "Add to order", and "Added" after an add (AW-057)', () => {
     vi.useFakeTimers();

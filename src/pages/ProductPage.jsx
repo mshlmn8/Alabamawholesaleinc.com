@@ -30,6 +30,22 @@
 // before a choice shows "Select a flavor…" under the chips and puts focus on
 // the first variant that can be chosen.
 //
+// When no variant can be ordered (NEW-052: the only one, or every one, is
+// marked not available) there is nothing to price or add: one sentence,
+// "This product can’t be ordered right now.", and the trade desk's number
+// take the place of the price slot and the quantity row, and the notes about
+// adding (each variant separately, flavors, the saved quantity) and the line
+// total are left out.
+//
+// The order of the purchase column (AW-163, AW-150). On a desktop: the
+// variant chips and their note, the price slot, the sell unit, then the
+// quantity and add row. In the compact layout (MOBILE_QUERY: tablets, phones,
+// and phones held sideways) the quantity and add row comes straight after the
+// chips, and the price slot after it, so the add button is on the first
+// screen of a tablet. The order is the DOM's, not CSS order, so Tab follows
+// what is seen. Then, in both, the SKU, the description, the flavor note and
+// the fine print.
+//
 // The SKU follows the chosen variant for every visitor (AW-234), and the info
 // column keeps one measure (AW-237, index.css).
 //
@@ -94,10 +110,14 @@ import { QuantityInput } from '../components/QuantityInput.jsx';
 import { showToast } from '../lib/toast.js';
 import { maxPerLineText } from '../lib/quantity.js';
 import { relatedProducts } from '../lib/related.js';
+import { MOBILE_QUERY, useMediaQuery } from '../lib/useMediaQuery.js';
 
 const NO_PRICES = () => null;
 // What the add row says while the live catalog is checked (AW-232).
 export const CHECKING_AVAILABILITY_TEXT = 'Checking availability…';
+// What takes the place of the price and the add row when no variant can be
+// ordered (NEW-052), before the trade desk's number.
+export const CANT_ORDER_TEXT = 'This product can’t be ordered right now.';
 
 // The photo credit, under the photo and in the enlarged view (AW-033): the
 // author, the licence linked to its deed, the change the build made
@@ -139,6 +159,8 @@ export function ProductPage({
   const [variantError, setVariantError] = useState(false);
   const chipsRef = useRef(null);
   const [zoomOpen, setZoomOpen] = useState(false);
+  // The compact layout puts the add row before the price (AW-150).
+  const compact = useMediaQuery(MOBILE_QUERY);
   const p = products.find(x => Number(x.id) === Number(productId));
   // App renders NotFound for ids that are not in the catalog.
   if (!p) return null;
@@ -153,6 +175,8 @@ export function ProductPage({
   const selected = choiceRequired ? chosen : (variants.length === 1 ? variants[0] : null);
   const soleUnavailable = variants.length === 1 && !available(variants[0]);
   const choosable = variants.filter(available);
+  // Nothing about this product can be ordered now (NEW-052).
+  const noneAvailable = soleUnavailable || (choiceRequired && choosable.length === 0);
   // The chip Tab lands on: the chosen one, else the first that can be chosen.
   const tabStop = selected || choosable[0] || null;
   const soleShown = soleUnavailable ? variants[0] : informativeVariant(p);
@@ -189,8 +213,9 @@ export function ProductPage({
   const tier = tierName(priceTier?.tier);
   const discountPct = Number(priceTier?.discountPct) || 0;
   const showSaving = shown.unit != null && !shown.from && list != null && discountPct > 0;
-  // quantity × price = line total, for a single known price.
-  const qtyTotal = isApprovedBuyer && shown.unit != null && !shown.from
+  // quantity × price = line total, for a single known price of something
+  // that can be added.
+  const qtyTotal = isApprovedBuyer && !noneAvailable && shown.unit != null && !shown.from
     ? `${desiredQty.toLocaleString('en-US')} × ${formatMoney(shown.unit)} = ${formatMoney(lineTotal(shown.unit, desiredQty))}`
     : '';
   // What the price slot says without a price. The account decides first
@@ -261,12 +286,49 @@ export function ProductPage({
     setDesiredQty(1);
   };
   const addRow = (
-    <div className="qty-row" aria-hidden={provisional || undefined}>
+    <div key="add" className="qty-row" aria-hidden={provisional || undefined}>
       {/* Typed or stepped, 1 to 100,000 (AW-013). */}
       <QuantityInput value={desiredQty} onChange={setDesiredQty} min={1} label={`Quantity of ${p.name} to add`} groupLabel="Quantity to add" />
-      <button className="button" type="button" onClick={handleAdd} disabled={provisional || soleUnavailable || (choiceRequired && choosable.length === 0)}><span>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</span></button>
+      <button className="button" type="button" onClick={handleAdd} disabled={provisional}><span>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</span></button>
     </div>
   );
+  // The purchase block's parts, keyed, so a change of layout moves them
+  // rather than starting them over (the typed quantity stays).
+  const priceSlot = (
+    // No price yet (AW-133): a sentence and the one way forward, never a word in price type.
+    <div key="price" className={lockedPrice ? 'pd-price is-locked' : 'pd-price'}>
+      {lockedPrice || (
+        <>
+          <b>{priceLabel(shown.unit, pricesStatus, { from: shown.from })}</b>
+          <span>{shown.unit != null && tier ? `${tier} price` : 'Wholesale unit price'}</span>
+          {showSaving && <span className="pd-save">list <s>{formatMoney(list)}</s> · you save <strong>{pctText(discountPct)}</strong></span>}
+          {/* The SKU is the .pd-sku line below, for everyone (AW-234). */}
+        </>
+      )}
+    </div>
+  );
+  const unitNote = p.sellUnit && !noneAvailable ? <p key="unit" className="pd-unit">{`Sold by the ${p.sellUnit} — quantity 1 is one ${p.sellUnit}.`}</p> : null;
+  const addBlock = noneAvailable ? null : provisional ? (
+    // While the live catalog is checked (AW-232) the row is there but
+    // unseen, so the line over it has its height, and the page doesn't
+    // move when it comes back.
+    <div key="add" className="pd-add-hold">
+      <p className="pd-checking" role="status">{CHECKING_AVAILABILITY_TEXT}</p>
+      {addRow}
+    </div>
+  ) : addRow;
+  const totalNote = qtyTotal ? <p key="total" className="in-cart-note pd-line-total">{qtyTotal}</p> : null;
+  const inCartNote = qty > 0
+    ? <p key="in-cart" className="in-cart-note"><span>{`Already in ${isApprovedBuyer ? 'order' : 'quote'}: `}</span><strong>{qty}</strong><span>{selected ? ` · ${selected}` : ''}</span></p>
+    : null;
+  // Nothing to price or add (NEW-052): in the price slot's frame, a sentence
+  // in body type and the trade desk, first in either layout.
+  const priceOrNone = noneAvailable
+    ? <div key="price" className="pd-price is-locked pd-cant-order"><p>{CANT_ORDER_TEXT} <CallOrEmail after=" to ask about it." /></p></div>
+    : priceSlot;
+  // The price leads on a desktop and follows the add row in the compact
+  // layout (AW-150).
+  const priceFirst = !compact || noneAvailable;
 
   return (
     <section>
@@ -304,41 +366,28 @@ export function ProductPage({
           )}
           {variantError && <p id="pd-variant-error" className="form-error" role="alert">{`Select a ${axis.noun} before adding this product.`}</p>}
           {soleShown && <p className="pd-desc">{`${axis.label}: ${soleShown}${soleUnavailable ? ' (not available)' : ''}`}</p>}
-          {choiceRequired && axis.label === 'Flavor' && <p className="in-cart-note">Flavors and availability change often. The trade desk confirms what is in stock.</p>}
-          {choiceRequired && <p className="in-cart-note">{`Add each ${axis.noun} you want separately.`}</p>}
-          {savedQty > 0 && <p className="pd-saved">{`From your last visit: quantity ${savedQty}.${choiceRequired ? ` Choose a ${axis.noun}, then add it.` : ''}`}</p>}
-          {/* No price yet (AW-133): a sentence and the one way forward, never a word in price type. */}
-          <div className={lockedPrice ? 'pd-price is-locked' : 'pd-price'}>
-            {lockedPrice || (
-              <>
-                <b>{priceLabel(shown.unit, pricesStatus, { from: shown.from })}</b>
-                <span>{shown.unit != null && tier ? `${tier} price` : 'Wholesale unit price'}</span>
-                {showSaving && <span className="pd-save">list <s>{formatMoney(list)}</s> · you save <strong>{pctText(discountPct)}</strong></span>}
-                {/* The SKU is the .pd-sku line above, for everyone (AW-234). */}
-              </>
-            )}
-          </div>
-          {p.sellUnit && <p className="pd-unit">{`Sold by the ${p.sellUnit} — quantity 1 is one ${p.sellUnit}.`}</p>}
-          {provisional ? (
-            // While the live catalog is checked (AW-232) the row is there but
-            // unseen, so the line over it has its height, and the page doesn't
-            // move when it comes back.
-            <div className="pd-add-hold">
-              <p className="pd-checking" role="status">{CHECKING_AVAILABILITY_TEXT}</p>
-              {addRow}
-            </div>
-          ) : addRow}
-          {qtyTotal && <p className="in-cart-note pd-line-total">{qtyTotal}</p>}
-          {qty > 0 && <p className="in-cart-note"><span>{`Already in ${isApprovedBuyer ? 'order' : 'quote'}: `}</span><strong>{qty}</strong><span>{selected ? ` · ${selected}` : ''}</span></p>}
+          {choiceRequired && !noneAvailable && <p className="in-cart-note">{`Add each ${axis.noun} you want separately.`}</p>}
+          {savedQty > 0 && !noneAvailable && <p className="pd-saved">{`From your last visit: quantity ${savedQty}.${choiceRequired ? ` Choose a ${axis.noun}, then add it.` : ''}`}</p>}
+          {/* Price, sell unit, quantity and add, line total, "Already in":
+              price first on a desktop, the add row first in the compact
+              layout (AW-150); or the one sentence when nothing can be
+              ordered (NEW-052). */}
+          {priceFirst && priceOrNone}
+          {unitNote}
+          {addBlock}
+          {totalNote}
+          {inCartNote}
+          {!priceFirst && priceOrNone}
           {/* The SKU for everyone, and the chosen variant's once there is one
               (AW-234), after the add row so that row stays in the first
               screen of a laptop (AW-163). */}
           <p className="pd-sku">SKU <span>{variantSku(p.sku, selected)}</span></p>
-          {/* The description and fine print after the price and the add row, so
-              those are in the first screen on a phone (AW-163). Staff can show
-              none at all (AW-023, "Show no description"): then neither the
-              stored or bundled text nor the generic sentence. */}
+          {/* The description, the flavor note and the fine print after the
+              price and the add row, so those are in the first screen (AW-163).
+              Staff can show none at all (AW-023, "Show no description"): then
+              neither the stored or bundled text nor the generic sentence. */}
           {!p.descriptionHidden && <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()}${brand ? ` from ${brand}` : ''}.`}</p>}
+          {choiceRequired && !noneAvailable && axis.label === 'Flavor' && <p className="in-cart-note pd-flavor-note">Flavors and availability change often. The trade desk confirms what is in stock.</p>}
           <p className="pd-desc pd-fine">{`Supplied to licensed retail businesses for lawful resale. Next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
         </div>
       </div>

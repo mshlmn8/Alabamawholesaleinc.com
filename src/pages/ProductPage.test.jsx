@@ -129,14 +129,17 @@ describe('ProductPage variants (AW-233, AW-128, AW-030)', () => {
     expect(addLine).toHaveBeenCalledWith(1, 'Diamond', 1);
   });
 
-  it('says so, and adds nothing, when a single variant is marked not available', () => {
-    const addLine = vi.fn();
-    render(page({ addLine, products: [product({ name: 'Garcia y Vega cigars', variants: ['Green'], unavailableVariants: ['Green'] })] }));
+  it('says so, with no price, quantity or add button, when a single variant is marked not available (NEW-052)', () => {
+    const garcia = product({ name: 'Garcia y Vega cigars', variants: ['Green'], unavailableVariants: ['Green'], sellUnit: 'box of 30' });
+    // An approved buyer with a price for it: still no price, saving or line total.
+    render(page({ products: [garcia], profile: APPROVED, isApprovedBuyer: true, priceOf: () => 14.35, listOf: () => 15.1, priceTier: { tier: 'silver', discountPct: 5 }, pricesStatus: 'ready' }));
     expect(screen.getByText('Variety: Green (not available)')).toBeTruthy();
-    const add = screen.getByRole('button', { name: /Add to quote/ });
-    expect(add.disabled).toBe(true);
-    fireEvent.click(add);
-    expect(addLine).not.toHaveBeenCalled();
+    expect(pd()).toMatch(/^This product can’t be ordered right now\. Call .+ or email .+ to ask about it\.$/);
+    expect(document.querySelector('.pd-price a[href^="tel:"]')).not.toBeNull();
+    expect(screen.queryByRole('button', { name: /Add to/ })).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Quantity to add' })).toBeNull();
+    expect(document.body.textContent).not.toMatch(/\$14\.35|you save|×/);
+    expect(document.querySelector('.pd-unit')).toBeNull();
   });
 
   it('shows the SKU to every visitor, and the chosen variant’s once there is one (AW-234)', () => {
@@ -235,10 +238,28 @@ describe('ProductPage variant choice (AW-235, AW-074)', () => {
     expect(addLine).toHaveBeenCalledWith(1, 'Grape', 1);
   });
 
-  it('disables the add button only when no variant can be chosen', () => {
-    render(page({ products: [{ ...FLAVORS[0], unavailableVariants: ['Diamond', 'Red', 'Grape', 'Wine'] }] }));
-    expect(screen.getByRole('button', { name: /Add to quote/ }).disabled).toBe(true);
+  it('says the product can’t be ordered, instead of a price and an add button, when no variant can be chosen (NEW-052)', () => {
+    const none = [{ ...FLAVORS[0], unavailableVariants: ['Diamond', 'Red', 'Grape', 'Wine'] }];
+    const view = render(page({ products: none, savedQty: 2, profile: APPROVED, isApprovedBuyer: true, priceOf: () => 12.25, pricesStatus: 'ready' }));
+    expect(screen.getAllByRole('radio').every((r) => r.disabled)).toBe(true);
     expect(tabStops()).toEqual([]);
+    expect(pd()).toMatch(/^This product can’t be ordered right now\. Call .+ or email .+ to ask about it\.$/);
+    expect(screen.queryByText(/Price on request/)).toBeNull();
+    expect(screen.queryByRole('button', { name: /Add to/ })).toBeNull();
+    // No notes about adding: each flavor separately, flavors changing, the saved quantity.
+    expect(screen.queryByText('Add each flavor you want separately.')).toBeNull();
+    expect(screen.queryByText(/^Flavors and availability change often/)).toBeNull();
+    expect(document.querySelector('.pd-saved')).toBeNull();
+    // A guest and an account on hold see the same sentence, not the sign-in or the hold.
+    view.rerender(page({ products: none }));
+    expect(pd()).toMatch(/^This product can’t be ordered right now\./);
+    expect(screen.queryByRole('button', { name: /Sign in/ })).toBeNull();
+    view.rerender(page({ products: none, profile: { id: 's', status: 'suspended' } }));
+    expect(pd()).toMatch(/^This product can’t be ordered right now\./);
+    // One variant back in stock: the price slot and the add row return.
+    view.rerender(page({ products: [{ ...none[0], unavailableVariants: ['Diamond', 'Red', 'Grape'] }] }));
+    expect(screen.getByRole('button', { name: /Add to quote/ }).disabled).toBe(false);
+    expect(tabStops()).toEqual(['Wine']);
   });
 });
 

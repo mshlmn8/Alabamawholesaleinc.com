@@ -1005,14 +1005,16 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
    rules and quantity row end at the same right edge. */
 .pd-info { max-width: 32.5rem; }
 .pd-info h1 { font-size: clamp(2.375rem, 1.5rem + 2.5vw, 3.5rem); margin-bottom: 8px; }
-.pd-info .pd-brand { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); color: var(--orange-dark); text-transform: uppercase; margin: 0 0 16px; }
+.pd-info .pd-brand { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); color: var(--orange-dark); text-transform: uppercase; margin: 0 0 10px; }
 .pd-info .pd-desc { color: var(--muted); font-size: var(--text-base); line-height: 1.7; max-width: none; }
 .pd-info .pd-unit { margin: 0 0 14px; max-width: none; font-weight: 600; }
 /* The SKU, for everyone (AW-234), above the fine print. */
 .pd-info .pd-sku { margin: 10px 0 14px; font-size: var(--text-sm); color: var(--ink); }
 .pd-info .pd-sku span { font-weight: 600; }
 .pd-info .pd-fine { font-size: var(--text-sm); }
-.pd-price { margin: 22px 0; padding: 18px 0; border-block: 1px solid var(--line); }
+/* The flavor note follows the description, before the fine print (AW-163). */
+.pd-info .pd-flavor-note { margin: 8px 0; }
+.pd-price { margin: 16px 0; padding: 14px 0; border-block: 1px solid var(--line); }
 .pd-price b { font: 700 2.125rem/1 var(--display); color: var(--purple); }
 .pd-price span { display: block; font-size: var(--text-xs); letter-spacing: var(--track-label); color: var(--muted); text-transform: uppercase; margin-top: 6px; }
 /* The tier, the list price and the saving, then the SKU (AW-265). */
@@ -1034,9 +1036,9 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .pd-price-hold { visibility: hidden; }
 /* "Choose a flavor" names the chips, which are one required choice (AW-235);
    adding before a choice shows the error right under them (AW-074). */
-.pd-variant-label { margin: 14px 0 0; }
-.variant-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 22px; }
-.variant-chips + .form-error { margin: -12px 0 16px; }
+.pd-variant-label { margin: 10px 0 0; }
+.variant-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px; }
+.variant-chips + .form-error { margin: -6px 0 16px; }
 .variant-chips button { display: inline-flex; align-items: center; min-height: var(--tap-sm); border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-size: var(--text-sm); font-weight: 600; padding: 0 14px; border-radius: 2px; }
 .variant-chips button[aria-checked="true"] { border-color: var(--purple); background: var(--purple); color: #fff; }
 /* A chip that can still be chosen: a purple frame with a mouse, a darker fill
@@ -1921,20 +1923,25 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .editorial-card { min-height: 245px; padding: 22px; }
   .services { grid-template-columns: 1fr; gap: 20px; }
   .dept-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .pd-grid { grid-template-columns: 1fr; }
-  /* The product photo is a wide frame no taller than 45% of the screen, so
-     the name, price and add button follow it within about a screen; a phone
-     held sideways shows them beside it (AW-150). The photo stays out of the
-     grid flow, contained in the frame. The frame's width is set, or the
-     height cap would narrow it through its aspect ratio. */
-  .pd-media { width: 100%; aspect-ratio: 4 / 3; max-height: 45vh; max-height: 45svh; }
+  .pd-grid { grid-template-columns: 1fr; row-gap: 16px; }
+  /* The product photo is a wide frame no taller than 36% of the screen, so
+     the name, the variants and the add button (which comes before the price
+     here, ProductPage) follow it on the first screen of a tablet; a phone
+     held sideways shows them beside a photo up to 45% of its height
+     (AW-150). The photo stays out of the grid flow, contained in the frame.
+     The frame's width is set, or the height cap would narrow it through its
+     aspect ratio. */
+  .pd-media { width: 100%; aspect-ratio: 4 / 3; max-height: 36vh; max-height: 36svh; }
   .pd-media img { inset: 20px; max-width: calc(100% - 40px); max-height: calc(100% - 40px); }
   /* "Photo coming soon" needs no photo-sized frame: just its own height. */
   .pd-media:has(.photo-soon) { aspect-ratio: auto; max-height: none; padding-block: 24px; }
   @media (orientation: landscape) {
     .pd-grid { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+    .pd-media { max-height: 45vh; max-height: 45svh; }
   }
   .page-head { padding-top: 18px; }
+  /* The product's trail sits closer over the photo (AW-150). */
+  .is-flush .crumbs { margin-bottom: 8px; }
   /* A department or line page starts closer under the masthead, so its first
      products come up sooner on a phone (AW-153). */
   .category-head { padding-top: 8px; }
@@ -2066,6 +2073,9 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .drawer-foot { padding-block: 8px; }
   .drawer-total { margin-bottom: 4px; }
   .drawer-signin { margin-top: 0; }
+  /* The product page starts closer under the masthead, so a phone on its
+     side reaches the add button sooner (AW-150). */
+  .page-head.is-flush { padding-top: 4px; }
 }
 @media(prefers-reduced-motion:reduce) {
   html { scroll-behavior: auto; }
@@ -2610,7 +2620,10 @@ ul.sub-pills { list-style: none; padding: 0; }
      address (below) wrapping under them. Display is left alone: the hidden
      buttons above stay hidden. */
   .button, .button.ghost, .button.on-dark { flex-wrap: wrap; min-height: 0; padding: 4px 10px; background: none; color: var(--ink); border-color: var(--line); text-align: left; }
-  .sub-pill.active, .variant-chips button[aria-pressed="true"], .home-carousel-caption { background: none; color: var(--ink); border: 1px solid var(--ink); }
+  .sub-pill.active, .variant-chips button[aria-checked="true"], .home-carousel-caption { background: none; color: var(--ink); border: 1px solid var(--ink); }
+  /* The chosen variant (a radio, aria-checked, AW-235) prints bold, so it
+     reads as chosen in grey-scale too (NEW-031). */
+  .variant-chips button[aria-checked="true"] { font-weight: 700; }
   .card-tag, .card-tag.new, .pack-badge { background: #fff; color: var(--ink); border: 1px solid var(--ink); }
   .checklist li::before { background: none; border: 1.5px solid var(--ink); }
   /* The FDA statement is never hidden: in ink, inside a thin ink rule. */

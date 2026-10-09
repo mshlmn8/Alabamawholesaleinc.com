@@ -120,8 +120,8 @@ export function heroImage(file) {
 // the compact layout). One column in the compact layout, except a phone held
 // sideways, whose photo takes 2 of 5 parts beside the name and price (AW-150);
 // two columns with a 26px gap up to 68.75em and a 40px gap above. The compact
-// frame is also no taller than 45% of the screen, which can draw the photo
-// narrower than this: a little more than it needs.
+// frame is also no taller than 36% of the screen (45% held sideways), which
+// can draw the photo narrower than this: a little more than it needs.
 //   sideways (100vw − 32 − 26) × 2/5 − 42      = (100vw − 163px) × 2 / 5
 //   compact  100vw − 32 − 2 − 40               = 100vw − 74px
 //   narrow   (100vw − 64 − 26) / 2 − 70        = (100vw − 230px) / 2
