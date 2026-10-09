@@ -368,6 +368,16 @@ describe('photos (AW-023)', () => {
     expect(field('Image file or URL').value).toBe('');
   });
 
+  it('never previews a photo on another site, which the CSP would block, and says why (AW-205)', async () => {
+    await renderAdmin('/admin/products/2');
+    fireEvent.change(field('Image file or URL'), { target: { value: 'https://cdn.example.test/kite.jpg' } });
+    expect(document.querySelector('.product-photo-preview img')).toBeNull();
+    expect(document.querySelector('.product-photo-preview .photo-soon')).toBeTruthy();
+    expect(document.getElementById('product-img-hint').textContent).toBe('Photos on other sites are blocked by the site’s security settings. Upload the photo instead.');
+    fireEvent.change(field('Image file or URL'), { target: { value: 'https://abc.supabase.co/storage/v1/object/public/product-images/products/2/1-kite.jpg' } });
+    expect(document.querySelector('.product-photo-preview img').getAttribute('src')).toBe('https://abc.supabase.co/storage/v1/object/public/product-images/products/2/1-kite.jpg');
+  });
+
   it('refuses other files before uploading, and says when the bucket isn’t there yet', async () => {
     fake.respond = (request) => (request.op === 'upload' ? { data: null, error: { message: 'Bucket not found', statusCode: '404' } } : undefined);
     await renderAdmin('/admin/products/2');

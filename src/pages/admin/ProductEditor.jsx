@@ -35,7 +35,7 @@ import { useLeaveGuard } from './useLeaveGuard.js';
 import { LoadProblem } from './AdminStatus.jsx';
 import { NO_ROWS, adminErrorMessage, checkedWrite, withStatus } from './adminData.js';
 import {
-  AXIS_LABELS, NEW_SUB, OPTIONAL_COLUMNS, PHOTO_BUCKET, PRODUCT_TAGS, STOCK_LABELS, STOCK_STATUSES,
+  AXIS_LABELS, NEW_SUB, OPTIONAL_COLUMNS, PHOTO_BUCKET, PHOTO_URL, PRODUCT_TAGS, STOCK_LABELS, STOCK_STATUSES,
   draftChanged, draftFromRow, duplicateDraft, emptyDraft, errorFields, hasColumn, patchFromDraft, photoProblem, productImagePath,
   validateProduct, variantPriceChanges,
 } from './productForm.js';
@@ -431,8 +431,10 @@ export function ProductEditor({ id, fromId = null, rows, columns, loadError, onR
   const invalid = (field) => (errors[field] ? true : undefined);
   const summary = errorFields(errors, draft);
   const dept = departments.find((d) => d.key === draft.cat);
-  // A renamed photo file (AW-290) shows under either name.
-  const preview = productImage(currentImageFile(draft.img));
+  // A renamed photo file (AW-290) shows under either name. An address on
+  // another site isn't previewed: the CSP would block it (AW-205).
+  const offSite = /^(https?:)?\/\//i.test(draft.img.trim()) && !PHOTO_URL.test(draft.img.trim());
+  const preview = offSite ? { img: null, picture: null } : productImage(currentImageFile(draft.img));
   const previewSrc = preview.picture?.src || preview.img;
   const previewBroken = !!previewSrc && previewSrc === brokenSrc;
   const disabled = !!busy;
@@ -653,11 +655,13 @@ export function ProductEditor({ id, fromId = null, rows, columns, loadError, onR
               <label htmlFor="product-img">Image file or URL</label>
               <input id="product-img" value={draft.img} maxLength={1000} autoComplete="off" spellCheck={false}
                 aria-invalid={invalid('img')} aria-describedby={describedBy('product-img', true)} onChange={(e) => set('img', e.target.value)} />
-              <small className="field-hint" id="product-img-hint">{draft.img.trim() && !previewSrc
-                ? 'There is no photo by that name in this build of the site.'
-                : previewBroken
-                  ? 'The photo at that address didn’t load. Check it, or upload the photo again.'
-                  : 'A photo file bundled with the site (e.g. kite.jpg), or the address of an uploaded photo. An upload fills this in.'}</small>
+              <small className="field-hint" id="product-img-hint">{offSite
+                ? 'Photos on other sites are blocked by the site’s security settings. Upload the photo instead.'
+                : draft.img.trim() && !previewSrc
+                  ? 'There is no photo by that name in this build of the site.'
+                  : previewBroken
+                    ? 'The photo at that address didn’t load. Check it, or upload the photo again.'
+                    : 'A photo file bundled with the site (e.g. kite.jpg), or the address of an uploaded photo. An upload fills this in.'}</small>
               <p className="form-error" id="product-img-error">{err('img')}</p>
               {draft.img.trim() && <button className="button xs ghost" type="button" onClick={() => set('img', '')}>Remove photo</button>}
             </div>
