@@ -15,10 +15,15 @@
 // and focus moves to the next line (else the one before), or to the empty
 // page's heading, never to <body> (AW-042).
 //
-// Under the list (AW-238): the lines and units, and "Clear all items" at the
-// other end of the row, away from the steppers. Under the total, an approved
-// buyer sees how far the order is from the minimum and from free delivery
-// (CartSummary).
+// Under the list (AW-082, AW-238): the lines and units, and "Clear all items"
+// at the other end of the row, away from the steppers. Clearing can be
+// undone: the empty page says how many items went, with an Undo that puts
+// them back (restoreLines, keeping lines another tab added meanwhile) and
+// focuses the first one's quantity. The offer has no time limit (WCAG
+// 2.2.1); it goes when lines come back another way or the cart's owner
+// changes. Under the total, an approved buyer sees how far the order is from
+// the minimum and from free delivery (CartSummary). The page says the cart
+// is kept on this device only (AW-334).
 //
 // The catalog may have changed since the page was opened (AW-191, AW-204):
 // Submit first loads it again (checkCart, from App) and stops, naming the
@@ -49,7 +54,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../data/content.js';
-import { APPLY_INSTEAD, SIGN_IN_INSTEAD, basketTerms } from '../data/terms.js';
+import { APPLY_INSTEAD, SIGN_IN_INSTEAD, basketTerms, cartDeviceNote } from '../data/terms.js';
 import { QUOTE_ERROR_GENERIC, quoteErrorField, quoteErrorMessage, submitOrder, todayInBirmingham } from '../lib/orders.js';
 import { cartChanges, describeCartChanges } from '../lib/cart.js';
 import { cartCounts, countsLabel } from '../lib/cartSummary.js';
@@ -71,6 +76,10 @@ import { initialQuoteForm, quoteFormForAccount } from '../lib/quoteForm.js';
 import { QuoteReceipt } from './QuoteReceipt.jsx';
 
 const UNAVAILABLE_ERROR = 'Remove the items that are no longer available before you submit.';
+// What takes focus on a line put back by Undo (AW-082): its quantity, else
+// its variant select or "Choose variant" link, else its ×. Never the
+// thumbnail's link, which is out of the tab order.
+const RESTORED_LINE_CONTROL = 'input, select, a.choose, .drawer-remove';
 // Never shown for a cart read from storage, which is repaired on read; a
 // guard in case a quantity the database would refuse gets through (AW-013).
 const QTY_ERROR = `Quantities must be ${QTY_RANGE_TEXT}.`;
@@ -80,7 +89,7 @@ const QTY_ERROR = `Quantities must be ${QTY_RANGE_TEXT}.`;
 const itemsSignature = (items) => items.map((it) => `${it.lineKey}|${it.qty}|${it.unavailable || ''}|${it.needsVariant ? 1 : 0}|${it.price ?? ''}`).join(',');
 
 export function QuotePage({
-  items, total, setLine, chooseVariant, removeLine, removeLines, clearCart, legacy = [], onDismissLegacy,
+  items, total, setLine, chooseVariant, removeLine, removeLines, clearCart, restoreLines, owner = null, legacy = [], onDismissLegacy,
   profile, account = profile ? 'ready' : 'signed-out', signedIn = !!profile, onSignIn, onApplyClick, isApprovedBuyer, isBackendConfigured,
   checkCart = null, pricesStatus = 'ready', isSuspended = false,
   savedReceipt = null, entryKey = null, onSubmitted,
@@ -102,6 +111,10 @@ export function QuotePage({
     const ids = [hintId, errorField === k ? 'quote-submit-error' : null].filter(Boolean).join(' ');
     return { 'aria-invalid': errorField === k ? true : undefined, 'aria-describedby': ids || undefined };
   };
+
+  // The last "Clear all items" (AW-082): { snapshot, n, owner }, the lines it
+  // removed, how many units, and whose cart they were in.
+  const [cleared, setCleared] = useState(null);
 
   // The receipt of the quote just saved (AW-022). It belongs to the history
   // entry it was shown on: another entry starts again (App passes the saved
@@ -131,8 +144,10 @@ export function QuotePage({
   if (formFor !== profileId) {
     setFormFor(profileId);
     setData((current) => quoteFormForAccount(current, profile, formFor));
-    // The receipt on screen was the last account's.
+    // The receipt on screen was the last account's, and so were the lines an
+    // Undo would bring back.
     setReceipt(null);
+    setCleared(null);
   }
 
   // Ordering lost mid-checkout (AW-048): a buyer who was placing an order and
@@ -162,9 +177,33 @@ export function QuotePage({
     if (next) focusLineSoon(linesRef.current, next, { selector: LINE_CONTROL, fallback: focusPageHeading });
   };
   const clearAll = () => {
+    const n = items.reduce((sum, it) => sum + it.qty, 0);
     focusHeadingNext.current = true;
-    clearCart();
+    const snapshot = clearCart();
+    // Undo needs the lines, and a way to put them back.
+    setCleared(snapshot && Object.keys(snapshot).length && restoreLines ? { snapshot, n, owner } : null);
     announce(`Removed all items from your ${basket.noun}.`);
+  };
+  // Lines back in the cart another way (added here or in another tab): the
+  // Undo offer goes. It is only ever for the owner whose lines it holds.
+  if (cleared && items.length > 0) setCleared(null);
+  const undo = cleared && cleared.owner === owner ? cleared : null;
+  // After an Undo, focus goes to the first restored line's quantity once the
+  // list is back on the page.
+  const focusRestoredNext = useRef(null);
+  useEffect(() => {
+    const keys = focusRestoredNext.current;
+    if (!keys || !items.length) return;
+    focusRestoredNext.current = null;
+    const first = items.find((it) => keys.includes(it.lineKey)) || items[0];
+    focusLineSoon(linesRef.current, first.lineKey, { selector: RESTORED_LINE_CONTROL, fallback: focusPageHeading });
+  }, [items]);
+  const undoClear = () => {
+    if (!undo) return;
+    focusRestoredNext.current = Object.keys(undo.snapshot);
+    setCleared(null);
+    restoreLines(undo.snapshot);
+    announce(`Restored ${undo.n.toLocaleString('en-US')} ${undo.n === 1 ? 'item' : 'items'}.`);
   };
 
   const [submitError, setSubmitError] = useState(null);
@@ -291,6 +330,13 @@ export function QuotePage({
     return (
       <section className="page-head is-centered">
         <h1>{basket.empty}</h1>
+        {undo && (
+          <p className="notice cart-cleared">
+            <span id="cart-cleared-text">{`Removed ${undo.n.toLocaleString('en-US')} ${undo.n === 1 ? 'item' : 'items'}.`}</span>
+            {' '}
+            <button className="text-link" type="button" onClick={undoClear} aria-describedby="cart-cleared-text">Undo</button>
+          </p>
+        )}
         <p>{`Add products, then come back to review your ${basket.noun}.`}</p>
         <Link className="button" to="/catalog">Browse catalog</Link>
         {legacy.length > 0 && (
@@ -340,6 +386,7 @@ export function QuotePage({
             <p className="cart-counts">{countsLabel(cartCounts(items))}</p>
             <button className="text-link checkout-clear" type="button" onClick={clearAll}>Clear all items</button>
           </div>
+          <p className="fine cart-device-note">{cartDeviceNote(signedIn)}</p>
         </div>
         <form onSubmit={handleQuoteSubmit} aria-labelledby="quote-form-title">
           <h2 id="quote-form-title" className="checkout-form-title">Your details</h2>

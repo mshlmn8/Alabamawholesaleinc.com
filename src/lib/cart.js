@@ -10,7 +10,7 @@ import { sumLines } from './pricing.js';
 import { formatMoney } from './format.js';
 import { MAX_QTY, addableQty, clampQty } from './quantity.js';
 import {
-  EMPTY_CART, EMPTY_LIST, GUEST, adoptGuestCart, migrateLegacyCart, readCart, readLegacyList, subscribeCart,
+  EMPTY_CART, EMPTY_LIST, GUEST, adoptGuestCart, migrateLegacyCart, readCart, readLegacyList, restoreCart, subscribeCart,
   takeFromLegacyList, updateCart, writeLegacyList,
 } from './cartStorage.js';
 
@@ -199,8 +199,8 @@ export function resolveLegacyList(list, products) {
 // changes.
 //
 // Returns { cart, count, items, total, legacy, addLine, addLines, decLine,
-// setLine, chooseVariant, removeLine, removeLines, clearCart, dismissLegacy,
-// itemsFor }. items carry needsVariant and unavailable flags
+// setLine, chooseVariant, removeLine, removeLines, clearCart, restoreLines,
+// dismissLegacy, itemsFor }. items carry needsVariant and unavailable flags
 // (src/lib/lines.js); legacy is the old cart's list of products to choose a
 // variant for. The actions write through to storage at once, so they belong
 // in event handlers. Quantities follow src/lib/quantity.js (AW-013):
@@ -214,6 +214,12 @@ export function resolveLegacyList(list, products) {
 //   chooseVariant(key, variant)         a bare line moves to the variant
 //                                       (AW-011): { key, qty } of the line
 //                                       it joined, or null
+//   clearCart()                         empties the cart and returns what it
+//                                       held ({line key: quantity}), for an
+//                                       undo (AW-082)
+//   restoreLines(snapshot)              puts cleared lines back, keeping
+//                                       lines another tab added meanwhile
+//                                       (restoreCart in cartStorage.js)
 // itemsFor(products, priceOf) prices the cart as stored now against another
 // product list and prices, e.g. the catalog and prices loaded again right
 // before a submit (AW-191); it also reads storage, so it is for event
@@ -278,9 +284,14 @@ export function useCart({ products, priceOf = NO_PRICES, owner = GUEST, catalogS
   };
   const removeLine = (key) => update(c => deleteLine(c, key));
   const removeLines = (keys) => update(c => keys.reduce(deleteLine, c));
-  const clearCart = () => updateCart(owner, () => ({}));
+  const clearCart = () => {
+    const snapshot = readCart(owner);
+    updateCart(owner, () => ({}));
+    return snapshot;
+  };
+  const restoreLines = (snapshot) => restoreCart(owner, snapshot);
   const dismissLegacy = () => writeLegacyList(owner, []);
   const itemsFor = (nextProducts, nextPriceOf = priceOf) => priceCartItems(readCart(owner), nextProducts, nextPriceOf, { settled: true, known: BUNDLED_PRODUCTS });
 
-  return { cart, count, items, total, legacy, addLine, addLines, decLine, setLine, chooseVariant, removeLine, removeLines, clearCart, dismissLegacy, itemsFor };
+  return { cart, count, items, total, legacy, addLine, addLines, decLine, setLine, chooseVariant, removeLine, removeLines, clearCart, restoreLines, dismissLegacy, itemsFor };
 }

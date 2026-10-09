@@ -13,11 +13,12 @@
 // Above the total, the cart's summary (CartSummary, AW-238): lines and units,
 // and an approved buyer's progress to the order minimum and free delivery.
 // On a short screen (a phone in landscape) it follows the lines instead, so
-// the fixed foot takes no more height from the list than before.
+// the fixed foot takes no more height from the list than before. After the
+// lines, a note says the cart is kept on this device only (AW-334).
 
 import { useEffect, useRef } from 'react';
 import { FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../data/content.js';
-import { basketTerms } from '../data/terms.js';
+import { basketTerms, cartDeviceNote } from '../data/terms.js';
 import { announce } from '../lib/announce.js';
 import { LINE_CONTROL, focusLineSoon, keepFocusNear, neighbourKey } from '../lib/focus.js';
 import { formatMoney, formatMoneyShort } from '../lib/format.js';
@@ -93,6 +94,7 @@ export function CartDrawer({
             </ul>
           )}
           {short && summary}
+          <p className="fine cart-device-note">{cartDeviceNote(Boolean(profile))}</p>
         </div>
         <div className="drawer-foot">
           {!short && summary}

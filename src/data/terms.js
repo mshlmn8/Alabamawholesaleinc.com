@@ -70,3 +70,13 @@ export function basketTerms(asOrder) {
 // which stops at '99+' so it stays a small pill.
 export const basketButtonLabel = (basket, n) => `${basket.label}, ${n.toLocaleString('en-US')} ${n === 1 ? 'item' : 'items'}`;
 export const basketBadge = (n) => (n > 99 ? '99+' : String(n));
+
+// Where the cart is kept (AW-334): in this browser, one cart per account on
+// this device plus one for guests (src/lib/cartStorage.js), never on the
+// server, so it doesn't follow a buyer to another phone or computer. The
+// drawer and checkout say so. A cart saved with the account is a later step.
+export const CART_DEVICE_NOTE = Object.freeze({
+  account: 'Saved on this device for your account. It won’t show up when you sign in on another phone or computer.',
+  guest: 'Saved in this browser only. Items added on another device won’t appear here.',
+});
+export const cartDeviceNote = (signedIn) => (signedIn ? CART_DEVICE_NOTE.account : CART_DEVICE_NOTE.guest);

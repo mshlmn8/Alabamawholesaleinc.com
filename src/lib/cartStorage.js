@@ -254,6 +254,16 @@ export function updateLegacyList(owner, fn) {
   return writeLegacyList(owner, next);
 }
 
+// Undo for "Clear all items" (AW-082): the lines that were cleared go back
+// into the owner's cart as stored now. A line another tab added meanwhile
+// stays; a line in both keeps the larger quantity, so an undo never doubles
+// one. `snapshot` is what readCart(owner) gave just before the clear.
+export function restoreCart(owner, snapshot) {
+  const lines = sanitizeCart(snapshot);
+  if (!Object.keys(lines).length) return readCart(owner);
+  return updateCart(owner, (cart) => mergeCarts(cart, lines, 'max'));
+}
+
 // A variant was added for a product on the legacy list: its saved quantity
 // goes down by what was added, and the entry goes once it is used up.
 export function takeFromLegacyList(owner, productId, qty) {

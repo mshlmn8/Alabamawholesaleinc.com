@@ -1,6 +1,7 @@
-// The cart drawer's summary (AW-238): it sits just above the total while
-// there are lines, or after the lines on a short screen so the fixed foot
-// keeps its height. Prices are test values.
+// The cart drawer's summary and device note (AW-238, AW-334): the summary
+// sits just above the total while there are lines, or after the lines on a
+// short screen so the fixed foot keeps its height; the note on where the
+// cart is kept follows the lines. Prices are test values.
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CartDrawer, SHORT_DRAWER_QUERY } from './CartDrawer.jsx';
@@ -13,6 +14,8 @@ const drawer = (props) => (
   <CartDrawer open onClose={vi.fn()} items={ITEMS} total={306} setLine={vi.fn()} chooseVariant={vi.fn()} removeLine={vi.fn()} removeLines={vi.fn()}
               onLoginClick={vi.fn()} profile={null} isApprovedBuyer={false} pricesStatus="ready" {...props} />
 );
+const GUEST_NOTE = 'Saved in this browser only. Items added on another device won’t appear here.';
+const ACCOUNT_NOTE = 'Saved on this device for your account. It won’t show up when you sign in on another phone or computer.';
 
 function matchShort(matches) {
   vi.stubGlobal('matchMedia', (query) => ({
@@ -50,5 +53,22 @@ describe('CartDrawer summary (AW-238)', () => {
     expect(document.querySelector('.drawer-foot .cart-summary')).toBeNull();
     const summary = document.querySelector('.drawer-body .cart-summary');
     expect(summary.previousElementSibling.matches('ul.drawer-lines')).toBe(true);
+    expect(summary.nextElementSibling.matches('p.cart-device-note')).toBe(true);
+  });
+});
+
+describe('CartDrawer device note (AW-334)', () => {
+  it('follows the lines in the scrolling body, not the fixed foot', () => {
+    render(drawer({}));
+    const note = document.querySelector('.cart-device-note');
+    expect(note.closest('.drawer-body')).toBeTruthy();
+    expect(note.previousElementSibling.matches('ul.drawer-lines')).toBe(true);
+    expect(note.className).toBe('fine cart-device-note');
+    expect(note.textContent).toBe(GUEST_NOTE);
+  });
+
+  it('tells a signed-in buyer the cart stays on this device, also when it is empty', () => {
+    render(drawer({ profile: { id: 'p', status: 'pending' }, items: [] }));
+    expect(document.querySelector('.cart-device-note').textContent).toBe(ACCOUNT_NOTE);
   });
 });
