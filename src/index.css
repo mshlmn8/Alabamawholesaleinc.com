@@ -1736,8 +1736,10 @@ ul.sub-pills { list-style: none; padding: 0; }
   .toast .icon-btn { width: var(--tap); height: var(--tap); }
 }
 /* The header's cart count bumps when it changes (AW-072): Header keys it by
-   the count, so each change starts the animation again. */
-.aw-cart-btn .aw-cart-count { animation: cart-bump .35s ease-out; }
+   the count, so each change starts the animation again. It grows from its
+   right edge, so at 320px and large text it never pokes past the screen
+   edge and scrolls the page sideways for a moment. */
+.aw-cart-btn .aw-cart-count { animation: cart-bump .35s ease-out; transform-origin: 100% 50%; }
 @keyframes cart-bump { 40% { transform: scale(1.3); } }
 
 /* ============================ receipt (AW-012, AW-022, AW-108) ============================
