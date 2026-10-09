@@ -754,6 +754,19 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
    and never wider than the photo's own pixels (AW-073). */
 .pd-media img { position: absolute; inset: 34px; margin: auto; height: auto; max-width: calc(100% - 68px); max-height: calc(100% - 68px); object-fit: contain; transition: opacity .2s ease; }
 .pd-media .card-initials { font-size: 7.5rem; }
+/* The photo opens larger (AW-236): the whole frame is the button, over the
+   photo and under the pack badge, with its focus ring inside the frame (which
+   clips). No button next to "Photo coming soon" (no photo, or it failed). */
+.pd-zoom { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; border: 0; cursor: zoom-in; }
+.pd-zoom:focus-visible { outline-offset: -3px; }
+.photo-soon ~ .pd-zoom { display: none; }
+.pd-media .pack-badge { pointer-events: none; }
+/* The enlarged photo: the dialog shrinks to it, and it is never wider than
+   its largest rendition (its width attribute), the screen or the dialog. */
+.dialog.pd-zoom-dialog { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; width: fit-content; max-width: 92vw; padding: 12px 16px 16px; }
+.pd-zoom-dialog picture { display: block; max-width: 100%; }
+.pd-zoom-dialog img { display: block; width: auto; height: auto; max-width: 100%; max-height: min(80vh, calc(100dvh - 11rem)); }
+.pd-zoom-dialog .photo-credit { align-self: stretch; width: 0; min-width: 100%; margin: 0; }
 /* One measure for the whole column (AW-237): the description, chips, price
    rules and quantity row end at the same right edge. */
 .pd-info { max-width: 32.5rem; }

@@ -269,6 +269,59 @@ describe('ProductPage trail and related row (AW-230, AW-231)', () => {
   });
 });
 
+// The photo opens larger in a dialog (AW-236).
+describe('ProductPage photo zoom (AW-236)', () => {
+  const PICTURE = {
+    src: '/img/dice--640x582.jpg', srcSet: '/img/dice--320x291.jpg 320w, /img/dice--640x582.jpg 640w',
+    webpSrcSet: '/img/dice--320x291.webp 320w, /img/dice--640x582.webp 640w, /img/dice--1024x931.webp 1024w', width: 1024, height: 931,
+  };
+  // #149 is one of the photos with a Wikimedia credit.
+  const DICE = [{ id: 149, sku: 'AW-DICE', name: 'Rolling dice', brand: 'Assorted', cat: 'MERCHANDISE', sub: 'Counter Goods', variants: [], img: '/img/dice--thumb.jpg', picture: PICTURE }];
+  const zoomPage = (props) => page({ productId: 149, products: DICE, ...props });
+
+  it('makes the photo a button that opens it in a dialog at its largest rendition, with its credit', () => {
+    render(zoomPage({}));
+    const zoom = screen.getByRole('button', { name: 'Enlarge photo of Rolling dice' });
+    expect(zoom.closest('.pd-media')).toBeTruthy();
+    zoom.focus();
+    fireEvent.click(zoom);
+    const dialog = screen.getByRole('dialog', { name: 'Photo of Rolling dice' });
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    // The close button comes first, so it takes focus (in a browser: jsdom has no layout).
+    expect(dialog.querySelector('button').getAttribute('aria-label')).toBe('Close');
+    const img = dialog.querySelector('img');
+    expect(img.getAttribute('alt')).toBe('Rolling dice');
+    expect(img.getAttribute('width')).toBe('1024');
+    expect(dialog.querySelector('source').getAttribute('sizes')).toBe('1024px');
+    expect(dialog.querySelector('.photo-credit').textContent).toBe('Photo: Dietmar Rabich, CC BY-SA 4.0. Wikimedia Commons (opens in a new tab)');
+  });
+
+  it('closes with Escape, the close button and the backdrop, and gives focus back to the photo', () => {
+    render(zoomPage({}));
+    const zoom = screen.getByRole('button', { name: 'Enlarge photo of Rolling dice' });
+    fireEvent.click(zoom);
+    fireEvent.keyDown(document.activeElement, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(zoom);
+    fireEvent.click(zoom);
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(zoom);
+    fireEvent.click(zoom);
+    fireEvent.click(document.querySelector('.overlay'));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    fireEvent.click(zoom);
+    // A click inside the dialog doesn't close it.
+    fireEvent.click(screen.getByRole('dialog'));
+    expect(screen.getByRole('dialog')).toBeTruthy();
+  });
+
+  it('has no button without a photo', () => {
+    render(page({}));
+    expect(screen.queryByRole('button', { name: /Enlarge photo/ })).toBeNull();
+  });
+});
+
 describe('ProductPage and a saved quantity', () => {
   it('fills in the saved quantity, then what is left of it after an add', () => {
     const addLine = vi.fn();

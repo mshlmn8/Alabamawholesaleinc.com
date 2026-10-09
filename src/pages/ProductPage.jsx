@@ -40,6 +40,13 @@
 // product and its variant, and "View quote", also read out once
 // (src/lib/toast.js). Focus stays on the add button.
 //
+// The photo opens larger (AW-236): the whole frame is a button that opens
+// the photo in a dialog at the largest rendition the build makes (800 to
+// 1024px wide, never enlarged past it), with its credit. Escape, Back and the
+// backdrop close it, and focus goes back to the photo. Without a photo, or
+// when it failed to load, there is no button (index.css hides it next to
+// "Photo coming soon").
+//
 // From Cursor's PR #13: "Photo coming soon" without a photo (AW-029), the
 // sell unit badged on a photo other rows share (AW-136), the Wikimedia credit
 // under the photo (AW-033), and no placeholder brand "Assorted" (AW-286).
@@ -54,6 +61,8 @@ import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { Breadcrumbs, catalogCrumbs } from '../components/Breadcrumbs.jsx';
 import { ProductPhoto } from '../components/ProductPhoto.jsx';
+import { Picture } from '../components/Picture.jsx';
+import { ModalLayer } from '../components/ModalLayer.jsx';
 import { photoCredit, photoCreditSource } from '../data/photoCredits.js';
 import { ProductCard } from '../components/ProductCard.jsx';
 import { NicotineWarning } from '../components/NicotineWarning.jsx';
@@ -65,6 +74,16 @@ import { maxPerLineText } from '../lib/quantity.js';
 import { relatedProducts } from '../lib/related.js';
 
 const NO_PRICES = () => null;
+
+// The photo credit, under the photo and in the enlarged view.
+function PhotoCreditText({ credit, creditSource }) {
+  return (
+    <>
+      <span>{credit}</span>
+      {creditSource && <> <a href={creditSource} target="_blank" rel="noopener noreferrer">Wikimedia Commons<Icon name="external" /><span className="sr-only"> (opens in a new tab)</span></a></>}
+    </>
+  );
+}
 
 export function ProductPage({
   productId, profile, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, products, onLoginClick, onApplyClick, savedQty = 0,
@@ -79,6 +98,7 @@ export function ProductPage({
   const [chosenVariant, setChosenVariant] = useState(null);
   const [variantError, setVariantError] = useState(false);
   const chipsRef = useRef(null);
+  const [zoomOpen, setZoomOpen] = useState(false);
   const p = products.find(x => Number(x.id) === Number(productId));
   // App renders NotFound for ids that are not in the catalog.
   if (!p) return null;
@@ -131,6 +151,7 @@ export function ProductPage({
     choose(next);
     chipFor(next)?.focus();
   };
+  const closeZoom = () => setZoomOpen(false);
   const handleAdd = () => {
     if (choiceRequired && !chosen) {
       setVariantError(true);
@@ -160,12 +181,13 @@ export function ProductPage({
         <figure className="pd-figure">
           <div className="pd-media">
             <ProductPhoto product={p} sizes={SIZES.detail} priority />
+            {/* Focused on click too (Safari doesn't), so closing the dialog brings focus back here. */}
+            {p.picture?.src && <button type="button" className="pd-zoom" aria-label={`Enlarge photo of ${p.name}`} onClick={(e) => { e.currentTarget.focus(); setZoomOpen(true); }} />}
             {p.picture && p.sharedPhoto && p.sellUnit && <span className="pack-badge">{p.sellUnit}</span>}
           </div>
           {credit && (
             <figcaption className="photo-credit">
-              <span>{credit}</span>
-              {creditSource && <> <a href={creditSource} target="_blank" rel="noopener noreferrer">Wikimedia Commons<Icon name="external" /><span className="sr-only"> (opens in a new tab)</span></a></>}
+              <PhotoCreditText credit={credit} creditSource={creditSource} />
             </figcaption>
           )}
         </figure>
@@ -230,6 +252,22 @@ export function ProductPage({
             {related.map(r => <ProductCard key={r.id} p={r} profile={profile} isApprovedBuyer={isApprovedBuyer} priceOf={priceOf} pricesStatus={pricesStatus} cart={cart} addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} />)}
           </div>
         </section>
+      )}
+      {zoomOpen && p.picture?.src && (
+        <ModalLayer onClose={closeZoom}>
+          {/* Backdrop click is a mouse shortcut; Escape, Back (ModalLayer) and the Close button are the other ways out. */}
+          {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+          <div className="overlay" onClick={closeZoom}>
+            {/* Keeps clicks inside the dialog from reaching the backdrop. */}
+            {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
+            <div className="dialog pd-zoom-dialog scale-in" role="dialog" aria-modal="true" aria-label={`Photo of ${p.name}`} onClick={(e) => e.stopPropagation()}>
+              <button className="icon-btn" type="button" onClick={closeZoom} aria-label="Close"><Icon name="close" /></button>
+              {/* Sized to the largest rendition, so the browser loads it (AW-236). */}
+              <Picture picture={p.picture} alt={p.name} sizes={p.picture.width ? `${p.picture.width}px` : undefined} loading="eager" />
+              {credit && <p className="photo-credit"><PhotoCreditText credit={credit} creditSource={creditSource} /></p>}
+            </div>
+          </div>
+        </ModalLayer>
       )}
     </section>
   );
