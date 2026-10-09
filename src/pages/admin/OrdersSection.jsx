@@ -961,7 +961,7 @@ function OrderCard({
       <div className="inline-actions order-actions-row">
         {draft ? (
           <>
-            <button className="button" type="button" ref={saveRef} disabled={busy || !workflow} onClick={save}>Save prices</button>
+            <button ref={saveRef} className="button" type="button" disabled={busy || !workflow} onClick={save}>Save prices</button>
             <button className="button ghost" type="button" onClick={cancelEditor}>Cancel</button>
           </>
         ) : (
