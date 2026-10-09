@@ -372,7 +372,7 @@ test.describe('after age confirmation', () => {
     await expect(list).toBeVisible();
     await page.keyboard.press('Tab');
     await expect(list).toHaveCount(0);
-    const newArrivals = page.getByRole('link', { name: 'New arrivals', exact: true });
+    const newArrivals = page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'New arrivals', exact: true });
     for (let i = 0; i < 8 && !(await newArrivals.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('Tab');
     await expect(newArrivals).toBeFocused();
     const uncovered = await newArrivals.evaluate((el) => {
@@ -402,7 +402,7 @@ test.describe('after age confirmation', () => {
     await page.keyboard.press('Tab');
     await expect(menu).toHaveCount(0);
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    await expect(page.getByRole('link', { name: 'New arrivals', exact: true })).toBeFocused();
+    await expect(page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'New arrivals', exact: true })).toBeFocused();
     expect(errors).toEqual([]);
   });
 
