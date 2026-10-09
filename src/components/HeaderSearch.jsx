@@ -245,7 +245,7 @@ export function HeaderSearch({ products, isMobile = false, onOpen }) {
             </div>
           ) : (
             <div className="aw-search-list">
-              <p>Try a brand (Geekbar, Backwoods, BIC) or a line (&quot;energy drinks&quot;, &quot;wraps&quot;).</p>
+              <p>Try a brand (Geek Bar, Backwoods, BIC) or a line (&quot;energy drinks&quot;, &quot;wraps&quot;).</p>
             </div>
           ))}
         </div>

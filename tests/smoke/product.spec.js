@@ -73,10 +73,10 @@ test('the trail names the line, and a line of one gets a row from its department
   await expect(row.locator('.eyebrow')).toHaveText('RELATED');
   await expect(row.locator('.content-card')).toHaveCount(4);
   await expect(row.getByRole('link', { name: 'View all Grocery' })).toHaveAttribute('href', '/category/grocery');
-  // Powerade big's row never shows Powerade small, which has the same photo.
+  // Powerade (big)'s row never shows Powerade (small), which has the same photo.
   await page.goto('/product/290');
   await expect(page.locator('.content-card')).toHaveCount(4);
-  await expect(page.locator('.content-card').filter({ hasText: 'Powerade small' })).toHaveCount(0);
+  await expect(page.locator('.content-card').filter({ hasText: 'Powerade (small)' })).toHaveCount(0);
   // A line with enough products heads its own row.
   await page.goto('/product/166');
   await expect(page.getByRole('heading', { level: 2, name: 'More Chocolate Bars' })).toBeVisible();

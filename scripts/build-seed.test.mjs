@@ -140,3 +140,51 @@ describe('catalog corrections (AW-135, AW-138, AW-126)', () => {
     expect(problems).toEqual([]);
   });
 });
+
+describe('product names (AW-071)', () => {
+  const byId = (id) => CATALOG.find((p) => p.id === id);
+
+  it('refuses a retail price or "Cheap" in a name, but not in a variant label or a description', () => {
+    const { problems } = validateCatalog([
+      { ...ROW, name: 'Wraps 2-pack ($2.99 or $1.99)' },
+      { ...ROW, id: 2, sku: 'AW-T2', name: 'Cheap lighters' },
+      { ...ROW, id: 3, sku: 'AW-T3', name: "Wrigley's 50¢ gum", description: 'At the $2.99 price point.', variants: ['Aviator', 'Cheap'], variantAxis: 'Variety' },
+    ]);
+    expect(problems).toEqual([
+      'row 1: name "Wraps 2-pack ($2.99 or $1.99)" has a retail price or "Cheap" in it (AW-071)',
+      'row 2: name "Cheap lighters" has a retail price or "Cheap" in it (AW-071)',
+    ]);
+  });
+
+  it('names the products from their own data, keeping ids, SKUs and variant labels', () => {
+    expect([100, 221, 246, 250].map((id) => [byId(id).name, byId(id).sku])).toEqual([
+      ['Value antifreeze', 'AW-CHEAP-ANTIFREEZE'], ['Value scales', 'AW-CHEAP-SCALES'],
+      ['Value incense', 'AW-CHEAP-INCENSE'], ['Value lighters', 'AW-CHEAP-LIGHTERS'],
+    ]);
+    // Each name now agrees with its own description.
+    for (const id of [100, 221, 246, 250]) expect(byId(id).description, `#${id}`).toMatch(/^Value /);
+    expect(byId(12).name).toBe('LooseLeaf wraps 2-pack');
+    expect(byId(12).description).toMatch(/\$2\.99 and \$1\.99 price points/);
+    expect([290, 291, 335, 336, 190, 132, 133].map((id) => byId(id).name)).toEqual([
+      'Powerade (big)', 'Powerade (small)', 'Gatorade (small)', 'Gatorade (big)', 'Mamba (small)', 'Charcoal bags (small)', 'Charcoal bags (big)',
+    ]);
+    expect([25, 350, 355, 58, 93, 286].map((id) => byId(id).name)).toEqual([
+      'Claritin allergy relief', "Uncle Al's cookies", 'Gold Band lubricants', 'Faygo bottles 20 oz', '6-pack beer carriers', 'AA Cellular Bluetooth headphones',
+    ]);
+    // Descriptions spell the product as its name does.
+    expect(byId(9).description).toMatch(/^EZ Roll from/);
+    expect(byId(274).description).toMatch(/^RAW Guarana wraps from/);
+    expect(byId(310).description).toMatch(/^Geek Bar Mate from/);
+    expect(byId(311).description).toMatch(/^Geek Bar Mate pods from/);
+    // A cart key and a price-point product stay (TODO(owner) AW-071).
+    expect(byId(252).variants).toEqual(['Aviator', 'Cheap']);
+    expect(byId(40).name).toBe("Wrigley's 50¢ gum");
+  });
+
+  it('leaves the names of the lines under legal review as they are (decision 2)', () => {
+    expect([69, 70, 72, 75, 219, 281, 293, 302, 306, 313].map((id) => byId(id).name)).toEqual([
+      'Shroom Puff disposable 3 Gram', 'Shroom Puff Pre rolls 2pk', 'Shroom puff Gummies', 'Wava kava', 'Happy valentines jar',
+      'Hush hit pre rolls 2pk', 'Sip happens', 'Better me pills', 'Stoned mushroom gummies bags regular', 'Psyched blue lotus gummies 25ct box',
+    ]);
+  });
+});
