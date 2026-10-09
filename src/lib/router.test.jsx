@@ -3,7 +3,7 @@
 // the whole file, like the app.
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { holdOverlayEntry, Link, navigate, redirectLegacyHash, useNavigationEffects, useRoute } from './router.js';
+import { holdOverlayEntry, Link, navigate, redirectLegacyHash, setNavigationGuard, useNavigationEffects, useRoute } from './router.js';
 
 const url = () => window.location.pathname + window.location.search + window.location.hash;
 
@@ -185,6 +185,92 @@ describe('dialog history entries (AW-065)', () => {
     expect(window.history.length).toBe(length + 1);
     expect(window.history.state.awOverlay).toBeUndefined();
     expect(back).not.toHaveBeenCalled();
+  });
+});
+
+describe('leave guard (AW-118)', () => {
+  // The browser's Back: the entry below becomes current, then popstate.
+  const popTo = (path, state) => act(() => {
+    window.history.replaceState(state, '', path);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+
+  it('keeps the page when the guard says no, and lets the navigation go ahead when it says yes', () => {
+    render(<ShowRoute />);
+    act(() => navigate('/admin/products?q=kite'));
+    const length = window.history.length;
+    const guard = vi.fn(() => false);
+    const release = setNavigationGuard(guard);
+    act(() => navigate('/admin/orders'));
+    expect(guard).toHaveBeenCalledWith('/admin/orders');
+    expect(url()).toBe('/admin/products?q=kite');
+    expect(window.history.length).toBe(length);
+    expect(screen.getByTestId('route').textContent).toBe('admin /admin/products?q=kite');
+    // The URL already shown is not a navigation.
+    guard.mockClear();
+    act(() => navigate('/admin/products?q=kite'));
+    expect(guard).not.toHaveBeenCalled();
+    // force skips the guard.
+    act(() => navigate('/admin/products?q=swisher', { replace: true, force: true }));
+    expect(url()).toBe('/admin/products?q=swisher');
+    guard.mockReturnValue(true);
+    act(() => navigate('/admin/accounts'));
+    expect(url()).toBe('/admin/accounts');
+    expect(screen.getByTestId('route').textContent).toBe('admin /admin/accounts');
+    release();
+  });
+
+  it('asks only the newest guard, and none once released', () => {
+    const older = vi.fn(() => false);
+    const newer = vi.fn(() => true);
+    const releaseOlder = setNavigationGuard(older);
+    const releaseNewer = setNavigationGuard(newer);
+    act(() => navigate('/terms'));
+    expect(newer).toHaveBeenCalledTimes(1);
+    expect(older).not.toHaveBeenCalled();
+    expect(url()).toBe('/terms');
+    releaseNewer();
+    act(() => navigate('/privacy'));
+    expect(url()).toBe('/terms');
+    releaseOlder();
+    act(() => navigate('/privacy'));
+    expect(url()).toBe('/privacy');
+  });
+
+  it('puts the page back when Back is refused', () => {
+    render(<ShowRoute />);
+    act(() => navigate('/admin/orders'));
+    const below = window.history.state;
+    act(() => navigate('/admin/products'));
+    const here = window.history.state.awKey;
+    const length = window.history.length;
+    const release = setNavigationGuard(() => false);
+    popTo('/admin/orders', below);
+    expect(url()).toBe('/admin/products');
+    expect(window.history.state.awKey).toBe(here);
+    expect(window.history.length).toBe(length + 1);
+    expect(screen.getByTestId('route').textContent).toBe('admin /admin/products');
+    release();
+    popTo('/admin/orders', below);
+    expect(screen.getByTestId('route').textContent).toBe('admin /admin/orders');
+  });
+
+  it('leaves Back closing a dialog alone', async () => {
+    act(() => navigate('/admin/products'));
+    const guard = vi.fn(() => false);
+    const release = setNavigationGuard(guard);
+    const close = vi.fn();
+    const releaseDialog = holdOverlayEntry(close);
+    const state = { ...window.history.state };
+    delete state.awOverlay;
+    popTo('/admin/products', state);
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(guard).not.toHaveBeenCalled();
+    expect(url()).toBe('/admin/products');
+    vi.spyOn(window.history, 'back').mockImplementation(() => {});
+    releaseDialog();
+    await Promise.resolve();
+    release();
   });
 });
 

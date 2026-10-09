@@ -189,6 +189,26 @@ describe('Admin orders with the quote workflow', () => {
     expect(within(guest).getByLabelText('Quantity for Kite cigarette tobacco')).toBeTruthy();
   });
 
+  it('asks before leaving a quote with unsaved changes (AW-118)', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    await openOrders();
+    const guest = card('ALW-Q-5E4F3A2B1C');
+    await act(async () => { fireEvent.click(within(guest).getByRole('button', { name: /^Edit quantities and prices/ })); });
+    // Suggested prices alone are not changes.
+    act(() => navigate('/admin/accounts'));
+    expect(confirm).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe('/admin/accounts');
+    await act(async () => { navigate('/admin/orders?status=all'); });
+    const again = card('ALW-Q-5E4F3A2B1C');
+    await act(async () => { fireEvent.click(within(again).getByRole('button', { name: /^Edit quantities and prices/ })); });
+    fireEvent.change(within(again).getByLabelText('Quantity for Kite cigarette tobacco'), { target: { value: '5' } });
+    act(() => navigate('/admin/accounts'));
+    expect(confirm).toHaveBeenCalledWith('Your changes to ALW-Q-5E4F3A2B1C aren’t saved. Leave without saving them?');
+    expect(window.location.pathname).toBe('/admin/orders');
+    expect(within(again).getByLabelText('Quantity for Kite cigarette tobacco').value).toBe('5');
+    confirm.mockRestore();
+  });
+
   it('converts a priced quote with admin_convert_quote', async () => {
     setOrders([guestQuote({ status: 'quoted', order_items: guestQuote().order_items.map(it => ({ ...it, unit_price: 9.99 })) })]);
     await openOrders();

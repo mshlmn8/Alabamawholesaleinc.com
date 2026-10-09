@@ -170,6 +170,14 @@ function onPopState() {
   }
   if (sameUrl) return; // e.g. the hashchange that follows a popstate
 
+  // A form with unsaved changes kept the page (AW-118): the URL Back or
+  // Forward left is put back as a new entry, so the address bar matches the
+  // page still on screen.
+  if (snapshot && !mayLeave(currentUrl())) {
+    writeState('pushState', { awKey: snapshot.key }, urlOf(snapshot));
+    return;
+  }
+
   let key = historyState()?.awKey;
   if (!key) {
     // An entry this router did not create (a plain #fragment link).
@@ -239,10 +247,35 @@ export function restoreOverlayEntry() {
 // The number of the latest navigation that moved focus to a new page.
 export const lastPageMove = () => lastPageMoveSeq;
 
+// Leave guards (AW-118): a form with unsaved changes is asked before the URL
+// changes, by navigate() and by Back/Forward. The newest guard decides; it
+// gets the next URL and must answer at once (window.confirm), true to let the
+// navigation go ahead. In-page actions ask with a dialog instead. Returns the
+// function that removes the guard.
+const guards = [];
+export function setNavigationGuard(guard) {
+  const entry = { guard };
+  guards.push(entry);
+  return () => {
+    const i = guards.indexOf(entry);
+    if (i !== -1) guards.splice(i, 1);
+  };
+}
+function mayLeave(next) {
+  const top = guards[guards.length - 1];
+  if (!top) return true;
+  try {
+    return top.guard(next) !== false;
+  } catch {
+    return true;
+  }
+}
+
 // Goes to `to` (a route object or an href). Options:
 //   replace  replace the current history entry instead of adding one
 //   scroll   false keeps the scroll position and focus even on a new page
-export function navigate(to, { replace = false, scroll = true } = {}) {
+//   force    true skips the leave guard (setNavigationGuard)
+export function navigate(to, { replace = false, scroll = true, force = false } = {}) {
   if (!hasWindow) return;
   start();
   const href = typeof to === 'string' ? to : hrefFor(to);
@@ -259,6 +292,7 @@ export function navigate(to, { replace = false, scroll = true } = {}) {
     if (!replace && scroll !== false) emit(makeSnapshot('same', { reset: true, pageChanged: false }));
     return;
   }
+  if (!force && !mayLeave(next)) return;
   remember(snapshot?.key, scrollPos());
   const st = historyState() || {};
   const onOverlay = overlay.pushed && !!st.awOverlay;

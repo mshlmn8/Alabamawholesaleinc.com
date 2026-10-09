@@ -92,6 +92,22 @@ describe('Admin accounts', () => {
   });
 });
 
+describe('an unsaved verification note (AW-118)', () => {
+  it('asks before the page changes', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    await openAccounts();
+    fireEvent.click(within(rowFor('Alpha Food Mart')).getByRole('button', { name: named('Details', 'Alpha Food Mart') }));
+    act(() => navigate('/admin/orders'));
+    expect(confirm).not.toHaveBeenCalled();
+    act(() => navigate('/admin/accounts', { replace: true }));
+    fireEvent.change(screen.getByLabelText('Verification note'), { target: { value: 'Checked twice' } });
+    act(() => navigate('/admin/orders'));
+    expect(confirm).toHaveBeenCalledWith('The verification note isn’t saved. Leave without saving it?');
+    expect(window.location.pathname).toBe('/admin/accounts');
+    confirm.mockRestore();
+  });
+});
+
 describe('Admin orders', () => {
   it('shows the licence answers a guest gave with a tobacco quote', async () => {
     fake.tables.orders = [{

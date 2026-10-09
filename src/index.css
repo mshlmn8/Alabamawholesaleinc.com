@@ -610,6 +610,11 @@ p > .text-link { min-height: 0; }
 /* A field of the admin table (the field system), wider than the table's
    220px cells. */
 .account-note input { max-width: 26.25rem; }
+/* Admin confirmations (ConfirmDialog): a narrow dialog with a smaller title. */
+.dialog.confirm-dialog { width: min(32.5rem, 100%); }
+.dialog.confirm-dialog h2 { font-size: var(--h3); line-height: 1.15; }
+.form-grid.confirm-reason { grid-template-columns: 1fr; margin-top: 0; }
+.confirm-reason textarea { width: 100%; }
 
 /* ============================ footer ============================ */
 .footer-main { margin-top: calc(var(--section-gap) + 16px); background: var(--purple); color: #fff; padding: 44px 0 0; }

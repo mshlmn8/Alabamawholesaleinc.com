@@ -6,6 +6,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { DOCUMENT_TYPES, createDocumentViewUrl, listAllProfileDocuments } from '../../lib/documents.js';
 import { Icon } from '../../components/Icon.jsx';
+import { useLeaveGuard } from './useLeaveGuard.js';
 
 // The tiers before pricing_tiers could be read here (AW-351): the options when
 // that table can't be loaded.
@@ -35,6 +36,9 @@ export function AccountsTab({ currentAdminId }) {
   const [noteDraft, setNoteDraft] = useState('');
   const [updateError, setUpdateError] = useState(null);
   const [tiers, setTiers] = useState(FALLBACK_TIERS);
+  // A verification note typed but not saved: leaving the page asks first (AW-118).
+  const openProfile = openId && profiles ? profiles.find(row => row.id === openId) : null;
+  useLeaveGuard(!!openProfile && noteDraft !== (openProfile.verification_note || ''), 'The verification note isn’t saved. Leave without saving it?');
   const reload = () => {
     supabase.from('profiles').select('*').order('created_at', { ascending: false }).then(({ data }) => setProfiles(data || []));
     listAllProfileDocuments().then(setDocuments).catch(() => setDocuments([]));

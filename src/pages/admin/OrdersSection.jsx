@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase.js';
 import { formatMoney } from '../../lib/format.js';
 import { MISSING_FUNCTION_CODES, lineTotal, tierUnitPrice, toCents, fromCents } from '../../lib/pricing.js';
 import { DEFAULT_ORDER_STATUS, LEGACY_ORDER_STATES, ORDER_STATES } from '../../lib/adminRoutes.js';
+import { useLeaveGuard } from './useLeaveGuard.js';
 
 // The order statuses (and the owner question about them, AW-024) are in
 // src/lib/adminRoutes.js, which checks the status filter in the URL.
@@ -194,6 +195,9 @@ function OrderCard({ order: o, states, workflow, tiers, onStatus, onReload }) {
   const quote = isQuote(o);
   const items = o.order_items || [];
   const [draft, setDraft] = useState(null); // the lines being edited, or null
+  // The lines as the editor opened them (with any suggested prices): a draft
+  // that differs is unsaved, and leaving the page asks first (AW-118).
+  const [baseline, setBaseline] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [suggested, setSuggested] = useState(false);
@@ -203,6 +207,7 @@ function OrderCard({ order: o, states, workflow, tiers, onStatus, onReload }) {
     setError(null);
     const lines = items.map(it => ({ ...it, qty: String(it.qty), unit_price: it.unit_price == null ? '' : String(Number(it.unit_price).toFixed(2)) }));
     setDraft(lines);
+    setBaseline(lines);
     if (lines.every(l => l.unit_price !== '')) return;
     let listPrices = null;
     try {
@@ -213,10 +218,14 @@ function OrderCard({ order: o, states, workflow, tiers, onStatus, onReload }) {
     if (!listPrices) return;
     const prices = new Map(lines.map(l => [l.id, suggestedUnitPrice(l, listPrices, discountPct)]));
     // Only fields still empty are filled; what staff typed meanwhile stays.
-    setDraft(current => current && current.map(l => (l.unit_price === '' && prices.get(l.id) != null ? { ...l, unit_price: prices.get(l.id).toFixed(2) } : l)));
+    const fill = (current) => current && current.map(l => (l.unit_price === '' && prices.get(l.id) != null ? { ...l, unit_price: prices.get(l.id).toFixed(2) } : l));
+    setDraft(fill);
+    setBaseline(fill);
     setSuggested(lines.some(l => l.unit_price === '' && prices.get(l.id) != null));
   };
-  const closeEditor = () => { setDraft(null); setSuggested(false); setError(null); };
+  const closeEditor = () => { setDraft(null); setBaseline(null); setSuggested(false); setError(null); };
+  const dirty = !!draft && !!baseline && draft.some((l, i) => l.qty !== baseline[i]?.qty || l.unit_price !== baseline[i]?.unit_price);
+  useLeaveGuard(dirty, `Your changes to ${o.ref_num} aren’t saved. Leave without saving them?`);
   const setLine = (index, field) => (e) => {
     const value = e.target.value;
     setDraft(current => current.map((l, i) => (i === index ? { ...l, [field]: value } : l)));

@@ -47,7 +47,8 @@ export function AdminPage({
   const [lastQuery, setLastQuery] = useState({});
   if (lastQuery[section] !== query) setLastQuery({ ...lastQuery, [section]: query });
   // A filter change replaces the history entry and keeps the scroll position.
-  const setQuery = (next) => navigate(adminHref({ section, query: next }), { replace: true, scroll: false });
+  // options.force: the change keeps any unsaved edit, so it skips the leave guard.
+  const setQuery = (next, options = {}) => navigate(adminHref({ section, query: next }), { replace: true, scroll: false, ...options });
 
   // While auth loads, a real admin sees "Loading", not "access denied"
   // (AW-087). Not a dead end otherwise (AW-232): signed-out visitors can sign

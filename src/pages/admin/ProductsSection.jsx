@@ -1,11 +1,13 @@
 // Admin -> Products: the catalog rows with their list prices, and the inline
 // edit row.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { formatMoney } from '../../lib/format.js';
 import { MISSING_FUNCTION_CODES } from '../../lib/pricing.js';
 import { MAX_PRODUCT_QUERY } from '../../lib/adminRoutes.js';
+import { ConfirmDialog } from './ConfirmDialog.jsx';
+import { useLeaveGuard } from './useLeaveGuard.js';
 
 // The product columns the Products tab shows. Not price: admins read list
 // prices through admin_product_prices() (AW-003).
@@ -40,6 +42,18 @@ function parsePriceInput(text) {
   return Number.isFinite(n) && n >= 0 ? { ok: true, price: Math.round(n * 100) / 100 } : { ok: false, price: null };
 }
 
+// Whether the edit row differs from the product as loaded (AW-118). A price
+// typed differently but worth the same (12.5, 12.50) is no change.
+export function productEditChanged(editing, product) {
+  if (!editing || !product) return false;
+  const price = parsePriceInput(editing.priceText);
+  return editing.name !== product.name
+    || editing.brand !== product.brand
+    || !price.ok || price.price !== (product.price ?? null)
+    || (editing.tag || null) !== (product.tag || null)
+    || !!editing.active !== !!product.active;
+}
+
 // How long the search box waits after typing stops before it writes ?q=.
 export const SEARCH_DEBOUNCE_MS = 300;
 
@@ -65,7 +79,8 @@ export function ProductsTab({ query = {}, onQuery, onCatalogChange }) {
     if (next === urlSearch || !onQuery) return undefined;
     const timer = setTimeout(() => {
       setSeen(next);
-      onQuery({ ...query, q: next, page: undefined });
+      // force: a search keeps the edit row (it only filters), so no guard.
+      onQuery({ ...query, q: next, page: undefined }, { force: true });
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [search, urlSearch, query, onQuery]);
@@ -79,6 +94,48 @@ export function ProductsTab({ query = {}, onQuery, onCatalogChange }) {
   };
   useEffect(reload, []);
 
+  // An edit row that differs from its product is unsaved work (AW-118):
+  // leaving the page asks first, and so do Edit on another row and Cancel.
+  const original = editing && rows ? rows.find(r => r.id === editing.id) : null;
+  const dirty = productEditChanged(editing, original);
+  useLeaveGuard(dirty, editing ? `Your changes to product ${editing.id} aren’t saved. Leave without saving them?` : undefined);
+  const [discarding, setDiscarding] = useState(null); // { next: product | null } while asking
+  // Where focus goes after the row opens or closes: the row's first field,
+  // or the Edit button of the row that closed.
+  const tableRef = useRef(null);
+  const focusNext = useRef(null);
+  useEffect(() => {
+    const want = focusNext.current;
+    if (!want) return;
+    focusNext.current = null;
+    const selector = want.field != null ? `tr[data-product="${want.field}"] input` : `[data-product-edit="${want.button}"]`;
+    tableRef.current?.querySelector(selector)?.focus();
+  });
+  const beginEdit = (p) => {
+    setEditing({ ...p, priceText: priceInput(p.price) });
+    setSaveError(null);
+    focusNext.current = { field: p.id };
+  };
+  const closeEdit = () => {
+    focusNext.current = { button: editing?.id };
+    setEditing(null);
+    setSaveError(null);
+  };
+  const startEdit = (p) => {
+    if (dirty) setDiscarding({ next: p });
+    else beginEdit(p);
+  };
+  const cancelEdit = () => {
+    if (dirty) setDiscarding({ next: null });
+    else closeEdit();
+  };
+  const discard = () => {
+    const next = discarding?.next;
+    setDiscarding(null);
+    if (next) beginEdit(next);
+    else closeEdit();
+  };
+
   const save = async (id, patch) => {
     setSaveError(null);
     const { error } = await supabase.from('products').update(patch).eq('id', id);
@@ -86,7 +143,7 @@ export function ProductsTab({ query = {}, onQuery, onCatalogChange }) {
       setSaveError(`The changes to product ${id} weren’t saved (${error.message || 'unknown error'}). Try again.`);
       return;
     }
-    setEditing(null);
+    closeEdit();
     reload();
     onCatalogChange?.();
   };
@@ -116,7 +173,7 @@ export function ProductsTab({ query = {}, onQuery, onCatalogChange }) {
       <p className="result-note">{`${filtered.length} of ${rows.length} products`}</p>
       {loadError && <p className="form-error" role="alert">{loadError}</p>}
       {saveError && <p className="form-error" role="alert">{saveError}</p>}
-      <div className="table-scroll">
+      <div className="table-scroll" ref={tableRef}>
         <table className="aw-table">
           <thead>
             <tr>
@@ -127,7 +184,7 @@ export function ProductsTab({ query = {}, onQuery, onCatalogChange }) {
           </thead>
           <tbody>
             {filtered.slice(0, 200).map(p => editing?.id === p.id ? (
-              <tr key={p.id} className="editing">
+              <tr key={p.id} className="editing" data-product={p.id}>
                 <td>{p.id}</td>
                 <td><input aria-label="Product name" value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} /></td>
                 <td><input aria-label="Brand" value={editing.brand} onChange={e => setEditing({ ...editing, brand: e.target.value })} /></td>
@@ -148,7 +205,7 @@ export function ProductsTab({ query = {}, onQuery, onCatalogChange }) {
                 <td>
                   <div className="inline-actions">
                     <button className="button xs" type="button" onClick={() => saveEditing(p.id)}>Save</button>
-                    <button className="button xs text" type="button" onClick={() => { setEditing(null); setSaveError(null); }}>Cancel</button>
+                    <button className="button xs text" type="button" onClick={cancelEdit}>Cancel</button>
                   </div>
                 </td>
               </tr>
@@ -162,7 +219,9 @@ export function ProductsTab({ query = {}, onQuery, onCatalogChange }) {
                 <td>{p.tag || '—'}</td>
                 <td>{p.active ? 'Yes' : 'No'}</td>
                 <td>
-                  <button className="button xs ghost" type="button" onClick={() => { setEditing({ ...p, priceText: priceInput(p.price) }); setSaveError(null); }}>Edit</button>
+                  <button className="button xs ghost" type="button" data-product-edit={p.id} onClick={() => startEdit(p)}>
+                    <span>Edit</span><span className="sr-only">{` ${p.name}`}</span>
+                  </button>
                 </td>
               </tr>
             ))}
@@ -170,6 +229,16 @@ export function ProductsTab({ query = {}, onQuery, onCatalogChange }) {
         </table>
       </div>
       {filtered.length > 200 && <p className="result-note">Showing first 200 — narrow the search to see others.</p>}
+      {discarding && (
+        <ConfirmDialog
+          title="Discard your changes?"
+          body={`Your changes to ${editing?.name || `product ${editing?.id}`} aren’t saved.`}
+          confirmLabel="Discard changes"
+          cancelLabel="Keep editing"
+          onConfirm={discard}
+          onCancel={() => setDiscarding(null)}
+        />
+      )}
     </div>
   );
 }
