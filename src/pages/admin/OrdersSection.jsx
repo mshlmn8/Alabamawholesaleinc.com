@@ -1,10 +1,13 @@
 // Admin -> Orders: the order list with its toolbar (search, dates, method,
 // account; AW-110), status filter, export, live updates and the marker for
 // orders new since the last visit (AW-111), and each order or quote's card
-// with Cursor's quote editor, Convert and Email (AW-024), its print links,
-// and its staff notes and history.
+// with Cursor's quote editor, Convert (a guest quote can be linked to an
+// approved account then) and Email (AW-024), its print links, and its staff
+// notes and history.
+//
+// TODO(owner): Should staff be able to create an order for a customer who phones it in? Nothing can yet: it needs a database function that creates an order and its lines on an admin's behalf, priced at the account's tier, and a form here to pick the account and the products. (AW-024)
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { Link } from '../../lib/router.js';
 import { formatMoney } from '../../lib/format.js';
@@ -18,6 +21,7 @@ import { adminErrorMessage, checkedWrite, withStatus } from './adminData.js';
 import { LoadProblem } from './AdminStatus.jsx';
 import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { downloadCsv, toCsv } from './csv.js';
+import { fetchAllRows } from '../../lib/paging.js';
 import {
   ADMIN_ORDER_SELECT, MAX_ORDER_SEARCH, hasOrderFilters, isQuote, orderCsvRecords, orderFilters, orderPageCount, orderStatusCounts, ordersCsvFileName,
   ordersForExport, ordersQuery, probeQuoteWorkflow, rangeTotal,
@@ -56,8 +60,9 @@ export function orderActionError(error) {
     case 'unknown_line': return 'A line changed since the page loaded. Reload and try again.';
     case 'not_a_quote': return 'This is already an order.';
     case 'unpriced_lines': return 'Price every line before converting the quote.';
-    case 'unknown_account':
-    case 'account_mismatch': return 'This quote can’t be moved to that account.';
+    // Linking a converted guest quote to an account (AW-024).
+    case 'unknown_account': return 'That account no longer exists. Choose another, or don’t link the order.';
+    case 'account_mismatch': return 'This quote already belongs to another account, so it can’t be linked to that one.';
     // admin_set_order_status (20261010122000).
     case 'reason_required': return 'Give a reason for cancelling the order.';
     case 'invalid_status': return 'That status isn’t one the database accepts. Reload the page.';
@@ -107,6 +112,22 @@ export function parseOrderLines(lines) {
   if (!out.some(l => l.qty > 0)) return { ok: false, error: 'Keep at least one line on the order.' };
   return { ok: true, lines: out };
 }
+
+// The approved accounts a guest quote can be linked to when it is converted
+// (AW-024): every one (a page of 1000 at a time, AW-199), by name.
+// { rows, error }.
+export async function loadApprovedAccounts(client) {
+  const result = await fetchAllRows(() => client.from('profiles').select('id, business, name, email').eq('status', 'approved').order('id'));
+  const error = withStatus(result);
+  if (error) return { rows: null, error };
+  const rows = [...(result.data || [])];
+  rows.sort((a, b) => accountOptionText(a).localeCompare(accountOptionText(b), 'en-US', { sensitivity: 'base' }));
+  return { rows, error: null };
+}
+// An account as the link list names it: 'Test Market LLC · buyer@example.test'.
+export const accountOptionText = (a) => [a.business || a.name || 'Unnamed account', a.email].filter(Boolean).join(' · ');
+// The accounts whose email is the quote's, listed first.
+const sameEmail = (a, email) => !!email && String(a.email || '').trim().toLowerCase() === email;
 
 // The total of the priced lines, in cents.
 function linesTotal(lines) {
@@ -419,6 +440,21 @@ export function OrdersTab({
     });
     return () => { cancelled = true; };
   }, [assignment]);
+  // The approved accounts a guest quote can be linked to (AW-024): loaded
+  // once, when a Convert dialog first opens, and again after a failure.
+  const [approved, setApproved] = useState({ rows: null, error: null, loading: false });
+  const approvedRequest = useRef(null);
+  const loadApproved = useCallback(() => {
+    if (approvedRequest.current) return approvedRequest.current;
+    setApproved((current) => ({ ...current, error: null, loading: true }));
+    const request = loadApprovedAccounts(supabase).catch((error) => ({ rows: null, error })).then(({ rows, error }) => {
+      if (error) approvedRequest.current = null;
+      setApproved({ rows, error: error ? adminErrorMessage(error, 'The accounts didn’t load') : null, loading: false });
+    });
+    approvedRequest.current = request;
+    return request;
+  }, []);
+
   const assigned = (id, assignedTo, updated) => {
     setOrders((list) => list?.map((o) => (o.id === id ? { ...o, assigned_to: assignedTo, ...(updated ? { updated_at: updated } : {}) } : o)) ?? list);
   };
@@ -600,6 +636,7 @@ export function OrdersTab({
         {shown.map(o => (
           <OrderCard key={o.id} order={o} states={states} workflow={workflow} tiers={tiers} onStatus={updateStatus} onReload={reload} notify={notify}
             isNew={isNewSince(o, since)} admins={admins} assignment={assignment} onAssigned={assigned} onOpenPrint={onOpenPrint}
+            accounts={approved} onNeedAccounts={loadApproved}
             saving={saving.has(o.id)} movedTo={filter !== 'all' && movedIds.has(o.id) && o.status !== filter ? o.status : null} />
         ))}
       </div>
@@ -647,10 +684,12 @@ function keepMoved(rows, previous, ids) {
 // print links, the cancellation reason and "Staff notes and history";
 // AW-111 the New marker (isNew). AW-112: saving (a status change is on its
 // way: the select takes no other), movedTo (the status the card moved to,
-// out of the filter on screen).
+// out of the filter on screen). accounts / onNeedAccounts: the approved
+// accounts a guest quote can be linked to when it is converted ({ rows,
+// error, loading }), and the call that loads them (AW-024).
 function OrderCard({
   order: o, states, workflow, tiers, onStatus, onReload, notify, isNew = false, admins = null, assignment = false, onAssigned, onOpenPrint,
-  saving = false, movedTo = null,
+  saving = false, movedTo = null, accounts = null, onNeedAccounts,
 }) {
   const quote = isQuote(o);
   const items = o.order_items || [];
@@ -703,16 +742,40 @@ function OrderCard({
     notify?.(`Saved the quantities and prices of ${o.ref_num}.`);
     onReload();
   };
-  const convert = async () => {
+  // Convert (AW-024): a guest's quote asks first, with the approved account
+  // to link the order to (or none: it stays a guest's order); a quote from
+  // an account converts at once and stays that account's. A refusal in the
+  // dialog is said there (an account deleted meanwhile: choose another).
+  const [linking, setLinking] = useState(null); // the dialog: { error }
+  const convert = async (userId = null, { dialog = false } = {}) => {
     setBusy(true);
     setError(null);
-    const { error: rpcError } = await supabase.rpc('admin_convert_quote', { p_order_id: o.id, p_user_id: null });
-    setBusy(false);
-    if (rpcError) setError(orderActionError(rpcError));
-    else {
-      notify?.(`${o.ref_num} is now an order.`);
-      onReload();
+    if (dialog) setLinking({ error: null });
+    let rpcError = null;
+    try {
+      ({ error: rpcError } = await supabase.rpc('admin_convert_quote', { p_order_id: o.id, p_user_id: userId }));
+    } catch (thrown) {
+      rpcError = thrown;
     }
+    setBusy(false);
+    if (rpcError) {
+      if (dialog) setLinking({ error: orderActionError(rpcError) });
+      else setError(orderActionError(rpcError));
+      return;
+    }
+    setLinking(null);
+    const account = userId ? accounts?.rows?.find((a) => a.id === userId) : null;
+    notify?.(account ? `${o.ref_num} is now an order of ${account.business || account.name || account.email}.` : `${o.ref_num} is now an order.`);
+    onReload();
+  };
+  const startConvert = () => {
+    if (o.user_id != null) {
+      convert(null);
+      return;
+    }
+    setError(null);
+    setLinking({ error: null });
+    onNeedAccounts?.();
   };
 
   // Cancelling asks for a reason first (admin_set_order_status needs one);
@@ -829,7 +892,8 @@ function OrderCard({
           <span>{quote ? 'Email the quote' : 'Email the order'}</span><span className="sr-only">{` ${o.ref_num} to ${o.email}`}</span>
         </a>
         {quote && !draft && (
-          <button className="button ghost" type="button" disabled={busy || !workflow || unpriced} onClick={convert}>
+          <button className="button ghost" type="button" disabled={busy || !workflow || unpriced} onClick={startConvert}
+            aria-haspopup={o.user_id == null ? 'dialog' : undefined}>
             <span>Convert to order</span><span className="sr-only">{` ${o.ref_num}`}</span>
           </button>
         )}
@@ -867,6 +931,61 @@ function OrderCard({
           onConfirm={confirmCancel} onCancel={() => { if (!cancelBusy) setCancelling(null); }}
         />
       )}
+      {linking && (
+        <ConvertDialog order={o} accounts={accounts} onRetryAccounts={onNeedAccounts} busy={busy} error={linking.error}
+          onConfirm={(userId) => convert(userId, { dialog: true })} onCancel={() => { if (!busy) setLinking(null); }} />
+      )}
     </article>
+  );
+}
+
+// Convert a guest's quote (AW-024): the approved account to link the order
+// to, or none (the default: it stays a guest's order). Accounts with the
+// quote's email come first. accounts: { rows, error, loading };
+// onRetryAccounts loads them again after a failure. error: why the
+// database refused the conversion; the account list then takes the focus.
+function ConvertDialog({ order, accounts, onRetryAccounts, busy, error, onConfirm, onCancel }) {
+  const id = useId();
+  const selectRef = useRef(null);
+  const [userId, setUserId] = useState('');
+  useEffect(() => {
+    if (error) selectRef.current?.focus();
+  }, [error]);
+  const email = String(order.email || '').trim().toLowerCase();
+  const rows = accounts?.rows || [];
+  const same = rows.filter((a) => sameEmail(a, email));
+  const others = rows.filter((a) => !sameEmail(a, email));
+  const option = (a) => <option key={a.id} value={a.id}>{accountOptionText(a)}</option>;
+  const note = accounts?.loading
+    ? 'Loading the approved accounts…'
+    : 'Linked, the order shows in that account’s order history, at the prices on this quote.';
+  return (
+    <ConfirmDialog
+      title={`Convert ${order.ref_num} to an order?`}
+      body="It becomes a confirmed order. Link it to an approved account, or leave it a guest’s order."
+      confirmLabel={busy ? 'Converting…' : 'Convert to order'} busy={busy}
+      onConfirm={() => onConfirm(userId || null)} onCancel={onCancel}
+    >
+      <div className="form-grid confirm-reason">
+        <div className="full">
+          <label htmlFor={`${id}-account`}>Link to account</label>
+          <select id={`${id}-account`} ref={selectRef} value={userId} onChange={(e) => setUserId(e.target.value)}
+            aria-describedby={`${id}-hint ${id}-error`} aria-invalid={error ? true : undefined}>
+            <option value="">Don’t link (guest order)</option>
+            {same.length > 0 && <optgroup label="Same email as the quote">{same.map(option)}</optgroup>}
+            {others.length > 0 && <optgroup label={same.length ? 'Other approved accounts' : 'Approved accounts'}>{others.map(option)}</optgroup>}
+          </select>
+          <small className="field-hint" id={`${id}-hint`}>{note}</small>
+          <p className="form-error" id={`${id}-error`} role="alert">{error || ''}</p>
+          {accounts?.error && (
+            <p className="form-error">
+              <span>{accounts.error}</span>{' '}
+              {/* The line goes while they load: the list keeps the focus. */}
+              <button className="text-link" type="button" onClick={() => { selectRef.current?.focus(); onRetryAccounts?.(); }}>Load the accounts again</button>
+            </p>
+          )}
+        </div>
+      </div>
+    </ConfirmDialog>
   );
 }

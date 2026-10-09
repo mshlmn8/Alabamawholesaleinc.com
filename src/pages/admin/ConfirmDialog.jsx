@@ -9,6 +9,8 @@
 // fills it in (NEW-004). historyEntry={false}: Back
 // doesn't close it (its own history entry would be in the way when its
 // confirm button leaves the page, as the product editor's do).
+// children: more fields between the body and the buttons (the account to
+// link a converted quote to, AW-024); their state stays with the caller.
 //
 // Admin-local for now: the commerce lane is building a site dialog and toast
 // at the same time, and the two are meant to be unified when they merge.
@@ -18,7 +20,7 @@ import { ModalLayer } from '../../components/ModalLayer.jsx';
 
 export function ConfirmDialog({
   title, body, confirmLabel, cancelLabel = 'Cancel', reasonLabel = null, reasonHint = null, reasonOptional = false, reasonMax = null,
-  busy = false, onConfirm, onCancel, historyEntry = true, returnFocus = null,
+  busy = false, onConfirm, onCancel, historyEntry = true, returnFocus = null, children = null,
 }) {
   const id = useId();
   const cancelRef = useRef(null);
@@ -57,6 +59,7 @@ export function ConfirmDialog({
           onClick={(e) => e.stopPropagation()}>
           <h2 id={`${id}-title`}>{title}</h2>
           <p className="desc" id={`${id}-body`}>{body}</p>
+          {children}
           {reasonLabel && (
             <div className="form-grid confirm-reason">
               <div className="full">

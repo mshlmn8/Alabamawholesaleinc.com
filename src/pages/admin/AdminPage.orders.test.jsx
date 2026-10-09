@@ -213,12 +213,88 @@ describe('Admin orders with the quote workflow', () => {
     confirm.mockRestore();
   });
 
-  it('converts a priced quote with admin_convert_quote', async () => {
-    setOrders([guestQuote({ status: 'quoted', order_items: guestQuote().order_items.map(it => ({ ...it, unit_price: 9.99 })) })]);
+  const pricedGuestQuote = (extra = {}) => guestQuote({ status: 'quoted', order_items: guestQuote().order_items.map(it => ({ ...it, unit_price: 9.99 })), ...extra });
+  const convertDialog = () => screen.getByRole('alertdialog', { name: 'Convert ALW-Q-5E4F3A2B1C to an order?' });
+  const linkSelect = () => within(convertDialog()).getByRole('combobox', { name: 'Link to account' });
+  const statusText = () => document.querySelector('.admin-status-text').textContent;
+
+  it('converts a priced guest quote with admin_convert_quote, unlinked by default (AW-024)', async () => {
+    setOrders([pricedGuestQuote()]);
     await openOrders();
     const guest = card('ALW-Q-5E4F3A2B1C');
     await act(async () => { fireEvent.click(within(guest).getByRole('button', { name: /^Convert to order/ })); });
-    expect(rpcCalls('admin_convert_quote')[0]).toEqual(['admin_convert_quote', { p_order_id: 'o-guest', p_user_id: null }]);
+    // A guest's quote asks first, with the account to link it to.
+    expect(rpcCalls('admin_convert_quote')).toHaveLength(0);
+    expect(linkSelect().value).toBe('');
+    expect(linkSelect().options[0].textContent).toBe('Don’t link (guest order)');
+    await act(async () => { fireEvent.click(within(convertDialog()).getByRole('button', { name: 'Convert to order' })); });
+    expect(rpcCalls('admin_convert_quote')).toEqual([['admin_convert_quote', { p_order_id: 'o-guest', p_user_id: null }]]);
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(statusText()).toBe('ALW-Q-5E4F3A2B1C is now an order.');
+  });
+
+  it('links a converted guest quote to the approved account chosen, listing the quote’s email first (AW-024)', async () => {
+    setOrders([pricedGuestQuote()]);
+    fake.tables.profiles = [
+      ADMIN,
+      { id: 'acct-zulu', business: 'Zulu Mart', name: 'Zed', email: 'zed@example.test', status: 'approved' },
+      { id: 'acct-gus', business: 'Gus Goods LLC', name: 'Gus', email: 'GUS@example.test', status: 'approved' },
+      { id: 'acct-alpha', business: 'Alpha Mart', name: 'Al', email: 'al@example.test', status: 'approved' },
+      { id: 'acct-pending', business: 'Pending Mart', name: 'Pat', email: 'pat@example.test', status: 'pending' },
+    ];
+    await openOrders();
+    await act(async () => { fireEvent.click(within(card('ALW-Q-5E4F3A2B1C')).getByRole('button', { name: /^Convert to order/ })); });
+    // Approved accounts only, read a page at a time.
+    const read = fake.find({ table: 'profiles', op: 'select' }).find((r) => r.columns === 'id, business, name, email');
+    expect(read.filters).toEqual([['eq', 'status', 'approved']]);
+    expect(read.modifiers.some(([name]) => name === 'range')).toBe(true);
+    const groups = [...linkSelect().querySelectorAll('optgroup')].map((g) => [g.label, [...g.querySelectorAll('option')].map((o) => o.textContent)]);
+    expect(groups).toEqual([
+      ['Same email as the quote', ['Gus Goods LLC · GUS@example.test']],
+      ['Other approved accounts', ['Alpha Mart · al@example.test', 'Desk Admin', 'Zulu Mart · zed@example.test']],
+    ]);
+    fireEvent.change(linkSelect(), { target: { value: 'acct-alpha' } });
+    await act(async () => { fireEvent.click(within(convertDialog()).getByRole('button', { name: 'Convert to order' })); });
+    expect(rpcCalls('admin_convert_quote')).toEqual([['admin_convert_quote', { p_order_id: 'o-guest', p_user_id: 'acct-alpha' }]]);
+    expect(statusText()).toBe('ALW-Q-5E4F3A2B1C is now an order of Alpha Mart.');
+  });
+
+  it('says in the dialog why a link was refused, and keeps it open (AW-024)', async () => {
+    setOrders([pricedGuestQuote()]);
+    fake.tables.profiles = [ADMIN, { id: 'acct-alpha', business: 'Alpha Mart', name: 'Al', email: 'al@example.test', status: 'approved' }];
+    db.rpcError.admin_convert_quote = { code: 'P0001', message: 'No account with that id', hint: 'unknown_account' };
+    await openOrders();
+    await act(async () => { fireEvent.click(within(card('ALW-Q-5E4F3A2B1C')).getByRole('button', { name: /^Convert to order/ })); });
+    fireEvent.change(linkSelect(), { target: { value: 'acct-alpha' } });
+    await act(async () => { fireEvent.click(within(convertDialog()).getByRole('button', { name: 'Convert to order' })); });
+    expect(within(convertDialog()).getByRole('alert').textContent).toBe('That account no longer exists. Choose another, or don’t link the order.');
+    expect(document.activeElement).toBe(linkSelect());
+    expect(linkSelect().getAttribute('aria-invalid')).toBe('true');
+    expect(orderActionError({ hint: 'account_mismatch' })).toBe('This quote already belongs to another account, so it can’t be linked to that one.');
+  });
+
+  it('offers the default when the accounts don’t load, and loads them again on request (AW-024)', async () => {
+    setOrders([pricedGuestQuote()]);
+    let fail = true;
+    const respond = fake.respond;
+    fake.respond = (request) => (fail && request.table === 'profiles' && request.columns === 'id, business, name, email'
+      ? { data: null, error: { code: 'XX000', message: 'upstream timeout' }, status: 500 } : respond(request));
+    await openOrders();
+    await act(async () => { fireEvent.click(within(card('ALW-Q-5E4F3A2B1C')).getByRole('button', { name: /^Convert to order/ })); });
+    expect(within(convertDialog()).getByText('The accounts didn’t load (upstream timeout). Try again.')).toBeTruthy();
+    expect([...linkSelect().options].map((o) => o.value)).toEqual(['']);
+    fail = false;
+    await act(async () => { fireEvent.click(within(convertDialog()).getByRole('button', { name: 'Load the accounts again' })); });
+    expect(document.activeElement).toBe(linkSelect());
+    expect([...linkSelect().options].map((o) => o.value)).toEqual(['', 'admin-1']);
+  });
+
+  it('converts an account’s quote at once, keeping its account (AW-024)', async () => {
+    setOrders([pricedGuestQuote({ user_id: 'buyer-2', profiles: { business: 'Pending Mart', pricing_tier: 'standard' } })]);
+    await openOrders();
+    await act(async () => { fireEvent.click(within(card('ALW-Q-5E4F3A2B1C')).getByRole('button', { name: /^Convert to order/ })); });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(rpcCalls('admin_convert_quote')).toEqual([['admin_convert_quote', { p_order_id: 'o-guest', p_user_id: null }]]);
   });
 
   it('shows a refused status change (the plain update, without the October 2026 function)', async () => {

@@ -827,10 +827,15 @@ saved requests one workflow (AW-024):
   order-line trigger runs on INSERT only, so the prices staff set stay.
 - **Email the quote** opens a message to the customer with the lines and
   the total, from the desk's own mail (nothing is sent by the site).
-- **Convert to order** calls `admin_convert_quote(order)` (admins only) once
-  every line is priced: the quote becomes a confirmed order. The function
-  can also attach a guest quote to an existing account
-  (`p_user_id`); Admin doesn't offer that yet.
+- **Convert to order** calls `admin_convert_quote(order, user_id)` (admins
+  only) once every line is priced: the quote becomes a confirmed order. A
+  guest's quote asks first, with a list of the approved accounts (those
+  with the quote's email first) to link the order to (`p_user_id`), or
+  none: then it stays a guest's order. A linked order shows in that
+  account's order history, at the quote's prices. An account's own quote
+  converts at once and stays that account's. Staff can't create an order
+  themselves (for a customer who phones one in): that is an owner question
+  (AW-024 in docs/OWNER-TODO.md).
 - Refusals carry a hint (`order_closed`, `no_items`, `invalid_line`,
   `unknown_line`, `not_a_quote`, `unpriced_lines`, `unknown_account`,
   `account_mismatch`, `admin_only`) that Admin → Orders turns into a
