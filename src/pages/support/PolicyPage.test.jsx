@@ -16,18 +16,13 @@ describe('PolicyPage ending (AW-276)', () => {
     expect(strip.querySelector(`a[href="mailto:${COMPANY.email}"]`)).toBeTruthy();
   });
 
-  it.each(['privacy', 'terms'])('ends %s with the date it was last updated, alone in its note', (kind) => {
+  // The delivery policy too, like the other two (AW-130).
+  it.each(['shipping', 'privacy', 'terms'])('ends %s with the date it was last updated, alone in its note', (kind) => {
     render(<PolicyPage kind={kind} />);
     const notes = endNotes();
     expect(notes).toHaveLength(1);
     expect(notes[0].textContent).toBe(`Last updated ${POLICIES_UPDATED}.`);
     expect(notes[0].children).toHaveLength(0);
-  });
-
-  it('prints no date on the delivery policy, which has none', () => {
-    render(<PolicyPage kind="shipping" />);
-    expect(endNotes()).toHaveLength(0);
-    expect(screen.queryByText(/^Last updated/)).toBeNull();
   });
 
   it('keeps the privacy policy\'s own "Contact the trade desk" section as published', () => {

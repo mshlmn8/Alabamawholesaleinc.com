@@ -91,6 +91,8 @@ describe('pageMeta', () => {
     expect(title({ page: 'catalog' })).toBe('All products · Wholesale catalog · Alabama Wholesale Inc');
     expect(title({ page: 'contact' })).toBe('Contact & visit · Alabama Wholesale Inc');
     expect(title({ page: 'delivery' })).toBe('Delivery & service area · Alabama Wholesale Inc');
+    // What every link and its crumb call /shipping (NEW-043).
+    expect(title({ page: 'shipping' })).toBe('Delivery policy · Alabama Wholesale Inc');
     expect(title({ page: 'terms' })).toBe('Trade terms · Alabama Wholesale Inc');
     expect(title({ page: 'apply' })).toBe('Apply for a trade account · Alabama Wholesale Inc');
     expect(title({ page: 'reset-password' })).toBe('Reset password · Alabama Wholesale Inc');

@@ -44,8 +44,12 @@ export function ContactStrip({ eyebrow = 'QUESTIONS?', title = 'Talk to the ware
 }
 
 // The help and policy pages, in the side nav every support page carries
-// (AW-122). /shipping stays a page of its own until Cursor's AW-130 merges it
-// into /delivery. POLICY_LINKS above keeps the shorter crumb labels.
+// (AW-122). /delivery and /shipping are both kept, so no address is retired
+// or redirected (AW-130, NEW-043): /delivery, 'Delivery & service area', has
+// the route states and the service area check; /shipping, 'Delivery policy'
+// in its h1, title, crumb and every link, has the terms of delivery and
+// pickup. Each page links to the other. POLICY_LINKS above keeps the shorter
+// crumb labels.
 export const SUPPORT_NAV = [
   { page: 'contact', label: 'Contact & visit' },
   { page: 'delivery', label: 'Delivery & service area' },

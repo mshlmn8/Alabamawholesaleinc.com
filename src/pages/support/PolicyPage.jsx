@@ -16,15 +16,22 @@ const UPDATED = POLICIES_UPDATED;
 // Each policy is a list of sections; `body` items are paragraphs (string or JSX)
 // or `{ list: [...] }` bullet groups.
 // TODO(owner): Order cutoff, delivery days, the fee under $1,500, tobacco receiving rules and the damage-claim process for the Delivery policy. (AW-130)
+// The Delivery policy (/shipping) and Delivery & service area (/delivery)
+// are both kept and link to each other (AW-130, NEW-043): the policy holds
+// the terms of delivery and pickup, the other page the route states and the
+// service area check.
 // TODO(owner): Returns, damage, credit, tax, risk of loss, liability and governing law for the Trade terms, ideally with counsel. (AW-028)
 const POLICIES = {
   shipping: {
     eyebrow: 'CUSTOMER POLICIES',
     ...POLICY_TEXT.shipping,
+    // TODO(owner): The Delivery policy now prints the same 'Last updated' date as the Privacy policy and Trade terms (POLICIES_UPDATED). Confirm that date for it, or give the date its delivery facts last changed (it then needs its own constant, as POLICIES_UPDATED must match TERMS_VERSION). (AW-130)
+    updated: true,
     sections: [
       { heading: 'How we deliver', body: [
         `Alabama Wholesale delivers on its own trucks along routes in Alabama, Mississippi and Georgia. When your store is on a delivery route, orders arrive the next day on our truck. Free delivery applies to orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} when the stop is on a delivery route.`,
         'Routes are planned stop by stop, so they do not reach every address in those states. The trade desk confirms whether a route passes your store when your account is set up, and again when you order.',
+        <>See <Link to="/delivery">Delivery &amp; service area</Link> for the states our routes cover, and to check your store.</>,
       ] },
       { heading: 'Minimum order', body: [
         `The minimum order is ${formatMoney(ORDER_MINIMUM)}.`,
@@ -91,7 +98,7 @@ const POLICIES = {
       ] },
       { heading: 'Orders and delivery', body: [
         `The minimum order is ${formatMoney(ORDER_MINIMUM)}.`,
-        <>Orders are delivered on our own trucks when the stop is on a delivery route in Alabama, Mississippi or Georgia, or collected at the Birmingham warehouse during business hours. See <Link to="/shipping">Delivery</Link> for how that works.</>,
+        <>Orders are delivered on our own trucks when the stop is on a delivery route in Alabama, Mississippi or Georgia, or collected at the Birmingham warehouse during business hours. See the <Link to="/shipping">Delivery policy</Link> for how that works.</>,
       ] },
       { heading: 'Payment', body: [
         'Payment methods are cash, checks, and electronic wiring and transfers.',

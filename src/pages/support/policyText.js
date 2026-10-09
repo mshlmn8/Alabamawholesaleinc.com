@@ -3,9 +3,14 @@
 // description. They live here, apart from the page, so the head tags don't
 // pull the policy page's code into the first download (AW-179).
 
+//
+// /shipping is the 'Delivery policy' wherever a link or crumb names it, so
+// its h1 and title say that too (NEW-043), apart from /delivery's 'Delivery
+// & service area'.
+
 export const POLICY_TEXT = {
   shipping: {
-    title: 'Delivery',
+    title: 'Delivery policy',
     intro: 'How orders leave the Birmingham warehouse: on our own trucks along routes in Alabama, Mississippi and Georgia, or will-call pickup during business hours.',
   },
   privacy: {

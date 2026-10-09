@@ -74,7 +74,7 @@ test('offline, the support pages still open from the cache, and after reconnecti
     ['/contact', () => footerLink(page, 'Contact & visit').click(), 'Contact & visit'],
     ['/apply', () => footerLink(page, 'Application checklist').click(), 'Apply for a trade account'],
     ['/delivery', () => footerLink(page, 'Delivery & service area').click(), 'Delivery & service area'],
-    ['/shipping', () => footerLink(page, 'Delivery policy').click(), 'Delivery'],
+    ['/shipping', () => footerLink(page, 'Delivery policy').click(), 'Delivery policy'],
     ['/privacy', () => footerLink(page, 'Privacy').click(), 'Privacy'],
     ['/terms', () => footerLink(page, 'Trade terms').click(), 'Trade terms'],
     ['/reset-password', () => goInApp(page, '/reset-password'), 'Reset your password'],

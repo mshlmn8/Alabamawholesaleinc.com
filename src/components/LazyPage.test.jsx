@@ -116,12 +116,12 @@ describe('lazyPage', () => {
     render(
       <main id="main" tabIndex={-1}>
         <input aria-label="Search" />
-        <Suspense fallback={<PageLoading />}><Page title="Delivery" /></Suspense>
+        <Suspense fallback={<PageLoading />}><Page title="Delivery & service area" /></Suspense>
       </main>
     );
     screen.getByRole('textbox', { name: 'Search' }).focus();
     await act(async () => { load.resolve({ default: Heading }); await load.promise; });
-    expect(screen.getByRole('heading', { name: 'Delivery' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Delivery & service area' })).toBeTruthy();
     expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Search' }));
   });
 });

@@ -60,7 +60,7 @@ const layoutOf = (container) => {
 };
 
 describe('SupportLayout on every support page', () => {
-  it.each([['shipping', 'Delivery policy', 'Delivery'], ['privacy', 'Privacy', 'Privacy'], ['terms', 'Trade terms', 'Trade terms']])(
+  it.each([['shipping', 'Delivery policy', 'Delivery policy'], ['privacy', 'Privacy', 'Privacy'], ['terms', 'Trade terms', 'Trade terms']])(
     'puts the %s policy beside the nav, marked current, with the strip after it',
     (kind, label, crumb) => {
       const { container } = render(<PolicyPage kind={kind} />);

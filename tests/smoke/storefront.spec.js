@@ -319,7 +319,9 @@ test.describe('after age confirmation', () => {
       await translate(page);
       const nav = page.getByRole('navigation', { name: 'Help and policies' });
       await nav.getByRole('link', { name: 'Delivery policy', exact: true }).click();
-      await expect(page.getByRole('heading', { level: 1, name: 'Delivery' })).toBeVisible();
+      // The page is called what its link says (NEW-043).
+      await expect(page.getByRole('heading', { level: 1, name: 'Delivery policy', exact: true })).toBeVisible();
+      await expect(page).toHaveTitle('Delivery policy · Alabama Wholesale Inc');
       await nav.getByRole('link', { name: 'Privacy', exact: true }).click();
       // The contact strip right below carries the phone and email (AW-276).
       await expect(page.locator('.support-note').last()).toHaveText(/Last updated .+\./);
