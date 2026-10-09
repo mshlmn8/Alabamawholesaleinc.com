@@ -368,6 +368,17 @@ describe('photos (AW-023)', () => {
     expect(field('Image file or URL').value).toBe('');
   });
 
+  it('shows a renamed photo file under its old name, in the list and the editor (AW-290)', async () => {
+    fake.tables.products = [SWISHER, { ...KITE, img: 'men_s_deodorant.jpg' }, OLD];
+    await renderAdmin();
+    const row = screen.getAllByRole('row').slice(1)[1];
+    expect(row.querySelector('.product-thumb img').getAttribute('src')).toMatch(/p21-speed-stick-mens-deodorant/);
+    await openEditor('Kite');
+    expect(document.querySelector('.product-photo-preview img').getAttribute('src')).toMatch(/p21-speed-stick-mens-deodorant/);
+    // The stored value is left as it is.
+    expect(field('Image file or URL').value).toBe('men_s_deodorant.jpg');
+  });
+
   it('never previews a photo on another site, which the CSP would block, and says why (AW-205)', async () => {
     await renderAdmin('/admin/products/2');
     fireEvent.change(field('Image file or URL'), { target: { value: 'https://cdn.example.test/kite.jpg' } });
