@@ -373,7 +373,8 @@ export function Link({ to, replace = false, scroll = true, onClick, children, ..
 }
 
 // '#new-arrivals' -> 'new-arrivals'; route-like and auth fragments -> null.
-function anchorOf(hash) {
+// LazyPage.jsx uses it for a page whose code arrives after the navigation.
+export function anchorOf(hash) {
   const match = /^#([A-Za-z][\w-]*)$/.exec(hash || '');
   return match ? match[1] : null;
 }

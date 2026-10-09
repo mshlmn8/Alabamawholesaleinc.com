@@ -74,6 +74,41 @@ describe('lazyPage', () => {
     expect(window.sessionStorage.getItem('aw-chunk-reload')).toBeNull();
   });
 
+  it('brings a linked section into view with its heading focused once the page’s code arrives (NEW-032)', async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    try {
+      act(() => navigate('/account#documents'));
+      const load = deferred();
+      const Page = lazyPage(() => load.promise);
+      const Account = () => (
+        <section>
+          <h1>Pending Mart LLC</h1>
+          <section id="documents"><h2>License documents</h2></section>
+        </section>
+      );
+      render(shell(<Page />));
+      // What the router did meanwhile: no #documents yet, so <main>.
+      document.getElementById('main').focus();
+      await act(async () => { load.resolve({ default: Account }); await load.promise; });
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'License documents' }));
+      expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+    } finally {
+      delete Element.prototype.scrollIntoView;
+    }
+  });
+
+  it('focuses the h1 when the linked section isn’t there (yet), or after Back', async () => {
+    act(() => navigate('/account#quick-reorder'));
+    const load = deferred();
+    const Page = lazyPage(() => load.promise);
+    render(shell(<Page title="My account" />));
+    document.getElementById('main').focus();
+    await act(async () => { load.resolve({ default: Heading }); await load.promise; });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'My account' }));
+  });
+
   it('leaves focus where the visitor moved it while the page loaded', async () => {
     act(() => navigate('/delivery'));
     const load = deferred();

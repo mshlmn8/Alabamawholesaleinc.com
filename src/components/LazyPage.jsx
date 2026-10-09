@@ -3,7 +3,10 @@
 //   lazyPage(factory)  React.lazy for a page: `factory` is
 //                      () => import('…').then((m) => ({ default: m.Page })).
 //                      Once its code has arrived after a link or Back, the
-//                      page's heading takes focus, as on any other page;
+//                      page's heading takes focus, as on any other page, or,
+//                      after a link to an anchor on it (/account#documents),
+//                      that section comes into view with its heading
+//                      focused (NEW-032);
 //   <PageLoading />    App's Suspense fallback while that code downloads: a
 //                      page head with a 'Loading…' status line and no h1, so
 //                      the router focuses <main> meanwhile;
@@ -19,7 +22,7 @@
 
 import { Suspense, lazy, useEffect } from 'react';
 import { clearChunkReload, isChunkLoadError } from '../lib/chunks.js';
-import { focusPageHeading, useLocation } from '../lib/router.js';
+import { anchorOf, focusPageHeading, revealAnchor, useLocation } from '../lib/router.js';
 import { ErrorBoundary } from './ErrorBoundary.jsx';
 import { Icon } from './Icon.jsx';
 import { ModalLayer } from './ModalLayer.jsx';
@@ -34,18 +37,28 @@ export function PageLoading() {
 
 // Rendered with the page, so its effect runs once the page's code is in and
 // the page is on screen. The router focused <main> while the loading view
-// (no h1) showed; the page's h1 takes over. A page opened directly keeps the
-// browser's own focus, and focus the visitor moved meanwhile stays put.
+// (no h1) showed; the page's h1 takes over. A link to an anchor on the page
+// (Quick reorder's /account#quick-reorder, 'View account status' to
+// #documents) found nothing to scroll to while the loading view showed, so
+// that section is brought into view and its heading focused now (NEW-032,
+// AW-086); a section that appears later, once the account loads, is
+// AccountPage's to reveal. Back, Forward and a reload keep their restored
+// position. A page opened directly keeps the browser's own focus, and focus
+// the visitor moved meanwhile stays put.
 function PageArrived() {
-  const { action } = useLocation();
+  const { action, hash } = useLocation();
   const navigated = action !== 'load';
   useEffect(() => {
     // Its code loaded: a later file that fails may reload once again
     // (src/lib/chunks.js, NEW-006).
     clearChunkReload();
-    if (!navigated) return;
+    if (!navigated) return undefined;
     const active = document.activeElement;
-    if (!active || active === document.body || active.tagName === 'MAIN') focusPageHeading();
+    if (active && active !== document.body && active.tagName !== 'MAIN') return undefined;
+    const anchor = action === 'push' || action === 'replace' ? anchorOf(hash) : null;
+    if (anchor && document.getElementById(anchor)) return revealAnchor(anchor);
+    focusPageHeading();
+    return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the page first renders
   }, []);
   return null;
