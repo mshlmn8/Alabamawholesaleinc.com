@@ -11,7 +11,7 @@
 
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { holdOverlayEntry, lastPageMove } from '../lib/router.js';
+import { focusPageHeading, holdOverlayEntry, lastPageMove } from '../lib/router.js';
 
 const FOCUSABLE = [
   'a[href]', 'button:not([disabled])', 'input:not([disabled]):not([type="hidden"])',
@@ -86,26 +86,44 @@ function ensureListener() {
   listening = true;
 }
 
+// Focuses el if it can still take focus: still on the page, and neither
+// hidden (display:none, such as the menu toggle on desktop) nor inert, which
+// the browser refuses.
+function takesFocus(el) {
+  if (!el || el === document.body || !el.isConnected || typeof el.focus !== 'function') return false;
+  el.focus();
+  return document.activeElement === el;
+}
+
+// Hands focus back along the chain of openers (AW-249). Menu -> Help ->
+// 'Apply for an account' unmounts the first two openers, so the walk goes on
+// to the first one still on the page. With none left, focus goes to the phone
+// menu button when it shows, else to the page's heading, never to <body>.
+// While a lower layer stays open, focus stays inside that layer.
 function restoreFocus(entry) {
-  const candidates = [entry.activeAtOpen, entry.fallbackOpener];
-  for (const el of candidates) {
-    if (el && el !== document.body && document.contains(el) && typeof el.focus === 'function') {
-      el.focus();
-      if (document.activeElement === el) return;
-    }
+  if (entry.openers.some(takesFocus)) return;
+  const top = stack[stack.length - 1];
+  if (top?.container) {
+    (focusables(top.container)[0] || top.container).focus({ preventScroll: true });
+    return;
   }
+  const menuToggle = document.querySelector('.aw-menu-toggle');
+  if (menuToggle && isVisible(menuToggle) && takesFocus(menuToggle)) return;
+  focusPageHeading();
 }
 
 // Captured during the first render, before any autoFocus inside the layer
-// moves focus. If the layer opens from inside another layer (cart -> sign in),
-// remember that layer's opener too in case it closes at the same time.
+// moves focus. A layer opened from inside another layer (Help -> Apply, cart
+// -> sign in) also keeps that layer's openers, in case it closes at the same
+// time: the chain runs from the nearest opener out to the one on the page.
 function createEntry(onClose) {
   const active = document.activeElement;
   const fromLayer = portalRoot && portalRoot.contains(active);
   const below = stack[stack.length - 1];
+  const openers = [active, ...(fromLayer && below ? below.openers : [])]
+    .filter((el) => el && el !== document.body);
   return {
-    activeAtOpen: active,
-    fallbackOpener: fromLayer ? (below?.activeAtOpen || below?.fallbackOpener || null) : null,
+    openers,
     onClose,
     container: null,
     lastInside: null,
