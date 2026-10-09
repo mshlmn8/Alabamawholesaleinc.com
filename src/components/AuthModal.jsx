@@ -114,10 +114,16 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
   // Focus trap, inert background, Escape and focus restore come from the
   // ModalLayer this dialog is rendered in; data-autofocus marks the first field.
 
-  // Each step swaps the dialog content, so move focus to the new heading.
-  const initialModeRef = useRef(mode);
+  // Each step swaps the dialog content, so the new step starts at the top
+  // (AW-096) and its heading takes focus, also on a return to the first step
+  // (AW-090). The step shown last is compared, not a first-run flag: under
+  // StrictMode the effect runs twice on open, and the opening step's own
+  // data-autofocus field keeps focus.
+  const shownMode = useRef(mode);
   useEffect(() => {
-    if (mode === initialModeRef.current) return;
+    if (shownMode.current === mode) return;
+    shownMode.current = mode;
+    if (dialogRef.current) dialogRef.current.scrollTop = 0;
     titleRef.current?.focus({ preventScroll: true });
   }, [mode]);
 
@@ -325,8 +331,10 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
       {/* Keeps clicks inside the dialog from reaching the backdrop. */}
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
       <div className="dialog scale-in" role="dialog" aria-modal="true" aria-labelledby="auth-title" ref={dialogRef} onClick={(e) => e.stopPropagation()}>
+        {/* One header row: the step's kicker beside the ×, so the first
+            field and the submit button fit a landscape phone (AW-245). */}
         <div className="dialog-top">
-          <p className="eyebrow">TRADE ACCOUNT</p>
+          <p className="kicker">{kicker}</p>
           <button className="icon-btn" type="button" onClick={requestClose} aria-label="Close"><Icon name="close" /></button>
         </div>
         {confirming && (
@@ -338,7 +346,6 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             </div>
           </div>
         )}
-        <p className="kicker">{kicker}</p>
         <h2 id="auth-title" ref={titleRef} tabIndex={-1}>{title}</h2>
 
         {mode === 'signin' && <p className="desc">Sign in to view wholesale pricing, build orders and see your order history.</p>}

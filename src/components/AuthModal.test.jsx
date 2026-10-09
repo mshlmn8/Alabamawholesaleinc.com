@@ -4,6 +4,7 @@
 // application (AW-018). The dialog renders in its own ModalLayer (a portal
 // on document.body), which screen queries still reach.
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthContext } from '../lib/auth.jsx';
 import { AuthModal, CHECKING_TIMEOUT_MS, RESEND_COOLDOWN_MS, RESEND_RATE_LIMITED } from './AuthModal.jsx';
@@ -478,5 +479,80 @@ describe('AuthModal status step actions (AW-097)', () => {
     showStatus('pending');
     expect(actions().map(([, , text]) => text)).toEqual(['View account status', 'Browse the catalog', 'Close']);
     expect(screen.queryByRole('link', { name: 'Email the trade desk' })).toBeNull();
+  });
+});
+
+// Each step starts at the top with focus on its heading, also on a return to
+// the step the dialog opened on (AW-090, AW-096). The step's kicker shares
+// the top row with the × (AW-245).
+describe('AuthModal step changes (AW-090, AW-096, AW-245)', () => {
+  const title = () => document.getElementById('auth-title');
+  const press = (name) => {
+    const button = screen.getByRole('button', { name });
+    button.focus(); // a click focuses the button in the browser, not in jsdom
+    fireEvent.click(button);
+  };
+
+  it('keeps the opening step’s first field focused, under StrictMode too', () => {
+    render(
+      <StrictMode>
+        <AuthContext.Provider value={authValue()}>
+          <AuthModal open onClose={() => {}} />
+        </AuthContext.Provider>
+      </StrictMode>,
+    );
+    expect(document.activeElement).toBe(screen.getByLabelText('Business email'));
+  });
+
+  it('focuses the heading on Back to the checklist, the step it opened on', () => {
+    setup({}, { initialMode: 'signup' });
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Continue to the application' }));
+    press('Continue to the application');
+    expect(document.activeElement).toBe(title());
+    press('Back to the checklist');
+    expect(title().textContent).toBe('Apply for an account');
+    expect(screen.getByRole('heading', { name: 'What you’ll need' })).toBeTruthy();
+    expect(document.activeElement).toBe(title());
+  });
+
+  it('focuses the heading on a return to Sign in', () => {
+    setup();
+    press('No account? Apply instead');
+    expect(document.activeElement).toBe(title());
+    press('Already approved? Sign in');
+    expect(title().textContent).toBe('Sign in');
+    expect(document.activeElement).toBe(title());
+  });
+
+  it('starts each step at the top of the dialog', () => {
+    setup({}, { initialMode: 'application' });
+    const dialog = screen.getByRole('dialog');
+    dialog.scrollTop = 500;
+    press('Back to the checklist');
+    expect(dialog.scrollTop).toBe(0);
+    dialog.scrollTop = 500;
+    press('Already approved? Sign in');
+    expect(dialog.scrollTop).toBe(0);
+  });
+
+  it('starts the confirmation step at the top after the long form was scrolled to Submit', async () => {
+    setup({ signUp: vi.fn(async () => ({ session: null })) }, { initialMode: 'application' });
+    const dialog = screen.getByRole('dialog');
+    dialog.scrollTop = 905;
+    await act(async () => { fireEvent.submit(screen.getByLabelText('Your name').closest('form')); });
+    expect(screen.getByRole('heading', { name: 'Check your inbox' })).toBeTruthy();
+    expect(dialog.scrollTop).toBe(0);
+    expect(document.activeElement).toBe(title());
+  });
+
+  it('shows the step’s kicker in the top row beside the ×, with no second eyebrow', () => {
+    setup();
+    const top = document.querySelector('[role="dialog"] .dialog-top');
+    expect([...top.children].map((el) => el.className)).toEqual(['kicker', 'icon-btn']);
+    expect(top.querySelector('.kicker').textContent).toBe('EXISTING ACCOUNTS');
+    expect(screen.queryByText('TRADE ACCOUNT')).toBeNull();
+    expect(document.querySelectorAll('[role="dialog"] .kicker')).toHaveLength(1);
+    press('No account? Apply instead');
+    expect(top.querySelector('.kicker').textContent).toBe('NEW ACCOUNTS · LICENSED RETAILERS ONLY');
   });
 });
