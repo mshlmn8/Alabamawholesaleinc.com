@@ -26,6 +26,7 @@ import { featuredOrder } from '../lib/merchandising.js';
 import { brandLabel, catLabel } from '../lib/format.js';
 import { tierPriceNote } from '../lib/pricing.js';
 import { Link, navigate } from '../lib/router.js';
+import { useToolbarHeight } from '../lib/stickyHeader.js';
 import { EMPTY_CATEGORY_QUERY, slugify } from '../lib/routes.js';
 import { Breadcrumbs, catalogCrumbs } from '../components/Breadcrumbs.jsx';
 import { BackToTop } from '../components/BackToTop.jsx';
@@ -315,6 +316,10 @@ export function CategoryPage({
   // scrollLeft, not scrollIntoView, which can also scroll the page and undo
   // the position Back restores.
   const pillsRef = useRef(null);
+  // The Filter & Sort row's height, for the scroll margin of the cards that
+  // scroll under it where it sticks (NEW-081).
+  const toolbarRef = useRef(null);
+  useToolbarHeight(toolbarRef);
   useLayoutEffect(() => {
     const row = pillsRef.current;
     const pill = row?.querySelector('[aria-current="page"]');
@@ -343,7 +348,7 @@ export function CategoryPage({
         </nav>
       </div>
 
-      <div className="category-toolbar">
+      <div className="category-toolbar" ref={toolbarRef}>
         <div className="toolbar-row">
           {isMobile && (
             <button className="filter-toggle" type="button" aria-expanded={filtersOpen} aria-controls={filtersOpen ? 'aw-filter-drawer' : undefined} onClick={() => setFiltersOpen(true)}>

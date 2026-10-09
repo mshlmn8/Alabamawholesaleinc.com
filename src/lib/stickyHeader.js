@@ -25,8 +25,8 @@
 //   class is set in the focusin event, before the browser scrolls the
 //   control into view, so the page no longer jumps up about 470px on each
 //   Shift+Tab towards a control it can't show.
-// - A field that takes focus under the stuck header is scrolled clear of it
-//   (NEW-018). The content's scroll-margin-top already does this for links
+// - A field that takes focus under the stuck header (or the Filter & Sort row
+//   stuck under it, NEW-081) is scrolled clear of it (NEW-018). The content's scroll-margin-top already does this for links
 //   and buttons, but for a text field Chrome only scrolls as far as its
 //   caret and ignores the margin: Shift+Tab back to checkout's Notes left
 //   the whole box behind the header at 1440x900. A frame after the focus,
@@ -71,12 +71,23 @@ const VAR_NAMES = Object.keys(stickyHeaderVars({ headerHeight: 0, barHeight: 0, 
 
 const isSticky = (el) => window.getComputedStyle(el).position === 'sticky';
 
-// How far down the window the stuck header covers the page for `target`:
-// the header's bottom edge while it sticks, else 0.
+// The compact layout's Filter & Sort row, while it sticks (NEW-081).
+const stuckToolbar = () => {
+  const bar = document.querySelector('.category-toolbar');
+  return bar && isSticky(bar) ? bar : null;
+};
+
+// How far down the window the page is covered for `target`: the header's
+// bottom edge while it sticks, and the Filter & Sort row stuck under it when
+// `target` comes after that row on the page (NEW-081). 0 for nothing.
 export function coveredTop(header, target) {
-  if (!header || !target || !isSticky(header)) return 0;
-  if (target.closest?.(OWN_LAYERS)) return 0;
-  return Math.max(0, header.getBoundingClientRect().bottom);
+  if (!target || target.closest?.(OWN_LAYERS)) return 0;
+  let edge = header && isSticky(header) ? Math.max(0, header.getBoundingClientRect().bottom) : 0;
+  const bar = stuckToolbar();
+  if (bar && !bar.contains(target) && (bar.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+    edge = Math.max(edge, bar.getBoundingClientRect().bottom);
+  }
+  return edge;
 }
 
 // Scrolls a focused element clear of the stuck header when the browser left
@@ -92,6 +103,29 @@ export function revealFocused(header, target) {
   if (edge <= 0 || target.getBoundingClientRect().top >= edge - 0.5) return false;
   target.scrollIntoView({ block: 'nearest' });
   return true;
+}
+
+// The height of the compact layout's sticky Filter & Sort row (NEW-081) as
+// --toolbar-h on <html>, kept current like the header's (large text and a
+// wrapping row change it) and removed when the page goes. What scrolls under
+// the row gets it in its scroll-margin-top (src/index.css).
+export function useToolbarHeight(ref) {
+  useLayoutEffect(() => {
+    const bar = ref.current;
+    if (!bar) return undefined;
+    const root = document.documentElement;
+    const update = () => {
+      const value = px(bar.getBoundingClientRect().height);
+      if (root.style.getPropertyValue('--toolbar-h') !== value) root.style.setProperty('--toolbar-h', value);
+    };
+    update();
+    const observer = typeof window.ResizeObserver === 'function' ? new window.ResizeObserver(update) : null;
+    observer?.observe(bar);
+    return () => {
+      observer?.disconnect();
+      root.style.removeProperty('--toolbar-h');
+    };
+  }, [ref]);
 }
 
 // Keeps the properties current, before paint: on mount, whenever the header
@@ -138,7 +172,8 @@ export function useStickyHeader(ref) {
     let frame = 0;
     const onFocusIn = (e) => {
       const target = e.target;
-      if (!(target instanceof Element) || header.contains(target) || !isSticky(header)) return;
+      if (!(target instanceof Element) || header.contains(target)) return;
+      if (!isSticky(header) && !stuckToolbar()) return;
       if (frame) window.cancelAnimationFrame(frame);
       let lastY = window.scrollY;
       let still = 0;

@@ -247,8 +247,11 @@ input[type="search"]:focus-visible { outline-offset: -3px; }
 .announcement-list li.is-marquee { animation: announcement-marquee var(--marquee-ms, 0ms) linear var(--marquee-hold, 0ms) 1 both; }
 .trade-bar.is-still .announcement-list li { animation-play-state: paused; }
 .trade-bar .icon-btn { display: inline-grid; place-items: center; flex: none; width: 2rem; height: 2rem; min-height: 0; border: 1px solid var(--on-dark-line); background: transparent; color: #fff; font-size: 1rem; }
+/* With a mouse its links and text buttons thicken their underline and turn
+   the softer on-dark white (AW-145); never orange on purple. */
 @media (hover: hover) {
   .trade-bar .icon-btn:not(:disabled):hover { background: var(--on-dark-fill); }
+  .trade-bar a:hover, .trade-bar button:not(.icon-btn):not(:disabled):hover { color: var(--on-dark); text-decoration-thickness: 2px; }
 }
 
 /* ============================ header ============================ */
@@ -354,8 +357,10 @@ input[type="search"]:focus-visible { outline-offset: -3px; }
 .aw-department a { display: block; width: 100%; text-align: left; font-size: var(--text-sm); padding: 8px 0; color: var(--muted); line-height: 1.3; background: none; border: 0; }
 .aw-department a.aw-department-all { font-weight: 700; color: var(--purple); }
 .aw-department a[aria-current="page"], .aw-menu-footer a[aria-current="page"] { font-weight: 700; color: var(--orange-dark); }
+/* 'View full catalog' in the menu's footer answers a mouse as the department
+   links do (AW-145). */
 @media (hover: hover) {
-  .aw-department a:hover { color: var(--orange-dark); text-decoration: underline; text-underline-offset: var(--link-offset); }
+  .aw-department a:hover, .aw-menu-footer a:hover { color: var(--orange-dark); text-decoration: underline; text-underline-offset: var(--link-offset); }
 }
 .aw-menu-footer { position: sticky; bottom: 0; padding: 15px 30px; border-top: 1px solid var(--line); background: var(--paper); display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .aw-menu-footer a { font-size: var(--text-sm); font-weight: 700; color: var(--purple); display: flex; background: none; border: 0; padding: 0; min-height: 36px; align-items: center; }
@@ -1215,9 +1220,10 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
    220px cells. */
 .account-note input { max-width: 26.25rem; }
 /* What an admin change did (AdminStatus, AW-202): a line at the foot of the
-   screen for 8 seconds. Its role=status paragraph is always there, empty and
-   out of the way between messages. */
-.admin-status { position: fixed; left: 50%; bottom: 16px; z-index: 40; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; width: max-content; max-width: calc(100vw - 32px); pointer-events: none; }
+   screen for 8 seconds, above the footer's FDA warning while that is on
+   screen (--fda-visible-h, src/lib/fdaInset.js, NEW-080). Its role=status
+   paragraph is always there, empty and out of the way between messages. */
+.admin-status { position: fixed; left: 50%; bottom: calc(16px + var(--fda-visible-h, 0px)); z-index: 40; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; width: max-content; max-width: calc(100vw - 32px); pointer-events: none; }
 .admin-status.is-shown { padding: 10px 16px; background: var(--purple-deep); color: #fff; box-shadow: 0 10px 30px var(--shadow-popover); pointer-events: auto; }
 .admin-status-text { margin: 0; font-size: var(--text-sm); font-weight: 600; line-height: 1.4; }
 /* A load that failed (AW-202): the message and Try again, where the list would be. */
@@ -1769,7 +1775,11 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .footer-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .footer-brand { grid-column: 1 / -1; }
   .footer-brand p { max-width: 68ch; }
-  .aw-masthead { gap: 28px; }
+  /* Narrow desktops (down to 851px): tighter gaps and side padding leave the
+     search box room for its whole placeholder beside Sign in, Apply and the
+     cart (AW-159). */
+  .aw-masthead { gap: 20px; }
+  .aw-search input { padding-inline: 14px; }
   .aw-logo-text > span { font-size: 1.625rem; }
   .aw-navigation { gap: 23px; }
   .aw-category-toggle { flex-basis: 175px; padding-inline: 16px; }
@@ -1879,6 +1889,15 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
      padding, the same space around it as on a desktop. */
   .category-head .sub-pills { position: relative; margin-block: 6px 10px; scroll-padding-inline: 20px; -webkit-mask-image: linear-gradient(90deg, transparent, black 12px, black calc(100% - 12px), transparent); mask-image: linear-gradient(90deg, transparent, black 12px, black calc(100% - 12px), transparent); }
   .category-toolbar { position: sticky; top: var(--header-h); z-index: 5; background: #fff; margin-inline: -16px; padding-inline: 16px; }
+  /* What scrolls under the stuck row (the chips, the cards and everything in
+     them) lands below it when it takes focus or is scrolled to (NEW-081,
+     WCAG 2.4.11): its height (--toolbar-h, CategoryPage measures it) under
+     the masthead, plus 8px. On the content after the row, not scroll-padding
+     on <html>, which would count the row's own Filter & Sort button as
+     hidden. Screen only: on paper the row is static. */
+  @media screen {
+    .category-toolbar ~ .active-filters, .category-toolbar ~ .catalog-layout, .category-toolbar ~ .catalog-layout * { scroll-margin-top: calc(var(--header-h) + var(--toolbar-h, 4rem) + 8px); }
+  }
   .toolbar-row { justify-content: flex-start; flex-wrap: wrap; }
   .toolbar-row > .result-note { flex: 1 1 8em; }
   .checkout-grid { grid-template-columns: 1fr; gap: 26px; }
@@ -2401,9 +2420,11 @@ ul.sub-pills { list-style: none; padding: 0; }
    window: above the page, the header (20), the mega menu (25) and the search
    results (35); below the dialog layers (.aw-layer 60, whose scrim covers it)
    and the age gate (100). The light edge keeps it apart from the purple
-   footer. Its motion stops in the prefers-reduced-motion block, and it is
-   not printed. Spoken through announce(), so no live region. */
-.toast-root { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; justify-content: center; padding: 0 0 max(16px, env(safe-area-inset-bottom)); pointer-events: none; }
+   footer, and it rides above the footer's FDA warning while that is on
+   screen (--fda-visible-h, src/lib/fdaInset.js, NEW-080). Its motion stops
+   in the prefers-reduced-motion block, and it is not printed. Spoken through
+   announce(), so no live region. */
+.toast-root { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; justify-content: center; padding: 0 0 calc(max(16px, env(safe-area-inset-bottom)) + var(--fda-visible-h, 0px)); pointer-events: none; }
 .toast { --focus-ring: var(--focus-on-dark); pointer-events: auto; display: flex; align-items: center; gap: 12px; width: min(28rem, 100% - 32px); padding: 10px 10px 10px 16px; background: var(--purple-deep); color: #fff; border: 1px solid var(--on-dark-line); border-radius: 2px; box-shadow: 0 12px 30px var(--shadow-popover); font-size: var(--text-base); line-height: 1.45; animation: toast-in .2s ease-out both; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .toast-text { flex: 1 1 auto; min-width: 0; margin: 0; font-weight: 600; }

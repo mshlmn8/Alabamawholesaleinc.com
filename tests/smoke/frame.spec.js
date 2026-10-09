@@ -121,6 +121,20 @@ test('on a phone the trade bar is one row, and a message longer than it scrolls 
   expect(errors).toEqual([]);
 });
 
+test('a toast at the foot of the page leaves the FDA warning readable (NEW-080)', async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto('/product/14');
+  await page.locator('.pd-info').getByRole('button', { name: /^Add to quote/ }).click();
+  const toast = page.locator('.toast-root > *').first();
+  await expect(toast).toBeVisible();
+  await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
+  const note = page.locator('.fda-note');
+  await expect(note).toBeInViewport({ ratio: 0.9 });
+  // The toast rides just above the warning once the page has caught up.
+  await expect.poll(async () => (await toast.boundingBox()).y + (await toast.boundingBox()).height).toBeLessThanOrEqual((await note.boundingBox()).y);
+  expect(errors).toEqual([]);
+});
+
 test.describe('announcements (WCAG 2.2.2)', () => {
   const shown = (page) => page.locator('.announcement-list .is-current');
   // Somewhere on the page below the trade bar.
@@ -406,6 +420,38 @@ test.describe('the sticky header and the department page', () => {
       expect((await rect(page.locator('.aw-search-results'))).bottom).toBeLessThanOrEqual(size.height);
       expect(await page.evaluate(() => window.scrollY)).toBe(2500);
       await page.keyboard.press('Escape');
+    }
+    expect(errors).toEqual([]);
+  });
+
+  test('Shift+Tab up a department never leaves a card’s link or control under the stuck Filter & Sort row (NEW-081)', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'phone', 'the compact layout');
+    const errors = trackErrors(page);
+    // A short phone, where the masthead sticks over the row, and a phone on its side, where only the row does.
+    for (const size of [{ width: 360, height: 640 }, { width: 844, height: 390 }]) {
+      await page.setViewportSize(size);
+      await page.goto('/category/tobacco');
+      await expect(page.locator('main h1')).toHaveText('Tobacco');
+      await page.locator('footer').getByRole('link').first().focus();
+      await settled(page);
+      let stops = 0;
+      for (let i = 0; i < 24; i++) {
+        await page.keyboard.press('Shift+Tab');
+        await settled(page);
+        const now = await page.evaluate(() => {
+          const el = document.activeElement;
+          return {
+            name: el.getAttribute('aria-label') || el.textContent.trim(),
+            top: el.getBoundingClientRect().top,
+            inGrid: !!el.closest('.catalog-layout'),
+            toolbarBottom: document.querySelector('.category-toolbar').getBoundingClientRect().bottom,
+          };
+        });
+        if (!now.inGrid) continue;
+        stops += 1;
+        expect(now.top, `${now.name} at ${size.width}x${size.height}`).toBeGreaterThanOrEqual(now.toolbarBottom - 1);
+      }
+      expect(stops).toBeGreaterThan(15);
     }
     expect(errors).toEqual([]);
   });

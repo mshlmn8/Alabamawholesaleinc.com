@@ -376,6 +376,18 @@ describe('the sticky header and what sticks under it (AW-153, AW-300, AW-312, AW
     expect(inBlocks(MOBILE_QUERY, '.category-toolbar')[0]).toMatchObject({ position: 'sticky', top: 'var(--header-h)' });
   });
 
+  it('lands what scrolls under the stuck Filter & Sort row below it, on screen only and never through <html> (NEW-081)', () => {
+    const compact = mediaBlocks(css).find((b) => b.prelude === MOBILE_QUERY && b.body.includes('.category-toolbar {'));
+    const screen = mediaBlocks(compact.body).filter((b) => b.prelude === 'screen').flatMap((b) => rules(b.body));
+    const margin = screen.find((r) => r.selectors.includes('.category-toolbar ~ .catalog-layout *'));
+    expect(margin.selectors).toEqual(['.category-toolbar ~ .active-filters', '.category-toolbar ~ .catalog-layout', '.category-toolbar ~ .catalog-layout *']);
+    expect(declarations(margin.body)).toEqual({ 'scroll-margin-top': 'calc(var(--header-h) + var(--toolbar-h, 4rem) + 8px)' });
+    // Later than the sticky block's content margin, which it overrides at the same specificity.
+    expect(css.indexOf('.category-toolbar ~ .catalog-layout *')).toBeGreaterThan(css.indexOf('.app-shell > :not(.site-header) *'));
+    // No scroll-padding on html for it: the row's own button would count as hidden.
+    expect(declared('scroll-padding-top').filter(({ value }) => /toolbar/.test(value))).toEqual([]);
+  });
+
   it('starts inner pages 8px under the navigation row, and keeps the department head compact', () => {
     expect(rule('.page-head')).toEqual({ padding: '8px 0 8px' });
     expect(rule('.category-head h1')['font-size']).toMatch(/^clamp\(/);
@@ -559,6 +571,16 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
     for (const s of ['.card-link:focus-visible::after', '.dept-tile-link:focus-visible::after', '.editorial-card .text-link:focus-visible::after']) {
       expect(outside(s), s).toEqual({ outline: '3px solid var(--focus-ring)', 'outline-offset': '3px' });
     }
+  });
+
+  it('answers a mouse on the trade bar’s links and the mega menu’s footer link (AW-145)', () => {
+    const hover = (selector) => hoverRules.find((r) => r.selectors.includes(selector));
+    const bar = hover('.trade-bar a:hover');
+    expect(bar.selectors).toEqual(['.trade-bar a:hover', '.trade-bar button:not(.icon-btn):not(:disabled):hover']);
+    expect(declarations(bar.body)).toEqual({ color: 'var(--on-dark)', 'text-decoration-thickness': '2px' });
+    const menu = hover('.aw-menu-footer a:hover');
+    expect(menu.selectors).toEqual(['.aw-department a:hover', '.aw-menu-footer a:hover']);
+    expect(declarations(menu.body)).toEqual({ color: 'var(--orange-dark)', 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' });
   });
 
   it('never turns a link orange on a purple surface', () => {
@@ -1329,6 +1351,16 @@ describe('one link style (AW-297)', () => {
     const hover = mediaBlocks(css).filter((b) => b.prelude === '(hover: hover)').flatMap((b) => rules(b.body))
       .find((r) => r.selectors.join(', ') === '.footer-grid button:hover, .footer-grid .footer-link:hover');
     expect(declarations(hover.body)).toEqual({ color: '#fff' });
+  });
+});
+
+describe('the toasts and the FDA warning (NEW-080)', () => {
+  it('lifts the commerce toast and the admin status above the footer’s FDA warning while it is on screen', () => {
+    expect(ruleFor('.admin-status').bottom).toBe('calc(16px + var(--fda-visible-h, 0px))');
+    expect(ruleFor('.toast-root').padding).toBe('0 0 calc(max(16px, env(safe-area-inset-bottom)) + var(--fda-visible-h, 0px))');
+    // Set by src/lib/fdaInset.js, never in :root (0px is the fallback).
+    expect(root).not.toHaveProperty('--fda-visible-h');
+    expect(read('src/App.jsx')).toMatch(/useFdaInset\(\);/);
   });
 });
 

@@ -5,7 +5,7 @@
 import { act, render } from '@testing-library/react';
 import { useRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MAX_FRAMES, REVEALED_CLASS, SETTLED_FRAMES, STICKY_HEADER_QUERY, revealFocused, stickyHeaderVars, useStickyHeader } from './stickyHeader.js';
+import { MAX_FRAMES, REVEALED_CLASS, SETTLED_FRAMES, STICKY_HEADER_QUERY, coveredTop, revealFocused, stickyHeaderVars, useStickyHeader, useToolbarHeight } from './stickyHeader.js';
 
 const rootVar = (name) => document.documentElement.style.getPropertyValue(name);
 
@@ -245,5 +245,72 @@ describe('keyboard focus and the stuck header (NEW-017, NEW-018)', () => {
     act(() => document.querySelector('textarea').focus());
     runFrames(SETTLED_FRAMES);
     expect(scrolled).not.toHaveBeenCalled();
+  });
+});
+
+describe('the Filter & Sort row (NEW-081)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    document.body.innerHTML = '';
+  });
+
+  function Toolbar() {
+    const ref = useRef(null);
+    useToolbarHeight(ref);
+    return <div className="category-toolbar" ref={ref}>Filter &amp; Sort</div>;
+  }
+
+  it('publishes its height as --toolbar-h, follows it, and removes it with the page', () => {
+    const observers = [];
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback) { this.callback = callback; this.targets = []; observers.push(this); }
+      observe(el) { this.targets.push(el); }
+      disconnect() { this.gone = true; }
+    });
+    let height = 62;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => ({ top: 0, bottom: height, height, left: 0, right: 0, width: 0, x: 0, y: 0 }));
+    const { unmount } = render(<Toolbar />);
+    expect(rootVar('--toolbar-h')).toBe('62px');
+    expect(observers[0].targets.map((el) => el.className)).toEqual(['category-toolbar']);
+    // Large text wraps the row.
+    height = 107.5;
+    observers[0].callback([]);
+    expect(rootVar('--toolbar-h')).toBe('107.5px');
+    unmount();
+    expect(observers[0].gone).toBe(true);
+    expect(rootVar('--toolbar-h')).toBe('');
+  });
+
+  it('counts the stuck row as covering what comes after it, not what comes before it or its own button', () => {
+    document.body.innerHTML = `
+      <header class="site-header"></header>
+      <nav><a href="#pill">Pill</a></nav>
+      <div class="category-toolbar"><button type="button">Filter &amp; Sort</button></div>
+      <div class="catalog-layout"><a href="#card">Card</a><input aria-label="Qty"></div>`;
+    const sticky = { header: 'sticky', toolbar: 'sticky' };
+    const realStyle = window.getComputedStyle;
+    vi.spyOn(window, 'getComputedStyle').mockImplementation((el) => {
+      if (el.classList?.contains('site-header')) return { position: sticky.header };
+      if (el.classList?.contains('category-toolbar')) return { position: sticky.toolbar };
+      return realStyle(el);
+    });
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function rect() {
+      const bottom = this.classList.contains('site-header') ? 114 : this.classList.contains('category-toolbar') ? 176 : 300;
+      return { top: bottom - 50, bottom, height: 50, left: 0, right: 0, width: 0, x: 0, y: 0 };
+    });
+    const header = document.querySelector('.site-header');
+    const [pill, card] = document.querySelectorAll('a');
+    expect(coveredTop(header, card)).toBe(176);
+    expect(coveredTop(header, document.querySelector('input'))).toBe(176);
+    expect(coveredTop(header, pill)).toBe(114);
+    expect(coveredTop(header, document.querySelector('.category-toolbar button'))).toBe(114);
+    // A short window: the header doesn't stick, the row still does (at the top).
+    sticky.header = 'static';
+    expect(coveredTop(header, pill)).toBe(0);
+    expect(coveredTop(header, card)).toBe(176);
+    // A wide window: neither sticks.
+    sticky.toolbar = 'static';
+    expect(coveredTop(header, card)).toBe(0);
   });
 });

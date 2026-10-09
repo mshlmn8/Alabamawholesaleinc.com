@@ -46,6 +46,7 @@ import { offlineNotices } from './lib/offlineNotice.js';
 import { useOnlineStatus } from './lib/useOnlineStatus.js';
 import { announce } from './lib/announce.js';
 import { useStickyHeader } from './lib/stickyHeader.js';
+import { useFdaInset } from './lib/fdaInset.js';
 import { AgeGate } from './components/AgeGate.jsx';
 import { TradeBar } from './components/TradeBar.jsx';
 import { Header } from './components/Header.jsx';
@@ -243,6 +244,8 @@ export default function App() {
   // page-change scroll, which lands anchors below it (scroll-margin-top).
   const siteHeaderRef = useRef(null);
   useStickyHeader(siteHeaderRef);
+  // The toasts keep clear of the footer's FDA warning (NEW-080).
+  useFdaInset();
   // Scroll, focus and announcement on page changes (after the title is set).
   useNavigationEffects();
 
