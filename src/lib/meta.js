@@ -17,6 +17,7 @@
 
 import { COMPANY, HOME_PITCH, HOME_TITLE, HOURS, ORDER_MINIMUM, hoursLine } from '../data/content.js';
 import { APPLY_LABEL, TRADE_ACCOUNT_LABEL, basketTerms } from '../data/terms.js';
+import { ADMIN_GATE_HEADINGS } from './accountStatus.js';
 import { POLICY_TITLES, POLICY_INTROS } from '../pages/support/policyText.js';
 import { resetTitle } from '../pages/support/resetView.js';
 import { topLines } from './departments.js';
@@ -260,10 +261,15 @@ function pageText(route, products, departments) {
   if (route.page === 'quote') return { title: route.received ? `${route.received === 'order' ? 'Order' : 'Quote'} received · ${site}` : `${route.basket ? basketTerms(route.basket === 'order').page : 'Checkout'} · ${site}`, description: `Review your items and submit a wholesale quote or order to ${site}. Minimum order ${formatMoney(ORDER_MINIMUM)}.` };
   if (route.page === 'account') return { title: `My account · ${site}`, description: `Your ${site} trade account: order history, reorders and quick entry by SKU.` };
   // route.unseen: orders placed since the admin last opened Orders (AW-111,
-  // App's useAdminUnseen), as '(2) ' in front.
+  // App's useAdminUnseen), as '(2) ' in front. route.gated: the page shows
+  // its sign-in or staff-only gate, not a section (App's adminGate, NEW-020),
+  // so the title says that, as the h1 does.
   if (route.page === 'admin') {
+    const description = `Catalog and account administration for ${site}.`;
+    if (route.gated === 'signin') return { title: `${ADMIN_GATE_HEADINGS.signin} · Admin · ${site}`, description };
+    if (route.gated === 'staff') return { title: `Staff only · ${site}`, description };
     const unseen = route.unseen > 0 ? `(${route.unseen}) ` : '';
-    return { title: `${unseen}${adminTitle(route)} · Admin · ${site}`, description: `Catalog and account administration for ${site}.` };
+    return { title: `${unseen}${adminTitle(route)} · Admin · ${site}`, description };
   }
   // Support pages (src/pages/support/).
   if (route.page === 'catalog') return { title: `All products · Wholesale catalog · ${site}`, description: clip(`Every department and product line ${site} stocks — ${products.length} wholesale SKUs for licensed retailers, from the Birmingham warehouse.`) };

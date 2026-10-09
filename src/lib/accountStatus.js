@@ -58,6 +58,26 @@ export const PRICE_LOCK = {
 export const CHECKING_ACCOUNT_TEXT = 'Checking your account…';
 export const PRICES_NEED_PROFILE = 'Prices need your account details.';
 
+// Only an approved admin gets the admin dashboard, as only an approved
+// admin passes is_admin() in the database (AW-352).
+export const isApprovedAdmin = (profile) => profile?.role === 'admin' && profile?.status === 'approved';
+
+// What /admin shows in place of the dashboard (NEW-020): 'signin' to a
+// signed-out visitor, 'staff' to an account that isn't an approved admin
+// (pending, suspended, or a buyer), and null to an approved admin. Also null
+// while the account loads or when its profile didn't load: the page then
+// says that under its 'Admin' h1 instead. AdminPage shows the gate's h1,
+// and App puts the gate in the tab title (meta.js), so they agree.
+export const ADMIN_GATE_HEADINGS = Object.freeze({
+  signin: 'Sign in to continue',
+  staff: 'This page is for the trade desk',
+});
+export function adminGate(profile, account) {
+  if (account === 'loading' || account === 'no-profile') return null;
+  if (!profile) return 'signin';
+  return isApprovedAdmin(profile) ? null : 'staff';
+}
+
 // What /apply shows a visitor (its page head, App's title for it, and the
 // account panels below): 'loading' until the session and profile are known,
 // 'no-profile' when it is signed in but its profile didn't load (NEW-002),

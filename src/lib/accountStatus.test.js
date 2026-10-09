@@ -3,7 +3,8 @@
 // account to wait for approval.
 import { describe, expect, it } from 'vitest';
 import {
-  ACCOUNT_EYEBROWS, ACCOUNT_STATUSES, PRICE_LOCK, STATUS_LABEL, TRADE_ACCOUNT_PANELS, accountStatus, accountView, tradeAccountPanel,
+  ACCOUNT_EYEBROWS, ACCOUNT_STATUSES, ADMIN_GATE_HEADINGS, PRICE_LOCK, STATUS_LABEL, TRADE_ACCOUNT_PANELS, accountStatus, accountView, adminGate,
+  isApprovedAdmin, tradeAccountPanel,
 } from './accountStatus.js';
 
 describe('accountStatus', () => {
@@ -71,6 +72,29 @@ describe('accountView', () => {
     expect(accountView(null, 'signed-out')).toBe('guest');
     expect(accountView({ status: 'approved' }, 'ready')).toBe('approved');
     expect(accountView({ status: 'x' }, 'ready')).toBe('pending');
+  });
+});
+
+// What /admin shows in place of the dashboard, which App also titles the
+// tab by (NEW-020): only an approved admin passes (AW-352).
+describe('adminGate', () => {
+  it('asks a signed-out visitor to sign in, and keeps out every account but an approved admin', () => {
+    expect(adminGate(null, 'signed-out')).toBe('signin');
+    expect(adminGate({ role: 'customer', status: 'approved' }, 'ready')).toBe('staff');
+    expect(adminGate({ role: 'customer', status: 'pending' }, 'ready')).toBe('staff');
+    expect(adminGate({ role: 'admin', status: 'pending' }, 'ready')).toBe('staff');
+    expect(adminGate({ role: 'admin', status: 'suspended' }, 'ready')).toBe('staff');
+    expect(adminGate({ role: 'admin', status: 'approved' }, 'ready')).toBeNull();
+    expect(isApprovedAdmin({ role: 'admin', status: 'approved' })).toBe(true);
+    expect(isApprovedAdmin({ role: 'admin', status: 'pending' })).toBe(false);
+    expect(isApprovedAdmin(null)).toBe(false);
+    expect(ADMIN_GATE_HEADINGS).toEqual({ signin: 'Sign in to continue', staff: 'This page is for the trade desk' });
+  });
+
+  it('shows no gate until the account is known, or when its profile didn’t load', () => {
+    expect(adminGate(null, 'loading')).toBeNull();
+    expect(adminGate({ role: 'customer', status: 'approved' }, 'loading')).toBeNull();
+    expect(adminGate(null, 'no-profile')).toBeNull();
   });
 });
 

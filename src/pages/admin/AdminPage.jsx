@@ -30,6 +30,7 @@ import { preloadStorage } from '../../lib/storageClient.js';
 import { adminHref, adminPath, adminSection } from '../../lib/adminRoutes.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
+import { ADMIN_GATE_HEADINGS, adminGate, isApprovedAdmin } from '../../lib/accountStatus.js';
 import { OrdersTab, printLinkId } from './OrdersSection.jsx';
 import { AccountsTab } from './AccountsSection.jsx';
 import { NEW_PRODUCT_LINK_ID, ProductsTab, editLinkId } from './ProductsSection.jsx';
@@ -132,7 +133,7 @@ export function AdminPage({
     setProductOpenedFrom(null);
     if (opener && !handled) setReturnFocusId(opener);
   }, [route, printFrom]);
-  const approvedAdmin = profile?.role === 'admin' && profile?.status === 'approved';
+  const approvedAdmin = isApprovedAdmin(profile);
   const ordersSince = useOrdersSeen(approvedAdmin && account === 'ready' && section === 'orders', supabase);
   // Photo uploads and document links need Storage, whose code loads on
   // demand (AW-179): start that for an admin now, so the first one doesn't wait.
@@ -185,14 +186,16 @@ export function AdminPage({
   }
   // Only an approved admin gets the dashboard, as only an approved admin
   // passes is_admin() in the database (AW-352). A suspended or pending admin
-  // is told their access is on hold.
-  if (!profile || profile.role !== 'admin' || profile.status !== 'approved') {
+  // is told their access is on hold. App titles the tab by the same gate
+  // (adminGate, NEW-020), so the title names what is on screen.
+  const gate = adminGate(profile, account);
+  if (gate) {
     const held = profile?.role === 'admin';
     return (
       <section className="page-head">
         <Breadcrumbs items={[HOME_CRUMB, { label: 'Admin' }]} />
         <p className="eyebrow">TRADE DESK</p>
-        <h1>{profile ? 'This page is for the trade desk' : 'Sign in to continue'}</h1>
+        <h1>{ADMIN_GATE_HEADINGS[gate]}</h1>
         <p>{held
           ? 'Your admin access is on hold. Contact the owner.'
           : profile

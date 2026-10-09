@@ -77,3 +77,15 @@ describe('page frame', () => {
     expect(window.location.pathname + window.location.hash).toBe('/terms');
   });
 });
+
+// /admin behind its gate is titled by the gate, the words of its h1, not by
+// the section in the address (NEW-020). The router announces the title.
+describe('admin page title', () => {
+  it('names the sign-in gate a signed-out visitor sees, not the section', async () => {
+    act(() => navigate('/admin/accounts', { replace: true }));
+    renderApp();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sign in to continue' })).toBeTruthy();
+    expect(document.title).toBe('Sign in to continue · Admin · Alabama Wholesale Inc');
+    expect(document.head.querySelector('meta[property="og:title"]').getAttribute('content')).toBe(document.title);
+  });
+});

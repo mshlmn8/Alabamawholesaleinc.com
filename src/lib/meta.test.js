@@ -106,7 +106,8 @@ describe('pageMeta', () => {
       ...['guest', 'loading', 'no-profile', 'pending', 'approved', 'suspended'].map((applyAs) => ({ page: 'apply', applyAs })),
       ...['unavailable', 'request', 'checking', 'form', 'done', 'link-invalid'].map((view) => ({ page: 'reset-password', view })),
       ...[{}, { section: 'accounts' }, { section: 'accounts', id: 'x' }, { section: 'products' }, { section: 'products', id: 'new' }, { section: 'products', id: 3 },
-        { section: 'pricing' }, { section: 'homepage' }, { view: 'print' }, { view: 'print', query: { doc: 'slip' } }].map((r) => ({ page: 'admin', ...r })),
+        { section: 'pricing' }, { section: 'homepage' }, { view: 'print' }, { view: 'print', query: { doc: 'slip' } }, { gated: 'signin' }, { gated: 'staff' }]
+        .map((r) => ({ page: 'admin', ...r })),
       ...['page', 'product', 'department', 'line'].map((kind) => ({ page: 'not-found', kind })),
       { page: 'not-found', kind: 'product', catalog: 'loading' },
       { page: 'not-found', kind: 'line', catalog: 'error' },
@@ -260,6 +261,21 @@ describe('pageMeta', () => {
     expect(title({ unseen: 2 })).toBe('(2) Orders · Admin · Alabama Wholesale Inc');
     expect(title({ section: 'accounts', unseen: 1 })).toBe('(1) Accounts · Admin · Alabama Wholesale Inc');
     expect(title({ unseen: 0 })).toBe('Orders · Admin · Alabama Wholesale Inc');
+  });
+
+  it('titles /admin by its gate, not by a section that isn’t on screen (NEW-020)', () => {
+    const title = (route) => pageMeta({ page: 'admin', ...route }, products, departments).title;
+    // App's route.gated (adminGate): signed out, or an account that isn't an approved admin.
+    for (const route of [{}, { section: 'accounts' }, { section: 'accounts', id: '11111111-2222-4333-8444-555555555555' }, { section: 'products', id: 12 }, { view: 'print' }]) {
+      expect(title({ ...route, gated: 'signin' })).toBe('Sign in to continue · Admin · Alabama Wholesale Inc');
+      expect(title({ ...route, gated: 'staff' })).toBe('Staff only · Alabama Wholesale Inc');
+    }
+    expect(pageMeta({ page: 'admin', section: 'accounts', gated: 'staff' }, products, departments)).toMatchObject({
+      description: 'Catalog and account administration for Alabama Wholesale Inc.', noindex: true, path: null,
+    });
+    // While the account loads there is no gate yet: the section's title stays.
+    expect(title({ section: 'accounts' })).toBe('Accounts · Admin · Alabama Wholesale Inc');
+    expect(title({})).toBe('Orders · Admin · Alabama Wholesale Inc');
   });
 
   it('titles a catalog page that is still loading, or did not load (AW-204)', () => {

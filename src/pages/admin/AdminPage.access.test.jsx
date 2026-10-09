@@ -63,6 +63,24 @@ describe('AdminPage access (AW-352)', () => {
     expect(screen.getByText(/Your account doesn’t have access/)).toBeTruthy();
     expect(screen.queryByRole('navigation', { name: 'Admin sections' })).toBeNull();
   });
+
+  // The h1 is the gate adminGate names, which App also titles the tab by
+  // (NEW-020); while the account loads, the page is 'Admin'.
+  it('heads each gate with the words of its tab title', () => {
+    const h1 = () => screen.getByRole('heading', { level: 1 }).textContent;
+    const cases = [
+      [{ profile: null, account: 'signed-out' }, 'Sign in to continue'],
+      [{ profile: PENDING, account: 'ready' }, 'This page is for the trade desk'],
+      [{ profile: APPROVED, account: 'ready' }, 'This page is for the trade desk'],
+      [{ profile: { ...ADMIN, status: 'suspended' }, account: 'ready' }, 'This page is for the trade desk'],
+      [{ profile: null, account: 'loading' }, 'Admin'],
+    ];
+    for (const [props, heading] of cases) {
+      const view = render(<AdminPage {...props} route={{ page: 'admin', section: 'accounts' }} />);
+      expect(h1()).toBe(heading);
+      view.unmount();
+    }
+  });
 });
 
 describe('AdminPage accounts', () => {

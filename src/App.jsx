@@ -36,7 +36,7 @@ import { confirmLeave, focusPageHeading, navigate, pathFor, resolveRoute, routeK
 import { pageKeyFor } from './lib/routes.js';
 import { confirmAge, declineAge, endAgeConfirmationOnSignOut, reconsiderAge, useAgeGate } from './lib/ageGate.js';
 import { pageMeta, applyPageMeta } from './lib/meta.js';
-import { accountView } from './lib/accountStatus.js';
+import { accountView, adminGate, isApprovedAdmin } from './lib/accountStatus.js';
 import { basketTerms } from './data/terms.js';
 import { departmentsFor } from './lib/departments.js';
 import { accountNotices, signOutMessage } from './lib/accountNotices.js';
@@ -148,7 +148,7 @@ export default function App() {
   const isSuspended = profile?.status === 'suspended';
   // Only an approved admin is one; the database's is_admin() says the same
   // (AW-352).
-  const isAdmin = profile?.role === 'admin' && profile?.status === 'approved';
+  const isAdmin = isApprovedAdmin(profile);
   // Orders placed since this admin last opened Admin -> Orders (AW-111): the
   // header's Admin link and the admin pages' titles show the count.
   const adminUnseen = useAdminUnseen(isAdmin ? profile.id : null);
@@ -224,17 +224,22 @@ export default function App() {
   // shows ('Password updated', AW-255).
   // A signed-in account whose profile didn't load isn't a guest (NEW-002).
   const applyAs = accountView(profile, account);
+  // /admin behind its sign-in or staff-only gate is titled by the gate, not
+  // by a section that isn't on screen (NEW-020); while the account loads,
+  // the section's title stays.
+  const adminGated = adminGate(profile, account);
   // The reset page's view belongs to the page that reported it.
   if (resetShown && resetShown.pageKey !== location.pageKey) setResetShown(null);
   const resetAs = resetShown?.view || null;
   const metaRoute = useMemo(() => {
     if (receivedKind) return { ...route, received: receivedKind };
     if (route.page === 'quote' && account !== 'loading') return { ...route, basket: basket.kind };
+    if (route.page === 'admin' && adminGated) return { ...route, gated: adminGated };
     if (route.page === 'admin' && adminUnseen > 0) return { ...route, unseen: adminUnseen };
     if (route.page === 'apply') return { ...route, applyAs };
     if (route.page === 'reset-password' && resetAs) return { ...route, view: resetAs };
     return route;
-  }, [route, receivedKind, adminUnseen, account, basket.kind, applyAs, resetAs]);
+  }, [route, receivedKind, adminGated, adminUnseen, account, basket.kind, applyAs, resetAs]);
   const currentPageKey = location.pageKey;
   const onResetView = useCallback((view) => setResetShown({ view, pageKey: currentPageKey }), [currentPageKey]);
   useEffect(() => {
