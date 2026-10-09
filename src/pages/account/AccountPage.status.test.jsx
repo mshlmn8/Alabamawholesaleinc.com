@@ -4,17 +4,12 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mock = vi.hoisted(() => ({ result: { data: [], error: null } }));
-
-vi.mock('../../lib/supabase.js', () => {
-  const query = {
-    select: () => query,
-    eq: () => query,
-    order: () => query,
-    then: (resolve) => Promise.resolve(mock.result).then(resolve),
-  };
-  return { supabase: { from: () => query }, isBackendConfigured: true, AUTH_STORAGE_KEY: 'aw-auth' };
+vi.mock('../../lib/supabase.js', async () => {
+  const { createFakeSupabase } = await import('../admin/fakeSupabase.js');
+  const fake = createFakeSupabase();
+  return { supabase: fake.client, fake, isBackendConfigured: true, AUTH_STORAGE_KEY: 'aw-auth' };
 });
+const { fake } = await import('../../lib/supabase.js');
 
 // The documents panel needs the auth provider (DocumentUploads.test covers
 // it); here it shows what it was given.
@@ -29,7 +24,7 @@ const { AccountPage, ORDERS_LOAD_ERROR } = await import('./AccountPage.jsx');
 const PROFILE = { id: 'u1', business: 'Test Market LLC', name: 'Test Buyer', email: 'buyer@example.test', status: 'approved', role: 'customer', pricing_tier: 'silver' };
 const PAUSED = /^Ordering is paused on this account\. Call .+ or email .+ and a trade rep will help you sort it out\.$/;
 
-beforeEach(() => { mock.result = { data: [], error: null }; });
+beforeEach(() => { fake.reset(); });
 
 describe('AccountPage for an account on hold (AW-101)', () => {
   it('says ordering is paused, with the trade desk’s phone and email, right after the stats', async () => {
@@ -53,7 +48,9 @@ describe('AccountPage for an account on hold (AW-101)', () => {
 
 describe('AccountPage order history that did not load (AW-084)', () => {
   it('says what to do, with the trade desk, and never the database’s message', async () => {
-    mock.result = { data: null, error: { code: '42501', message: 'permission denied for table orders', details: null, hint: null } };
+    fake.respond = (request) => (request.table === 'orders'
+      ? { data: null, error: { code: '42501', message: 'permission denied for table orders', details: null, hint: null } }
+      : undefined);
     render(<AccountPage profile={PROFILE} account="ready" products={[]} />);
     const error = await screen.findByText((_, el) => el?.tagName === 'P' && el.className === 'form-error');
     expect(error.textContent).toMatch(/^We couldn’t load your orders\. Refresh the page, or call .+ or email .+\.$/);

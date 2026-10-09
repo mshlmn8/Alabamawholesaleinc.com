@@ -17,39 +17,17 @@
 // gets the sign-in dialog over this page, and once the account has loaded
 // the section is brought into view with its heading focused.
 
-import { useEffect, useRef, useState } from 'react';
-import { supabase } from '../../lib/supabase.js';
-import { linesFromOrder } from '../../lib/lines.js';
-import { formatMoney } from '../../lib/format.js';
+import { useEffect, useRef } from 'react';
 import { Link, revealAnchor, useLocation } from '../../lib/router.js';
-import { lineTotal } from '../../lib/pricing.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
 import { ApplicationDocuments } from '../../components/DocumentUploads.jsx';
 import { QuickReorder } from './QuickReorder.jsx';
+import { OrderHistory } from './OrderHistory.jsx';
 
-const STATUS_CLASS = {
-  new: '',
-  contacted: 'contacted',
-  quoted: 'contacted',
-  fulfilled: 'fulfilled',
-  cancelled: 'cancelled',
-};
-
-const STATUS_LABEL = {
-  new: 'New',
-  contacted: 'Contacted',
-  quoted: 'Quote ready',
-  confirmed: 'Confirmed',
-  picking: 'Picking',
-  ready: 'Ready',
-  out_for_delivery: 'Out for delivery',
-  fulfilled: 'Fulfilled',
-  cancelled: 'Cancelled',
-};
-
-const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+// Order history that didn't load (AW-084) lives with the history now.
+export { ORDERS_LOAD_ERROR, OrdersLoadError } from './OrderHistory.jsx';
 
 // The sections a link can open My account at (AW-086): Quick Reorder from
 // the header, the license documents from the application dialog.
@@ -57,28 +35,10 @@ const REVEALED_SECTIONS = ['quick-reorder', 'documents'];
 // What a trade account gives, for a visitor who is signed out (AW-086).
 export const SIGNED_OUT_TEXT = 'A trade account shows your order history, lets you reorder by SKU with Quick Reorder, and shows your wholesale prices once it is approved.';
 
-// Order history that didn't load (AW-084): what to do, never the database's
-// own message.
-export const ORDERS_LOAD_ERROR = 'We couldn’t load your orders. Refresh the page, or';
-export function OrdersLoadError() {
-  return <p className="form-error"><span>{ORDERS_LOAD_ERROR}</span> <CallOrEmail before="call" after="." /></p>;
-}
-
-// The note under an order after Reorder, as one string (AW-039).
-const reorderMessage = (note, target) => (note.lines > 0
-  ? `Added ${plural(note.lines, 'line')} (${plural(note.units, 'unit')}) to your ${target}.`
-  : 'None of these items are available right now.')
-  + (note.needsVariant > 0 ? ` ${plural(note.needsVariant, 'line')} need${note.needsVariant === 1 ? 's' : ''} a variant choice in the cart.` : '')
-  + (note.unavailable.length > 0 ? ` No longer available: ${note.unavailable.join(', ')}.` : '');
-
 export function AccountPage({
   profile, account = profile ? 'ready' : 'signed-out', onSignIn, onApplyClick, onRetry, retrying = false, onSignOut, onSignOutEverywhere,
   signingOut = false, products = [], addLines, onOpenCart, isApprovedBuyer, isBackendConfigured = true,
 }) {
-  const [orders, setOrders] = useState(null);
-  const [error, setError] = useState(null);
-  const [reorderNote, setReorderNote] = useState(null);
-
   // A link to #quick-reorder or #documents that arrived before the account
   // did (a guest's Quick Reorder, then sign-in; a reload): when the account
   // turns ready, the section comes into view with its heading focused, once.
@@ -96,20 +56,6 @@ export function AccountPage({
     if (!ready || was || restored || !REVEALED_SECTIONS.includes(id)) return undefined;
     return revealAnchor(id);
   }, [ready, hash, restored]);
-
-  const profileId = profile?.id;
-  useEffect(() => {
-    if (!supabase || !profileId) return;
-    supabase
-      .from('orders')
-      .select('id, ref_num, status, total_units, subtotal, created_at, order_items(id, product_id, variant, product_name, sku, qty, unit_price)')
-      .eq('user_id', profileId)
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) setError(error);
-        else setOrders(data || []);
-      });
-  }, [profileId]);
 
   // The same heading element in every state, so focus on it survives the
   // profile arriving.
@@ -137,19 +83,6 @@ export function AccountPage({
   }
 
   const statusTone = profile.status === 'approved' ? 'ok' : 'warn';
-  const target = isApprovedBuyer ? 'order' : 'quote';
-
-  const reorder = (order) => {
-    const { lines, unavailable, needsVariant } = linesFromOrder(order, products);
-    if (lines.length && addLines) addLines(lines);
-    setReorderNote({
-      orderId: order.id,
-      lines: lines.length,
-      units: lines.reduce((sum, line) => sum + line.qty, 0),
-      unavailable,
-      needsVariant,
-    });
-  };
 
   return (
     <section>
@@ -208,66 +141,7 @@ export function AccountPage({
         <QuickReorder products={products} addLines={addLines} onOpenCart={onOpenCart} isApprovedBuyer={isApprovedBuyer} />
       </section>
 
-      <section className="section">
-        <div className="section-head">
-          <div>
-            <p className="eyebrow">HISTORY</p>
-            <h2>Order history</h2>
-          </div>
-        </div>
-
-        {error && <OrdersLoadError />}
-        {orders === null && !error && <p className="result-note">Loading…</p>}
-        {orders && orders.length === 0 && (
-          <div className="empty-results">
-            <h2>No orders yet</h2>
-            <p>Orders you place will show up here, each with a one-click Reorder.</p>
-          </div>
-        )}
-        {orders && orders.length > 0 && (
-          <div className="order-list">
-            {orders.map(o => {
-              const label = STATUS_LABEL[o.status] || STATUS_LABEL.new;
-              const tone = STATUS_CLASS[o.status] || '';
-              const note = reorderNote?.orderId === o.id ? reorderNote : null;
-              return (
-                <article className="order-card" key={o.id}>
-                  <div className="order-head">
-                    <div>
-                      <b className="order-ref">{o.ref_num}</b>
-                      <small>
-                        {`${new Date(o.created_at).toLocaleString()} · ${plural(o.total_units, 'unit')}${o.subtotal != null ? ` · ${formatMoney(o.subtotal)}` : ''}`}
-                      </small>
-                    </div>
-                    <div className="order-actions">
-                      <span className={`status-pill ${tone}`}>{label}</span>
-                      <button className="button xs ghost" type="button" onClick={() => reorder(o)} disabled={!(o.order_items || []).length}>
-                        Reorder
-                      </button>
-                    </div>
-                  </div>
-                  <ul className="order-items">
-                    {(o.order_items || []).map(it => (
-                      <li key={it.id}>
-                        <span><span>{`${it.qty} × ${it.product_name}`}</span> <span className="sku">{`(${it.sku})`}</span></span>
-                        {it.unit_price != null && (
-                          <span className="line-total">{formatMoney(lineTotal(it.unit_price, it.qty))}</span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                  {note && (
-                    <div className="order-foot" role="status">
-                      <p>{reorderMessage(note, target)}</p>
-                      {note.lines > 0 && <button className="button xs" type="button" onClick={onOpenCart}>Review cart</button>}
-                    </div>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      <OrderHistory userId={profile.id} products={products} addLines={addLines} onOpenCart={onOpenCart} isApprovedBuyer={isApprovedBuyer} />
     </section>
   );
 }

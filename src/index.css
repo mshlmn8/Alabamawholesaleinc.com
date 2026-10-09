@@ -784,6 +784,25 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .order-items .line-total { font-weight: 700; color: var(--purple); white-space: nowrap; }
 .order-notes { margin: 0; padding: 0 16px 14px; font-size: var(--text-sm); color: var(--muted); }
 .order-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* My account's order history (AW-104, AW-105): the filters, a key to the
+   statuses and the count above ten cards at a time. A card names the kind
+   and reference in a heading, then the date, units and total, how and when
+   it was to be delivered, three lines (the rest behind 'Show all') and the
+   buyer's notes. Long SKUs, addresses and notes break rather than widen it. */
+.form-grid.history-filters { grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); max-width: 36rem; margin: 0 0 14px; }
+.order-legend { margin: 0 0 6px; max-width: 70ch; font-size: var(--text-xs); line-height: 1.6; color: var(--muted); }
+.order-count { margin: 0 0 12px; }
+.order-summary { flex: 1 1 16rem; min-width: 0; }
+.buyer-orders h3.order-title { margin: 0; font-family: var(--body); line-height: 1.4; letter-spacing: 0; }
+.buyer-orders .order-head small { overflow-wrap: anywhere; }
+.buyer-orders .order-items li > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.order-items .line-total.is-pending { font-weight: 600; color: var(--muted); }
+.order-items-toggle { padding: 2px 16px 8px; }
+.buyer-orders .order-notes { overflow-wrap: anywhere; white-space: pre-line; }
+.order-more { margin-top: 16px; }
+.orders-problem { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+.orders-problem .form-error { margin: 0; }
+.empty-results h3 { margin: 0 0 8px; font-size: var(--h3); color: var(--purple); }
 .order-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .order-foot p { margin: 0; }
 
