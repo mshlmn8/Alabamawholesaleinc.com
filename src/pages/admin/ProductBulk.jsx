@@ -28,7 +28,6 @@ export const NEEDS_UPDATE_NOTE = 'needs the October 2026 database update (see BA
 const PRICES_NOTE = 'Approved buyers see the new prices on their next page load; orders already saved keep their prices.';
 
 export const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-const money = (value) => (value == null ? 'price on request' : formatMoney(value));
 const percent = (n) => `${Math.abs(n)}%`;
 // The first few names of a list, then how many more.
 const NAMES_SHOWN = 8;
@@ -111,10 +110,16 @@ export function BulkBar({ rows, adjustMissing = false, onAdjustMissing, onApplie
         setFieldError('Enter the price as an amount from 0 to 99999.99, such as 12.50, or leave it blank for price on request.');
         return;
       }
-      setConfirm({
+      // A blank box is price on request: the list price is removed (NEW-072).
+      setConfirm(price == null ? {
+        action, patch: { price },
+        title: `Make ${products} price on request?`,
+        body: `Each selected product becomes price on request (its list price is removed). ${PRICES_NOTE}`,
+        label: `Make ${products} price on request`,
+      } : {
         action, patch: { price },
         title: `Set the price of ${products}?`,
-        body: `Each selected product gets the list price ${money(price)}. ${PRICES_NOTE}`,
+        body: `Each selected product gets the list price ${formatMoney(price)}. ${PRICES_NOTE}`,
         label: `Set ${plural(count, 'price')}`,
       });
     } else if (action === 'adjust') {

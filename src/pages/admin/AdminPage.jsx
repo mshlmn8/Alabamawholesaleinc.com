@@ -71,6 +71,9 @@ export function AdminPage({
   // The control a section's list focuses when a detail view closes (e.g. the
   // Edit link of the product just saved).
   const [returnFocusId, setReturnFocusId] = useState(null);
+  // The product editor URL a link opened (Products' list or the Homepage
+  // rails), so leaving the editor goes Back to that page (NEW-076).
+  const [productOpenedFrom, setProductOpenedFrom] = useState(null);
   // Orders: the search box, and the print view the list opened
   // ({ path, linkId }), so Back from it goes back in history to the list.
   const [orderSearch, setOrderSearch] = useState('');
@@ -193,10 +196,12 @@ export function AdminPage({
       )}
       {section === 'products' && (
         <ProductsTab route={route} query={query} onQuery={setQuery} onCatalogChange={onCatalogChange} notify={status.show}
-          returnFocusId={returnFocusId} onReturnFocus={setReturnFocusId} />
+          returnFocusId={returnFocusId} onReturnFocus={setReturnFocusId} openedFrom={productOpenedFrom} onOpen={setProductOpenedFrom} />
       )}
       {section === 'pricing' && <PricingTab notify={status.show} />}
-      {section === 'homepage' && <HomepageTab notify={status.show} />}
+      {section === 'homepage' && (
+        <HomepageTab notify={status.show} onOpenProduct={setProductOpenedFrom} returnFocusId={returnFocusId} onReturnFocus={setReturnFocusId} />
+      )}
       <AdminStatus status={status} />
     </section>
   );

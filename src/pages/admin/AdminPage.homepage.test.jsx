@@ -2,7 +2,7 @@
 // the home page's order, adding one with an upload, the form's checks,
 // reordering, turning photos off, deleting after a confirmation, a refused
 // change, the live database without the table, and the rails, read-only.
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../lib/supabase.js', async () => {
@@ -80,7 +80,7 @@ describe('Admin -> Homepage (AW-119)', () => {
     expect(item('Display box of Turtles Bites chocolates').querySelector('img').getAttribute('src')).toBe(heroImage('hero_candy.jpg').img);
     expect(item('Counter display').querySelector('img').getAttribute('src')).toBe(STORAGE);
     // Each control names its photo.
-    expect(within(item('Counter display')).getByRole('checkbox', { name: 'Shown' }).checked).toBe(false);
+    expect(within(item('Counter display')).getByRole('checkbox', { name: 'Shown Counter display' }).checked).toBe(false);
     expect(screen.getByRole('button', { name: 'Move up Display box of Turtles Bites chocolates' }).disabled).toBe(true);
     expect(screen.getByRole('button', { name: 'Move down Counter display' }).disabled).toBe(true);
     expect(screen.getByRole('button', { name: 'Edit Counter display' })).toBeTruthy();
@@ -96,8 +96,71 @@ describe('Admin -> Homepage (AW-119)', () => {
       const rows = within(rail).getAllByRole('listitem');
       expect(rows.map((li) => li.querySelector('.admin-slide-alt').textContent)).toEqual(items.map((p) => p.name));
       expect(rows[0].querySelector('.admin-slide-meta').textContent).toBe(`${items[0].tag} · No homepage rank`);
-      expect(within(rows[0]).getByRole('link', { name: `Edit ${items[0].name}` }).getAttribute('href')).toBe(`/admin/products/${items[0].id}`);
+      const edit = within(rows[0]).getByRole('link', { name: `Edit ${items[0].name}` });
+      // The editor knows to come back here (NEW-076); not ?from=, the editor's copy-from id.
+      expect(edit.getAttribute('href')).toBe(`/admin/products/${items[0].id}?back=homepage`);
+      expect(edit.id).toBe(`rail-edit-product-${items[0].id}`);
     }
+  });
+
+  describe('editing a rail’s product (NEW-076)', () => {
+    const url = () => window.location.pathname + window.location.search;
+    const { newArrivals } = homeRails(PRODUCTS, { limit: RAIL_LENGTH, hasPhoto });
+    const first = () => newArrivals[0];
+    const railLink = () => screen.getByRole('link', { name: `Edit ${first().name}` });
+    beforeEach(() => {
+      // The editor reads the products from the database (made-up rows from the bundled catalog).
+      fake.tables.products = PRODUCTS.map((p) => ({
+        id: p.id, name: p.name, brand: p.brand, cat: p.cat, sub: p.sub, sku: p.sku, sell_unit: p.sellUnit || '', description: '', variants: p.variants || [],
+        variant_axis: p.variantAxis || null, unavailable_variants: [], img: null, tag: p.tag || null, active: true, stock_status: 'in_stock',
+        featured_rank: null, updated_at: '2026-10-01T12:00:00Z',
+      }));
+      fake.rpcData.admin_product_prices = {};
+    });
+
+    it('opens the editor from the rail, and Cancel goes Back to the homepage with focus on that Edit link', async () => {
+      await renderHomepage();
+      await click(railLink());
+      expect(url()).toBe(`/admin/products/${first().id}?back=homepage`);
+      await waitFor(() => expect(screen.getByRole('heading', { name: 'Edit product' })).toBeTruthy());
+      expect(screen.getByLabelText('Name').value).toBe(first().name);
+      await click(screen.getByRole('button', { name: 'Cancel' }));
+      await waitFor(() => expect(url()).toBe('/admin/homepage'));
+      await waitFor(() => expect(document.activeElement).toBe(railLink()));
+      expect(screen.getByRole('link', { name: 'Homepage' }).getAttribute('aria-current')).toBe('page');
+    });
+
+    it('comes back to the homepage after a save too, also when the editor was opened by its address', async () => {
+      act(() => navigate(`/admin/products/${first().id}?back=homepage`, { replace: true }));
+      await act(async () => {
+        render(<CatalogProvider client={null}><RoutedAdmin profile={ADMIN} account="ready" /></CatalogProvider>);
+      });
+      await waitFor(() => expect(screen.getByRole('heading', { name: 'Edit product' })).toBeTruthy());
+      fireEvent.change(screen.getByLabelText('Name'), { target: { value: `${first().name} 2` } });
+      fake.respond = (request) => (request.table === 'products' && request.op === 'update'
+        ? { data: [{ id: first().id }], error: null } : undefined);
+      await act(async () => { fireEvent.submit(document.querySelector('form.product-form')); });
+      expect(fake.find({ table: 'products', op: 'update' })).toHaveLength(1);
+      await waitFor(() => expect(url()).toBe('/admin/homepage'));
+      await waitFor(() => expect(document.activeElement).toBe(railLink()));
+    });
+
+    it('focuses the rails’ heading when the product is no longer in a rail', async () => {
+      act(() => navigate(`/admin/products/${first().id}?back=homepage`, { replace: true }));
+      await act(async () => {
+        render(<CatalogProvider client={null}><RoutedAdmin profile={ADMIN} account="ready" /></CatalogProvider>);
+      });
+      await waitFor(() => expect(screen.getByRole('heading', { name: 'Edit product' })).toBeTruthy());
+      // As if it had left the rails: the link the editor would focus isn't there.
+      const { railEditId } = await import('./HomepageSection.jsx');
+      const spy = vi.spyOn(document, 'getElementById');
+      spy.mockImplementation(function byId(id) {
+        return id === railEditId(first().id) ? null : Document.prototype.getElementById.call(document, id);
+      });
+      await click(screen.getByRole('button', { name: 'Cancel' }));
+      await waitFor(() => expect(url()).toBe('/admin/homepage'));
+      await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('heading', { level: 2, name: 'Homepage rails' })));
+    });
   });
 
   it('adds a photo with an upload, last in the order', async () => {
@@ -185,14 +248,27 @@ describe('Admin -> Homepage (AW-119)', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Move down Geek Bar Pulse X disposable vape advertisement' }));
   });
 
-  it('turns a photo off and on at once', async () => {
+  it('turns a photo off and on at once, and its Shown box keeps the focus (NEW-071)', async () => {
     await renderHomepage();
-    const box = within(item('Display box of Turtles Bites chocolates')).getByRole('checkbox', { name: 'Shown' });
+    const name = 'Shown Display box of Turtles Bites chocolates';
+    const box = within(item('Display box of Turtles Bites chocolates')).getByRole('checkbox', { name });
+    // Every Shown box is named with its photo, like the row's buttons.
+    expect(screen.getAllByRole('checkbox', { name: /^Shown / }).map((b) => b.id)).toEqual(
+      ['2', '1', '3'].map((rowId) => expect.stringMatching(new RegExp(`-slide-${rowId}-shown$`))),
+    );
+    // The box is disabled while the write runs (a browser drops its focus
+    // then): it is focused again once the write is done.
+    const focus = vi.spyOn(box, 'focus');
+    box.focus();
+    focus.mockClear();
     await click(box);
     expect(calls('update')[0]).toMatchObject({ patch: { active: false }, filters: [['eq', 'id', 2]] });
     expect(statusText()).toBe('“Display box of Turtles Bites chocolates” is off the home page');
     expect(item('Display box of Turtles Bites chocolates').className).toBe('admin-slide inactive');
-    await click(within(item('Display box of Turtles Bites chocolates')).getByRole('checkbox', { name: 'Shown' }));
+    expect(focus).toHaveBeenCalled();
+    expect(document.activeElement).toBe(box);
+    expect(box.disabled).toBe(false);
+    await click(within(item('Display box of Turtles Bites chocolates')).getByRole('checkbox', { name }));
     expect(calls('update')[1]).toMatchObject({ patch: { active: true } });
     expect(statusText()).toBe('“Display box of Turtles Bites chocolates” is shown on the home page');
   });
@@ -216,9 +292,14 @@ describe('Admin -> Homepage (AW-119)', () => {
     fake.respond = (request) => (request.table === 'home_slides' && request.op === 'update'
       ? { data: null, error: { code: '42501', message: 'permission denied for table home_slides' }, status: 403 } : undefined);
     await renderHomepage();
-    await click(within(item('Display box of Turtles Bites chocolates')).getByRole('checkbox', { name: 'Shown' }));
+    const box = within(item('Display box of Turtles Bites chocolates')).getByRole('checkbox', { name: 'Shown Display box of Turtles Bites chocolates' });
+    const focus = vi.spyOn(box, 'focus');
+    await click(box);
     expect(screen.getByRole('alert').textContent).toBe('“Display box of Turtles Bites chocolates” wasn’t changed: your account isn’t allowed to do that.');
-    expect(within(item('Display box of Turtles Bites chocolates')).getByRole('checkbox', { name: 'Shown' }).checked).toBe(true);
+    expect(box.checked).toBe(true);
+    // A refused change gives the box its focus back too (NEW-071).
+    expect(focus).toHaveBeenCalled();
+    expect(document.activeElement).toBe(box);
     // An update RLS hides (no row back) says so too.
     fake.respond = (request) => (request.table === 'home_slides' && request.op === 'update' ? { data: [], error: null } : undefined);
     await click(screen.getByRole('button', { name: 'Move down Display box of Turtles Bites chocolates' }));

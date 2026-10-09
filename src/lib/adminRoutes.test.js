@@ -37,6 +37,16 @@ describe('parseAdminPath', () => {
     expect(parse('/admin/products/new?from=12')).toEqual({ page: 'admin', section: 'products', id: 'new', query: { from: 12 } });
   });
 
+  it('reads where the product editor was opened from, apart from the product a new one copies (NEW-076)', () => {
+    expect(parse('/admin/products/62?back=homepage')).toEqual({ page: 'admin', section: 'products', id: 62, query: { back: 'homepage' } });
+    expect(parse('/admin/products/62?back=Homepage&from=12').query).toEqual({ from: 12, back: 'homepage' });
+    // Only the places the editor knows how to go back to.
+    expect(parse('/admin/products/62?back=orders').query).toEqual({});
+    expect(parse('/admin/products/62?back=https://example.com').query).toEqual({});
+    expect(adminHref({ section: 'products', id: 62, query: { back: 'homepage' } })).toBe('/admin/products/62?back=homepage');
+    expect(adminHref({ section: 'products', id: 62, query: { back: 'elsewhere' } })).toBe('/admin/products/62');
+  });
+
   it('finds no page for an unknown section, a bad id or extra segments', () => {
     for (const href of ['/admin/prices', '/admin/pricing/silver', '/admin/homepage/1', '/admin/home', '/admin/orders/12', `/admin/orders/${UUID}`, `/admin/orders/${UUID}/edit`, '/admin/accounts/abc',
       '/admin/products/0', '/admin/products/012', '/admin/products/1.5', '/admin/products/-3', '/admin/products/12/x', `/admin/accounts/${UUID}/x`]) {

@@ -22,33 +22,26 @@ describe('the discount box', () => {
 });
 
 describe('validateTier', () => {
-  it('needs a label of at most 60 characters and a discount from 0 to under 100', () => {
-    expect(validateTier({ label: 'Silver', pct: '7' })).toEqual({});
-    expect(validateTier({ label: '  ', pct: '120' })).toEqual({
-      label: 'Enter the tier’s label.',
-      pct: 'Enter a discount from 0 to 99.99, with at most two decimals.',
-    });
-    expect(validateTier({ label: 'x'.repeat(61), pct: '1.234' })).toEqual({
-      label: 'Keep the label to 60 characters.',
-      pct: 'Enter a discount from 0 to 99.99, with at most two decimals.',
-    });
+  it('needs a discount from 0 to under 100, and nothing else (the label isn’t edited, NEW-078)', () => {
+    expect(draftOf(TIERS[1])).toEqual({ pct: '5' });
+    expect(validateTier({ pct: '7' })).toEqual({});
+    expect(validateTier({ label: '  ', pct: '7' })).toEqual({});
+    expect(validateTier({ pct: '120' })).toEqual({ pct: 'Enter a discount from 0 to 99.99, with at most two decimals.' });
+    expect(validateTier({ pct: '1.234' })).toEqual({ pct: 'Enter a discount from 0 to 99.99, with at most two decimals.' });
   });
 });
 
 describe('tierChanges', () => {
-  it('lists only the tiers whose label or discount changed', () => {
+  it('lists only the tiers whose discount changed', () => {
     expect(tierChanges(TIERS, drafts())).toEqual([]);
-    // 10 typed as 10.0 is the same discount; a label's surrounding spaces don't count.
-    expect(tierChanges(TIERS, drafts({ gold: { pct: '10.0', label: ' Gold (10% off) ' } }))).toEqual([]);
-    const changes = tierChanges(TIERS, drafts({ silver: { pct: '7', label: 'Silver (7% off)' }, gold: { label: 'Gold' } }));
+    // 10 typed as 10.0 is the same discount; a label in a draft is ignored.
+    expect(tierChanges(TIERS, drafts({ gold: { pct: '10.0', label: 'Gold' } }))).toEqual([]);
+    const changes = tierChanges(TIERS, drafts({ silver: { pct: '7.5' }, standard: { pct: '1' } }));
     expect(changes).toEqual([
-      { tier: 'silver', label: 'Silver (7% off)', discount_pct: 7, before: { label: 'Silver (5% off)', discount_pct: 5 } },
-      { tier: 'gold', label: 'Gold', discount_pct: 10, before: { label: 'Gold (10% off)', discount_pct: 10 } },
+      { tier: 'standard', discount_pct: 1, before: { discount_pct: 0 } },
+      { tier: 'silver', discount_pct: 7.5, before: { discount_pct: 5 } },
     ]);
-    expect(changes.map(changeText)).toEqual([
-      'silver: discount 5% to 7%, label “Silver (5% off)” to “Silver (7% off)”',
-      'gold: label “Gold (10% off)” to “Gold”',
-    ]);
+    expect(changes.map(changeText)).toEqual(['standard: discount 0% to 1%', 'silver: discount 5% to 7.5%']);
   });
 
   it('counts a discount box that isn’t a number yet as a change', () => {

@@ -34,6 +34,7 @@ import { adminErrorMessage, withStatus } from './adminData.js';
 import { LoadProblem } from './AdminStatus.jsx';
 import { TableScroll } from './TableScroll.jsx';
 import { ProductEditor } from './ProductEditor.jsx';
+import { RAILS_HEADING_ID, railEditId } from './HomepageSection.jsx';
 import { BulkBar, plural } from './ProductBulk.jsx';
 import { ImportPreview } from './ProductImport.jsx';
 import { PRODUCT_TAGS, STOCK_LABELS, STOCK_STATUSES } from './productForm.js';
@@ -112,18 +113,22 @@ export const editLinkId = (id) => `edit-product-${id}`;
 const currentUrl = () => window.location.pathname + window.location.search;
 
 // route: the admin route; route.id is a product id or 'new' for the editor.
-// query: the URL's filters (q, AW-118); onQuery writes them.
+// query: the URL's filters (q, AW-118); onQuery writes them. query.back
+// 'homepage': the editor was opened from Admin -> Homepage's rails, and
+// leaving it goes back there (NEW-076).
 // notify: shows what a change did (useAdminStatus).
 // returnFocusId / onReturnFocus: the control the list focuses when it shows
 // again (AdminPage keeps it), e.g. the Edit link of the product just saved.
-export function ProductsTab({ route = {}, query = {}, onQuery, onCatalogChange, notify, returnFocusId = null, onReturnFocus }) {
+// openedFrom / onOpen: the editor URL a link opened (the list's, or the
+// homepage rails', AdminPage keeps it), so leaving it goes Back to that page
+// with its filters and scroll position; an editor opened any other way goes
+// there by link.
+export function ProductsTab({
+  route = {}, query = {}, onQuery, onCatalogChange, notify, returnFocusId = null, onReturnFocus, openedFrom = null, onOpen,
+}) {
   const [data, setData] = useState({ rows: null, columns: null });
   const [loadError, setLoadError] = useState(null);
   const [retrying, setRetrying] = useState(false);
-  // The editor URL the list opened, so leaving it goes Back to the list with
-  // its filters and scroll position; an editor opened any other way goes to
-  // the list by link.
-  const [openedFrom, setOpenedFrom] = useState(null);
   // Bulk actions the database doesn't have yet (PGRST202/42883 seen):
   // { adjust, import, create } (create: an import adding products,
   // admin_import_products_v2).
@@ -142,13 +147,16 @@ export function ProductsTab({ route = {}, query = {}, onQuery, onCatalogChange, 
     setRetrying(false);
   };
 
-  // productId: the product whose Edit link takes focus (null: New product).
+  // productId: the product whose Edit link takes focus (null: New product,
+  // or from the homepage rails their heading).
   const leaveEditor = (productId) => {
-    onReturnFocus?.(productId != null ? editLinkId(productId) : NEW_PRODUCT_LINK_ID);
+    const homepage = query.back === 'homepage';
+    if (homepage) onReturnFocus?.(productId != null ? railEditId(productId) : RAILS_HEADING_ID);
+    else onReturnFocus?.(productId != null ? editLinkId(productId) : NEW_PRODUCT_LINK_ID);
     const back = openedFrom && openedFrom === currentUrl();
-    setOpenedFrom(null);
+    onOpen?.(null);
     if (back) window.history.back();
-    else navigate('/admin/products', { replace: true, force: true });
+    else navigate(homepage ? '/admin/homepage' : '/admin/products', { replace: true, force: true });
   };
 
   // A bulk change or an import: the changed rows are patched where they are
@@ -179,7 +187,7 @@ export function ProductsTab({ route = {}, query = {}, onQuery, onCatalogChange, 
   return (
     <ProductsList
       rows={data.rows} columns={data.columns} loadError={loadError} onRetry={retry} retrying={retrying} query={query} onQuery={onQuery}
-      onOpen={setOpenedFrom} returnFocusId={returnFocusId} onReturnFocus={onReturnFocus}
+      onOpen={onOpen} returnFocusId={returnFocusId} onReturnFocus={onReturnFocus}
       notify={notify} onApplied={applied} missing={missing} onMissing={(key) => setMissing((m) => ({ ...m, [key]: true }))}
     />
   );

@@ -7,6 +7,10 @@
 //   /admin/accounts?status=pending|approved|suspended|all   /admin/accounts/:uuid
 //   /admin/products?q=&status=&dept=&sub=&tag=&photo=&unit=&stock=&sort=&dir=&page=
 //   /admin/products/:id                 /admin/products/new?from=:id
+//   /admin/products/:id?back=homepage   the editor opened from Admin ->
+//                                       Homepage's rails: leaving it goes
+//                                       back there (NEW-076). Not ?from=,
+//                                       which is the product a new one copies.
 //   /admin/pricing                      the pricing tiers (AW-114)
 //   /admin/homepage                     the hero photos and the rails (AW-119)
 //
@@ -45,6 +49,8 @@ export const PRODUCT_TAGS = ['bestseller', 'new', 'deal', 'premium', 'none'];
 export const PRODUCT_PHOTO = ['none'];
 export const PRODUCT_UNITS = ['none'];
 export const PRODUCT_SORTS = ['id', 'name', 'brand', 'category', 'price', 'updated'];
+// Where the product editor was opened from, when not the list (?back=).
+export const PRODUCT_BACK = ['homepage'];
 export const SORT_DIRECTIONS = ['asc', 'desc'];
 export const MAX_PRODUCT_QUERY = 100;
 
@@ -98,6 +104,7 @@ const QUERY = {
     dir: { read: (v) => oneOf(SORT_DIRECTIONS)(v.toLowerCase()) },
     page: { read: positiveInt, fallback: 1 },
     from: { read: positiveInt },
+    back: { read: (v) => oneOf(PRODUCT_BACK)(v.toLowerCase()) },
   },
   pricing: {},
   homepage: {},

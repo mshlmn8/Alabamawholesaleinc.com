@@ -427,14 +427,17 @@ foreign key to `pricing_tiers.tier`, so an account can only be given a tier
 that exists, Admin → Accounts builds its tier options from the table, and
 renaming a tier's key moves its accounts along with it.
 
-**Admin → Pricing** (`/admin/pricing`) changes a tier's label and discount
-(0 to 99.99%, two decimals at most) without SQL; it doesn't add or remove
-tiers or rename their keys. Approved buyers see the new prices on their next
-page load; orders already saved keep their prices. Since
+**Admin → Pricing** (`/admin/pricing`) changes a tier's discount (0 to
+99.99%, two decimals at most) without SQL; it doesn't add or remove tiers or
+rename their keys. Approved buyers see the new prices on their next page
+load; orders already saved keep their prices. Since
 `20261010121000_admin_bulk_products.sql` the database also refuses a discount
 below 0 or of 100 or more (`pricing_tiers_discount_range`, `NOT VALID`, so
-rows already there are checked only when next changed). If a label names the
-discount ("Silver (5% off)"), change it with the discount.
+rows already there are checked only when next changed). Every page names a
+tier by its key ("Silver") and its discount ("Prices shown are your Silver
+tier prices, 5% off list."), never by `pricing_tiers.label`, which can state
+an old discount ("Silver (5% off)"); so Admin → Pricing neither shows nor
+edits the label (NEW-078).
 
 ### Loading your list prices
 
@@ -729,7 +732,8 @@ product rails hold (AW-119).
 - **Homepage rails** (read-only here): New arrivals and Bestsellers come from
   the products' tags and homepage rank, set in Admin → Products (see "The
   product editor"), with the legal-review rule described there; each product
-  has an Edit link.
+  has an Edit link, whose editor's Cancel and Save come back to Admin →
+  Homepage (`/admin/products/<id>?back=homepage`, NEW-076).
 
 ## Quotes and orders (`submit_quote`)
 

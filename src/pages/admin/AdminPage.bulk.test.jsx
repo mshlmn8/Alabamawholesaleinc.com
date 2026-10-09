@@ -175,16 +175,26 @@ describe('bulk updates (AW-114)', () => {
   it('sets a price, blank meaning price on request, and checks the box', async () => {
     await renderAdmin();
     await tick('Swisher 1');
+    await tick('Swisher 4');
     await act(async () => { fireEvent.click(within(bar()).getByRole('button', { name: 'Set price' })); });
     const box = within(bar()).getByLabelText('New list price');
     await act(async () => { fireEvent.change(box, { target: { value: '12.345' } }); });
     await act(async () => { fireEvent.submit(box.closest('form')); });
     expect(box.getAttribute('aria-invalid')).toBe('true');
     expect(screen.queryByRole('alertdialog')).toBeNull();
+    await act(async () => { fireEvent.change(box, { target: { value: '12.5' } }); });
+    await act(async () => { fireEvent.submit(box.closest('form')); });
+    expect(within(confirmDialog()).getByRole('heading').textContent).toBe('Set the price of 2 products?');
+    expect(within(confirmDialog()).getByText(/^Each selected product gets the list price \$12\.50\. Approved buyers/)).toBeTruthy();
+    expect(within(confirmDialog()).getByRole('button', { name: 'Set 2 prices' })).toBeTruthy();
+    await act(async () => { fireEvent.click(within(confirmDialog()).getByRole('button', { name: 'Cancel' })); });
+    // Blank: price on request, said as such, never "the list price price on request" (NEW-072).
     await act(async () => { fireEvent.change(box, { target: { value: '' } }); });
     await act(async () => { fireEvent.submit(box.closest('form')); });
-    expect(within(confirmDialog()).getByText(/gets the list price price on request/)).toBeTruthy();
-    await confirmButton();
+    expect(within(confirmDialog()).getByRole('heading').textContent).toBe('Make 2 products price on request?');
+    expect(within(confirmDialog()).getByText(/^Each selected product becomes price on request \(its list price is removed\)\. Approved buyers/)).toBeTruthy();
+    expect(within(confirmDialog()).queryByText(/list price price on request/)).toBeNull();
+    await act(async () => { fireEvent.click(within(confirmDialog()).getByRole('button', { name: 'Make 2 products price on request' })); });
     expect(updates()[0].patch).toEqual({ price: null });
     expect(rowOf(1).cells[8].textContent).toBe('On request');
   });

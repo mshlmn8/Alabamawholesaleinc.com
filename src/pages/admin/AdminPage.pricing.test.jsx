@@ -1,7 +1,7 @@
 // Admin -> Pricing with the fake client (AW-114): the tiers load into a
-// table with the key read-only, the label and discount are checked, a save
-// is one checked update per changed tier after a confirmation, and a refused
-// save says so.
+// table with the key read-only and the discount checked (no label, NEW-078),
+// a save is one checked update per changed tier after a confirmation, and a
+// refused save says so.
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -41,7 +41,6 @@ const renderPricing = async () => {
   act(() => navigate('/admin/pricing', { replace: true }));
   await act(async () => { render(<RoutedAdmin profile={ADMIN} account="ready" />); });
 };
-const label = (tier) => screen.getByLabelText(`Label of the ${tier} tier`);
 const pct = (tier) => screen.getByLabelText(`Discount of the ${tier} tier, in percent`);
 const type = (box, value) => act(async () => { fireEvent.change(box, { target: { value } }); });
 const save = () => act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save tiers' })); });
@@ -52,28 +51,33 @@ const updates = () => fake.find({ table: 'pricing_tiers', op: 'update' });
 const statusText = () => document.querySelector('.admin-status-text').textContent;
 
 describe('Admin -> Pricing (AW-114)', () => {
-  it('is a section of its own, listing each tier with its key read-only and its label and discount editable', async () => {
+  it('is a section of its own, listing each tier with its key read-only and its discount editable, and no label (NEW-078)', async () => {
     await renderPricing();
     const nav = screen.getByRole('navigation', { name: 'Admin sections' });
     expect(within(nav).getByRole('link', { name: 'Pricing' }).getAttribute('aria-current')).toBe('page');
     expect(screen.getByRole('heading', { name: 'Pricing tiers' })).toBeTruthy();
     expect(screen.getByText(/Approved buyers see the new prices on their next page load; orders already saved keep their prices\./)).toBeTruthy();
     const select = fake.find({ table: 'pricing_tiers', op: 'select' })[0];
-    expect(select.columns).toBe('tier,label,discount_pct');
+    expect(select.columns).toBe('tier,discount_pct');
     expect(screen.getAllByRole('rowheader').map((th) => th.textContent)).toEqual(['standard', 'silver', 'gold']);
-    expect([label('silver').value, pct('silver').value]).toEqual(['Silver (5% off)', '5']);
+    expect(pct('silver').value).toBe('5');
+    // Nothing edits a label no page shows; the hint says how buyers see a tier.
+    expect(screen.getAllByRole('columnheader').map((th) => th.textContent)).toEqual(['Tier', 'Discount (%)']);
+    expect(screen.queryByLabelText(/^Label of/)).toBeNull();
+    expect(screen.getAllByRole('textbox')).toHaveLength(3);
+    expect(screen.getByText('Buyers see their tier by its name and discount, for example “Prices shown are your Silver tier prices, 5% off list.”')).toBeTruthy();
     // No adding or removing tiers.
     expect(screen.queryByRole('button', { name: /add|remove|delete/i })).toBeNull();
   });
 
-  it('checks the label and the discount before anything is sent', async () => {
+  it('checks the discount before anything is sent', async () => {
     await renderPricing();
     await type(pct('silver'), '120');
-    await type(label('gold'), ' ');
+    await type(pct('gold'), 'ten');
     await save();
     expect(pct('silver').getAttribute('aria-invalid')).toBe('true');
     expect(document.getElementById(pct('silver').getAttribute('aria-describedby')).textContent).toBe('Enter a discount from 0 to 99.99, with at most two decimals.');
-    expect(document.getElementById(label('gold').getAttribute('aria-describedby')).textContent).toBe('Enter the tier’s label.');
+    expect(pct('gold').getAttribute('aria-invalid')).toBe('true');
     expect(document.activeElement).toBe(pct('silver'));
     expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(updates()).toHaveLength(0);
@@ -86,17 +90,20 @@ describe('Admin -> Pricing (AW-114)', () => {
     await renderPricing();
     await save();
     expect(screen.getByRole('alert').textContent).toBe('Nothing has changed.');
-    await type(pct('silver'), '7');
-    await type(label('silver'), 'Silver (7% off)');
+    await type(pct('silver'), '7.5');
     await save();
     const dialog = screen.getByRole('alertdialog');
     expect(within(dialog).getByRole('heading').textContent).toBe('Save the silver tier?');
-    expect(within(dialog).getByText(/^silver: discount 5% to 7%, label “Silver \(5% off\)” to “Silver \(7% off\)”\. Approved buyers/)).toBeTruthy();
+    expect(within(dialog).getByText(/^silver: discount 5% to 7\.5%\. Approved buyers/)).toBeTruthy();
     await confirm();
     expect(updates()).toHaveLength(1);
-    expect(updates()[0]).toMatchObject({ patch: { label: 'Silver (7% off)', discount_pct: 7 }, filters: [['eq', 'tier', 'silver']], returning: 'tier' });
+    // Only the discount is written; the label column is left as it is.
+    expect(updates()[0]).toMatchObject({ patch: { discount_pct: 7.5 }, filters: [['eq', 'tier', 'silver']], returning: 'tier' });
+    expect(updates()[0].patch).not.toHaveProperty('label');
     expect(statusText()).toBe('Saved the silver tier');
-    expect(pct('silver').value).toBe('7');
+    expect(pct('silver').value).toBe('7.5');
+    // The hint follows the saved discount.
+    expect(screen.getByText(/for example “Prices shown are your Silver tier prices, 7\.5% off list\.”$/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Undo changes' })).toBeNull();
   });
 
@@ -127,6 +134,6 @@ describe('Admin -> Pricing (AW-114)', () => {
     expect(screen.getByRole('alert').textContent).toMatch(/^The pricing tiers didn’t load/);
     fake.respond = null;
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Try again' })); });
-    expect(label('standard').value).toBe('Standard');
+    expect(pct('standard').value).toBe('0');
   });
 });

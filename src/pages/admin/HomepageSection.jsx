@@ -16,6 +16,8 @@
 //     (homeRails, the home page's own rule and photo check), each product
 //     with its tag, its homepage rank and an Edit link. The tags and ranks
 //     are edited in Admin -> Products; the legal-review guard is unchanged.
+//     The Edit link opens the product editor with ?back=homepage, so its
+//     Cancel and Save come back here, to that link (NEW-076).
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
@@ -43,6 +45,10 @@ import {
 } from './homepageSlides.js';
 
 export const SLIDES_MISSING = `Editing the hero photos ${UPDATE_NOTE}. Until then the home page shows the photos bundled with the site:`;
+// The rails' Edit links and heading, which the product editor hands focus
+// back to (ProductsSection.jsx, NEW-076).
+export const railEditId = (productId) => `rail-edit-product-${productId}`;
+export const RAILS_HEADING_ID = 'homepage-rails-title';
 export const RAILS_NOTE = 'The tags and the homepage rank set in each product’s editor (Products) decide these rails: New arrivals shows active products with a photo tagged NEW, Bestsellers those tagged BESTSELLER, ranked products first (1 before 2), and a product is never in both. Products in the lines under legal review need a homepage rank to appear, unless the home page already showed them.';
 
 // The bundled photos as rows, for the read-only view without the table.
@@ -77,7 +83,10 @@ function SlideFacts({ row }) {
   return <p className="admin-slide-meta">{parts.join(' · ')}</p>;
 }
 
-export function HomepageTab({ notify }) {
+// onOpenProduct(href): a rail's Edit link was followed (AdminPage keeps it,
+// so the editor goes Back here). returnFocusId / onReturnFocus: the control
+// to focus on arrival, from the product editor (NEW-076).
+export function HomepageTab({ notify, onOpenProduct, returnFocusId = null, onReturnFocus }) {
   const { products, source, status: catalogStatus } = useCatalog();
   const departments = useMemo(() => departmentsFor(products), [products]);
   const deptKeys = departments.map((d) => d.key);
@@ -130,10 +139,11 @@ export function HomepageTab({ notify }) {
   };
 
   // A move that reaches the top or the bottom disables the button just used:
-  // the other one takes focus.
+  // the other one takes focus. While a write runs every list control is
+  // disabled, so the focus waits for it to end (a toggled Shown box, NEW-071).
   useEffect(() => {
     const target = pendingFocus.current;
-    if (!target) return;
+    if (!target || busy) return;
     const el = document.getElementById(target);
     if (!el) return;
     pendingFocus.current = null;
@@ -148,6 +158,17 @@ export function HomepageTab({ notify }) {
     ? Boolean(draft.img.trim() || draft.alt.trim() || draft.goCat || draft.nicotineWarning)
     : slideChanged(draft, form.original));
   useLeaveGuard(dirty, 'Your changes to the hero photo aren’t saved. Leave without saving them?');
+
+  // Back from the product editor: its rail Edit link takes focus, or the
+  // rails' heading when the product left the rails (NEW-076).
+  useEffect(() => {
+    if (!returnFocusId) return;
+    const target = document.getElementById(returnFocusId) || document.getElementById(RAILS_HEADING_ID);
+    onReturnFocus?.(null);
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    target.scrollIntoView?.({ block: 'nearest' });
+  }, [returnFocusId, onReturnFocus]);
 
   // Opening the form moves focus to its heading.
   const formKey = form ? (form.original?.id ?? 'new') : null;
@@ -242,10 +263,13 @@ export function HomepageTab({ notify }) {
     }
   }
 
+  // The box is disabled with the rest of the list while the write runs,
+  // which drops its focus: it gets it back either way (NEW-071).
   const toggle = async (row) => {
     setListError('');
     const next = !row.active;
     const { error } = await write('toggling', () => checkedWrite(supabase.from('home_slides').update({ active: next }).eq('id', row.id)));
+    setFocusId(`${id}-slide-${row.id}-shown`);
     if (error) {
       setListError(writeError(error, `${quoted(row)} wasn’t changed`));
       return;
@@ -349,9 +373,9 @@ export function HomepageTab({ notify }) {
                         </div>
                         <div className="admin-slide-actions">
                           <label className="admin-toggle">
-                            <input type="checkbox" checked={row.active !== false} disabled={disabled} aria-describedby={`${base}-alt`}
+                            <input type="checkbox" id={`${base}-shown`} checked={row.active !== false} disabled={disabled}
                               onChange={() => toggle(row)} />
-                            <span>Shown</span>
+                            <span>Shown</span> <span className="sr-only">{altOf(row)}</span>
                           </label>
                           <button className="button xs ghost" type="button" id={`${base}-up`} disabled={disabled || i === 0} onClick={() => move(row, -1)}>
                             <span>Move up</span> <span className="sr-only">{altOf(row)}</span>
@@ -387,8 +411,8 @@ export function HomepageTab({ notify }) {
         )}
       </section>
 
-      <section aria-labelledby={`${id}-rails-title`}>
-        <h2 className="bulk-title" id={`${id}-rails-title`}>Homepage rails</h2>
+      <section aria-labelledby={RAILS_HEADING_ID}>
+        <h2 className="bulk-title" id={RAILS_HEADING_ID} tabIndex={-1}>Homepage rails</h2>
         <p className="pricing-note">{RAILS_NOTE}</p>
         {source !== 'live' && catalogStatus !== 'static' && (
           <p className="field-hint">Showing the catalog bundled with the site until the live one loads.</p>
@@ -401,18 +425,21 @@ export function HomepageTab({ notify }) {
                 ? <p className="result-note">{rail.empty}</p>
                 : (
                   <ol className="admin-rail-list">
-                    {rail.items.map((p) => (
-                      <li key={p.id} className="admin-rail-item">
-                        <span className="product-thumb"><Thumb src={p.img} /></span>
-                        <div className="admin-slide-text">
-                          <p className="admin-slide-alt">{p.name}</p>
-                          <p className="admin-slide-meta">{`${p.tag} · ${p.featuredRank != null ? `Homepage rank ${p.featuredRank}` : 'No homepage rank'}`}</p>
-                        </div>
-                        <Link className="button xs ghost" to={adminHref({ section: 'products', id: p.id })}>
-                          <span>Edit</span> <span className="sr-only">{p.name}</span>
-                        </Link>
-                      </li>
-                    ))}
+                    {rail.items.map((p) => {
+                      const editHref = adminHref({ section: 'products', id: p.id, query: { back: 'homepage' } });
+                      return (
+                        <li key={p.id} className="admin-rail-item">
+                          <span className="product-thumb"><Thumb src={p.img} /></span>
+                          <div className="admin-slide-text">
+                            <p className="admin-slide-alt">{p.name}</p>
+                            <p className="admin-slide-meta">{`${p.tag} · ${p.featuredRank != null ? `Homepage rank ${p.featuredRank}` : 'No homepage rank'}`}</p>
+                          </div>
+                          <Link className="button xs ghost" id={railEditId(p.id)} to={editHref} onClick={() => onOpenProduct?.(editHref)}>
+                            <span>Edit</span> <span className="sr-only">{p.name}</span>
+                          </Link>
+                        </li>
+                      );
+                    })}
                   </ol>
                 )}
             </section>

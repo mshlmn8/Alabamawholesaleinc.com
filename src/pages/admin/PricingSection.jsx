@@ -1,13 +1,16 @@
 // Admin -> Pricing (/admin/pricing, AW-114): the pricing tiers, each with its
-// key (read-only), its label and its discount off the list price, which
-// staff change here instead of in SQL. Each changed tier is one checked
-// update (`.update().eq('tier', t).select('tier')`), which the live
-// database's pricing_tiers_admin_write policy already allows; 20261010121000
-// adds the 0-to-under-100 check the form also makes. Tiers are not added or
-// removed here (accounts point at them; see BACKEND.md).
+// key (read-only) and its discount off the list price, which staff change
+// here instead of in SQL. Each changed tier is one checked update
+// (`.update().eq('tier', t).select('tier')`), which the live database's
+// pricing_tiers_admin_write policy already allows; 20261010121000 adds the
+// 0-to-under-100 check the form also makes. Tiers are not added or removed
+// here (accounts point at them; see BACKEND.md). The tiers' label column is
+// not shown or edited (NEW-078): buyers and staff see a tier by its key's
+// name and its discount (tierPriceNote), which the hint quotes.
 
 import { useEffect, useId, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
+import { tierPriceNote } from '../../lib/pricing.js';
 import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { LoadProblem } from './AdminStatus.jsx';
 import { useLeaveGuard } from './useLeaveGuard.js';
@@ -19,7 +22,7 @@ export const PRICES_NOTE = 'Approved buyers see the new prices on their next pag
 // One tier's update, read back. Returns checkedWrite's { data, error }.
 export function saveTier(client, change) {
   return checkedWrite(
-    client.from('pricing_tiers').update({ label: change.label, discount_pct: change.discount_pct }).eq('tier', change.tier),
+    client.from('pricing_tiers').update({ discount_pct: change.discount_pct }).eq('tier', change.tier),
     'tier',
   );
 }
@@ -42,7 +45,7 @@ export function PricingTab({ notify }) {
   const [busy, setBusy] = useState(false);
 
   // A failed load says so, with Try again (AW-202).
-  const load = () => supabase.from('pricing_tiers').select('tier,label,discount_pct').order('discount_pct', { ascending: true })
+  const load = () => supabase.from('pricing_tiers').select('tier,discount_pct').order('discount_pct', { ascending: true })
     .then((result) => {
       const error = withStatus(result || {});
       setLoadError(error ? adminErrorMessage(error, 'The pricing tiers didn’t load') : null);
@@ -107,11 +110,11 @@ export function PricingTab({ notify }) {
     if (saved.length) {
       setTiers((current) => current.map((t) => {
         const change = saved.find((c) => c.tier === t.tier);
-        return change ? { ...t, label: change.label, discount_pct: change.discount_pct } : t;
+        return change ? { ...t, discount_pct: change.discount_pct } : t;
       }));
       setDrafts((current) => {
         const next = { ...current };
-        for (const change of saved) next[change.tier] = draftOf({ label: change.label, discount_pct: change.discount_pct });
+        for (const change of saved) next[change.tier] = draftOf({ discount_pct: change.discount_pct });
         return next;
       });
       notify?.(saved.length === 1 ? `Saved the ${saved[0].tier} tier` : `Saved ${saved.length} tiers`);
@@ -122,6 +125,8 @@ export function PricingTab({ notify }) {
   if (!tiers) {
     return loadError ? <LoadProblem message={loadError} onRetry={retry} retrying={retrying} /> : <p className="result-note">Loading…</p>;
   }
+  // How buyers see a tier, from the first saved one with a discount.
+  const example = tiers.find((t) => Number(t.discount_pct) > 0) || tiers[0];
 
   return (
     <div className="pricing-tiers">
@@ -133,25 +138,16 @@ export function PricingTab({ notify }) {
         <div className="table-scroll">
           <table className="aw-table pricing-table">
             <thead>
-              <tr><th>Tier</th><th>Label</th><th>Discount (%)</th></tr>
+              <tr><th>Tier</th><th>Discount (%)</th></tr>
             </thead>
             <tbody>
               {tiers.map((tier) => {
                 const draft = drafts[tier.tier] || draftOf(tier);
-                const labelError = errors[`${tier.tier}:label`];
                 const pctError = errors[`${tier.tier}:pct`];
                 const base = `${id}-${tier.tier}`;
                 return (
                   <tr key={tier.tier}>
                     <th scope="row"><span className="pricing-key">{tier.tier}</span></th>
-                    <td>
-                      <input
-                        id={`${base}-label`} type="text" value={draft.label} maxLength={120} aria-label={`Label of the ${tier.tier} tier`}
-                        aria-invalid={labelError ? true : undefined} aria-describedby={`${base}-label-error`}
-                        onChange={(e) => edit(tier.tier, 'label', e.target.value)}
-                      />
-                      <p className="form-error" id={`${base}-label-error`}>{labelError || ''}</p>
-                    </td>
                     <td>
                       <input
                         id={`${base}-pct`} type="text" inputMode="decimal" value={draft.pct} aria-label={`Discount of the ${tier.tier} tier, in percent`}
@@ -166,7 +162,9 @@ export function PricingTab({ notify }) {
             </tbody>
           </table>
         </div>
-        <p className="field-hint">If a label names the discount, such as “Silver (5% off)”, change it with the discount.</p>
+        {example && (
+          <p className="field-hint">{`Buyers see their tier by its name and discount, for example “${tierPriceNote({ tier: example.tier, discountPct: example.discount_pct })}”`}</p>
+        )}
         {saveError && <p className="form-error" role="alert">{saveError}</p>}
         <div className="inline-actions bulk-actions">
           <button className="button" type="submit" disabled={busy}>Save tiers</button>
