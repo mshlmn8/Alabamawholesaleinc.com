@@ -41,6 +41,8 @@ const isField = (selector) => /^(input|select|textarea)\b|^\.doc-file(?![\w-])/.
 const rootBlocks = rules(css).filter((r) => r.selectors.length === 1 && r.selectors[0] === ':root');
 const root = declarations(rootBlocks[0].body);
 const outsideRoot = css.replace(/:root\s*\{[^{}]*\}/g, '');
+// The stylesheet with every @media block (and its nested rules) taken out.
+const outsideMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '');
 
 // Every `@media` prelude, e.g. '(max-width: 37.5em)'.
 const mediaPreludes = [...css.matchAll(/@media\s*([^{]+?)\s*\{/g)].map((m) => m[1]);
@@ -107,9 +109,19 @@ describe('colour tokens (AW-292)', () => {
   });
 
   it('defines the shared colours once in :root', () => {
-    for (const token of ['--purple-hover', '--surface-soft', '--line-soft', '--on-dark', '--on-dark-muted', '--on-dark-subtle', '--success', '--focus-on-dark']) {
+    for (const token of ['--purple-hover', '--surface-soft', '--line-soft', '--on-dark', '--on-dark-muted', '--on-dark-subtle', '--success', '--success-bg', '--danger', '--danger-bg', '--focus-on-dark']) {
       expect(root[token], token).toMatch(/^#[0-9a-f]{6}$/);
     }
+  });
+
+  it('defines each token once, in the main :root block; media blocks only redefine existing ones', () => {
+    const names = rootBlocks[0].body.split(';').map((d) => d.trim()).filter(Boolean).map((d) => d.slice(0, d.indexOf(':')).trim());
+    expect(names.filter((n, i) => names.indexOf(n) !== i)).toEqual([]);
+    for (const block of rootBlocks.slice(1)) {
+      for (const token of Object.keys(declarations(block.body))) expect(names, token).toContain(token);
+    }
+    // One plain :root rule outside @media.
+    expect([...outsideMedia.matchAll(/(^|[};])\s*:root\s*\{/g)]).toHaveLength(1);
   });
 });
 
@@ -290,9 +302,10 @@ describe('one button system and drawn icons (AW-143, AW-298, AW-293, AW-218)', (
     }
   });
 
-  it('draws icons as SVG, not text: the breadcrumb slash is the only generated text', () => {
-    const glyphs = declared('content').filter(({ value }) => !/^(''|counter\([\w-]+\))$/.test(value));
-    expect(glyphs.map(({ selector }) => selector)).toEqual(['.crumbs li + li::before']);
+  it('draws icons as SVG, not text: the breadcrumb slash and the error mark are the only generated text', () => {
+    // Step counters are zero-padded (AW-296); the error mark is the ringed '!' (AW-295).
+    const glyphs = declared('content').filter(({ value }) => !/^(''|counter\([\w-]+, decimal-leading-zero\))$/.test(value));
+    expect(glyphs.map(({ selector }) => selector)).toEqual(['.crumbs li + li::before', '.form-error:not(:empty)::before']);
     expect(css).not.toMatch(/[↗→⊞⌄×✓−]/);
     expect(rule('.icon')).toMatchObject({ width: '1em', height: '1em', flex: 'none', 'vertical-align': '-.125em' });
   });
@@ -514,5 +527,206 @@ describe('the markup uses the design system (merged PR #12, PR #13 and lane p2 p
     expect(css).not.toMatch(/\.card-add:disabled/);
     const admin = code(read('src/pages/admin/AdminPage.jsx'));
     expect(admin).toMatch(/className="button" type="button" disabled=\{busy \|\| !workflow\} onClick=\{save\}>Save prices/);
+  });
+});
+
+// The declarations of the rule whose selector list is exactly `selector`.
+const ruleFor = (selector) => declarations(rules(css).find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+
+describe('one link style (AW-297)', () => {
+  const all = rules(css);
+  // Every running-text link context. A new one goes into the CSS list and here.
+  const LINKS = ['.text-link', '.support-note a', '.checklist a', '.checklist-note a', '.next-steps a', '.policy-body a', '.contact-grid a',
+    '.doc-uploads-note a', '.doc-panel a', '.doc-admin a', '.status-panel p a', '.eligibility-result a', '.error-fallback > p a', '.dialog > .desc a',
+    '.form-error a', '.dialog .form-grid a', '.consent-block .consent a', '.photo-credit a', '.order-head small a'];
+  const LOOK = { color: 'var(--link-color)', 'font-weight': '600', 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' };
+
+  it('defines the link colour and underline offset once', () => {
+    expect(root).toMatchObject({ '--link-color': 'var(--purple)', '--link-offset': '3px' });
+  });
+
+  it('gives every text link one rule, and no other rule restyles them', () => {
+    const shared = all.find((r) => r.selectors.includes('.form-error a'));
+    expect(shared.selectors).toEqual(LINKS);
+    expect(declarations(shared.body)).toEqual(LOOK);
+    for (const { selectors, body } of all) {
+      if (body === shared.body) continue;
+      for (const s of selectors.filter((x) => LINKS.includes(x))) {
+        for (const property of Object.keys(LOOK)) expect(declarations(body), `${s} ${property}`).not.toHaveProperty(property);
+      }
+    }
+    // The text-link keeps its own layout rule; the guest card prompt is one.
+    expect(ruleFor('.text-link')).toEqual({ display: 'inline-flex', 'align-items': 'center', 'min-height': '36px', 'font-size': 'var(--text-sm)', background: 'none', border: '0', padding: '0' });
+    expect(ruleFor('.price-login')).toEqual({ 'min-height': 'var(--tap-sm)', 'text-align': 'left' });
+    expect(all.flatMap((r) => r.selectors).filter((s) => s.startsWith('.price-login:'))).toEqual([]);
+    expect(code(read('src/components/ProductCard.jsx'))).toMatch(/<button className="text-link price-login" type="button" onClick=\{onLoginClick\}>Sign in for pricing<\/button>/);
+  });
+
+  it('leaves the buttons in a status panel alone: only links in its text are text links', () => {
+    expect(all.flatMap((r) => r.selectors)).not.toContain('.status-panel a');
+  });
+
+  it('keeps the light links on purple surfaces, at a higher specificity than .text-link', () => {
+    expect(ruleFor('.contact-strip .text-link')).toEqual({ color: '#fff' });
+    expect(ruleFor('.editorial-card .text-link')).toMatchObject({ color: 'inherit' });
+  });
+
+  it('underlines every link at the same offset, on light and purple surfaces', () => {
+    const offsets = declared('text-underline-offset');
+    expect(offsets.length).toBeGreaterThan(10);
+    for (const { selector, value } of offsets) expect(value, selector).toBe('var(--link-offset)');
+    for (const selector of ['.trade-bar a, .trade-bar button', '.footer-grid a', '.footer-policies a', '.aw-utility a', '.sku-details summary']) {
+      expect(ruleFor(selector), selector).toMatchObject({ 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' });
+    }
+  });
+
+  it('colours the section links and underlines the footer navigation like the footer phone and email', () => {
+    expect(ruleFor('.section-head > a')).toMatchObject({ color: 'var(--link-color)', 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' });
+    expect(ruleFor('.footer-grid button, .footer-grid .footer-link')).toMatchObject({ 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' });
+    const hover = mediaBlocks(css).filter((b) => b.prelude === '(hover: hover)').flatMap((b) => rules(b.body))
+      .find((r) => r.selectors.join(', ') === '.footer-grid button:hover, .footer-grid .footer-link:hover');
+    expect(declarations(hover.body)).toEqual({ color: '#fff' });
+  });
+});
+
+describe('one callout, and status colours for errors and success (AW-295)', () => {
+  const all = rules(css);
+  const MAPPED = ['.callout', '.notice', '.support-alert', '.qr-summary', '.order-foot', '.site-notice', '.cart-notice', '.pd-unit', '.pd-saved'];
+  const modifiers = all.filter((r) => r.selectors[0].startsWith('.callout'));
+
+  it('defines danger and success colours that read on every surface they are used on', () => {
+    expect(root).toMatchObject({ '--danger': '#b42318', '--danger-bg': '#fdecea', '--success': '#1f7a47', '--success-bg': '#e8f5ee' });
+    for (const surface of ['#ffffff', root['--cream'], root['--paper'], root['--danger-bg']]) {
+      expect(contrast(root['--danger'], surface), `danger on ${surface}`).toBeGreaterThanOrEqual(4.5);
+    }
+    for (const surface of ['#ffffff', root['--paper'], root['--success-bg']]) {
+      expect(contrast(root['--success'], surface), `success on ${surface}`).toBeGreaterThanOrEqual(4.5);
+    }
+    // Callout text, and a link inside one, on every callout background.
+    for (const surface of [root['--cream'], root['--paper'], root['--success-bg'], root['--danger-bg']]) {
+      expect(contrast(root['--ink'], surface), `ink on ${surface}`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(root['--purple'], surface), `purple on ${surface}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it('has one base callout and three modifiers, with the older notice classes mapped onto them', () => {
+    expect(modifiers.map((r) => r.selectors)).toEqual([
+      MAPPED,
+      ['.callout.info', '.site-notice:not(.is-warn)', '.cart-notice:not(.is-warn)', '.pd-unit', '.pd-saved'],
+      ['.callout.success'],
+      ['.callout.error', '.form-error.support-alert'],
+    ]);
+    expect(modifiers.map((r) => declarations(r.body))).toEqual([
+      { padding: '.875rem 1rem', 'border-left': '4px solid var(--orange)', background: 'var(--cream)', color: 'var(--ink)', 'font-size': 'var(--text-base)', 'line-height': '1.6' },
+      { 'border-left-color': 'var(--purple)', background: 'var(--paper)' },
+      { 'border-left-color': 'var(--success)', background: 'var(--success-bg)' },
+      { 'border-left-color': 'var(--danger)', background: 'var(--danger-bg)', color: 'var(--danger)' },
+    ]);
+  });
+
+  it('leaves the mapped classes only their layout', () => {
+    const visual = ['padding', 'padding-block', 'padding-inline', 'border', 'border-top', 'border-left', 'border-color', 'border-left-color', 'background', 'background-color', 'color', 'font-size', 'line-height'];
+    const own = new Set(modifiers.map((r) => r.body));
+    const isMapped = (selector) => {
+      const last = lastCompound(selector);
+      return MAPPED.some((c) => last === c || last.startsWith(`${c}.`) || last.startsWith(`${c}:`));
+    };
+    let seen = 0;
+    for (const { selectors, body } of all) {
+      if (own.has(body)) continue;
+      for (const s of selectors.filter(isMapped)) {
+        seen += 1;
+        for (const property of visual) {
+          // .support-alert restores the callout size over .form-error's smaller one.
+          if (s === '.support-alert' && property === 'font-size') continue;
+          expect(declarations(body), `${s} ${property}`).not.toHaveProperty(property);
+        }
+      }
+    }
+    expect(seen).toBeGreaterThan(8);
+    expect(ruleFor('.support-alert')).toEqual({ margin: '0 0 22px', 'font-size': 'var(--text-base)' });
+    expect(ruleFor('.pd-info .pd-unit')).toEqual({ margin: '0 0 14px', 'max-width': '480px', 'font-weight': '600' });
+    expect(ruleFor('.pd-info .pd-saved')).toEqual({ margin: '0 0 14px', 'max-width': '480px', 'font-weight': '600' });
+  });
+
+  it('keeps the status panel and the pricing prompt boxes, in the status and callout colours', () => {
+    expect(ruleFor('.status-panel')).toMatchObject({ 'border-left': '6px solid var(--orange)' });
+    expect(ruleFor('.status-panel.status-approved')).toEqual({ 'border-left-color': 'var(--success)' });
+    expect(ruleFor('.status-panel.status-suspended')).toEqual({ 'border-left-color': 'var(--danger)' });
+    expect(ruleFor('.filter-signin')).toMatchObject({ 'border-left': '4px solid var(--orange)', background: 'var(--cream)' });
+    expect(ruleFor('.filter-signin')).not.toHaveProperty('border');
+    expect(ruleFor('button.filter-signin span')).toEqual({ color: 'var(--link-color)', 'font-weight': '600', 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' });
+    expect(ruleFor('.stat-card.ok b')).toEqual({ color: 'var(--success)' });
+    expect(ruleFor('.stat-card.warn b')).toEqual({ color: 'var(--orange-dark)' });
+  });
+
+  it('shows errors in the danger colour with a drawn mark that screen readers skip', () => {
+    expect(ruleFor('.form-error')).toMatchObject({ color: 'var(--danger)' });
+    expect(ruleFor('.qr-problem')).toEqual({ color: 'var(--danger)' });
+    expect(ruleFor('.drawer-line.is-unavailable .info small, .drawer-line .line-flag')).toEqual({ color: 'var(--danger)' });
+    const mark = all.find((r) => r.selectors.join() === '.form-error:not(:empty)::before');
+    // The plain value first, for browsers without alt text, then the one with an empty alt.
+    expect([...mark.body.matchAll(/content:\s*([^;]+);/g)].map((m) => m[1].trim())).toEqual(["'!'", "'!' / ''"]);
+    expect(declarations(mark.body)).toMatchObject({ display: 'inline-grid', width: '1.1em', height: '1.1em', border: '1.5px solid', 'border-radius': '50%', 'font-weight': '700' });
+    // No error takes the accent orange any more.
+    for (const { selectors, body } of all) {
+      if (selectors.some((s) => /form-error|qr-problem|line-flag/.test(s)) && !selectors.includes('.form-error a')) {
+        expect(body, selectors.join(', ')).not.toMatch(/--orange/);
+      }
+    }
+  });
+});
+
+describe('one number marker for ordered steps (AW-296)', () => {
+  const all = rules(css);
+
+  it('draws .num and the apply and next-step counters alike, zero-padded', () => {
+    const marker = all.find((r) => r.selectors.includes('.num'));
+    expect(marker.selectors).toEqual(['.num', '.apply-steps li::before', '.next-steps li::before']);
+    expect(declarations(marker.body)).toEqual({ font: '700 1.75rem/1 var(--display)', color: 'var(--orange-dark)' });
+    expect(ruleFor('.apply-steps li::before').content).toBe('counter(apply, decimal-leading-zero)');
+    expect(ruleFor('.next-steps li::before').content).toBe('counter(steps, decimal-leading-zero)');
+    for (const selector of ['.apply-steps li', '.next-steps li']) expect(ruleFor(selector)['grid-template-columns'], selector).toBe('2.5rem minmax(0, 1fr)');
+    for (const { selectors, body } of all) {
+      if (body === marker.body || !selectors.some((s) => /steps li::before$/.test(s))) continue;
+      for (const property of ['font', 'font-size', 'font-family', 'color']) expect(declarations(body), `${selectors.join(', ')} ${property}`).not.toHaveProperty(property);
+    }
+  });
+
+  it('colours the menu indices in the same text orange', () => {
+    for (const selector of ['.aw-department h3 > span:first-child', '.menu-index']) expect(ruleFor(selector).color, selector).toBe('var(--orange-dark)');
+  });
+
+  it('numbers only ordered steps: no number prefixes on the checklist or the delivery cards', () => {
+    expect(code(read('src/pages/support/ApplyPage.jsx'))).not.toMatch(/padStart\(2/);
+    expect(code(read('src/pages/support/DeliveryPage.jsx'))).not.toMatch(/\d\d · [A-Z]/);
+  });
+});
+
+describe('no inline styles (AW-301)', () => {
+  it('has no style attribute in any component', () => {
+    expect(jsx.length).toBeGreaterThan(20);
+    expect(jsx.filter(({ text }) => /\bstyle=\{/.test(text)).map(({ file }) => file)).toEqual([]);
+  });
+
+  it('gives the root, the footer paragraph and the page heads classes instead', () => {
+    expect(ruleFor('.app-shell')).toEqual({ 'min-height': '100vh' });
+    expect(ruleFor('.footer-brand p')).toEqual({ 'margin-top': '1rem' });
+    expect(ruleFor('.is-flush')).toEqual({ 'padding-bottom': '0' });
+    expect(ruleFor('.is-centered')).toEqual({ 'text-align': 'center', 'padding-block': 'var(--empty-pad)' });
+    expect(ruleFor('.is-centered > p:not([class])')).toEqual({ margin: '0 auto 1.25rem' });
+    expect(ruleFor('.is-centered strong')).toEqual({ color: 'var(--purple)' });
+    expect(ruleFor('.is-centered .dialog-actions')).toEqual({ 'justify-content': 'center' });
+    expect(code(read('src/App.jsx'))).toMatch(/<div className="app-shell">/);
+    expect(code(read('src/pages/ProductPage.jsx'))).toMatch(/className="page-head is-flush"/);
+    expect(code(read('src/pages/QuotePage.jsx')).match(/className="page-head is-centered"/g)).toHaveLength(2);
+  });
+
+  it('lets the phone page-head padding win over the centred message', () => {
+    const compact = mediaBlocks(css).find((b) => b.prelude === MOBILE_QUERY && /\.page-head\s*\{/.test(b.body));
+    expect(declarations(rules(compact.body).find((r) => r.selectors.join() === '.page-head').body)).toHaveProperty('padding-top');
+    // Same specificity (one class), and later in the file.
+    expect(compact.start).toBeGreaterThan(css.indexOf('.is-centered {'));
+    expect(compact.start).toBeGreaterThan(css.indexOf('.is-flush {'));
   });
 });

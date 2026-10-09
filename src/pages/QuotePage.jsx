@@ -188,9 +188,9 @@ export function QuotePage({
 
   if (items.length === 0 && step === 'review') {
     return (
-      <section className="page-head" style={{ textAlign: 'center', padding: '60px 0' }}>
+      <section className="page-head is-centered">
         <h1>Your cart is empty</h1>
-        <p style={{ margin: '0 auto 20px' }}>Add products, then come back to checkout.</p>
+        <p>Add products, then come back to checkout.</p>
         <Link className="button" to="/catalog">Browse catalog</Link>
         {legacy.length > 0 && (
           <div className="quote-saved-lines">
@@ -204,16 +204,16 @@ export function QuotePage({
   if (step === 'submitted') {
     const asOrder = !!receipt?.asOrder;
     return (
-      <section className="page-head" style={{ textAlign: 'center', padding: '60px 0' }}>
+      <section className="page-head is-centered">
         <p className="eyebrow">{asOrder ? 'ORDER RECEIVED' : 'QUOTE RECEIVED'}</p>
         <h1>{`Thank you, ${data.contact || 'partner'}.`}</h1>
-        <p style={{ margin: '0 auto 14px' }}>
-          <span>{asOrder ? 'Your order has been saved.' : 'Your quote request has been saved.'}</span> A trade desk rep will reach out within one business day at <strong style={{ color: 'var(--purple)' }}>{data.phone || data.email}</strong> to confirm details.
+        <p>
+          <span>{asOrder ? 'Your order has been saved.' : 'Your quote request has been saved.'}</span> A trade desk rep will reach out within one business day at <strong>{data.phone || data.email}</strong> to confirm details.
         </p>
         <p className="result-note">Reference number: <strong>{receipt?.ref_num}</strong></p>
         {/* The total the server saved (AW-351), priced by submit_quote. */}
         {receipt?.subtotal != null && <p className="result-note">{`Saved total: ${formatMoney(receipt.subtotal)} · ${receipt.total_units} ${Number(receipt.total_units) === 1 ? 'unit' : 'units'}`}</p>}
-        <div className="dialog-actions" style={{ justifyContent: 'center' }}>
+        <div className="dialog-actions">
           <a className="button ghost" href={`tel:${COMPANY.phoneRaw}`}>Call to discuss</a>
           <Link className="button" to="/" onClick={clearCart}>Back to home</Link>
         </div>

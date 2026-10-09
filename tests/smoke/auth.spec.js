@@ -276,7 +276,7 @@ test('guests never ask for prices and see the lock (AW-003)', async ({ page }) =
   const errors = trackErrors(page);
   const calls = await mockSupabase(page);
   await page.goto('/category/tobacco/cigarettes');
-  await expect(page.locator('.content-card').filter({ hasText: 'AW-KITE' }).locator('.card-meta')).toContainText('LOCKED · Sign in for pricing');
+  await expect(page.locator('.content-card').filter({ hasText: 'AW-KITE' }).locator('.card-meta .price-login')).toHaveText('Sign in for pricing');
   await page.goto('/product/14');
   await expect(page.locator('.pd-price')).toContainText('Sign in');
   await expect(page.locator('main')).not.toContainText('$13.40');

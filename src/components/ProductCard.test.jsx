@@ -173,10 +173,19 @@ describe('ProductCard add control', () => {
     expect(group.querySelector('button').textContent).toBe('');
   });
 
-  it('still asks guests to sign in for pricing', () => {
+  it('asks guests to sign in for pricing with a button styled as a link (AW-297)', () => {
     const onLoginClick = vi.fn();
     addCard({ onLoginClick });
-    fireEvent.click(screen.getByRole('button', { name: /Sign in for pricing/ }));
+    const prompt = screen.getByRole('button', { name: 'Sign in for pricing' });
+    expect(prompt.textContent).toBe('Sign in for pricing');
+    expect(prompt.className).toBe('text-link price-login');
+    fireEvent.click(prompt);
     expect(onLoginClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('tells a signed-in account waiting for approval in plain text, with no sign-in prompt', () => {
+    addCard({ profile: PENDING });
+    expect(screen.queryByRole('button', { name: /Sign in for pricing/ })).toBeNull();
+    expect(screen.getByText('Pricing after approval').className).toBe('lock');
   });
 });

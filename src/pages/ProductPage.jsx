@@ -88,7 +88,7 @@ export function ProductPage({
 
   return (
     <section>
-      <div className="page-head" style={{ paddingBottom: 0 }}>
+      <div className="page-head is-flush">
         <Breadcrumbs items={[HOME_CRUMB, { label: catLabel(p.cat), to: department }, { label: p.name }]} />
       </div>
       <div className="pd-grid">

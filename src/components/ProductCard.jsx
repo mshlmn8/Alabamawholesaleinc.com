@@ -100,7 +100,7 @@ export function ProductCard({ p, profile, isApprovedBuyer, priceOf = NO_PRICES, 
         ) : profile ? (
           <span className="lock">Pricing after approval</span>
         ) : (
-          <button className="lock price-login" type="button" onClick={onLoginClick}>LOCKED · Sign in for pricing</button>
+          <button className="text-link price-login" type="button" onClick={onLoginClick}>Sign in for pricing</button>
         )}
         {choiceRequired ? (
           <Link className="button ghost sm card-add" to={productRoute} aria-describedby={titleId}>{qty > 0 ? `Select options · ${qty}` : 'Select options'}</Link>
