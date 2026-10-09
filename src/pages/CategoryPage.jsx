@@ -11,6 +11,7 @@
 // Counts follow the filters (AW-225): each line pill (and the phone drawer's
 // line choice, AW-223) counts what it would show with the other filters, and
 // each brand counts what it would add with everything but the brands.
+// A line page is headed by the line (AW-226).
 //
 // Pricing is explained once, by the PricingNotice above the grid (AW-224):
 // the intro describes the department and the filters hold only filters.
@@ -23,7 +24,7 @@ import { featuredOrder } from '../lib/merchandising.js';
 import { brandLabel, catLabel } from '../lib/format.js';
 import { Link, navigate } from '../lib/router.js';
 import { EMPTY_CATEGORY_QUERY, slugify } from '../lib/routes.js';
-import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
+import { Breadcrumbs, catalogCrumbs } from '../components/Breadcrumbs.jsx';
 import { BackToTop } from '../components/BackToTop.jsx';
 import { ModalLayer } from '../components/ModalLayer.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
@@ -276,15 +277,19 @@ export function CategoryPage({
     </div>
   );
   const closeFilters = () => setFiltersOpen(false);
+  const deptLabel = catLabel(category);
 
   return (
     <section>
       <div className="page-head">
-        <Breadcrumbs items={[HOME_CRUMB, { label: catLabel(category), to: here({ sub: null }) }, ...(activeSub ? [{ label: activeSub }] : [])]} />
-        <p className="eyebrow">{`DEPARTMENT · ${String(cat?.count ?? inCategory.length).padStart(2, '0')} SKUs`}</p>
-        <h1>{catLabel(category)}</h1>
-        <p>{`Wholesale ${catLabel(category).toLowerCase()} for licensed retail accounts: ${plural(inCategory.length, 'product')}${lines.length ? ` in ${plural(lines.length, 'product line')}` : ''}.`}</p>
-        <nav className="sub-pills" aria-label={`${catLabel(category)} product lines`}>
+        <Breadcrumbs items={catalogCrumbs({ category, sub: activeSub, query })} />
+        {/* A line page names the line, its department and its own count (AW-226). */}
+        <p className="eyebrow">{activeSub ? `${deptLabel} · ${plural(inScope.length, 'product')}` : `DEPARTMENT · ${String(cat?.count ?? inCategory.length).padStart(2, '0')} SKUs`}</p>
+        <h1>{activeSub || deptLabel}</h1>
+        <p>{activeSub
+          ? `Wholesale ${deptLabel.toLowerCase()} for licensed retail accounts: ${plural(inScope.length, 'product')} in ${activeSub}.`
+          : `Wholesale ${deptLabel.toLowerCase()} for licensed retail accounts: ${plural(inCategory.length, 'product')}${lines.length ? ` in ${plural(lines.length, 'product line')}` : ''}.`}</p>
+        <nav className="sub-pills" aria-label={`${deptLabel} product lines`}>
           <Link className={`sub-pill${!activeSub ? ' active' : ''}${filtered.length ? '' : ' is-empty'}`} to={here({ sub: null })} scroll={false} aria-current={!activeSub ? 'page' : undefined}>{`All (${filtered.length})`}</Link>
           {lines.map(({ sub: s, count }) => (
             <Link key={s} className={`sub-pill${activeSub === s ? ' active' : ''}${count ? '' : ' is-empty'}`} to={here({ sub: s })} scroll={false} aria-current={activeSub === s ? 'page' : undefined}>{`${s} (${count})`}</Link>

@@ -979,10 +979,24 @@ describe('no inline styles (AW-301)', () => {
   });
 });
 
-describe('department page controls (AW-223, AW-225)', () => {
+describe('department page controls (AW-223, AW-225, AW-325)', () => {
+  const all = rules(css);
   const blocks = mediaBlocks(css);
   const inBlock = (prelude) => blocks.filter((b) => b.prelude === prelude).flatMap((b) => rules(b.body));
   const outside = rules(outsideMedia);
+
+  it('sets every breadcrumb in the trail’s capitals: no crumb resets the case, and none is a button (AW-325)', () => {
+    expect(ruleFor('.crumbs')['text-transform']).toBe('uppercase');
+    const crumbRules = all.filter((r) => r.selectors.some((s) => s.includes('.crumbs')));
+    expect(crumbRules.length).toBeGreaterThan(4);
+    for (const { selectors, body } of crumbRules) {
+      const transform = declarations(body)['text-transform'];
+      if (transform !== undefined) expect(['uppercase', 'inherit'], selectors.join(', ')).toContain(transform);
+    }
+    // The global reset that once turned "Home" title case hits buttons only, and
+    // the trail renders links and spans.
+    expect(code(read('src/components/Breadcrumbs.jsx'))).not.toMatch(/<button/);
+  });
 
   it('mutes a product line the filters leave empty, but never the current one, and not as a selected state (AW-225)', () => {
     expect(outside.find((r) => r.selectors.join() === '.sub-pill.is-empty:not(.active)')).toBeTruthy();

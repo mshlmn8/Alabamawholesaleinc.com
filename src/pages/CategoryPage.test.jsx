@@ -393,6 +393,47 @@ describe('CategoryPage line counts follow the filters (AW-225)', () => {
   });
 });
 
+describe('CategoryPage line pages (AW-226)', () => {
+  const crumbs = () => [...document.querySelectorAll('.crumbs li > *')].map((el) => ({ text: el.textContent, tag: el.tagName, href: el.getAttribute('href'), current: el.getAttribute('aria-current') }));
+  const head = () => ({
+    eyebrow: document.querySelector('.page-head .eyebrow').textContent,
+    h1: screen.getByRole('heading', { level: 1 }).textContent,
+    intro: document.querySelector('.page-head h1 + p').textContent,
+  });
+
+  it('names the line in the heading, eyebrow and intro; the trail leads back to All products and the department', () => {
+    act(() => navigate('/category/tobacco/wraps', { replace: true }));
+    render(<Branded />);
+    expect(head()).toEqual({ eyebrow: 'Tobacco · 7 products', h1: 'Wraps', intro: 'Wholesale tobacco for licensed retail accounts: 7 products in Wraps.' });
+    expect(crumbs()).toEqual([
+      { text: 'Home', tag: 'A', href: '/', current: null },
+      { text: 'All products', tag: 'A', href: '/catalog', current: null },
+      { text: 'Tobacco', tag: 'A', href: '/category/tobacco', current: null },
+      { text: 'Wraps', tag: 'SPAN', href: null, current: 'page' },
+    ]);
+    // The department crumb keeps the filters, as the All pill does.
+    act(() => navigate('/category/tobacco/wraps?brand=game', { replace: true }));
+    expect(screen.getByRole('link', { name: 'Tobacco' }).getAttribute('href')).toBe('/category/tobacco?brand=game');
+    expect(head().eyebrow).toBe('Tobacco · 7 products');
+  });
+
+  it('keeps the department head on the department page', () => {
+    render(<Branded />);
+    expect(head()).toEqual({ eyebrow: 'DEPARTMENT · 14 SKUs', h1: 'Tobacco', intro: 'Wholesale tobacco for licensed retail accounts: 14 products in 2 product lines.' });
+    expect(crumbs().map((c) => `${c.tag}:${c.text}`)).toEqual(['A:Home', 'A:All products', 'SPAN:Tobacco']);
+  });
+
+  it('says "1 product" for a line of one', () => {
+    const list = [...BRANDED, { ...row(15, 'Lone pouch', 'ZYN', 'Pouches') }];
+    const depts = [{ ...BRAND_DEPTS[0], subs: ['Cigars', 'Pouches', 'Wraps'], count: 15 }];
+    act(() => navigate('/category/tobacco/pouches', { replace: true }));
+    render(<CategoryPage category="TOBACCO" sub="Pouches" products={list} departments={depts} profile={null} isApprovedBuyer={false}
+                         cart={{}} addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} />);
+    expect(head().eyebrow).toBe('Tobacco · 1 product');
+    expect(head().intro).toBe('Wholesale tobacco for licensed retail accounts: 1 product in Pouches.');
+  });
+});
+
 describe('CategoryPage on phones (AW-223)', () => {
   it('lets the Filter & Sort drawer change the product line, with filter-aware counts, without a history entry', () => {
     phone();
@@ -413,7 +454,7 @@ describe('CategoryPage on phones (AW-223)', () => {
     fireEvent.click(within(lines).getByRole('radio', { name: 'Wraps (2)' }));
     expect(url()).toBe('/category/tobacco/wraps?brand=game');
     expect(window.history.length).toBe(length);
-    expect(note()).toBe('Showing 2 of 7 items in Wraps');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Wraps');
     // The drawer stays open on the new line.
     expect(within(screen.getByRole('dialog', { name: 'Filter & Sort' })).getByRole('radio', { name: 'Wraps (2)' }).checked).toBe(true);
     fireEvent.click(within(lines).getByRole('radio', { name: 'All (3)' }));
