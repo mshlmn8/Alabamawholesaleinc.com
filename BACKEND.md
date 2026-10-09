@@ -50,13 +50,14 @@ supabase/migrations/20261011110000_order_item_hints.sql
 supabase/migrations/20261011111000_profile_role_audit.sql
 supabase/migrations/20261011130000_catalog_names.sql
 supabase/migrations/20261011131000_home_slides.sql
+supabase/migrations/20261012100000_document_storage_lock.sql
 supabase/seed/products.sql
 ```
 
 On a project that is already running, apply only the migrations it doesn't
 have yet, in that order, then the seed, then deploy the frontend (see the
 release checklist at the end of this file). The live project has the files
-up to `20260927180000`; the twenty-two `20261008…`/`20261009…`/`20261010…`/`20261011…`
+up to `20260927180000`; the twenty-three `20261008…`/`20261009…`/`20261010…`/`20261011…`/`20261012…`
 files are new.
 Review them before applying them; the site keeps working without them (see
 `docs/OWNER-TODO.md` and "Before and after" in the release checklist).
@@ -136,9 +137,10 @@ The first migration creates four tables — `profiles`, `products`, `orders`,
 application columns and `profile_documents`. RLS is enabled on all of them.
 
 `20260927180000_application_documents.sql` also creates a **private** Storage
-bucket named `application-documents` (PDF, JPG or PNG, 10 MB maximum; the
-bucket still allows HEIC/HEIF, so files sent before the site stopped offering
-them still open, AW-347).
+bucket named `application-documents` (10 MB maximum). Since
+`20261012100000_document_storage_lock.sql` it takes PDF, JPG and PNG only,
+like the site (AW-347); that list gates new uploads only, so HEIC/HEIF files
+sent before the site stopped offering them keep their type and still open.
 Confirm in **Storage** that the bucket is not public. No extra environment
 variables. Applicants may upload a state retail tobacco license and a resale
 certificate from the application form once they have a session, or later from
@@ -150,13 +152,19 @@ in the bucket and in `profile_document_history`
 (`20261008193000_profile_approval_audit.sql`), and only a pending applicant
 can delete proof. Since `20261009140000_profile_and_document_boundaries.sql`
 files and rows must use that layout, and an account can upload at most 10
-files in 24 hours.
+files in 24 hours. Since `20261012100000_document_storage_lock.sql` a stored
+file can't be overwritten or renamed by anyone but the SQL editor and the
+service role (AW-197): the file staff saw when they approved an account
+stays the one on file. The site uploads with upsert off, so it never needs
+to.
 
 The site checks what a file is before it uploads it (AW-347): its first bytes
-must be a PDF, JPEG or PNG that matches its extension, so a program or web page
-renamed `license.pdf` is refused in the browser. That check runs only in the
-browser. Storage checks only the type the upload declares, and SQL can't read
-an object's bytes, so a request made outside the site can still store a
+must be a PDF, JPEG or PNG that matches its extension (a PDF must start with
+`%PDF-`, after at most a byte order mark and whitespace), so a program or web
+page renamed `license.pdf` is refused in the browser, even one with `%PDF-`
+further in. That check runs only in the browser. Storage checks only the type
+the upload declares (PDF, JPEG or PNG since `20261012100000`), and SQL can't
+read an object's bytes, so a request made outside the site can still store a
 disguised file under the applicant's own folder. Staff open these files from
 untrusted applicants: open them in the browser's viewer (the View link), not
 in a desktop program. Closing the gap needs an Edge Function that reads each
@@ -933,8 +941,10 @@ docs/OWNER-TODO.md, AW-113 and AW-088).
   `{user id}/{document type}/{upload time}-{filename}`, where the type folder
   is `tobacco_license` or `resale_certificate`. A user reads their own folder
   and uploads there at that layout only, at most 10 files in 24 hours; only a
-  pending applicant deletes there. Admins can read every object, which is
-  what the Accounts tab uses to mint a signed View link.
+  pending applicant deletes there. Since `20261012100000` nobody changes a
+  stored object (no UPDATE policy), whatever the account's status: a renewal
+  is a new file. PDF, JPEG and PNG only. Admins can read every object, which
+  is what the Accounts tab uses to mint a signed View link.
 - **storage `product-images`** (`20261010120000`): public, so anyone loads a
   product photo by its URL; only approved admins add, replace, list or
   remove files.
@@ -970,12 +980,13 @@ For each release:
 5. Then apply the migrations the table below marks "Apply AFTER deploying
    the new frontend" (`20261010131000_photo_filenames.sql`).
 
-The live project needs all twenty-two, in this order (Cursor's seven
+The live project needs all twenty-three, in this order (Cursor's seven
 `20261008…` files, then the six `20261009…` ones, which build on them, then
 the five `20261010…` ones: three for the admin back office and two data-only
 catalog fixes, then `20261011110000` and `20261011111000`, which can go in
 any time, then the data-only `20261011130000` and the home page's
-`20261011131000`). Apply
+`20261011131000`, then the document lock `20261012100000`, also any time).
+Apply
 `20261008200000` and `20261009100000`–`20261009150000` in one session: the
 price boundary hides `products.variant_prices` and `20261009110000` moves it.
 Each `20261009…` migration ends with a commented reverse-SQL block for
@@ -1011,6 +1022,9 @@ rolling it back.
 21. `20261011130000_catalog_names.sql` (data only; any time)
 22. `20261011131000_home_slides.sql` (the home page's hero photos, Admin →
     Homepage; any time, also on its own)
+23. `20261012100000_document_storage_lock.sql` (stored licence files can't be
+    overwritten, and the bucket takes PDF, JPEG and PNG only; any time,
+    before or after the frontend, also on its own)
 
 Then `supabase/seed/products.sql`, then the frontend, then 18.
 
@@ -1038,6 +1052,7 @@ Then `supabase/seed/products.sql`, then the frontend, then 18.
 | `20261011111000_profile_role_audit.sql` | AW-203: `profile_status_log.old_role` and `new_role`; recreates the log trigger function `log_profile_status()` from `20261008193000` so it writes a row when the status or the role changes (`old_status`/`new_status` always, `old_role`/`new_role` only when the role changed, `changed_by` and the note as before). Still SECURITY DEFINER with `search_path = public`, revoked from guests and signed-in accounts; the `profile_status_log_write` trigger, the admin-only read policy and the own-role/status guard (`own_role_status`) are unchanged. A commented Reverse block is at the end. | Apply any time after `20261009140000`. No seed change. The frontend deployed before it doesn't read the new columns. The new frontend works before and after: the account page's Status history asks for the role columns and, without them (42703/PGRST204), shows status changes only; before it, role changes aren't in the history (each one's reason is in the account's internal notes either way). |
 | `20261011130000_catalog_names.sql` | Data only (AW-071): one naming style, from each row's own data. Names: "Value" for "Cheap" (#100, #221, #246, #250), no retail price in #12's name ("LooseLeaf wraps 2-pack"), size words in brackets (#132, #133, #190, #290, #291, #335, #336, e.g. "Powerade (big)"), "Faygo bottles 20 oz" (#58), "6-pack beer carriers" (#93), "AA Cellular" (#286), and a product noun from the description for #25, #350 and #355; descriptions of #9, #221, #274, #310 and #311 spelled like their names. The lines under legal review keep their names (decision 2). Each column changes only while it still has the value the seed wrote, so admin edits are kept and a re-run changes nothing. | Apply any time, before or after the frontend: every frontend reads names from the database. Ids, SKUs (the AW-CHEAP-* Quick Reorder codes) and variant labels don't change; order lines keep the name they were placed with. |
 | `20261011131000_home_slides.sql` | The home page's hero photos (see "The homepage"): the `home_slides` table (`img` a bundled `hero_*` file or a `product-images` Storage address, `alt` 1–200 characters, `go_cat`, `nicotine_warning`, `sort` 0–999, `active`, `created_at`, `updated_at`, `updated_by`), readable by everyone for active rows and by approved admins for all, written only by approved admins (RLS with `is_admin()`); the identity sequence and the trigger function are revoked from guests; today's four photos are added, in today's order, when the table is empty. Uploads use the existing `product-images` bucket; storage is unchanged. A commented Reverse block is at the end. | Apply any time, before or after the frontend. No seed change. The frontend deployed before it doesn't read the table. The new frontend works before and after: without it the home page shows the photos bundled with it (the request answers 404 / `PGRST205`) and Admin → Homepage shows those photos read-only with a note that editing needs the update; the rails work either way. |
+| `20261012100000_document_storage_lock.sql` | AW-197, AW-347: drops `application_documents_owner_update`, so no account (pending, approved or suspended) can overwrite or rename a stored licence or resale file, and admins never could; uploads still add new files at `{user id}/{type}/{upload time}-{file}` (renewals included) and the `profile_documents` row upsert keeps the replaced path in `profile_document_history`. The `application-documents` bucket's `allowed_mime_types` becomes PDF, JPEG and PNG (no HEIC/HEIF). Deleting, reading, the layout and the upload cap are unchanged. A commented Reverse block is at the end. | Apply any time, before or after the frontend. No seed change. The new frontend uploads with upsert off and never updates an object, so it works before and after. A frontend built before it uploads with upsert on to a new path each time, which needs only the insert policy, so it keeps working too. HEIC files already stored keep their type and still open; an upload of a new one is refused. |
 
 ### Later steps
 

@@ -3,7 +3,7 @@
 // the document history, and a refusal by the database names the upload limit.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mock = vi.hoisted(() => ({ existing: null, uploadError: null, rowError: null, removeError: null, signError: null, calls: [], uploadErrors: {} }));
+const mock = vi.hoisted(() => ({ existing: null, uploadError: null, rowError: null, removeError: null, signError: null, calls: [], uploadErrors: {}, uploadQueue: [] }));
 
 vi.mock('./supabase.js', () => {
   const table = () => {
@@ -19,6 +19,8 @@ vi.mock('./supabase.js', () => {
     upload: async (path, body, options) => {
       mock.calls.push(['upload', path, options, body]);
       const type = path.split('/')[1];
+      // uploadQueue: one answer per upload, in order, before the defaults.
+      if (mock.uploadQueue.length) return { error: mock.uploadQueue.shift() };
       return { error: mock.uploadErrors[type] || mock.uploadError };
     },
     remove: async (paths) => { mock.calls.push(['remove', paths]); return { data: null, error: mock.removeError }; },
@@ -37,8 +39,8 @@ vi.mock('./supabase.js', () => {
 const {
   DOCUMENT_ACCEPT, DOCUMENT_CONTENT_MESSAGE, DOCUMENTS_REFUSED_MESSAGE, DOCUMENT_UPLOAD_FAILED_MESSAGE, FILE_MISSING_MESSAGE,
   FILE_TOO_LARGE_MESSAGE, FILE_TYPE_MESSAGE, MAX_DOCUMENT_BYTES, checkDocumentFile, createDocumentViewUrl, documentErrorMessage,
-  isDocumentPermissionError, openDocument, shortFileName, sniffDocumentType, uploadProfileDocument, uploadSelectedProof,
-  validateDocumentFile,
+  isDocumentPermissionError, isDuplicateObjectError, openDocument, shortFileName, sniffDocumentType, uploadProfileDocument,
+  uploadSelectedProof, validateDocumentFile,
 } = await import('./documents.js');
 const { OFFLINE_MESSAGE, slowMessage, unavailableMessage } = await import('./errors.js');
 
@@ -55,7 +57,7 @@ const fileOf = (name, head, type = '', size = 2000) => new File([new Uint8Array(
 const file = (name) => fileOf(name, HEADERS.pdf, 'application/pdf');
 
 beforeEach(() => {
-  Object.assign(mock, { existing: null, uploadError: null, rowError: null, removeError: null, signError: null, calls: [], uploadErrors: {} });
+  Object.assign(mock, { existing: null, uploadError: null, rowError: null, removeError: null, signError: null, calls: [], uploadErrors: {}, uploadQueue: [] });
 });
 
 describe('uploadProfileDocument', () => {
@@ -70,6 +72,53 @@ describe('uploadProfileDocument', () => {
       ['upsert', expect.objectContaining({ profile_id: 'u1', document_type: 'tobacco_license', storage_path: path })],
     ]);
     vi.restoreAllMocks();
+  });
+
+  it('never overwrites a stored file: the upload goes with upsert off (AW-197)', async () => {
+    await uploadProfileDocument(SESSION, 'tobacco_license', file('license.pdf'));
+    await uploadProfileDocument(SESSION, 'resale_certificate', fileOf('resale.png', HEADERS.png, 'image/png'));
+    const uploads = mock.calls.filter(([kind]) => kind === 'upload');
+    expect(uploads).toHaveLength(2);
+    for (const [, , options] of uploads) expect(options.upsert).toBe(false);
+  });
+
+  it('tries once more under a new name when the name is taken, and files the second path', async () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(1700000000000);
+    mock.uploadQueue = [{ statusCode: '409', error: 'Duplicate', message: 'The resource already exists', status: 400 }, null];
+    const saved = await uploadProfileDocument(SESSION, 'tobacco_license', file('license.pdf'));
+    const uploads = mock.calls.filter(([kind]) => kind === 'upload').map(([, path, options]) => [path, options.upsert]);
+    // Date.now() hasn't moved, so the second name is a millisecond later.
+    expect(uploads).toEqual([
+      ['u1/tobacco_license/1700000000000-license.pdf', false],
+      ['u1/tobacco_license/1700000000001-license.pdf', false],
+    ]);
+    expect(saved.storage_path).toBe('u1/tobacco_license/1700000000001-license.pdf');
+    expect(mock.calls.at(-1)).toEqual(['upsert', expect.objectContaining({ storage_path: 'u1/tobacco_license/1700000000001-license.pdf' }), { onConflict: 'profile_id,document_type' }]);
+    now.mockRestore();
+  });
+
+  it('retries a taken name only once, and never retries any other refusal', async () => {
+    const taken = { statusCode: '409', error: 'Duplicate', message: 'The resource already exists', status: 409 };
+    mock.uploadQueue = [taken, taken];
+    const err = await uploadProfileDocument(SESSION, 'tobacco_license', file('license.pdf')).catch((e) => e);
+    expect(err).toBe(taken);
+    expect(mock.calls.filter(([kind]) => kind === 'upload')).toHaveLength(2);
+    expect(mock.calls.some(([kind]) => kind === 'upsert')).toBe(false);
+    expect(documentErrorMessage(err)).toBe(DOCUMENT_UPLOAD_FAILED_MESSAGE);
+
+    mock.calls = [];
+    mock.uploadQueue = [{ statusCode: '403', error: 'Unauthorized', message: 'new row violates row-level security policy', status: 400 }];
+    await uploadProfileDocument(SESSION, 'tobacco_license', file('license.pdf')).catch(() => {});
+    expect(mock.calls.filter(([kind]) => kind === 'upload')).toHaveLength(1);
+  });
+
+  it('knows Storage’s taken-name answer', () => {
+    expect(isDuplicateObjectError({ statusCode: '409', error: 'Duplicate', message: 'The resource already exists' })).toBe(true);
+    expect(isDuplicateObjectError({ status: 409, message: 'x' })).toBe(true);
+    expect(isDuplicateObjectError({ status: 400, code: 'KeyAlreadyExists', message: 'x' })).toBe(true);
+    expect(isDuplicateObjectError({ statusCode: '403', message: 'new row violates row-level security policy' })).toBe(false);
+    expect(isDuplicateObjectError({ statusCode: '413', message: 'Payload too large' })).toBe(false);
+    expect(isDuplicateObjectError(null)).toBe(false);
   });
 
   it('refuses a disguised file before anything reaches storage (AW-347)', async () => {
@@ -100,13 +149,41 @@ describe('checking a file by its content (AW-347)', () => {
     expect(await sniffDocumentType(fileOf('a.jpg', HEADERS.jpeg))).toBe('jpeg');
     expect(await sniffDocumentType(fileOf('a.png', HEADERS.png))).toBe('png');
     expect(await sniffDocumentType(fileOf('a.pdf', HEADERS.html))).toBeNull();
-    // A PDF reader takes the header anywhere in the first 1024 bytes.
-    const junk = new Array(1000).fill(0x20);
-    expect(await sniffDocumentType(fileOf('late.pdf', [...junk, ...HEADERS.pdf]))).toBe('pdf');
+    // Only whitespace may come before '%PDF-', within the 1024 bytes read.
+    const blank = new Array(1000).fill(0x20);
+    expect(await sniffDocumentType(fileOf('late.pdf', [...blank, ...HEADERS.pdf]))).toBe('pdf');
     expect(await sniffDocumentType(fileOf('too-late.pdf', [...new Array(1024).fill(0x20), ...HEADERS.pdf]))).toBeNull();
     // Nothing to read.
     expect(await sniffDocumentType(null)).toBeNull();
     expect(await sniffDocumentType({ name: 'a.pdf', type: 'application/pdf', size: 10 })).toBeNull();
+  });
+
+  it('takes a PDF only when %PDF- starts it, after at most a byte order mark and whitespace', async () => {
+    const bytes = (text) => [...text].map((c) => c.charCodeAt(0));
+    // The marker at byte 0.
+    expect(await sniffDocumentType(fileOf('a.pdf', HEADERS.pdf))).toBe('pdf');
+    expect(await checkDocumentFile(fileOf('a.pdf', HEADERS.pdf, 'application/pdf'))).toBeNull();
+    // A UTF-8 byte order mark, then whitespace, then the marker.
+    const bom = [0xef, 0xbb, 0xbf];
+    expect(await sniffDocumentType(fileOf('bom.pdf', [...bom, ...HEADERS.pdf]))).toBe('pdf');
+    expect(await sniffDocumentType(fileOf('bom-space.pdf', [...bom, ...bytes(' \r\n\t\f'), ...HEADERS.pdf]))).toBe('pdf');
+    expect(await checkDocumentFile(fileOf('bom.pdf', [...bom, ...HEADERS.pdf], ''))).toBeNull();
+    // A web page with the marker at byte 200: readers might open it, it isn't taken.
+    const page = bytes('<!doctype html><html><body><script>alert(1)</script>').concat(new Array(200).fill(0x20)).slice(0, 200);
+    expect(page).toHaveLength(200);
+    const html = fileOf('license.pdf', [...page, ...HEADERS.pdf], 'application/pdf');
+    expect(await sniffDocumentType(html)).toBeNull();
+    expect(await checkDocumentFile(html)).toBe(DOCUMENT_CONTENT_MESSAGE);
+    const err = await uploadProfileDocument(SESSION, 'tobacco_license', html).catch((e) => e);
+    expect(err).toMatchObject({ code: 'invalid_file', message: DOCUMENT_CONTENT_MESSAGE });
+    expect(mock.calls).toEqual([]);
+    // Anything else in front, even one byte, or a BOM that isn't at byte 0.
+    expect(await sniffDocumentType(fileOf('x.pdf', [0x00, ...HEADERS.pdf]))).toBeNull();
+    expect(await sniffDocumentType(fileOf('x.pdf', [...bytes('x'), ...HEADERS.pdf]))).toBeNull();
+    expect(await sniffDocumentType(fileOf('x.pdf', [0x20, ...bom, ...HEADERS.pdf]))).toBeNull();
+    expect(await sniffDocumentType(fileOf('x.pdf', [...bom, ...bom, ...HEADERS.pdf]))).toBeNull();
+    // Half a marker isn't one.
+    expect(await sniffDocumentType(fileOf('x.pdf', bytes('%PDF'), '', 4))).toBeNull();
   });
 
   it('falls back to FileReader where a Blob has no arrayBuffer() (Safari before 14)', async () => {

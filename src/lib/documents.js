@@ -6,7 +6,9 @@
 // (20261008193000) still points at a file when a license is renewed (AW-197,
 // AW-254). Since 20261009140000 the storage and profile_documents policies
 // require exactly that layout and accept at most 10 uploads per account in
-// 24 hours (AW-207).
+// 24 hours (AW-207). Uploads never overwrite (upsert off): since
+// 20261012100000 no account may change a stored object, so the file staff
+// approved stays the one they saw (AW-197).
 
 import { supabase } from './supabase.js';
 import { OFFLINE_MESSAGE, isNetworkError, slowMessage, unavailableMessage } from './errors.js';
@@ -19,10 +21,11 @@ export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 // PDF, JPG or PNG only (AW-347). HEIC/HEIF is no longer offered: Chrome and
 // Firefox can't show it to staff (the admin's View link downloaded an
 // unreadable file), and iPhone Safari converts a photo to JPEG when the
-// picker doesn't list HEIC. The bucket's allowed_mime_types still has
-// image/heic and image/heif (20260927180000, no migration), so files sent
-// before this still open. With no HEIC there is no HEIC-sequence content
-// type to map either, which makes AW-251 moot.
+// picker doesn't list HEIC. 20261012100000 takes image/heic and image/heif
+// off the bucket's allowed_mime_types too. That list gates new uploads only,
+// so HEIC files sent before this keep their type and still open. With no
+// HEIC there is no HEIC-sequence content type to map either, which makes
+// AW-251 moot.
 export const DOCUMENT_ACCEPT = '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png';
 
 export const DOCUMENT_TYPES = [
@@ -123,10 +126,11 @@ export function validateDocumentFile(file) {
   return null;
 }
 
-// How many bytes from the start of a file sniffDocumentType() reads. A PDF
-// reader accepts '%PDF-' anywhere in the first 1024.
+// How many bytes from the start of a file sniffDocumentType() reads.
 const SNIFF_BYTES = 1024;
 const PDF_MARKER = [0x25, 0x50, 0x44, 0x46, 0x2d]; // %PDF-
+const UTF8_BOM = [0xef, 0xbb, 0xbf];
+const ASCII_WHITESPACE = new Set([0x09, 0x0a, 0x0c, 0x0d, 0x20]); // tab, LF, FF, CR, space
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
 async function readHead(file) {
@@ -142,11 +146,15 @@ async function readHead(file) {
 }
 
 const matchesAt = (bytes, signature, at = 0) => signature.every((byte, i) => bytes[at + i] === byte);
-function contains(bytes, marker) {
-  for (let at = 0; at + marker.length <= bytes.length; at++) {
-    if (matchesAt(bytes, marker, at)) return true;
-  }
-  return false;
+
+// A PDF starts with '%PDF-' (AW-347). Only a UTF-8 byte order mark and ASCII
+// whitespace may come before it, within the bytes read. PDF readers forgive
+// other bytes in front, but a file that starts with anything else, such as a
+// web page with the marker further down, isn't taken as a PDF.
+function startsAsPdf(bytes) {
+  let at = matchesAt(bytes, UTF8_BOM) ? UTF8_BOM.length : 0;
+  while (at < bytes.length && ASCII_WHITESPACE.has(bytes[at])) at++;
+  return matchesAt(bytes, PDF_MARKER, at);
 }
 
 // What a file's first bytes say it is (AW-347): 'pdf', 'jpeg', 'png', or
@@ -163,7 +171,7 @@ export async function sniffDocumentType(file) {
   }
   if (matchesAt(bytes, [0xff, 0xd8, 0xff])) return 'jpeg';
   if (matchesAt(bytes, PNG_SIGNATURE)) return 'png';
-  if (contains(bytes, PDF_MARKER)) return 'pdf';
+  if (startsAsPdf(bytes)) return 'pdf';
   return null;
 }
 
@@ -254,6 +262,18 @@ export async function listAllProfileDocuments() {
   return data || [];
 }
 
+// Storage's answer when an object name is taken: statusCode '409' (error
+// 'Duplicate', 'The resource already exists'), inside an HTTP 400 or 409.
+export function isDuplicateObjectError(err) {
+  if (!err) return false;
+  const codes = [err.statusCode, err.status, err.code, err.error].map((v) => String(v ?? ''));
+  return codes.includes('409')
+    || codes.some((code) => /^(duplicate|keyalreadyexists|23505)$/i.test(code))
+    || /already exists/i.test(String(err.message || ''));
+}
+
+const documentPath = (userId, documentType, file, time) => `${userId}/${documentType}/${time}-${safeFilename(file.name)}`;
+
 // No-ops when there is no session, so a signup that still needs email
 // confirmation never calls storage. The caller can retry once a session exists.
 export async function uploadProfileDocument(session, documentType, file) {
@@ -267,7 +287,8 @@ export async function uploadProfileDocument(session, documentType, file) {
 
   const userId = session.user.id;
   // A new object name keeps the previous file in the bucket when a license is renewed.
-  const path = `${userId}/${documentType}/${Date.now()}-${safeFilename(file.name)}`;
+  let time = Date.now();
+  let path = documentPath(userId, documentType, file, time);
 
   const { error: existingError } = await supabase
     .from('profile_documents')
@@ -278,9 +299,18 @@ export async function uploadProfileDocument(session, documentType, file) {
   if (existingError) throw existingError;
 
   const contentType = contentTypeFor(file, type);
-  const { error: uploadError } = await supabase.storage
-    .from(DOCUMENT_BUCKET)
-    .upload(path, uploadBody(file, contentType), { upsert: true, contentType });
+  const body = uploadBody(file, contentType);
+  // Upsert off (AW-197): an upload only ever adds an object. Overwriting
+  // needs an UPDATE policy, which 20261012100000 removes; adding works on the
+  // database before and after it. If the name is already taken (two uploads
+  // in the same millisecond), try once more under a new one.
+  const send = () => supabase.storage.from(DOCUMENT_BUCKET).upload(path, body, { upsert: false, contentType });
+  let { error: uploadError } = await send();
+  if (uploadError && isDuplicateObjectError(uploadError)) {
+    time = Math.max(Date.now(), time + 1);
+    path = documentPath(userId, documentType, file, time);
+    ({ error: uploadError } = await send());
+  }
   if (uploadError) throw uploadError;
 
   const uploaded_at = new Date().toISOString();
