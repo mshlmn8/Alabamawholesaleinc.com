@@ -321,16 +321,108 @@ test.describe('after age confirmation', () => {
     });
   });
 
-  test('header search lists matching products as links', async ({ page }) => {
+  test('header search lists matching products as options that are links (AW-171)', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/');
     const title = await page.title();
-    await page.getByRole('searchbox', { name: 'Search products' }).fill('wraps');
-    await expect(page.getByRole('status').filter({ hasText: /result/ })).toBeVisible();
-    await expect(page.locator('.aw-search-list a[href^="/product/"]').first()).toBeVisible();
+    const box = page.getByRole('combobox', { name: 'Search products' });
+    await box.fill('wraps');
+    await expect(box).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('.aw-search-heading p')).toHaveText(/result/);
+    // The count is announced by the one status element, once typing pauses.
+    await expect(page.locator('.aw-search [role="status"]')).toHaveText(/result/);
+    const option = page.getByRole('listbox', { name: 'Products' }).getByRole('option').first();
+    await expect(option).toBeVisible();
+    await expect(option).toHaveAttribute('href', /^\/product\/\d+$/);
     // The dropdown is not a page: the tab title stays (AW-338).
     await expect(page).toHaveTitle(title);
     expect(errors).toEqual([]);
+  });
+
+  test('ArrowDown and Enter in the header search open the highlighted product (AW-171)', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/');
+    const box = page.getByRole('combobox', { name: 'Search products' });
+    await box.fill('geek bar');
+    await expect(page.getByRole('listbox', { name: 'Products' })).toBeVisible();
+    await box.press('ArrowDown');
+    const first = page.getByRole('option').first();
+    await expect(first).toHaveAttribute('aria-selected', 'true');
+    await expect(box).toHaveAttribute('aria-activedescendant', (await first.getAttribute('id')) ?? 'missing');
+    await expect(box).toBeFocused();
+    await box.press('Enter');
+    await expect(page).toHaveURL(/\/product\/\d+$/);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^Geek Bar/);
+    await expect(box).toHaveValue('');
+    await expect(box).toHaveAttribute('aria-expanded', 'false');
+    expect(errors).toEqual([]);
+  });
+
+  test('Tab past the header search closes its list, so it hides no focused control (AW-165)', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'phone', 'the navigation row is desktop only');
+    const errors = trackErrors(page);
+    await page.goto('/');
+    const box = page.getByRole('combobox', { name: 'Search products' });
+    await box.fill('bic');
+    const list = page.getByRole('listbox', { name: 'Products' });
+    await expect(list).toBeVisible();
+    // The options are not Tab stops: Tab goes to the Search button, then on.
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'Search', exact: true })).toBeFocused();
+    await expect(list).toBeVisible();
+    await page.keyboard.press('Tab');
+    await expect(list).toHaveCount(0);
+    const newArrivals = page.getByRole('link', { name: 'New Arrivals', exact: true });
+    for (let i = 0; i < 8 && !(await newArrivals.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('Tab');
+    await expect(newArrivals).toBeFocused();
+    const uncovered = await newArrivals.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return [[0.5, 0.5], [0.1, 0.2], [0.9, 0.8]].every(([x, y]) => el.contains(document.elementFromPoint(r.left + r.width * x, r.top + r.height * y)));
+    });
+    expect(uncovered).toBe(true);
+    expect(errors).toEqual([]);
+  });
+
+  test('Tab out of the Categories menu closes it (AW-165)', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'phone', 'the Categories menu is desktop only');
+    const errors = trackErrors(page);
+    await page.goto('/');
+    const toggle = page.getByRole('button', { name: 'Categories', exact: true });
+    await expect(toggle).not.toHaveAttribute('aria-controls');
+    await toggle.click();
+    const menu = page.locator('#aw-mega-menu');
+    await expect(menu).toBeVisible();
+    await expect(toggle).toHaveAttribute('aria-controls', 'aw-mega-menu');
+    // Departments are groups, not eight more navigation landmarks.
+    await expect(menu.getByRole('group', { name: 'Tobacco' })).toBeVisible();
+    await expect(menu.getByRole('navigation')).toHaveCount(0);
+    await page.keyboard.press('Tab');
+    await expect(menu).toBeVisible();
+    await menu.getByRole('link', { name: 'View full catalog' }).focus();
+    await page.keyboard.press('Tab');
+    await expect(menu).toHaveCount(0);
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.getByRole('link', { name: 'New Arrivals', exact: true })).toBeFocused();
+    expect(errors).toEqual([]);
+  });
+
+  test.describe('on a phone in landscape', () => {
+    test.use({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
+
+    test('the header search list ends on screen once focus has moved the bar to the top (AW-307)', async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name === 'phone', 'the same landscape screen in both projects');
+      const errors = trackErrors(page);
+      await page.goto('/');
+      const box = page.getByRole('combobox', { name: 'Search products' });
+      await box.tap();
+      await expect.poll(() => box.evaluate((el) => Math.round(el.closest('form').getBoundingClientRect().top))).toBeLessThanOrEqual(40);
+      await box.fill('gum');
+      const panel = page.locator('.aw-search-results');
+      await expect(panel).toBeVisible();
+      const { bottom, height } = await panel.evaluate((el) => ({ bottom: el.getBoundingClientRect().bottom, height: window.innerHeight }));
+      expect(bottom).toBeLessThanOrEqual(height);
+      expect(errors).toEqual([]);
+    });
   });
 
   test('/search?q= lists every match as product cards, noindex, also after a reload (AW-007)', async ({ page }) => {
@@ -351,7 +443,7 @@ test.describe('after age confirmation', () => {
     const errors = trackErrors(page);
     await page.goto('/');
     // exact: the results page has its own 'Search products, brands or SKUs' box.
-    const box = page.getByRole('searchbox', { name: 'Search products', exact: true });
+    const box = page.getByRole('combobox', { name: 'Search products', exact: true });
     await box.fill('cigar');
     await box.press('Enter');
     await expect(page).toHaveURL((url) => url.pathname === '/search' && url.searchParams.get('q') === 'cigar');

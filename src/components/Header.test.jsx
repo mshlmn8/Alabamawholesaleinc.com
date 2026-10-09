@@ -1,6 +1,8 @@
 // Header search (AW-007, AW-063, AW-064): the best 8 matches with the total,
-// a link to every result, and Enter opening /search?q= with the text kept.
-// The combobox rewrite (AW-171) keeps these behaviours.
+// a link to every result, and Enter opening /search?q= with the text kept,
+// through the combobox (AW-171; its keys and focus rules are in
+// HeaderSearch.test.jsx). And the Categories menu, which closes when focus
+// leaves it (AW-165).
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PRODUCTS } from '../data/products.js';
@@ -15,10 +17,11 @@ const renderHeader = () => render(
   <Header cartCount={0} onCart={noop} products={PRODUCTS} departments={departments} user={null} isAdmin={false}
           onLoginClick={noop} onSignupClick={noop} onLogout={noop} onHelp={noop} />,
 );
-const box = () => screen.getByRole('searchbox', { name: 'Search products' });
+const box = () => screen.getByRole('combobox', { name: 'Search products' });
 const type = (text) => fireEvent.change(box(), { target: { value: text } });
-const status = () => document.querySelector('.aw-search-heading [role="status"]')?.textContent ?? null;
-const listed = () => [...document.querySelectorAll('.aw-search-list a[href^="/product/"]')];
+// The panel heading (plain text; the count is announced by a separate status).
+const status = () => document.querySelector('.aw-search-heading p')?.textContent ?? null;
+const listed = () => [...document.querySelectorAll('.aw-search-list [role="option"][href^="/product/"]')];
 
 beforeEach(() => {
   vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
@@ -38,7 +41,7 @@ describe('Header search', () => {
     expect(total).toBeGreaterThan(8);
     expect(status()).toBe(`Showing 8 of ${total} results`);
     expect(listed()).toHaveLength(8);
-    const all = screen.getByRole('link', { name: `See all ${total} results for “cigar”` });
+    const all = screen.getByRole('option', { name: `See all ${total} results for “cigar”` });
     expect(all.getAttribute('href')).toBe('/search?q=cigar');
   });
 
@@ -46,16 +49,16 @@ describe('Header search', () => {
     renderHeader();
     type('red bull');
     expect(status()).toBe('4 results');
-    expect(screen.getByRole('link', { name: 'See all 4 results for “red bull”' })).toBeTruthy();
+    expect(screen.getByRole('option', { name: 'See all 4 results for “red bull”' })).toBeTruthy();
     type('red bull marlboro');
     expect(status()).toBe('No exact matches — related products');
     type('marlboro');
     expect(status()).toBe('No matches');
     expect(listed()).toHaveLength(0);
-    expect(screen.queryByRole('link', { name: /^See / })).toBeNull();
+    expect(screen.queryByRole('option', { name: /^See / })).toBeNull();
   });
 
-  it('opens /search on Enter and keeps the text; a short query says it is too short', () => {
+  it('opens /search on Enter and keeps the query; a short query says it is too short', () => {
     renderHeader();
     type('c');
     expect(status()).toBeNull();
@@ -65,7 +68,8 @@ describe('Header search', () => {
     type(' cigar ');
     fireEvent.submit(box().closest('form'));
     expect(window.location.pathname + window.location.search).toBe('/search?q=cigar');
-    expect(box().value).toBe(' cigar ');
+    // The box shows the results page's query.
+    expect(box().value).toBe('cigar');
     expect(status()).toBeNull();
   });
 
@@ -74,5 +78,62 @@ describe('Header search', () => {
     renderHeader();
     type('wraps');
     expect(document.title).toBe('Home title');
+  });
+});
+
+describe('Categories menu (AW-165)', () => {
+  const toggle = () => screen.getByRole('button', { name: 'Categories', exact: true });
+  const menu = () => document.getElementById('aw-mega-menu');
+
+  it('points aria-controls at the menu only while it is open', () => {
+    renderHeader();
+    expect(toggle().hasAttribute('aria-controls')).toBe(false);
+    fireEvent.click(toggle());
+    expect(toggle().getAttribute('aria-controls')).toBe('aw-mega-menu');
+    expect(menu()).toBeTruthy();
+  });
+
+  it('labels each department as a group, not a navigation landmark, and counts products', () => {
+    renderHeader();
+    fireEvent.click(toggle());
+    expect(menu().querySelectorAll('nav')).toHaveLength(0);
+    const groups = screen.getAllByRole('group');
+    expect(groups.map((g) => document.getElementById(g.getAttribute('aria-labelledby')).textContent))
+      .toEqual(departments.map((d) => d.label));
+    expect(screen.getByRole('group', { name: departments[0].label })).toBeTruthy();
+    expect(menu().querySelector('.aw-menu-footer span').textContent).toBe(`${departments.length} departments · ${PRODUCTS.length} products`);
+  });
+
+  it('closes when Tab moves focus past its last link, and stays open while focus is inside', () => {
+    renderHeader();
+    fireEvent.click(toggle());
+    const links = [...menu().querySelectorAll('a')];
+    fireEvent.blur(toggle(), { relatedTarget: menu().querySelector('button') });
+    fireEvent.blur(links[0], { relatedTarget: links[1] });
+    expect(menu()).toBeTruthy();
+    // Safari clicking a link: no relatedTarget, the click handles it.
+    fireEvent.blur(links[1], { relatedTarget: null });
+    expect(menu()).toBeTruthy();
+    // Shift+Tab from the first control back onto the toggle.
+    fireEvent.blur(menu().querySelector('button'), { relatedTarget: toggle() });
+    expect(menu()).toBeTruthy();
+    fireEvent.blur(links.at(-1), { relatedTarget: screen.getByRole('link', { name: 'New Arrivals' }) });
+    expect(menu()).toBeNull();
+    expect(toggle().getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('closes when focus leaves the toggle for another control', () => {
+    renderHeader();
+    fireEvent.click(toggle());
+    fireEvent.blur(toggle(), { relatedTarget: screen.getByRole('combobox', { name: 'Search products' }) });
+    expect(menu()).toBeNull();
+  });
+
+  it('closes when the search list opens', () => {
+    renderHeader();
+    fireEvent.click(toggle());
+    type('wraps');
+    expect(menu()).toBeNull();
+    expect(screen.getByRole('listbox')).toBeTruthy();
   });
 });

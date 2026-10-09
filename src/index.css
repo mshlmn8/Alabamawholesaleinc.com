@@ -144,7 +144,7 @@ a { color: inherit; text-decoration: none; }
 /* Keyboard focus: one ring everywhere, lighter on purple surfaces. */
 :focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
 :focus:not(:focus-visible) { outline: none; }
-input[type="search"]:focus-visible, .aw-search input:focus-visible { outline-offset: -3px; }
+input[type="search"]:focus-visible { outline-offset: -3px; }
 .trade-bar, .footer-main, .age-gate, .fda-note { --focus-ring: var(--focus-on-dark); }
 .button:focus-visible, .filter-toggle:focus-visible, .aw-category-toggle:focus-visible, .active-filters button:focus-visible, .sub-pill.active:focus-visible { outline-color: var(--purple); }
 /* On purple surfaces (age gate, contact strip) a white ring (PR #12). */
@@ -190,10 +190,15 @@ input[type="search"]:focus-visible, .aw-search input:focus-visible { outline-off
 .aw-logo { flex: 0 0 auto; padding: 0; line-height: 0; display: block; background: none; border: 0; text-align: left; }
 .aw-logo img { display: block; height: 72px; width: auto; max-width: 96px; object-fit: contain; }
 /* The header search box takes the field border, fill, corner and text size
-   (AW-146, AW-172); it stays 48px tall as the site's main search. */
-.aw-search { position: relative; flex: 1; display: flex; min-height: 48px; min-width: 0; border: 1px solid var(--field-border); background: var(--field-bg); border-radius: var(--field-radius); }
-.aw-search:focus-within { border-color: var(--purple); }
+   (AW-146, AW-172); it stays 48px tall as the site's main search. Focus draws
+   one ring around the box and its button together; the button adds an inset
+   ring of its own when it has focus (AW-222). On phones focusing the box
+   scrolls it to the top of the screen, this far below the edge (AW-307). */
+.aw-search { position: relative; flex: 1; display: flex; min-height: 48px; min-width: 0; border: 1px solid var(--field-border); background: var(--field-bg); border-radius: var(--field-radius); scroll-margin-top: 8px; }
+.aw-search:focus-within { border-color: var(--purple); outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .aw-search input { flex: 1; width: 0; min-width: 0; padding: 0 17px; border: 0; background: transparent; color: var(--ink); font-size: var(--field-font); }
+.aw-search input:focus-visible { outline: none; }
+.aw-search > button:focus-visible { outline-offset: -6px; }
 .aw-search input::placeholder { font-size: var(--text-sm); }
 .aw-search > button { flex: 0 0 52px; display: grid; place-items: center; border: 0; border-left: 1px solid var(--field-border); border-radius: 0 2px 2px 0; color: var(--purple); background: var(--paper); font-size: 1.25rem; }
 .aw-search > button:hover { background: var(--line); }
@@ -256,6 +261,9 @@ input[type="search"]:focus-visible, .aw-search input:focus-visible { outline-off
 @media (hover: hover) {
   .aw-search-list > a:hover { background: var(--paper); }
 }
+/* The option the arrow keys (or the pointer) reached: focus stays in the box
+   (aria-activedescendant, AW-171), so the option draws the focus ring. */
+.aw-search-list > a[aria-selected="true"] { background: var(--paper); outline: 3px solid var(--focus-ring); outline-offset: -3px; }
 .aw-search-list strong { display: block; color: var(--purple); }
 .aw-search-list small { display: block; font-size: var(--text-xs); color: var(--muted); margin-top: 3px; }
 .aw-search-list > p { font-size: var(--text-base); margin: 14px 0 7px; color: var(--muted); }
@@ -802,9 +810,10 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   :root { --field-font: 1rem; --field-h-compact: var(--field-h); }
   .aw-search { order: 3; flex-basis: 100%; min-height: 48px; }
   .aw-search input { padding-inline: 14px; }
+  .aw-search > button:focus-visible { outline-color: var(--focus-on-dark); }
   .aw-search > button { flex-basis: 54px; background: var(--purple); color: #fff; border-left: 0; }
   .aw-search > button:hover { background: var(--purple-hover); }
-  .aw-search-results { top: calc(100% + 6px); }
+  .aw-search-results { top: calc(100% + 6px); max-height: calc(100dvh - 6.5rem); } /* ends on screen once focus has scrolled the bar to the top: scroll-padding 24px + scroll-margin 8px + the 48px bar (AW-307) */
   .home-carousel-stage { height: 320px; }
   .apply-panel { grid-template-columns: 1fr; gap: 18px; }
   .editorial-card h2 { font-size: var(--h2-sm); }
