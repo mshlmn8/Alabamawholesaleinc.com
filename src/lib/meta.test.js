@@ -73,6 +73,7 @@ describe('pageMeta', () => {
     expect(title({ section: 'products', query: { q: 'swisher' } })).toBe('Products · Admin · Alabama Wholesale Inc');
     expect(title({ section: 'products', id: 'new' })).toBe('New product · Admin · Alabama Wholesale Inc');
     expect(title({ section: 'products', id: 12 })).toBe('Edit product · Admin · Alabama Wholesale Inc');
+    expect(title({ section: 'pricing' })).toBe('Pricing · Admin · Alabama Wholesale Inc');
     expect(pageMeta({ page: 'admin', section: 'products', id: 12 }, products, departments)).toMatchObject({ noindex: true, path: null });
   });
 

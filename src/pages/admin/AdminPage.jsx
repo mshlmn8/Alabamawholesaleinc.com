@@ -5,7 +5,8 @@
 // and re-exports the sections' helpers.
 //
 // Each section has its own URL (AW-118, src/lib/adminRoutes.js): /admin
-// (Orders), /admin/orders?status=…, /admin/accounts, /admin/products?q=….
+// (Orders), /admin/orders?status=…, /admin/accounts, /admin/products?q=…,
+// /admin/pricing (the tier discounts, AW-114).
 // Every admin URL is the same page to the router (pageKey 'admin'), so moving
 // between sections and filters keeps the scroll position and focus, and Back
 // returns to the previous section. A detail view (the product editor,
@@ -20,6 +21,7 @@ import { AccountLoading, AccountProblem } from '../../components/AccountStatus.j
 import { OrdersTab } from './OrdersSection.jsx';
 import { AccountsTab } from './AccountsSection.jsx';
 import { ProductsTab } from './ProductsSection.jsx';
+import { PricingTab } from './PricingSection.jsx';
 import { AdminStatus, useAdminStatus } from './AdminStatus.jsx';
 
 export {
@@ -33,6 +35,7 @@ const SECTIONS = [
   { id: 'orders', label: 'Orders' },
   { id: 'accounts', label: 'Accounts' },
   { id: 'products', label: 'Products' },
+  { id: 'pricing', label: 'Pricing' },
 ];
 const NO_QUERY = Object.freeze({});
 
@@ -117,7 +120,7 @@ export function AdminPage({
         <Breadcrumbs items={[HOME_CRUMB, { label: 'Admin' }]} />
         <p className="eyebrow">TRADE DESK</p>
         <h1>Admin</h1>
-        <p>Orders, account approvals, and catalog edits.</p>
+        <p>Orders, account approvals, catalog edits, and pricing tiers.</p>
       </div>
 
       <nav className="sub-pills admin-sections" aria-label="Admin sections">
@@ -142,6 +145,7 @@ export function AdminPage({
         <ProductsTab route={route} query={query} onQuery={setQuery} onCatalogChange={onCatalogChange} notify={status.show}
           returnFocusId={returnFocusId} onReturnFocus={setReturnFocusId} />
       )}
+      {section === 'pricing' && <PricingTab notify={status.show} />}
       <AdminStatus status={status} />
     </section>
   );

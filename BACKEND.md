@@ -42,6 +42,7 @@ supabase/migrations/20261009130000_submit_quote_v3.sql
 supabase/migrations/20261009140000_profile_and_document_boundaries.sql
 supabase/migrations/20261009150000_quote_workflow.sql
 supabase/migrations/20261010120000_admin_product_editor.sql
+supabase/migrations/20261010121000_admin_bulk_products.sql
 supabase/seed/products.sql
 ```
 
@@ -312,6 +313,15 @@ foreign key to `pricing_tiers.tier`, so an account can only be given a tier
 that exists, Admin → Accounts builds its tier options from the table, and
 renaming a tier's key moves its accounts along with it.
 
+**Admin → Pricing** (`/admin/pricing`) changes a tier's label and discount
+(0 to 99.99%, two decimals at most) without SQL; it doesn't add or remove
+tiers or rename their keys. Approved buyers see the new prices on their next
+page load; orders already saved keep their prices. Since
+`20261010121000_admin_bulk_products.sql` the database also refuses a discount
+below 0 or of 100 or more (`pricing_tiers_discount_range`, `NOT VALID`, so
+rows already there are checked only when next changed). If a label names the
+discount ("Silver (5% off)"), change it with the discount.
+
 ### Loading your list prices
 
 <!-- TODO(owner): What is the real wholesale list price of each of the 368 SKUs? The prices in the database are placeholders; load the real ones as described below. (AW-002) -->
@@ -331,6 +341,11 @@ of the site. Replace them before launch, in either of two ways:
   ```
 
   and run it in the Supabase SQL editor.
+- **Admin → Products → Import CSV**, for many at once without SQL (after
+  `20261010121000_admin_bulk_products.sql`): **Export CSV**, fill in the
+  `price` column in a spreadsheet, and import the file; the preview lists
+  every change before anything is saved. Keep the file out of the
+  repository, like the SQL file above.
 
 Never put prices in `src/data/products.js`, the seed, a migration or any other
 committed file: everything in the repository ships to, or can be read by,
@@ -479,6 +494,46 @@ variants' axis, "Can't be ordered" and own prices are not offered, and before
 `20261009100000` a blank price can't be saved ("price on request" needs that
 update).
 
+### Bulk changes and CSV (Admin → Products)
+
+The products list filters by status, department, sub-line, tag, stock
+status, "No photo" and "No sell unit", searches the name, brand, SKU,
+department, sub-line and id, sorts by ID, name, brand, price or last change,
+and shows 50 products a page; all of it is in the address
+(`/admin/products?status=inactive&dept=tobacco&page=2`), so a filtered list
+can be bookmarked or shared with staff (AW-115).
+
+Ticking products (or "Select all … filtered") opens the bulk bar (AW-114):
+
+- **Set price**, **Set tag**, **Activate** and **Deactivate** are one update
+  of the chosen products; they work on any version of the database.
+- **Adjust price** raises or lowers the list prices by a percentage or an
+  amount, and by default the variants' own prices, with a preview of old and
+  new prices first. It calls `admin_bulk_adjust_prices()`
+  (`20261010121000_admin_bulk_products.sql`), which rounds to the cent like
+  `tier_unit_price()`, skips products on request, and changes nothing if any
+  new price would fall below 0 or rise above 99,999.99 (hint
+  `price_out_of_range`).
+- **Export CSV** downloads the selection, or every product the filters show:
+  `id, sku, name, brand, cat, sub, sell_unit, price, tag, active`, then
+  `stock_status` and `featured_rank`. The file has list prices in it: treat
+  it like the private SQL files above. Cells that a spreadsheet would run as
+  a formula are written with a leading apostrophe.
+- **Import CSV** reads such a file back, matched on `sku` (any case), and
+  shows each changed product's fields, old and new, before anything is saved.
+  A column the file doesn't have is left alone; an empty `price` cell means
+  "price on request"; `id`, `cat` and `sub` are not imported (change a
+  product's department in its editor). Rows that fail the editor's checks
+  block the import. **SKUs that match no product are listed and not
+  imported: the import never creates products** (use New product). It calls
+  `admin_import_products()`, which saves every row or none (an unknown SKU
+  refuses the whole file, hint `unknown_sku`).
+
+Every change asks first, with the number of products, and the storefront
+reloads its catalog afterwards. Without `20261010121000`, Adjust price and
+Import CSV say they need the October 2026 database update and turn
+themselves off; everything else works.
+
 ## Quotes and orders (`submit_quote`)
 
 The storefront saves a quote (or an approved buyer's order) with one call,
@@ -603,7 +658,10 @@ update is needed.
   `grant select (<column>) on public.products to anon, authenticated;`.
   Since `20261010120000`, a product that an order line refers to can't be
   deleted (hint `product_has_orders`), and admins' inserts take their id from
-  `products_id_seq` (guests have no use of it).
+  `products_id_seq` (guests have no use of it). Since `20261010121000`,
+  `admin_bulk_adjust_prices()` and `admin_import_products()` change many
+  products at once, all or nothing; both check `is_admin()` and can't be
+  called by guests.
 - **product_variant_prices**: admins only (read and write); guests have no
   privileges on it at all. Approved buyers get its prices, at their tier,
   from `my_prices()`.
@@ -618,7 +676,9 @@ update is needed.
 - **quote_throttle**: no access for guests or signed-in accounts (RLS on, no
   policies, privileges revoked); only `submit_quote` uses it.
 - **pricing_tiers**: readable by admins and approved buyers only;
-  admin-writable. `profiles.pricing_tier` must name one of its rows.
+  admin-writable (Admin → Pricing). `profiles.pricing_tier` must name one of
+  its rows. Since `20261010121000` a discount is from 0 up to (not including)
+  100.
 - **profile_documents**: a user reads, inserts and replaces their own rows
   (one tobacco license and one resale certificate), whatever the account's
   status, and a row's `storage_path` must be
@@ -680,6 +740,8 @@ rolling it back.
 13. `20261009150000_quote_workflow.sql`
 14. `20261010120000_admin_product_editor.sql` (Admin → Products; it can be
     applied later on its own)
+15. `20261010121000_admin_bulk_products.sql` (Admin → Products' Adjust price
+    and Import CSV, and the tier discount check; after 14, also on its own)
 
 Then `supabase/seed/products.sql`, then the frontend.
 
@@ -699,6 +761,7 @@ Then `supabase/seed/products.sql`, then the frontend.
 | `20261009140000_profile_and_document_boundaries.sql` | `is_admin()` requires an approved admin; Cursor's self-update guard keeps every column but name, phone and store address in a customer's own update, and refuses an admin's change to their own role or status, the consent or approval records, or a made-up email; `profiles.email` follows the sign-in email (a trigger on `auth.users`, and existing rows are realigned); new table `profile_admin_notes` (internal notes, admins only) and an index for `profile_status_log`; accounts from before `20261008194000` get their metadata answers, store address and consent copied to the profile (`backfill_profiles_from_metadata()`, run once) and the keys stripped; license rows and files must sit at `{user id}/{type}/{file}`, with at most 10 uploads per account in 24 hours. | Apply after `20261009130000`, before the new frontend. Before running it, check with `select id, email, status from public.profiles where role = 'admin';` that every real admin is `approved`: the others lose admin rights. The frontend deployed before it keeps working (its admins must be approved). The new frontend also works before it: the store address and consent stay in auth metadata until this migration moves them, Admin → Accounts shows '—' for the missing columns, and the document paths it uploads already match the layout. Then run `supabase/seed/provision_owner.sql`'s admin list once. |
 | `20261009150000_quote_workflow.sql` | One quote workflow (see "Pricing quotes and converting them"): `kind` is `order` only for an approved account's request, as `submit_quote` returns it (existing unpriced requests become quotes); `quoted_by` is set to null when that admin's profile is deleted; `admin_price_order()` and `admin_convert_quote()` check their input, keep an order's status, need every line priced before converting, and refuse guests (EXECUTE revoked from anon), with typed hints. | Apply after `20261009140000`, before the new frontend. The frontend deployed before it doesn't use these functions. The new frontend also works before it (and before `20261008200000`): Admin → Orders offers the old four statuses and says saving prices and converting need the update. |
 | `20261010120000_admin_product_editor.sql` | The product editor (see "The product editor"): `products.id` defaults to the new `products_id_seq`; a SKU is unique whatever its case (`products_sku_upper_key`, skipped with a notice when duplicates exist); `NOT VALID` checks for a name and a brand and a list price of at most 99,999.99; `products.stock_status` (staff only) and `products.featured_rank` (homepage rank), readable like every column but price; a trigger that refuses to delete a product an order line refers to (hint `product_has_orders`); the public `product-images` bucket that only approved admins write to. | Apply after `20261009150000`, then re-apply the regenerated seed (its last statement moves the id sequence past the seeded ids). The frontend deployed before it doesn't read the new columns. The new frontend works before and after: without it, a new product gets the next free id from the editor, stock status, homepage rank and photo upload say they need the update, Delete checks for order lines in the editor only, and the homepage rails follow the tags without a rank. |
+| `20261010121000_admin_bulk_products.sql` | Bulk product changes and tier discounts (see "Bulk changes and CSV" and "How pricing tiers work"): `admin_bulk_adjust_prices(p_ids, p_pct, p_amount, p_variants)` adjusts up to 1000 products' list prices (and their variants' own prices) by a percentage and/or an amount, rounded like `tier_unit_price()`, skipping prices on request, all or nothing (hints `price_out_of_range`, `invalid_input`); `admin_import_products(p_rows)` updates the products matched by SKU in the CSV columns given (name, brand, sell_unit, description, price, tag, active, stock_status, featured_rank), never creating one, all or nothing (hint `unknown_sku`); both are SECURITY DEFINER, check `is_admin()` (42501, hint `admin_only`) and are revoked from guests; `pricing_tiers_discount_range` (`NOT VALID`) keeps a discount from 0 to under 100. A commented Reverse block is at the end. | Apply after `20261010120000`. No seed change. The frontend deployed before it doesn't call these functions. The new frontend works before and after: without it, Adjust price and Import CSV say they need the update and turn themselves off, while Set price, Set tag, Activate, Deactivate, Export CSV and Admin → Pricing work as they are. |
 
 ### Later steps
 

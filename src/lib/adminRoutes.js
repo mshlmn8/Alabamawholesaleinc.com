@@ -7,6 +7,7 @@
 //   /admin/accounts                     /admin/accounts/:uuid
 //   /admin/products?q=&status=&dept=&sub=&tag=&photo=&unit=&stock=&sort=&dir=&page=
 //   /admin/products/:id                 /admin/products/new?from=:id
+//   /admin/pricing                      the pricing tiers (AW-114)
 //
 // Only filters that name no person go in the query: statuses, dates, the
 // delivery method, ids and product filters. Free-text order and account
@@ -14,7 +15,7 @@
 // value is checked here; unknown keys and bad values are dropped, never
 // echoed.
 
-export const ADMIN_SECTIONS = ['orders', 'accounts', 'products'];
+export const ADMIN_SECTIONS = ['orders', 'accounts', 'products', 'pricing'];
 
 // The order statuses. The quote workflow (AW-024; Cursor's
 // 20261008200000) adds quoted ... out_for_delivery; a database without it
@@ -86,6 +87,7 @@ const QUERY = {
     page: { read: positiveInt, fallback: 1 },
     from: { read: positiveInt },
   },
+  pricing: {},
 };
 
 const searchParams = (search) => {

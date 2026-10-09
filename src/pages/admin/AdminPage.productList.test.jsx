@@ -51,7 +51,9 @@ const renderAdmin = async (path = '/admin/products') => {
   await act(async () => { render(<RoutedAdmin profile={ADMIN} account="ready" onCatalogChange={vi.fn()} />); });
 };
 const bodyRows = () => screen.getAllByRole('row').slice(1);
-const idsShown = () => bodyRows().map((r) => Number(r.cells[0].textContent));
+// Cell 0 is the row's checkbox (AW-114), then ID, Photo, Name, Brand,
+// Category, Price, Tag, Active, Updated.
+const idsShown = () => bodyRows().map((r) => Number(r.cells[1].textContent));
 const count = () => document.querySelector('.admin-count').textContent;
 const toolbar = () => screen.getByRole('group', { name: 'Filter products' });
 const choose = async (label, value) => {
@@ -187,8 +189,8 @@ describe('the products list: sort (AW-115)', () => {
 
     await act(async () => { fireEvent.click(within(header('Updated')).getByRole('button')); });
     expect(url()).toBe('/admin/products?sort=updated&dir=desc');
-    expect(bodyRows()[0].cells[8].querySelector('time').getAttribute('datetime')).toBe('2026-09-28T12:00:00Z');
-    expect(bodyRows()[0].cells[8].textContent).toBe('Sep 28, 2026');
+    expect(bodyRows()[0].cells[9].querySelector('time').getAttribute('datetime')).toBe('2026-09-28T12:00:00Z');
+    expect(bodyRows()[0].cells[9].textContent).toBe('Sep 28, 2026');
 
     // Back to ID, A to Z: the default, so no sort in the URL.
     await act(async () => { fireEvent.click(within(header('ID')).getByRole('button')); });
@@ -205,14 +207,14 @@ describe('the products list: inactive products (AW-115)', () => {
     await renderAdmin('/admin/products?status=inactive');
     const rows = bodyRows();
     expect(rows.every((r) => r.className === 'inactive')).toBe(true);
-    const row162 = rows.find((r) => r.cells[0].textContent === '162');
-    expect(row162.cells[6].textContent).toBe('BESTSELLER (not shown)');
-    expect(row162.cells[7].querySelector('.admin-pill').textContent).toBe('Inactive');
+    const row162 = rows.find((r) => r.cells[1].textContent === '162');
+    expect(row162.cells[7].textContent).toBe('BESTSELLER (not shown)');
+    expect(row162.cells[8].querySelector('.admin-pill').textContent).toBe('Inactive');
     expect(within(row162).queryByRole('link', { name: /View on site/ })).toBeNull();
     await act(async () => { navigate('/admin/products?q=162', { replace: true }); });
     await act(async () => { navigate('/admin/products', { replace: true }); });
     const active = bodyRows()[0];
     expect(active.className).toBe('');
-    expect(active.cells[7].textContent).toBe('Yes');
+    expect(active.cells[8].textContent).toBe('Yes');
   });
 });

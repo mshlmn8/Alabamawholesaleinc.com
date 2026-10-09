@@ -53,6 +53,7 @@ const CATALOG_PENDING = { product: 'product', department: 'department', line: 'p
 // titles end up in history, bookmarks and screen-sharing.
 function adminTitle(route) {
   if (route.section === 'accounts') return route.id ? 'Account details' : 'Accounts';
+  if (route.section === 'pricing') return 'Pricing';
   if (route.section === 'products') {
     if (route.id === 'new') return 'New product';
     return route.id != null ? 'Edit product' : 'Products';

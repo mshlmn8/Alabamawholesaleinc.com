@@ -20,7 +20,8 @@ describe('parseAdminPath', () => {
   });
 
   it('reads each section, its detail views and its query', () => {
-    expect(ADMIN_SECTIONS).toEqual(['orders', 'accounts', 'products']);
+    expect(ADMIN_SECTIONS).toEqual(['orders', 'accounts', 'products', 'pricing']);
+    expect(parse('/admin/pricing?tier=gold')).toEqual({ page: 'admin', section: 'pricing', query: {} });
     expect(parse('/admin/orders')).toEqual({ page: 'admin', section: 'orders', query: {} });
     expect(parse('/admin/Accounts/')).toEqual({ page: 'admin', section: 'accounts', query: {} });
     expect(parse(`/admin/accounts/${UUID.toUpperCase()}`)).toEqual({ page: 'admin', section: 'accounts', id: UUID, query: {} });
@@ -30,7 +31,7 @@ describe('parseAdminPath', () => {
   });
 
   it('finds no page for an unknown section, a bad id or extra segments', () => {
-    for (const href of ['/admin/pricing', '/admin/orders/12', `/admin/orders/${UUID}`, `/admin/orders/${UUID}/edit`, '/admin/accounts/abc',
+    for (const href of ['/admin/prices', '/admin/pricing/silver', '/admin/orders/12', `/admin/orders/${UUID}`, `/admin/orders/${UUID}/edit`, '/admin/accounts/abc',
       '/admin/products/0', '/admin/products/012', '/admin/products/1.5', '/admin/products/-3', '/admin/products/12/x', `/admin/accounts/${UUID}/x`]) {
       expect(parse(href), href).toEqual({ page: 'not-found', kind: 'page' });
     }

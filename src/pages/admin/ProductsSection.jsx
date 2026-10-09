@@ -10,6 +10,12 @@
 // change, and shows 50 rows a page; all of it lives in the URL
 // (productList.js, adminRoutes.js). Inactive products are greyed, with an
 // Inactive pill.
+//
+// Bulk changes (AW-114): a checkbox per row and 'Select all <n> filtered'
+// (the selection is by id: it survives paging and clears when the filters
+// change), then the bulk bar (ProductBulk.jsx). Export CSV writes the
+// selection or the filtered rows; Import CSV previews a file's changes
+// (ProductImport.jsx). Changes patch the loaded rows in place.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
@@ -23,8 +29,12 @@ import { Icon } from '../../components/Icon.jsx';
 import { adminErrorMessage, withStatus } from './adminData.js';
 import { LoadProblem } from './AdminStatus.jsx';
 import { ProductEditor } from './ProductEditor.jsx';
+import { BulkBar, plural } from './ProductBulk.jsx';
+import { ImportPreview } from './ProductImport.jsx';
 import { PRODUCT_TAGS, STOCK_LABELS, STOCK_STATUSES } from './productForm.js';
-import { ariaSort, countText, departmentOptions, filterSortPage, hasFilters, isInactive, nextSort } from './productList.js';
+import { ariaSort, countText, departmentOptions, filterSignature, filterSortPage, hasFilters, isInactive, nextSort } from './productList.js';
+import { csvFileName, importPlan, productCsvRecords } from './productBulk.js';
+import { CsvError, downloadCsv, parseCsv, toCsv } from './csv.js';
 
 // The product columns Admin -> Products reads. Never price: admins read list
 // prices through admin_product_prices() (AW-003).
@@ -104,6 +114,9 @@ export function ProductsTab({ route = {}, query = {}, onQuery, onCatalogChange, 
   // its filters and scroll position; an editor opened any other way goes to
   // the list by link.
   const [openedFrom, setOpenedFrom] = useState(null);
+  // Bulk actions the database doesn't have yet (PGRST202/42883 seen):
+  // { adjust, import }.
+  const [missing, setMissing] = useState({});
 
   // A failed load says so, with Try again, never "0 of 0 products" (AW-202);
   // rows already on screen stay.
@@ -127,6 +140,18 @@ export function ProductsTab({ route = {}, query = {}, onQuery, onCatalogChange, 
     else navigate('/admin/products', { replace: true, force: true });
   };
 
+  // A bulk change or an import: the changed rows are patched where they are
+  // (patches: id -> changed columns), the storefront reloads its catalog,
+  // and the status line says what happened.
+  const applied = (patches, message) => {
+    setData((current) => ({
+      ...current,
+      rows: current.rows?.map((row) => (patches.has(row.id) ? { ...row, ...patches.get(row.id) } : row)) ?? null,
+    }));
+    onCatalogChange?.();
+    notify?.(message);
+  };
+
   if (route.id != null) {
     return (
       <ProductEditor
@@ -141,6 +166,7 @@ export function ProductsTab({ route = {}, query = {}, onQuery, onCatalogChange, 
     <ProductsList
       rows={data.rows} columns={data.columns} loadError={loadError} onRetry={retry} retrying={retrying} query={query} onQuery={onQuery}
       onOpen={setOpenedFrom} returnFocusId={returnFocusId} onReturnFocus={onReturnFocus}
+      notify={notify} onApplied={applied} missing={missing} onMissing={(key) => setMissing((m) => ({ ...m, [key]: true }))}
     />
   );
 }
@@ -243,7 +269,12 @@ function ProductFilters({ query, onFilter, departments, stock, clearHref, filter
   );
 }
 
-function ProductsList({ rows, columns, loadError, onRetry, retrying, query, onQuery, onOpen, returnFocusId, onReturnFocus }) {
+// The largest file Import CSV reads (1000 rows are well under it).
+const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
+
+function ProductsList({
+  rows, columns, loadError, onRetry, retrying, query, onQuery, onOpen, returnFocusId, onReturnFocus, notify, onApplied, missing = {}, onMissing,
+}) {
   // The search box filters as you type and keeps ?q= in step a moment later,
   // so a reload, a bookmark or Back shows the same search. `seen` is the q
   // last read from the URL: a new one (Back, Forward, the section link) goes
@@ -270,6 +301,83 @@ function ProductsList({ rows, columns, loadError, onRetry, retrying, query, onQu
   const result = useMemo(() => filterSortPage(rows || [], listQuery), [rows, listQuery]);
   const departments = useMemo(() => departmentOptions(rows || []), [rows]);
   const filtered = hasFilters(listQuery);
+  const countRef = useRef(null);
+
+  // The selection, by id: it survives paging and sorting, and clears (with a
+  // note) when the filters or the search change.
+  const [selected, setSelected] = useState(() => new Set());
+  const [selectionFor, setSelectionFor] = useState(() => filterSignature(listQuery));
+  const [selectionNote, setSelectionNote] = useState(false);
+  const signature = filterSignature(listQuery);
+  if (signature !== selectionFor) {
+    setSelectionFor(signature);
+    if (selected.size) {
+      setSelected(new Set());
+      setSelectionNote(true);
+    }
+  }
+  const selectedRows = useMemo(() => (rows || []).filter((row) => selected.has(row.id)), [rows, selected]);
+  const allSelected = result.total > 0 && result.rows.every((row) => selected.has(row.id));
+  const someSelected = !allSelected && result.rows.some((row) => selected.has(row.id));
+  const allRef = useRef(null);
+  useEffect(() => {
+    if (allRef.current) allRef.current.indeterminate = someSelected;
+  });
+  const select = (ids, on) => {
+    setSelectionNote(false);
+    setSelected((current) => {
+      const next = new Set(current);
+      for (const id of ids) {
+        if (on) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
+  };
+  const clearSelection = () => {
+    setSelected(new Set());
+    countRef.current?.focus({ preventScroll: true });
+  };
+
+  // Import CSV: the file is read and checked here, then previewed.
+  const fileRef = useRef(null);
+  const [importing, setImporting] = useState(null); // { fileName, plan }
+  const chooseFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    let plan;
+    if (!/\.csv$/i.test(file.name) && file.type !== 'text/csv') plan = { error: 'Choose a .csv file (export the products to see the layout).' };
+    else if (file.size > MAX_IMPORT_BYTES) plan = { error: 'That file is larger than 2 MB. Import at most 1000 products at a time.' };
+    else {
+      try {
+        plan = importPlan(parseCsv(await file.text()), rows || [], { columns });
+      } catch (error) {
+        plan = { error: error instanceof CsvError ? `The file can’t be read: ${error.message}` : 'The file can’t be read. Save it as CSV (UTF-8) and try again.' };
+      }
+    }
+    setImporting({ fileName: file.name, plan });
+  };
+
+  // Export CSV: the selection, or every row the filters show, in the list's
+  // order. Built in the browser; nothing is fetched.
+  const exportCsv = () => {
+    const chosen = selected.size ? result.rows.filter((row) => selected.has(row.id)) : result.rows;
+    const extra = selected.size ? selectedRows.filter((row) => !chosen.includes(row)) : [];
+    const list = [...chosen, ...extra];
+    const name = csvFileName();
+    downloadCsv(name, toCsv(productCsvRecords(list, columns)));
+    notify?.(`Exported ${plural(list.length, 'product')} to ${name}`);
+  };
+
+  // After a bulk change or an import, the selection goes and the count line
+  // takes focus (the bar that had it is gone).
+  const afterChange = (patches, message) => {
+    setSelected(new Set());
+    setImporting(null);
+    onApplied?.(patches, message);
+    countRef.current?.focus({ preventScroll: true });
+  };
 
   // A page past the end (a bookmark from a longer list) shows the last page,
   // and the address bar says so. A moment later: AdminPage's own address-bar
@@ -283,7 +391,6 @@ function ProductsList({ rows, columns, loadError, onRetry, retrying, query, onQu
 
   // Previous / Next move to the top of the new page: the count line takes
   // focus (the link that was clicked may be gone, on the first or last page).
-  const countRef = useRef(null);
   const paged = useRef(false);
   useEffect(() => {
     if (!paged.current) return;
@@ -319,12 +426,32 @@ function ProductsList({ rows, columns, loadError, onRetry, retrying, query, onQu
         <label className="filter-search admin-search">Search products
           <input type="search" placeholder="Name, brand, or SKU" value={search} onChange={e => setSearch(e.target.value)} />
         </label>
-        <Link id={NEW_PRODUCT_LINK_ID} className="button" to={editorHref('new')} onClick={open(editorHref('new'))}>New product</Link>
+        <div className="admin-products-actions">
+          <button className="button ghost" type="button" disabled={!result.total && !selected.size} onClick={exportCsv}>
+            {selected.size ? `Export ${selected.size} selected` : 'Export CSV'}
+          </button>
+          <button className="button ghost" type="button" disabled={missing.import} aria-describedby={missing.import ? 'import-missing' : undefined}
+            onClick={() => fileRef.current?.click()}>Import CSV</button>
+          <input ref={fileRef} type="file" accept=".csv,text/csv" hidden aria-label="CSV file to import" onChange={chooseFile} />
+          <Link id={NEW_PRODUCT_LINK_ID} className="button" to={editorHref('new')} onClick={open(editorHref('new'))}>New product</Link>
+        </div>
       </div>
+      {missing.import && <p className="field-hint" id="import-missing">Import needs the October 2026 database update (see BACKEND.md).</p>}
+      {importing && (
+        <ImportPreview
+          plan={importing.plan} fileName={importing.fileName} missing={missing.import} onMissing={() => onMissing?.('import')}
+          onApplied={afterChange} onCancel={() => { setImporting(null); fileRef.current?.focus(); }}
+        />
+      )}
       <ProductFilters query={query} onFilter={setFilter} departments={departments} stock={!!columns?.has('stock_status')}
         clearHref={clearHref} filtered={filtered} />
       <p className="result-note admin-count" ref={countRef} tabIndex={-1}>{countText(result, rows.length, filtered)}</p>
+      {selectionNote && <p className="result-note">The selection was cleared because the filters changed.</p>}
       {loadError && <LoadProblem message={loadError} onRetry={onRetry} retrying={retrying} />}
+      {selected.size > 0 && (
+        <BulkBar rows={selectedRows} adjustMissing={missing.adjust} onAdjustMissing={() => onMissing?.('adjust')}
+          onApplied={afterChange} onClear={clearSelection} />
+      )}
       {result.total === 0 ? (
         <div className="empty-results">
           <p>No products match these filters.</p>
@@ -335,6 +462,12 @@ function ProductsList({ rows, columns, loadError, onRetry, retrying, query, onQu
           <table className="aw-table admin-products">
             <thead>
               <tr>
+                <th className="select-cell">
+                  <label className="row-select" title={`Select all ${result.total} filtered`}>
+                    <input ref={allRef} type="checkbox" checked={allSelected} onChange={(e) => select(result.rows.map((row) => row.id), e.target.checked)} />
+                    <span className="sr-only">{`Select all ${result.total} filtered`}</span>
+                  </label>
+                </th>
                 {COLUMNS.map((column) => (column.sort
                   ? <SortHeader key={column.label} column={column} query={query} onQuery={onQuery} />
                   : <th key={column.label}>{column.label}</th>))}
@@ -346,6 +479,12 @@ function ProductsList({ rows, columns, loadError, onRetry, retrying, query, onQu
                 const inactive = isInactive(p);
                 return (
                   <tr key={p.id} className={inactive ? 'inactive' : undefined}>
+                    <td className="select-cell">
+                      <label className="row-select">
+                        <input type="checkbox" checked={selected.has(p.id)} onChange={(e) => select([p.id], e.target.checked)} />
+                        <span className="sr-only">{`Select ${p.name}`}</span>
+                      </label>
+                    </td>
                     <td>{p.id}</td>
                     <td className="product-thumb-cell"><Thumb img={p.img} /></td>
                     <td>{p.name}</td>
