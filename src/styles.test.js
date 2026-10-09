@@ -423,10 +423,11 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
     expect(declarations(rules(compact.body).find((r) => r.selectors.join() === '.aw-search > button:active').body)).toEqual({ background: 'var(--purple-hover)' });
   });
 
-  it('shows the chosen variant, line, admin tab and policy page in the system highlight in forced colours', () => {
+  it('shows the chosen variant, line, admin tab, policy page and hero slide dot in the system highlight in forced colours', () => {
     const forced = blocks.find((b) => b.prelude === '(forced-colors: active)');
     const selected = rules(forced.body).find((r) => r.selectors.includes('.sub-pill.active'));
-    expect(selected.selectors).toEqual(['.variant-chips button[aria-pressed="true"]', '.sub-pill.active', '.sub-pill[aria-current="page"]', 'nav.policy-nav a[aria-current="page"]']);
+    expect(selected.selectors).toEqual(['.variant-chips button[aria-pressed="true"]', '.sub-pill.active', '.sub-pill[aria-current="page"]', 'nav.policy-nav a[aria-current="page"]',
+      '.home-carousel-dots [aria-current="true"] span']);
     expect(declarations(selected.body)).toEqual({ 'forced-color-adjust': 'none', background: 'Highlight', color: 'HighlightText', 'border-color': 'Highlight' });
     const ring = rules(forced.body).find((r) => r.selectors.includes('.sub-pill.active:focus-visible'));
     expect(declarations(ring.body)).toEqual({ 'outline-color': 'CanvasText' });

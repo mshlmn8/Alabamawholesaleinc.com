@@ -315,7 +315,7 @@ input[type="search"]:focus-visible { outline-offset: -3px; }
 .aw-search-list small { display: block; font-size: var(--text-xs); color: var(--muted); margin-top: 3px; }
 .aw-search-list > p { font-size: var(--text-base); margin: 14px 0 7px; color: var(--muted); }
 /* "See all N results" (AW-007): the last row, a link to /search. */
-.aw-search-list > a.aw-search-all { font-weight: 700; color: var(--purple); text-decoration: underline; text-underline-offset: 4px; }
+.aw-search-list > a.aw-search-all { font-weight: 700; color: var(--link-color); text-decoration: underline; text-underline-offset: var(--link-offset); }
 .sr-thumb { flex: 0 0 40px; height: 40px; display: grid; place-items: center; background: var(--tile); border: 1px solid var(--line); overflow: hidden; font: 600 .875rem/1 var(--display); color: var(--orange-dark); }
 .sr-thumb img { width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; }
 
@@ -600,7 +600,7 @@ p > .text-link { min-height: 0; min-width: 0; }
 .dept-tile-count > span, .dept-tile-lines > span { min-width: 0; }
 @media (hover: hover) {
   .dept-tile:hover { background: var(--purple-hover); }
-  .dept-tile:hover h3 { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+  .dept-tile:hover h3 { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: var(--link-offset); }
 }
 
 .apply-panel { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 28px 48px; align-items: start; padding-top: 8px; border-top: 1px solid var(--line); }
@@ -1167,7 +1167,7 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
    'nav' outranks its own orange and hover rules, which come later. */
 @media (forced-colors: active) {
   select { appearance: auto; background-image: none; padding-right: .75rem; }
-  .variant-chips button[aria-pressed="true"], .sub-pill.active, .sub-pill[aria-current="page"], nav.policy-nav a[aria-current="page"] { forced-color-adjust: none; background: Highlight; color: HighlightText; border-color: Highlight; }
+  .variant-chips button[aria-pressed="true"], .sub-pill.active, .sub-pill[aria-current="page"], nav.policy-nav a[aria-current="page"], .home-carousel-dots [aria-current="true"] span { forced-color-adjust: none; background: Highlight; color: HighlightText; border-color: Highlight; }
   .variant-chips button[aria-pressed="true"]:focus-visible, .sub-pill.active:focus-visible, .sub-pill[aria-current="page"]:focus-visible, nav.policy-nav a[aria-current="page"]:focus-visible { outline-color: CanvasText; }
 }
 /* No native clear button in search boxes: the header search has its close
