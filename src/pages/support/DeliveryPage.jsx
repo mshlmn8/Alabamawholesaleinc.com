@@ -13,7 +13,7 @@ import { DELIVERY_STATES, OTHER_STATES } from '../../data/onboarding.js';
 import { formatMoney, formatMoneyShort } from '../../lib/format.js';
 import { Link } from '../../lib/router.js';
 import { PhoneLink } from '../../components/ContactLinks.jsx';
-import { PageHead, ContactStrip } from './SupportShell.jsx';
+import { PageHead, SupportLayout, ContactStrip } from './SupportShell.jsx';
 
 const ROUTE_STATE_NAMES = DELIVERY_STATES.map(s => s.name);
 const routeStates = `${ROUTE_STATE_NAMES.slice(0, -1).join(', ')} and ${ROUTE_STATE_NAMES[ROUTE_STATE_NAMES.length - 1]}`;
@@ -31,6 +31,7 @@ export function DeliveryPage() {
       <PageHead crumb="Delivery & service area" eyebrow="OUR OWN TRUCKS" title="Delivery & service area">
         <p>{`We run our own delivery routes across ${routeStates} from the Birmingham warehouse. When your store is on a route, your order rides on our truck and arrives the next day.`}</p>
       </PageHead>
+      <SupportLayout current="delivery">
 
       <div className="info-grid">
         <article className="info-card">
@@ -113,6 +114,7 @@ export function DeliveryPage() {
           </div>
         </section>
       </div>
+      </SupportLayout>
 
       <ContactStrip eyebrow="CONFIRM YOUR STOP" title="Ask about your route" />
     </section>

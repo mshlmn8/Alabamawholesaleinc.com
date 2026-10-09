@@ -4,7 +4,7 @@ import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM, POLICIES_UPDATED } fro
 import { formatMoney, formatMoneyShort } from '../../lib/format.js';
 import { Link } from '../../lib/router.js';
 import { CallOrEmail, PhoneLink, EmailLink } from '../../components/ContactLinks.jsx';
-import { PageHead, PolicyNav, ContactStrip, POLICY_LINKS } from './SupportShell.jsx';
+import { PageHead, SupportLayout, ContactStrip, POLICY_LINKS } from './SupportShell.jsx';
 
 // Shared with TERMS_VERSION, the version an application accepts (AW-019).
 const UPDATED = POLICIES_UPDATED;
@@ -115,8 +115,7 @@ export function PolicyPage({ kind }) {
       <PageHead crumb={crumb} eyebrow={policy.eyebrow} title={policy.title}>
         <p>{policy.intro}</p>
       </PageHead>
-      <div className="policy-layout">
-        <PolicyNav current={kind} />
+      <SupportLayout current={kind}>
         <article className="policy-body">
           {policy.sections.map((section, i) => (
             <section key={section.heading} aria-labelledby={`policy-${kind}-${i}`}>
@@ -132,7 +131,7 @@ export function PolicyPage({ kind }) {
             <span>{policy.updated ? `Last updated ${UPDATED}. ` : ''}</span>Questions about this policy? Call <PhoneLink /> or email <EmailLink />.
           </p>
         </article>
-      </div>
+      </SupportLayout>
       <ContactStrip />
     </section>
   );

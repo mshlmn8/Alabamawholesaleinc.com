@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { COMPANY, HOURS, TIME_ZONE_LABEL, TIME_ZONE_NAME, hoursRange, openStatusNow } from '../../data/content.js';
 import { Link } from '../../lib/router.js';
 import { Icon } from '../../components/Icon.jsx';
-import { PageHead, DIRECTIONS_URL } from './SupportShell.jsx';
+import { PageHead, SupportLayout, DIRECTIONS_URL } from './SupportShell.jsx';
 
 // 'Open now · closes 6:00 PM CT' or 'Closed · opens 8:00 AM CT' (AW-275),
 // filled in after mount and kept current each minute. Until then the line
@@ -29,6 +29,7 @@ export function ContactPage({ onApplyClick }) {
       <PageHead crumb="Contact & visit" eyebrow="TALK TO THE WAREHOUSE" title="Contact & visit">
         <p>Real people, same building as the inventory. Call the trade desk, email us, or come by the Birmingham warehouse for will-call pickup.</p>
       </PageHead>
+      <SupportLayout current="contact">
 
       <div className="info-grid">
         <article className="info-card">
@@ -89,6 +90,7 @@ export function ContactPage({ onApplyClick }) {
           <button className="button ghost" type="button" onClick={onApplyClick}>Start application</button>
         </div>
       </section>
+      </SupportLayout>
     </section>
   );
 }

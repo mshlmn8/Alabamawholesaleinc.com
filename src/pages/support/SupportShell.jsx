@@ -42,19 +42,36 @@ export function ContactStrip({ eyebrow = 'QUESTIONS?', title = 'Talk to the ware
   );
 }
 
-const POLICY_NAV = [
-  ...POLICY_LINKS,
-  { page: 'delivery', label: 'Delivery & service area' },
+// The help and policy pages, in the side nav every support page carries
+// (AW-122). /shipping stays a page of its own until Cursor's AW-130 merges it
+// into /delivery. POLICY_LINKS above keeps the shorter crumb labels.
+export const SUPPORT_NAV = [
   { page: 'contact', label: 'Contact & visit' },
+  { page: 'delivery', label: 'Delivery & service area' },
+  { page: 'shipping', label: 'Delivery policy' },
+  { page: 'apply', label: 'Apply for an account' },
+  { page: 'terms', label: 'Trade terms' },
+  { page: 'privacy', label: 'Privacy' },
 ];
 
 export function PolicyNav({ current }) {
   return (
-    <nav className="policy-nav" aria-label="Customer policies">
-      <p className="eyebrow">CUSTOMER POLICIES</p>
-      {POLICY_NAV.map(link => (
+    <nav className="policy-nav" aria-label="Help and policies">
+      <p className="eyebrow">HELP &amp; POLICIES</p>
+      {SUPPORT_NAV.map(link => (
         <Link key={link.page} to={`/${link.page}`} aria-current={current === link.page ? 'page' : undefined}>{link.label}</Link>
       ))}
     </nav>
+  );
+}
+
+// The side nav beside a support page's content, below its PageHead (AW-122).
+// Full-width bands such as the ContactStrip go after it.
+export function SupportLayout({ current, children }) {
+  return (
+    <div className="policy-layout support-layout">
+      <PolicyNav current={current} />
+      <div className="support-layout-main">{children}</div>
+    </div>
   );
 }

@@ -1428,7 +1428,9 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
    reset, and the all-products index (src/pages/support/). Also the
    checklist / hint / step styles the account dialog shares with them. */
 .support-page { padding-bottom: 24px; }
-.support-page .page-head > p:not([class]) { max-width: 640px; }
+/* The intro at body size and a readable measure, about 70 characters a line
+   (AW-121). */
+.support-page .page-head > p:not([class]) { max-width: 34rem; font-size: var(--text-lg); }
 .support-note { color: var(--muted); font-size: var(--text-sm); line-height: 1.7; margin: 14px 0 0; }
 /* The callout's text size again: .form-error, which the service notice also
    carries, sets a smaller one earlier in the file. */
@@ -1547,6 +1549,22 @@ address.info-lead-small { font-style: normal; }
 .checklist-card h2 { font-size: var(--h2-sm); margin-bottom: 14px; }
 .apply-layout .support-block { border-top: 0; padding-top: 0; }
 
+/* Every support page: the help and policy nav beside the content (AW-122).
+   The content column is narrower than the page, so its grids fit as many
+   columns as there is room for, and a card that wraps alone takes the whole
+   row rather than leaving a hole. :where() keeps them at one class, so the
+   compact block below still sets one column. */
+.support-layout-main { min-width: 0; }
+:where(.support-layout) .info-grid { display: flex; flex-wrap: wrap; }
+:where(.support-layout) .info-card { flex: 1 1 15rem; min-width: 0; }
+:where(.support-layout) .support-columns, :where(.support-layout) .apply-layout { grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr)); }
+/* The bands keep their text at least 20rem wide; the actions or the form
+   move underneath when the column has no room for both. */
+:where(.support-layout) :is(.support-cta, .status-panel, .eligibility) { flex-wrap: wrap; }
+:where(.support-layout) :is(.support-cta, .status-panel, .eligibility) > div:first-child { flex: 1 1 20rem; }
+/* The content starts level with the nav. */
+.support-layout-main > :first-child { margin-top: 0; }
+
 /* password reset */
 .reset-layout { max-width: 720px; margin-top: 14px; }
 .reset-layout .status-panel { margin-top: 0; }
@@ -1556,22 +1574,26 @@ address.info-lead-small { font-style: normal; }
 
 /* policies */
 .policy-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 40px; align-items: start; margin-top: 10px; }
-.policy-nav { position: sticky; top: 18px; padding: 18px; background: var(--paper); border: 1px solid var(--line); }
+/* Clears the sticky header once it publishes its height (AW-153). */
+.policy-nav { position: sticky; top: calc(var(--header-h, 0px) + 1.125rem); padding: 18px; background: var(--paper); border: 1px solid var(--line); }
 .policy-nav .eyebrow { color: var(--orange-dark); margin-bottom: 10px; }
 .policy-nav a { display: block; width: 100%; text-align: left; padding: 8px 0; border: 0; border-top: 1px solid var(--line); background: none; color: var(--ink); font-size: var(--text-sm); font-weight: 600; }
-.policy-nav a[aria-current="page"] { color: var(--orange-dark); }
+/* The current page by more than colour (AW-273): bolder, with an orange bar
+   (3.12:1 on --paper). DM Sans is bundled up to 700. */
+.policy-nav a[aria-current="page"] { color: var(--orange-dark); font-weight: 700; box-shadow: inset 3px 0 0 var(--orange); padding-left: .625rem; }
 @media (hover: hover) {
   .policy-nav a:hover { color: var(--orange-dark); }
 }
 .policy-nav a:active { background: var(--line); }
-.policy-body { max-width: 720px; }
+/* About 70 characters a line at body size (AW-121). */
+.policy-body { max-width: 34rem; }
 .policy-body section { padding: 18px 0; border-bottom: 1px solid var(--line); }
 .policy-body section:first-child { padding-top: 0; }
 .policy-body h2 { font-size: var(--h3); margin-bottom: 10px; }
-.policy-body p:not([class]) { font-size: var(--text-base); line-height: 1.75; margin: 0 0 10px; }
+.policy-body p:not([class]) { font-size: var(--text-lg); line-height: 1.75; margin: 0 0 10px; }
 .policy-body p:not([class]):last-child { margin-bottom: 0; }
 .policy-body ul { margin: 0 0 10px; padding-left: 20px; list-style: disc; }
-.policy-body li { font-size: var(--text-base); line-height: 1.7; margin-bottom: 6px; }
+.policy-body li { font-size: var(--text-lg); line-height: 1.7; margin-bottom: 6px; }
 .policy-body a, .policy-body .text-link { font-size: inherit; }
 
 /* all-products index */
@@ -1620,13 +1642,16 @@ address.info-lead-small { font-style: normal; }
 }
 
 @media (max-width: 53.125em), (hover: none) and (pointer: coarse) and (max-height: 31.25em) {
-  .info-grid { grid-template-columns: 1fr; }
+  .info-grid { display: grid; grid-template-columns: 1fr; }
   .support-columns, .apply-layout, .policy-layout { grid-template-columns: minmax(0, 1fr); gap: 28px; }
   .contact-strip, .support-cta, .status-panel, .eligibility { flex-direction: column; align-items: stretch; gap: 20px; padding: 24px; margin-top: 30px; }
   .eligibility-form { flex-basis: auto; }
+  :where(.support-layout) :is(.support-cta, .status-panel, .eligibility) > div:first-child { flex: none; }
   .policy-nav { position: static; display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 14px 18px; }
   .policy-nav .eyebrow { flex-basis: 100%; }
   .policy-nav a { width: auto; border-top: 0; }
+  /* In the chip row the current page is underlined instead of barred. */
+  .policy-nav a[aria-current="page"] { box-shadow: none; padding-left: 0; text-decoration: underline; text-underline-offset: var(--link-offset); }
   .sku-list { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 37.5em) {
