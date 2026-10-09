@@ -2,11 +2,11 @@
 // a link to every result, and Enter opening /search?q= with the text kept,
 // through the combobox (AW-171; its keys and focus rules are in
 // HeaderSearch.test.jsx). And the Categories menu, which closes when focus
-// leaves it (AW-165).
+// leaves it (AW-165) and lists each department's biggest lines (AW-062).
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PRODUCTS } from '../data/products.js';
-import { departmentsFor } from '../lib/departments.js';
+import { departmentsFor, topLines } from '../lib/departments.js';
 import { navigate } from '../lib/router.js';
 import { searchProducts } from '../lib/search.js';
 import { Header } from './Header.jsx';
@@ -102,6 +102,26 @@ describe('Categories menu (AW-165)', () => {
       .toEqual(departments.map((d) => d.label));
     expect(screen.getByRole('group', { name: departments[0].label })).toBeTruthy();
     expect(menu().querySelector('.aw-menu-footer span').textContent).toBe(`${departments.length} departments · ${PRODUCTS.length} products`);
+  });
+
+  it('lists each department’s three biggest product lines, then the whole department, and ends with the full catalog (AW-062)', () => {
+    renderHeader();
+    fireEvent.click(toggle());
+    const links = (name) => [...screen.getByRole('group', { name }).querySelectorAll('a')];
+    // By product count, not by name: Wraps & Leafs (22) before Cigarettes (5).
+    expect(links('Tobacco').map((a) => a.textContent)).toEqual(['Wraps & Leafs', 'Cigars & Cigarillos', 'Papers & Cones', 'All Tobacco']);
+    expect(links('Tobacco')[0].getAttribute('href')).toBe('/category/tobacco/wraps-and-leafs');
+    expect(links('Candies')[0].textContent).toBe('Sweets & Gummies');
+    for (const d of departments) {
+      expect(links(d.label).slice(0, -1).map((a) => a.textContent), d.key).toEqual(topLines(PRODUCTS, d.key, 3));
+      expect(links(d.label).at(-1).getAttribute('href'), d.key).toBe(`/category/${d.key.toLowerCase().replace(/ & /g, '-and-').replace(/ /g, '-')}`);
+    }
+    // No empty feature tile: every link is a line, a department or the catalog.
+    expect(menu().querySelector('.aw-menu-feature')).toBeNull();
+    expect(menu().querySelectorAll('a')).toHaveLength(departments.length * 4 + 1);
+    const catalog = menu().querySelector('.aw-menu-footer a');
+    expect([catalog.textContent, catalog.getAttribute('href')]).toEqual(['View full catalog', '/catalog']);
+    expect([...menu().querySelectorAll('a')].at(-1)).toBe(catalog);
   });
 
   it('closes when Tab moves focus past its last link, and stays open while focus is inside', () => {

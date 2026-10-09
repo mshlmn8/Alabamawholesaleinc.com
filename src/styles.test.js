@@ -380,7 +380,7 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
     expect(inHover('.aw-category-toggle:hover')).toEqual({ background: 'var(--purple-hover)' });
   });
 
-  it('shows a mouse that cards, tiles, collection cards, the mega-menu feature, nav links, chips and the pricing prompt are clickable', () => {
+  it('shows a mouse that cards, tiles, collection cards, nav links, chips and the pricing prompt are clickable', () => {
     for (const s of ['.card-link:hover .card-block', 'a.content-card:hover .card-block']) expect(inHover(s), s).toEqual({ 'border-color': 'var(--purple)' });
     for (const s of ['.card-link:hover h3', 'a.content-card:hover h3']) expect(inHover(s), s).toEqual({ 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' });
     for (const s of ['.card-link:hover .card-block img', 'a.content-card:hover .card-block img']) expect(inHover(s), s).toEqual({ transform: 'scale(1.03)' });
@@ -389,7 +389,6 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
     expect(own('.card-block img').transition).toMatch(/(^|, )transform \.2s ease(,|$)/);
     expect(inHover('.editorial-card:hover .text-link')).toEqual({ 'text-decoration-thickness': '2px' });
     expect(inHover('.editorial-card:hover img.bg')).toEqual({ opacity: '.36' });
-    expect(inHover('.aw-menu-feature:hover')).toEqual({ background: 'var(--purple-hover)' });
     for (const s of ['.section-head > a:hover', '.aw-utility a:hover', '.sku-details summary:hover']) expect(inHover(s), s).toEqual({ color: 'var(--orange-dark)' });
     expect(inHover('.variant-chips button:not(:disabled):not([aria-checked="true"]):hover')).toEqual({ 'border-color': 'var(--purple)' });
     expect(inHover('button.filter-signin:hover')).toEqual({ 'border-left-color': 'var(--purple)' });
@@ -399,7 +398,7 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
   });
 
   it('never turns a link orange on a purple surface', () => {
-    const purple = /^(\.trade-bar|\.footer|\.contact-strip|\.editorial-card|\.aw-menu-feature|\.age-gate|\.fda-note)/;
+    const purple = /^(\.trade-bar|\.footer|\.contact-strip|\.editorial-card|\.age-gate|\.fda-note)/;
     const onPurple = hoverRules.filter((r) => r.selectors.some((s) => purple.test(s)));
     expect(onPurple.length).toBeGreaterThan(3);
     for (const { selectors, body } of onPurple) expect(body, selectors.join(', ')).not.toMatch(/--orange/);
@@ -976,6 +975,29 @@ describe('no inline styles (AW-301)', () => {
     // Same specificity (one class), and later in the file.
     expect(compact.start).toBeGreaterThan(css.indexOf('.is-centered {'));
     expect(compact.start).toBeGreaterThan(css.indexOf('.is-flush {'));
+  });
+});
+
+// The Categories menu (AW-062): it ends inside the window, under the header
+// height the header will publish (--header-h), its heading and footer stay in
+// view while it scrolls, and the eight departments fill two rows.
+describe('the Categories menu fits the window (AW-062)', () => {
+  it('ends 1rem above the bottom of the window, with its close button and its footer link always in view', () => {
+    expect(ruleFor('.aw-mega-menu')).toMatchObject({
+      'max-height': 'max(9rem, calc(100dvh - var(--header-h, 16.125rem) - 1rem))', overflow: 'auto', 'scroll-padding-block': '6rem 5rem',
+    });
+    expect(css).not.toMatch(/--aw-menu-top/);
+    expect(ruleFor('.aw-menu-heading')).toMatchObject({ position: 'sticky', top: '0', background: '#fff' });
+    expect(ruleFor('.aw-menu-footer')).toMatchObject({ position: 'sticky', bottom: '0', background: 'var(--paper)' });
+    // A short window keeps room for the departments between them.
+    const short = mediaBlocks(css).find((b) => b.prelude === '(max-height: 37.5em)');
+    expect(rules(short.body).map((r) => r.selectors.join(', '))).toEqual(['.aw-mega-menu', '.aw-menu-heading', '.aw-menu-heading .eyebrow', '.aw-menu-heading h2', '.aw-menu-footer']);
+  });
+
+  it('sets the departments in four equal columns, with no empty feature tile', () => {
+    expect(ruleFor('.aw-menu-grid')['grid-template-columns']).toBe('repeat(4, minmax(0, 1fr))');
+    expect(css).not.toMatch(/aw-menu-feature/);
+    expect(code(read('src/components/Header.jsx'))).not.toMatch(/aw-menu-feature|subs\.slice/);
   });
 });
 

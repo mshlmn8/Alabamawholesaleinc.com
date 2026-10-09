@@ -7,7 +7,11 @@
 //
 // The search box is HeaderSearch, a combobox (AW-171). The Categories menu,
 // like the search list, closes when focus moves to a control outside it
-// (AW-165), on Escape, on a click outside and on a page change.
+// (AW-165), on Escape, on a click outside and on a page change. It lists each
+// department's three biggest product lines, and fits the window: its heading
+// and footer stay in view while the departments scroll between them (AW-062).
+// TODO(owner): Its featured Novelties tile was an empty block and is gone; a
+// new one needs the department's one name and a photo (AW-056, AW-217).
 
 import { useState, useEffect, useRef } from 'react';
 import { IMG } from '../data/theme.js';
@@ -19,6 +23,7 @@ import { AdminUnseenBadge } from './AdminUnseenBadge.jsx';
 import { HeaderSearch } from './HeaderSearch.jsx';
 import { Icon } from './Icon.jsx';
 import { useImageStatus } from '../lib/useImageStatus.js';
+import { topLines } from '../lib/departments.js';
 
 // The logo photo, or the brand in text when it fails to load (AW-341). The
 // photo is 320px square, so its width and height reserve the slot before it
@@ -163,15 +168,12 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
               {departments.map((c, i) => (
                 <div className="aw-department" key={c.key} role="group" aria-labelledby={`aw-department-${i}`}>
                   <h3><span>{String(i + 1).padStart(2, '0')}</span><span id={`aw-department-${i}`}>{c.label}</span></h3>
-                  {c.subs.slice(0, 3).map(s => (
+                  {topLines(products, c.key, 3).map(s => (
                     <Link key={s} to={{ page: 'category', category: c.key, sub: s }} onClick={closeMenus}>{s}</Link>
                   ))}
                   <Link className="aw-department-all" to={{ page: 'category', category: c.key }} onClick={closeMenus}>{`All ${c.label}`}</Link>
                 </div>
               ))}
-              <Link className="aw-menu-feature" to={{ page: 'category', category: 'NOVELTIES' }} onClick={closeMenus}>
-                <div><p className="eyebrow">FEATURED</p><h3>Exotics &amp;<br />novelties.</h3><span>Explore the department</span></div>
-              </Link>
             </div>
             <div className="aw-menu-footer">
               <Link to="/catalog" onClick={closeMenus}>View full catalog</Link>
