@@ -88,7 +88,7 @@ describe('accountNotices', () => {
     const a = act();
     const [notice] = accountNotices({ sessionEnded: true }, a);
     expect(notice.title).toBe('Your session has ended');
-    expect(notice.text).toMatch(/saved cart/);
+    expect(notice.text).toMatch(/the items you added/);
     notice.actions[0].onClick();
     expect(a.signIn).toHaveBeenCalled();
   });

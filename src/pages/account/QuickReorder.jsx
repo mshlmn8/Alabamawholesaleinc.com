@@ -142,7 +142,7 @@ export function QuickReorder({ products, addLines, onOpenCart, isApprovedBuyer }
             {`Added ${summary.lines} line${summary.lines === 1 ? '' : 's'} (${summary.units} unit${summary.units === 1 ? '' : 's'}) to your ${target}.`
               + (summary.attention > 0 ? ` ${summary.attention} line${summary.attention === 1 ? ' is' : 's are'} still waiting above.` : '')}
           </p>
-          <button className="button xs" type="button" onClick={onOpenCart}>Review cart</button>
+          <button className="button xs" type="button" onClick={onOpenCart}>{`View ${target}`}</button>
         </div>
       )}
     </form>

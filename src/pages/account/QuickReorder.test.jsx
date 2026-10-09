@@ -43,7 +43,7 @@ describe('QuickReorder quantities (AW-100)', () => {
     expect(screen.getByText('1 line needs attention before it can be added.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Add 1 line to order' }));
     expect(addLines).toHaveBeenCalledWith([{ productId: 14, variant: null, qty: 3 }]);
-    expect(screen.getByRole('status').textContent).toBe('Added 1 line (3 units) to your order. 1 line is still waiting above.Review cart');
+    expect(screen.getByRole('status').textContent).toBe('Added 1 line (3 units) to your order. 1 line is still waiting above.View order');
   });
 
   it('never rounds 2.5 down: the row needs attention', () => {

@@ -96,7 +96,7 @@ export function accountNotices(state, act) {
       title: 'Your session has ended',
       // The account's cart is put away with the session and comes back when
       // the buyer signs in again (AW-189).
-      text: 'Sign in again to see your account pricing and saved cart, and to place orders.',
+      text: 'Sign in again to see your account pricing and the items you added, and to place orders.',
       actions: [{ id: 'sign-in', label: 'Sign in', onClick: act.signIn }],
       onDismiss: act.dismissSessionEnded,
     });

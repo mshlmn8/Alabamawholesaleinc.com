@@ -43,7 +43,7 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const reorderMessage = (note, target) => (note.lines > 0
   ? `Added ${plural(note.lines, 'line')} (${plural(note.units, 'unit')}) to your ${target}.`
   : 'None of these items are available right now.')
-  + (note.needsVariant > 0 ? ` ${plural(note.needsVariant, 'line')} need${note.needsVariant === 1 ? 's' : ''} a variant choice in the cart.` : '')
+  + (note.needsVariant > 0 ? ` ${plural(note.needsVariant, 'line')} need${note.needsVariant === 1 ? 's' : ''} a variant choice in your ${target}.` : '')
   + (note.unavailable.length > 0 ? ` No longer available: ${note.unavailable.join(', ')}.` : '');
 
 export function AccountPage({
@@ -199,7 +199,7 @@ export function AccountPage({
                   {note && (
                     <div className="order-foot" role="status">
                       <p>{reorderMessage(note, target)}</p>
-                      {note.lines > 0 && <button className="button xs" type="button" onClick={onOpenCart}>Review cart</button>}
+                      {note.lines > 0 && <button className="button xs" type="button" onClick={onOpenCart}>{`View ${target}`}</button>}
                     </div>
                   )}
                 </article>
