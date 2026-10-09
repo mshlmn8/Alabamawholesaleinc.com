@@ -464,8 +464,10 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
   const resendStatus = cooling
     ? `Sent again to ${resentTo}. It can take a few minutes; check your spam folder too. You can ask for another in a minute.`
     : '';
-  // Said once Send again has sent the reset link, for that minute (AW-259).
-  const resetStatus = resetCooling && resetAgain ? `Sent again to ${resetEmail}. You can ask for another in a minute.` : '';
+  // While Send again waits out the minute after a reset link went, why it
+  // can't be used yet; after Send again, also that it went (AW-259).
+  let resetStatus = '';
+  if (resetCooling) resetStatus = resetAgain ? `Sent again to ${resetEmail}. You can ask for another in a minute.` : 'You can ask for another link in a minute.';
 
   // The application's files that didn't upload, each with its reason, then
   // Try again or My account (AW-085). Shown on 'Check your inbox' after the

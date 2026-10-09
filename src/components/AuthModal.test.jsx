@@ -620,11 +620,13 @@ describe('AuthModal password reset (AW-259)', () => {
     vi.useFakeTimers();
     const t = await requestReset();
     const again = screen.getByRole('button', { name: 'Send again' });
-    // The first link just went: Send again waits out its minute, quietly.
+    // The first link just went: Send again waits out its minute, and the
+    // line under it says why it can't be used yet.
     expect(again.disabled).toBe(true);
-    expect(dialogStatus().textContent).toBe('');
+    expect(dialogStatus().textContent).toBe('You can ask for another link in a minute.');
     act(() => { vi.advanceTimersByTime(RESEND_COOLDOWN_MS); });
     expect(again.disabled).toBe(false);
+    expect(dialogStatus().textContent).toBe('');
     again.focus(); // a click focuses the button in the browser, not in jsdom
     await act(async () => { fireEvent.click(again); });
     expect(t.value.resetPassword).toHaveBeenCalledTimes(2);
