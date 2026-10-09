@@ -112,7 +112,7 @@ describe('QuotePage and the account', () => {
     expect(submit().disabled).toBe(true);
     expect(submit().getAttribute('aria-describedby')).toBe('quote-blocked-unavailable');
     // Units count only what can be ordered.
-    expect(screen.getByText('Estimated subtotal · 2 units')).toBeTruthy();
+    expect(screen.getByText('Estimated total · 2 units')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Remove unavailable item' }));
     expect(removeLines).toHaveBeenCalledWith(['999']);
   });
@@ -310,37 +310,37 @@ describe('QuotePage totals for an approved buyer', () => {
   it('shows the estimate, or that prices are loading or on request', () => {
     const view = render(page({ profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true, total: 20, pricesStatus: 'ready' }));
     const total = () => document.querySelector('.checkout-total').textContent;
-    expect(total()).toBe('Estimated subtotal · 2 units$20.00');
+    expect(total()).toBe('Estimated total · 2 units$20.00');
     const unpriced = [{ ...ITEMS[0], price: null }];
     view.rerender(page({ items: unpriced, profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true, total: 0, pricesStatus: 'loading' }));
-    expect(total()).toBe('Estimated subtotal · 2 unitsLoading prices…');
+    expect(total()).toBe('Estimated total · 2 unitsLoading prices…');
     // No order-minimum notice while the total isn't known.
     expect(screen.queryByText(/The order minimum is/)).toBeNull();
     view.rerender(page({ items: unpriced, profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true, total: 0, pricesStatus: 'ready' }));
-    expect(total()).toBe('Estimated subtotal · 2 unitsPrice on request');
+    expect(total()).toBe('Estimated total · 2 unitsPrice on request');
   });
 
   it('says when lines waiting for a variant are left out of the subtotal (AW-103)', () => {
     const bare = { lineKey: '11', productId: 11, variant: null, needsVariant: true, name: 'Backwoods cigars 5-pack', sku: 'AW-BACKWOODS-5PK', cat: 'TOBACCO', qty: 8, price: 10.55, variants: [] };
     const view = render(page({ items: [bare, ...ITEMS], total: 20, profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true, pricesStatus: 'ready' }));
-    expect(document.querySelector('.checkout-total').textContent).toBe('Estimated subtotal · 10 units$20.00');
+    expect(document.querySelector('.checkout-total').textContent).toBe('Estimated total · 10 units$20.00');
     expect(document.querySelector('.checkout-total + .total-note').textContent).toBe('1 line needs a variant and isn’t in this total.');
     expect(document.querySelectorAll('.checkout-lines .line-total')).toHaveLength(1);
     // Guests see no prices, so nothing is left out of one.
     view.rerender(page({ items: [bare, ...ITEMS], total: 0, profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false }));
-    expect(document.querySelector('.checkout-total').textContent).toBe('Estimated subtotal · 10 unitsPricing confirmed by the trade desk');
+    expect(document.querySelector('.checkout-total').textContent).toBe('Estimated total · 10 unitsPricing confirmed by the trade desk');
     expect(document.querySelector('.total-note')).toBeNull();
   });
 
   it('says a price-on-request line is left out too, and shows a dash when no line counts (NEW-063)', () => {
     const gushers = { lineKey: '187::regular', productId: 187, variant: 'Regular', name: 'Gushers box — Regular', sku: 'AW-GUSHER-BOX-REGULAR', cat: 'CANDIES', qty: 1, price: null };
     const view = render(page({ items: [gushers, ...ITEMS], total: 20, profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true, pricesStatus: 'ready' }));
-    expect(document.querySelector('.checkout-total').textContent).toBe('Estimated subtotal · 3 units$20.00');
+    expect(document.querySelector('.checkout-total').textContent).toBe('Estimated total · 3 units$20.00');
     expect(document.querySelector('.checkout-total + .total-note').textContent).toBe('1 line is priced by the trade desk and isn’t in this total.');
     // Only a line waiting for its variant: no "$0.00".
     const bare = { lineKey: '22', productId: 22, variant: null, needsVariant: true, name: 'Tweaker energy shots', sku: 'AW-TWEAKER', cat: 'MERCHANDISE', qty: 2, price: 11.5, variants: [] };
     view.rerender(page({ items: [bare], total: 0, profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true, pricesStatus: 'ready' }));
-    expect(document.querySelector('.checkout-total').textContent).toBe('Estimated subtotal · 2 units—');
+    expect(document.querySelector('.checkout-total').textContent).toBe('Estimated total · 2 units—');
     expect(document.querySelector('.total-note').textContent).toBe('1 line needs a variant and isn’t in this total.');
   });
 
@@ -441,7 +441,7 @@ describe('QuotePage when the buyer’s prices didn’t load (NEW-010)', () => {
   it('offers “Load prices again” by the total, and gives the total focus once they are in', () => {
     const onRetryPrices = vi.fn();
     const view = render(page({ ...failed, onRetryPrices }));
-    expect(document.querySelector('.checkout-total').textContent).toBe('Estimated subtotal · 2 unitsPrices didn’t load');
+    expect(document.querySelector('.checkout-total').textContent).toBe('Estimated total · 2 unitsPrices didn’t load');
     const button = reload();
     expect(button.textContent).toBe('Load prices again');
     expect(button.closest('.prices-retry').previousElementSibling.classList.contains('checkout-total')).toBe(true);
@@ -459,7 +459,7 @@ describe('QuotePage when the buyer’s prices didn’t load (NEW-010)', () => {
     view.rerender(page({ ...failed, items: ITEMS, total: 20, pricesStatus: 'ready', onRetryPrices }));
     expect(reload()).toBeNull();
     expect(document.activeElement).toBe(document.getElementById('checkout-total'));
-    expect(document.activeElement.textContent).toBe('Estimated subtotal · 2 units$20.00');
+    expect(document.activeElement.textContent).toBe('Estimated total · 2 units$20.00');
   });
 
   it('keeps the button when they fail again, and shows none to guests or once they load', () => {
@@ -624,7 +624,7 @@ describe('QuotePage and submit_quote', () => {
     expect(screen.getByRole('button', { name: 'Clear all items' }).closest('fieldset').disabled).toBe(false);
     // Not the "send it as a quote instead" warning, nor pricing talk.
     expect(screen.queryByText(/can’t place orders yet/)).toBeNull();
-    expect(document.querySelector('.checkout-total').textContent).toBe('Estimated subtotal · 2 unitsOrdering paused');
+    expect(document.querySelector('.checkout-total').textContent).toBe('Estimated total · 2 unitsOrdering paused');
     // No license fields: the account can't submit anyway.
     expect(document.getElementById('quote-license')).toBeNull();
     // An approved buyer suspended mid-checkout gets the same.

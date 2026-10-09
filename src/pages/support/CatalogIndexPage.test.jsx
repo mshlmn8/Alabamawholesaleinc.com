@@ -74,8 +74,9 @@ describe('CatalogIndexPage', () => {
     const tobacco = within(section('Tobacco'));
     expect(tobacco.getByRole('link', { name: 'See all 7 Tobacco products' }).getAttribute('href')).toBe('/category/tobacco');
     expect(tobacco.getByRole('link', { name: 'Browse Tobacco' }).getAttribute('href')).toBe('/category/tobacco');
-    // Guests see the lock on each card, no price (AW-224).
-    expect(tobacco.getAllByText('Pricing after approval')).toHaveLength(4);
+    // Guests see the lock on each card, no price (AW-224), worded for a guest (NEW-050).
+    expect(tobacco.getAllByText('Sign in for pricing')).toHaveLength(4);
+    expect(tobacco.queryByText('Pricing after approval')).toBeNull();
   });
 
   it('never shows a product of a line under legal review as a card, even ranked or tagged (decision 2)', () => {
@@ -133,44 +134,46 @@ describe('CatalogIndexPage', () => {
     expect(window.location.pathname + window.location.search).toBe('/search?q=backwoods');
   });
 
-  it('shows approved buyers their prices on the cards, and the pricing prompt to guests only (AW-274)', () => {
-    const { unmount } = page(CATALOG, { signedIn: true, profile: { id: 'b', status: 'approved' }, isApprovedBuyer: true, priceOf: () => 12.5, pricesStatus: 'ready' });
+  it('shows approved buyers their prices on the cards, and the pricing prompt to everyone else (AW-274)', () => {
+    const { unmount } = page(CATALOG, { signedIn: true, profile: { id: 'b', status: 'approved' }, account: 'ready', isApprovedBuyer: true, priceOf: () => 12.5, pricesStatus: 'ready' });
     expect(within(section('Tobacco')).getAllByText('$12.50')).toHaveLength(4);
-    expect(document.querySelector('.catalog-pricing')).toBeNull();
+    expect(document.querySelector('.pricing-notice')).toBeNull();
     unmount();
     page();
-    expect(document.querySelector('.catalog-pricing')).not.toBeNull();
+    expect(document.querySelector('.pricing-notice')).not.toBeNull();
   });
 });
 
-// A guest's pricing prompt sits at the top, right under the page head, with
-// both ways in (AW-274). It follows the session, so a signed-in buyer whose
-// profile is still loading never sees it.
+// The prompt at the top is the department pages' PricingNotice (NEW-050):
+// one style and one wording for a guest, with Sign in and Apply (AW-274),
+// and the pending and on-hold sentences the other grids show. It follows
+// the account, so a signed-in buyer whose profile is loading is never
+// offered Sign in.
 describe('CatalogIndexPage pricing prompt', () => {
   const page = (props) => render(<CatalogIndexPage products={products} departments={departmentsFor(products)} profile={null} isApprovedBuyer={false}
     onLoginClick={() => {}} onApplyClick={() => {}} {...props} />);
+  const notice = () => document.querySelector('.pricing-notice');
 
-  it('shows a guest the banner directly after the page head, before the department links', () => {
-    page({ signedIn: false });
-    const banner = document.querySelector('.catalog-pricing');
-    expect(banner.className).toBe('callout catalog-pricing');
-    expect(banner.previousElementSibling.classList.contains('page-head')).toBe(true);
-    expect(banner.nextElementSibling.matches('nav.dept-jump')).toBe(true);
-    expect(banner.querySelector('p').textContent).toBe('Wholesale pricing is locked. Sign in to see your account pricing on every product, or apply for a trade account.');
-    // The old prompt at the bottom of the page is gone.
-    expect(document.querySelectorAll('.filter-signin, .catalog-signin')).toHaveLength(0);
-    expect(screen.getAllByText(/Wholesale pricing is locked/)).toHaveLength(1);
+  it('shows a guest the pricing notice directly after the page head, before the department links', () => {
+    page({ signedIn: false, account: 'signed-out' });
+    expect(notice().className).toBe('callout info pricing-notice');
+    expect(notice().previousElementSibling.classList.contains('page-head')).toBe(true);
+    expect(notice().nextElementSibling.matches('nav.dept-jump')).toBe(true);
+    expect(notice().querySelector('p').textContent).toBe('Trade prices are shown to approved accounts.');
+    // The old banner and the old prompt at the bottom of the page are gone.
+    expect(document.querySelectorAll('.catalog-pricing, .filter-signin, .catalog-signin')).toHaveLength(0);
+    expect(screen.queryByText(/Wholesale pricing is locked/)).toBeNull();
+    expect(document.querySelectorAll('.pricing-notice')).toHaveLength(1);
   });
 
-  it('calls the sign-in and apply handlers from its two buttons', () => {
+  it('calls the sign-in and apply handlers from its two controls', () => {
     const onLoginClick = vi.fn();
     const onApplyClick = vi.fn();
-    page({ signedIn: false, onLoginClick, onApplyClick });
-    const banner = document.querySelector('.catalog-pricing');
-    const signIn = within(banner).getByRole('button', { name: 'Sign in' });
-    const apply = within(banner).getByRole('button', { name: 'Apply for a trade account' });
+    page({ onLoginClick, onApplyClick });
+    const signIn = within(notice()).getByRole('button', { name: 'Sign in' });
+    const apply = within(notice()).getByRole('button', { name: 'Apply for a trade account' });
     expect(signIn.className).toBe('button sm');
-    expect(apply.className).toBe('button ghost sm');
+    expect(apply.className).toBe('text-link');
     fireEvent.click(signIn);
     expect(onLoginClick).toHaveBeenCalledTimes(1);
     expect(onApplyClick).not.toHaveBeenCalled();
@@ -178,9 +181,23 @@ describe('CatalogIndexPage pricing prompt', () => {
     expect(onApplyClick).toHaveBeenCalledTimes(1);
   });
 
-  it('hides it once signed in, also while the profile is still loading', () => {
-    page({ signedIn: true, profile: null });
-    expect(document.querySelector('.catalog-pricing')).toBeNull();
-    expect(screen.queryByText(/Wholesale pricing is locked/)).toBeNull();
+  it('tells an account waiting for approval and one on hold what the other grids tell them', () => {
+    const pending = page({ signedIn: true, account: 'ready', profile: { id: 'p', status: 'pending' } });
+    expect(notice().querySelector('p').textContent).toBe('Pricing unlocks after your account is approved.');
+    expect(within(notice()).getByRole('link', { name: 'View approval status' }).getAttribute('href')).toBe('/account');
+    expect(within(notice()).queryByRole('button')).toBeNull();
+    pending.unmount();
+    page({ signedIn: true, account: 'ready', profile: { id: 's', status: 'suspended' } });
+    expect(notice().querySelector('p').textContent).toMatch(/^Ordering is paused on this account\./);
+    expect(within(notice()).queryByRole('button')).toBeNull();
+  });
+
+  it('never offers Sign in while a signed-in account’s profile loads, and says nothing when it didn’t load', () => {
+    const loading = page({ signedIn: true, account: 'loading', profile: null });
+    expect(screen.getByRole('status').textContent).toBe('Checking your account…');
+    expect(within(notice()).queryByRole('button')).toBeNull();
+    loading.unmount();
+    page({ signedIn: true, account: 'no-profile', profile: null });
+    expect(notice()).toBeNull();
   });
 });

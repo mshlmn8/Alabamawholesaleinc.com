@@ -4,6 +4,7 @@
 // whose profile is loading or didn't load is never offered Sign in (NEW-002).
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { PRICE_LOCK } from '../lib/accountStatus.js';
 import { PricingNotice } from './PricingNotice.jsx';
 
 const notice = () => document.querySelector('.pricing-notice');
@@ -15,6 +16,8 @@ describe('PricingNotice', () => {
     render(<PricingNotice profile={null} isApprovedBuyer={false} onLoginClick={onLoginClick} onApplyClick={onApplyClick} />);
     expect(notice().className).toBe('callout info pricing-notice');
     expect(notice().querySelector('p').textContent).toBe('Trade prices are shown to approved accounts.');
+    // The one guest sentence, also the product page's (NEW-050).
+    expect(notice().querySelector('p').textContent).toBe(PRICE_LOCK.guest.notice);
     const signIn = screen.getByRole('button', { name: 'Sign in' });
     expect(signIn.className).toBe('button sm');
     const apply = screen.getByRole('button', { name: 'Apply for a trade account' });

@@ -229,7 +229,8 @@ export function ProductPage({
   // account is checked, a status in the shape of the pending line (the
   // height an approved price takes too, so the add row stays put); and when
   // the profile didn't load, one line, which the site notice's Try again
-  // explains.
+  // explains. A guest reads the grids' guest sentence (PRICE_LOCK.guest,
+  // NEW-050).
   let lockedPrice = null;
   if (!isApprovedBuyer) {
     if (onHold) {
@@ -241,7 +242,7 @@ export function ProductPage({
     } else if (profile) {
       lockedPrice = <><p>{PRICE_LOCK.pending.line}</p><Link className="text-link" to="/account">View approval status</Link></>;
     } else {
-      lockedPrice = <><p>Wholesale prices show here for approved trade accounts.</p><button className="button ghost" type="button" onClick={onLoginClick}>Sign in to see wholesale prices</button><button className="text-link" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button></>;
+      lockedPrice = <><p>{PRICE_LOCK.guest.notice}</p><button className="button ghost" type="button" onClick={onLoginClick}>Sign in to see wholesale prices</button><button className="text-link" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button></>;
     }
   } else if (priceDidNotLoad(shown.unit, pricesStatus)) {
     // An approved buyer's prices didn't load (NEW-054): a sentence, not a
@@ -404,7 +405,7 @@ export function ProductPage({
             <Link to={{ page: 'category', category: p.cat, sub: sameLine ? p.sub : null }}>View all <span className="sr-only">{sameLine ? p.sub : catLabel(p.cat)}</span></Link>
           </div>
           <div className="card-grid">
-            {related.map(r => <ProductCard key={r.id} p={r} profile={profile} isApprovedBuyer={isApprovedBuyer} priceOf={priceOf} pricesStatus={pricesStatus} cart={cart} addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} />)}
+            {related.map(r => <ProductCard key={r.id} p={r} profile={profile} account={account} isApprovedBuyer={isApprovedBuyer} priceOf={priceOf} pricesStatus={pricesStatus} cart={cart} addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} />)}
           </div>
         </section>
       )}

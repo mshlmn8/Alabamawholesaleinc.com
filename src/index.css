@@ -2338,13 +2338,6 @@ address.info-lead-small { font-style: normal; }
 }
 .sku-list b { display: block; font-size: var(--text-sm); color: var(--ink); }
 .sku-list small { display: block; margin-top: 2px; font-size: var(--text-xs); color: var(--muted); }
-/* The guest's pricing prompt (AW-274): a full-width callout under the page
-   head, its two buttons beside the text, or under it when the line is too
-   narrow. Small buttons, 44px on touch. */
-.catalog-pricing { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1.5rem; margin: 0 0 1.25rem; }
-.catalog-pricing > p { flex: 1 1 22rem; margin: 0; }
-.catalog-pricing b { color: var(--purple); }
-.catalog-pricing-actions { display: flex; flex-wrap: wrap; gap: .625rem; }
 /* Touch screens (AW-302, AW-229): the policy links, the department jump
    links, the department links and the SKU list toggles are 44px targets; a
    mouse keeps the compact sizes. */

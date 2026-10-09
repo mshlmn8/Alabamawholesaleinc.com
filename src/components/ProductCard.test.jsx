@@ -11,7 +11,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { announce } from '../lib/announce.js';
 import { dismissToast, getToast } from '../lib/toast.js';
 import { SIZES } from '../lib/images.js';
-import { ProductCard, cardDetail, cardDetailParts } from './ProductCard.jsx';
+import { ProductCard, cardDetail, cardDetailParts, cardLockText } from './ProductCard.jsx';
 
 vi.mock('../lib/announce.js', async (importOriginal) => ({ ...(await importOriginal()), announce: vi.fn() }));
 
@@ -92,7 +92,7 @@ describe('ProductCard', () => {
     expect(screen.getByRole('button', { name: 'Not available, Swisher Sweets cigarillos' }).disabled).toBe(true);
     // A guest keeps the pricing line beside it.
     view.rerender(card(p));
-    expect(price()).toBe('Pricing after approval');
+    expect(price()).toBe('Sign in for pricing');
     expect(screen.getByRole('button', { name: 'Not available, Swisher Sweets cigarillos' }).disabled).toBe(true);
     // One variant back: "Select options" again.
     view.rerender(card({ ...p, unavailableVariants: ['Red'] }, { ...APPROVED, priceOf: () => 12.25 }));
@@ -293,12 +293,15 @@ describe('ProductCard add control', () => {
     expect(decLine).toHaveBeenCalledWith('14', 1);
   });
 
-  it('tells guests "Pricing after approval" in plain text, with no sign-in tab stop of its own (AW-224)', () => {
+  // A guest has no account to approve (NEW-050).
+  it('tells guests "Sign in for pricing" in plain text, with no sign-in tab stop of its own (AW-224)', () => {
     const onLoginClick = vi.fn();
     addCard({ onLoginClick });
-    const lock = screen.getByText('Pricing after approval');
+    const lock = screen.getByText('Sign in for pricing');
     expect(lock.tagName).toBe('SPAN');
     expect(lock.className).toBe('lock');
+    expect(lock.getAttribute('aria-hidden')).toBeNull();
+    expect(screen.queryByText('Pricing after approval')).toBeNull();
     expect(screen.queryByRole('button', { name: /Sign in/ })).toBeNull();
     // The add button is the card's only control after its link.
     // (Its visible label; the product's name follows for screen readers, AW-170.)
@@ -306,10 +309,34 @@ describe('ProductCard add control', () => {
     expect(onLoginClick).not.toHaveBeenCalled();
   });
 
-  it('tells a signed-in account waiting for approval the same, in plain text', () => {
-    addCard({ profile: PENDING });
+  it('tells a signed-in account waiting for approval "Pricing after approval", in plain text', () => {
+    addCard({ profile: PENDING, account: 'ready' });
     expect(screen.queryByRole('button', { name: /Sign in/ })).toBeNull();
     expect(screen.getByText('Pricing after approval').className).toBe('lock');
+    expect(screen.queryByText('Sign in for pricing')).toBeNull();
+  });
+
+  // Signed in, but the profile is loading or didn't load: the line keeps its
+  // height and says nothing it might take back (NEW-050, NEW-002).
+  it('leaves the lock line empty, at its height, while a signed-in account loads or when its profile didn’t load', () => {
+    for (const account of ['loading', 'no-profile']) {
+      const view = addCard({ profile: null, account });
+      const lock = document.querySelector('.card-meta > .lock');
+      expect(lock.textContent, account).toBe('\u00A0');
+      expect(lock.getAttribute('aria-hidden')).toBe('true');
+      expect(screen.queryByText(/Sign in for pricing|Pricing after approval|Account on hold/)).toBeNull();
+      view.unmount();
+    }
+  });
+
+  it('chooses the lock text from the account, the profile first', () => {
+    expect(cardLockText(null)).toBe('Sign in for pricing');
+    expect(cardLockText(null, 'signed-out')).toBe('Sign in for pricing');
+    expect(cardLockText(null, 'loading')).toBe('');
+    expect(cardLockText(null, 'no-profile')).toBe('');
+    expect(cardLockText({ status: 'pending' }, 'ready')).toBe('Pricing after approval');
+    expect(cardLockText({ status: 'pending' }, 'loading')).toBe('Pricing after approval');
+    expect(cardLockText({ status: 'suspended' }, 'ready')).toBe('Account on hold');
   });
 
   it('tells an account on hold it is on hold, not that pricing comes after approval (AW-101)', () => {

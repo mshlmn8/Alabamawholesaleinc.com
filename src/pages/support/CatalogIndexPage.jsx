@@ -7,9 +7,11 @@
 // focuses its h2 (useNavigationEffects), and Back returns to where the jump
 // was made (AW-229). The line pills are a labelled group.
 //
-// A guest gets the pricing prompt at the top, with Sign in and Apply
-// (AW-274); signedIn follows the session, not the profile, so a buyer whose
-// profile is still loading never sees it flash.
+// The pricing prompt at the top is the department pages' PricingNotice
+// (NEW-050): a guest gets Sign in and Apply (AW-274), an account waiting for
+// approval or on hold its own sentence, an approved buyer nothing. It
+// follows useAuth's account (App's cardProps), so a buyer whose profile is
+// still loading is never offered Sign in.
 
 import { useState } from 'react';
 import { Link, navigate } from '../../lib/router.js';
@@ -18,9 +20,9 @@ import { brandLabel } from '../../lib/format.js';
 import { featuredOrder, underLegalReview } from '../../lib/merchandising.js';
 import { Icon } from '../../components/Icon.jsx';
 import { BackToTop } from '../../components/BackToTop.jsx';
+import { PricingNotice } from '../../components/PricingNotice.jsx';
 import { ProductCard } from '../../components/ProductCard.jsx';
 import { SkuCount } from '../../components/SkuCount.jsx';
-import { APPLY_LABEL, SIGN_IN_LABEL } from '../../data/terms.js';
 import { PageHead } from './SupportShell.jsx';
 
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -40,24 +42,11 @@ export function catalogPreview(rows, limit = CATALOG_PREVIEW) {
   return featuredOrder(rows, { hasPhoto }).filter((p) => hasPhoto(p) && !underLegalReview(p)).slice(0, limit);
 }
 
-// The guest's pricing prompt, at the top of the page with both ways in
-// (AW-274): sign in, or apply for a trade account.
-function PricingLockedBanner({ onLoginClick, onApplyClick }) {
-  return (
-    <div className="callout catalog-pricing">
-      <p><b>Wholesale pricing is locked.</b> <span>Sign in to see your account pricing on every product, or apply for a trade account.</span></p>
-      <div className="catalog-pricing-actions">
-        <button className="button sm" type="button" onClick={onLoginClick}>{SIGN_IN_LABEL}</button>
-        <button className="button ghost sm" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button>
-      </div>
-    </div>
-  );
-}
-
 const seeAll = (d) => (d.count === 1 ? `See the ${d.label} product` : `See all ${d.count} ${d.label} products`);
 
-export function CatalogIndexPage({ products, departments, signedIn = false, ...cardProps }) {
-  const { onLoginClick, onApplyClick } = cardProps;
+// cardProps are App's: the cards' and the notice's account, prices and actions.
+export function CatalogIndexPage({ products, departments, ...cardProps }) {
+  const { profile, account, isApprovedBuyer, onLoginClick, onApplyClick } = cardProps;
   const lines = departments.reduce((n, d) => n + d.subs.length, 0);
   const [draft, setDraft] = useState('');
 
@@ -78,7 +67,7 @@ export function CatalogIndexPage({ products, departments, signedIn = false, ...c
           <button className="button" type="submit">Search</button>
         </form>
       </PageHead>
-      {!signedIn && <PricingLockedBanner onLoginClick={onLoginClick} onApplyClick={onApplyClick} />}
+      <PricingNotice profile={profile} account={account} isApprovedBuyer={isApprovedBuyer} onLoginClick={onLoginClick} onApplyClick={onApplyClick} />
 
       <nav className="dept-jump" aria-label="Jump to department">
         {departments.map((d, i) => (

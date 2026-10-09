@@ -27,11 +27,17 @@ export const STATUS_LABEL = ACCOUNT_STATUS_LABELS;
 // card, `line` as a sentence in a page intro, `detail` under `short` (the
 // department sidebar). A suspended account is told ordering is paused, never
 // that pricing comes "after approval" (AW-101).
+//
+// A guest has no account to approve: its card says "Sign in for pricing",
+// and the one guest prompt (PricingNotice above a grid, and the product
+// page's price slot) says `notice`, with Sign in and Apply beside it
+// (NEW-050). "Pricing after approval" is for an account that exists.
 export const PRICE_LOCK = {
   guest: {
     short: 'Sign in for pricing',
     line: 'Sign in to see your wholesale pricing.',
     detail: 'Sign in to see your account pricing.',
+    notice: 'Trade prices are shown to approved accounts.',
   },
   pending: {
     short: 'Pricing after approval',

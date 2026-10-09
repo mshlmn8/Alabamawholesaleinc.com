@@ -202,7 +202,10 @@ describe('CategoryPage', () => {
     expect(notices[0].textContent).toMatch(/^Trade prices are shown to approved accounts\./);
     expect(screen.getByRole('button', { name: 'Apply for a trade account' })).toBeTruthy();
     expect(document.querySelector('.filter-panel .filter-signin')).toBeNull();
-    expect(screen.queryByText(/Wholesale pricing is locked|Sign in for pricing/)).toBeNull();
+    expect(screen.queryByText(/Wholesale pricing is locked/)).toBeNull();
+    // A guest's card says 'Sign in for pricing' as plain text, never as a control (NEW-050).
+    const locks = screen.getAllByText('Sign in for pricing');
+    expect(locks.map((el) => `${el.tagName}.${el.className}`)).toEqual(locks.map(() => 'SPAN.lock'));
     // No card has a sign-in control of its own: its only controls are the add or choose ones.
     for (const control of document.querySelectorAll('.content-card .card-meta :is(button, a)')) expect(control.classList.contains('card-add')).toBe(true);
     // An account waiting for approval: the status link.

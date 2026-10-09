@@ -100,7 +100,7 @@ describe('ProductPage price context (AW-265)', () => {
   // The locked slot's own wording is AW-133's (ProductPage.locked.test.jsx).
   it('shows guests and accounts awaiting approval none of it', () => {
     const view = render(page(KITE, { priceOf: () => 32.35, listOf: () => 34.05, priceTier: SILVER }));
-    expect(lines()[0]).toBe('Wholesale prices show here for approved trade accounts.');
+    expect(lines()[0]).toBe('Trade prices are shown to approved accounts.');
     expect(qtyNote()).toBeNull();
     expect(document.body.textContent).not.toMatch(/\$3[24]\.|you save|Silver price/);
     view.rerender(page(KITE, { profile: { id: 'p', status: 'pending' }, priceOf: () => 32.35, listOf: () => 34.05, priceTier: SILVER }));

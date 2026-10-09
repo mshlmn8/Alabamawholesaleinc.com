@@ -269,7 +269,7 @@ test('an approved buyer’s prices come from my_prices(), and each × quantity i
   const line = page.locator('.checkout-lines .drawer-line').first();
   await expect(line.locator('small').first()).toHaveText('AW-KITE · $13.40 each');
   await expect(line.locator('.line-total')).toHaveText('$40.20');
-  await expect(page.locator('.checkout-total')).toHaveText('Estimated subtotal · 3 units$40.20');
+  await expect(page.locator('.checkout-total')).toHaveText('Estimated total · 3 units$40.20');
   // A product without a price (synthetic: ids ending in 7).
   await page.goto('/product/7');
   await expect(page.locator('.pd-price')).toContainText('Price on request');
@@ -286,11 +286,18 @@ test('guests never ask for prices and see the lock (AW-003)', async ({ page }) =
   const errors = trackErrors(page);
   const calls = await mockSupabase(page);
   await page.goto('/category/tobacco/cigarettes');
-  // One pricing notice above the grid; the card's lock is plain text (AW-224).
-  await expect(page.locator('.content-card').filter({ hasText: 'AW-KITE' }).locator('.card-meta .lock')).toHaveText('Pricing after approval');
+  // One pricing notice above the grid; the card's lock is plain text (AW-224),
+  // worded for a guest, who has no account to approve (NEW-050).
+  await expect(page.locator('.content-card').filter({ hasText: 'AW-KITE' }).locator('.card-meta .lock')).toHaveText('Sign in for pricing');
   await expect(page.locator('.pricing-notice')).toHaveCount(1);
   await expect(page.locator('.pricing-notice')).toContainText('Trade prices are shown to approved accounts.');
+  // /catalog has the same notice, in the same words (NEW-050).
+  await page.goto('/catalog');
+  await expect(page.locator('.pricing-notice')).toHaveCount(1);
+  await expect(page.locator('.pricing-notice')).toContainText('Trade prices are shown to approved accounts.');
+  await expect(page.locator('.catalog-pricing')).toHaveCount(0);
   await page.goto('/product/14');
+  await expect(page.locator('.pd-price')).toContainText('Trade prices are shown to approved accounts.');
   await expect(page.locator('.pd-price')).toContainText('Sign in');
   await expect(page.locator('main')).not.toContainText('$13.40');
   expect(calls.prices).toBe(0);

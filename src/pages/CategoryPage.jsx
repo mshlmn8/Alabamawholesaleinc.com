@@ -508,7 +508,7 @@ export function CategoryPage({
                   the first photo, the likely largest paint, first (AW-323).
                   The photos are asked for at this grid's own width (AW-322). */}
               {items.map((p, i) => (
-                <ProductCard key={p.id} p={p} profile={profile} isApprovedBuyer={isApprovedBuyer} priceOf={priceOf} pricesStatus={pricesStatus} cart={cart}
+                <ProductCard key={p.id} p={p} profile={profile} account={account} isApprovedBuyer={isApprovedBuyer} priceOf={priceOf} pricesStatus={pricesStatus} cart={cart}
                              addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} eager={i < 3} priority={i === 0} sizes={SIZES.categoryCard} />
               ))}
             </div>

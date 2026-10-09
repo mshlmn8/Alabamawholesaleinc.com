@@ -703,9 +703,10 @@ export function QuotePage({
             </Field>
           </div>
           </fieldset>
-          {/* Lines still waiting for a variant, or priced by the trade desk, are not in the estimate (AW-103, NEW-063). */}
+          {/* Lines still waiting for a variant, or priced by the trade desk, are not in the estimate (AW-103, NEW-063).
+              'Estimated total', as in the cart drawer (NEW-050). */}
           <div className="drawer-total checkout-total" id="checkout-total" tabIndex={-1}>
-            <span>{`Estimated subtotal · ${totalUnits} ${totalUnits === 1 ? 'unit' : 'units'}`}</span>
+            <span>{`Estimated total · ${totalUnits} ${totalUnits === 1 ? 'unit' : 'units'}`}</span>
             <span>{isApprovedBuyer ? totalLabel(items, total, pricesStatus) : (isSuspended ? 'Ordering paused' : (signedIn ? 'Pricing after approval' : 'Pricing confirmed by the trade desk'))}</span>
           </div>
           {excluded && <p className="total-note">{excluded}</p>}

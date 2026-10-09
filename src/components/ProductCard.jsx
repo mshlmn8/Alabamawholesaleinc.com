@@ -52,11 +52,18 @@
 // unless the page says `eager`; the first card of a department page is also
 // `priority` (AW-323).
 //
-// Without trade pricing (a guest, or an account not approved) the card says
-// "Pricing after approval" as plain text (an account on hold: "Account on
-// hold", AW-101, which is what `profile` is for); the page shows one
-// PricingNotice with Sign in and Apply above the grid instead of a sign-in
-// link on every card (AW-224). Callers may still pass onLoginClick.
+// Without trade pricing the card says why as plain text, one line, with no
+// tab stop of its own (AW-224); the page shows one PricingNotice with Sign
+// in and Apply above the grid instead of a sign-in link on every card.
+// Callers may still pass onLoginClick. The words are PRICE_LOCK's `short`
+// (NEW-050), from `account` (useAuth's, through App's cardProps) and
+// `profile`:
+//   nobody signed in        "Sign in for pricing": a guest has no account
+//                           to approve
+//   waiting for approval    "Pricing after approval"
+//   on hold                 "Account on hold" (AW-101)
+//   signed in, profile still loading or not loaded: an empty line of the
+//                           same height, rather than a guess (NEW-002)
 
 import { useEffect, useId, useRef, useState } from 'react';
 import {
@@ -100,8 +107,15 @@ export function cardDetail(p, options) {
 
 // `sizes` is the photo's shown width (images.js SIZES): the rows of cards by
 // default; the department grid passes its own (AW-322).
+// The card's pricing lock (NEW-050), or '' while a signed-in account's
+// profile is loading or didn't load.
+export function cardLockText(profile, account = profile ? 'ready' : 'signed-out') {
+  if (profile) return accountStatus(profile) === 'suspended' ? PRICE_LOCK.suspended.short : PRICE_LOCK.pending.short;
+  return account === 'signed-out' ? PRICE_LOCK.guest.short : '';
+}
+
 export function ProductCard({
-  p, profile = null, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, showSku = true, eager = false, priority = false,
+  p, profile = null, account = profile ? 'ready' : 'signed-out', isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, showSku = true, eager = false, priority = false,
   sizes = SIZES.card,
 }) {
   // Counts the adds since "Added" last went away; each add restarts its timer.
@@ -132,6 +146,7 @@ export function ProductCard({
       : { unit: priceOf(p.id, onlyVariant), from: false };
   }
   const target = isApprovedBuyer ? 'order' : 'quote';
+  const lockText = isApprovedBuyer ? '' : cardLockText(profile, account);
   // Where focus goes once the control has changed: 'input' or 'plus' (the
   // stepper), 'add' (the add button), or nothing.
   const pendingFocus = useRef(null);
@@ -197,11 +212,10 @@ export function ProductCard({
             <b>{priceLabel(shown.unit, pricesStatus, { from: shown.from })}</b>
             {shown.unit != null && p.sellUnit && <small>{`per ${p.sellUnit}`}</small>}
           </span>
-        ) : accountStatus(profile) === 'suspended' ? (
-          // A suspended account is on hold, not waiting for approval (AW-101).
-          <span className="lock">{PRICE_LOCK.suspended.short}</span>
         ) : (
-          <span className="lock">{PRICE_LOCK.pending.short}</span>
+          // Its line stays while the account loads, so the rows of a grid
+          // keep their height (NEW-050).
+          <span className="lock" aria-hidden={lockText ? undefined : 'true'}>{lockText || '\u00A0'}</span>
         )}
         {soldOut ? (
           <button className="button ghost sm card-add" type="button" disabled>Not available<span className="sr-only">{`, ${p.name}`}</span></button>

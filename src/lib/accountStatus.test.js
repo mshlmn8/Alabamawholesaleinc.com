@@ -41,6 +41,8 @@ describe('STATUS_LABEL', () => {
 describe('PRICE_LOCK', () => {
   it('keeps the guest and pending wording the storefront already uses', () => {
     expect(PRICE_LOCK.guest).toMatchObject({ short: 'Sign in for pricing', line: 'Sign in to see your wholesale pricing.' });
+    // The one guest prompt above a grid and in the product page's price slot (NEW-050).
+    expect(PRICE_LOCK.guest.notice).toBe('Trade prices are shown to approved accounts.');
     expect(PRICE_LOCK.pending).toMatchObject({ short: 'Pricing after approval', line: 'Pricing unlocks after your account is approved.' });
   });
 
@@ -55,7 +57,8 @@ describe('PRICE_LOCK', () => {
 
   it('has no lock for an approved account', () => {
     expect(PRICE_LOCK.approved).toBeUndefined();
-    for (const status of ['guest', 'pending', 'suspended']) {
+    expect(Object.keys(PRICE_LOCK.guest)).toEqual(['short', 'line', 'detail', 'notice']);
+    for (const status of ['pending', 'suspended']) {
       expect(Object.keys(PRICE_LOCK[status])).toEqual(['short', 'line', 'detail']);
     }
   });

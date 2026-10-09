@@ -114,12 +114,14 @@ describe('copy email address (AW-280)', () => {
   });
 });
 
-describe('catalog pricing banner (AW-274)', () => {
-  it('lays the catalog pricing banner out full width, its actions wrapping under the text', () => {
-    expect(rule(outside, '.catalog-pricing')).toMatchObject({ display: 'flex', 'flex-wrap': 'wrap' });
-    expect(rule(outside, '.catalog-pricing')).not.toHaveProperty('max-width');
-    expect(rule(outside, '.catalog-pricing-actions')).toMatchObject({ display: 'flex', 'flex-wrap': 'wrap' });
-    // Its buttons are .button.sm: 40px with a mouse, 44px on touch.
+// /catalog's pricing prompt is the grids' PricingNotice now (NEW-050): one
+// style, so the banner's own rules are gone.
+describe('catalog pricing prompt (AW-274, NEW-050)', () => {
+  it('uses the pricing notice’s rules, with nothing of the old banner left', () => {
+    expect(css).not.toMatch(/\.catalog-pricing/);
+    expect(rule(outside, '.pricing-notice')).toMatchObject({ display: 'flex', 'flex-wrap': 'wrap' });
+    expect(rule(outside, '.pricing-notice-actions')).toMatchObject({ display: 'flex', 'flex-wrap': 'wrap' });
+    // Its Sign in is .button.sm: 40px with a mouse, 44px on touch.
     expect(coarse).toMatch(/--tap-sm:\s*var\(--tap\)/);
     // The old bottom prompt's rule is gone; CategoryPage keeps .filter-signin.
     expect(css).not.toMatch(/\.catalog-signin/);
