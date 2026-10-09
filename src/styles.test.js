@@ -1427,6 +1427,8 @@ describe('no inline styles (AW-301)', () => {
     expect(code(read('src/pages/QuotePage.jsx')).match(/className="page-head is-centered"/g)).toHaveLength(1);
     expect(code(read('src/pages/QuoteReceipt.jsx'))).toMatch(/<section className="page-head receipt-head">/);
     expect(ruleFor('.receipt-head')).toEqual({ 'text-align': 'center' });
+    // The receipt's notes keep their lines (NEW-062).
+    expect(ruleFor('.receipt-details > .receipt-wide dd')).toEqual({ 'white-space': 'pre-line' });
   });
 
   it('lets the phone page-head padding win over the centred message', () => {

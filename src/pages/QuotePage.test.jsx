@@ -641,7 +641,10 @@ describe('QuotePage and submit_quote', () => {
     expect(onSignIn).toHaveBeenCalledTimes(1);
     // Without the apply dialog, the link goes to the apply page.
     expect(screen.getByRole('link', { name: 'New here? Apply for a trade account' }).getAttribute('href')).toBe('/apply');
-    expect(document.querySelector('.quote-account-links').textContent).toBe('Already have an account? Sign in · New here? Apply for a trade account');
+    // No separator to end a wrapped line (NEW-033): the row's gap spaces them.
+    const links = document.querySelector('.quote-account-links');
+    expect([...links.childNodes].map((node) => `${node.nodeName} ${node.textContent}`))
+      .toEqual(['BUTTON Already have an account? Sign in', 'A New here? Apply for a trade account']);
     view.rerender(page({ ...PENDING }));
     expect(document.querySelector('.quote-account-links')).toBeNull();
   });
@@ -832,14 +835,17 @@ describe('QuotePage receipt', () => {
       '3 × Argo corn starch (AW-ARGO-CORN-STARCH · sold by the case of 24)',
     ]);
     const details = Object.fromEntries([...document.querySelectorAll('.receipt-details > div')].map((row) => [row.querySelector('dt').textContent, row.querySelector('dd').textContent]));
+    // When it was sent comes first, on the warehouse's clock (NEW-062).
     expect(details).toEqual({
+      Sent: expect.stringMatching(/^[A-Z][a-z]{2} \d{1,2}, \d{4}, \d{1,2}:\d{2}\s[AP]M CT$/),
       Business: 'Test Market',
       'Delivery method': 'Next-day delivery (on route)',
       'Ship to': '1 Test WayBirmingham, AL 35203',
       'Preferred date': 'Tuesday, January 15, 2030',
       Notes: 'Back door, before 10',
     });
-    expect(receiptText()).toMatch(/A trade desk rep will reach out within one business day at 205-000-0000 to confirm details\./);
+    // The phone as typed (205-000-0000), written the usual way (NEW-062).
+    expect(receiptText()).toMatch(/A trade desk rep will reach out within one business day at \(205\) 000-0000 to confirm details\./);
     // AW-108: centred by class, never by inline style.
     const section = document.querySelector('section.page-head.receipt-head');
     expect(section.hasAttribute('style')).toBe(false);
@@ -862,9 +868,10 @@ describe('QuotePage receipt', () => {
     await waitFor(() => expect(heading().textContent).toBe('Thank you, Alice Alpha.'));
     const details = Object.fromEntries([...document.querySelectorAll('.receipt-details > div')].map((row) => [row.querySelector('dt').textContent, row.querySelector('dd').textContent]));
     expect(details).toEqual({
+      Sent: expect.stringMatching(/^[A-Z][a-z]{2} \d{1,2}, \d{4}, \d{1,2}:\d{2}\s[AP]M CT$/),
       Business: 'Alpha Food Mart',
       'Delivery method': 'Will-call pickup',
-      'Pickup at': `${COMPANY.addressShort}, during business hours`,
+      'Pickup at': '613 Graymont Ave N, Birmingham, AL 35203, during business hours',
     });
     // A signed-in buyer can find it again in the order history.
     expect(screen.getByRole('link', { name: 'View order history' }).getAttribute('href')).toBe('/account');
@@ -959,6 +966,21 @@ describe('QuotePage receipt', () => {
     await waitFor(() => expect(heading().textContent).toMatch(/Thank you/));
     view.rerender(page({ ...props, items: [], entryKey: 'k2' }));
     expect(heading().textContent).toBe('Your order is empty');
+  });
+
+  // NEW-062: a receipt kept from before (sessionStorage) benefits too; an
+  // email or a receipt without a time stays as it is.
+  it('writes the phone the usual way, keeps the notes’ lines and gives the time it was sent, also for a kept receipt', () => {
+    const typed = { ...SAVED, reachAt: '2055550123', notes: 'Line one\nLine two of the notes', savedAt: Date.UTC(2026, 9, 9, 20, 45) };
+    const view = render(page({ ...GUEST, items: [], savedReceipt: typed, entryKey: 'k1' }));
+    expect(document.querySelector('.receipt-head > p:not([class]) strong').textContent).toBe('(205) 555-0123');
+    const row = (name) => [...document.querySelectorAll('.receipt-details > div')].find((div) => div.querySelector('dt').textContent === name);
+    expect(row('Notes').querySelector('dd').textContent).toBe('Line one\nLine two of the notes');
+    expect(row('Notes').classList.contains('receipt-wide')).toBe(true);
+    expect(row('Sent').querySelector('dd').textContent.replace(/\s/g, ' ')).toBe('Oct 9, 2026, 3:45 PM CT');
+    view.rerender(page({ ...GUEST, items: [], savedReceipt: { ...typed, reachAt: 'buyer@example.test', savedAt: undefined }, entryKey: 'k1' }));
+    expect(document.querySelector('.receipt-head > p:not([class]) strong').textContent).toBe('buyer@example.test');
+    expect(row('Sent')).toBeUndefined();
   });
 
   it('copies the reference where the browser allows it, and says so once', async () => {

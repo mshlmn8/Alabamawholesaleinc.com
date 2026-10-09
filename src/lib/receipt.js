@@ -18,7 +18,8 @@
 // log, and App clears it on sign-out (handleLogout).
 
 import { useSyncExternalStore } from 'react';
-import { STORAGE } from '../data/content.js';
+import { STORAGE, TIME_ZONE, TIME_ZONE_LABEL } from '../data/content.js';
+import { usPhone } from './phone.js';
 
 // The delivery options as checkout names them (QuotePage's select), so the
 // receipt repeats the buyer's choice word for word.
@@ -38,6 +39,30 @@ export function formatPreferredDate(value) {
   if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return '';
   return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 }
+
+// When the request was sent (NEW-062): savedAt (ms) on the warehouse's
+// clock, 'Oct 9, 2026, 3:45 PM CT', or '' when there is no such time. The
+// parts are named one by one, which prints what dateStyle 'medium' and
+// timeStyle 'short' do, because Safari 14.0 and Firefox 78 ignore those two.
+// Made on first use, inside the try: a browser without the time zone throws.
+let sentFormat = null;
+export function formatSentAt(savedAt) {
+  if (typeof savedAt !== 'number' || !Number.isFinite(savedAt)) return '';
+  try {
+    sentFormat = sentFormat || new Intl.DateTimeFormat('en-US', {
+      timeZone: TIME_ZONE, month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+    });
+    return `${sentFormat.format(savedAt)} ${TIME_ZONE_LABEL}`;
+  } catch {
+    return ''; // out of the Date range, or no such time zone
+  }
+}
+
+// Where the trade desk will reach the buyer (NEW-062): a ten-digit phone
+// number written the usual way, '(205) 555-0123', whatever was typed; an
+// email, or anything else, as given. Applied when the receipt is shown, so
+// receipts saved before this still benefit.
+export const reachAtText = (value) => usPhone(value)?.formatted ?? String(value ?? '');
 
 const text = (value) => String(value ?? '').trim();
 const countOrNull = (value) => {

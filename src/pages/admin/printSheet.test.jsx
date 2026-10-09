@@ -133,7 +133,7 @@ describe('the sheets', () => {
     const print = vi.spyOn(window, 'print').mockImplementation(() => {});
     const { container } = await show('slip');
     expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Packing slip ALW-O-BBBB222233');
-    expect(container.querySelector('.print-company').textContent).toBe('Alabama Wholesale Inc · 613 Graymont Ave N, Birmingham AL 35203 · (205) 354-4473');
+    expect(container.querySelector('.print-company').textContent).toBe('Alabama Wholesale Inc · 613 Graymont Ave N, Birmingham, AL 35203 · (205) 354-4473');
     expect(container.querySelector('thead th').textContent).toBe('Packed');
     expect(container.textContent).not.toMatch(/\$/);
     act(() => { screen.getByRole('button', { name: 'Print' }).click(); });

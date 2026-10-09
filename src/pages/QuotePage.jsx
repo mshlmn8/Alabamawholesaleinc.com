@@ -603,11 +603,12 @@ export function QuotePage({
             field, and the first takes focus (src/components/Field.jsx). */}
         <ValidatedForm onSubmit={handleQuoteSubmit} validate={validateQuote} aria-labelledby="quote-form-title">
           <h2 id="quote-form-title" className="checkout-form-title">Your details</h2>
-          {/* Guests can sign in, or apply, before filling this in (AW-014). */}
+          {/* Guests can sign in, or apply, before filling this in (AW-014).
+              Spaced by the row's gap, with no separator to end a line when
+              they wrap (NEW-033). */}
           {!signedIn && (
             <p className="fine quote-account-links">
               {onSignIn && <button className="text-link" type="button" onClick={onSignIn}>{SIGN_IN_INSTEAD}</button>}
-              <span aria-hidden="true"> · </span>
               {onApplyClick
                 ? <button className="text-link" type="button" onClick={onApplyClick}>{APPLY_INSTEAD}</button>
                 : <Link className="text-link" to="/apply">{APPLY_INSTEAD}</Link>}

@@ -1519,7 +1519,9 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .form-grid .consent label { margin: 0; letter-spacing: 0; text-transform: none; font-size: var(--text-base); font-weight: 600; line-height: 1.45; color: var(--ink); }
 .consent-block { display: grid; gap: 12px; margin: 14px 0 4px; }
 .consent-block .consent { display: flex; align-items: flex-start; gap: 10px; font-size: var(--text-base); line-height: 1.45; }
-.quote-account-links { display: flex; flex-wrap: wrap; align-items: center; column-gap: .25rem; margin: 0 0 10px; }
+/* Guests' sign-in and apply links (AW-014): spaced by the gap alone, so a
+   wrapped row never ends in a separator (NEW-033). */
+.quote-account-links { display: flex; flex-wrap: wrap; align-items: center; column-gap: 1rem; row-gap: 0; margin: 0 0 10px; }
 
 /* ============================ fields ============================
    One look for every text box, select and file input (AW-146, AW-172, AW-147,
@@ -2395,6 +2397,8 @@ ul.sub-pills { list-style: none; padding: 0; }
 .receipt-items { border: 1px solid var(--line); background: #fff; }
 .receipt-details { margin-top: 0; }
 .receipt-details > .receipt-wide { grid-column: 1 / -1; }
+/* The notes keep the lines they were typed in (NEW-062), on screen and on paper. */
+.receipt-details > .receipt-wide dd { white-space: pre-line; }
 .receipt-line { display: block; }
 .receipt-actions { margin-top: 28px; }
 

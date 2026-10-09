@@ -114,7 +114,8 @@ export const COMPANY = {
   phoneRaw: '+12053544473',
   // TODO(owner): Which domain email address is monitored, so it can replace the Gmail address? (AW-127)
   email: 'Alabamawholesaleinc@gmail.com',
-  addressShort: '613 Graymont Ave N, Birmingham AL 35203',
+  // With the comma the footer and addressLine2 use (NEW-066).
+  addressShort: '613 Graymont Ave N, Birmingham, AL 35203',
   addressLine1: '613 Graymont Ave N',
   addressLine2: 'Birmingham, AL 35203',
   // The same address in parts: the will-call address a quote sends to a

@@ -6,8 +6,8 @@ import { createElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { STORAGE } from '../data/content.js';
 import {
-  DELIVERY_LABELS, buildReceipt, clearReceipt, formatPreferredDate, readLastReceipt, resetReceiptStoreForTests, saveReceipt, subscribeReceipt,
-  useLastReceipt,
+  DELIVERY_LABELS, buildReceipt, clearReceipt, formatPreferredDate, formatSentAt, reachAtText, readLastReceipt, resetReceiptStoreForTests, saveReceipt,
+  subscribeReceipt, useLastReceipt,
 } from './receipt.js';
 
 const KEY = 'aw-last-receipt';
@@ -147,5 +147,28 @@ describe('the receipt store', () => {
     expect(view.container.textContent).toBe('ALW-O-TEST000001');
     act(() => clearReceipt());
     expect(view.container.textContent).toBe('none');
+  });
+});
+
+// What the receipt prints from a stored snapshot (NEW-062).
+describe('formatSentAt and reachAtText', () => {
+  const plain = (text) => text.replace(/\s/g, ' ');
+  it('gives the time it was sent on the warehouse’s clock, with its zone', () => {
+    expect(plain(formatSentAt(Date.UTC(2026, 9, 9, 20, 45)))).toBe('Oct 9, 2026, 3:45 PM CT');
+    // Central Standard Time in January.
+    expect(plain(formatSentAt(Date.UTC(2026, 0, 2, 6, 5)))).toBe('Jan 2, 2026, 12:05 AM CT');
+  });
+
+  it('gives nothing without a usable time', () => {
+    for (const value of [undefined, null, '', '1700000000000', Number.NaN, Infinity, 8.64e15 + 1]) expect(formatSentAt(value)).toBe('');
+  });
+
+  it('writes a ten-digit phone the usual way and leaves an email, or anything else, as it is', () => {
+    expect(reachAtText('2055550123')).toBe('(205) 555-0123');
+    expect(reachAtText('+1 205.555.0123')).toBe('(205) 555-0123');
+    expect(reachAtText('(205) 555-0123')).toBe('(205) 555-0123');
+    expect(reachAtText('buyer@example.test')).toBe('buyer@example.test');
+    expect(reachAtText('205-555')).toBe('205-555');
+    expect(reachAtText(undefined)).toBe('');
   });
 });

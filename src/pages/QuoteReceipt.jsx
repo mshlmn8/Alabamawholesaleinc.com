@@ -13,11 +13,13 @@
 // (tabIndex -1) so QuotePage can move focus to it after the save.
 //
 // The heading block is centred by its class, with no inline styles
-// (AW-108); the details below it read left to right.
+// (AW-108); the details below it read left to right. They say when the
+// request was sent, on the warehouse's clock; the phone number to be reached
+// at is written the usual way, and the notes keep their lines (NEW-062).
 
 import { COMPANY } from '../data/content.js';
 import { formatMoney } from '../lib/format.js';
-import { DELIVERY_LABELS, formatPreferredDate } from '../lib/receipt.js';
+import { DELIVERY_LABELS, formatPreferredDate, formatSentAt, reachAtText } from '../lib/receipt.js';
 import { Link } from '../lib/router.js';
 import { showToast } from '../lib/toast.js';
 
@@ -43,6 +45,7 @@ export function QuoteReceipt({ receipt, signedIn = false, headingRef = null }) {
   const unpriced = Number(receipt.unpricedLines) || 0;
   const ship = receipt.delivery === 'delivery' ? receipt.ship : null;
   const preferred = formatPreferredDate(receipt.preferredDate);
+  const sentAt = formatSentAt(receipt.savedAt);
 
   return (
     <section className="page-head receipt-head">
@@ -52,7 +55,7 @@ export function QuoteReceipt({ receipt, signedIn = false, headingRef = null }) {
       <h1 ref={headingRef} tabIndex={-1}>{`Thank you, ${receipt.contact || 'partner'}.`}</h1>
       {/* TODO(owner): "within one business day" is kept as published; see the AW-246 row in docs/OWNER-TODO.md. (AW-246) */}
       <p>
-        <span>{asOrder ? 'Your order has been saved.' : 'Your quote request has been saved.'}</span> A trade desk rep will reach out within one business day at <strong>{receipt.reachAt}</strong> to confirm details.
+        <span>{asOrder ? 'Your order has been saved.' : 'Your quote request has been saved.'}</span> A trade desk rep will reach out within one business day at <strong>{reachAtText(receipt.reachAt)}</strong> to confirm details.
       </p>
       <p className="receipt-ref">
         <span className="receipt-ref-label">Reference number</span>
@@ -79,6 +82,7 @@ export function QuoteReceipt({ receipt, signedIn = false, headingRef = null }) {
 
         <h2 className="receipt-subhead">Details</h2>
         <dl className="contact-grid receipt-details">
+          {sentAt && <div><dt>Sent</dt><dd>{sentAt}</dd></div>}
           {receipt.business && <div><dt>Business</dt><dd>{receipt.business}</dd></div>}
           <div><dt>Delivery method</dt><dd>{DELIVERY_LABELS[receipt.delivery] || DELIVERY_LABELS.delivery}</dd></div>
           {ship ? (

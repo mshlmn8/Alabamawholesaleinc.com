@@ -82,7 +82,7 @@ test('a guest will-call quote sends no address or reference, and shows the serve
   await page.getByLabel('Street', { exact: true }).fill('1 Test Way');
   await page.getByLabel('Delivery method').selectOption('willcall');
   await expect(page.getByLabel('Street', { exact: true })).toHaveCount(0);
-  await expect(page.getByText('Pickup at 613 Graymont Ave N, Birmingham AL 35203 during business hours.')).toBeVisible();
+  await expect(page.getByText('Pickup at 613 Graymont Ave N, Birmingham, AL 35203 during business hours.')).toBeVisible();
   await fillLicense(page);
   await page.getByRole('button', { name: /Submit quote request/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: /Thank you/ })).toBeVisible();

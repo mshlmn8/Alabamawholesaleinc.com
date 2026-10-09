@@ -110,8 +110,9 @@ describe('older signatures', () => {
       expect([args.p_ship_street, args.p_ship_city, args.p_ship_state, args.p_ship_zip])
         .toEqual([COMPANY.addressStreet, COMPANY.addressCity, COMPANY.addressState, COMPANY.addressZip]);
     }
-    // The same facts as the one-line address.
-    expect(COMPANY.addressShort).toBe(`${COMPANY.addressStreet}, ${COMPANY.addressCity} ${COMPANY.addressState} ${COMPANY.addressZip}`);
+    // The same facts as the one-line address, with the comma before the state (NEW-066).
+    expect(COMPANY.addressShort).toBe(`${COMPANY.addressStreet}, ${COMPANY.addressCity}, ${COMPANY.addressState} ${COMPANY.addressZip}`);
+    expect(COMPANY.addressShort).toBe(`${COMPANY.addressLine1}, ${COMPANY.addressLine2}`);
   });
 });
 
