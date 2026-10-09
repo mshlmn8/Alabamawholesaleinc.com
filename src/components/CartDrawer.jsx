@@ -28,6 +28,7 @@ import { totalLabel } from '../lib/pricing.js';
 import { variantExcludedText } from '../lib/cart.js';
 import { Link, focusPageHeading } from '../lib/router.js';
 import { MOBILE_QUERY, useMediaQuery } from '../lib/useMediaQuery.js';
+import { PRICE_LOCK } from '../lib/accountStatus.js';
 import { CallOrEmail } from './ContactLinks.jsx';
 import { ModalLayer } from './ModalLayer.jsx';
 import { CartLine } from './CartLine.jsx';
@@ -76,7 +77,8 @@ export function CartDrawer({
   const pendingBuyer = Boolean(profile) && !isApprovedBuyer;
   let note = 'Prices show for approved trade accounts';
   if (isSuspended) note = 'Account on hold';
-  else if (pendingBuyer) note = 'Pricing unlocks when your account is approved';
+  // The card's and checkout's words for it (accountStatus.js PRICE_LOCK).
+  else if (pendingBuyer) note = PRICE_LOCK.pending.short;
   const summary = items.length > 0 && (
     <CartSummary items={items} total={total} isApprovedBuyer={isApprovedBuyer} isSuspended={isSuspended} pricesStatus={pricesStatus} />
   );

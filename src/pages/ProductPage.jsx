@@ -254,7 +254,7 @@ export function ProductPage({
               : onHold
               ? <p>{PRICE_LOCK.suspended.line} <CallOrEmail after=" and a trade rep will help you sort it out." /></p>
               : profile
-              ? <><p>Pricing unlocks when your account is approved.</p><Link className="text-link" to="/account">View approval status</Link></>
+              ? <><p>{PRICE_LOCK.pending.line}</p><Link className="text-link" to="/account">View approval status</Link></>
               : <><p>Wholesale prices show here for approved trade accounts.</p><button className="button ghost" type="button" onClick={onLoginClick}>Sign in to see wholesale prices</button><button className="text-link" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button></>}
           </div>
           {p.sellUnit && <p className="pd-unit">{`Sold by the ${p.sellUnit} — quantity 1 is one ${p.sellUnit}.`}</p>}

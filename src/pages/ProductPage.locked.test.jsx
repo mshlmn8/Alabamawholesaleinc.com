@@ -59,7 +59,7 @@ describe('ProductPage price slot without a price (AW-133)', () => {
     render(page({ profile: PENDING }));
     expect(slot().className).toBe('pd-price is-locked');
     expect(slot().querySelector('b')).toBeNull();
-    expect(slot().querySelector('p').textContent).toBe('Pricing unlocks when your account is approved.');
+    expect(slot().querySelector('p').textContent).toBe('Pricing unlocks after your account is approved.');
     const status = within(slot()).getByRole('link', { name: 'View approval status' });
     expect(status.getAttribute('href')).toBe('/account');
     expect(status.className).toBe('text-link');

@@ -85,7 +85,7 @@ describe('ProductPage price context (AW-265)', () => {
     expect(qtyNote()).toBeNull();
     expect(document.body.textContent).not.toMatch(/\$3[24]\.|you save|Silver price/);
     view.rerender(page(KITE, { profile: { id: 'p', status: 'pending' }, priceOf: () => 32.35, listOf: () => 34.05, priceTier: SILVER }));
-    expect(lines()[0]).toBe('Pricing unlocks when your account is approved.');
+    expect(lines()[0]).toBe('Pricing unlocks after your account is approved.');
     expect(qtyNote()).toBeNull();
     expect(document.body.textContent).not.toMatch(/\$3[24]\.|you save|Silver price/);
   });

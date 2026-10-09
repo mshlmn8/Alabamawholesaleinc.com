@@ -32,7 +32,7 @@ describe('CartDrawer', () => {
 
   it('tells a pending account pricing waits on approval', () => {
     render(drawer({ profile: { id: 'p', status: 'pending' }, isApprovedBuyer: false }));
-    expect(note()).toBe('Pricing unlocks when your account is approved');
+    expect(note()).toBe('Pricing after approval');
     expect(screen.getByRole('link', { name: 'Review quote' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Sign in for account pricing' })).toBeNull();
   });
