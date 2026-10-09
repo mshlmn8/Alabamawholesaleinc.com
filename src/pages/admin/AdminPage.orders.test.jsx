@@ -79,7 +79,7 @@ const updates = () => fake.find({ op: 'update' }).map(({ table, filters, patch }
 
 async function openOrders() {
   await act(async () => { render(<RoutedAdmin profile={ADMIN} account="ready" />); });
-  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^all \(/ })); });
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^All \(/ })); });
 }
 const card = (ref) => screen.getByText(ref, { selector: '.order-ref' }).closest('article');
 

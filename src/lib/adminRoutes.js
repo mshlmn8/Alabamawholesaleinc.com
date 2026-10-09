@@ -2,7 +2,7 @@
 // them, and scripts/build-sitemap.mjs imports routes.js in Node.
 //
 //   /admin                              Orders (exactly { page: 'admin' })
-//   /admin/orders?status=&from=&to=&on=&method=&account=
+//   /admin/orders?status=&from=&to=&on=&method=&account=&page=
 //   /admin/orders/:uuid/print?doc=pick|slip   an order's pick list or packing slip
 //   /admin/accounts                     /admin/accounts/:uuid
 //   /admin/products?q=&status=&dept=&sub=&tag=&photo=&unit=&stock=&sort=&dir=&page=
@@ -74,6 +74,8 @@ const QUERY = {
     on: { read: isoDate },
     method: { read: (v) => oneOf(ORDER_METHODS)(v.toLowerCase()) },
     account: { read: (v) => (isUuid(v) ? v.toLowerCase() : null) },
+    // The list's page (AW-199); a filter or status change starts at 1.
+    page: { read: positiveInt, fallback: 1 },
   },
   accounts: {},
   products: {

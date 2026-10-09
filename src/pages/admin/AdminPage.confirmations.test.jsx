@@ -188,16 +188,18 @@ describe('other order status changes', () => {
     vi.useFakeTimers();
     await open();
     await act(async () => { fireEvent.change(statusSelect(), { target: { value: 'contacted' } }); });
-    const loads = fake.find({ table: 'orders', op: 'select' }).length;
+    // (The pills' HEAD count requests aside.)
+    const pageLoads = () => fake.find({ table: 'orders', op: 'select' }).filter((c) => !c.options?.head).length;
+    const loads = pageLoads();
     await act(async () => { vi.advanceTimersByTime(POLL_MS); });
-    expect(fake.find({ table: 'orders', op: 'select' }).length).toBe(loads + 1);
+    expect(pageLoads()).toBe(loads + 1);
     expect(within(card()).getByText('Moved to Contacted')).toBeTruthy();
     // Another filter and back: it is in "contacted" now.
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^contacted \(/ })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^Contacted \(/ })); });
     expect(within(card()).queryByText(/^Moved to/)).toBeNull();
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^new \(/ })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^New \(/ })); });
     expect(screen.queryByText(REF, { selector: '.order-ref' })).toBeNull();
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^contacted \(/ })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^Contacted \(/ })); });
     await act(async () => { fireEvent.change(statusSelect(), { target: { value: 'quoted' } }); });
     expect(within(card()).getByText('Moved to Quoted')).toBeTruthy();
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Refresh' })); });

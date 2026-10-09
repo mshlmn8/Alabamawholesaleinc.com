@@ -9,6 +9,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { Link } from '../../lib/router.js';
 import { DOCUMENT_TYPES, listAllProfileDocuments } from '../../lib/documents.js';
+import { fetchAllRows } from '../../lib/paging.js';
 import { useLeaveGuard } from './useLeaveGuard.js';
 import { adminErrorMessage, withStatus } from './adminData.js';
 import { LoadProblem } from './AdminStatus.jsx';
@@ -51,7 +52,9 @@ export function AccountsTab({
   // A failed load says so, with Try again, instead of an empty table or
   // "Not on file" for every account (AW-202). Changes patch the rows where
   // they are (AccountChanges.jsx), so this runs once, and on Try again.
-  const reload = () => supabase.from('profiles').select('*').order('created_at', { ascending: false }).then((result) => {
+  // Every account, a page of 1000 at a time (AW-199): one request stopped at
+  // PostgREST's max-rows without a word.
+  const reload = () => fetchAllRows(() => supabase.from('profiles').select('*').order('created_at', { ascending: false }).order('id')).then((result) => {
     const error = withStatus(result);
     setProfilesError(error ? adminErrorMessage(error, 'The accounts didn’t load') : null);
     if (!error) setProfiles(result.data || []);

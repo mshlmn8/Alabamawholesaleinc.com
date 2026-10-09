@@ -686,16 +686,21 @@ Admin → Orders (AW-110, AW-111) has a filter row above the status pills:
   was placed, on the admin's computer), **Deliver on** (the requested date) and
   **Method** (delivery or will-call) go into the address
   (`/admin/orders?status=…&from=…&to=…&on=…&method=…`), and so does
-  `?account=<profile id>` (the orders of one account). The list still loads the
-  newest 200 that match and counts the status pills within those (it says so
-  when 200 come back); server paging and per-status counts are AW-199.
+  `?account=<profile id>` (the orders of one account).
+- **Pages and counts** (AW-199): the status and the filters go to the
+  server, which sends 50 orders a page, newest first ("Page 2 of 7 · 312
+  orders", Previous / Next, `&page=` in the address; a page past the end
+  shows the last one). Each status pill counts every matching order on the
+  server ("Picking (120)"; "…" while a count is out), and counts again after
+  a status change. A filter or status change starts at page 1.
 - **Print pick list** and **Print packing slip** open
   `/admin/orders/<id>/print?doc=pick|slip`: the order's facts and its lines
   by department, sub-line and name, with an empty box to tick, the SKU, the
   quantity and the sell unit. Neither shows prices. The packing slip adds the
   store's name and address; both show the customer's notes, never staff notes.
   Printing hides the site around the sheet.
-- **Export CSV** downloads the orders on screen, one row per order line (ref,
+- **Export CSV** downloads every order the filters and the status pill
+  match (not just the page; up to 20,000), one row per order line (ref,
   dates, kind, status, business, contact, email, phone, delivery, SKU,
   product, variant, quantity, unit price, line total, subtotal). Cells that
   would run as a spreadsheet formula are defused. The file holds customers'
@@ -735,7 +740,10 @@ needs the site's Content-Security-Policy to allow
 
 ### Accounts and their pages (Admin → Accounts)
 
-Admin → Accounts (AW-113, AW-112) has a **Search accounts** box that looks in
+Admin → Accounts (AW-113, AW-112) loads every account, and every account's
+licence document rows, 1000 at a time (AW-199: one request used to stop at
+PostgREST's 1000-row limit without a word; Admin → Products loads its rows
+the same way). It has a **Search accounts** box that looks in
 the business, name, email and phone of the loaded accounts; what is typed
 stays on the page and never goes into the address bar. Each business links
 to its own page, `/admin/accounts/<profile id>`, and each order card's

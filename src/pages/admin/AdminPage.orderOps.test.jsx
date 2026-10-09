@@ -92,7 +92,7 @@ const openStaff = async (ref) => {
 describe('the toolbar (AW-110)', () => {
   it('puts the dates, the method and the account in the URL, and queries the server with them', async () => {
     await open();
-    expect(lastOrderSelect().modifiers).toEqual([['order', 'created_at', { ascending: false }], ['limit', 200]]);
+    expect(lastOrderSelect().modifiers).toEqual([['order', 'created_at', { ascending: false }], ['order', 'id', { ascending: false }], ['range', 0, 49]]);
     const entries = window.history.length;
     await act(async () => { fireEvent.change(field('Placed from'), { target: { value: '2026-10-01' } }); });
     await act(async () => { fireEvent.change(field('Placed to'), { target: { value: '2026-10-07' } }); });
@@ -124,13 +124,11 @@ describe('the toolbar (AW-110)', () => {
     expect(field('Search orders').value).toBe('Mart, "Big"');
   });
 
-  it('says when the newest 200 came back, and filters by account from the URL', async () => {
-    fake.tables.orders = Array.from({ length: 200 }, (_, i) => order({ id: `o${i}`, ref_num: `ALW-O-${i}`, user_id: '11111111-2222-4333-8444-555555555555' }));
-    // (The 'picking' pill shows none of them, so the test doesn't draw 200 cards.)
-    await act(async () => { navigate(`/admin/orders?status=picking&account=11111111-2222-4333-8444-555555555555`, { replace: true }); });
+  it('filters by account from the URL', async () => {
+    fake.tables.orders = [order({ status: 'picking', user_id: '11111111-2222-4333-8444-555555555555' }), quote()];
+    await act(async () => { navigate(`/admin/orders?status=picking&account=11111111-2222-4333-8444-555555555555&page=1`, { replace: true }); });
     await open();
-    expect(screen.getByText('Showing the newest 200 matching orders.')).toBeTruthy();
-    expect(lastOrderSelect().filters).toEqual([['eq', 'user_id', '11111111-2222-4333-8444-555555555555']]);
+    expect(lastOrderSelect().filters).toEqual([['eq', 'user_id', '11111111-2222-4333-8444-555555555555'], ['eq', 'status', 'picking']]);
     expect(screen.getByText('Orders of Test Market LLC.')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Show every account' }).getAttribute('href')).toBe('/admin/orders?status=picking');
   });
@@ -276,14 +274,14 @@ describe('staff notes and history', () => {
 });
 
 describe('export, print and live updates', () => {
-  it('exports the orders on screen as CSV, one row per line', async () => {
+  it('exports the orders the filters and the status match as CSV, one row per line', async () => {
     const blobs = [];
     URL.createObjectURL = vi.fn((blob) => { blobs.push(blob); return 'blob:aw/1'; });
     URL.revokeObjectURL = vi.fn();
     const names = [];
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function record() { names.push(this.download); });
     await open();
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Export CSV' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Export CSV of 2 orders' })); });
     expect(names[0]).toMatch(/^orders-\d{4}-\d{2}-\d{2}\.csv$/);
     const text = await blobs[0].text();
     const rows = text.replace(/^\uFEFF/, '').trim().split('\r\n');
@@ -340,7 +338,7 @@ describe('export, print and live updates', () => {
     expect(card('ALW-Q-5E4F3A2B1C').className).not.toContain('is-new');
     expect(document.querySelector('.admin-updated').textContent).toMatch(/^Updated \d{1,2}:\d{2} [AP]M$/);
     // Moving between filters is the same visit.
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^new \(/ })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^New \(/ })); });
     expect(fake.find({ kind: 'rpc', name: 'admin_mark_orders_seen' })).toHaveLength(1);
   });
 });

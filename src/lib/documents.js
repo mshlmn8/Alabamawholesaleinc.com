@@ -11,6 +11,7 @@
 import { supabase } from './supabase.js';
 import { describeError } from './errors.js';
 import { REQUEST_TIMEOUT_MS, timeoutSignal } from './network.js';
+import { fetchAllRows } from './paging.js';
 
 export const DOCUMENT_BUCKET = 'application-documents';
 export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
@@ -185,11 +186,15 @@ export async function listProfileDocuments(userId) {
   }
 }
 
+// Every account's documents (Admin -> Accounts), a page of 1000 at a time
+// (AW-199), ordered by the table's unique key.
 export async function listAllProfileDocuments() {
   if (!supabase) return [];
-  const { data, error } = await supabase
+  const { data, error } = await fetchAllRows(() => supabase
     .from('profile_documents')
-    .select('profile_id, document_type, storage_path, original_filename, uploaded_at');
+    .select('profile_id, document_type, storage_path, original_filename, uploaded_at')
+    .order('profile_id')
+    .order('document_type'));
   if (error) throw error;
   return data || [];
 }

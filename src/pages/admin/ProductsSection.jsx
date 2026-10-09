@@ -24,6 +24,7 @@ import { productImage } from '../../lib/images.js';
 import { currentImageFile } from '../../data/catalogAliases.js';
 import { MISSING_FUNCTION_CODES } from '../../lib/pricing.js';
 import { MAX_PRODUCT_QUERY, adminHref } from '../../lib/adminRoutes.js';
+import { fetchAllRows } from '../../lib/paging.js';
 import { Link, navigate } from '../../lib/router.js';
 import { Thumb } from '../../components/Thumb.jsx';
 import { Icon } from '../../components/Icon.jsx';
@@ -70,14 +71,17 @@ export async function loadAdminProducts(client) {
   const pricing = client.rpc('admin_product_prices', {}, { get: true }).then((result) => result);
   let products = null;
   let step = workingStep;
+  // Every product, a page of 1000 at a time (AW-199); a missing column
+  // fails the first page, which is where the step is found.
   for (; step < ADMIN_COLUMN_STEPS.length; step += 1) {
-    products = await client.from('products').select(ADMIN_COLUMN_STEPS[step]).order('id');
+    const columns = ADMIN_COLUMN_STEPS[step];
+    products = await fetchAllRows(() => client.from('products').select(columns).order('id'));
     if (products.error?.code !== '42703') break;
   }
   step = Math.min(step, ADMIN_COLUMN_STEPS.length - 1);
   const prices = await pricing;
   if (prices.error && MISSING_FUNCTION_CODES.includes(prices.error.code)) {
-    const legacy = await client.from('products').select('*').order('id');
+    const legacy = await fetchAllRows(() => client.from('products').select('*').order('id'));
     const error = withStatus(legacy);
     if (error) return { rows: null, error, columns: null };
     const rows = (legacy.data || []).map((p) => ({ ...p, variantPrices: {} }));

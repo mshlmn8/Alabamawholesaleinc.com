@@ -17,8 +17,9 @@
 //   { kind: 'rpc', name, args, options, filters, ... }
 //   { kind: 'storage', bucket, op: 'createSignedUrl', path, expiresIn, ... }
 // Defaults: a select returns fake.tables[table] narrowed by its eq/in
-// filters (with { count: 'exact' } also their count, and with head: true no
-// rows); a write returns [{ id }] (the eq('id') value) when it asks for rows
+// filters and cut to its range() (with { count: 'exact' } also the count of
+// every match, a 416 PGRST103 for a range past the end, and with head: true
+// no rows); order() is recorded, not applied; a write returns [{ id }] (the eq('id') value) when it asks for rows
 // back, else null (an insert returns its rows); rpc returns
 // fake.rpcData[name] ?? null; a signed URL is https://files.example.test/<path>
 // and a public one https://fake.supabase.co/storage/v1/object/public/<bucket>/<path>
@@ -65,9 +66,20 @@ export function createFakeSupabase(initial = {}) {
       return ok(null);
     }
     if (request.op === 'select') {
-      const rows = narrow(fake.tables[request.table] || [], request.filters);
+      const all = narrow(fake.tables[request.table] || [], request.filters);
+      // range(from, to) answers those rows (AW-199); with { count } the
+      // count is of every matching row, and a range that starts past the
+      // end is PostgREST's 416 (PGRST103).
+      const range = request.modifiers.find(([name]) => name === 'range');
+      if (range && request.options?.count && range[1] > all.length) {
+        return {
+          data: null, count: null, status: 416,
+          error: { code: 'PGRST103', message: 'Requested range not satisfiable', details: `An offset of ${range[1]} was requested, but there are only ${all.length} rows.`, hint: null },
+        };
+      }
+      const rows = range ? all.slice(range[1], range[2] + 1) : all;
       const result = ok(request.options?.head ? null : (request.single ? (rows[0] ?? null) : rows));
-      return request.options?.count ? { ...result, count: rows.length } : result;
+      return request.options?.count ? { ...result, count: all.length } : result;
     }
     if (!request.returning) return ok(null);
     const id = request.filters.find(([name, column]) => name === 'eq' && column === 'id')?.[2];

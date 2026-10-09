@@ -64,14 +64,14 @@ describe('admin sections (AW-118)', () => {
   it('writes the status filter to the URL without a new history entry, and reads it back', async () => {
     await renderAdmin();
     const length = window.history.length;
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^picking \(/ })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^Picking \(/ })); });
     expect(url()).toBe('/admin/orders?status=picking');
     expect(window.history.length).toBe(length);
-    expect(screen.getByRole('button', { name: /^picking \(/ }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: /^Picking \(/ }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.queryByText('ALW-O-A1')).toBeNull();
     expect(screen.getByText('ALW-O-B2')).toBeTruthy();
     // The default status is not written.
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^new \(/ })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^New \(/ })); });
     expect(url()).toBe('/admin/orders');
   });
 
