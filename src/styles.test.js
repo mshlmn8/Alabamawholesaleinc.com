@@ -480,14 +480,16 @@ describe('the markup uses the design system (merged PR #12, PR #13 and lane p2 p
     let seen = 0;
     for (const { file, text } of jsx) {
       for (const [link] of text.matchAll(/<(a|Link)\b[^>]*target="_blank"[^>]*>[\s\S]*?<\/\1>/g)) {
-        const leaves = /href=\{(creditSource|DIRECTIONS_URL|signedUrls)/.test(link);
+        const leaves = /href=\{(creditSource|DIRECTIONS_URL|blockedLink)/.test(link);
         expect(/<Icon name="external"/.test(link), `${file}: ${link.slice(0, 80)}`).toBe(leaves);
         expect(link, file).toMatch(/opens in a new tab/);
         seen += 1;
       }
     }
-    // Directions, the photo credit, an admin's document, and the two policies
-    // beside the application's consent box (these stay on the site).
+    // Directions, the photo credit, an admin's document when the browser
+    // blocked its tab (AW-208: View itself is a button that signs on click),
+    // and the two policies beside the application's consent box (these stay
+    // on the site).
     expect(seen).toBe(5);
   });
 

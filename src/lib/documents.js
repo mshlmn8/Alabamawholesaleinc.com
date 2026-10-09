@@ -165,9 +165,44 @@ export async function uploadSelectedProof(session, filesByType) {
   return { attempted };
 }
 
-export async function createDocumentViewUrl(storagePath) {
+// A signed URL for a stored document, valid for `expiresIn` seconds.
+export async function createDocumentViewUrl(storagePath, expiresIn = 600) {
   if (!supabase || !storagePath) return null;
-  const { data, error } = await supabase.storage.from(DOCUMENT_BUCKET).createSignedUrl(storagePath, 600);
+  const { data, error } = await supabase.storage.from(DOCUMENT_BUCKET).createSignedUrl(storagePath, expiresIn);
   if (error || !data?.signedUrl) throw error || new Error('Could not open that file.');
   return data.signedUrl;
+}
+
+// How long a document link opened from Admin -> Accounts stays valid (AW-208).
+export const DOCUMENT_VIEW_SECONDS = 60;
+
+// Opens a stored document in a new tab, signed at the moment it is clicked
+// with a short expiry (AW-208): nothing is signed ahead of time, so no link
+// on screen goes stale. The tab opens at once, inside the click, so popup
+// blockers allow it, and the signed URL is loaded into it when it arrives.
+// Returns { ok: true, url, blocked } (blocked: no tab could be opened, so
+// the caller offers `url` as a link) or { ok: false, error }, after closing
+// the tab.
+export async function openDocument(storagePath, { expiresIn = DOCUMENT_VIEW_SECONDS } = {}) {
+  let tab = null;
+  try {
+    tab = window.open('', '_blank');
+  } catch {
+    tab = null;
+  }
+  // The document's page gets no handle on this one (what noopener does;
+  // window.open with 'noopener' returns no tab to load the URL into).
+  if (tab) {
+    try { tab.opener = null; } catch { /* already cut off */ }
+  }
+  try {
+    const url = await createDocumentViewUrl(storagePath, expiresIn);
+    if (!url) throw new Error('Could not open that file.');
+    if (!tab) return { ok: true, url, blocked: true };
+    tab.location.replace(url);
+    return { ok: true, url, blocked: false };
+  } catch (error) {
+    try { tab?.close(); } catch { /* already closed */ }
+    return { ok: false, error };
+  }
 }

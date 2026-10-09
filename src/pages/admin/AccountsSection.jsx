@@ -4,7 +4,7 @@
 
 import { Fragment, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
-import { DOCUMENT_TYPES, createDocumentViewUrl, listAllProfileDocuments } from '../../lib/documents.js';
+import { DOCUMENT_TYPES, DOCUMENT_VIEW_SECONDS, listAllProfileDocuments, openDocument } from '../../lib/documents.js';
 import { Icon } from '../../components/Icon.jsx';
 import { useLeaveGuard } from './useLeaveGuard.js';
 import { adminErrorMessage, checkedWrite, isMissingSchema, isRefused, refusalFor, withStatus } from './adminData.js';
@@ -49,8 +49,10 @@ export function AccountsTab({ currentAdminId, notify }) {
   const [documents, setDocuments] = useState(null);
   const [documentsError, setDocumentsError] = useState(null);
   const [documentsRetrying, setDocumentsRetrying] = useState(false);
-  const [signedUrls, setSignedUrls] = useState({});
   const [viewError, setViewError] = useState(null);
+  // A document whose tab the browser blocked: { key, url }, offered as a
+  // link until its signed URL expires.
+  const [blockedLink, setBlockedLink] = useState(null);
   const [openId, setOpenId] = useState(null);
   const [noteDraft, setNoteDraft] = useState('');
   const [updateError, setUpdateError] = useState(null);
@@ -93,33 +95,23 @@ export function AccountsTab({ currentAdminId, notify }) {
     return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const next = {};
-      for (const row of documents || []) {
-        try {
-          next[`${row.profile_id}:${row.document_type}`] = await createDocumentViewUrl(row.storage_path);
-        } catch {
-          next[`${row.profile_id}:${row.document_type}`] = null;
-        }
-      }
-      if (!cancelled) setSignedUrls(next);
-    })();
-    return () => { cancelled = true; };
-  }, [documents]);
-
+  // View signs the document's URL when it is clicked, for a minute, and
+  // opens it in a new tab (AW-208). Nothing is signed when the page loads.
   const viewDocument = async (row, profile, label) => {
     setViewError(null);
-    try {
-      const url = await createDocumentViewUrl(row.storage_path);
-      if (!url) throw new Error('Could not open that file.');
-      setSignedUrls(prev => ({ ...prev, [`${row.profile_id}:${row.document_type}`]: url }));
-      window.open(url, '_blank', 'noopener,noreferrer');
-    } catch {
-      setViewError(`Couldn’t open the ${label.toLowerCase()} for ${profile.business || profile.name}.`);
+    setBlockedLink(null);
+    const result = await openDocument(row.storage_path);
+    if (!result.ok) {
+      setViewError(adminErrorMessage(result.error, `Couldn’t open the ${label.toLowerCase()} for ${profile.business || profile.name}`));
+      return;
     }
+    if (result.blocked) setBlockedLink({ key: `${row.profile_id}:${row.document_type}`, url: result.url });
   };
+  useEffect(() => {
+    if (!blockedLink) return undefined;
+    const timer = setTimeout(() => setBlockedLink(null), (DOCUMENT_VIEW_SECONDS - 5) * 1000);
+    return () => clearTimeout(timer);
+  }, [blockedLink]);
 
   // A refused or failed change is shown, not ignored: the database refuses
   // some changes with 42501 (20261009140000), and an update that reaches no
@@ -199,14 +191,14 @@ export function AccountsTab({ currentAdminId, notify }) {
                           {row ? (
                             <>
                               <span>On file</span>
-                              {signedUrls[`${p.id}:${doc.id}`] ? (
-                                <a href={signedUrls[`${p.id}:${doc.id}`]} target="_blank" rel="noopener noreferrer">
-                                  View<Icon name="external" /><span className="sr-only">{` ${doc.label} for ${p.business || p.name} (opens in a new tab)`}</span>
+                              <button type="button" className="text-link" onClick={() => viewDocument(row, p, doc.label)}>
+                                View<Icon name="external" /><span className="sr-only">{` ${doc.label} for ${p.business || p.name} (opens in a new tab)`}</span>
+                              </button>
+                              {/* The browser blocked the new tab: the freshly signed URL as a link instead. */}
+                              {blockedLink?.key === `${p.id}:${doc.id}` && (
+                                <a href={blockedLink.url} target="_blank" rel="noopener noreferrer">
+                                  <span>{`Open the ${doc.label.toLowerCase()}`}</span><Icon name="external" /><span className="sr-only">{` for ${p.business || p.name} (opens in a new tab)`}</span>
                                 </a>
-                              ) : (
-                                <button type="button" className="text-link" onClick={() => viewDocument(row, p, doc.label)}>
-                                  View<span className="sr-only">{` ${doc.label} for ${p.business || p.name}`}</span>
-                                </button>
                               )}
                             </>
                           ) : (

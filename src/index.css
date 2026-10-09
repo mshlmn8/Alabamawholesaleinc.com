@@ -619,6 +619,8 @@ p > .text-link { min-height: 0; }
 /* A load that failed (AW-202): the message and Try again, where the list would be. */
 .admin-load-problem { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 14px; }
 .admin-load-problem .form-error { margin: 0; }
+/* View on a licence document is a button (AW-208); its icon sits like a link's. */
+.doc-admin .text-link .icon { margin-left: .2em; }
 /* Admin confirmations (ConfirmDialog): a narrow dialog with a smaller title. */
 .dialog.confirm-dialog { width: min(32.5rem, 100%); }
 .dialog.confirm-dialog h2 { font-size: var(--h3); line-height: 1.15; }

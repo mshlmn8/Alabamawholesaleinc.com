@@ -3,7 +3,7 @@
 // staff verify (AW-017), and licence answers on quotes (AW-014). Cursor's
 // PR #12 behaviour, in the Phase 1 structure.
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../lib/supabase.js', async () => {
   const { createFakeSupabase } = await import('./fakeSupabase.js');
@@ -54,9 +54,10 @@ describe('Admin accounts', () => {
     await openAccounts();
     const row = rowFor('Alpha Food Mart');
     expect(within(row).getByText('On file')).toBeTruthy();
-    // A new-tab link that leaves the site: the external icon, and the screen
-    // reader hears that it opens a new tab (AW-218).
-    const view = await within(row).findByRole('link', { name: /^View ?.* for Alpha Food Mart \(opens in a new tab\)$/ });
+    // It opens in a new tab, off the site: the external icon, and the screen
+    // reader hears that it opens a new tab (AW-218). A button, signed on
+    // click (AW-208).
+    const view = within(row).getByRole('button', { name: /^View ?.* for Alpha Food Mart \(opens in a new tab\)$/ });
     expect(view.querySelector('svg.icon')).toBeTruthy();
     // No proof on file for the pending account yet.
     expect(within(rowFor('Bravo Tobacco Outlet')).getAllByText('Not on file').length).toBe(2);
@@ -89,6 +90,61 @@ describe('Admin accounts', () => {
     await act(async () => { fireEvent.click(details.getByRole('button', { name: 'Save note' })); });
     expect(updates().at(-1)).toEqual({ table: 'profiles', id: 'p-pending', patch: { verification_note: 'Called the store' } });
     expect(screen.getByRole('alert').textContent).toMatch(/needs the October 2026 database update/);
+  });
+});
+
+describe('licence documents, signed when View is clicked (AW-208)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+  const PATH = 'p-approved/tobacco_license/1-licence.pdf';
+  const viewButton = () => within(rowFor('Alpha Food Mart')).getByRole('button', { name: /^View ?State retail tobacco license for Alpha Food Mart/ });
+  const signs = () => fake.find({ kind: 'storage', op: 'createSignedUrl' });
+
+  it('signs nothing on load, and one short-lived URL per click, loaded into a tab opened at once', async () => {
+    const tab = { opener: window, location: { replace: vi.fn() }, close: vi.fn() };
+    const open = vi.spyOn(window, 'open').mockReturnValue(tab);
+    await openAccounts();
+    expect(signs()).toHaveLength(0);
+    await act(async () => { fireEvent.click(viewButton()); });
+    expect(open).toHaveBeenCalledWith('', '_blank');
+    expect(tab.opener).toBeNull();
+    expect(signs()).toEqual([expect.objectContaining({ bucket: 'application-documents', path: PATH, expiresIn: 60 })]);
+    expect(tab.location.replace).toHaveBeenCalledWith(`https://files.example.test/${PATH}`);
+    await act(async () => { fireEvent.click(viewButton()); });
+    expect(signs()).toHaveLength(2);
+    // Changing an account reloads the accounts, not the documents.
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox', { name: 'Tier for Alpha Food Mart' }), { target: { value: 'silver' } });
+    });
+    expect(fake.find({ table: 'profile_documents' })).toHaveLength(1);
+    expect(signs()).toHaveLength(2);
+    expect(screen.queryByRole('link', { name: /State retail tobacco license/ })).toBeNull();
+  });
+
+  it('closes the tab and says why when the document can’t be signed', async () => {
+    const tab = { opener: window, location: { replace: vi.fn() }, close: vi.fn() };
+    vi.spyOn(window, 'open').mockReturnValue(tab);
+    fake.respond = (request) => (request.kind === 'storage' ? { data: null, error: { message: 'Object not found', statusCode: '404' } } : undefined);
+    await openAccounts();
+    await act(async () => { fireEvent.click(viewButton()); });
+    expect(tab.close).toHaveBeenCalled();
+    expect(tab.location.replace).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert').textContent).toBe('Couldn’t open the state retail tobacco license for Alpha Food Mart (Object not found). Try again.');
+  });
+
+  it('offers the signed URL as a link while it lasts when the browser blocks the tab', async () => {
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    await openAccounts();
+    vi.useFakeTimers();
+    await act(async () => { fireEvent.click(viewButton()); });
+    const link = within(rowFor('Alpha Food Mart')).getByRole('link', { name: /^Open the state retail tobacco license ?for Alpha Food Mart \(opens in a new tab\)$/ });
+    expect(link.getAttribute('href')).toBe(`https://files.example.test/${PATH}`);
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+    await act(async () => { vi.advanceTimersByTime(55 * 1000); });
+    expect(within(rowFor('Alpha Food Mart')).queryByRole('link', { name: /^Open the state/ })).toBeNull();
   });
 });
 
