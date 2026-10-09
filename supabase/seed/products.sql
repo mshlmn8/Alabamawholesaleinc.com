@@ -386,3 +386,19 @@ insert into public.products (id, name, brand, cat, sub, sku, variants, variant_a
   (367, 'LooseLeaf wraps 5-pack', 'LooseLeaf', 'TOBACCO', 'Wraps & Leafs', 'AW-LOOSE-LEAFS-5PK', '["Watermelon"]'::jsonb, null, 'loose_leafs_wraps_5pk.webp', null, true, 'LooseLeaf flavored wraps in 5-packs. Stocked in one variety: Watermelon.', '5-pack'),
   (368, 'Camo wraps', 'Camo', 'TOBACCO', 'Wraps & Leafs', 'AW-CAMO-WRAPS', '["Natural"]'::jsonb, null, 'p368-camo-wraps-natural.webp', null, true, 'Camo wraps from the wraps and leaf line in our Tobacco department. Stocked in one variety: Natural.', '')
 on conflict (id) do nothing;
+
+-- Moves products_id_seq (20261010120000_admin_product_editor.sql) past the ids above, so
+-- the next product added in Admin -> Products gets a new id. Never moves it back.
+do $$
+begin
+  if to_regclass('public.products_id_seq') is not null then
+    perform setval(
+      'public.products_id_seq',
+      greatest(
+        coalesce((select max(id) from public.products), 0) + 1,
+        (select case when is_called then last_value + 1 else last_value end from public.products_id_seq)
+      ),
+      false
+    );
+  end if;
+end $$;

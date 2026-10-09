@@ -18,7 +18,7 @@ import { useCart } from './lib/cart.js';
 import { usePrices } from './lib/prices.jsx';
 import { priceFor } from './lib/pricing.js';
 import { cartOwner, clearGuestCart } from './lib/cartStorage.js';
-import { focusPageHeading, navigate, pathFor, resolveRoute, routeKey, useNavigationEffects, useRoute } from './lib/router.js';
+import { confirmLeave, focusPageHeading, navigate, pathFor, resolveRoute, routeKey, useNavigationEffects, useRoute } from './lib/router.js';
 import { pageKeyFor } from './lib/routes.js';
 import { confirmAge, declineAge, endAgeConfirmationOnSignOut, reconsiderAge, useAgeGate } from './lib/ageGate.js';
 import { pageMeta, applyPageMeta } from './lib/meta.js';
@@ -43,6 +43,7 @@ import { QuotePage } from './pages/QuotePage.jsx';
 import { NotFoundPage } from './pages/NotFoundPage.jsx';
 import { AccountPage } from './pages/account/AccountPage.jsx';
 import { AdminPage } from './pages/admin/AdminPage.jsx';
+import { useAdminUnseen } from './pages/admin/useAdminUnseen.js';
 import { CatalogIndexPage } from './pages/support/CatalogIndexPage.jsx';
 import { ContactPage } from './pages/support/ContactPage.jsx';
 import { DeliveryPage } from './pages/support/DeliveryPage.jsx';
@@ -89,6 +90,9 @@ export default function App() {
   // Only an approved admin is one; the database's is_admin() says the same
   // (AW-352).
   const isAdmin = profile?.role === 'admin' && profile?.status === 'approved';
+  // Orders placed since this admin last opened Admin -> Orders (AW-111): the
+  // header's Admin link and the admin pages' titles show the count.
+  const adminUnseen = useAdminUnseen(isAdmin ? profile.id : null);
   const departments = useMemo(() => departmentsFor(products), [products]);
   // The signed-in buyer's unit price for a product (and variant), or null:
   // no approved account, prices still loading, or price on request (AW-003).
@@ -126,9 +130,10 @@ export default function App() {
     }
   }, [canonicalPath, location]);
 
+  const metaRoute = useMemo(() => (route.page === 'admin' && adminUnseen > 0 ? { ...route, unseen: adminUnseen } : route), [route, adminUnseen]);
   useEffect(() => {
-    applyPageMeta(pageMeta(route, products, departments));
-  }, [route, products, departments]);
+    applyPageMeta(pageMeta(metaRoute, products, departments));
+  }, [metaRoute, products, departments]);
   // Scroll, focus and announcement on page changes (after the title is set).
   useNavigationEffects();
 
@@ -179,6 +184,9 @@ export default function App() {
   // scope 'global' is "Sign out of all devices" on /account.
   const handleLogout = async ({ scope = 'local' } = {}) => {
     if (signingOut) return;
+    // Unsaved admin edits ask first (AW-118): No keeps the session and the
+    // edits; Yes signs out without asking again on the way home.
+    if (!confirmLeave(SIGNED_OUT_PAGE)) return;
     setSigningOut(true);
     // The account's cart stays stored for its next sign-in; the next person
     // here gets an empty guest cart (AW-189).
@@ -192,7 +200,7 @@ export default function App() {
       setSigningOut(false);
     }
     clearGuestCart();
-    navigate(SIGNED_OUT_PAGE);
+    navigate(SIGNED_OUT_PAGE, { force: true });
     setLoginOpen(false);
     setSignOutNotice({ text: signOutMessage(result, { cartSaved }), pageKey: SIGNED_OUT_PAGE_KEY });
     // The next person on a shared computer is asked their age again (AW-340).
@@ -291,7 +299,7 @@ export default function App() {
                        onSignOutEverywhere={() => handleLogout({ scope: 'global' })} />
         );
       case 'admin':
-        return <AdminPage {...accountProps} onCatalogChange={() => { catalog.refresh(); }} />;
+        return <AdminPage {...accountProps} route={route} onCatalogChange={() => { catalog.refresh(); }} />;
       case 'catalog':
         return (
           <CatalogIndexPage products={products} departments={departments} profile={profile} isApprovedBuyer={isApprovedBuyer}
@@ -328,7 +336,7 @@ export default function App() {
       <Header
         cartCount={cart.count} onCart={() => setCartOpen(true)}
         products={products} departments={departments}
-        user={user} isAdmin={isAdmin}
+        user={user} isAdmin={isAdmin} adminUnseen={adminUnseen}
         onLoginClick={openSignin} onSignupClick={openSignup} onLogout={signOutHere} signingOut={signingOut}
         onHelp={() => setHelpOpen(true)}
       />

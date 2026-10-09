@@ -541,7 +541,9 @@ describe('one field system (AW-146, AW-172, AW-147, AW-309)', () => {
   // (.eligibility-form input) and the admin quote editor (.order-edit-line).
   // The admin verification note is an .aw-table input.
   const FIELD_CONTROLS = ['.form-grid :is(input, select, textarea)', '.filter-search input', '.category-sort select', '.eligibility-form :is(input, select)',
-    '.qr-field input', '.qr-choice select', '.order-head select', '.order-edit-line input', '.aw-table :is(input, select)', '.doc-file'];
+    '.qr-field input', '.qr-choice select', '.order-head select', '.order-edit-line input', '.aw-table :is(input, select)', '.doc-file',
+    // The admin lists' filter rows (AW-115).
+    '.admin-toolbar :is(input, select)'];
   const EXCLUDE = ':not([type=checkbox]):not([type=radio])';
   // The selector list inside `:where(:is(<list>)<suffix>)`, or null.
   const innerList = (selector, suffix) => {
@@ -632,7 +634,8 @@ describe('one field system (AW-146, AW-172, AW-147, AW-309)', () => {
 
   it('gives every field label one style', () => {
     const labels = ['.form-grid label', '.contact-grid dt', '.eligibility-form label', '.qr-field span', '.qr-choice span',
-      '.category-sort', '.filter-search', '.doc-upload label', '.filter-panel legend', '.doc-uploads legend', '.order-edit-line label', '.account-note'];
+      '.category-sort', '.filter-search', '.doc-upload label', '.filter-panel legend', '.doc-uploads legend', '.order-edit-line label', '.account-note',
+      '.admin-toolbar label'];
     const typography = { 'font-size': 'var(--text-xs)', 'font-weight': '700', 'letter-spacing': 'var(--track-label)', color: 'var(--purple)', 'text-transform': 'uppercase' };
     const shared = all.find((r) => r.selectors.includes('.doc-uploads legend') && declarations(r.body)['text-transform']);
     expect(shared.selectors).toEqual(labels);
@@ -684,14 +687,16 @@ describe('the markup uses the design system (merged PR #12, PR #13 and lane p2 p
     let seen = 0;
     for (const { file, text } of jsx) {
       for (const [link] of text.matchAll(/<(a|Link)\b[^>]*target="_blank"[^>]*>[\s\S]*?<\/\1>/g)) {
-        const leaves = /href=\{(creditSource|DIRECTIONS_URL|signedUrls)/.test(link);
+        const leaves = /href=\{(creditSource|DIRECTIONS_URL|blockedLink)/.test(link);
         expect(/<Icon name="external"/.test(link), `${file}: ${link.slice(0, 80)}`).toBe(leaves);
         expect(link, file).toMatch(/opens in a new tab/);
         seen += 1;
       }
     }
-    // Directions, the photo credit, an admin's document, and the two policies
-    // beside the application's consent box (these stay on the site).
+    // Directions, the photo credit, an admin's document when the browser
+    // blocked its tab (AW-208: View itself is a button that signs on click),
+    // and the two policies beside the application's consent box (these stay
+    // on the site).
     expect(seen).toBe(5);
   });
 
@@ -716,7 +721,7 @@ describe('the markup uses the design system (merged PR #12, PR #13 and lane p2 p
     // "Not available" uses the button's own disabled state.
     expect(card).toMatch(/className="button ghost sm card-add" type="button" disabled/);
     expect(css).not.toMatch(/\.card-add:disabled/);
-    const admin = code(read('src/pages/admin/AdminPage.jsx'));
+    const admin = code(read('src/pages/admin/OrdersSection.jsx'));
     expect(admin).toMatch(/className="button" type="button" disabled=\{busy \|\| !workflow\} onClick=\{save\}>Save prices/);
   });
 });
@@ -729,7 +734,7 @@ describe('one link style (AW-297)', () => {
   // Every running-text link context. A new one goes into the CSS list and here.
   const LINKS = ['.text-link', '.support-note a', '.checklist a', '.checklist-note a', '.next-steps a', '.policy-body a', '.contact-grid a',
     '.doc-uploads-note a', '.doc-panel a', '.doc-admin a', '.status-panel p a', '.eligibility-result a', '.error-fallback > p a', '.dialog > .desc a',
-    '.form-error a', '.dialog .form-grid a', '.consent-block .consent a', '.photo-credit a', '.order-head small a'];
+    '.form-error a', '.dialog .form-grid a', '.consent-block .consent a', '.photo-credit a', '.order-contact a'];
   const LOOK = { color: 'var(--link-color)', 'font-weight': '600', 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' };
 
   it('defines the link colour and underline offset once', () => {

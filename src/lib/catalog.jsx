@@ -76,10 +76,15 @@ export const CATALOG_COLUMNS = 'id,name,brand,cat,sub,sku,variants,variant_axis,
 // Every database since 20260927120000_product_copy.sql has these, before and
 // after 20261009110000 (the Phase 1 list without price and flavors).
 export const CATALOG_BASE_COLUMNS = 'id,name,brand,cat,sub,sku,variants,img,tag,active,description,sell_unit';
+// featured_rank, the order of the homepage rails (AW-119), comes with
+// 20261010120000_admin_product_editor.sql. It is a tier of its own, tried
+// first, so a database without it still gets every variant column.
+// (stock_status, from the same file, is staff only for now: AW-023.)
+export const CATALOG_RANKED_COLUMNS = `${CATALOG_COLUMNS},featured_rank`;
 // What a load tries, in order, while the database answers 42703 (a column
 // it doesn't have, i.e. a missing migration). '*' works only on a database
 // from before 20261009100000, where every column is readable.
-export const CATALOG_COLUMN_FALLBACKS = [...new Set([CATALOG_COLUMNS, CATALOG_BASE_COLUMNS, '*'])];
+export const CATALOG_COLUMN_FALLBACKS = [...new Set([CATALOG_RANKED_COLUMNS, CATALOG_COLUMNS, CATALOG_BASE_COLUMNS, '*'])];
 
 const STATIC_BY_ID = new Map(STATIC_PRODUCTS.map((p) => [Number(p.id), p]));
 
@@ -88,7 +93,8 @@ const STATIC_BY_ID = new Map(STATIC_PRODUCTS.map((p) => [Number(p.id), p]));
 // adds them with '' as the default) take the bundled copy's description and
 // sell unit for the same id, and a row without a variant axis (a database
 // from before 20261009110000, or a row nobody set one on) takes the bundled
-// copy's. Without unavailable_variants every variant is available. A price
+// copy's. Without unavailable_variants every variant is available, and
+// without featured_rank a product has no homepage rank. A price
 // that came along (select('*') on a database from before 20261009100000) is
 // dropped: prices come only from usePrices(); so is the old flavors count
 // (AW-332: variantCount() in lines.js counts the variants).
@@ -106,6 +112,9 @@ export function hydrateProducts(rows, bundled = STATIC_BY_ID) {
       unavailableVariants: Array.isArray(p.unavailable_variants) ? p.unavailable_variants : [],
       description: p.description || local?.description || '',
       sellUnit: p.sell_unit || p.sellUnit || local?.sellUnit || '',
+      // Staff's homepage rank (AW-119); null without one or before
+      // 20261010120000. Read by src/lib/merchandising.js.
+      featuredRank: Number.isInteger(p.featured_rank) ? p.featured_rank : null,
       // img is a filename in src/assets/products, or a full URL (e.g. Supabase Storage)
       ...productImage(p.img),
       // Another row uses the same photo file (AW-136).

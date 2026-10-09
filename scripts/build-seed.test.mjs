@@ -13,9 +13,20 @@ const SCRIPT = readFileSync(resolve(import.meta.dirname, 'build-seed.mjs'), 'utf
 
 describe('supabase/seed/products.sql', () => {
   it('inserts new rows only', () => {
-    expect(SEED.trimEnd().endsWith('on conflict (id) do nothing;')).toBe(true);
+    const insert = SEED.slice(0, SEED.indexOf('\n-- Moves products_id_seq'));
+    expect(insert.trimEnd().endsWith('on conflict (id) do nothing;')).toBe(true);
     expect(SEED).not.toMatch(/do update/i);
     expect(SEED.match(/^insert into public\.products/gm)).toHaveLength(1);
+    expect(SEED).not.toMatch(/^\s*(update|delete)\b/im);
+  });
+
+  it('ends by moving the product id sequence past the seeded ids, never back, when it exists (AW-023)', () => {
+    const footer = SEED.slice(SEED.indexOf('on conflict (id) do nothing;'));
+    expect(footer).toMatch(/if to_regclass\('public\.products_id_seq'\) is not null then/);
+    expect(footer).toMatch(/perform setval\(\s*'public\.products_id_seq',\s*greatest\(\s*coalesce\(\(select max\(id\) from public\.products\), 0\) \+ 1,/);
+    expect(footer).toMatch(/case when is_called then last_value \+ 1 else last_value end from public\.products_id_seq/);
+    expect(footer.trimEnd().endsWith('end $$;')).toBe(true);
+    expect(SEED).toMatch(/20261010120000_admin_product_editor\.sql/);
   });
 
   it('has no price column and no price values', () => {

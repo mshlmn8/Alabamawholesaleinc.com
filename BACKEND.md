@@ -41,6 +41,9 @@ supabase/migrations/20261009120000_catalog_corrections.sql
 supabase/migrations/20261009130000_submit_quote_v3.sql
 supabase/migrations/20261009140000_profile_and_document_boundaries.sql
 supabase/migrations/20261009150000_quote_workflow.sql
+supabase/migrations/20261010120000_admin_product_editor.sql
+supabase/migrations/20261010121000_admin_bulk_products.sql
+supabase/migrations/20261010122000_order_operations.sql
 supabase/seed/products.sql
 ```
 
@@ -116,6 +119,10 @@ no price, which approved buyers see as "Price on request". Because
 `products.price` was `not null` before `20261009100000_price_boundary.sql`,
 apply that migration first: Postgres checks NOT NULL before ON CONFLICT, so
 on an older database every row of the seed fails, even ids that already exist.
+The seed's last statement moves `products_id_seq`
+(`20261010120000_admin_product_editor.sql`) past the ids it inserted, never
+back, so the next product added in Admin → Products gets a new id; on a
+database without that sequence it does nothing.
 
 The first migration creates four tables — `profiles`, `products`, `orders`,
 `order_items` — plus a `pricing_tiers` lookup. Later migrations add the
@@ -239,8 +246,10 @@ that the session ended.
 
 One `CatalogProvider` (`src/lib/catalog.jsx`) reads the active rows of
 `products`, a page of 1,000 at a time so the catalog is never cut off at the
-API's row limit, and only the columns in `CATALOG_COLUMNS`. Change that list
-when a column the storefront reads is added, renamed or revoked. The copy of
+API's row limit, and only the columns in `CATALOG_COLUMNS` (plus
+`featured_rank`, the homepage rank, first: a database without it answers
+42703 and is read with the next list in `CATALOG_COLUMN_FALLBACKS`). Change
+that list when a column the storefront reads is added, renamed or revoked. The copy of
 the catalog built into the site shows until the live one arrives, and stays
 on screen if it can't be loaded, with a notice and a **Try again** button.
 An open tab loads the catalog again when the buyer comes back to it after
@@ -305,6 +314,15 @@ foreign key to `pricing_tiers.tier`, so an account can only be given a tier
 that exists, Admin → Accounts builds its tier options from the table, and
 renaming a tier's key moves its accounts along with it.
 
+**Admin → Pricing** (`/admin/pricing`) changes a tier's label and discount
+(0 to 99.99%, two decimals at most) without SQL; it doesn't add or remove
+tiers or rename their keys. Approved buyers see the new prices on their next
+page load; orders already saved keep their prices. Since
+`20261010121000_admin_bulk_products.sql` the database also refuses a discount
+below 0 or of 100 or more (`pricing_tiers_discount_range`, `NOT VALID`, so
+rows already there are checked only when next changed). If a label names the
+discount ("Silver (5% off)"), change it with the discount.
+
 ### Loading your list prices
 
 <!-- TODO(owner): What is the real wholesale list price of each of the 368 SKUs? The prices in the database are placeholders; load the real ones as described below. (AW-002) -->
@@ -324,6 +342,11 @@ of the site. Replace them before launch, in either of two ways:
   ```
 
   and run it in the Supabase SQL editor.
+- **Admin → Products → Import CSV**, for many at once without SQL (after
+  `20261010121000_admin_bulk_products.sql`): **Export CSV**, fill in the
+  `price` column in a spreadsheet, and import the file; the preview lists
+  every change before anything is saved. Keep the file out of the
+  repository, like the SQL file above.
 
 Never put prices in `src/data/products.js`, the seed, a migration or any other
 committed file: everything in the repository ships to, or can be read by,
@@ -367,8 +390,10 @@ and cart lines, Quick Reorder and order history keep working with them.
 <!-- TODO(owner): What is the price, and is it in stock, for each size or pack-count variant of the multi-variant products (for example gas cans 1 gal / 2 gal / 5 gal)? Load them as below. (AW-030) -->
 <!-- TODO(owner): What is the sell unit (each, box of N, case of N, or a size) of each product that has none yet? Load them as below. (AW-031) -->
 
-Until Admin → Products can edit these, load them from a private SQL file
-under `supabase/private/` (never committed), run in the SQL editor:
+Admin → Products edits them one product at a time (a variant's list price,
+"Can't be ordered", the sell unit; see "The product editor" below). For many
+at once, load them from a private SQL file under `supabase/private/` (never
+committed), run in the SQL editor:
 
 ```sql
 -- A variant's own list price (leave price null for "price on request").
@@ -404,6 +429,111 @@ Saved orders keep their own `sku`, `product_name` and `variant`.
 AW-138, AW-126): SKUs cut at 17 characters or ending in a hyphen, misspelled
 codes, and inconsistent or abbreviated labels. A renamed label also renames
 its `product_variant_prices` row and its `unavailable_variants` entry.
+
+The product editor (below) can change a SKU or rename or remove a variant,
+but it can't add an alias: carts and Quick Reorder entries saved with the old
+value no longer match it, and the editor says so under those fields. To stop
+orders of a variant for now, tick "Can't be ordered" instead of removing it;
+for a SKU that must change, add the alias in `catalogAliases.js` in the next
+release.
+
+## The product editor (Admin → Products)
+
+Admin → Products lists every product with its photo, list price, tag and
+whether it is active; **New product** and each row's **Edit** open a
+full-page editor at `/admin/products/new` and `/admin/products/<id>`
+(`src/pages/admin/ProductEditor.jsx`; the checks are in
+`src/pages/admin/productForm.js`). It edits the name, brand, department,
+sub-line (or a new one), SKU, sell unit, description, the variants (order,
+"Can't be ordered", and each one's own list price), what the variants differ
+by, the tag, the list price (blank: price on request), the homepage rank, the
+stock status, whether it is active, and the photo. **Duplicate** starts a new
+product from a copy; **Delete** removes one that no order refers to.
+
+`20261010120000_admin_product_editor.sql` (AW-023, AW-116, AW-119) adds what
+it needs:
+
+- **New products** take the next id from `products_id_seq`, the column's new
+  default. The seed moves the sequence past the ids it inserts.
+- **Checks**: a SKU is used by one product only, whatever its case or
+  surrounding spaces (the unique index `products_sku_upper_key`, created only
+  when the table has no such duplicates; otherwise the migration prints a
+  notice with the query that finds them); a product needs a name and a brand;
+  a list price is at most 99,999.99 (`price >= 0` is `20261009100000`'s). The
+  name, brand and price checks are `NOT VALID`: rows already in the table are
+  checked only when someone next edits them. The editor checks the same
+  things first and names the field.
+- **Stock status** (`products.stock_status`: `in_stock`, `low`, `out`,
+  `discontinued`; new rows are `in_stock`). Staff only for now: the
+  storefront doesn't show it (owner question AW-023 in `docs/OWNER-TODO.md`).
+- **Homepage rank** (`products.featured_rank`, 1 to 999, or empty). The
+  homepage's New arrivals shows active products with a photo tagged NEW, and
+  Bestsellers those tagged BESTSELLER (`src/lib/merchandising.js`); a rank puts
+  a product first, 1 before 2, and unranked ones follow in today's order.
+  Products in the lines under legal review (AW-001) are featured only with a
+  rank, or where the homepage already showed them (owner question
+  AW-119/AW-001).
+- **Delete** is refused for a product that an order line refers to (errcode
+  23503, hint `product_has_orders`): `order_items.product_id` would be set to
+  null and the order history would lose its link. Deactivate it instead; the
+  editor counts its order lines first and offers only that.
+- **Photos**: a public Storage bucket, `product-images` (JPEG, PNG or WebP,
+  at most 5 MB). Only approved admins add, replace, list or remove files. The
+  editor uploads to `products/<id>/<upload time>-<name>.<ext>`
+  (`products/new/…` for a product not saved yet) and saves the file's public
+  URL in `products.img`; a photo file bundled with the site (`kite.jpg`) still
+  works. A replaced or removed photo stays in the bucket. A deploy with a
+  Content-Security-Policy must allow `https://<project>.supabase.co` in
+  `img-src` for these photos.
+
+Without this migration the editor still works on the live database: a new
+product is inserted with the next free id (the table has no id default), the
+stock status and homepage rank fields say they need the update, a photo
+upload says so too (a file name or URL still works), and the editor checks a
+product's order lines before it offers Delete. Before `20261009110000` the
+variants' axis, "Can't be ordered" and own prices are not offered, and before
+`20261009100000` a blank price can't be saved ("price on request" needs that
+update).
+
+### Bulk changes and CSV (Admin → Products)
+
+The products list filters by status, department, sub-line, tag, stock
+status, "No photo" and "No sell unit", searches the name, brand, SKU,
+department, sub-line and id, sorts by ID, name, brand, price or last change,
+and shows 50 products a page; all of it is in the address
+(`/admin/products?status=inactive&dept=tobacco&page=2`), so a filtered list
+can be bookmarked or shared with staff (AW-115).
+
+Ticking products (or "Select all … filtered") opens the bulk bar (AW-114):
+
+- **Set price**, **Set tag**, **Activate** and **Deactivate** are one update
+  of the chosen products; they work on any version of the database.
+- **Adjust price** raises or lowers the list prices by a percentage or an
+  amount, and by default the variants' own prices, with a preview of old and
+  new prices first. It calls `admin_bulk_adjust_prices()`
+  (`20261010121000_admin_bulk_products.sql`), which rounds to the cent like
+  `tier_unit_price()`, skips products on request, and changes nothing if any
+  new price would fall below 0 or rise above 99,999.99 (hint
+  `price_out_of_range`).
+- **Export CSV** downloads the selection, or every product the filters show:
+  `id, sku, name, brand, cat, sub, sell_unit, price, tag, active`, then
+  `stock_status` and `featured_rank`. The file has list prices in it: treat
+  it like the private SQL files above. Cells that a spreadsheet would run as
+  a formula are written with a leading apostrophe.
+- **Import CSV** reads such a file back, matched on `sku` (any case), and
+  shows each changed product's fields, old and new, before anything is saved.
+  A column the file doesn't have is left alone; an empty `price` cell means
+  "price on request"; `id`, `cat` and `sub` are not imported (change a
+  product's department in its editor). Rows that fail the editor's checks
+  block the import. **SKUs that match no product are listed and not
+  imported: the import never creates products** (use New product). It calls
+  `admin_import_products()`, which saves every row or none (an unknown SKU
+  refuses the whole file, hint `unknown_sku`).
+
+Every change asks first, with the number of products, and the storefront
+reloads its catalog afterwards. Without `20261010121000`, Adjust price and
+Import CSV say they need the October 2026 database update and turn
+themselves off; everything else works.
 
 ## Quotes and orders (`submit_quote`)
 
@@ -501,6 +631,106 @@ a guest's or an unpriced request as a quote, and can still email a quote with
 prices typed in the editor; saving prices and converting say the database
 update is needed.
 
+### Finding, printing and following orders (Admin → Orders)
+
+Admin → Orders (AW-110, AW-111) has a filter row above the status pills:
+
+- **Search orders** looks in the reference, business, contact, email and
+  phone, on the server. What is typed stays on the page and never goes into
+  the address bar (it names people). **Placed from / to** (the days the order
+  was placed, on the admin's computer), **Deliver on** (the requested date) and
+  **Method** (delivery or will-call) go into the address
+  (`/admin/orders?status=…&from=…&to=…&on=…&method=…`), and so does
+  `?account=<profile id>` (the orders of one account). The list still loads the
+  newest 200 that match and counts the status pills within those (it says so
+  when 200 come back); server paging and per-status counts are AW-199.
+- **Print pick list** and **Print packing slip** open
+  `/admin/orders/<id>/print?doc=pick|slip`: the order's facts and its lines
+  by department, sub-line and name, with an empty box to tick, the SKU, the
+  quantity and the sell unit. Neither shows prices. The packing slip adds the
+  store's name and address; both show the customer's notes, never staff notes.
+  Printing hides the site around the sheet.
+- **Export CSV** downloads the orders on screen, one row per order line (ref,
+  dates, kind, status, business, contact, email, phone, delivery, SKU,
+  product, variant, quantity, unit price, line total, subtotal). Cells that
+  would run as a spreadsheet formula are defused. The file holds customers'
+  contact details and prices: keep it private.
+- **Staff notes and history** under each card (loaded when opened): who the
+  order is assigned to (an approved admin), internal notes, and every status
+  and assignment change with who made it and when. Cancelling asks for a
+  reason, which goes in the history.
+- The list keeps itself current: Supabase Realtime tells it about new and
+  changed orders at once, and it also reloads every minute while the tab is
+  visible (and when the tab comes back). **Refresh** reloads now, and
+  "Updated 9:14 AM" says when it last did. Reloads keep the filters, the
+  focus and any quote being edited.
+- Orders placed since the admin last opened Orders are marked **New**, and
+  the header's Admin link and the page title (`(2) Orders · Admin · …`) count
+  the orders that came in since then.
+
+`20261010122000_order_operations.sql` adds what this needs:
+`order_events` (the history, written only by the `orders_log_change`
+trigger), `order_admin_notes` (internal notes), `orders.assigned_to` (a staff
+profile id; the customer can see the id, never a name or a note), an index
+on `orders.preferred_date`, `admin_set_order_status(order, status, note)`
+(admins only; `cancelled` needs a reason, hint `reason_required`; also
+`invalid_status`, `note_too_long`, `order_not_found`, `admin_only`),
+`admin_order_views` with `admin_mark_orders_seen()` (each admin's last visit;
+returns the previous one), and `public.orders` in the `supabase_realtime`
+publication. `orders` now has three foreign keys to `profiles`, so every
+embed from `orders` names `profiles!orders_user_id_fkey(...)`.
+
+Before it, Admin → Orders still searches, filters, prints and exports; status
+changes use the plain update (as before, without a history); the notes panel
+says it needs the update, the "Assigned to" select is hidden, the New marker
+counts from the first time Orders was opened in that tab, there is no header
+count, and the list refreshes every minute instead of at once. Realtime also
+needs the site's Content-Security-Policy to allow
+`wss://<project-ref>.supabase.co` in `connect-src`.
+
+### Accounts and their pages (Admin → Accounts)
+
+Admin → Accounts (AW-113, AW-112) has a **Search accounts** box that looks in
+the business, name, email and phone of the loaded accounts; what is typed
+stays on the page and never goes into the address bar. Each business links
+to its own page, `/admin/accounts/<profile id>`, and each order card's
+account line links there too. The page shows:
+
+- **Status, tier and role**, with the list's rules (an admin can't change
+  their own status or role; the database refuses it too).
+- **Contact and store**: business, contact name, phone, business type, store
+  street, city, state (two letters) and ZIP, saved to the profile's own
+  columns (`store_*` are the store address). Only the changed columns are
+  sent. The email is read only: it follows the sign-in email.
+- **Verification**: the application answers and the verification note (which
+  the account holder can read).
+- **Licence documents**, signed when View is clicked.
+- **Internal notes** (`profile_admin_notes`): staff only, with the author's
+  name and the date; 1 to 2,000 characters.
+- **Orders**: the newest 50 with the last order's date and the total of the
+  priced orders that weren't cancelled; every link opens Admin → Orders for
+  the account (`?account=<profile id>`).
+- **Status history** (`profile_status_log`).
+
+Status, tier and role changes (on the list and the page) show at once, with
+Undo for 8 seconds, and go back with the reason if the database refuses
+them; one request per account at a time. **Suspending** asks for a reason,
+which is saved as an internal note ("Suspended: …"). **Cancelling an order**
+asks for a reason that goes in its history (`admin_set_order_status`); other
+order status changes keep the card where it is, tagged "Moved to …", until
+Refresh or another filter, with Undo.
+
+No migration is needed: the page uses `20261008191000` (store address),
+`20261008193000` (approval stamp, status history) and `20261009140000`
+(internal notes). Before those are applied, saving a column the database
+doesn't have says it needs the October 2026 update, the notes say so too
+(and a suspension says its reason wasn't saved), the status history is left
+out, and a cancellation's reason is optional because it can't be stored.
+
+Staff can't create or invite an account from Admin yet: that needs a
+Supabase Edge Function with the service-role key and an email provider (see
+docs/OWNER-TODO.md, AW-113 and AW-088).
+
 ## Row-level security summary
 
 - **Admins**: `is_admin()` is true only for a profile with role `admin`
@@ -521,12 +751,26 @@ update is needed.
   admins read them, nobody can add, change or delete rows.
 - **profile_admin_notes**: internal notes about an account; admins only (the
   account holder can't read them).
+- **order_events** (`20261010122000`): the history of each order's status and
+  assignment, written only by the `orders_log_change` trigger; admins read it,
+  nobody adds, changes or deletes rows through the API.
+- **order_admin_notes** (`20261010122000`): internal notes about an order;
+  admins read, add and delete them, in their own name only; customers and
+  guests have no access. Notes are 1 to 2000 characters.
+- **admin_order_views** (`20261010122000`): each admin reads only their own
+  last visit to Admin → Orders; only `admin_mark_orders_seen()` writes it.
 - **products**: anyone reads `active = true` rows, and every column except
   `price` (column privileges; `select=*` is refused). Admins read and write
   every row; they read list prices through `admin_product_prices()` and set
   them with an ordinary update. Approved buyers get their prices from
   `my_prices()`. A column added to `products` later needs its own
   `grant select (<column>) on public.products to anon, authenticated;`.
+  Since `20261010120000`, a product that an order line refers to can't be
+  deleted (hint `product_has_orders`), and admins' inserts take their id from
+  `products_id_seq` (guests have no use of it). Since `20261010121000`,
+  `admin_bulk_adjust_prices()` and `admin_import_products()` change many
+  products at once, all or nothing; both check `is_admin()` and can't be
+  called by guests.
 - **product_variant_prices**: admins only (read and write); guests have no
   privileges on it at all. Approved buyers get its prices, at their tier,
   from `my_prices()`.
@@ -537,11 +781,18 @@ update is needed.
   Guest quotes are stored with `user_id` null. Nobody updates `order_items`
   directly; staff change lines only through `admin_price_order()` and
   `admin_convert_quote()`, which check `is_admin()` and can't be called by
-  guests.
+  guests. Since `20261010122000`, admins also change a status through
+  `admin_set_order_status()` (with a note), every status and assignment
+  change is logged in `order_events`, `orders.assigned_to` names the staff
+  member looking after an order, and `orders` is in the Realtime publication
+  (Realtime applies the same policies: a customer hears only their own
+  orders).
 - **quote_throttle**: no access for guests or signed-in accounts (RLS on, no
   policies, privileges revoked); only `submit_quote` uses it.
 - **pricing_tiers**: readable by admins and approved buyers only;
-  admin-writable. `profiles.pricing_tier` must name one of its rows.
+  admin-writable (Admin → Pricing). `profiles.pricing_tier` must name one of
+  its rows. Since `20261010121000` a discount is from 0 up to (not including)
+  100.
 - **profile_documents**: a user reads, inserts and replaces their own rows
   (one tobacco license and one resale certificate), whatever the account's
   status, and a row's `storage_path` must be
@@ -554,6 +805,9 @@ update is needed.
   and uploads there at that layout only, at most 10 files in 24 hours; only a
   pending applicant deletes there. Admins can read every object, which is
   what the Accounts tab uses to mint a signed View link.
+- **storage `product-images`** (`20261010120000`): public, so anyone loads a
+  product photo by its URL; only approved admins add, replace, list or
+  remove files.
 
 ## Resetting
 
@@ -598,6 +852,12 @@ rolling it back.
 11. `20261009130000_submit_quote_v3.sql`
 12. `20261009140000_profile_and_document_boundaries.sql`
 13. `20261009150000_quote_workflow.sql`
+14. `20261010120000_admin_product_editor.sql` (Admin → Products; it can be
+    applied later on its own)
+15. `20261010121000_admin_bulk_products.sql` (Admin → Products' Adjust price
+    and Import CSV, and the tier discount check; after 14, also on its own)
+16. `20261010122000_order_operations.sql` (Admin → Orders' history, notes,
+    assignment, new-order marker and Realtime; after 13, also on its own)
 
 Then `supabase/seed/products.sql`, then the frontend.
 
@@ -616,6 +876,9 @@ Then `supabase/seed/products.sql`, then the frontend.
 | `20261009130000_submit_quote_v3.sql` | Recreates `submit_quote` without `p_ref_num` and with the license answers last (`p_license_no`, `p_resale_cert`, `p_purchasers_21`, with defaults): the server makes the reference (`ALW-Q-`/`ALW-O-` and 10 hex digits), checks lengths, email, ZIP, state, route state and date, throttles (new private table `quote_throttle`), refuses suspended accounts, needs an address only for delivery, and keeps PR #12's license rule and columns; every refusal has a typed hint. Turns PR #12's 16-argument function into a wrapper and brings back the 13-argument one as a wrapper; both ignore `p_ref_num` (see "Quotes and orders"). | Apply after `20261009120000`, before the new frontend. Frontends deployed before it keep working through the wrappers (their reference is ignored; a will-call quote sends the address they always required; the 13-argument call has no license answers, so its guest tobacco and vape quotes are refused, as `20261008190000` intends). The new frontend also works before it: it falls back to the 16-argument call, then the 13-argument one, with a long random reference and the warehouse address for will-call. **Later step:** drop the wrappers (below). |
 | `20261009140000_profile_and_document_boundaries.sql` | `is_admin()` requires an approved admin; Cursor's self-update guard keeps every column but name, phone and store address in a customer's own update, and refuses an admin's change to their own role or status, the consent or approval records, or a made-up email; `profiles.email` follows the sign-in email (a trigger on `auth.users`, and existing rows are realigned); new table `profile_admin_notes` (internal notes, admins only) and an index for `profile_status_log`; accounts from before `20261008194000` get their metadata answers, store address and consent copied to the profile (`backfill_profiles_from_metadata()`, run once) and the keys stripped; license rows and files must sit at `{user id}/{type}/{file}`, with at most 10 uploads per account in 24 hours. | Apply after `20261009130000`, before the new frontend. Before running it, check with `select id, email, status from public.profiles where role = 'admin';` that every real admin is `approved`: the others lose admin rights. The frontend deployed before it keeps working (its admins must be approved). The new frontend also works before it: the store address and consent stay in auth metadata until this migration moves them, Admin → Accounts shows '—' for the missing columns, and the document paths it uploads already match the layout. Then run `supabase/seed/provision_owner.sql`'s admin list once. |
 | `20261009150000_quote_workflow.sql` | One quote workflow (see "Pricing quotes and converting them"): `kind` is `order` only for an approved account's request, as `submit_quote` returns it (existing unpriced requests become quotes); `quoted_by` is set to null when that admin's profile is deleted; `admin_price_order()` and `admin_convert_quote()` check their input, keep an order's status, need every line priced before converting, and refuse guests (EXECUTE revoked from anon), with typed hints. | Apply after `20261009140000`, before the new frontend. The frontend deployed before it doesn't use these functions. The new frontend also works before it (and before `20261008200000`): Admin → Orders offers the old four statuses and says saving prices and converting need the update. |
+| `20261010120000_admin_product_editor.sql` | The product editor (see "The product editor"): `products.id` defaults to the new `products_id_seq`; a SKU is unique whatever its case (`products_sku_upper_key`, skipped with a notice when duplicates exist); `NOT VALID` checks for a name and a brand and a list price of at most 99,999.99; `products.stock_status` (staff only) and `products.featured_rank` (homepage rank), readable like every column but price; a trigger that refuses to delete a product an order line refers to (hint `product_has_orders`); the public `product-images` bucket that only approved admins write to. | Apply after `20261009150000`, then re-apply the regenerated seed (its last statement moves the id sequence past the seeded ids). The frontend deployed before it doesn't read the new columns. The new frontend works before and after: without it, a new product gets the next free id from the editor, stock status, homepage rank and photo upload say they need the update, Delete checks for order lines in the editor only, and the homepage rails follow the tags without a rank. |
+| `20261010121000_admin_bulk_products.sql` | Bulk product changes and tier discounts (see "Bulk changes and CSV" and "How pricing tiers work"): `admin_bulk_adjust_prices(p_ids, p_pct, p_amount, p_variants)` adjusts up to 1000 products' list prices (and their variants' own prices) by a percentage and/or an amount, rounded like `tier_unit_price()`, skipping prices on request, all or nothing (hints `price_out_of_range`, `invalid_input`); `admin_import_products(p_rows)` updates the products matched by SKU in the CSV columns given (name, brand, sell_unit, description, price, tag, active, stock_status, featured_rank), never creating one, all or nothing (hint `unknown_sku`); both are SECURITY DEFINER, check `is_admin()` (42501, hint `admin_only`) and are revoked from guests; `pricing_tiers_discount_range` (`NOT VALID`) keeps a discount from 0 to under 100. A commented Reverse block is at the end. | Apply after `20261010120000`. No seed change. The frontend deployed before it doesn't call these functions. The new frontend works before and after: without it, Adjust price and Import CSV say they need the update and turn themselves off, while Set price, Set tag, Activate, Deactivate, Export CSV and Admin → Pricing work as they are. |
+| `20261010122000_order_operations.sql` | Admin → Orders' operations (see "Finding, printing and following orders"): `order_events` (status and assignment history, written by the `orders_log_change` trigger, admin read only), `order_admin_notes` (internal notes, admins only, 1–2000 characters, in their own name), `orders.assigned_to` (a profile id; the third foreign key from `orders` to `profiles`) with an index, an index on `orders.preferred_date`, `admin_set_order_status(p_order_id, p_status, p_note)` (admins only; a cancellation needs a reason; hints `reason_required`, `invalid_status`, `note_too_long`, `order_not_found`, `admin_only`), `admin_order_views` and `admin_mark_orders_seen()` (each admin's last visit to Orders), and `public.orders` in the `supabase_realtime` publication (skipped where it doesn't exist). Every new table and function is revoked from guests. A commented Reverse block is at the end. | Apply after `20261009150000` (in order after `20261010121000`). No seed change. The frontend deployed before it keeps working: its plain status updates are logged without a note. The new frontend works before and after: without it, status changes use the plain update, "Staff notes and history" says it needs the update, "Assigned to" is hidden, the New marker counts from the first visit in the tab, the header shows no count, and Orders reloads every minute. Realtime also needs `wss://<project-ref>.supabase.co` in the CSP's `connect-src`. |
 
 ### Later steps
 
