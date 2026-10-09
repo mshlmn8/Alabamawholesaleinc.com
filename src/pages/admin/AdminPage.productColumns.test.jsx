@@ -53,6 +53,8 @@ describe('the SKU and Variants columns (AW-106)', () => {
     expect(swisher.cells[7].textContent).toBe('4');
     expect(swisher.cells[8].textContent).toBe('$10.50');
     expect(rowOf(2).cells[7].textContent).toBe('—');
+    // The table scrolls in a named region the keyboard can reach (AW-266).
+    expect(screen.getByRole('region', { name: 'Products table' }).tabIndex).toBe(0);
   });
 
   it('lets a SKU search show the SKU that matched', async () => {

@@ -30,6 +30,7 @@ import { Thumb } from '../../components/Thumb.jsx';
 import { Icon } from '../../components/Icon.jsx';
 import { adminErrorMessage, withStatus } from './adminData.js';
 import { LoadProblem } from './AdminStatus.jsx';
+import { TableScroll } from './TableScroll.jsx';
 import { ProductEditor } from './ProductEditor.jsx';
 import { BulkBar, plural } from './ProductBulk.jsx';
 import { ImportPreview } from './ProductImport.jsx';
@@ -465,7 +466,7 @@ function ProductsList({
           <Link className="text-link" to={clearHref} replace scroll={false}>Clear filters</Link>
         </div>
       ) : (
-        <div className="table-scroll">
+        <TableScroll label="Products table" resetKey={`${signature}\u0001${result.page}\u0001${query.sort || ''}\u0001${query.dir || ''}`}>
           <table className="aw-table admin-products">
             <thead>
               <tr>
@@ -523,7 +524,7 @@ function ProductsList({
               })}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       )}
       {result.pages > 1 && (
         <nav className="admin-pager" aria-label="Product pages">

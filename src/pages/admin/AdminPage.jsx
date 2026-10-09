@@ -143,8 +143,10 @@ export function AdminPage({
     );
   }
 
+  // .admin-page: on phones its pill rows wrap instead of scrolling sideways
+  // (AW-266).
   return (
-    <section>
+    <section className="admin-page">
       <div className="page-head">
         <Breadcrumbs items={[HOME_CRUMB, { label: 'Admin' }]} />
         <p className="eyebrow">TRADE DESK</p>

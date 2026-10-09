@@ -731,6 +731,39 @@ describe('the markup uses the design system (merged PR #12, PR #13 and lane p2 p
     expect(scroller).toMatchObject({ position: 'relative', 'overflow-x': 'auto' });
   });
 
+  it('keeps a long admin table’s header row in view: a capped scroller, a sticky header, the Accounts Business column pinned (AW-266)', () => {
+    const own = (selector) => declarations(rules(css).find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+    // The scroller scrolls both ways inside at most 70% of the screen, and
+    // keeps overflow-x (the .sr-only rule above) rather than one overflow.
+    expect(own('.table-scroll')).toMatchObject({ 'overflow-x': 'auto', 'overflow-y': 'auto', 'max-height': 'min(70vh, 56.25rem)', isolation: 'isolate', 'scroll-padding-top': '3.5rem', 'scroll-padding-bottom': 'var(--tap)' });
+    expect(own('.table-scroll')).not.toHaveProperty('overflow');
+    // The header sticks above the rows' photo placeholders (.photo-soon, z-index 1).
+    expect(own('.aw-table thead th')).toEqual({ position: 'sticky', top: '0', 'z-index': '2' });
+    expect(Number(own('.photo-soon')['z-index'])).toBeLessThan(2);
+    expect(own('.admin-accounts td:first-child:not([colspan])')).toMatchObject({ position: 'sticky', left: '0', 'z-index': '1', background: '#fff' });
+    expect(own('.admin-accounts thead th:first-child')).toMatchObject({ left: '0', 'z-index': '3' });
+    // Focus scrolled into view stops beside the pinned column, as wide as the
+    // scroll padding while the table can scroll sideways (WCAG 2.4.11).
+    const narrow = mediaBlocks(css).filter((b) => b.prelude === '(max-width: 68.75em)').flatMap((b) => rules(b.body));
+    const pinWidth = declarations(narrow.find((r) => r.selectors.join(', ') === '.admin-accounts th:first-child, .admin-accounts td:first-child:not([colspan])').body)['min-width'];
+    expect(declarations(narrow.find((r) => r.selectors.join() === '.table-scroll:has(> .admin-accounts)').body)).toEqual({ 'scroll-padding-left': pinWidth });
+    // A printed admin table is whole.
+    const print = mediaBlocks(css).filter((b) => b.prelude === 'print').flatMap((b) => rules(b.body));
+    expect(declarations(print.find((r) => r.selectors.join() === '.table-scroll').body)).toEqual({ 'max-height': 'none', overflow: 'visible' });
+    // On phones the admin's pill rows wrap (in the compact block, not a fourth
+    // one), and a hint says the table scrolls sideways.
+    const compact = mediaBlocks(css).filter((b) => b.prelude === MOBILE_QUERY).flatMap((b) => rules(b.body));
+    expect(declarations(compact.find((r) => r.selectors.join() === '.admin-page .sub-pills').body)).toMatchObject({ 'flex-wrap': 'wrap', 'overflow-x': 'visible' });
+    expect(own('.table-hint')).toMatchObject({ display: 'none' });
+    const phone = mediaBlocks(css).filter((b) => b.prelude === '(max-width: 37.5em)').flatMap((b) => rules(b.body));
+    expect(declarations(phone.find((r) => r.selectors.join() === '.table-hint').body)).toEqual({ display: 'block' });
+    // The scrollers are named, focusable regions, so the keyboard can scroll them.
+    expect(code(read('src/pages/admin/TableScroll.jsx'))).toMatch(/className="table-scroll" role="region" aria-label=\{label\} tabIndex=\{0\}/);
+    expect(code(read('src/pages/admin/AccountsSection.jsx'))).toMatch(/<TableScroll label="Accounts table" resetKey=\{`[^`]+`\}>\s*<table className="aw-table admin-accounts">/);
+    expect(code(read('src/pages/admin/ProductsSection.jsx'))).toMatch(/<TableScroll label="Products table" resetKey=\{`[^`]+`\}>\s*<table className="aw-table admin-products">/);
+    expect(code(read('src/pages/admin/AdminPage.jsx'))).toMatch(/<section className="admin-page">/);
+  });
+
   it('styles the card buttons, the sold-out state and the order actions with .button', () => {
     const card = code(read('src/components/ProductCard.jsx'));
     expect(card.match(/className="button ghost sm card-add"/g)).toHaveLength(3);

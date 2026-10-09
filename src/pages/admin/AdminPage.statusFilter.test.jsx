@@ -83,6 +83,10 @@ describe('the Accounts status filter (AW-268)', () => {
     expect(listed()).toEqual(['Bravo Tobacco Outlet', 'Charlie Corner Store', 'Echo Market']);
     expect(count()).toBe('3 pending accounts');
     expect(url()).toBe('/admin/accounts');
+    // The table scrolls in a named region the keyboard can reach (AW-266).
+    const region = screen.getByRole('region', { name: 'Accounts table' });
+    expect(region.tabIndex).toBe(0);
+    expect(region.querySelector('table').className).toBe('aw-table admin-accounts');
   });
 
   it('writes the status into the URL, leaving the default out, and reads it back', async () => {

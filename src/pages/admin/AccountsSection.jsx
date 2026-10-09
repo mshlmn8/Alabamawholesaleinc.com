@@ -19,6 +19,7 @@ import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { AccountFacts, DocumentView, Email, approvalLine, useDocumentViewer } from './accountParts.jsx';
 import { AccountChangeDialog, accountControlId, useAccountChanges } from './AccountChanges.jsx';
 import { AccountDetail } from './AccountDetail.jsx';
+import { TableScroll } from './TableScroll.jsx';
 import { MAX_ACCOUNT_SEARCH, accountCountText, accountHref, accountLinkId, accountStatusCounts, matchesAccountSearch } from './accountDetail.js';
 
 export { approvalLine, profileChangeText, profileSaveError } from './accountParts.jsx';
@@ -238,8 +239,10 @@ function AccountsList({
           </div>
         </div>
       ) : (
-        <div className="table-scroll">
-          <table className="aw-table">
+        <TableScroll label="Accounts table" resetKey={`${filter}\u0001${search}`}>
+          {/* The Business column stays in view while the table scrolls
+              sideways (AW-266). */}
+          <table className="aw-table admin-accounts">
             <thead>
               <tr>
                 {['Business', 'Contact', 'Status', 'Tier', 'Role', 'Documents', 'Actions'].map(h => (
@@ -366,7 +369,7 @@ function AccountsList({
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       )}
       {discarding && openProfile && (
         <ConfirmDialog
