@@ -54,13 +54,14 @@ supabase/migrations/20261012100000_document_storage_lock.sql
 supabase/migrations/20261012110000_carts.sql
 supabase/migrations/20261012120000_product_description_hidden.sql
 supabase/migrations/20261012130000_catalog_fixups.sql
+supabase/migrations/20261012140000_admin_import_create.sql
 supabase/seed/products.sql
 ```
 
 On a project that is already running, apply only the migrations it doesn't
 have yet, in that order, then the seed, then deploy the frontend (see the
 release checklist at the end of this file). The live project has the files
-up to `20260927180000`; the twenty-six `20261008…`/`20261009…`/`20261010…`/`20261011…`/`20261012…`
+up to `20260927180000`; the twenty-seven `20261008…`/`20261009…`/`20261010…`/`20261011…`/`20261012…`
 files are new.
 Review them before applying them; the site keeps working without them (see
 `docs/OWNER-TODO.md` and "Before and after" in the release checklist).
@@ -659,17 +660,35 @@ Ticking products (or "Select all … filtered") opens the bulk bar (AW-114):
 - **Import CSV** reads such a file back, matched on `sku` (any case), and
   shows each changed product's fields, old and new, before anything is saved.
   A column the file doesn't have is left alone; an empty `price` cell means
-  "price on request"; `id`, `cat` and `sub` are not imported (change a
-  product's department in its editor). Rows that fail the editor's checks
-  block the import. **SKUs that match no product are listed and not
-  imported: the import never creates products** (use New product). It calls
-  `admin_import_products()`, which saves every row or none (an unknown SKU
-  refuses the whole file, hint `unknown_sku`).
+  "price on request"; for a product already in the catalog, `id`, `cat` and
+  `sub` are not imported (change a product's department in its editor).
+  Rows that fail the editor's checks block the import, and so does a SKU
+  listed twice.
+- **New products from a file** (AW-114): a row whose SKU no product has is
+  added as a new product when the file has `name`, `brand`, `cat` and `sub`
+  columns and the row fills them in. `cat` must be one of the catalog's
+  departments and `sub` one of its sub-lines, as the export writes them (any
+  case); a new sub-line is still added in the product editor. The SKU, name,
+  price, tag and the other columns get the editor's checks, and the preview
+  lists them under "New products (n)". A new product gets the next id, no
+  photo and no variants, and **is inactive unless the file has an `active`
+  column that says true**, so nothing reaches the storefront by accident:
+  finish it in the editor, then activate it. A row whose SKU is unknown and
+  that lacks one of the four is listed under "Not imported".
+- The import calls `admin_import_products_v2()`
+  (`20261012140000_admin_import_create.sql`): one call, every row saved or
+  none (hints `unknown_sku`, `duplicate_sku` and `invalid_input`), returning
+  how many products it updated and added. On a database without it, updates
+  go through `admin_import_products()` (`20261010121000`) as before, and the
+  new rows are listed as not imported: "Creating products from a file needs
+  the October 2026 database update." A file with new rows saves nothing on
+  such a database until staff confirm the updates on their own.
 
 Every change asks first, with the number of products, and the storefront
 reloads its catalog afterwards. Without `20261010121000`, Adjust price and
 Import CSV say they need the October 2026 database update and turn
-themselves off; everything else works.
+themselves off; everything else works. With it but without
+`20261012140000`, Import CSV updates products and doesn't add any.
 
 A renamed photo file in `src/assets/products` works the same way, in one
 direction: `IMAGE_FILE_ALIASES` (old filename -> new filename) lets the
@@ -1004,7 +1023,9 @@ policy doesn't mention it yet (owner question AW-334 in docs/OWNER-TODO.md).
   `products_id_seq` (guests have no use of it). Since `20261010121000`,
   `admin_bulk_adjust_prices()` and `admin_import_products()` change many
   products at once, all or nothing; both check `is_admin()` and can't be
-  called by guests.
+  called by guests. `admin_import_products_v2()` (`20261012140000`) does the
+  same and also adds the products a file describes, inactive unless the file
+  says otherwise.
 - **product_variant_prices**: admins only (read and write); guests have no
   privileges on it at all. Approved buyers get its prices, at their tier,
   from `my_prices()`.
@@ -1134,7 +1155,7 @@ For each release:
   after" below), then publish an older frontend only if it is at or after
   the latest migration still applied.
 
-The live project needs all twenty-six, in this order (Cursor's seven
+The live project needs all twenty-seven, in this order (Cursor's seven
 `20261008…` files, then the six `20261009…` ones, which build on them, then
 the five `20261010…` ones: three for the admin back office and two data-only
 catalog fixes, then `20261011110000` and `20261011111000`, which can go in
@@ -1142,7 +1163,8 @@ any time, then the data-only `20261011130000` and the home page's
 `20261011131000`, then the document lock `20261012100000` and the saved
 carts `20261012110000`, also any time, then "Show no description"
 `20261012120000`, with or after `20261010120000`, then the data-only
-catalog fix-ups `20261012130000`, any time).
+catalog fix-ups `20261012130000`, any time, then the import that adds
+products, `20261012140000`, after `20261010121000`, any time).
 Apply
 `20261008200000` and `20261009100000`–`20261009150000` in one session: the
 price boundary hides `products.variant_prices` and `20261009110000` moves it.
@@ -1191,6 +1213,9 @@ rolling it back.
     after the frontend: the site feature-detects the column)
 26. `20261012130000_catalog_fixups.sql` (data only; any time, best with or
     after the new frontend, whose Quick Reorder reads the old SKUs too)
+27. `20261012140000_admin_import_create.sql` (Admin → Products' Import CSV
+    adds the products a file describes; after 15, before or after the
+    frontend, also on its own: the site feature-detects the function)
 
 Then `supabase/seed/products.sql`, then the frontend, then 18.
 
@@ -1222,6 +1247,7 @@ Then `supabase/seed/products.sql`, then the frontend, then 18.
 | `20261012110000_carts.sql` | AW-334 (see "Saved carts"): the `carts` table, one row per account (`user_id` references `auth.users`, deleted with it; `lines` is a JSON list of `[line key, quantity]` pairs in the order they were added, at most 500, quantities 1 to 100,000, checked by `cart_lines_valid()`, so no price or other value fits; `updated_at`). Row-level security: each signed-in account reads, adds, changes and deletes its own row only; guests have no privileges at all; admins see no one's cart. A commented Reverse block is at the end. | Apply any time, before or after the frontend, also on its own. No seed change. The frontend deployed before it doesn't read the table. The new frontend works before and after: before it, its one read finds the table missing (404 / `PGRST205`), it stops trying for that page view, carts stay on each device, and the drawer and checkout say so; after it, a signed-in account's cart is saved with the account and the drawer and checkout say "Saved with your account". |
 | `20261012120000_product_description_hidden.sql` | AW-023 (see "The product editor"): `products.description_hidden` (boolean, not null, default false), readable by guests and signed-in accounts like every products column but price; only approved admins change it (`products_admin_write`). When it is true the product page shows no description at all, instead of the bundled description a blank one falls back to; the stored text is kept. A commented Reverse block is at the end. | Apply with or after `20261010120000`, before or after the frontend. No seed change (the seed leaves the column out, so every row keeps the default). The frontend deployed before it doesn't read the column. The new frontend works before and after: the storefront asks for it together with `featured_rank` and, on a database without it (42703), reads the catalog without both (so with `20261010120000` applied and this one not, the homepage rails follow the tags without a rank); Admin → Products offers "Show no description" only once its load sees the column. |
 | `20261012130000_catalog_fixups.sql` | Data only. SKUs (AW-135): four completed, each with an alias from its old code in `src/data/catalogAliases.js`: #83 `AW-DUTCH-MASTERS` (was `AW-DUTCH-MASTER`), #90 `AW-T-SHIRT-BAGS` (was `AW-BAGS`), #121 `AW-PLASTIC-CUTLERY` (was `AW-PLASTIC`) and #143 `AW-REDBULL-12OZ` (was `AW-RED-BULL-12OZ`, now written like #144–#146). Names: #65 "RAZ Vue full kit" (AW-071, and its description), and #350 "Uncle Al's" again, as `20261011130000` had given it #351's name (NEW-023). Descriptions (AW-075): the brand spelled as the row's brand and name spell it in #13, #183, #193, #213 and #260; a blank description isn't matched. Sell units (AW-136): `single` for #16 and #340, which are sold as singles (only while `sell_unit` is ''). Each column changes only while it still has the value the seed wrote, and a SKU only while no other product has the new code (any case), so admin edits are kept and a re-run changes nothing. A commented Reverse block is at the end. | Apply any time, also on its own; best with or after the new frontend. The new frontend reads both codes, so Quick Reorder, stored carts and Reorder from order history work before and after; the frontend deployed before it knows only the codes in the database. Order lines keep the code and name they were placed with. Every frontend reads names, descriptions and sell units from the database; the new one already shows the bundled `single` while the database's is ''. |
+| `20261012140000_admin_import_create.sql` | Admin → Products' Import CSV can add products (AW-114): `admin_import_products_v2(p_rows)` updates the products whose SKU a row names exactly as `admin_import_products()` does (cat and sub are not changed), and inserts a row whose SKU no product has when it has a name, a brand, a department some product already has and a sub-line, with a SKU of 2 to 41 capital letters, digits and hyphens, a price of 0 to 99,999.99 or null, a tag from the four and variants (if any) as a list of names; the id comes from `products_id_seq`, there is no photo, and it is inactive unless the row says `"active": true`. Otherwise an unknown SKU refuses the file (hint `unknown_sku`), as does a SKU listed twice (hint `duplicate_sku`) or a bad value (`invalid_input`, or the table's checks). Up to 1000 rows, all or nothing; returns `{ updated, created }`. SECURITY DEFINER, `is_admin()` first (42501, hint `admin_only`), revoked from guests. `admin_import_products()` stays. A commented Reverse block is at the end. | Apply after `20261010121000`, before or after the frontend, also on its own. The frontend deployed before it calls only `admin_import_products()`. The new frontend calls v2 and, without it (PGRST202/42883), imports the updates through `admin_import_products()` and lists the new rows as not imported ("Creating products from a file needs the October 2026 database update."). |
 
 ### Later steps
 

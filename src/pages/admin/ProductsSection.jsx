@@ -14,8 +14,9 @@
 // Bulk changes (AW-114): a checkbox per row and 'Select all <n> filtered'
 // (the selection is by id: it survives paging and clears when the filters
 // change), then the bulk bar (ProductBulk.jsx). Export CSV writes the
-// selection or the filtered rows; Import CSV previews a file's changes
-// (ProductImport.jsx). Changes patch the loaded rows in place.
+// selection or the filtered rows; Import CSV previews a file's changes and
+// new products (ProductImport.jsx). Changes patch the loaded rows in place;
+// an import that added products loads the list again, for their ids.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
@@ -124,7 +125,8 @@ export function ProductsTab({ route = {}, query = {}, onQuery, onCatalogChange, 
   // the list by link.
   const [openedFrom, setOpenedFrom] = useState(null);
   // Bulk actions the database doesn't have yet (PGRST202/42883 seen):
-  // { adjust, import }.
+  // { adjust, import, create } (create: an import adding products,
+  // admin_import_products_v2).
   const [missing, setMissing] = useState({});
 
   // A failed load says so, with Try again, never "0 of 0 products" (AW-202);
@@ -151,14 +153,17 @@ export function ProductsTab({ route = {}, query = {}, onQuery, onCatalogChange, 
 
   // A bulk change or an import: the changed rows are patched where they are
   // (patches: id -> changed columns), the storefront reloads its catalog,
-  // and the status line says what happened.
-  const applied = (patches, message) => {
+  // and the status line says what happened. Products an import added
+  // (created) come with the list loaded again: only the database knows
+  // their ids.
+  const applied = (patches, message, { created = 0 } = {}) => {
     setData((current) => ({
       ...current,
       rows: current.rows?.map((row) => (patches.has(row.id) ? { ...row, ...patches.get(row.id) } : row)) ?? null,
     }));
     onCatalogChange?.();
     notify?.(message);
+    if (created > 0) reload();
   };
 
   if (route.id != null) {
@@ -391,10 +396,10 @@ function ProductsList({
   // bar or the preview that opened the confirmation. Its ConfirmDialog hands
   // focus to the count line as it closes (returnFocus, NEW-004): focusing it
   // here would do nothing, as the dialog still holds the page inert.
-  const afterChange = (patches, message) => {
+  const afterChange = (patches, message, extra) => {
     setSelected(new Set());
     setImporting(null);
-    onApplied?.(patches, message);
+    onApplied?.(patches, message, extra);
   };
 
   // A page past the end (a bookmark from a longer list) shows the last page,
@@ -458,6 +463,7 @@ function ProductsList({
       {importing && (
         <ImportPreview
           plan={importing.plan} fileName={importing.fileName} missing={missing.import} onMissing={() => onMissing?.('import')}
+          createMissing={missing.create} onCreateMissing={() => onMissing?.('create')}
           onApplied={afterChange} onCancel={closeImport} returnFocus={countRef}
         />
       )}

@@ -10,6 +10,7 @@
 //   productCsvRecords(rows, cols)   the CSV's header and rows
 //   csvFileName(date)               products-YYYY-MM-DD.csv
 //   importPlan(records, rows, …)    what an imported file would change
+//   importRows(plan), createRows(plan)   what the import RPC is sent
 //
 // Prices are worked in whole cents, like src/lib/pricing.js. The database
 // rounds price x (1 + pct / 100) + amount to the cent half away from zero
@@ -22,7 +23,7 @@ import { normalizeSku } from '../../lib/lines.js';
 import { departmentsFor } from '../../lib/departments.js';
 import { formatMoney } from '../../lib/format.js';
 import {
-  MAX_PRICE, PRODUCT_TAGS, STOCK_LABELS, STOCK_STATUSES, draftFromRow, hasColumn, productValues, validateProduct,
+  MAX_PRICE, PRODUCT_TAGS, STOCK_LABELS, STOCK_STATUSES, draftFromRow, emptyDraft, hasColumn, productValues, validateProduct,
 } from './productForm.js';
 import { unguardCell } from './csv.js';
 
@@ -141,9 +142,15 @@ const FIELD_OF = {
   name: 'name', brand: 'brand', sell_unit: 'sellUnit', description: 'description', price: 'price', tag: 'tag',
   stock_status: 'stockStatus', featured_rank: 'rank',
 };
-// Columns the export writes that an import reads past: the id, department
-// and sub-line are changed in the editor.
+// Columns the export writes that an import reads past for a product it
+// updates: the id, department and sub-line are changed in the editor.
 export const NOT_IMPORTED = ['id', 'cat', 'sub'];
+// What a row whose SKU no product has needs to add one (AW-114,
+// admin_import_products_v2 in 20261012140000): with these four it is a new
+// product, checked like the editor checks one; without them it is an unknown
+// SKU, not imported.
+export const CREATE_COLUMNS = ['name', 'brand', 'cat', 'sub'];
+const CREATE_FIELD_OF = { ...FIELD_OF, cat: 'cat', sub: 'sub', sku: 'sku' };
 
 const TRUE = ['true', 'yes', 'y', '1', 'active'];
 const FALSE = ['false', 'no', 'n', '0', 'inactive'];
@@ -176,12 +183,9 @@ export function displayValue(column, value) {
   return shown.length > 60 ? `${shown.slice(0, 57)}…` : shown;
 }
 
-// One file row against its product: the draft with the file's values, the
-// editor's checks for the columns the file has, and what would change.
-function rowChanges(row, values, { rows, columns, departments }) {
-  const draft = draftFromRow(row, row.price, row.variantPrices || {});
-  const original = draftFromRow(row, row.price, row.variantPrices || {});
-  const messages = [];
+// A file row's values put into an editor draft; messages for a value the
+// draft has no way to hold (an `active` that isn't true or false).
+function fillDraft(draft, values, messages) {
   for (const [column, raw] of Object.entries(values)) {
     if (column === 'name') draft.name = raw.trim();
     else if (column === 'brand') draft.brand = raw.trim();
@@ -197,6 +201,15 @@ function rowChanges(row, values, { rows, columns, departments }) {
       else draft.active = active;
     }
   }
+  return draft;
+}
+
+// One file row against its product: the draft with the file's values, the
+// editor's checks for the columns the file has, and what would change.
+function rowChanges(row, values, { rows, columns, departments }) {
+  const original = draftFromRow(row, row.price, row.variantPrices || {});
+  const messages = [];
+  const draft = fillDraft(draftFromRow(row, row.price, row.variantPrices || {}), values, messages);
   const { errors } = validateProduct(draft, { rows, departments, columns, variantPrices: false });
   for (const column of Object.keys(values)) {
     const field = FIELD_OF[column];
@@ -215,18 +228,53 @@ function rowChanges(row, values, { rows, columns, departments }) {
   return { messages, fields, patch };
 }
 
+const sameText = (a, b) => text(a).trim().toLowerCase() === text(b).trim().toLowerCase();
+
+// A file row whose SKU no product has, as a new product (AW-114): a blank
+// draft (inactive unless the file has an active column) with the row's SKU,
+// name, brand, department and sub-line (matched to the catalog's spelling,
+// any case) and its other import columns, checked like the editor checks a
+// new product. Returns { messages } or { product }: the preview's line and
+// `row`, what admin_import_products_v2 is sent (only the file's columns, so
+// a product added meanwhile under that SKU is updated, not reset).
+function newProduct(sku, cells, { used, rows, columns, departments }) {
+  const dept = departments.find((d) => sameText(d.key, cells.cat));
+  const sub = dept?.subs.find((s) => sameText(s, cells.sub)) ?? cells.sub.trim();
+  const messages = [];
+  const values = Object.fromEntries(used.map((column) => [column, cells[column]]));
+  const draft = fillDraft({ ...emptyDraft(), active: false }, values, messages);
+  Object.assign(draft, { sku, name: cells.name.trim(), brand: cells.brand.trim(), cat: dept?.key ?? cells.cat.trim(), sub });
+  const { errors } = validateProduct(draft, { rows, departments, columns, variantPrices: false });
+  // The editor's department and sub-line messages name its menus.
+  if (errors.cat) errors.cat = 'use one of the catalog’s departments, as the export writes it.';
+  if (errors.sub) errors.sub = 'use one of the department’s sub-lines, as the export writes it (a new sub-line is added in the product editor).';
+  for (const column of ['sku', ...CREATE_COLUMNS, ...used.filter((c) => !CREATE_COLUMNS.includes(c))]) {
+    const field = CREATE_FIELD_OF[column];
+    if (field && errors[field]) messages.push(`${column}: ${errors[field]}`);
+  }
+  if (messages.length) return { messages };
+  const all = productValues(draft, departments);
+  const row = { sku: all.sku, name: all.name, brand: all.brand, cat: all.cat, sub: all.sub };
+  for (const column of used) if (!CREATE_COLUMNS.includes(column)) row[column] = all[column];
+  return { product: { sku: all.sku, name: all.name, cat: all.cat, sub: all.sub, price: all.price, active: all.active, row } };
+}
+
 // What an imported file would change. `records` is parseCsv's output, its
 // first record the header; `rows` the loaded products; `columns` the
 // products columns the load saw. Rows are matched to products by SKU
-// (normalizeSku, so any case); the import never creates a product.
+// (normalizeSku, so any case). A row whose SKU no product has is a new
+// product when the file has the name, brand, cat and sub columns and the row
+// fills them in (AW-114); otherwise it is an unknown SKU, not imported.
 //
 // Returns { error } for a file that can't be used at all, or
-//   { error: null, used, unavailable, ignored, changes, unchanged, unknown,
-//     invalid, ok }
+//   { error: null, used, unavailable, ignored, changes, creates, unchanged,
+//     unknown, invalid, ok }
 // used: the columns it changes; unavailable: ones the database doesn't have
-// yet; ignored: other headers; changes: [{ id, sku, name, fields: [{ column,
-// old, next }], patch }]; unknown: [{ line, sku }]; invalid: [{ line, sku,
-// name, messages }]. ok: something to apply and nothing invalid.
+// yet; ignored: other headers (cat and sub too: they are read only for new
+// products); changes: [{ id, sku, name, fields: [{ column, old, next }],
+// patch }]; creates: [{ line, sku, name, cat, sub, price, active, row }];
+// unknown: [{ line, sku }]; invalid: [{ line, sku, name, messages }], new
+// products' checks included. ok: something to apply and nothing invalid.
 export function importPlan(records, rows = [], { columns = null, departments = departmentsFor(rows) } = {}) {
   if (!records.length) return { error: 'The file is empty.' };
   const header = records[0].map((h) => unguardCell(text(h)).trim().toLowerCase().replace(/\s+/g, '_'));
@@ -250,9 +298,11 @@ export function importPlan(records, rows = [], { columns = null, departments = d
   }
   const seen = new Map();
   const changes = [];
+  const creates = [];
   const unknown = [];
   const invalid = [];
   let unchanged = 0;
+  const canCreate = CREATE_COLUMNS.every((c) => header.includes(c));
   for (const { record, line } of body) {
     const cell = (column) => unguardCell(text(record[header.indexOf(column)]));
     const sku = cell('sku').trim();
@@ -261,19 +311,32 @@ export function importPlan(records, rows = [], { columns = null, departments = d
     if (seen.has(key)) { invalid.push({ line, sku, name: '', messages: [`sku: listed twice (also on line ${seen.get(key)}).`] }); continue; }
     seen.set(key, line);
     const row = bySku.get(key);
-    if (!row) { unknown.push({ line, sku }); continue; }
+    if (!row) {
+      const cells = Object.fromEntries([...CREATE_COLUMNS, ...used].map((column) => [column, cell(column)]));
+      if (!canCreate || CREATE_COLUMNS.some((c) => cells[c].trim() === '')) { unknown.push({ line, sku }); continue; }
+      const result = newProduct(key, cells, { used, rows, columns, departments });
+      if (result.messages) invalid.push({ line, sku, name: cells.name.trim(), messages: result.messages });
+      else creates.push({ line, ...result.product });
+      continue;
+    }
     const values = Object.fromEntries(used.map((column) => [column, cell(column)]));
     const result = rowChanges(row, values, { rows, columns, departments });
     if (result.messages.length) invalid.push({ line, sku: row.sku, name: row.name, messages: result.messages });
     else if (result.fields.length) changes.push({ id: row.id, sku: row.sku, name: row.name, fields: result.fields, patch: result.patch });
     else unchanged += 1;
   }
-  return { error: null, used, unavailable, ignored, changes, unchanged, unknown, invalid, ok: invalid.length === 0 && changes.length > 0 };
+  return {
+    error: null, used, unavailable, ignored, changes, creates, unchanged, unknown, invalid,
+    ok: invalid.length === 0 && changes.length + creates.length > 0,
+  };
 }
 
-// admin_import_products' rows: each changed product's SKU as the database
-// has it (so upper(btrim(sku)) finds it), with only the changed columns.
+// The import RPC's rows for the products it updates: each changed product's
+// SKU as the database has it (so upper(btrim(sku)) finds it), with only the
+// changed columns.
 export const importRows = (plan) => plan.changes.map((change) => ({ sku: change.sku, ...change.patch }));
+// And for the products it adds (admin_import_products_v2 only).
+export const createRows = (plan) => (plan.creates || []).map((create) => create.row);
 
 // The loaded row after an import, as the database leaves it.
 export function importedRow(row, patch) {

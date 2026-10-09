@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { tierUnitPrice } from '../../lib/pricing.js';
 import { parseCsv, toCsv } from './csv.js';
 import {
-  adjustPreview, adjustRow, adjustedPrice, csvFileName, displayValue, exportColumns, importPlan, importRows, parseActive, parseAdjust,
+  adjustPreview, adjustRow, adjustedPrice, createRows, csvFileName, displayValue, exportColumns, importPlan, importRows, parseActive, parseAdjust,
   productCsvRecords,
 } from './productBulk.js';
 
@@ -128,11 +128,57 @@ describe('import', () => {
     expect(result.changes.map((c) => c.patch)).toEqual([{ price: null }, { price: 1234.5 }]);
   });
 
-  it('lists unknown SKUs as not imported, never creating a product', () => {
+  it('lists an unknown SKU as not imported when its row lacks the name, brand, cat or sub a new product needs', () => {
     const result = plan('sku,name\nAW-NOPE,New thing\nAW-KITE,Kite two\n');
     expect(result.unknown).toEqual([{ line: 2, sku: 'AW-NOPE' }]);
+    expect(result.creates).toEqual([]);
     expect(result.changes.map((c) => c.id)).toEqual([1]);
     expect(result.ok).toBe(true);
+    // The columns are there, but this row leaves the sub-line blank.
+    expect(plan('sku,name,brand,cat,sub\nAW-NOPE,New thing,Brand,CANDIES,\n')).toMatchObject({ unknown: [{ line: 2, sku: 'AW-NOPE' }], creates: [], ok: false });
+  });
+
+  it('adds a new SKU whose row has a name, brand, cat and sub, inactive unless the file says, checked like the editor (AW-114)', () => {
+    const result = plan('sku,name,brand,cat,sub,price,tag\naw new gum,  New gum ,Wrigley,candies,gum,1.50,new\nAW-KITE,Kite,Brand,CANDIES,Gum,12.50,NEW\n');
+    expect(result).toMatchObject({ error: null, unknown: [], invalid: [], changes: [], unchanged: 1, ok: true });
+    // The SKU as the editor writes it; the department and sub-line in the catalog's spelling.
+    expect(result.creates).toEqual([{
+      line: 2, sku: 'AW-NEW-GUM', name: 'New gum', cat: 'CANDIES', sub: 'Gum', price: 1.5, active: false,
+      row: { sku: 'AW-NEW-GUM', name: 'New gum', brand: 'Wrigley', cat: 'CANDIES', sub: 'Gum', price: 1.5, tag: 'NEW' },
+    }]);
+    // Only the file's columns are sent: no active, so the database adds it inactive.
+    expect(createRows(result)).toEqual([{ sku: 'AW-NEW-GUM', name: 'New gum', brand: 'Wrigley', cat: 'CANDIES', sub: 'Gum', price: 1.5, tag: 'NEW' }]);
+    expect(importRows(result)).toEqual([]);
+    // cat and sub stay "not imported" for the products already there.
+    expect(result.ignored).toEqual(['cat', 'sub']);
+    const live = plan('sku,name,brand,cat,sub,active\nAW-NEW,New,Brand,CANDIES,Gum,true\n');
+    expect(live.creates[0]).toMatchObject({ active: true, price: null, row: { active: true } });
+  });
+
+  it('lists a new product’s problems as rows to fix, which block the import', () => {
+    const result = plan([
+      'sku,name,brand,cat,sub,price,active',
+      'AW-NEW-1,New,Brand,NOPE,Gum,1,true',
+      'AW-NEW-2,New,Brand,CANDIES,Mints,1,true',
+      'AW-NEW-3!,New,Brand,CANDIES,Gum,-1,maybe',
+      'AW-NEW-4,New,Brand,TOBACCO,Gum,1,true',
+      'AW-KITE,Kite,Brand,CANDIES,Gum,13.00,true',
+    ].join('\n'));
+    expect(result.ok).toBe(false);
+    expect(result.creates).toEqual([]);
+    expect(result.invalid.map((r) => [r.line, r.sku, r.name, r.messages])).toEqual([
+      [2, 'AW-NEW-1', 'New', ['cat: use one of the catalog’s departments, as the export writes it.']],
+      [3, 'AW-NEW-2', 'New', ['sub: use one of the department’s sub-lines, as the export writes it (a new sub-line is added in the product editor).']],
+      [4, 'AW-NEW-3!', 'New', [
+        'active: use true or false.',
+        'sku: Use 2 to 41 capital letters, digits and hyphens, starting with a letter or digit (e.g. AW-KITE-1OZ).',
+        'price: Enter the price as an amount from 0 to 99999.99, such as 12.50, or leave it blank for price on request.',
+      ]],
+      [5, 'AW-NEW-4', 'New', ['sub: use one of the department’s sub-lines, as the export writes it (a new sub-line is added in the product editor).']],
+    ]);
+    expect(result.changes.map((c) => c.id)).toEqual([1]);
+    // A new SKU listed twice is a row to fix, like any SKU.
+    expect(plan('sku,name,brand,cat,sub\nAW-NEW,New,Brand,CANDIES,Gum\naw-new,New,Brand,CANDIES,Gum\n').invalid[0].messages).toEqual(['sku: listed twice (also on line 2).']);
   });
 
   it('lists invalid rows with the editor’s messages, which block the import', () => {

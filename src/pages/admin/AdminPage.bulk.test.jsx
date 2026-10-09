@@ -351,7 +351,7 @@ describe('export and import (AW-114)', () => {
   const preview = () => screen.getByRole('region', { name: /^Import / });
 
   it('previews an imported file’s changes, unknown SKUs and invalid rows, and imports after a confirmation', async () => {
-    fake.rpcData.admin_import_products = 2;
+    fake.rpcData.admin_import_products_v2 = { updated: 2, created: 0 };
     await renderAdmin();
     await chooseFile('sku,name,price,tag\nAW-B1,Swisher 1,10.10,NEW\naw-b5,Swisher five,,\nAW-NOPE,Mystery,1.00,\nAW-B6,Swisher 6,10.10,\n');
     expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Import products-edit.csv' }));
@@ -366,9 +366,10 @@ describe('export and import (AW-114)', () => {
     await act(async () => { fireEvent.click(within(preview()).getByRole('button', { name: 'Import 2 changes' })); });
     expect(within(confirmDialog()).getByRole('heading').textContent).toBe('Update 2 products?');
     await confirmButton();
-    const calls = fake.find({ kind: 'rpc', name: 'admin_import_products' });
+    const calls = fake.find({ kind: 'rpc', name: 'admin_import_products_v2' });
     expect(calls).toHaveLength(1);
     expect(calls[0].args).toEqual({ p_rows: [{ sku: 'AW-B1', tag: 'NEW' }, { sku: 'AW-B5', name: 'Swisher five', price: null }] });
+    expect(fake.find({ kind: 'rpc', name: 'admin_import_products' })).toHaveLength(0);
     expect(statusText()).toBe('Updated 2 products from products-edit.csv');
     expect(rowOf(5).cells[3].textContent).toBe('Swisher five');
     expect(screen.queryByRole('region', { name: /^Import / })).toBeNull();
@@ -395,8 +396,8 @@ describe('export and import (AW-114)', () => {
   });
 
   it('turns Import off on a database without admin_import_products; Export still works', async () => {
-    fake.respond = (request) => (request.kind === 'rpc' && request.name === 'admin_import_products'
-      ? { data: null, error: { code: '42883', message: 'function admin_import_products(jsonb) does not exist' } } : undefined);
+    fake.respond = (request) => (request.kind === 'rpc' && /^admin_import_products/.test(request.name)
+      ? { data: null, error: { code: '42883', message: `function ${request.name}(jsonb) does not exist` } } : undefined);
     await renderAdmin();
     await chooseFile('sku,tag\nAW-B1,NEW\n');
     await act(async () => { fireEvent.click(within(preview()).getByRole('button', { name: 'Import 1 change' })); });
@@ -408,7 +409,7 @@ describe('export and import (AW-114)', () => {
   });
 
   it('refuses the whole import when the database no longer knows a SKU', async () => {
-    fake.respond = (request) => (request.kind === 'rpc' && request.name === 'admin_import_products'
+    fake.respond = (request) => (request.kind === 'rpc' && request.name === 'admin_import_products_v2'
       ? { data: null, error: { code: 'P0002', message: 'No product has the SKU AW-B1', hint: 'unknown_sku', details: 'AW-B1' } } : undefined);
     await renderAdmin();
     await chooseFile('sku,tag\nAW-B1,NEW\n');
@@ -416,5 +417,83 @@ describe('export and import (AW-114)', () => {
     await confirmButton();
     expect(within(preview()).getByRole('alert').textContent).toBe('No product has the SKU AW-B1 any more, so nothing was imported. Reload the list and choose the file again.');
     expect(rowOf(1).cells[9].textContent).toBe('—');
+  });
+
+  // A change (AW-B6's name), a new product (AW-NEW-1, its department and
+  // sub-line in any case) and an unknown SKU without what a product needs.
+  const NEW_FILE = 'sku,name,brand,cat,sub,price\nAW-NEW-1,New gum,Wrigley,candies,gum,1.50\nAW-B6,Swisher six,Swisher,TOBACCO,Cigars & Cigarillos,10.10\nAW-NOPE,Mystery,,,,\n';
+  const v2Calls = () => fake.find({ kind: 'rpc', name: 'admin_import_products_v2' });
+  const v1Calls = () => fake.find({ kind: 'rpc', name: 'admin_import_products' });
+
+  it('adds the new products a file describes, inactive without an active column, in the same call, and loads the list again (AW-114)', async () => {
+    fake.rpcData.admin_import_products_v2 = { updated: 1, created: 1 };
+    await renderAdmin();
+    await chooseFile(NEW_FILE);
+    expect(within(preview()).getByText('1 product to change · 1 new product · 0 unchanged · 1 unknown SKU')).toBeTruthy();
+    expect(within(preview()).getByText('New products take their department and sub-line from cat and sub; a product already in the catalog keeps its own.')).toBeTruthy();
+    expect(within(preview()).queryByText(/^Not imported: /)).toBeNull();
+    expect(within(preview()).getByRole('heading', { name: 'New products (1)' })).toBeTruthy();
+    expect(within(preview()).getByText(/^Added inactive, so buyers don’t see them until you activate them \(the file has no active column\)\./)).toBeTruthy();
+    const added = within(preview()).getAllByRole('table')[0];
+    expect([...within(added).getAllByRole('row')[1].cells].map((c) => c.textContent)).toEqual(['AW-NEW-1', 'New gum', 'Brand WrigleyCategory CANDIES / GumPrice $1.50Status Inactive']);
+    expect(within(preview()).getByText(/^These SKUs match no product, and their rows don’t have the name, brand, cat and sub a new product needs\./)).toBeTruthy();
+    expect(within(preview()).getByText('AW-NOPE (line 4)')).toBeTruthy();
+    await act(async () => { fireEvent.click(within(preview()).getByRole('button', { name: 'Import 1 change and 1 new product' })); });
+    expect(within(confirmDialog()).getByRole('heading').textContent).toBe('Update 1 product and add 1 new product?');
+    expect(within(confirmDialog()).getByText(/New products are added inactive, with no photo or variants yet\./)).toBeTruthy();
+    expect(fake.find({ table: 'products', op: 'select' })).toHaveLength(1);
+    await confirmButton();
+    expect(v2Calls()).toHaveLength(1);
+    expect(v2Calls()[0].args).toEqual({ p_rows: [
+      { sku: 'AW-B6', name: 'Swisher six' },
+      { sku: 'AW-NEW-1', name: 'New gum', brand: 'Wrigley', cat: 'CANDIES', sub: 'Gum', price: 1.5 },
+    ] });
+    expect(v1Calls()).toHaveLength(0);
+    expect(statusText()).toBe('Updated 1 product and added 1 new product (inactive) from products-edit.csv');
+    // The new product's id is the database's: the list is loaded again.
+    expect(fake.find({ table: 'products', op: 'select' })).toHaveLength(2);
+    expect(onCatalogChange).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('region', { name: /^Import / })).toBeNull();
+  });
+
+  it('on a database without admin_import_products_v2, lists the new rows as not imported and imports the rest through v1 after asking again', async () => {
+    fake.rpcData.admin_import_products = 1;
+    fake.respond = (request) => (request.kind === 'rpc' && request.name === 'admin_import_products_v2'
+      ? { data: null, error: { code: 'PGRST202', message: 'Could not find the function public.admin_import_products_v2(p_rows)' } } : undefined);
+    await renderAdmin();
+    await chooseFile(NEW_FILE);
+    await act(async () => { fireEvent.click(within(preview()).getByRole('button', { name: 'Import 1 change and 1 new product' })); });
+    await confirmButton();
+    expect(within(preview()).getByRole('alert').textContent).toBe('Nothing was imported. Creating products from a file needs the October 2026 database update. Import the 1 change to products already in the catalog without them, or add them with New product.');
+    expect(v1Calls()).toHaveLength(0);
+    expect(rowOf(6).cells[3].textContent).toBe('Swisher 6');
+    expect(within(preview()).getByText('1 product to change · 0 unchanged · 1 unknown SKU · 1 new product not imported')).toBeTruthy();
+    expect(within(preview()).queryByRole('heading', { name: /^New products/ })).toBeNull();
+    expect(within(preview()).getByText('New products: Creating products from a file needs the October 2026 database update. Until then, add them with New product.')).toBeTruthy();
+    expect(within(preview()).getByText('AW-NEW-1, New gum (line 2)')).toBeTruthy();
+    await act(async () => { fireEvent.click(within(preview()).getByRole('button', { name: 'Import 1 change' })); });
+    expect(within(confirmDialog()).getByRole('heading').textContent).toBe('Update 1 product?');
+    await confirmButton();
+    expect(v2Calls()).toHaveLength(1);
+    expect(v1Calls()).toHaveLength(1);
+    expect(v1Calls()[0].args).toEqual({ p_rows: [{ sku: 'AW-B6', name: 'Swisher six' }] });
+    expect(statusText()).toBe('Updated 1 product from products-edit.csv');
+    expect(rowOf(6).cells[3].textContent).toBe('Swisher six');
+    // A file of updates only goes straight to v1 from now on.
+    await chooseFile('sku,tag\nAW-B1,NEW\n');
+    await act(async () => { fireEvent.click(within(preview()).getByRole('button', { name: 'Import 1 change' })); });
+    await confirmButton();
+    expect(v2Calls()).toHaveLength(1);
+    expect(v1Calls()).toHaveLength(2);
+  });
+
+  it('says which SKU is in the file twice when the database refuses it', async () => {
+    fake.respond = (request) => (request.kind === 'rpc' && request.name === 'admin_import_products_v2'
+      ? { data: null, error: { code: '22023', message: 'The SKU AW-B1 is listed more than once', hint: 'duplicate_sku', details: 'AW-B1' } } : undefined);
+    await renderAdmin();
+    await chooseFile('sku,tag\nAW-B1,NEW\n');
+    await act(async () => { fireEvent.click(within(preview()).getByRole('button', { name: 'Import 1 change' })); });
+    await confirmButton();
+    expect(within(preview()).getByRole('alert').textContent).toBe('The SKU AW-B1 is in the file more than once, so nothing was imported. Keep one row for it and choose the file again.');
   });
 });
