@@ -8,9 +8,9 @@
 // changes replace the history entry and keep the scroll position (AW-327); the
 // product-line pills are links. App keys this page by department (AW-228).
 //
-// Counts follow the filters (AW-225): each line pill counts what it would show
-// with the other filters, and each brand counts what it would add with
-// everything but the brands.
+// Counts follow the filters (AW-225): each line pill (and the phone drawer's
+// line choice, AW-223) counts what it would show with the other filters, and
+// each brand counts what it would add with everything but the brands.
 //
 // Pricing is explained once, by the PricingNotice above the grid (AW-224):
 // the intro describes the department and the filters hold only filters.
@@ -24,6 +24,7 @@ import { brandLabel, catLabel } from '../lib/format.js';
 import { Link, navigate } from '../lib/router.js';
 import { EMPTY_CATEGORY_QUERY, slugify } from '../lib/routes.js';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
+import { BackToTop } from '../components/BackToTop.jsx';
 import { ModalLayer } from '../components/ModalLayer.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
 import { PricingNotice } from '../components/PricingNotice.jsx';
@@ -182,6 +183,9 @@ export function CategoryPage({
   };
   const toggleTag = (tag) => setFilters({ tags: tags.includes(tag) ? tags.filter(t => t !== tag) : [...tags, tag] });
   const toggleBrand = (slug) => setFilters({ brands: brands.includes(slug) ? brands.filter(b => b !== slug) : [...brands, slug] });
+  // The phone drawer's line choice (AW-223) replaces the entry: a push while
+  // the drawer holds its own history entry would race it.
+  const pickLine = (line) => navigate(here({ sub: line || null }), { replace: true, scroll: false });
   // Clears the product line and every filter; the sort order stays.
   const clearFilters = () => {
     cancelSearch();
@@ -258,6 +262,19 @@ export function CategoryPage({
       </fieldset>
     </div>
   );
+  // Phones change the product line in the drawer too (AW-223): the pills are
+  // at the top of a page up to 15,000px tall.
+  const linePicker = lines.length > 0 && (
+    <div className="filter-panel filter-lines">
+      <fieldset>
+        <legend>Product line</legend>
+        <label><input type="radio" name="category-line" value="" checked={!activeSub} onChange={() => pickLine(null)} /> <span>{`All (${filtered.length})`}</span></label>
+        {lines.map(({ sub: s, count }) => (
+          <label key={s}><input type="radio" name="category-line" value={s} checked={activeSub === s} onChange={() => pickLine(s)} /> <span>{`${s} (${count})`}</span></label>
+        ))}
+      </fieldset>
+    </div>
+  );
   const closeFilters = () => setFiltersOpen(false);
 
   return (
@@ -306,6 +323,7 @@ export function CategoryPage({
               <button className="icon-btn" type="button" onClick={closeFilters} aria-label="Close filters"><Icon name="close" /></button>
             </div>
             <div className="drawer-body filter-drawer-body">
+              {linePicker}
               {sortControl}
               {filterPanel}
             </div>
@@ -350,6 +368,7 @@ export function CategoryPage({
           )}
         </div>
       </div>
+      <BackToTop />
     </section>
   );
 }

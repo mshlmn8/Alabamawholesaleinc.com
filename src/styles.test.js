@@ -979,7 +979,7 @@ describe('no inline styles (AW-301)', () => {
   });
 });
 
-describe('department page controls (AW-225)', () => {
+describe('department page controls (AW-223, AW-225)', () => {
   const blocks = mediaBlocks(css);
   const inBlock = (prelude) => blocks.filter((b) => b.prelude === prelude).flatMap((b) => rules(b.body));
   const outside = rules(outsideMedia);
@@ -989,5 +989,25 @@ describe('department page controls (AW-225)', () => {
     expect(ruleFor('.sub-pill.is-empty:not(.active)')).toEqual({ 'border-style': 'dashed', color: 'var(--muted)' });
     const forced = inBlock('(forced-colors: active)').flatMap((r) => r.selectors);
     expect(forced.filter((s) => s.includes('is-empty'))).toEqual([]);
+  });
+
+  it('puts Back to top in the corner, a 44px purple button above the sticky toolbar and below the toast and dialogs (AW-223)', () => {
+    const button = ruleFor('.back-to-top');
+    expect(button).toMatchObject({
+      position: 'fixed', right: '16px', bottom: 'calc(max(16px, env(safe-area-inset-bottom)) + var(--back-to-top-lift, 0px))',
+      width: 'var(--tap)', height: 'var(--tap)', background: 'var(--purple)', color: '#fff',
+    });
+    const z = Number(button['z-index']);
+    // The phone layout's sticky toolbar.
+    const toolbar = inBlock(MOBILE_QUERY).find((r) => r.selectors.join() === '.category-toolbar');
+    expect(declarations(toolbar.body).position).toBe('sticky');
+    expect(z).toBeGreaterThan(Number(declarations(toolbar.body)['z-index']));
+    expect(z).toBeLessThan(Number(ruleFor('.toast-root')['z-index']));
+    expect(z).toBeLessThan(Number(ruleFor('.aw-layer')['z-index']));
+    // Its hover is for a mouse only, and the focus ring stays outside it.
+    expect(inBlock('(hover: hover)').some((r) => r.selectors.includes('.back-to-top:not(:disabled):hover'))).toBe(true);
+    expect(outside.some((r) => r.selectors.includes('.back-to-top:focus-visible'))).toBe(true);
+    // Not on paper.
+    expect(inBlock('print').some((r) => r.selectors.includes('.back-to-top') && declarations(r.body).display === 'none')).toBe(true);
   });
 });

@@ -709,6 +709,7 @@ p > .text-link { min-height: 0; min-width: 0; }
 .filter-panel legend { padding: 0 8px 0 0; }
 .filter-panel fieldset label { display: flex; align-items: center; gap: 10px; min-height: var(--tap-sm); margin: 0; color: var(--ink); font-size: var(--text-sm); cursor: pointer; }
 .filter-panel input[type="checkbox"] { width: 18px; height: 18px; margin: 0; accent-color: var(--button-orange); flex-shrink: 0; }
+.filter-panel input[type="radio"] { width: 18px; height: 18px; margin: 0; accent-color: var(--button-orange); flex-shrink: 0; }
 /* The Brand box's "Show all N brands" (AW-067). */
 .filter-panel fieldset > .text-link { margin-top: 4px; }
 /* The pricing prompt keeps its own box, in the callout's colours (AW-295); as
@@ -730,8 +731,20 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .filter-drawer-body .category-sort { flex-direction: column; align-items: stretch; gap: 8px; margin-bottom: 4px; }
 .filter-drawer-body .category-sort select { width: 100%; }
 .filter-drawer-body .filter-search { margin-top: 20px; }
+/* The phone drawer's product line choice (AW-223), above the sort. */
+.filter-lines { margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.filter-lines fieldset { margin: 0; padding: 0; border: 0; }
 .drawer-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
 .drawer-actions .button { flex: 1 1 auto; }
+
+/* Back to top (AW-223, src/components/BackToTop.jsx): fixed in the corner of a
+   long page, above the sticky toolbar and below the toast and dialogs. It
+   rises by --back-to-top-lift to stay clear of the footer (the FDA warning). */
+.back-to-top { position: fixed; right: 16px; bottom: calc(max(16px, env(safe-area-inset-bottom)) + var(--back-to-top-lift, 0px)); z-index: 30; width: var(--tap); height: var(--tap); border-color: var(--purple); background: var(--purple); color: #fff; box-shadow: 0 2px 10px var(--shadow-popover); }
+.back-to-top:focus-visible { outline-color: var(--purple); }
+@media (hover: hover) {
+  .back-to-top:not(:disabled):hover { background: var(--purple-hover); border-color: var(--purple-hover); }
+}
 
 /* ============================ product page ============================ */
 .pd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; padding: 26px 0 40px; }
@@ -1786,6 +1799,7 @@ ul.sub-pills { list-style: none; padding: 0; }
 
 @media print {
   .toast-root { display: none; }
+  .back-to-top { display: none; }
   /* The receipt prints on its own (AW-022): the company line instead of the
      site's header, notices, footer and dialogs, and no buttons. */
   .receipt-from { display: block; margin-bottom: 18px; font-size: var(--text-sm); font-weight: 700; color: var(--purple); }

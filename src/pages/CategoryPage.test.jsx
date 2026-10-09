@@ -41,7 +41,10 @@ beforeEach(() => {
   vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
   act(() => navigate('/category/tobacco', { replace: true }));
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 describe('CategoryPage', () => {
   it('reads the product line, search, sort and filters from the URL', () => {
@@ -270,6 +273,8 @@ function Branded() {
 const brandBox = () => screen.getByRole('group', { name: 'Brand' });
 const brandLabels = () => within(brandBox()).getAllByRole('checkbox').map((b) => b.closest('label').textContent.trim());
 const pills = () => [...document.querySelectorAll('.sub-pills a')].map((a) => ({ text: a.textContent, empty: a.classList.contains('is-empty'), href: a.getAttribute('href') }));
+// The phone layout: the filters are in the Filter & Sort drawer.
+const phone = () => vi.stubGlobal('matchMedia', vi.fn((media) => ({ media, matches: true, addEventListener() {}, removeEventListener() {} })));
 
 describe('brandOptions (AW-067)', () => {
   it('counts each named brand, most products first, then by name; "Assorted" names no brand', () => {
@@ -385,5 +390,41 @@ describe('CategoryPage line counts follow the filters (AW-225)', () => {
     act(() => navigate('/category/tobacco', { replace: true }));
     expect(pills().map((p) => p.text)).toEqual(['All (14)', 'Cigars (7)', 'Wraps (7)']);
     expect(pills().some((p) => p.empty)).toBe(false);
+  });
+});
+
+describe('CategoryPage on phones (AW-223)', () => {
+  it('lets the Filter & Sort drawer change the product line, with filter-aware counts, without a history entry', () => {
+    phone();
+    act(() => navigate('/category/tobacco?brand=game', { replace: true }));
+    render(<Branded />);
+    fireEvent.click(screen.getByRole('button', { name: /Filter & Sort/ }));
+    const drawer = screen.getByRole('dialog', { name: 'Filter & Sort' });
+    const lines = within(drawer).getByRole('group', { name: 'Product line' });
+    // First in the drawer, above the sort.
+    expect(drawer.querySelector('.filter-drawer-body').firstElementChild.contains(lines)).toBe(true);
+    const radios = within(lines).getAllByRole('radio');
+    expect(radios.map((r) => r.closest('label').textContent.trim())).toEqual(['All (3)', 'Cigars (1)', 'Wraps (2)']);
+    expect(radios.map((r) => r.name)).toEqual(['category-line', 'category-line', 'category-line']);
+    expect(radios[0].checked).toBe(true);
+    // The brand facet is in the drawer too.
+    expect(within(drawer).getByRole('checkbox', { name: 'Game (3)' }).checked).toBe(true);
+    const length = window.history.length;
+    fireEvent.click(within(lines).getByRole('radio', { name: 'Wraps (2)' }));
+    expect(url()).toBe('/category/tobacco/wraps?brand=game');
+    expect(window.history.length).toBe(length);
+    expect(note()).toBe('Showing 2 of 7 items in Wraps');
+    // The drawer stays open on the new line.
+    expect(within(screen.getByRole('dialog', { name: 'Filter & Sort' })).getByRole('radio', { name: 'Wraps (2)' }).checked).toBe(true);
+    fireEvent.click(within(lines).getByRole('radio', { name: 'All (3)' }));
+    expect(url()).toBe('/category/tobacco?brand=game');
+    fireEvent.click(screen.getByRole('button', { name: 'Close filters' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('has no line choice in the desktop filters (the pills are there)', () => {
+    render(<Branded />);
+    expect(screen.queryByRole('group', { name: 'Product line' })).toBeNull();
+    expect(screen.queryByRole('radio')).toBeNull();
   });
 });
