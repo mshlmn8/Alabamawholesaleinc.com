@@ -47,8 +47,9 @@
 // Nothing is printed over the photo (AW-055): the tag (BESTSELLER, NEW, DEAL,
 // PREMIUM) is a chip in the kicker line beside the product line, and the
 // department isn't repeated on the card. Only the badge on a shared photo
-// (its sell unit or size word, AW-136) stays on the photo. The photo is lazy unless the page says `eager`; the
-// first card of a department page is also `priority` (AW-323).
+// (its sell unit or size word, AW-136) stays on the photo. The photo is lazy
+// unless the page says `eager`; the first card of a department page is also
+// `priority` (AW-323).
 //
 // Without trade pricing (a guest, or an account not approved) the card says
 // "Pricing after approval" as plain text (an account on hold: "Account on
