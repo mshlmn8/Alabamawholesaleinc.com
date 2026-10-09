@@ -194,7 +194,9 @@ function RowPhoto({ img }) {
 
 // The list's columns; those with a `sort` have a sort button in their header
 // (AW-115). The SKU, which the search matches, and the number of variants
-// show too (AW-106).
+// show too (AW-106). The name opens the editor too, and while the table is
+// wider than its box the Actions column stays pinned at its right edge
+// (TableScroll pinEnd), so Edit is never off to the side (NEW-075).
 const COLUMNS = [
   { label: 'ID', sort: 'id' },
   { label: 'Photo' },
@@ -486,7 +488,7 @@ function ProductsList({
           <Link className="text-link" to={clearHref} replace scroll={false}>Clear filters</Link>
         </div>
       ) : (
-        <TableScroll label="Products table" resetKey={`${signature}\u0001${result.page}\u0001${query.sort || ''}\u0001${query.dir || ''}`}>
+        <TableScroll label="Products table" resetKey={`${signature}\u0001${result.page}\u0001${query.sort || ''}\u0001${query.dir || ''}`} pinEnd>
           <table className="aw-table admin-products">
             <thead>
               <tr>
@@ -515,7 +517,9 @@ function ProductsList({
                     </td>
                     <td>{p.id}</td>
                     <td className="product-thumb-cell"><RowPhoto img={p.img} /></td>
-                    <td>{p.name}</td>
+                    <td>
+                      <Link className="text-link" to={editorHref(p.id)} onClick={open(editorHref(p.id))}>{p.name}</Link>
+                    </td>
                     <td className="muted">{p.sku ? <code>{p.sku}</code> : <span>—</span>}</td>
                     <td>{p.brand}</td>
                     <td className="muted">{`${p.cat} / ${p.sub}`}</td>

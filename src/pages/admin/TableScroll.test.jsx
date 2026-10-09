@@ -1,8 +1,9 @@
-// The admin table scroller (AW-266): a named, focusable region with the
-// phone hint, which brings keyboard focus out from under its sticky cells.
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
-import { TableScroll } from './TableScroll.jsx';
+// The admin table scroller (AW-266): a named, focusable region that says
+// when its table scrolls sideways (NEW-075), and brings keyboard focus out
+// from under its sticky cells.
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { PIN_GAP, TableScroll, isOverflowing } from './TableScroll.jsx';
 
 const renderScroll = () => render(
   <TableScroll label="Accounts table">
@@ -10,14 +11,81 @@ const renderScroll = () => render(
   </TableScroll>,
 );
 
+// jsdom has no layout: a box's widths, and a ResizeObserver to call by hand.
+const widths = (el, scrollWidth, clientWidth) => {
+  Object.defineProperty(el, 'scrollWidth', { configurable: true, get: () => scrollWidth });
+  Object.defineProperty(el, 'clientWidth', { configurable: true, get: () => clientWidth });
+};
+let observed;
+const stubResizeObserver = () => {
+  observed = [];
+  vi.stubGlobal('ResizeObserver', class {
+    constructor(callback) { this.callback = callback; }
+    observe(el) { observed.push({ el, run: () => this.callback([]) }); }
+    disconnect() {}
+  });
+};
+afterEach(() => { vi.unstubAllGlobals(); });
+
 describe('TableScroll', () => {
-  it('is a named region in the tab order, after the sideways hint', () => {
+  it('is a named region in the tab order', () => {
     renderScroll();
     const region = screen.getByRole('region', { name: 'Accounts table' });
     expect(region.tabIndex).toBe(0);
     expect(region.className).toBe('table-scroll');
+  });
+
+  it('says the table scrolls sideways whenever it is wider than the box, at any width, and only then (NEW-075)', () => {
+    stubResizeObserver();
+    renderScroll();
+    const region = screen.getByRole('region', { name: 'Accounts table' });
+    // jsdom lays out nothing: no overflow, no hint.
+    expect(screen.queryByText('Scroll sideways for more columns.')).toBeNull();
+    // It watches the box and its table.
+    expect(observed.map((o) => o.el)).toEqual([region, region.firstElementChild]);
+    widths(region, 1127, 734);
+    act(() => observed[0].run());
+    expect(region.className).toBe('table-scroll is-overflowing');
     expect(region.previousElementSibling.textContent).toBe('Scroll sideways for more columns.');
     expect(region.previousElementSibling.className).toBe('result-note table-hint');
+    // Wide enough again (a pixel of rounding allowed): the hint goes.
+    widths(region, 1279, 1278);
+    act(() => observed[1].run());
+    expect(region.className).toBe('table-scroll');
+    expect(screen.queryByText('Scroll sideways for more columns.')).toBeNull();
+    expect(isOverflowing(null)).toBe(false);
+  });
+
+  it('keeps focus clear of a pinned last column, and doesn’t scroll for a control inside it (NEW-075)', () => {
+    stubResizeObserver();
+    render(
+      <TableScroll label="Products table" pinEnd>
+        <table className="aw-table admin-products">
+          <thead><tr><th><button type="button">Updated</button></th><th>Actions</th></tr></thead>
+          <tbody><tr><td>Oct 1</td><td><a href="/admin/products/1">Edit</a></td></tr></tbody>
+        </table>
+      </TableScroll>,
+    );
+    const region = screen.getByRole('region', { name: 'Products table' });
+    widths(region, 1127, 734);
+    act(() => observed[0].run());
+    expect(region.className).toBe('table-scroll pin-end is-overflowing');
+    const sort = screen.getByRole('button', { name: 'Updated' });
+    const edit = screen.getByRole('link', { name: 'Edit' });
+    const pin = region.querySelector('thead th:last-child');
+    for (const el of [sort, edit]) {
+      el.matches = (selector) => selector === ':focus-visible';
+      el.scrollIntoView = vi.fn();
+    }
+    pin.getBoundingClientRect = () => ({ left: 566, right: 734 });
+    sort.getBoundingClientRect = () => ({ left: 520, right: 600 });
+    region.scrollLeft = 100;
+    fireEvent.focus(sort);
+    expect(sort.scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' });
+    expect(region.scrollLeft).toBe(100 + 34 + PIN_GAP);
+    fireEvent.focus(edit);
+    expect(edit.scrollIntoView).not.toHaveBeenCalled();
+    expect(region.scrollLeft).toBe(100 + 34 + PIN_GAP);
   });
 
   it('scrolls a control that takes the keyboard focus out from under the sticky cells, and nothing else', () => {

@@ -1201,16 +1201,23 @@ describe('the markup uses the design system (merged PR #12, PR #13 and lane p2 p
     const print = mediaBlocks(css).filter((b) => b.prelude === 'print').flatMap((b) => rules(b.body));
     expect(declarations(print.find((r) => r.selectors.join() === '.table-scroll').body)).toEqual({ 'max-height': 'none', overflow: 'visible' });
     // On phones the admin's pill rows wrap (in the compact block, not a fourth
-    // one), and a hint says the table scrolls sideways.
+    // one). The sideways hint is TableScroll's, shown whenever the table
+    // overflows (NEW-075), not by screen width.
     const compact = mediaBlocks(css).filter((b) => b.prelude === MOBILE_QUERY).flatMap((b) => rules(b.body));
     expect(declarations(compact.find((r) => r.selectors.join() === '.admin-page .sub-pills').body)).toMatchObject({ 'flex-wrap': 'wrap', 'overflow-x': 'visible' });
-    expect(own('.table-hint')).toMatchObject({ display: 'none' });
-    const phone = mediaBlocks(css).filter((b) => b.prelude === '(max-width: 37.5em)').flatMap((b) => rules(b.body));
-    expect(declarations(phone.find((r) => r.selectors.join() === '.table-hint').body)).toEqual({ display: 'block' });
+    expect(own('.table-hint')).not.toHaveProperty('display');
+    expect(mediaBlocks(css).flatMap((b) => rules(b.body)).some((r) => r.selectors.includes('.table-hint'))).toBe(false);
+    // While the Products table overflows, its Actions column is pinned to the
+    // right edge, above the rows' photo placeholders; the corner cell above
+    // the header row (NEW-075). Inactive rows keep their grey there too.
+    expect(own('.is-overflowing > .admin-products td:last-child')).toMatchObject({ position: 'sticky', right: '0', 'z-index': '1', background: '#fff' });
+    expect(own('.is-overflowing > .admin-products tr.inactive td:last-child')).toEqual({ background: 'var(--surface-soft)' });
+    expect(own('.is-overflowing > .admin-products thead th:last-child')).toMatchObject({ right: '0', 'z-index': '3' });
+    expect(own('.is-overflowing > .admin-products td:last-child')['min-width']).toBe(own('.is-overflowing > .admin-products thead th:last-child')['min-width']);
     // The scrollers are named, focusable regions, so the keyboard can scroll them.
-    expect(code(read('src/pages/admin/TableScroll.jsx'))).toMatch(/className="table-scroll" role="region" aria-label=\{label\} tabIndex=\{0\}/);
+    expect(code(read('src/pages/admin/TableScroll.jsx'))).toMatch(/className=\{className\} role="region" aria-label=\{label\} tabIndex=\{0\}/);
     expect(code(read('src/pages/admin/AccountsSection.jsx'))).toMatch(/<TableScroll label="Accounts table" resetKey=\{`[^`]+`\}>\s*<table className="aw-table admin-accounts">/);
-    expect(code(read('src/pages/admin/ProductsSection.jsx'))).toMatch(/<TableScroll label="Products table" resetKey=\{`[^`]+`\}>\s*<table className="aw-table admin-products">/);
+    expect(code(read('src/pages/admin/ProductsSection.jsx'))).toMatch(/<TableScroll label="Products table" resetKey=\{`[^`]+`\} pinEnd>\s*<table className="aw-table admin-products">/);
     expect(code(read('src/pages/admin/AdminPage.jsx'))).toMatch(/<section className="admin-page">/);
   });
 

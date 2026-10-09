@@ -102,6 +102,21 @@ describe('the products list (AW-023)', () => {
   });
 });
 
+describe('the products list: the name opens the editor (NEW-075)', () => {
+  it('links each name to its editor, through the list, so leaving goes back to the list and its Edit link', async () => {
+    await renderAdmin();
+    const name = screen.getByRole('link', { name: 'Kite' });
+    expect(name.getAttribute('href')).toBe('/admin/products/2');
+    expect(name.closest('td').cellIndex).toBe(3);
+    await act(async () => { fireEvent.click(name); });
+    expect(url()).toBe('/admin/products/2');
+    expect(document.activeElement).toBe(field('Name'));
+    await act(async () => { fireEvent.keyDown(field('Brand'), { key: 'Escape' }); });
+    await backAtList();
+    await waitFor(() => expect(document.activeElement).toBe(editLink('Kite')));
+  });
+});
+
 describe('the product editor: focus, Enter and Escape (AW-117)', () => {
   it('opens at /admin/products/:id with focus in Name, and a clean Escape goes back to the list, focusing the Edit link', async () => {
     await renderAdmin();
