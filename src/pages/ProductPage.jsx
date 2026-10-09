@@ -115,7 +115,6 @@ export function ProductPage({
       <div className="pd-grid">
         <figure className="pd-figure">
           <div className="pd-media">
-            {p.tag && <span className={`card-tag ${p.tag === 'NEW' ? 'new' : ''}`}>{p.tag}</span>}
             <ProductPhoto product={p} sizes={SIZES.detail} priority />
             {p.picture && p.sharedPhoto && p.sellUnit && <span className="pack-badge">{p.sellUnit}</span>}
           </div>
@@ -128,7 +127,8 @@ export function ProductPage({
         </figure>
         <div className="pd-info">
           {showsNicotineWarning(p) && <NicotineWarning />}
-          <p className="pd-brand">{brand ? `${brand} · ${p.sub}` : p.sub}</p>
+          {/* The tag is a chip beside the brand line, not over the photo (AW-055). */}
+          <p className="pd-brand"><span>{brand ? `${brand} · ${p.sub}` : p.sub}</span>{p.tag && <span className={`card-tag${p.tag === 'NEW' ? ' new' : ''}`}>{p.tag}</span>}</p>
           <h1>{p.name}</h1>
           <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()}${brand ? ` from ${brand}` : ''}.`}</p>
           {p.sellUnit && <p className="pd-unit">{`Sold by the ${p.sellUnit} — quantity 1 is one ${p.sellUnit}.`}</p>}

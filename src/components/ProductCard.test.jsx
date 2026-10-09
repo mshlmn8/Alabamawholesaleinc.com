@@ -108,6 +108,35 @@ describe('ProductCard', () => {
     render(card({ ...base, brand: 'Assorted', variants: ['S', 'M'], variantAxis: 'Size' }));
     expect(detail()).toBe('2 sizes · AW-SS');
   });
+
+  it('prints the tag as a chip beside the product line, nothing over the photo, and not the department (AW-055)', () => {
+    const picture = { src: '/x.jpg', srcSet: '', webpSrcSet: '', width: 320, height: 320 };
+    const view = render(card({ ...base, variants: [], picture, tag: 'BESTSELLER' }));
+    const kicker = document.querySelector('.card-kicker');
+    expect([...kicker.children].map((el) => [el.tagName, el.className, el.textContent])).toEqual([['SPAN', '', 'Cigars'], ['SPAN', 'card-tag', 'BESTSELLER']]);
+    // The photo box holds only the photo (and the sell-unit badge, AW-136).
+    expect([...document.querySelector('.card-block').children].map((el) => el.tagName)).toEqual(['IMG']);
+    expect(document.querySelector('.block-label')).toBeNull();
+    expect(document.querySelector('.content-card').textContent).not.toMatch(/TOBACCO/);
+    view.rerender(card({ ...base, variants: [], picture, tag: 'NEW' }));
+    expect(document.querySelector('.card-kicker .card-tag').className).toBe('card-tag new');
+    view.rerender(card({ ...base, variants: [], picture, tag: null }));
+    expect([...document.querySelector('.card-kicker').children].map((el) => el.textContent)).toEqual(['Cigars']);
+  });
+
+  it('loads its photo lazily unless the page says eager; priority asks for it first (AW-323)', () => {
+    const picture = { src: '/x.jpg', srcSet: '/x-320.jpg 320w', webpSrcSet: '/x-320.webp 320w', width: 320, height: 320 };
+    const img = () => document.querySelector('.card-block img');
+    const view = render(card({ ...base, variants: [], picture }));
+    expect(img().getAttribute('loading')).toBe('lazy');
+    expect(img().hasAttribute('fetchpriority')).toBe(false);
+    view.rerender(card({ ...base, variants: [], picture }, { eager: true }));
+    expect(img().getAttribute('loading')).toBe('eager');
+    expect(img().hasAttribute('fetchpriority')).toBe(false);
+    view.rerender(card({ ...base, variants: [], picture }, { eager: true, priority: true }));
+    expect(img().getAttribute('loading')).toBe('eager');
+    expect(img().getAttribute('fetchpriority')).toBe('high');
+  });
 });
 
 // The add control (AW-143). Fixtures carry no prices.

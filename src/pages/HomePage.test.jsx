@@ -121,7 +121,7 @@ describe('HomePage sections', () => {
 
   it('numbers only the application steps', () => {
     renderHome();
-    const labels = [...document.querySelectorAll('.eyebrow, .block-label')].map(text);
+    const labels = [...document.querySelectorAll('.eyebrow, .card-kicker')].map(text);
     expect(labels.length).toBeGreaterThan(0);
     for (const label of labels) expect(label).not.toMatch(/ \/ \d{2}$/);
     expect(document.body.textContent).not.toMatch(/COLLECTION|DEPARTMENT/);
@@ -155,7 +155,7 @@ describe('HomePage department tiles', () => {
     renderHome();
     const tiles = [...document.querySelectorAll('#catalog .dept-grid > a.dept-tile')];
     expect(tiles).toHaveLength(DEPARTMENTS.length);
-    expect(document.querySelectorAll('#catalog .card-grid, #catalog .block-label')).toHaveLength(0);
+    expect(document.querySelectorAll('#catalog .card-grid, #catalog .card-tag')).toHaveLength(0);
     DEPARTMENTS.forEach((d, i) => {
       const tile = tiles[i];
       expect(tile.getAttribute('href')).toBe(hrefFor({ page: 'category', category: d.key }));

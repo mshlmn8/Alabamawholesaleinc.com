@@ -255,9 +255,11 @@ export function CategoryPage({
         <div>
           {items.length > 0 ? (
             <div className="card-grid category-card-grid">
-              {items.map(p => (
+              {/* The first row (three cards, two on phones) loads at once, and
+                  the first photo, the likely largest paint, first (AW-323). */}
+              {items.map((p, i) => (
                 <ProductCard key={p.id} p={p} profile={profile} isApprovedBuyer={isApprovedBuyer} priceOf={priceOf} pricesStatus={pricesStatus} cart={cart}
-                             addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} />
+                             addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} eager={i < 3} priority={i === 0} />
               ))}
             </div>
           ) : (

@@ -23,6 +23,12 @@
 // (src/lib/toast.js). Focus moves to the stepper that replaces the button
 // (its + after a tap, so a phone's keyboard doesn't open), and back to the
 // add button when − at 1 removes the product, which is announced.
+//
+// Nothing is printed over the photo (AW-055): the tag (BESTSELLER, NEW, DEAL,
+// PREMIUM) is a chip in the kicker line beside the product line, and the
+// department isn't repeated on the card. Only the sell-unit badge (AW-136)
+// stays on the photo. The photo is lazy unless the page says `eager`; the
+// first card of a department page is also `priority` (AW-323).
 
 import { useEffect, useId, useRef, useState } from 'react';
 import {
@@ -56,7 +62,9 @@ export function cardDetail(p, { sku = true } = {}) {
   ].filter(Boolean).join(' · ');
 }
 
-export function ProductCard({ p, profile, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, onLoginClick, showSku = true }) {
+export function ProductCard({
+  p, profile, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, onLoginClick, showSku = true, eager = false, priority = false,
+}) {
   // Counts the adds since "Added" last went away; each add restarts its timer.
   const [adds, setAdds] = useState(0);
   useEffect(() => {
@@ -125,13 +133,11 @@ export function ProductCard({ p, profile, isApprovedBuyer, priceOf = NO_PRICES, 
     <article className="content-card">
       <Link className="card-link" to={productRoute} aria-label={`${p.name} details`}>
         <div className="card-block">
-          <span className="block-label">{p.cat}</span>
-          {p.tag && <span className={`card-tag ${p.tag === 'NEW' ? 'new' : ''}`}>{p.tag}</span>}
-          <ProductPhoto product={p} sizes={SIZES.card} />
+          <ProductPhoto product={p} sizes={SIZES.card} priority={priority} loading={eager ? 'eager' : 'lazy'} />
           {/* TODO(owner): A correct photo for each product that shares a file with a different size or pack. (AW-136) */}
           {p.picture && p.sharedPhoto && p.sellUnit && <span className="pack-badge">{p.sellUnit}</span>}
         </div>
-        <p className="card-kicker">{p.sub}</p>
+        <p className="card-kicker"><span>{p.sub}</span>{p.tag && <span className={`card-tag${p.tag === 'NEW' ? ' new' : ''}`}>{p.tag}</span>}</p>
         <h3 id={titleId}>{p.name}</h3>
         <p className="card-detail">{cardDetail(p, { sku: showSku })}</p>
       </Link>

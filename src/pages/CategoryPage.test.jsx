@@ -121,6 +121,15 @@ describe('CategoryPage', () => {
     expect(screen.queryByText(/\$/)).toBeNull();
   });
 
+  it('loads the first row of photos at once, the first one first; the rest lazily (AW-323)', () => {
+    const photo = (id) => ({ picture: { src: `/p${id}.jpg`, srcSet: `/p${id}-320.jpg 320w`, webpSrcSet: `/p${id}-320.webp 320w`, width: 320, height: 320 } });
+    const list = [1, 2, 3, 4, 5].map((id) => ({ id, name: `Cigar ${id}`, brand: 'X', cat: 'TOBACCO', sub: 'Cigars', sku: `AW-${id}`, variants: [], tag: null, ...photo(id) }));
+    render(<Harness list={list} />);
+    const imgs = [...document.querySelectorAll('.category-card-grid .card-block img')];
+    expect(imgs.map((img) => img.getAttribute('loading'))).toEqual(['eager', 'eager', 'eager', 'lazy', 'lazy']);
+    expect(imgs.map((img) => img.getAttribute('fetchpriority'))).toEqual(['high', null, null, null, null]);
+  });
+
   it('counts variants from the list: one variant is not "Has variants", and "Most variants" sorts by the count (AW-332, AW-233)', () => {
     const list = [
       ...products.slice(0, 3),

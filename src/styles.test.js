@@ -516,6 +516,29 @@ describe('photo loading states (AW-192, AW-341, AW-345)', () => {
     expect(own('.pd-media:has(.photo-soon) + .photo-credit')).toEqual({ display: 'none' });
   });
 
+  it('prints no label or tag over a photo: the tag is a chip in the text, the department label is gone (AW-055)', () => {
+    const selectors = all.flatMap((r) => r.selectors);
+    expect(selectors.filter((s) => /\.block-(label|foot)\b/.test(s))).toEqual([]);
+    // Every .card-tag rule, at every width, leaves it in the flow.
+    for (const r of all.filter((x) => x.selectors.some((s) => /\.card-tag\b/.test(s)))) {
+      for (const property of ['position', 'top', 'right', 'bottom', 'left', 'z-index']) expect(declarations(r.body), `${r.selectors} ${property}`).not.toHaveProperty(property);
+    }
+    expect(own('.card-tag')).toMatchObject({ display: 'inline-block', background: 'var(--button-orange)', color: '#fff', 'font-size': 'var(--text-xs)' });
+    expect(own('.card-tag.new')).toEqual({ background: 'var(--purple)' });
+    expect(own('.card-kicker')).toMatchObject({ display: 'flex', 'flex-wrap': 'wrap', 'align-items': 'center' });
+    expect(own('.pd-info .pd-brand')).toMatchObject({ display: 'flex', 'flex-wrap': 'wrap', 'align-items': 'center' });
+    expect(read('src/pages/ProductPage.jsx')).not.toMatch(/<div className="pd-media">\s*\{p\.tag/);
+  });
+
+  it('lines up the card action rows across a grid row (AW-215)', () => {
+    expect(own('.content-card')).toMatchObject({ display: 'flex', 'flex-direction': 'column' });
+    expect(own('.content-card > .card-actions')).toEqual({ 'margin-top': 'auto' });
+    // The pricing lock always takes its own line, so every lock card's row has the same height.
+    expect(own('.card-meta .lock')).toMatchObject({ 'flex-basis': '100%' });
+    // The SKU stays whole on the detail line: it is not cut off with an ellipsis.
+    expect(own('.card-detail')).not.toHaveProperty('text-overflow');
+  });
+
   it('keeps the logo slot when the logo fails: the brand in text, as tall as the logo at every header size', () => {
     expect(own('.aw-logo-text > span').color).toBe('var(--orange-dark)');
     expect(own('.aw-logo-text > span').font).toMatch(/^700 [\d.]+rem\/1 var\(--body\)$/);

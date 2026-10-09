@@ -64,8 +64,10 @@ export function SearchPage({ q = '', products, departments, ...cardProps }) {
           {/* The cards' h3 titles sit under an h2, as on department pages. */}
           <h2 className="sr-only">Products</h2>
           <div className="card-grid" ref={grid}>
-            {/* showSku: search results keep the SKU on the card. */}
-            {shown.map(p => <ProductCard key={p.id} p={p} {...cardProps} showSku />)}
+            {/* showSku: search results keep the SKU on the card. The first
+                row (four cards, two on phones) loads at once, the first photo
+                first (AW-323); the explicit props come after the spread. */}
+            {shown.map((p, i) => <ProductCard key={p.id} p={p} {...cardProps} showSku eager={i < 4} priority={i === 0} />)}
           </div>
           {!showAll && result.total > SEARCH_PAGE_SIZE && (
             <div className="search-more">
