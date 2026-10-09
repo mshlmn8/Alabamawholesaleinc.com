@@ -630,6 +630,53 @@ test.describe('home hero', () => {
   });
 });
 
+// Under the hero: the services with their links (AW-059), the department
+// tiles with a photo in the frame and the text on the band below it (AW-060,
+// AW-061), and one row each of new arrivals and bestsellers without SKUs.
+test.describe('home sections', () => {
+  test.beforeEach(async ({ context }) => {
+    await context.addInitScript(([key, value]) => {
+      try { localStorage.setItem(key, value); } catch { /* storage blocked */ }
+    }, [AGE_KEY, ageRecord(Date.now())]);
+  });
+
+  test('services follow the hero, and the department tiles lead to their departments', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/');
+    await expect(page.locator('.home-hero + .services .service')).toHaveCount(3);
+    const services = page.locator('.services');
+    await expect(services.getByRole('link', { name: 'Delivery and service area' })).toHaveAttribute('href', '/delivery');
+    await expect(services.getByRole('link', { name: 'Trade terms' })).toHaveAttribute('href', '/terms');
+    await expect(services.getByRole('link', { name: 'How to apply' })).toHaveAttribute('href', '/apply');
+    for (const id of ['new-arrivals', 'bestsellers']) {
+      await expect(page.locator(`#${id} .content-card`)).toHaveCount(4);
+      for (const detail of await page.locator(`#${id} .card-detail`).allTextContents()) expect(detail).not.toMatch(/\bAW-/);
+    }
+    const tiles = page.locator('#catalog .dept-tile');
+    await expect(tiles).toHaveCount(8);
+    await tiles.last().scrollIntoViewIfNeeded();
+    // The photos load lazily: wait for all eight.
+    const frames = () => tiles.evaluateAll((all) => all.map((tile) => {
+      const media = tile.querySelector('.dept-tile-media').getBoundingClientRect();
+      const body = tile.querySelector('.dept-tile-body').getBoundingClientRect();
+      const img = tile.querySelector('.dept-tile-media img');
+      const r = img.getBoundingClientRect();
+      return {
+        loaded: img.complete && img.naturalWidth > 0,
+        inside: r.left >= media.left - 0.5 && r.right <= media.right + 0.5 && r.top >= media.top - 0.5 && r.bottom <= media.bottom + 0.5,
+        bandBelow: body.top >= media.bottom - 0.5,
+      };
+    }));
+    await expect.poll(frames).toEqual(Array(8).fill({ loaded: true, inside: true, bandBelow: true }));
+    await tiles.filter({ hasText: 'Candies' }).click();
+    await expect(page).toHaveURL(/\/category\/candies$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Candies' })).toBeVisible();
+    // Department pages keep the SKU on the card.
+    await expect(page.locator('.card-detail').first()).toContainText('AW-');
+    expect(errors).toEqual([]);
+  });
+});
+
 // Cursor's PR #13 in the current structure: card buttons and "Added"
 // (AW-057), "Photo coming soon" (AW-029), featured filters (AW-139), the
 // Wikimedia credit (AW-033), and photos drawn no larger than their pixels

@@ -76,6 +76,28 @@ export const HERO_SLIDES = [
   { eyebrow: 'DRINKS & BEVERAGES', title: 'Gatorade, Monster, Red Bull — by the case.', sub: 'Free delivery on orders over $1,500 when the stop is on a delivery route in Alabama, Mississippi or Georgia. Net-30 terms for approved accounts.', cta1: 'Shop Drinks', cta2: 'Get a Quote', ...heroImage('hero_gatorade.jpg'), alt: 'Gatorade and G2 bottles', accent: 'navy', goCat: 'DRINKS & BAGS' }
 ];
 
+// The product whose photo stands for each department on the home page's
+// "Shop by department" tiles (AW-061), by catalog id: a clean packshot from
+// one of the department's bigger product lines that the New arrivals and
+// Bestsellers rails don't already show. None is a nicotine product, because
+// the tiles carry no FDA statement, and none is from a line waiting on the
+// legal review (AW-001). Novelties' two biggest lines are exactly those
+// (Mushroom Products, Disposable Vapes), so its photo comes from Hookah &
+// Shisha. A product missing from the live catalog, or without a photo, gives
+// way to the first suitable one in the department's biggest line that has
+// one (departmentPhoto in src/pages/HomePage.jsx).
+// TODO(owner): Approve these eight department photos, or supply a photo for each department. (AW-061, see AW-056)
+export const DEPARTMENT_PHOTOS = {
+  TOBACCO: 347, // Zig-Zag hemp wraps (Wraps & Leafs)
+  NOVELTIES: 314, // Coco Nara hookah charcoal (Hookah & Shisha)
+  MERCHANDISE: 196, // Advil (OTC & Health)
+  CANDIES: 163, // M&M's (Chocolate Bars)
+  'FOOD STUFF': 48, // Ritz crackers (Chips & Crackers)
+  GROCERY: 20, // Vaseline healing jelly (Personal Care)
+  'MOTOR OIL': 102, // Havoline motor oil (Motor Oil)
+  'DRINKS & BAGS': 249, // Sprite (Sodas)
+};
+
 export const BRANDS = ["HERSHEY'S", 'GATORADE', 'BIC', 'WD-40', 'GEEK BAR', 'GAIN', 'STP', 'WHITE OWL', 'TWANGERZ', 'POM POM', 'NEON', 'JOB'];
 
 // Not shown on the site.

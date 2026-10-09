@@ -19,7 +19,7 @@ describe('Icon', () => {
   });
 
   it('draws a path for every known name', () => {
-    expect(ICON_NAMES).toEqual(expect.arrayContaining(['external', 'chevron-down', 'chevron-left', 'chevron-right', 'close', 'minus', 'plus', 'check', 'search', 'menu', 'filter', 'grid', 'help', 'alert', 'pause', 'play']));
+    expect(ICON_NAMES).toEqual(expect.arrayContaining(['external', 'chevron-down', 'chevron-left', 'chevron-right', 'close', 'minus', 'plus', 'check', 'search', 'menu', 'filter', 'grid', 'help', 'alert', 'pause', 'play', 'truck', 'calendar', 'shield']));
     for (const name of ICON_NAMES) {
       const { container, unmount } = render(<Icon name={name} />);
       const d = container.querySelector('svg > path')?.getAttribute('d');

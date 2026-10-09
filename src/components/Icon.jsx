@@ -25,6 +25,10 @@ const PATHS = {
   // The home carousel's previous/next and pause/play controls (AW-054, AW-168).
   pause: 'M9 6v12M15 6v12',
   play: 'M8 5.5v13l10-6.5z',
+  // The home page's services (AW-059): delivery, trade terms, licensed only.
+  truck: 'M14 17V6H3v11h2M9 17h6M19 17h2v-5l-3-4h-4M5 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0M15 17a2 2 0 1 0 4 0 2 2 0 1 0-4 0',
+  calendar: 'M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM4 10h16M8 3v4M16 3v4M8 14h.01M12 14h.01M16 14h.01M8 17.5h.01M12 17.5h.01',
+  shield: 'M12 3l7 3v5c0 4.4-2.9 8.1-7 10-4.1-1.9-7-5.6-7-10V6zM9 12l2 2 4-4',
 };
 
 export const ICON_NAMES = Object.keys(PATHS);

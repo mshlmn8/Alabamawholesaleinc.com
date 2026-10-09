@@ -434,18 +434,45 @@ p > .text-link { min-height: 0; }
 .editorial-card.cream { background: var(--cream); color: var(--purple); }
 .editorial-card.purple { background: var(--purple); color: #fff; }
 .editorial-card.purple h2 { color: #fff; }
-.purple .block-label { color: var(--on-dark-subtle); }
 .editorial-card .eyebrow { margin-bottom: 10px; }
 .editorial-card h2 { font-size: var(--h2); margin-bottom: 14px; }
 .editorial-card .text-link { font-size: var(--text-sm); color: inherit; min-height: 0; }
 .editorial-card img.bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .28; }
 .editorial-card.cream img.bg { mix-blend-mode: multiply; }
 
-.services { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 18px; margin-top: var(--section-gap); }
-.service { background: var(--paper); border: 1px solid var(--line); padding: 25px; }
-.service > span { font-family: var(--display); color: var(--orange-dark); font-size: 1.6875rem; display: block; margin-bottom: 14px; }
-.service h3 { font-family: var(--body); font-size: .9375rem; letter-spacing: 0; line-height: 1.4; margin: 0 0 8px; }
-.service p { font-size: var(--text-base); line-height: 1.7; color: var(--muted); margin: 0; }
+/* Services, straight under the hero (AW-059): one light row of three, each a
+   28px icon beside the claim and a link to the page that explains it. No
+   boxes, so the shorter items leave no empty space; one column in the
+   compact layout. */
+.services { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 24px 40px; margin-top: var(--block-gap); padding: 24px 0; border-bottom: 1px solid var(--line); }
+.service { display: grid; grid-template-columns: auto minmax(0, 1fr); align-content: start; column-gap: 16px; }
+.service > :not(.service-icon) { grid-column: 2; }
+.service-icon { grid-row: 1 / span 3; display: grid; place-items: center; width: 3.25rem; height: 3.25rem; border-radius: 50%; background: var(--cream); color: var(--orange-dark); font-size: 1.75rem; }
+.service h3 { font-family: var(--body); font-size: .9375rem; letter-spacing: 0; line-height: 1.4; margin: 0 0 6px; }
+.service p { font-size: var(--text-base); line-height: 1.6; color: var(--muted); margin: 0; }
+.service .text-link { justify-self: start; min-height: var(--tap); margin-top: 4px; }
+
+/* Shop by department (AW-060, AW-061): four tiles a row, two in the compact
+   layout. Each is a 16:10 photo frame over a solid purple band with the name,
+   the counts and the biggest lines; no text sits on the photo (AW-055). The
+   photo is placed like a card's: out of flow, never wider than itself. */
+.dept-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--grid-gap); }
+.dept-tile { display: flex; flex-direction: column; min-width: 0; background: var(--purple); color: #fff; }
+.dept-tile-media { position: relative; aspect-ratio: 16 / 10; overflow: hidden; background: var(--tile); border: 1px solid var(--line); border-bottom: 0; }
+.dept-tile-media picture { display: contents; }
+.dept-tile-media img { position: absolute; inset: 12px; margin: auto; height: auto; max-width: calc(100% - 24px); max-height: calc(100% - 24px); object-fit: contain; }
+.dept-tile-body { flex: 1 1 auto; display: flex; flex-direction: column; gap: 6px; padding: 16px 18px 18px; overflow-wrap: break-word; }
+.dept-tile h3 { font-size: var(--h3); margin: 0 0 2px; }
+.dept-tile-count { margin: 0; font-size: var(--text-sm); font-weight: 700; color: var(--on-dark-muted); }
+.dept-tile-lines { margin: 0; font-size: var(--text-sm); line-height: 1.5; color: var(--on-dark); }
+/* The counts and lines wrap between their parts, each moving to the next line
+   whole, and inside a part only when it is wider than the tile. */
+.dept-tile-count, .dept-tile-lines { display: flex; flex-wrap: wrap; column-gap: .25em; }
+.dept-tile-count > span, .dept-tile-lines > span { min-width: 0; }
+@media (hover: hover) {
+  .dept-tile:hover { background: var(--purple-hover); }
+  .dept-tile:hover h3 { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+}
 
 .apply-panel { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 28px 48px; align-items: start; padding-top: 8px; border-top: 1px solid var(--line); }
 .apply-intro .eyebrow { color: var(--orange-dark); }
@@ -862,7 +889,8 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .apply-panel { grid-template-columns: 1fr; gap: 18px; }
   .editorial-card h2 { font-size: var(--h2-sm); }
   .editorial-card { min-height: 245px; padding: 22px; }
-  .services { grid-template-columns: 1fr; }
+  .services { grid-template-columns: 1fr; gap: 20px; }
+  .dept-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pd-grid { grid-template-columns: 1fr; }
   .page-head { padding-top: 22px; }
   .sub-pills { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 6px 16px; margin-inline: -16px; -webkit-overflow-scrolling: touch; }
@@ -913,6 +941,9 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .card-add { width: 100%; }
   .card-stepper { width: 100%; justify-content: space-between; }
   .card-stepper b { flex: 1; }
+  .dept-tile-media img { inset: 8px; max-width: calc(100% - 16px); max-height: calc(100% - 16px); }
+  .dept-tile-body { gap: 4px; padding: 12px 12px 14px; }
+  .dept-tile h3 { font-size: 1.25rem; }
   .editorials { grid-template-columns: 1fr; gap: 16px; }
   .editorial-card { padding: 24px; }
   .footer-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }

@@ -37,18 +37,18 @@ const NO_PRICES = () => null;
 export const ADDED_NOTE_MS = 2000;
 
 // The card's detail line: brand (not the placeholder), the variant count when
-// there is a choice, the sell unit, the SKU.
-export function cardDetail(p) {
+// there is a choice, the sell unit, the SKU (left off on the home page, AW-060).
+export function cardDetail(p, { sku = true } = {}) {
   const count = variantCount(p);
   return [
     brandLabel(p.brand),
     count > 1 ? `${count} ${variantAxis(p).plural}` : '',
     p.sellUnit ? `Sold by the ${p.sellUnit}` : '',
-    p.sku,
+    sku ? p.sku : '',
   ].filter(Boolean).join(' · ');
 }
 
-export function ProductCard({ p, profile, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, onLoginClick }) {
+export function ProductCard({ p, profile, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, onLoginClick, showSku = true }) {
   // Counts the adds since "Added" last went away; each add restarts its timer.
   const [adds, setAdds] = useState(0);
   useEffect(() => {
@@ -91,7 +91,7 @@ export function ProductCard({ p, profile, isApprovedBuyer, priceOf = NO_PRICES, 
         </div>
         <p className="card-kicker">{p.sub}</p>
         <h3 id={titleId}>{p.name}</h3>
-        <p className="card-detail">{cardDetail(p)}</p>
+        <p className="card-detail">{cardDetail(p, { sku: showSku })}</p>
       </Link>
       {showsNicotineWarning(p) && <NicotineWarning compact />}
       <span className="card-meta card-actions">
