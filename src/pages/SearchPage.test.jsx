@@ -35,6 +35,24 @@ describe('SearchPage', () => {
     expect(screen.getByRole('searchbox', { name: 'Search products, brands or SKUs' }).value).toBe('cigar');
   });
 
+  it('loads the first row of photos at once, the first one first; the rest lazily (AW-323)', () => {
+    show('cigar');
+    const photos = [...document.querySelectorAll('.card-grid .content-card')].map((c, i) => [i, c.querySelector('.card-block img')]).filter(([, img]) => img);
+    expect(photos.length).toBeGreaterThan(4);
+    for (const [i, img] of photos) {
+      expect(img.getAttribute('loading'), `card ${i}`).toBe(i < 4 ? 'eager' : 'lazy');
+      expect(img.getAttribute('fetchpriority'), `card ${i}`).toBe(i === 0 ? 'high' : null);
+    }
+  });
+
+  it('explains pricing once, above the results, with no sign-in control on the cards (AW-224)', () => {
+    show('cigar');
+    const notices = document.querySelectorAll('.pricing-notice');
+    expect(notices).toHaveLength(1);
+    expect(notices[0].textContent).toMatch(/^Trade prices are shown to approved accounts\./);
+    expect(screen.queryAllByRole('button', { name: /Sign in/ })).toHaveLength(1);
+  });
+
   it('finds names with either apostrophe (AW-064)', () => {
     show("reese's");
     expect(cards()[0]).toBe(PRODUCTS.find((p) => p.id === 166).name);

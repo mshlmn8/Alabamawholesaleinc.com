@@ -4,7 +4,7 @@ import { PRODUCTS } from '../data/products.js';
 import { departmentsFor } from './departments.js';
 import {
   categoryQueryString, hrefFor, legacyHashTarget, pageKeyFor, parseCategoryQuery, parseUrl, pathFor,
-  resolveRoute, routeKey, siteUrl, slugify, DEFAULT_SITE_URL,
+  resolveRoute, routeKey, siteUrl, slugify, DEFAULT_SITE_URL, EMPTY_CATEGORY_QUERY, SORTS,
 } from './routes.js';
 
 const departments = departmentsFor(PRODUCTS);
@@ -73,21 +73,51 @@ describe('parseUrl', () => {
 describe('department filters in the query string (AW-008)', () => {
   it('reads known values and drops the rest', () => {
     expect(parseCategoryQuery('?q=bar&sort=name-desc&tags=new,bestseller,bogus&variants=1'))
-      .toEqual({ q: 'bar', sort: 'name-desc', tags: ['BESTSELLER', 'NEW'], variants: true });
-    expect(parseCategoryQuery('?sort=cheapest&variants=yes')).toEqual({ q: '', sort: 'featured', tags: [], variants: false });
-    expect(parseCategoryQuery('')).toEqual({ q: '', sort: 'featured', tags: [], variants: false });
+      .toEqual({ q: 'bar', sort: 'name-desc', tags: ['BESTSELLER', 'NEW'], brands: [], variants: true });
+    expect(parseCategoryQuery('?sort=cheapest&variants=yes')).toEqual({ q: '', sort: 'featured', tags: [], brands: [], variants: false });
+    expect(parseCategoryQuery('')).toEqual({ q: '', sort: 'featured', tags: [], brands: [], variants: false });
   });
 
   it('writes them in a fixed order and leaves out defaults', () => {
-    expect(categoryQueryString({ q: ' bar ', sort: 'name-desc', tags: ['NEW', 'BESTSELLER'], variants: true }))
-      .toBe('?q=bar&sort=name-desc&tags=bestseller,new&variants=1');
-    expect(categoryQueryString({ q: '', sort: 'featured', tags: [], variants: false })).toBe('');
+    expect(categoryQueryString({ q: ' bar ', sort: 'name-desc', tags: ['NEW', 'BESTSELLER'], brands: ['zyn', 'raw'], variants: true }))
+      .toBe('?q=bar&sort=name-desc&tags=bestseller,new&brand=raw,zyn&variants=1');
+    expect(categoryQueryString({ q: '', sort: 'featured', tags: [], brands: [], variants: false })).toBe('');
     expect(categoryQueryString({ q: 'a&b c', sort: 'featured', tags: [], variants: false })).toBe('?q=a%26b+c');
+    // The keys keep their order whatever order the object has.
+    expect(categoryQueryString({ variants: true, brands: ['kite'], tags: ['DEAL'], sort: 'brand', q: 'x' }))
+      .toBe('?q=x&sort=brand&tags=deal&brand=kite&variants=1');
   });
 
   it('round-trips', () => {
-    const query = { q: 'mint gum', sort: 'variants', tags: ['DEAL'], variants: false };
+    const query = { q: 'mint gum', sort: 'variants', tags: ['DEAL'], brands: [], variants: false };
     expect(parseCategoryQuery(categoryQueryString(query))).toEqual(query);
+    const branded = { q: '', sort: 'brand', tags: [], brands: ['4ks', 'swisher-sweets'], variants: true };
+    expect(categoryQueryString(branded)).toBe('?sort=brand&brand=4ks,swisher-sweets&variants=1');
+    expect(parseCategoryQuery(categoryQueryString(branded))).toEqual(branded);
+  });
+
+  it('reads brand slugs (AW-067): valid, deduplicated, in name order, at most 30', () => {
+    const brands = (search) => parseCategoryQuery(search).brands;
+    expect(brands('?brand=swisher-sweets,raw,RAW,raw')).toEqual(['raw', 'swisher-sweets']);
+    // Anything that is not a plain slug is dropped: spaces, punctuation, outer
+    // or doubled hyphens, script, and slugs over 60 characters.
+    expect(brands(`?brand=${encodeURIComponent('Swisher Sweets,4K\'s,-raw,raw-,a--b,<script>,,zyn,' + 'x'.repeat(61) + ',' + 'y'.repeat(60))}`))
+      .toEqual(['y'.repeat(60), 'zyn']);
+    const many = Array.from({ length: 40 }, (_, i) => `b${String(i).padStart(2, '0')}`);
+    expect(brands(`?brand=${many.join(',')}`)).toEqual(many.slice(0, 30));
+    expect(brands('?brand=')).toEqual([]);
+    expect(brands('?brands=raw')).toEqual([]);
+    // Writing applies the same rules, so a URL never carries what reading drops.
+    expect(categoryQueryString({ brands: ['raw', 'raw', 'Bad Slug', 'zyn'] })).toBe('?brand=raw,zyn');
+    expect(categoryQueryString({ brands: many }).split(',')).toHaveLength(30);
+  });
+
+  it('offers Brand: A to Z as a sort, never the default', () => {
+    expect(SORTS).toContain('brand');
+    expect(SORTS[0]).toBe('featured');
+    expect(parseCategoryQuery('?sort=brand').sort).toBe('brand');
+    expect(EMPTY_CATEGORY_QUERY).toEqual({ q: '', sort: 'featured', tags: [], brands: [], variants: false });
+    expect(Object.isFrozen(EMPTY_CATEGORY_QUERY)).toBe(true);
   });
 });
 
@@ -102,7 +132,8 @@ describe('resolveRoute (AW-188)', () => {
   });
 
   it('keeps the filters of a department page', () => {
-    expect(resolve('/category/candies?q=bar&tags=new').query).toEqual({ q: 'bar', sort: 'featured', tags: ['NEW'], variants: false });
+    expect(resolve('/category/candies?q=bar&tags=new').query).toEqual({ q: 'bar', sort: 'featured', tags: ['NEW'], brands: [], variants: false });
+    expect(resolve('/category/tobacco/wraps-and-leafs?brand=swisher-sweets').query).toEqual({ q: '', sort: 'featured', tags: [], brands: ['swisher-sweets'], variants: false });
   });
 
   it('never invents departments, lines or products', () => {
@@ -144,8 +175,9 @@ describe('canonical addresses', () => {
     const routes = [
       { page: 'home' },
       { page: 'product', productId: 162 },
-      { page: 'category', category: 'DRINKS & BAGS', sub: null, query: { q: '', sort: 'featured', tags: [], variants: false } },
-      { page: 'category', category: 'TOBACCO', sub: 'Cigars & Cigarillos', query: { q: 'swisher', sort: 'name-asc', tags: ['NEW'], variants: true } },
+      { page: 'category', category: 'DRINKS & BAGS', sub: null, query: { q: '', sort: 'featured', tags: [], brands: [], variants: false } },
+      { page: 'category', category: 'TOBACCO', sub: 'Cigars & Cigarillos', query: { q: 'swisher', sort: 'name-asc', tags: ['NEW'], brands: [], variants: true } },
+      { page: 'category', category: 'TOBACCO', sub: 'Wraps & Leafs', query: { q: '', sort: 'brand', tags: [], brands: ['game', 'swisher-sweets'], variants: false } },
       { page: 'quote' }, { page: 'account' }, { page: 'admin' }, { page: 'catalog' }, { page: 'terms' }, { page: 'reset-password' },
     ];
     for (const route of routes) expect(resolve(hrefFor(route))).toEqual(route);
@@ -160,6 +192,7 @@ describe('canonical addresses', () => {
 
   it('pageKeyFor ignores the product line, filters and id spelling', () => {
     expect(pageKeyFor({ pathname: '/category/TOBACCO/cigarettes', search: '?q=x' })).toBe(pageKeyFor({ pathname: '/category/tobacco' }));
+    expect(pageKeyFor({ pathname: '/category/tobacco', search: '?brand=raw&sort=brand' })).toBe(pageKeyFor({ pathname: '/category/tobacco' }));
     expect(pageKeyFor({ pathname: '/product/01' })).toBe(pageKeyFor({ pathname: '/product/1' }));
     expect(pageKeyFor({ pathname: '/product/1' })).not.toBe(pageKeyFor({ pathname: '/product/2' }));
     expect(pageKeyFor({ pathname: '/' })).toBe('home');

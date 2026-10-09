@@ -16,6 +16,12 @@
 // Bestsellers: the same for BESTSELLER, by rank, then id (today's order).
 // A product is never in both rails.
 //
+//   featuredOrder(products, { hasPhoto }) -> a new array (AW-227)
+//
+// The department pages' Featured sort: the homepage rank first, then the tag
+// (BESTSELLER, NEW, DEAL, PREMIUM, untagged), then products with a photo
+// before the placeholder, then id. The same status-quo guard applies.
+//
 // Pure: no React, no network. HomePage passes its own hasPhoto.
 
 import { NEW_ARRIVALS_IDS } from '../data/products.js';
@@ -53,8 +59,9 @@ export function homeRails(products, { limit = RAIL_LIMIT, hasPhoto = photoOf, le
   // would have shown it (today that keeps #75 Wava kava, the 8th old New
   // arrivals pick, and keeps #76 Mazza Shots and #218 off). Without it,
   // following the tags would add restricted products to the homepage. A
-  // homepage rank set by staff still features them.
-  // TODO(owner): After the legal review, may the Kratom & Kava, Mushroom Products, Detox, Wellness Pills and Honey & Energy enhancement items be featured on the homepage rails when they are tagged NEW or BESTSELLER, or only when staff rank them (as now), or never? (AW-119, AW-001)
+  // homepage rank set by staff still features them. featuredOrder applies the
+  // same rule to the department pages' Featured sort.
+  // TODO(owner): After the legal review, may the Kratom & Kava, Mushroom Products, Detox, Wellness Pills and Honey & Energy enhancement items be featured on the homepage rails, and lead the department pages' Featured sort, when they are tagged NEW, BESTSELLER, DEAL or PREMIUM, or only when staff rank them (as now), or never? (AW-119, AW-001)
   const byId = new Map(shown.map((p) => [idOf(p), p]));
   const before = {
     newArrivals: new Set(legacyNewIds.map((id) => byId.get(id)).filter(Boolean).slice(0, legacyLimit).map(idOf)),
@@ -72,4 +79,24 @@ export function homeRails(products, { limit = RAIL_LIMIT, hasPhoto = photoOf, le
     .sort((a, b) => byRank(a, b) || idOf(a) - idOf(b))
     .slice(0, limit);
   return { newArrivals, bestsellers };
+}
+
+// The order of the tags in the Featured sort (AW-227); untagged comes last.
+// What DEAL and PREMIUM mean is the AW-139 owner question (CategoryPage.jsx).
+export const TAG_RANK = { BESTSELLER: 0, NEW: 1, DEAL: 2, PREMIUM: 3 };
+const UNTAGGED = Object.keys(TAG_RANK).length;
+
+// The department pages' Featured sort (AW-227). Staff's homepage rank first
+// (1 first, unranked after), then the tag, then a photo before the
+// "Photo coming soon" placeholder, then id. A product under legal review
+// without a homepage rank sorts as untagged (the status-quo guard above,
+// owner decision 2): its tag doesn't lift it to the top of its department.
+// Returns a new array; `products` is not changed.
+export function featuredOrder(products, { hasPhoto = photoOf } = {}) {
+  const tagRank = (p) => {
+    if (rankOf(p) == null && underLegalReview(p)) return UNTAGGED;
+    return TAG_RANK[p?.tag] ?? UNTAGGED;
+  };
+  const photoLast = (p) => (hasPhoto(p) ? 0 : 1);
+  return [...(products || [])].sort((a, b) => byRank(a, b) || tagRank(a) - tagRank(b) || photoLast(a) - photoLast(b) || idOf(a) - idOf(b));
 }

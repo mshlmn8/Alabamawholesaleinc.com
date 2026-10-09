@@ -56,10 +56,12 @@ export const SUPPORT_NAV = [
   { page: 'privacy', label: 'Privacy' },
 ];
 
-export function PolicyNav({ current }) {
+// `label` is the eyebrow over the links; null leaves it off where the page
+// head already says it (AW-220). The nav keeps its accessible name.
+export function PolicyNav({ current, label = 'HELP & POLICIES' }) {
   return (
     <nav className="policy-nav" aria-label="Help and policies">
-      <p className="eyebrow">HELP &amp; POLICIES</p>
+      {label && <p className="eyebrow">{label}</p>}
       {SUPPORT_NAV.map(link => (
         <Link key={link.page} to={`/${link.page}`} aria-current={current === link.page ? 'page' : undefined}>{link.label}</Link>
       ))}
@@ -68,11 +70,12 @@ export function PolicyNav({ current }) {
 }
 
 // The side nav beside a support page's content, below its PageHead (AW-122).
-// Full-width bands such as the ContactStrip go after it.
-export function SupportLayout({ current, children }) {
+// Full-width bands such as the ContactStrip go after it. navLabel is the
+// nav's eyebrow (null leaves it off, as on the policy pages, AW-220).
+export function SupportLayout({ current, navLabel, children }) {
   return (
     <div className="policy-layout support-layout">
-      <PolicyNav current={current} />
+      <PolicyNav current={current} label={navLabel} />
       <div className="support-layout-main">{children}</div>
     </div>
   );

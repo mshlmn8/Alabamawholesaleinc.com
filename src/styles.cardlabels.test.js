@@ -27,30 +27,24 @@ function blocks(source) {
 }
 const top = blocks(css);
 const rules = (list, selector) => list.filter((b) => b.head === selector);
-const media = (prelude) => top.filter((b) => b.head === `@media ${prelude}`);
 
-describe('product card labels (AW-346)', () => {
-  it('keeps the department label on one line inside the tile at every width', () => {
-    const [label, ...more] = rules(top, '.card-block .block-label');
-    expect(more).toEqual([]);
-    expect(declarations(label.body)).toMatchObject({
-      'max-width': 'calc(100% - 24px)', 'white-space': 'nowrap', overflow: 'hidden', 'text-overflow': 'ellipsis',
-    });
+// AW-346's labels no longer sit on the photo: since AW-055 the tag is a chip
+// in the kicker line beside the product line, and the department label is
+// gone from the card, so nothing can collide over the tile. Only the
+// sell-unit badge stays on the photo, inside its edges.
+describe('product card labels (AW-346, AW-055)', () => {
+  const selectors = top.flatMap((b) => (b.head.startsWith('@media') ? blocks(b.body) : [b])).map((b) => b.head);
+
+  it('prints no department label and no tag over the photo', () => {
+    expect(selectors.filter((s) => s.includes('.block-label'))).toEqual([]);
+    expect(selectors.filter((s) => /\.card-block [^,]*\.card-tag/.test(s))).toEqual([]);
   });
 
-  it('moves the tag to the bottom corner below 68.75em, with a sell-unit badge stacked above it, and phones keep their 10px offsets', () => {
-    // The card block of the 68.75em blocks (Admin -> Accounts has its own, AW-266).
-    const narrow = media('(max-width: 68.75em)').filter((block) => block.body.includes('.card-tag'));
-    expect(narrow).toHaveLength(1);
-    const inner = blocks(narrow[0].body);
-    expect(declarations(rules(inner, '.card-block .card-tag')[0].body)).toEqual({ top: 'auto', bottom: '12px', right: '12px' });
-    expect(declarations(rules(inner, '.card-block .card-tag ~ .pack-badge')[0].body)).toEqual({ bottom: 'calc(28px + var(--text-xs))' });
-    // The badge clears the tag: its bottom edge sits above the tag's top
-    // (12px offset, .75rem text at line-height 1, 5px padding top and bottom).
+  it('keeps the tag a small inline chip, and the sell-unit badge inside the tile', () => {
     const tag = declarations(rules(top, '.card-tag')[0].body);
-    expect(tag).toMatchObject({ 'font-size': 'var(--text-xs)', 'line-height': '1', padding: '5px 8px' });
-    const phone = media('(max-width: 37.5em)').find((b) => b.body.includes('.card-block .card-tag'));
-    expect(phone.at).toBeGreaterThan(narrow[0].at);
-    expect(declarations(rules(blocks(phone.body), '.card-block .card-tag')[0].body)).toEqual({ top: 'auto', bottom: '10px', right: '10px' });
+    expect(tag).toMatchObject({ display: 'inline-block', 'font-size': 'var(--text-xs)', 'line-height': '1' });
+    expect(tag.position).toBeUndefined();
+    const badge = declarations(rules(top, '.pack-badge')[0].body);
+    expect(badge).toMatchObject({ position: 'absolute', 'max-width': 'calc(100% - 24px)' });
   });
 });

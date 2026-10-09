@@ -9,6 +9,7 @@ import { APPLY_LABEL } from '../data/terms.js';
 import { topLines } from '../lib/departments.js';
 import { formatMoneyShort } from '../lib/format.js';
 import { tierPriceNote } from '../lib/pricing.js';
+import { useHomeSlides } from '../lib/homeSlides.js';
 import { homeRails } from '../lib/merchandising.js';
 import { heroImage, SIZES } from '../lib/images.js';
 import { showsNicotineWarning } from '../lib/regulated.js';
@@ -66,10 +67,12 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, pric
   const { newArrivals, bestsellers } = homeRails(products, { limit: RAIL_LENGTH, hasPhoto });
   // Whose prices the rails show, for an approved buyer (AW-107).
   const priceNote = isApprovedBuyer ? <p className="result-note">{tierPriceNote(priceTier)}</p> : null;
+  // The hero photos staff keep in Admin -> Homepage, or the bundled ones (AW-119).
+  const slides = useHomeSlides();
 
   return (
     <>
-      <HomeHero signedIn={signedIn} onApplyClick={onApplyClick} />
+      <HomeHero signedIn={signedIn} onApplyClick={onApplyClick} slides={slides} />
 
       {/* What the business offers, straight after the hero (AW-059): an icon,
           the claim as published and a link to the page that explains it. */}

@@ -5,6 +5,10 @@ import { formatMoney, formatMoneyShort } from '../../lib/format.js';
 import { Link } from '../../lib/router.js';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
 import { PageHead, SupportLayout, ContactStrip, POLICY_LINKS } from './SupportShell.jsx';
+import { POLICY_TEXT } from './policyText.js';
+
+// The titles and intros are in policyText.js, which the head tags read too.
+export { POLICY_TITLES, POLICY_INTROS } from './policyText.js';
 
 // Shared with TERMS_VERSION, the version an application accepts (AW-019).
 const UPDATED = POLICIES_UPDATED;
@@ -16,8 +20,7 @@ const UPDATED = POLICIES_UPDATED;
 const POLICIES = {
   shipping: {
     eyebrow: 'CUSTOMER POLICIES',
-    title: 'Delivery',
-    intro: 'How orders leave the Birmingham warehouse: on our own trucks along routes in Alabama, Mississippi and Georgia, or will-call pickup during business hours.',
+    ...POLICY_TEXT.shipping,
     sections: [
       { heading: 'How we deliver', body: [
         `Alabama Wholesale delivers on its own trucks along routes in Alabama, Mississippi and Georgia. When your store is on a delivery route, orders arrive the next day on our truck. Free delivery applies to orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} when the stop is on a delivery route.`,
@@ -39,8 +42,7 @@ const POLICIES = {
   },
   privacy: {
     eyebrow: 'CUSTOMER POLICIES',
-    title: 'Privacy',
-    intro: 'What Alabama Wholesale collects from trade customers, and why.',
+    ...POLICY_TEXT.privacy,
     updated: true,
     sections: [
       // TODO(owner): Provide or approve the privacy policy details: service providers used, data sharing, retention periods for uploaded license and EIN documents, and the contact method for access or deletion requests. Apart from the store address, license files and agreement record now named under 'What we collect' (AW-019), the published sections below are unchanged. (AW-027)
@@ -69,8 +71,7 @@ const POLICIES = {
   },
   terms: {
     eyebrow: 'CUSTOMER POLICIES',
-    title: 'Trade terms',
-    intro: 'The basics of buying from Alabama Wholesale: who can open an account, how pricing and quotes work, and what we ask of retail customers.',
+    ...POLICY_TEXT.terms,
     updated: true,
     sections: [
       { heading: 'Who can buy', body: [
@@ -103,9 +104,6 @@ const POLICIES = {
   },
 };
 
-export const POLICY_TITLES = Object.fromEntries(Object.entries(POLICIES).map(([k, v]) => [k, v.title]));
-export const POLICY_INTROS = Object.fromEntries(Object.entries(POLICIES).map(([k, v]) => [k, v.intro]));
-
 export function PolicyPage({ kind }) {
   const policy = POLICIES[kind];
   if (!policy) return null;
@@ -116,7 +114,9 @@ export function PolicyPage({ kind }) {
       <PageHead crumb={crumb} eyebrow={policy.eyebrow} title={policy.title}>
         <p>{policy.intro}</p>
       </PageHead>
-      <SupportLayout current={kind}>
+      {/* The page head's eyebrow already says CUSTOMER POLICIES (AW-220):
+          the side nav leaves its own off. */}
+      <SupportLayout current={kind} navLabel={null}>
         <article className="policy-body">
           {policy.sections.map((section, i) => (
             <section key={section.heading} aria-labelledby={`policy-${kind}-${i}`}>

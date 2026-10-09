@@ -41,8 +41,14 @@ export default defineConfig(({ command, mode }) => {
         output: {
           // Vite 8 bundles with Rolldown: re-check this split when upgrading
           // (README, "Planned toolchain upgrades", AW-211).
+          // React and the Supabase client change less often than the site,
+          // so each is a file of its own that browsers keep between deploys
+          // (AW-179). The pages that load on demand are split in App.jsx;
+          // the bundled catalog (src/data/products.js) stays in the main
+          // file, as the first paint's fallback catalog.
           manualChunks: {
-            vendor: ['react', 'react-dom']
+            vendor: ['react', 'react-dom'],
+            supabase: ['@supabase/supabase-js']
           }
         }
       }

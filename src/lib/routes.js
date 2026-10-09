@@ -7,7 +7,8 @@
 //
 //   /                                   home (anchors: /#new-arrivals, /#bestsellers)
 //   /catalog                            all products
-//   /category/:dept[/:line]?q=&sort=&tags=&variants=1
+//   /category/:dept[/:line]?q=&sort=&tags=&brand=&variants=1
+//                                       brand: brand slugs, comma-separated (AW-067)
 //   /product/:id
 //   /search?q=                          search results (AW-007; q clipped to 200 characters)
 //   /quote /account /admin
@@ -49,7 +50,8 @@ const SIMPLE_PAGES = ['quote', 'account', 'admin', ...SUPPORT_PAGES];
 export const NOINDEX_PAGES = ['quote', 'account', 'admin', 'reset-password', 'search', 'not-found'];
 
 // Department page sort orders; 'featured' is the default and never written.
-export const SORTS = ['featured', 'name-asc', 'name-desc', 'variants', 'price-low', 'price-high'];
+// 'brand' is Brand: A to Z (AW-067).
+export const SORTS = ['featured', 'name-asc', 'name-desc', 'brand', 'variants', 'price-low', 'price-high'];
 // Featured filters, as catalog tag values. The URL carries them in lower case.
 export const TAGS = ['BESTSELLER', 'NEW', 'DEAL', 'PREMIUM'];
 
@@ -83,6 +85,17 @@ const searchParams = (search) => {
   }
 };
 
+// Brand filters (AW-067) are brand slugs ('Swisher Sweets' -> swisher-sweets):
+// at most 30, each a plain slug of up to 60 characters, deduplicated and in
+// name order, so one set of brands has one URL. Whether a slug names a brand
+// in the department is the page's business; anything else is dropped here.
+const BRAND_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+export const MAX_BRANDS = 30;
+const brandSlugs = (list) => [...new Set((list || []).map((b) => String(b ?? '').trim().toLowerCase()))]
+  .filter((b) => b.length <= 60 && BRAND_SLUG.test(b))
+  .slice(0, MAX_BRANDS)
+  .sort();
+
 // The department filters in a query string. Unknown values are ignored.
 export function parseCategoryQuery(search) {
   const params = searchParams(search);
@@ -90,11 +103,12 @@ export function parseCategoryQuery(search) {
   const sort = SORTS.includes(params.get('sort')) ? params.get('sort') : 'featured';
   const wanted = (params.get('tags') || '').split(',').map((t) => t.trim().toUpperCase());
   const tags = TAGS.filter((t) => wanted.includes(t));
+  const brands = brandSlugs((params.get('brand') || '').split(','));
   const variants = params.get('variants') === '1';
-  return { q, sort, tags, variants };
+  return { q, sort, tags, brands, variants };
 }
 
-export const EMPTY_CATEGORY_QUERY = Object.freeze({ q: '', sort: 'featured', tags: [], variants: false });
+export const EMPTY_CATEGORY_QUERY = Object.freeze({ q: '', sort: 'featured', tags: [], brands: [], variants: false });
 
 // The query string for department filters, in a fixed order; '' when none.
 export function categoryQueryString(query = EMPTY_CATEGORY_QUERY) {
@@ -104,6 +118,8 @@ export function categoryQueryString(query = EMPTY_CATEGORY_QUERY) {
   if (query.sort && query.sort !== 'featured' && SORTS.includes(query.sort)) params.set('sort', query.sort);
   const tags = TAGS.filter((t) => (query.tags || []).includes(t));
   if (tags.length) params.set('tags', tags.map((t) => t.toLowerCase()).join(','));
+  const brands = brandSlugs(query.brands);
+  if (brands.length) params.set('brand', brands.join(','));
   if (query.variants) params.set('variants', '1');
   const text = params.toString().replace(/%2C/g, ',');
   return text ? `?${text}` : '';

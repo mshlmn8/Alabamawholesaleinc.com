@@ -53,6 +53,18 @@
 // TODO(owner): Pack size, case count, dimensions and attributes for each product, so the descriptions can be rewritten. (AW-075)
 // TODO(owner): Is #366 Game Palma Green, are trash bags #95 and #107 the same stock, and which other Uncle Al's flavors are stocked? No rows were removed or renamed. (AW-140)
 // TODO(owner): Approve department renames, and a lawful name for the Honey & Energy line after legal review; names are unchanged until then. (AW-134)
+//
+// Names (AW-071): one style, taken from each row's own name and description:
+// "Value" where a name said "Cheap" (#100, #221, #246, #250), no retail price
+// in a name (#12), a measured size written plainly ("Faygo bottles 20 oz",
+// like "Minute Maid 20 oz") and a size word in brackets ("Powerade (big)",
+// like "Tums (small)"), "6-pack", the brand's own casing ("AA Cellular", and
+// "EZ Roll", "RAW Guarana", "Geek Bar Mate" in descriptions), and a product
+// noun where a name was only the brand (#25, #350, #355). Ids, SKUs (the
+// AW-CHEAP-* codes are Quick Reorder codes) and variant labels are unchanged;
+// supabase/migrations/20261011130000_catalog_names.sql brings rows already in
+// a database in line.
+// TODO(owner): The rows in the lines under legal review keep their names and descriptions (decision 2), so they still mix casing and pack notation: #69-#75, #219, #258, #281, #285, #288, #289, #293, #296, #298-#304, #306, #313 and #341 (e.g. "Shroom puff Gummies", "Hush hit pre rolls 2pk", "Sip happens", "Psyched blue lotus gummies 25ct box"). May they follow the same style after the legal review? May #252's "Cheap" playing cards variant be renamed (its label is a cart key, so it needs an alias), and the AW-CHEAP-* SKUs of #100, #221, #246 and #250 (Quick Reorder codes, so aliases too)? #40 "Wrigley's 50¢ gum" keeps its price point: the 50¢ pack is the product. (AW-071)
 
 import { productImage, sharedImageFiles } from '../lib/images.js';
 
@@ -78,12 +90,12 @@ export const CATALOG = [
   { id:   8, name: "Swisher Sweets Leaf", brand: "Swisher Sweets", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-SS-LEAF", sellUnit: "", variantAxis: "Flavor", variants: ["Irish cream", "Honey", "Sweet aromatic", "Red", "Green", "Peach", "Dark leaf", "Dark aromatic"], img: "ss_leaf.jpg", tag: null,
     description: "Swisher Sweets Leaf natural leaf cigars. Eight flavors: Irish cream, Honey, Sweet aromatic, Red, Green, Peach, Dark leaf and Dark aromatic." },
   { id:   9, name: "Royal Blunts EZ Roll", brand: "Royal Blunts", cat: "TOBACCO", sub: "Cigars & Cigarillos", sku: "AW-EZ-ROLL", sellUnit: "", variantAxis: "Variety", variants: ["Flavorless", "OGK", "Sour apple", "Wet mango", "Purple haze", "Strawberry", "Blueberry", "Jamaican rum"], img: null, tag: null,
-    description: "Ez roll from the cigar and cigarillo line in our Tobacco department. Eight varieties: Flavorless, OGK, Sour apple, Wet mango, Purple haze, Strawberry, Blueberry and Jamaican rum." },
+    description: "EZ Roll from the cigar and cigarillo line in our Tobacco department. Eight varieties: Flavorless, OGK, Sour apple, Wet mango, Purple haze, Strawberry, Blueberry and Jamaican rum." },
   { id:  10, name: "4K's Wraps", brand: "4K's", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-4K-WRAP", sellUnit: "", variantAxis: "Flavor", variants: ["Diamond", "White grape", "Red sweet", "Green sweet", "Black sweet", "Napa grape", "Blueberry", "Watermelon"], img: "4k_wraps.jpg", tag: null,
     description: "4K's flavored cigar wraps. Eight flavors: Diamond, White grape, Red sweet, Green sweet, Black sweet, Napa grape, Blueberry and Watermelon." },
   { id:  11, name: "Backwoods cigars 5-pack", brand: "Backwoods", cat: "TOBACCO", sub: "Cigars & Cigarillos", sku: "AW-BACKWOODS-5PK", sellUnit: "5-pack", variantAxis: "Variety", variants: ["Banana", "Honey berry", "Sweet aromatic", "Original", "Russian cream", "Vanilla", "Black Russian", "Irish cream"], img: "backwoods_5pk.webp", tag: "BESTSELLER",
     description: "Backwoods natural leaf cigars in 5-packs. Eight varieties: Banana, Honey berry, Sweet aromatic, Original, Russian cream, Vanilla, Black Russian and Irish cream." },
-  { id:  12, name: "LooseLeaf wraps 2-pack ($2.99 or $1.99)", brand: "LooseLeaf", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-LOOSE-LEAFS-2PK", sellUnit: "2-pack", variantAxis: "Flavor", variants: ["Cinnamon milk", "Sweet", "Honey", "Cookies & cream", "Natural", "Amber dream"], img: "loose_leafs_2_99_1_99.webp", tag: null,
+  { id:  12, name: "LooseLeaf wraps 2-pack", brand: "LooseLeaf", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-LOOSE-LEAFS-2PK", sellUnit: "2-pack", variantAxis: "Flavor", variants: ["Cinnamon milk", "Sweet", "Honey", "Cookies & cream", "Natural", "Amber dream"], img: "loose_leafs_2_99_1_99.webp", tag: null,
     description: "LooseLeaf flavored wraps in 2-packs, stocked at the $2.99 and $1.99 price points. Six flavors: Cinnamon milk, Sweet, Honey, Cookies & cream, Natural and Amber dream." },
   { id:  13, name: "Havana Leaf little wraps", brand: "Havana Leaf", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-HAVANA-LEAF", sellUnit: "", variantAxis: "Flavor", variants: ["Milk cookies", "Sweet aromatic", "Strawberry", "8 Miles", "Russian cream", "Purple", "Yellow", "Honey bourbon"], img: null, tag: null,
     description: "Havana leaf wraps from the wraps and leaf line in our Tobacco department. Eight flavors: Milk cookies, Sweet aromatic, Strawberry, 8 Miles, Russian cream, Purple, Yellow and Honey bourbon." },
@@ -109,7 +121,7 @@ export const CATALOG = [
     description: "Tylenol pain reliever for the OTC shelf. Four varieties: Sinus, Extra, PM and Cold & flu." },
   { id:  24, name: "Goody's headache powders", brand: "Goody's", cat: "MERCHANDISE", sub: "OTC & Health", sku: "AW-GOODYS", sellUnit: "", variantAxis: "Variety", variants: ["2pk", "6pk", "Red", "PM", "4pk orange", "4pk mixed fruit", "4pk hangover"], img: "p24-goodys-headache-powders.jpg", tag: null,
     description: "Goody's headache powders in 2-count, 6-count and 4-count flavored packs. Seven varieties: 2pk, 6pk, Red, PM, 4pk orange, 4pk mixed fruit and 4pk hangover." },
-  { id:  25, name: "Claritin", brand: "Claritin", cat: "MERCHANDISE", sub: "OTC & Health", sku: "AW-CLARITIN", sellUnit: "", variants: [], img: "p25-claritin.jpg", tag: null,
+  { id:  25, name: "Claritin allergy relief", brand: "Claritin", cat: "MERCHANDISE", sub: "OTC & Health", sku: "AW-CLARITIN", sellUnit: "", variants: [], img: "p25-claritin.jpg", tag: null,
     description: "Claritin allergy relief for the OTC shelf." },
   { id:  26, name: "Benadryl", brand: "Benadryl", cat: "MERCHANDISE", sub: "OTC & Health", sku: "AW-BENADRYL", sellUnit: "", variants: [], img: "p26-benadryl.jpg", tag: null,
     description: "Benadryl allergy relief for the OTC shelf." },
@@ -177,7 +189,7 @@ export const CATALOG = [
     description: "Saxon motor oil and transmission fluid. Eight grades and fluids: 5W-30, 5W-20, 10W-30, 10W-40, 20W-50, Type A, Type F and Multipurpose." },
   { id:  57, name: "Pure Guard motor oil", brand: "Pure Guard", cat: "MOTOR OIL", sub: "Motor Oil", sku: "AW-PURE-GUARD", sellUnit: "", variantAxis: "Type", variants: ["5W-30", "10W-30", "10W-40"], img: "p57-pure-guard-motor-oil.jpg", tag: null,
     description: "Pure Guard motor oil. Three grades: 5W-30, 10W-30 and 10W-40." },
-  { id:  58, name: "Faygo bottles (20 oz)", brand: "Faygo", cat: "DRINKS & BAGS", sub: "Sodas", sku: "AW-FAYGO-BOTTLES", sellUnit: "", variantAxis: "Flavor", variants: ["Redpop", "Rock & rye", "Orange", "Grape", "Cotton candy", "Peach", "Fireworks", "Moon mist"], img: "faygo_bottles_20oz.jpg", tag: null,
+  { id:  58, name: "Faygo bottles 20 oz", brand: "Faygo", cat: "DRINKS & BAGS", sub: "Sodas", sku: "AW-FAYGO-BOTTLES", sellUnit: "", variantAxis: "Flavor", variants: ["Redpop", "Rock & rye", "Orange", "Grape", "Cotton candy", "Peach", "Fireworks", "Moon mist"], img: "faygo_bottles_20oz.jpg", tag: null,
     description: "Faygo soda in 20 oz bottles. Eight flavors: Redpop, Rock & rye, Orange, Grape, Cotton candy, Peach, Fireworks and Moon mist." },
   { id:  59, name: "Arizona beverages", brand: "Arizona", cat: "DRINKS & BAGS", sub: "Juices & Teas", sku: "AW-ARIZONA", sellUnit: "", variantAxis: "Flavor", variants: ["RX", "Strawberry kiwi", "Watermelon", "Frosty chill", "Tropical chill", "Green tea", "Fruit punch", "Orange"], img: "arizona.webp", tag: null,
     description: "Arizona iced teas, juice drinks and RX energy in cans. Eight flavors: RX, Strawberry kiwi, Watermelon, Frosty chill, Tropical chill, Green tea, Fruit punch and Orange." },
@@ -257,7 +269,7 @@ export const CATALOG = [
     description: "Kraft paper bags. Three sizes: #1, #2 and #4." },
   { id:  92, name: "Register paper rolls", brand: "Assorted", cat: "DRINKS & BAGS", sub: "Bags & Carriers", sku: "AW-REGISTER-PAPER", sellUnit: "", variantAxis: "Type", variants: ["Big", "Small", "EBT", "Credit card", "Fuel pump"], img: null, tag: null,
     description: "Register and terminal paper rolls. Five types: Big, Small, EBT, Credit card and Fuel pump." },
-  { id:  93, name: "6pk beer carriers", brand: "Assorted", cat: "DRINKS & BAGS", sub: "Bags & Carriers", sku: "AW-6PK-BEER-CARRIERS", sellUnit: "", variants: [], img: null, tag: null,
+  { id:  93, name: "6-pack beer carriers", brand: "Assorted", cat: "DRINKS & BAGS", sub: "Bags & Carriers", sku: "AW-6PK-BEER-CARRIERS", sellUnit: "", variants: [], img: null, tag: null,
     description: "6-pack beer carriers, from the bags and carriers line in our Drinks & Bags department." },
   { id:  94, name: "Beer ringers", brand: "Assorted", cat: "DRINKS & BAGS", sub: "Bags & Carriers", sku: "AW-BEER-RINGERS", sellUnit: "", variants: [], img: null, tag: null,
     description: "Beer ringers from the bags and carriers line in our Drinks & Bags department." },
@@ -271,7 +283,7 @@ export const CATALOG = [
     description: "PEAK BlueDEF diesel exhaust fluid in the 2.5 gallon jug." },
   { id:  99, name: "PEAK antifreeze", brand: "PEAK", cat: "MOTOR OIL", sub: "Fluids", sku: "AW-PEAK-ANTIFREEZE", sellUnit: "", variants: [], img: "peak_antifreeze.webp", tag: null,
     description: "PEAK antifreeze and coolant, from the automotive fluid line in our Motor Oil department." },
-  { id: 100, name: "Cheap antifreeze", brand: "Assorted", cat: "MOTOR OIL", sub: "Fluids", sku: "AW-CHEAP-ANTIFREEZE", sellUnit: "", variants: [], img: null, tag: null,
+  { id: 100, name: "Value antifreeze", brand: "Assorted", cat: "MOTOR OIL", sub: "Fluids", sku: "AW-CHEAP-ANTIFREEZE", sellUnit: "", variants: [], img: null, tag: null,
     description: "Value antifreeze and coolant, from the automotive fluid line in our Motor Oil department." },
   { id: 101, name: "Castrol GTX motor oil", brand: "Castrol", cat: "MOTOR OIL", sub: "Motor Oil", sku: "AW-GTX-CASTROL", sellUnit: "", variantAxis: "Type", variants: ["5W-30", "5W-20", "10W-30", "10W-40", "20W-50"], img: "gtx_castrol.jpg", tag: null,
     description: "Castrol GTX motor oil in quarts. Five grades: 5W-30, 5W-20, 10W-30, 10W-40 and 20W-50." },
@@ -339,10 +351,10 @@ export const CATALOG = [
   { id: 131, name: "Matches", brand: "Assorted", cat: "GROCERY", sub: "Hardware", sku: "AW-MATCHES", sellUnit: "", variantAxis: "Size", variants: ["Small", "Big"], img: null, tag: null,
     description: "Matches from the hardware line in our Grocery department. Two sizes: Small and Big." },
   // TODO(owner): What do the packaging colors White and Red stand for (for example a brand or match-light)? Kept as they are until then (AW-138)
-  { id: 132, name: "Charcoal bags small", brand: "Assorted", cat: "GROCERY", sub: "Hardware", sku: "AW-CHARCOAL-BAGS-SMALL", sellUnit: "", variantAxis: "Color", variants: ["White", "Red"], img: null, tag: null,
+  { id: 132, name: "Charcoal bags (small)", brand: "Assorted", cat: "GROCERY", sub: "Hardware", sku: "AW-CHARCOAL-BAGS-SMALL", sellUnit: "", variantAxis: "Color", variants: ["White", "Red"], img: null, tag: null,
     description: "Charcoal in small bags. Two colors: White and Red." },
   // TODO(owner): What do the packaging colors White and Red stand for (for example a brand or match-light)? Kept as they are until then (AW-138)
-  { id: 133, name: "Charcoal bags big", brand: "Assorted", cat: "GROCERY", sub: "Hardware", sku: "AW-CHARCOAL-BAGS-BIG", sellUnit: "", variantAxis: "Color", variants: ["White", "Red"], img: null, tag: null,
+  { id: 133, name: "Charcoal bags (big)", brand: "Assorted", cat: "GROCERY", sub: "Hardware", sku: "AW-CHARCOAL-BAGS-BIG", sellUnit: "", variantAxis: "Color", variants: ["White", "Red"], img: null, tag: null,
     description: "Charcoal in big bags. Two colors: White and Red." },
   // TODO(owner): What do the packaging colors White and Green stand for (for example a strength)? Kept as they are until then (AW-138)
   { id: 134, name: "Rubbing alcohol", brand: "Assorted", cat: "GROCERY", sub: "Personal Care", sku: "AW-RUBBING-ALCOHOL", sellUnit: "", variantAxis: "Color", variants: ["White", "Green"], img: null, tag: null,
@@ -457,7 +469,7 @@ export const CATALOG = [
     description: "Nerds Gummy Clusters share pouches. Three flavors: Red, Blue and Cherry lemonade." },
   { id: 189, name: "Mamba big bars", brand: "Mamba", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-MAMBA-BIG-BAR", sellUnit: "", variantAxis: "Flavor", variants: ["Original", "Sour", "Tropical"], img: "mamba_big_bars.jpg", tag: null,
     description: "Mamba fruit chews in big bars. Three flavors: Original, Sour and Tropical." },
-  { id: 190, name: "Mamba small", brand: "Mamba", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-MAMBA-SMALL", sellUnit: "", variantAxis: "Variety", variants: ["Regular", "Tropical", "Sour"], img: "mamba_big_bars.jpg", tag: null,
+  { id: 190, name: "Mamba (small)", brand: "Mamba", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-MAMBA-SMALL", sellUnit: "", variantAxis: "Variety", variants: ["Regular", "Tropical", "Sour"], img: "mamba_big_bars.jpg", tag: null,
     description: "Mamba fruit chews in the small size. Three varieties: Regular, Tropical and Sour." },
   { id: 191, name: "Mint candy lumps", brand: "Candyman's", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-MINT-LUMPS", sellUnit: "", variants: [], img: "mint_lumps.jpg", tag: null,
     description: "Mint candy lumps in the counter dispenser box." },
@@ -520,8 +532,8 @@ export const CATALOG = [
     description: "Happy valentines jar from the wellness pill line in our Novelties department. Three varieties: 4 inch, 6 inch and Colored." },
   { id: 220, name: "Scales", brand: "Assorted", cat: "NOVELTIES", sub: "Smoke Accessories", sku: "AW-SCALES", sellUnit: "", variantAxis: "Size", variants: ["Big", "Medium", "Small"], img: null, tag: null,
     description: "Scales from the smoke accessory line in our Novelties department. Three sizes: Big, Medium and Small." },
-  { id: 221, name: "Cheap scales", brand: "Assorted", cat: "NOVELTIES", sub: "Smoke Accessories", sku: "AW-CHEAP-SCALES", sellUnit: "", variantAxis: "Size", variants: ["Big", "Medium", "Small"], img: null, tag: null,
-    description: "Cheap scales from the smoke accessory line in our Novelties department. Three sizes: Big, Medium and Small." },
+  { id: 221, name: "Value scales", brand: "Assorted", cat: "NOVELTIES", sub: "Smoke Accessories", sku: "AW-CHEAP-SCALES", sellUnit: "", variantAxis: "Size", variants: ["Big", "Medium", "Small"], img: null, tag: null,
+    description: "Value scales from the smoke accessory line in our Novelties department. Three sizes: Big, Medium and Small." },
   { id: 222, name: "Pepcid Complete", brand: "Pepcid", cat: "MERCHANDISE", sub: "OTC & Health", sku: "AW-PEPCID-COMPLETE", sellUnit: "", variants: [], img: "p222-pepcid-complete.jpg", tag: null,
     description: "Pepcid Complete antacid for the OTC shelf." },
   { id: 223, name: "Bayer", brand: "Bayer", cat: "MERCHANDISE", sub: "OTC & Health", sku: "AW-BAYER", sellUnit: "", variants: [], img: "p223-bayer.jpg", tag: null,
@@ -570,7 +582,7 @@ export const CATALOG = [
     description: "Shargio cigarette filter tubes. Six varieties: Green 250, Green 200, Blue 250, Blue 200, Red 250 and Red 200." },
   { id: 245, name: "BluntEffects incense", brand: "BluntEffects", cat: "MERCHANDISE", sub: "Air Fresheners & Incense", sku: "AW-BLUNTEFFECT-INCENSE", sellUnit: "", variantAxis: "Size", variants: ["Small", "Medium", "Big"], img: "blunteffect_incense_medium.webp", tag: null,
     description: "BluntEffects jumbo hand-dipped incense. Three sizes: Small, Medium and Big." },
-  { id: 246, name: "Cheap incense", brand: "Assorted", cat: "MERCHANDISE", sub: "Air Fresheners & Incense", sku: "AW-CHEAP-INCENSE", sellUnit: "", variantAxis: "Size", variants: ["Small", "Medium", "Big"], img: null, tag: null,
+  { id: 246, name: "Value incense", brand: "Assorted", cat: "MERCHANDISE", sub: "Air Fresheners & Incense", sku: "AW-CHEAP-INCENSE", sellUnit: "", variantAxis: "Size", variants: ["Small", "Medium", "Big"], img: null, tag: null,
     description: "Value incense from the air freshener and incense line in our Merchandise department. Three sizes: Small, Medium and Big." },
   { id: 247, name: "Lattafa air freshener", brand: "Lattafa", cat: "MERCHANDISE", sub: "Air Fresheners & Incense", sku: "AW-LATTAFA-AIR-FRESHENER", sellUnit: "", variants: ["Pink"], img: "lattafa_air_freshener.webp", tag: null,
     description: "Lattafa air freshener sprays. Stocked in one variety: Pink." },
@@ -578,7 +590,7 @@ export const CATALOG = [
     description: "Coca-Cola from the soda line in our Drinks & Bags department." },
   { id: 249, name: "Sprite", brand: "Sprite", cat: "DRINKS & BAGS", sub: "Sodas", sku: "AW-SPRITE", sellUnit: "", variantAxis: "Variety", variants: ["Regular", "Tropical"], img: "p249-sprite.jpg", tag: null,
     description: "Sprite from the soda line in our Drinks & Bags department. Two varieties: Regular and Tropical." },
-  { id: 250, name: "Cheap lighters", brand: "Assorted", cat: "MERCHANDISE", sub: "Lighters & Torches", sku: "AW-CHEAP-LIGHTERS", sellUnit: "", variants: [], img: "cheap_lighters.jpg", tag: null,
+  { id: 250, name: "Value lighters", brand: "Assorted", cat: "MERCHANDISE", sub: "Lighters & Torches", sku: "AW-CHEAP-LIGHTERS", sellUnit: "", variants: [], img: "cheap_lighters.jpg", tag: null,
     description: "Value pocket lighters in counter trays, from the lighter and torch line in our Merchandise department." },
   { id: 251, name: "Supreme cigarillos", brand: "Supreme", cat: "TOBACCO", sub: "Cigars & Cigarillos", sku: "AW-SUPREME", sellUnit: "", variantAxis: "Variety", variants: ["Green", "Haze"], img: "supreme.jpg", tag: null,
     description: "Supreme cigarillos in pre-priced 5-count packs. Two varieties: Green and Haze." },
@@ -631,7 +643,7 @@ export const CATALOG = [
   { id: 273, name: "LooseLeaf splits diamond wraps", brand: "LooseLeaf", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-LOOSE-LEAFS-SPLITS", sellUnit: "", variants: [], img: "loose_leafs_wraps_5pk.webp", tag: null,
     description: "LooseLeaf Diamond wraps in the splits format." },
   { id: 274, name: "RAW Guarana wraps", brand: "RAW", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-RAW-GUARANA-WRAPS", sellUnit: "", variants: [], img: null, tag: null,
-    description: "Raw guarana wraps from the wraps and leaf line in our Tobacco department." },
+    description: "RAW Guarana wraps from the wraps and leaf line in our Tobacco department." },
   { id: 275, name: "Jolly Rancher hard candy 5 lb bag", brand: "Jolly Rancher", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-JOLLY-RANCHER", sellUnit: "5 lb bag", variants: [], img: "jolly_rancher_5lbs.webp", tag: null,
     description: "Jolly Rancher hard candy in the 5 lb bulk bag." },
   { id: 276, name: "Now and Later Giant Chewy jar", brand: "Now and Later", cat: "CANDIES", sub: "Jars", sku: "AW-NOW-AND-LATER-GIANT", sellUnit: "jar", variants: [], img: "now_later_jar.webp", tag: null,
@@ -656,7 +668,7 @@ export const CATALOG = [
   // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
   { id: 285, name: "Shroom bang pre rolls 2pk", brand: "Shroom Bang", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-SHROOM-BANG-PRE-ROLLS", sellUnit: "2-pack", variantAxis: "Color", variants: ["Purple", "Blue"], img: "p285-shroom-bang-pre-rolls-2pk.webp", tag: null,
     description: "Shroom bang pre rolls 2pk from the mushroom product line in our Novelties department. Two colors: Purple and Blue." },
-  { id: 286, name: "AA cellular Bluetooth headphones", brand: "AA Cellular", cat: "MERCHANDISE", sub: "Electronics", sku: "AW-AA-CELLULAR-BLUETOOTH", sellUnit: "", variants: [], img: null, tag: null,
+  { id: 286, name: "AA Cellular Bluetooth headphones", brand: "AA Cellular", cat: "MERCHANDISE", sub: "Electronics", sku: "AW-AA-CELLULAR-BLUETOOTH", sellUnit: "", variants: [], img: null, tag: null,
     description: "AA Cellular Bluetooth headphones, from the electronics line in our Merchandise department." },
   { id: 287, name: "Eagle Torch lighters", brand: "Eagle Torch", cat: "MERCHANDISE", sub: "Lighters & Torches", sku: "AW-EAGLE-TORCHES", sellUnit: "", variantAxis: "Size", variants: ["Big", "Medium", "Small"], img: "eagles_torches_3.jpg", tag: null,
     description: "Eagle Torch lighters in counter displays. Three sizes: Big, Medium and Small." },
@@ -666,9 +678,9 @@ export const CATALOG = [
   // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
   { id: 289, name: "Psyched disposable 9000mg", brand: "Psyched", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-PSYCHED-DISPOSABLE", sellUnit: "", variants: ["Snow lotus"], img: null, tag: null,
     description: "Psyched disposable 9000mg from the mushroom product line in our Novelties department. Stocked in one variety: Snow lotus." },
-  { id: 290, name: "Powerade big", brand: "Powerade", cat: "DRINKS & BAGS", sub: "Sports Drinks", sku: "AW-POWERADE-BIG", sellUnit: "", variantAxis: "Flavor", variants: ["Blue", "Red", "Grape", "Yellow"], img: "powerade_20oz.webp", tag: null,
+  { id: 290, name: "Powerade (big)", brand: "Powerade", cat: "DRINKS & BAGS", sub: "Sports Drinks", sku: "AW-POWERADE-BIG", sellUnit: "", variantAxis: "Flavor", variants: ["Blue", "Red", "Grape", "Yellow"], img: "powerade_20oz.webp", tag: null,
     description: "Powerade in the big bottle. Four flavors: Blue, Red, Grape and Yellow." },
-  { id: 291, name: "Powerade small", brand: "Powerade", cat: "DRINKS & BAGS", sub: "Sports Drinks", sku: "AW-POWERADE-SMALL", sellUnit: "", variantAxis: "Flavor", variants: ["Blue", "Red", "Grape", "Yellow"], img: "powerade_20oz.webp", tag: null,
+  { id: 291, name: "Powerade (small)", brand: "Powerade", cat: "DRINKS & BAGS", sub: "Sports Drinks", sku: "AW-POWERADE-SMALL", sellUnit: "", variantAxis: "Flavor", variants: ["Blue", "Red", "Grape", "Yellow"], img: "powerade_20oz.webp", tag: null,
     description: "Powerade in the small bottle. Four flavors: Blue, Red, Grape and Yellow." },
   { id: 292, name: "Electrolit", brand: "Electrolit", cat: "DRINKS & BAGS", sub: "Energy Drinks", sku: "AW-ELECTROLIT", sellUnit: "", variants: ["Blue"], img: "p292-electrolit.webp", tag: null,
     description: "Electrolit electrolyte hydration drink. Stocked in one variety: Blue." },
@@ -719,9 +731,9 @@ export const CATALOG = [
   { id: 309, name: "Water bongs", brand: "Assorted", cat: "NOVELTIES", sub: "Smoke Accessories", sku: "AW-WATER-BONGS", sellUnit: "", variants: [], img: "p309-water-bongs.webp", tag: null,
     description: "Water bongs from the smoke accessory line in our Novelties department." },
   { id: 310, name: "Geek Bar Mate 60K", brand: "Geek Bar", cat: "NOVELTIES", sub: "Disposable Vapes", sku: "AW-GEEKBAR-MATE", sellUnit: "", variants: [], img: "p310-geek-bar-mate-60k.webp", tag: null,
-    description: "Geek Bar mate from the disposable vape line in our Novelties department." },
+    description: "Geek Bar Mate from the disposable vape line in our Novelties department." },
   { id: 311, name: "Geek Bar Mate 60K pods", brand: "Geek Bar", cat: "NOVELTIES", sub: "Vape Pods", sku: "AW-GEEKBAR-MATE-PODS", sellUnit: "", variants: [], img: null, tag: null,
-    description: "Geek Bar mate pods from the vape pod line in our Novelties department." },
+    description: "Geek Bar Mate pods from the vape pod line in our Novelties department." },
   // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
   { id: 312, name: "Stoned blue lotus gummies bags", brand: "Stoned", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-STONED-BLUE-LOTUS", sellUnit: "", variants: [], img: "p312-stoned-blue-lotus-gummies.webp", tag: null,
     description: "Stoned blue lotus gummies bags from the mushroom product line in our Novelties department." },
@@ -776,10 +788,10 @@ export const CATALOG = [
   { id: 334, name: "Bandaids", brand: "Assorted", cat: "MERCHANDISE", sub: "OTC & Health", sku: "AW-BANDAIDS", sellUnit: "", variants: [], img: "p334-bandaids.jpg", tag: null,
     description: "Adhesive bandages, from the OTC and health line in our Merchandise department." },
   // TODO(owner): #335 Gatorade small and #336 Gatorade big share p_gatorade.jpg, so both sizes show the same photo. A photo of each size, saved as p335-<slug> and p336-<slug>, replaces it (AW-290, see AW-136)
-  { id: 335, name: "Gatorade small", brand: "Gatorade", cat: "DRINKS & BAGS", sub: "Sports Drinks", sku: "AW-GATORADE-SMALL", sellUnit: "", variants: ["Blue"], img: "p_gatorade.jpg", tag: null,
+  { id: 335, name: "Gatorade (small)", brand: "Gatorade", cat: "DRINKS & BAGS", sub: "Sports Drinks", sku: "AW-GATORADE-SMALL", sellUnit: "", variants: ["Blue"], img: "p_gatorade.jpg", tag: null,
     description: "Gatorade in the small bottle. Stocked in one variety: Blue." },
   // TODO(owner): #335 Gatorade small and #336 Gatorade big share p_gatorade.jpg, so both sizes show the same photo. A photo of each size, saved as p335-<slug> and p336-<slug>, replaces it (AW-290, see AW-136)
-  { id: 336, name: "Gatorade big", brand: "Gatorade", cat: "DRINKS & BAGS", sub: "Sports Drinks", sku: "AW-GATORADE-BIG", sellUnit: "", variants: ["Blue"], img: "p_gatorade.jpg", tag: "BESTSELLER",
+  { id: 336, name: "Gatorade (big)", brand: "Gatorade", cat: "DRINKS & BAGS", sub: "Sports Drinks", sku: "AW-GATORADE-BIG", sellUnit: "", variants: ["Blue"], img: "p_gatorade.jpg", tag: "BESTSELLER",
     description: "Gatorade in the big bottle. Stocked in one variety: Blue." },
   { id: 337, name: "Bob Marley rolling papers", brand: "Bob Marley", cat: "TOBACCO", sub: "Papers & Cones", sku: "AW-BOB-MARLEY-PAPERS", sellUnit: "", variantAxis: "Variety", variants: ["Yellow small", "Yellow big", "Yellow big with tips", "Organic small", "Organic big", "Organic big with tips", "Silver small", "Silver big"], img: "bob_marley_papers.jpg", tag: null,
     description: "Bob Marley rolling papers. Eight varieties: Yellow small, Yellow big, Yellow big with tips, Organic small, Organic big, Organic big with tips, Silver small and Silver big." },
@@ -808,7 +820,7 @@ export const CATALOG = [
     description: "Oreo cookies in single-serve packs. Stocked in one variety: Regular." },
   { id: 349, name: "Nutter Butter cookies", brand: "Nutter Butter", cat: "FOOD STUFF", sub: "Cookies", sku: "AW-NUTTER-BUTTER", sellUnit: "", variants: ["Regular"], img: "p349-nutter-butter-cookies.png", tag: null,
     description: "Nutter Butter peanut butter sandwich cookies. Stocked in one variety: Regular." },
-  { id: 350, name: "Uncle Al's", brand: "Uncle Al's", cat: "FOOD STUFF", sub: "Cookies", sku: "AW-UNCLE-AL-S", sellUnit: "", variants: [], img: "uncle_al_s_cookies.jpg", tag: null,
+  { id: 350, name: "Uncle Al's cookies", brand: "Uncle Al's", cat: "FOOD STUFF", sub: "Cookies", sku: "AW-UNCLE-AL-S", sellUnit: "", variants: [], img: "uncle_al_s_cookies.jpg", tag: null,
     description: "Uncle Al's cookies, from the cookie line in our Food Stuff department." },
   { id: 351, name: "Uncle Al's cookies", brand: "Uncle Al's", cat: "FOOD STUFF", sub: "Cookies", sku: "AW-UNCLE-AL-S-COOKIES", sellUnit: "", variants: ["Lemon ice"], img: "uncle_al_s_cookies.jpg", tag: null,
     description: "Uncle Al's cookies in single-serve packs. Stocked in one variety: Lemon ice." },
@@ -818,7 +830,7 @@ export const CATALOG = [
     description: "Instant coffee from the coffee line in our Food Stuff department. Two sizes: Small and Big." },
   { id: 354, name: "Folgers coffee (small)", brand: "Folgers", cat: "FOOD STUFF", sub: "Coffee", sku: "AW-FOLGERS-COFFEE", sellUnit: "", variants: [], img: "p354-folgers-coffee.jpg", tag: null,
     description: "Folgers coffee in the small size, from the coffee line in our Food Stuff department." },
-  { id: 355, name: "Gold Band", brand: "Gold Band", cat: "MOTOR OIL", sub: "Motor Oil", sku: "AW-GOLD-BAND", sellUnit: "", variants: ["Type A"], img: "gold_band.jpg", tag: null,
+  { id: 355, name: "Gold Band lubricants", brand: "Gold Band", cat: "MOTOR OIL", sub: "Motor Oil", sku: "AW-GOLD-BAND", sellUnit: "", variants: ["Type A"], img: "gold_band.jpg", tag: null,
     description: "Gold Band automotive lubricants. Stocked in one variety: Type A." },
   { id: 356, name: "Gas cans", brand: "Assorted", cat: "MOTOR OIL", sub: "Auto Accessories", sku: "AW-GAS-CANS", sellUnit: "", variantAxis: "Size", variants: ["1 gal", "2 gal", "5 gal"], img: "p356-gas-cans.webp", tag: null,
     description: "Gas cans from the auto accessory line in our Motor Oil department. Three sizes: 1 gal, 2 gal and 5 gal." },

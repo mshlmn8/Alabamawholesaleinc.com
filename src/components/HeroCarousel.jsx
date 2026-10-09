@@ -1,5 +1,6 @@
 // The photos beside the home hero (HomeHero, AW-004): one fixed-aspect stage
-// that rotates the HERO_SLIDES photos, each slide linking to its department.
+// that rotates the hero photos (Admin -> Homepage's, or the bundled
+// HERO_SLIDES; AW-119), each slide linking to its department when it has one.
 //
 // - The stage keeps one aspect ratio and clips, and a photo is never drawn
 //   larger than its own size, so no slide spills over the controls or the
@@ -61,6 +62,14 @@ const moveTo = (view, to, count) => {
 // A slide's photo, by which a failed one is remembered: its JPEG, or the
 // picture's src for a slide without one.
 const photoKey = (slide) => slide.img || slide.picture?.src || null;
+
+// What a slide and its dot are called after their number: the department it
+// links to, or, for a slide without a link (Admin -> Homepage's "No link",
+// AW-119), its photo's alt text.
+const nameOf = (slide) => {
+  const name = slide.goCat ? catLabel(slide.goCat) : String(slide.alt || '').trim();
+  return name ? `: ${name}` : '';
+};
 
 export function HeroCarousel({ slides }) {
   // The photos that failed to load (AW-342), by photoKey.
@@ -189,7 +198,7 @@ export function HeroCarousel({ slides }) {
           const warm = isWarm(i);
           return (
             <div key={`hero-${index}`} className={`home-carousel-slide${isActive ? ' is-active' : ''}`}
-                 role="group" aria-roledescription="slide" aria-label={`${i + 1} of ${count}: ${label}`}
+                 role="group" aria-roledescription="slide" aria-label={`${i + 1} of ${count}${nameOf(slide)}`}
                  aria-hidden={isActive ? undefined : 'true'}>
               {warm && slide.picture?.src && (
                 <Picture picture={slide.picture} alt={slide.alt || ''} draggable={false}
@@ -220,7 +229,7 @@ export function HeroCarousel({ slides }) {
             </button>
             <div className="home-carousel-dots">
               {media.map(({ slide, index }, i) => (
-                <button key={`dot-${index}`} type="button" aria-label={`Show slide ${i + 1}: ${catLabel(slide.goCat)}`}
+                <button key={`dot-${index}`} type="button" aria-label={`Show slide ${i + 1}${nameOf(slide)}`}
                         aria-current={i === safeIndex ? 'true' : undefined} onClick={() => show(i)}>
                   <span />
                 </button>

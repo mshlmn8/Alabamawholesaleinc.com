@@ -55,7 +55,7 @@ describe('admin sections (AW-118)', () => {
     const nav = screen.getByRole('navigation', { name: 'Admin sections' });
     expect([...nav.querySelectorAll('a')].map((a) => [a.textContent, a.getAttribute('href'), a.getAttribute('aria-current')])).toEqual([
       ['Orders', '/admin/orders', 'page'], ['Accounts', '/admin/accounts', null], ['Products', '/admin/products', null],
-      ['Pricing', '/admin/pricing', null],
+      ['Pricing', '/admin/pricing', null], ['Homepage', '/admin/homepage', null],
     ]);
     expect(screen.queryByRole('tablist')).toBeNull();
     expect(screen.getByText('ALW-O-A1')).toBeTruthy();

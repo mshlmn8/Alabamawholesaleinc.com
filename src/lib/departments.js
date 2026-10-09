@@ -19,8 +19,9 @@ export function departmentsFor(products) {
 }
 
 // A department's biggest product lines: the `n` with the most products, ties
-// in name order (AW-061). The home page's department tiles list these;
-// `subs` above stays alphabetical for the menus, routes and meta.
+// in name order (AW-061). The home page's department tiles and the header's
+// Categories menu (AW-062) list these; `subs` above stays alphabetical for
+// the routes, pages and meta.
 export function topLines(products, deptKey, n = 3) {
   const counts = new Map();
   for (const p of products) {

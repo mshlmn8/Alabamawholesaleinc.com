@@ -1,7 +1,8 @@
 // The homepage rails (AW-119): tags choose, the homepage rank orders, a
-// product is in one rail only, and the AW-001 status-quo guard.
+// product is in one rail only, and the AW-001 status-quo guard. The
+// department pages' Featured sort (AW-227) follows the same rank and guard.
 import { describe, expect, it } from 'vitest';
-import { LEGAL_REVIEW_IDS, LEGAL_REVIEW_SUBS, homeRails, underLegalReview } from './merchandising.js';
+import { LEGAL_REVIEW_IDS, LEGAL_REVIEW_SUBS, TAG_RANK, featuredOrder, homeRails, underLegalReview } from './merchandising.js';
 import { PRODUCTS } from '../data/products.js';
 import { hasPhoto } from '../pages/HomePage.jsx';
 
@@ -72,5 +73,56 @@ describe('homeRails', () => {
     const { newArrivals, bestsellers } = homeRails(PRODUCTS, { limit: 4, hasPhoto });
     expect(ids(newArrivals)).toEqual([62, 64, 184, 75]);
     expect(ids(bestsellers)).toEqual([11, 31, 55, 56]);
+  });
+});
+
+describe('featuredOrder (AW-227)', () => {
+  it('ranks the tags BESTSELLER, NEW, DEAL, PREMIUM, then untagged', () => {
+    expect(TAG_RANK).toEqual({ BESTSELLER: 0, NEW: 1, DEAL: 2, PREMIUM: 3 });
+    const products = [p(1, null), p(2, 'PREMIUM'), p(3, 'DEAL'), p(4, 'NEW'), p(5, 'BESTSELLER'), p(6, 'SOMETHING'), p(7, 'BESTSELLER')];
+    expect(ids(featuredOrder(products))).toEqual([5, 7, 4, 3, 2, 1, 6]);
+  });
+
+  it('puts the homepage rank first, unranked after; then the tag, a photo before the placeholder, then id', () => {
+    const products = [p(9, null), p(8, 'NEW', { img: null }), p(7, 'NEW'), p(6, null, { featuredRank: 2 }), p(5, 'BESTSELLER', { featuredRank: 1 }),
+      p(4, null, { img: null }), p(3, null), p(2, 'BESTSELLER')];
+    expect(ids(featuredOrder(products))).toEqual([5, 6, 2, 7, 8, 3, 9, 4]);
+    // The caller's own photo rule decides what counts as a photo.
+    expect(ids(featuredOrder([p(1, null), p(2, null)], { hasPhoto: (x) => x.id === 2 }))).toEqual([2, 1]);
+  });
+
+  it('returns a new array and leaves the list it was given alone', () => {
+    const products = [p(3, null), p(2, 'NEW'), p(1, 'BESTSELLER')];
+    const sorted = featuredOrder(products);
+    expect(sorted).not.toBe(products);
+    expect(ids(products)).toEqual([3, 2, 1]);
+    expect(ids(sorted)).toEqual([1, 2, 3]);
+    expect(featuredOrder(undefined)).toEqual([]);
+  });
+
+  it('gives an unranked product under legal review no lift from its tag; a staff rank still does (AW-001)', () => {
+    const products = [p(75, 'NEW', { sub: 'Kratom & Kava' }), p(218, 'BESTSELLER', { sub: 'Detox' }), p(265, 'PREMIUM', { sub: 'Honey & Energy' }), p(10, null), p(11, 'DEAL')];
+    expect(ids(featuredOrder(products))).toEqual([11, 10, 75, 218, 265]);
+    const ranked = products.map((x) => (x.id === 218 ? { ...x, featuredRank: 1 } : x));
+    expect(ids(featuredOrder(ranked))).toEqual([218, 11, 10, 75, 265]);
+  });
+
+  it('on the bundled catalog: tagged products lead each department, restricted lines excepted', () => {
+    const dept = (cat) => ids(featuredOrder(PRODUCTS.filter((x) => x.cat === cat), { hasPhoto }));
+    expect(dept('TOBACCO').slice(0, 3)).toEqual([11, 282, 82]);
+    // #342 Dubai chocolate is NEW without a photo: the tag still comes first.
+    expect(dept('CANDIES').slice(0, 6)).toEqual([162, 166, 169, 171, 184, 342]);
+    // #75, #76 (Kratom & Kava) and #218 (Detox) don't jump to the top.
+    const novelties = dept('NOVELTIES');
+    expect(novelties.slice(0, 4)).toEqual([60, 61, 62, 64]);
+    for (const id of [75, 76, 218]) expect(novelties.indexOf(id), `#${id}`).toBeGreaterThan(4);
+    // The PREMIUM enhancement items (#265, #321, #332) don't either.
+    const merch = dept('MERCHANDISE');
+    expect(merch[0]).toBe(31);
+    for (const id of [265, 321, 332]) expect(merch.indexOf(id), `#${id}`).toBeGreaterThan(1);
+    // Within the untagged products, photos come before the placeholder.
+    const untagged = novelties.slice(4).map((id) => PRODUCTS.find((x) => x.id === id));
+    const firstPlaceholder = untagged.findIndex((x) => !hasPhoto(x));
+    if (firstPlaceholder >= 0) expect(untagged.slice(firstPlaceholder).every((x) => !hasPhoto(x))).toBe(true);
   });
 });

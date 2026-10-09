@@ -142,6 +142,20 @@ function photoUploadMessage(error) {
   return adminErrorMessage({ ...error, message, status }, 'The photo didn’t upload');
 }
 
+// Uploads a checked photo file (photoProblem) to `path` in the product-images
+// bucket. Resolves to { url } (its public address) or { error } (what to say).
+// Admin -> Homepage uploads its hero photos the same way.
+export async function uploadPhoto(client, path, file) {
+  let error = null;
+  try {
+    ({ error } = await client.storage.from(PHOTO_BUCKET).upload(path, file, { contentType: file.type, upsert: false }));
+  } catch (thrown) {
+    error = thrown;
+  }
+  if (error) return { error: photoUploadMessage(error) };
+  return { url: client.storage.from(PHOTO_BUCKET).getPublicUrl(path).data?.publicUrl || '' };
+}
+
 // Where each field's control is, and what the error summary calls it.
 const FIELDS = {
   name: ['product-name', 'Name'], brand: ['product-brand', 'Brand'], cat: ['product-cat', 'Department'], sub: ['product-sub', 'Sub-line'],
@@ -365,15 +379,9 @@ export function ProductEditor({ id, fromId = null, rows, columns, loadError, onR
       return;
     }
     setBusy('uploading');
-    const path = productImagePath(isNew ? null : id, file);
-    let error = null;
-    try {
-      ({ error } = await supabase.storage.from(PHOTO_BUCKET).upload(path, file, { contentType: file.type, upsert: false }));
-    } catch (thrown) {
-      error = thrown;
-    }
-    if (error) setPhotoError(photoUploadMessage(error));
-    else set('img', supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path).data?.publicUrl || '');
+    const { url, error } = await uploadPhoto(supabase, productImagePath(isNew ? null : id, file), file);
+    if (error) setPhotoError(error);
+    else set('img', url);
     setBusy(null);
     input.value = '';
   };

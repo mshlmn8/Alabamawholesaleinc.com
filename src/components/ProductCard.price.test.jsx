@@ -63,12 +63,12 @@ describe('whose prices the cards show (AW-107)', () => {
 
   it('names the tier and its discount in the department intro, from my_prices()', () => {
     const view = render(category({ ...APPROVED, priceOf: () => 20.34, priceTier: SILVER }));
-    expect(intro()).toBe('Wholesale candies for licensed retail accounts. Prices shown are your Silver tier prices, 5% off list.');
+    expect(intro()).toBe('Wholesale candies for licensed retail accounts: 1 product in 1 product line. Prices shown are your Silver tier prices, 5% off list.');
     view.rerender(category({ ...APPROVED, priceOf: () => 20.34, priceTier: { tier: 'standard', discountPct: 0 } }));
-    expect(intro()).toBe('Wholesale candies for licensed retail accounts. Prices shown are your Standard tier prices.');
+    expect(intro()).toBe('Wholesale candies for licensed retail accounts: 1 product in 1 product line. Prices shown are your Standard tier prices.');
     // Before the prices are in, no tier is named.
     view.rerender(category({ ...APPROVED, priceOf: () => null, pricesStatus: 'loading', priceTier: null }));
-    expect(intro()).toBe('Wholesale candies for licensed retail accounts. Prices shown are your account prices.');
+    expect(intro()).toBe('Wholesale candies for licensed retail accounts: 1 product in 1 product line. Prices shown are your account prices.');
   });
 
   it('captions the New arrivals and Bestsellers rails for an approved buyer only', () => {

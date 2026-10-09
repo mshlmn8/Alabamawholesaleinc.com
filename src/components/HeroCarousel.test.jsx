@@ -242,6 +242,19 @@ describe('controls (AW-054, AW-168)', () => {
     expect(toggle().getAttribute('aria-pressed')).toBe('true');
   });
 
+  it('names a slide without a department link, and its dot, by the photo’s alt text (AW-119)', () => {
+    const slides = [SLIDES[0], { ...SLIDES[2], goCat: null, alt: '  Counter display  ' }, { ...SLIDES[3], goCat: null, alt: '' }];
+    render(<HeroCarousel slides={slides} />);
+    expect([...document.querySelectorAll('.home-carousel-slide')].map((g) => g.getAttribute('aria-label')))
+      .toEqual(['1 of 3: Candies', '2 of 3: Counter display', '3 of 3']);
+    expect([...document.querySelectorAll('.home-carousel-dots button')].map((d) => d.getAttribute('aria-label')))
+      .toEqual(['Show slide 1: Candies', 'Show slide 2: Counter display', 'Show slide 3']);
+    fireEvent.click(screen.getByRole('button', { name: 'Show slide 2: Counter display' }));
+    // No department: no caption link.
+    expect(document.querySelector('.home-carousel-slide.is-active a')).toBeNull();
+    expect(screen.queryAllByRole('link')).toHaveLength(0);
+  });
+
   it('wraps round with previous and next', () => {
     render(<HeroCarousel slides={SLIDES} />);
     fireEvent.click(screen.getByRole('button', { name: 'Previous slide' }));

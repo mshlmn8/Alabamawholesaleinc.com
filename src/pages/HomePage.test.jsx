@@ -3,18 +3,27 @@
 // chosen photo and the biggest lines on a solid band (AW-060, AW-061); one
 // row each of new arrivals and bestsellers without SKUs (AW-060); numbers only
 // on the application steps (AW-216). Products without a photo stay off the
-// rails (AW-029, Cursor PR #13).
-import { render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DEPARTMENT_PHOTOS } from '../data/content.js';
+// rails (AW-029, Cursor PR #13). The hero photos come from Admin -> Homepage
+// once loaded, the bundled ones until then (AW-119).
+import { act, render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEPARTMENT_PHOTOS, HERO_SLIDES } from '../data/content.js';
 import { PRODUCTS, NAV_ORDER, NEW_ARRIVALS_IDS } from '../data/products.js';
 import { departmentsFor, topLines } from '../lib/departments.js';
+import { resetHomeSlidesForTests } from '../lib/homeSlides.js';
+import { heroImage } from '../lib/images.js';
 import { showsNicotineWarning } from '../lib/regulated.js';
 import { hrefFor } from '../lib/routes.js';
 import { cardDetail } from '../components/ProductCard.jsx';
 import { HomePage, RAIL_LENGTH, departmentPhoto, hasPhoto } from './HomePage.jsx';
 
-afterEach(() => vi.restoreAllMocks());
+// No backend: the bundled hero photos, and no request (the tests' .env.local
+// may name a real project).
+beforeEach(() => resetHomeSlidesForTests({ client: null }));
+afterEach(() => {
+  resetHomeSlidesForTests({ client: null });
+  vi.restoreAllMocks();
+});
 
 const DEPARTMENTS = departmentsFor(PRODUCTS);
 const renderHome = (props = {}) => {
@@ -122,7 +131,7 @@ describe('HomePage sections', () => {
 
   it('numbers only the application steps', () => {
     renderHome();
-    const labels = [...document.querySelectorAll('.eyebrow, .block-label')].map(text);
+    const labels = [...document.querySelectorAll('.eyebrow, .card-kicker')].map(text);
     expect(labels.length).toBeGreaterThan(0);
     for (const label of labels) expect(label).not.toMatch(/ \/ \d{2}$/);
     expect(document.body.textContent).not.toMatch(/COLLECTION|DEPARTMENT/);
@@ -156,7 +165,7 @@ describe('HomePage department tiles', () => {
     renderHome();
     const tiles = [...document.querySelectorAll('#catalog .dept-grid > a.dept-tile')];
     expect(tiles).toHaveLength(DEPARTMENTS.length);
-    expect(document.querySelectorAll('#catalog .card-grid, #catalog .block-label')).toHaveLength(0);
+    expect(document.querySelectorAll('#catalog .card-grid, #catalog .card-tag')).toHaveLength(0);
     DEPARTMENTS.forEach((d, i) => {
       const tile = tiles[i];
       expect(tile.getAttribute('href')).toBe(hrefFor({ page: 'category', category: d.key }));
@@ -228,5 +237,67 @@ describe('HomePage department tiles', () => {
     renderHome({ products });
     const tile = [...document.querySelectorAll('#catalog .dept-tile')].find((t) => t.querySelector('h3').textContent === 'Motor Oil');
     expect(tile.querySelector('.dept-tile-media').children).toHaveLength(0);
+  });
+});
+
+// Admin -> Homepage's photos (AW-119), from a stand-in for the Supabase client.
+describe('HomePage hero photos', () => {
+  const STORAGE = 'https://abcdefgh.supabase.co/storage/v1/object/public/product-images/home/1760000000000-display.jpg';
+  const slidesClient = (answer) => ({
+    calls: 0,
+    from() {
+      this.calls += 1;
+      const builder = {
+        select: () => builder, eq: () => builder, order: () => builder, abortSignal: () => builder,
+        then: (resolve, reject) => Promise.resolve(answer()).then(resolve, reject),
+      };
+      return builder;
+    },
+  });
+  const renderLoaded = async (answer) => {
+    const client = slidesClient(answer);
+    resetHomeSlidesForTests({ client });
+    renderHome();
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    return client;
+  };
+  const slideLabels = () => [...document.querySelectorAll('.home-carousel-slide')].map((s) => s.getAttribute('aria-label'));
+
+  it('shows the bundled photos first and with no backend', () => {
+    renderHome();
+    expect(slideLabels()).toEqual(['1 of 4: Candies', '2 of 4: Novelties & Vapes', '3 of 4: Merchandise', '4 of 4: Drinks & Bags']);
+    expect(document.querySelector('.home-carousel-slide.is-active img').getAttribute('alt')).toBe(HERO_SLIDES[0].alt);
+  });
+
+  it('swaps in the photos staff keep, in their order, starting at slide 1, with the FDA warning on the flagged one', async () => {
+    const client = await renderLoaded(() => ({
+      data: [
+        { id: 9, img: 'hero_vape.jpg', alt: 'Vape display', go_cat: 'NOVELTIES', nicotine_warning: true, sort: 5 },
+        { id: 2, img: STORAGE, alt: 'Counter display of candy', go_cat: null, nicotine_warning: false, sort: 10 },
+      ],
+      error: null,
+    }));
+    expect(client.calls).toBe(1);
+    expect(slideLabels()).toEqual(['1 of 2: Novelties & Vapes', '2 of 2: Counter display of candy']);
+    const active = document.querySelector('.home-carousel-slide.is-active');
+    expect(active.querySelector('img').getAttribute('src')).toBe(heroImage('hero_vape.jpg').picture.src);
+    expect(within(active).getByRole('link', { name: 'Shop Novelties & Vapes' })).toBeTruthy();
+    // The warning band shows for the vape photo.
+    expect(document.querySelector('.home-carousel-warning').getAttribute('aria-hidden')).toBeNull();
+    // A photo with no link is named by its alt text.
+    expect(screen.getByRole('button', { name: 'Show slide 2: Counter display of candy' })).toBeTruthy();
+  });
+
+  it('shows the headline alone when every photo is turned off', async () => {
+    await renderLoaded(() => ({ data: [], error: null }));
+    expect(document.querySelector('.home-carousel')).toBeNull();
+    expect(document.querySelector('.home-hero-media').children).toHaveLength(0);
+    expect(screen.getByRole('heading', { level: 1, name: 'Wholesale for licensed retailers.' })).toBeTruthy();
+  });
+
+  it('keeps the bundled photos when the table is missing', async () => {
+    await renderLoaded(() => ({ data: null, error: { code: 'PGRST205', message: 'Could not find the table public.home_slides' } }));
+    expect(slideLabels()).toHaveLength(HERO_SLIDES.length);
+    expect(document.querySelector('.home-carousel-slide.is-active img').getAttribute('alt')).toBe(HERO_SLIDES[0].alt);
   });
 });

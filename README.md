@@ -60,7 +60,7 @@ GitHub Actions (`.github/workflows/ci.yml`) runs all four, plus `npm audit --omi
 
 The build runs on Vite 7 with `@vitejs/plugin-react` 5 and React 18. Two upgrades are planned as their own changes (AW-211), not bundled into a Dependabot PR:
 
-- **Vite 8 with `@vitejs/plugin-react` 6.** Vite 8 bundles with Rolldown instead of Rollup, so check that the `manualChunks` split in `vite.config.js` still produces the separate `vendor` chunk, then run the full checks above.
+- **Vite 8 with `@vitejs/plugin-react` 6.** Vite 8 bundles with Rolldown instead of Rollup, so check that the `manualChunks` split in `vite.config.js` still produces the separate `vendor` and `supabase` chunks and that the pages App.jsx loads with `React.lazy` are still files of their own (AW-179), then run the full checks above.
 - **React 19, after launch.** Plan it with the ESLint plugins: `eslint-plugin-react` and `eslint-plugin-jsx-a11y` do not declare ESLint 10 support yet, so ESLint stays on 9 for now.
 
 ### Text that Google Translate can break

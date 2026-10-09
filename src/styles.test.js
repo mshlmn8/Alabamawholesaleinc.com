@@ -380,7 +380,7 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
     expect(inHover('.aw-category-toggle:hover')).toEqual({ background: 'var(--purple-hover)' });
   });
 
-  it('shows a mouse that cards, tiles, collection cards, the mega-menu feature, nav links, chips and the pricing prompt are clickable', () => {
+  it('shows a mouse that cards, tiles, collection cards, nav links, chips and the pricing prompt are clickable', () => {
     for (const s of ['.card-link:hover .card-block', 'a.content-card:hover .card-block']) expect(inHover(s), s).toEqual({ 'border-color': 'var(--purple)' });
     for (const s of ['.card-link:hover h3', 'a.content-card:hover h3']) expect(inHover(s), s).toEqual({ 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' });
     for (const s of ['.card-link:hover .card-block img', 'a.content-card:hover .card-block img']) expect(inHover(s), s).toEqual({ transform: 'scale(1.03)' });
@@ -389,9 +389,8 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
     expect(own('.card-block img').transition).toMatch(/(^|, )transform \.2s ease(,|$)/);
     expect(inHover('.editorial-card:hover .text-link')).toEqual({ 'text-decoration-thickness': '2px' });
     expect(inHover('.editorial-card:hover img.bg')).toEqual({ opacity: '.36' });
-    expect(inHover('.aw-menu-feature:hover')).toEqual({ background: 'var(--purple-hover)' });
     for (const s of ['.section-head > a:hover', '.aw-utility a:hover', '.sku-details summary:hover']) expect(inHover(s), s).toEqual({ color: 'var(--orange-dark)' });
-    expect(inHover('.variant-chips button:not(:disabled):not([aria-pressed="true"]):hover')).toEqual({ 'border-color': 'var(--purple)' });
+    expect(inHover('.variant-chips button:not(:disabled):not([aria-checked="true"]):hover')).toEqual({ 'border-color': 'var(--purple)' });
     expect(inHover('button.filter-signin:hover')).toEqual({ 'border-left-color': 'var(--purple)' });
     expect(inHover('button.filter-signin:hover span')).toEqual({ 'text-decoration-thickness': '2px' });
     // Keyboard focus underlines the card title too, outside the hover blocks.
@@ -399,7 +398,7 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
   });
 
   it('never turns a link orange on a purple surface', () => {
-    const purple = /^(\.trade-bar|\.footer|\.contact-strip|\.editorial-card|\.aw-menu-feature|\.age-gate|\.fda-note)/;
+    const purple = /^(\.trade-bar|\.footer|\.contact-strip|\.editorial-card|\.age-gate|\.fda-note)/;
     const onPurple = hoverRules.filter((r) => r.selectors.some((s) => purple.test(s)));
     expect(onPurple.length).toBeGreaterThan(3);
     for (const { selectors, body } of onPurple) expect(body, selectors.join(', ')).not.toMatch(/--orange/);
@@ -408,7 +407,7 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
   it('gives tappable controls a pressed state outside the hover blocks that never hides the selected one', () => {
     const pressed = {
       '.sub-pill:not(.active):active': 'var(--paper)',
-      '.variant-chips button:not(:disabled):not([aria-pressed="true"]):active': 'var(--line)',
+      '.variant-chips button:not(:disabled):not([aria-checked="true"]):active': 'var(--line)',
       '.dept-jump a:active': 'var(--paper)',
       '.policy-nav a:active': 'var(--line)',
       '.menu-group a:active': 'var(--paper)',
@@ -423,11 +422,11 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
     expect(declarations(rules(compact.body).find((r) => r.selectors.join() === '.aw-search > button:active').body)).toEqual({ background: 'var(--purple-hover)' });
   });
 
-  it('shows the chosen variant, line, admin tab, policy page and hero slide dot in the system highlight in forced colours', () => {
+  it('shows the chosen variant, line, admin tab, policy page, hero slide dot and current navigation link in the system highlight in forced colours', () => {
     const forced = blocks.find((b) => b.prelude === '(forced-colors: active)');
     const selected = rules(forced.body).find((r) => r.selectors.includes('.sub-pill.active'));
-    expect(selected.selectors).toEqual(['.variant-chips button[aria-pressed="true"]', '.sub-pill.active', '.sub-pill[aria-current="page"]', 'nav.policy-nav a[aria-current="page"]',
-      '.home-carousel-dots [aria-current="true"] span']);
+    expect(selected.selectors).toEqual(['.variant-chips button[aria-checked="true"]', '.sub-pill.active', '.sub-pill[aria-current="page"]', 'nav.policy-nav a[aria-current="page"]',
+      '.home-carousel-dots [aria-current="true"] span', '.aw-discovery-nav a[aria-current]', '.aw-service-nav a[aria-current]', 'nav.menu-group a[aria-current]']);
     expect(declarations(selected.body)).toEqual({ 'forced-color-adjust': 'none', background: 'Highlight', color: 'HighlightText', 'border-color': 'Highlight' });
     const ring = rules(forced.body).find((r) => r.selectors.includes('.sub-pill.active:focus-visible'));
     expect(declarations(ring.body)).toEqual({ 'outline-color': 'CanvasText' });
@@ -438,7 +437,7 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
   it('makes the small controls 44px targets on touch screens, after their own rules, links in a sentence excepted', () => {
     expect(declarations(coarseRules.find((r) => r.selectors.join() === ':root').body)).toMatchObject({ '--tap-sm': 'var(--tap)' });
     // Everything sized with --tap-sm follows it.
-    for (const s of ['.button.sm', '.icon-btn', '.sub-pill', '.variant-chips button', '.price-login', '.filter-panel fieldset label', '.card-meta']) {
+    for (const s of ['.button.sm', '.icon-btn', '.sub-pill', '.variant-chips button', '.filter-panel fieldset label', '.card-meta']) {
       expect(Object.values(own(s)).join(' '), s).toMatch(/var\(--tap-sm\)/);
     }
     const TOUCH = ['.trade-bar a', '.trade-bar button', '.aw-menu-footer a', '.aw-logo', '.aw-department a', '.text-link', '.crumbs li', '.crumbs a',
@@ -514,6 +513,30 @@ describe('photo loading states (AW-192, AW-341, AW-345)', () => {
   it('hides the product page photo credit while the placeholder stands in for the photo', () => {
     // ProductPage renders figure.pd-figure > .pd-media + figcaption.photo-credit.
     expect(own('.pd-media:has(.photo-soon) + .photo-credit')).toEqual({ display: 'none' });
+  });
+
+  it('prints no label or tag over a photo: the tag is a chip in the text, the department label is gone (AW-055)', () => {
+    const selectors = all.flatMap((r) => r.selectors);
+    expect(selectors.filter((s) => /\.block-(label|foot)\b/.test(s))).toEqual([]);
+    // Every .card-tag rule, at every width, leaves it in the flow.
+    for (const r of all.filter((x) => x.selectors.some((s) => /\.card-tag\b/.test(s)))) {
+      for (const property of ['position', 'top', 'right', 'bottom', 'left', 'z-index']) expect(declarations(r.body), `${r.selectors} ${property}`).not.toHaveProperty(property);
+    }
+    expect(own('.card-tag')).toMatchObject({ display: 'inline-block', background: 'var(--button-orange)', color: '#fff', 'font-size': 'var(--text-xs)' });
+    expect(own('.card-tag.new')).toEqual({ background: 'var(--purple)' });
+    expect(own('.card-kicker')).toMatchObject({ display: 'flex', 'flex-wrap': 'wrap', 'align-items': 'center' });
+    expect(own('.pd-info .pd-brand')).toMatchObject({ display: 'flex', 'flex-wrap': 'wrap', 'align-items': 'center' });
+    expect(read('src/pages/ProductPage.jsx')).not.toMatch(/<div className="pd-media">\s*\{p\.tag/);
+  });
+
+  it('lines up the card action rows across a grid row (AW-215)', () => {
+    expect(own('.content-card')).toMatchObject({ display: 'flex', 'flex-direction': 'column' });
+    // .card-meta is the same element as .card-actions (AW-107's rule).
+    expect(own('.content-card > .card-meta')).toEqual({ 'margin-top': 'auto' });
+    // The pricing lock always takes its own line, so every lock card's row has the same height.
+    expect(own('.card-meta .lock')).toMatchObject({ 'flex-basis': '100%' });
+    // The SKU stays whole on the detail line: it is not cut off with an ellipsis.
+    expect(own('.card-detail')).not.toHaveProperty('text-overflow');
   });
 
   it('keeps the logo slot when the logo fails: the brand in text, as tall as the logo at every header size', () => {
@@ -644,7 +667,7 @@ describe('one field system (AW-146, AW-172, AW-147, AW-309)', () => {
       '.doc-upload label:not(.doc-choose)', '.filter-panel legend', '.doc-uploads legend',
       // The application form's group legends (AW-243).
       '.form-section legend', '.order-edit-line label', '.account-note',
-      '.admin-toolbar label'];
+      '.admin-toolbar label', '.pd-variant-label'];
     const typography = { 'font-size': 'var(--text-xs)', 'font-weight': '700', 'letter-spacing': 'var(--track-label)', color: 'var(--purple)', 'text-transform': 'uppercase' };
     const shared = all.find((r) => r.selectors.includes('.doc-uploads legend') && declarations(r.body)['text-transform']);
     expect(shared.selectors).toEqual(labels);
@@ -802,11 +825,13 @@ describe('one link style (AW-297)', () => {
         for (const property of Object.keys(LOOK)) expect(declarations(body), `${s} ${property}`).not.toHaveProperty(property);
       }
     }
-    // The text-link keeps its own layout rule; the guest card prompt is one.
+    // The text-link keeps its own layout rule.
     expect(ruleFor('.text-link')).toEqual({ display: 'inline-flex', 'align-items': 'center', 'min-height': '36px', 'font-size': 'var(--text-sm)', background: 'none', border: '0', padding: '0' });
-    expect(ruleFor('.price-login')).toEqual({ 'min-height': 'var(--tap-sm)', 'text-align': 'left' });
-    expect(all.flatMap((r) => r.selectors).filter((s) => s.startsWith('.price-login:'))).toEqual([]);
-    expect(code(read('src/components/ProductCard.jsx'))).toMatch(/<button className="text-link price-login" type="button" onClick=\{onLoginClick\}>Sign in for pricing<\/button>/);
+    // No sign-in prompt on each card any more: the page's PricingNotice has
+    // Sign in and Apply, and the card's lock is plain text (AW-224).
+    expect(all.flatMap((r) => r.selectors).filter((s) => s.includes('.price-login'))).toEqual([]);
+    expect(code(read('src/components/ProductCard.jsx'))).not.toMatch(/price-login|onLoginClick|Sign in for pricing/);
+    expect(code(read('src/components/PricingNotice.jsx'))).toMatch(/<button className="text-link" type="button" onClick=\{onApplyClick\}>\{APPLY_LABEL\}<\/button>/);
   });
 
   it('leaves the buttons in a status panel alone: only links in its text are text links', () => {
@@ -898,8 +923,8 @@ describe('one callout, and status colours for errors and success (AW-295)', () =
     }
     expect(seen).toBeGreaterThan(8);
     expect(ruleFor('.support-alert')).toEqual({ margin: '0 0 22px', 'font-size': 'var(--text-base)' });
-    expect(ruleFor('.pd-info .pd-unit')).toEqual({ margin: '0 0 14px', 'max-width': '480px', 'font-weight': '600' });
-    expect(ruleFor('.pd-info .pd-saved')).toEqual({ margin: '0 0 14px', 'max-width': '480px', 'font-weight': '600' });
+    expect(ruleFor('.pd-info .pd-unit')).toEqual({ margin: '0 0 14px', 'max-width': 'none', 'font-weight': '600' });
+    expect(ruleFor('.pd-info .pd-saved')).toEqual({ margin: '0 0 14px', 'max-width': 'none', 'font-weight': '600' });
   });
 
   it('keeps the status panel and the pricing prompt boxes, in the status and callout colours', () => {
@@ -995,5 +1020,164 @@ describe('no inline styles (AW-301)', () => {
     // Same specificity (one class), and later in the file.
     expect(compact.start).toBeGreaterThan(css.indexOf('.is-centered {'));
     expect(compact.start).toBeGreaterThan(css.indexOf('.is-flush {'));
+  });
+});
+
+// The Categories menu (AW-062): it ends inside the window, under the header
+// height the header will publish (--header-h), its heading and footer stay in
+// view while it scrolls, and the eight departments fill two rows.
+describe('the Categories menu fits the window (AW-062)', () => {
+  it('ends 1rem above the bottom of the window, with its close button and its footer link always in view', () => {
+    expect(ruleFor('.aw-mega-menu')).toMatchObject({
+      'max-height': 'max(9rem, calc(100dvh - var(--header-h, 16.125rem) - 1rem))', overflow: 'auto', 'scroll-padding-block': '6rem 5rem',
+    });
+    expect(css).not.toMatch(/--aw-menu-top/);
+    expect(ruleFor('.aw-menu-heading')).toMatchObject({ position: 'sticky', top: '0', background: '#fff' });
+    expect(ruleFor('.aw-menu-footer')).toMatchObject({ position: 'sticky', bottom: '0', background: 'var(--paper)' });
+    // A short window keeps room for the departments between them.
+    const short = mediaBlocks(css).find((b) => b.prelude === '(max-height: 37.5em)');
+    expect(rules(short.body).map((r) => r.selectors.join(', '))).toEqual(['.aw-mega-menu', '.aw-menu-heading', '.aw-menu-heading .eyebrow', '.aw-menu-heading h2', '.aw-menu-footer']);
+  });
+
+  it('sets the departments in four equal columns, with no empty feature tile', () => {
+    expect(ruleFor('.aw-menu-grid')['grid-template-columns']).toBe('repeat(4, minmax(0, 1fr))');
+    expect(css).not.toMatch(/aw-menu-feature/);
+    expect(code(read('src/components/Header.jsx'))).not.toMatch(/aw-menu-feature|subs\.slice/);
+  });
+});
+
+// The link to the page on screen (AW-221): orange with a bar along its foot in
+// the header rows and the phone menu (the system highlight in forced colours,
+// above), white, bold and more heavily underlined in the footer.
+describe('the page on screen in the navigation (AW-221)', () => {
+  it('marks the current link in the header rows, the phone menu, the Categories menu and the footer', () => {
+    expect(ruleFor('.aw-discovery-nav a[aria-current], .aw-service-nav a[aria-current], .menu-group a[aria-current]'))
+      .toEqual({ color: 'var(--orange-dark)', 'box-shadow': 'inset 0 -3px 0 var(--orange)' });
+    expect(ruleFor('.aw-department a[aria-current="page"], .aw-menu-footer a[aria-current="page"]')).toEqual({ 'font-weight': '700', color: 'var(--orange-dark)' });
+    expect(ruleFor('.footer-main [aria-current]')).toEqual({ color: '#fff', 'font-weight': '700', 'text-decoration-thickness': '2px' });
+    // It outranks the footer's own link rules, which keep the underline offset.
+    expect(css.indexOf('.footer-main [aria-current] {')).toBeGreaterThan(css.indexOf('.footer-grid button, .footer-grid .footer-link {'));
+    for (const selector of ['.footer-grid button, .footer-grid .footer-link', '.footer-policies a']) {
+      expect(ruleFor(selector)['text-underline-offset'], selector).toBe('var(--link-offset)');
+    }
+  });
+});
+
+// The footer from 1100px down (AW-219): the brand blurb is a full-width row
+// above the link columns, three of them, then two in the compact layout and
+// one on phones, so the blurb's cell is never stretched beside a long column.
+// Help (AW-220): the hour ranges on lines of their own, links in a row.
+describe('footer columns and Help (AW-219, AW-220)', () => {
+  const blocks = mediaBlocks(css);
+  const inBlock = (prelude) => blocks.filter((b) => b.prelude === prelude).flatMap((b) => rules(b.body));
+  const own = (list, selector) => declarations(list.find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+
+  it('puts the brand above three link columns at 1100px, two in the compact layout and one on phones', () => {
+    const narrow = inBlock('(max-width: 68.75em)');
+    expect(own(narrow, '.footer-grid')).toEqual({ 'grid-template-columns': 'repeat(3, minmax(0, 1fr))' });
+    expect(own(narrow, '.footer-brand')).toEqual({ 'grid-column': '1 / -1' });
+    expect(own(narrow, '.footer-brand p')).toEqual({ 'max-width': '68ch' });
+    expect(own(inBlock(MOBILE_QUERY), '.footer-grid')).toEqual({ 'grid-template-columns': '1fr 1fr' });
+    expect(own(inBlock('(max-width: 37.5em)'), '.footer-grid')).toMatchObject({ 'grid-template-columns': 'minmax(0, 1fr)' });
+    // The compact rule comes after the 1100px one, and the phone rule after both.
+    const at = (prelude, text) => blocks.find((b) => b.prelude === prelude && b.body.includes(text)).start;
+    expect(at(MOBILE_QUERY, '.footer-grid')).toBeGreaterThan(at('(max-width: 68.75em)', '.footer-grid'));
+    expect(at('(max-width: 37.5em)', '.footer-grid')).toBeGreaterThan(at(MOBILE_QUERY, '.footer-grid'));
+  });
+
+  it('sets each Help hour range on a line of its own and the help links in a wrapping row', () => {
+    expect(ruleFor('.hours-line')).toEqual({ display: 'block' });
+    expect(ruleFor('.help-links')).toMatchObject({ display: 'flex', 'flex-wrap': 'wrap' });
+    expect(code(read('src/components/HelpDialog.jsx'))).not.toMatch(/className="kicker"/);
+  });
+
+  it('draws no rule over the first link of a policy nav without its eyebrow', () => {
+    expect(ruleFor('.policy-nav > a:first-child')).toEqual({ 'border-top': '0' });
+    // The policy pages' side nav (SupportLayout, AW-122) leaves its eyebrow off.
+    expect(code(read('src/pages/support/PolicyPage.jsx'))).toMatch(/<SupportLayout current=\{kind\} navLabel=\{null\}>/);
+  });
+});
+
+describe('department page controls (AW-223, AW-225, AW-325)', () => {
+  const all = rules(css);
+  const blocks = mediaBlocks(css);
+  const inBlock = (prelude) => blocks.filter((b) => b.prelude === prelude).flatMap((b) => rules(b.body));
+  const outside = rules(outsideMedia);
+
+  it('sets every breadcrumb in the trail’s capitals: no crumb resets the case, and none is a button (AW-325)', () => {
+    expect(ruleFor('.crumbs')['text-transform']).toBe('uppercase');
+    const crumbRules = all.filter((r) => r.selectors.some((s) => s.includes('.crumbs')));
+    expect(crumbRules.length).toBeGreaterThan(4);
+    for (const { selectors, body } of crumbRules) {
+      const transform = declarations(body)['text-transform'];
+      if (transform !== undefined) expect(['uppercase', 'inherit'], selectors.join(', ')).toContain(transform);
+    }
+    // The global reset that once turned "Home" title case hits buttons only, and
+    // the trail renders links and spans.
+    expect(code(read('src/components/Breadcrumbs.jsx'))).not.toMatch(/<button/);
+  });
+
+  it('mutes a product line the filters leave empty, but never the current one, and not as a selected state (AW-225)', () => {
+    expect(outside.find((r) => r.selectors.join() === '.sub-pill.is-empty:not(.active)')).toBeTruthy();
+    expect(ruleFor('.sub-pill.is-empty:not(.active)')).toEqual({ 'border-style': 'dashed', color: 'var(--muted)' });
+    const forced = inBlock('(forced-colors: active)').flatMap((r) => r.selectors);
+    expect(forced.filter((s) => s.includes('is-empty'))).toEqual([]);
+  });
+
+  it('puts Back to top in the corner, a 44px purple button above the sticky toolbar and below the toast and dialogs (AW-223)', () => {
+    const button = ruleFor('.back-to-top');
+    expect(button).toMatchObject({
+      position: 'fixed', right: '16px', bottom: 'calc(max(16px, env(safe-area-inset-bottom)) + var(--back-to-top-lift, 0px))',
+      width: 'var(--tap)', height: 'var(--tap)', background: 'var(--purple)', color: '#fff',
+    });
+    const z = Number(button['z-index']);
+    // The phone layout's sticky toolbar.
+    const toolbar = inBlock(MOBILE_QUERY).find((r) => r.selectors.join() === '.category-toolbar');
+    expect(declarations(toolbar.body).position).toBe('sticky');
+    expect(z).toBeGreaterThan(Number(declarations(toolbar.body)['z-index']));
+    expect(z).toBeLessThan(Number(ruleFor('.toast-root')['z-index']));
+    expect(z).toBeLessThan(Number(ruleFor('.aw-layer')['z-index']));
+    // Its hover is for a mouse only, and the focus ring stays outside it.
+    expect(inBlock('(hover: hover)').some((r) => r.selectors.includes('.back-to-top:not(:disabled):hover'))).toBe(true);
+    expect(outside.some((r) => r.selectors.includes('.back-to-top:focus-visible'))).toBe(true);
+    // Not on paper.
+    expect(inBlock('print').some((r) => r.selectors.includes('.back-to-top') && declarations(r.body).display === 'none')).toBe(true);
+  });
+});
+
+describe('All products page (AW-068, AW-069, AW-229)', () => {
+  const blocks = mediaBlocks(css);
+  const inBlock = (prelude) => blocks.filter((b) => b.prelude === prelude).flatMap((b) => rules(b.body));
+  const outside = rules(outsideMedia);
+  const base = (selector) => declarations(outside.find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+
+  it('wraps every department’s product lines at every width, lined up with its heading (AW-069)', () => {
+    expect(base('.dept-section .sub-pills')).toEqual({ 'flex-wrap': 'wrap', overflow: 'visible', padding: '0', margin: '14px 0 12px' });
+    // The compact layout's sideways scroller is a single class, which the two
+    // classes above outrank wherever it sits; no rule overrides them there.
+    const scrollers = inBlock(MOBILE_QUERY).filter((r) => declarations(r.body)['flex-wrap'] === 'nowrap' && r.selectors.some((s) => s.includes('sub-pills')));
+    expect(scrollers.map((r) => r.selectors)).toEqual([['.sub-pills']]);
+    expect(blocks.flatMap((b) => rules(b.body)).some((r) => r.selectors.includes('.dept-section .sub-pills'))).toBe(false);
+  });
+
+  it('gives the jump links, department links and SKU list toggles 40px targets, and 44px on touch (AW-229)', () => {
+    for (const selector of ['.dept-jump a', '.sku-details summary', '.dept-head .text-link, .dept-more .text-link']) {
+      expect(base(selector)['min-height'], selector).toBe('var(--tap-sm)');
+    }
+    const touch = inBlock('(pointer: coarse)').find((r) => r.selectors.includes('.dept-more .text-link'));
+    expect(touch.selectors).toEqual(['.dept-jump a', '.sku-details summary', '.dept-head .text-link', '.dept-more .text-link']);
+    expect(declarations(touch.body)).toEqual({ 'min-height': 'var(--tap)' });
+    // The SKU list's detail line is at the 12px floor.
+    expect(base('.sku-list small')['font-size']).toBe('var(--text-xs)');
+  });
+});
+
+describe('product photo zoom on phones (AW-236)', () => {
+  const inBlock = (prelude) => mediaBlocks(css).filter((b) => b.prelude === prelude).flatMap((b) => rules(b.body));
+  const own = (selector) => declarations(inBlock('(max-width: 37.5em)').find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+
+  it('lets the enlarged photo take the screen’s width, so it is never smaller than the photo on the page', () => {
+    expect(own('.overlay.pd-zoom-overlay')).toEqual({ padding: '0' });
+    expect(own('.dialog.pd-zoom-dialog')).toEqual({ 'max-width': '100%', padding: '8px 8px 12px' });
   });
 });

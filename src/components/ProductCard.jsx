@@ -28,6 +28,18 @@
 // (src/lib/toast.js). Focus moves to the stepper that replaces the button
 // (its + after a tap, so a phone's keyboard doesn't open), and back to the
 // add button when − at 1 removes the product, which is announced.
+//
+// Nothing is printed over the photo (AW-055): the tag (BESTSELLER, NEW, DEAL,
+// PREMIUM) is a chip in the kicker line beside the product line, and the
+// department isn't repeated on the card. Only the sell-unit badge (AW-136)
+// stays on the photo. The photo is lazy unless the page says `eager`; the
+// first card of a department page is also `priority` (AW-323).
+//
+// Without trade pricing (a guest, or an account not approved) the card says
+// "Pricing after approval" as plain text (an account on hold: "Account on
+// hold", AW-101, which is what `profile` is for); the page shows one
+// PricingNotice with Sign in and Apply above the grid instead of a sign-in
+// link on every card (AW-224). Callers may still pass onLoginClick.
 
 import { useEffect, useId, useRef, useState } from 'react';
 import {
@@ -62,7 +74,9 @@ export function cardDetail(p, { sku = true } = {}) {
   ].filter(Boolean).join(' · ');
 }
 
-export function ProductCard({ p, profile, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, onLoginClick, showSku = true }) {
+export function ProductCard({
+  p, profile = null, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, showSku = true, eager = false, priority = false,
+}) {
   // Counts the adds since "Added" last went away; each add restarts its timer.
   const [adds, setAdds] = useState(0);
   useEffect(() => {
@@ -131,13 +145,11 @@ export function ProductCard({ p, profile, isApprovedBuyer, priceOf = NO_PRICES, 
     <article className="content-card">
       <Link className="card-link" to={productRoute} aria-label={`${p.name} details`}>
         <div className="card-block">
-          <span className="block-label">{p.cat}</span>
-          {p.tag && <span className={`card-tag ${p.tag === 'NEW' ? 'new' : ''}`}>{p.tag}</span>}
-          <ProductPhoto product={p} sizes={SIZES.card} />
+          <ProductPhoto product={p} sizes={SIZES.card} priority={priority} loading={eager ? 'eager' : 'lazy'} />
           {/* TODO(owner): A correct photo for each product that shares a file with a different size or pack. (AW-136) */}
           {p.picture && p.sharedPhoto && p.sellUnit && <span className="pack-badge">{p.sellUnit}</span>}
         </div>
-        <p className="card-kicker">{p.sub}</p>
+        <p className="card-kicker"><span>{p.sub}</span>{p.tag && <span className={`card-tag${p.tag === 'NEW' ? ' new' : ''}`}>{p.tag}</span>}</p>
         <h3 id={titleId}>{p.name}</h3>
         <p className="card-detail">{cardDetail(p, { sku: showSku })}</p>
       </Link>
@@ -148,11 +160,11 @@ export function ProductCard({ p, profile, isApprovedBuyer, priceOf = NO_PRICES, 
             <b>{priceLabel(shown.unit, pricesStatus, { from: shown.from })}</b>
             {shown.unit != null && p.sellUnit && <small>{`per ${p.sellUnit}`}</small>}
           </span>
-        ) : profile ? (
+        ) : accountStatus(profile) === 'suspended' ? (
           // A suspended account is on hold, not waiting for approval (AW-101).
-          <span className="lock">{(PRICE_LOCK[accountStatus(profile)] || PRICE_LOCK.pending).short}</span>
+          <span className="lock">{PRICE_LOCK.suspended.short}</span>
         ) : (
-          <button className="text-link price-login" type="button" onClick={onLoginClick}>Sign in for pricing</button>
+          <span className="lock">{PRICE_LOCK.pending.short}</span>
         )}
         {choiceRequired ? (
           <Link className="button ghost sm card-add" to={productRoute} aria-describedby={titleId}>{qty > 0 ? `Select options · ${qty}` : 'Select options'}</Link>

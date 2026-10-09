@@ -307,10 +307,16 @@ export function photoProblem(file) {
   return null;
 }
 
-// Where an uploaded photo goes in the product-images bucket:
-// products/<id or new>/<time>-<name>.<ext>, the name slugged from the file's.
-export function productImagePath(productId, file, now = Date.now()) {
+// An uploaded photo's file name in the product-images bucket:
+// <time>-<name>.<ext>, the name slugged from the file's.
+export function photoFileName(file, now = Date.now()) {
   const base = String(file?.name || '').replace(/\.[^.]*$/, '');
   const slug = base.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'photo';
-  return `products/${productId ?? 'new'}/${now}-${slug}.${PHOTO_TYPES[file?.type] || 'jpg'}`;
+  return `${now}-${slug}.${PHOTO_TYPES[file?.type] || 'jpg'}`;
+}
+
+// Where a product's uploaded photo goes: products/<id or new>/<file name>.
+// (Admin -> Homepage's hero photos go to home/<file name>.)
+export function productImagePath(productId, file, now = Date.now()) {
+  return `products/${productId ?? 'new'}/${photoFileName(file, now)}`;
 }

@@ -9,8 +9,15 @@
 // from the CatalogProvider (src/lib/catalog.jsx, AW-204, AW-191), and an
 // approved buyer's prices from the PricesProvider (src/lib/prices.jsx,
 // AW-003), both also mounted in main.jsx.
+//
+// Code splitting (AW-179): the storefront pages (home, departments, products,
+// search, All products, not found) are in the first download. The account,
+// admin, quote and support pages and the sign-in dialog load when first
+// opened, and Quote, Account and the dialog (Admin for an admin) also load in
+// the background once the page is idle. src/components/LazyPage.jsx has the
+// loading views; ErrorBoundary says when that code didn't load.
 
-import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
+import { Suspense, lazy, useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 
 import { savedSessionUserId, useAuth } from './lib/auth.jsx';
 import { useCatalog } from './lib/catalog.jsx';
@@ -39,26 +46,36 @@ import { Header } from './components/Header.jsx';
 import { Footer } from './components/Footer.jsx';
 import { CartDrawer } from './components/CartDrawer.jsx';
 import { HelpDialog } from './components/HelpDialog.jsx';
-import { AuthModal } from './components/AuthModal.jsx';
 import { ModalLayer } from './components/ModalLayer.jsx';
 import { ErrorBoundary } from './components/ErrorBoundary.jsx';
+import { LazyDialog, PageLoading, lazyPage } from './components/LazyPage.jsx';
 import { SiteNotices } from './components/SiteNotices.jsx';
 import { Toast } from './components/Toast.jsx';
 import { HomePage } from './pages/HomePage.jsx';
 import { CategoryPage } from './pages/CategoryPage.jsx';
 import { ProductPage } from './pages/ProductPage.jsx';
-import { QuotePage } from './pages/QuotePage.jsx';
 import { NotFoundPage } from './pages/NotFoundPage.jsx';
 import { SearchPage } from './pages/SearchPage.jsx';
-import { AccountPage } from './pages/account/AccountPage.jsx';
-import { AdminPage } from './pages/admin/AdminPage.jsx';
 import { useAdminUnseen } from './pages/admin/useAdminUnseen.js';
+// Eager: its '#dept-…' links scroll to their department before paint.
 import { CatalogIndexPage } from './pages/support/CatalogIndexPage.jsx';
-import { ContactPage } from './pages/support/ContactPage.jsx';
-import { DeliveryPage } from './pages/support/DeliveryPage.jsx';
-import { PolicyPage } from './pages/support/PolicyPage.jsx';
-import { ApplyPage } from './pages/support/ApplyPage.jsx';
-import { ResetPasswordPage } from './pages/support/ResetPasswordPage.jsx';
+import { prefetch, whenIdle } from './lib/chunks.js';
+
+// Loaded when first opened (AW-179). Each loader is also what the idle
+// prefetch below calls, so both share one download.
+const loadQuotePage = () => import('./pages/QuotePage.jsx');
+const loadAccountPage = () => import('./pages/account/AccountPage.jsx');
+const loadAdminPage = () => import('./pages/admin/AdminPage.jsx');
+const loadAuthModal = () => import('./components/AuthModal.jsx');
+const QuotePage = lazyPage(() => loadQuotePage().then((m) => ({ default: m.QuotePage })));
+const AccountPage = lazyPage(() => loadAccountPage().then((m) => ({ default: m.AccountPage })));
+const AdminPage = lazyPage(() => loadAdminPage().then((m) => ({ default: m.AdminPage })));
+const ContactPage = lazyPage(() => import('./pages/support/ContactPage.jsx').then((m) => ({ default: m.ContactPage })));
+const DeliveryPage = lazyPage(() => import('./pages/support/DeliveryPage.jsx').then((m) => ({ default: m.DeliveryPage })));
+const PolicyPage = lazyPage(() => import('./pages/support/PolicyPage.jsx').then((m) => ({ default: m.PolicyPage })));
+const ApplyPage = lazyPage(() => import('./pages/support/ApplyPage.jsx').then((m) => ({ default: m.ApplyPage })));
+const ResetPasswordPage = lazyPage(() => import('./pages/support/ResetPasswordPage.jsx').then((m) => ({ default: m.ResetPasswordPage })));
+const AuthModal = lazy(() => loadAuthModal().then((m) => ({ default: m.AuthModal })));
 
 // Not-found routes that depend on what is in the catalog.
 const CATALOG_KINDS = ['product', 'department', 'line'];
@@ -115,6 +132,10 @@ export default function App() {
   // Orders placed since this admin last opened Admin -> Orders (AW-111): the
   // header's Admin link and the admin pages' titles show the count.
   const adminUnseen = useAdminUnseen(isAdmin ? profile.id : null);
+  // Once the page is idle, the pages and dialog a visit most often opens next
+  // load in the background (AW-179); Admin only for an admin.
+  useEffect(() => whenIdle(() => prefetch([loadQuotePage, loadAccountPage, loadAuthModal])), []);
+  useEffect(() => (isAdmin ? whenIdle(() => prefetch([loadAdminPage])) : undefined), [isAdmin]);
   const departments = useMemo(() => departmentsFor(products), [products]);
   // The signed-in buyer's unit price for a product (and variant), or null:
   // no approved account, prices still loading, or price on request (AW-003).
@@ -321,7 +342,7 @@ export default function App() {
   // Product cards need the account, its prices, the cart and the add/step actions.
   const cardProps = {
     profile, isApprovedBuyer, priceOf, pricesStatus: prices.status, priceTier, listOf,
-    cart: cart.cart, addLine: cart.addLine, decLine: cart.decLine, onLoginClick: openSignin,
+    cart: cart.cart, addLine: cart.addLine, decLine: cart.decLine, onLoginClick: openSignin, onApplyClick: openSignup,
   };
   // Account pages wait for the session and profile instead of flashing a
   // signed-out view (AW-186), and offer a retry when the profile fails (AW-089).
@@ -370,7 +391,7 @@ export default function App() {
       case 'catalog':
         return (
           <CatalogIndexPage products={products} departments={departments} profile={profile} isApprovedBuyer={isApprovedBuyer}
-                            onLoginClick={openSignin} signedIn={!!session} onApplyClick={openSignup} />
+                            onLoginClick={openSignin} signedIn={!!session} {...cardProps} />
         );
       case 'contact':
         return <ContactPage onApplyClick={openApplication} />;
@@ -402,7 +423,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <TradeBar onApplyClick={openSignup} />
+      <TradeBar signedIn={!!session} onApplyClick={openSignup} />
 
       <Header
         cartCount={cart.count} onCart={() => setCartOpen(true)}
@@ -416,11 +437,15 @@ export default function App() {
       <main className="container" id="main" tabIndex={-1}>
         <SiteNotices notices={notices} />
         <ErrorBoundary resetKey={routeKey(route)}>
-          {renderRoute()}
+          {/* Keyed by page: a page whose code is still loading shows the
+              loading view, not the last page hidden underneath it (AW-179). */}
+          <Suspense key={route.page} fallback={<PageLoading />}>
+            {renderRoute()}
+          </Suspense>
         </ErrorBoundary>
       </main>
 
-      <Footer departments={departments} onLoginClick={openSignin} onApplyClick={openSignup} onHelp={() => setHelpOpen(true)} />
+      <Footer departments={departments} signedIn={!!session} onLoginClick={openSignin} onApplyClick={openSignup} onHelp={() => setHelpOpen(true)} />
 
       {/* Confirms an add (AW-072); its action opens the cart. */}
       <Toast onAction={(id) => { if (id === 'open-cart') setCartOpen(true); }} />
@@ -429,10 +454,15 @@ export default function App() {
                   setLine={cart.setLine} chooseVariant={cart.chooseVariant} removeLine={cart.removeLine} removeLines={cart.removeLines}
                   legacy={cart.legacy} onDismissLegacy={cart.dismissLegacy}
                   profile={profile} isApprovedBuyer={isApprovedBuyer} isSuspended={isSuspended} pricesStatus={prices.status} onLoginClick={openCartSignin} />
-      {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} onApply={() => { setHelpOpen(false); openSignup(); }} />}
+      {helpOpen && <HelpDialog signedIn={!!session} onClose={() => setHelpOpen(false)} onApply={() => { setHelpOpen(false); openSignup(); }} />}
       {/* It has its own ModalLayer, so Escape and Back ask before a typed
-          application is lost (AW-018). Sign Out closes it outright. */}
-      {loginOpen && <AuthModal initialMode={loginMode} onClose={() => setLoginOpen(false)} onSignOut={signOutHere} signingOut={signingOut} />}
+          application is lost (AW-018). Sign Out closes it outright. Its code
+          loads on first use, with a small dialog meanwhile (AW-179). */}
+      {loginOpen && (
+        <LazyDialog eyebrow="TRADE ACCOUNTS" onClose={() => setLoginOpen(false)}>
+          <AuthModal initialMode={loginMode} onClose={() => setLoginOpen(false)} onSignOut={signOutHere} signingOut={signingOut} />
+        </LazyDialog>
+      )}
       {/* Last, so it sits above any other layer. No onClose and no history
           entry: Escape and Back leave it open (AW-044, AW-065). */}
       {gated && (

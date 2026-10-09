@@ -458,12 +458,12 @@ test.describe('after age confirmation', () => {
     const errors = trackErrors(page);
     // Swisher Sweets Leaf: flavors, with the flavor note.
     await page.goto('/product/8');
-    await expect(page.getByRole('group', { name: 'Choose a flavor' })).toBeVisible();
+    await expect(page.getByRole('radiogroup', { name: 'Choose a flavor' })).toBeVisible();
     await expect(page.getByText('Flavors and availability change often.', { exact: false })).toBeVisible();
     // Gas cans: sizes, no flavor note.
     await page.goto('/product/356');
-    await expect(page.getByRole('group', { name: 'Choose a size' })).toBeVisible();
-    await expect(page.getByText('Pick a size to add it. Add each size you want separately.')).toBeVisible();
+    await expect(page.getByRole('radiogroup', { name: 'Choose a size' })).toBeVisible();
+    await expect(page.getByText('Add each size you want separately.')).toBeVisible();
     await expect(page.getByText('Flavors and availability change often.', { exact: false })).toHaveCount(0);
     // RAW tips: no variants (its lone "Tips" was no choice, AW-138), no chips.
     await page.goto('/product/329');

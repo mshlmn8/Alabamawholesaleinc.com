@@ -7,19 +7,27 @@
 //
 // The search box is HeaderSearch, a combobox (AW-171). The Categories menu,
 // like the search list, closes when focus moves to a control outside it
-// (AW-165), on Escape, on a click outside and on a page change.
+// (AW-165), on Escape, on a click outside and on a page change. It lists each
+// department's three biggest product lines, and fits the window: its heading
+// and footer stay in view while the departments scroll between them (AW-062).
+// TODO(owner): Its featured Novelties tile was an empty block and is gone; a
+// new one needs the department's one name and a photo (AW-056, AW-217).
+//
+// Links to the page on screen carry aria-current (AW-221, navCurrent.js).
 
 import { useState, useEffect, useRef } from 'react';
 import { IMG } from '../data/theme.js';
 import { COMPANY } from '../data/content.js';
 import { APPLY_LABEL, SIGN_IN_LABEL, basketBadge, basketButtonLabel, basketTerms } from '../data/terms.js';
 import { useMediaQuery, MOBILE_QUERY } from '../lib/useMediaQuery.js';
-import { Link, navigate, useLocation } from '../lib/router.js';
+import { Link, navigate, useRoute } from '../lib/router.js';
 import { MobileMenu } from './MobileMenu.jsx';
 import { AdminUnseenBadge } from './AdminUnseenBadge.jsx';
 import { HeaderSearch } from './HeaderSearch.jsx';
 import { Icon } from './Icon.jsx';
 import { useImageStatus } from '../lib/useImageStatus.js';
+import { topLines } from '../lib/departments.js';
+import { currentFor } from '../lib/navCurrent.js';
 
 // The logo photo, or the brand in text when it fails to load (AW-341). The
 // photo is 320px square, so its width and height reserve the slot before it
@@ -47,7 +55,7 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
 
   // Back/Forward (or any page change) closes the mega menu, like following
   // one of its links does. HeaderSearch does the same for its list.
-  const location = useLocation();
+  const { location, raw } = useRoute();
   const [seenLocation, setSeenLocation] = useState(location);
   if (seenLocation !== location) {
     setSeenLocation(location);
@@ -146,8 +154,13 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
               ) : (
                 <Link key="plain" className="aw-signin aw-account-name" to="/account" onClick={closeMenus}>My account</Link>
               )}
-              {isAdmin && <Link className="aw-signin aw-desktop-only" to="/admin" onClick={closeMenus}>Admin<AdminUnseenBadge count={adminUnseen} /></Link>}
-              <span className="aw-account-or">·</span>
+              {isAdmin && (
+                <>
+                  <span className="aw-account-or aw-desktop-only" aria-hidden="true">·</span>
+                  <Link className="aw-signin aw-desktop-only" to="/admin" onClick={closeMenus}>Admin<AdminUnseenBadge count={adminUnseen} /></Link>
+                </>
+              )}
+              <span className="aw-account-or" aria-hidden="true">·</span>
               <button className="aw-signin aw-desktop-only" type="button" onClick={() => runNav(onLogout)} disabled={signingOut}>
                 <span>{signingOut ? 'Signing out…' : 'Sign out'}</span>
               </button>
@@ -191,18 +204,17 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
               {departments.map((c, i) => (
                 <div className="aw-department" key={c.key} role="group" aria-labelledby={`aw-department-${i}`}>
                   <h3><span>{String(i + 1).padStart(2, '0')}</span><span id={`aw-department-${i}`}>{c.label}</span></h3>
-                  {c.subs.slice(0, 3).map(s => (
-                    <Link key={s} to={{ page: 'category', category: c.key, sub: s }} onClick={closeMenus}>{s}</Link>
+                  {topLines(products, c.key, 3).map(s => (
+                    <Link key={s} to={{ page: 'category', category: c.key, sub: s }} onClick={closeMenus}
+                          aria-current={currentFor(raw, { page: 'category', category: c.key, sub: s })}>{s}</Link>
                   ))}
-                  <Link className="aw-department-all" to={{ page: 'category', category: c.key }} onClick={closeMenus}>{`All ${c.label}`}</Link>
+                  <Link className="aw-department-all" to={{ page: 'category', category: c.key }} onClick={closeMenus}
+                        aria-current={currentFor(raw, { page: 'category', category: c.key })}>{`All ${c.label}`}</Link>
                 </div>
               ))}
-              <Link className="aw-menu-feature" to={{ page: 'category', category: 'NOVELTIES' }} onClick={closeMenus}>
-                <div><p className="eyebrow">FEATURED</p><h3>Exotics &amp;<br />novelties.</h3><span>Explore the department</span></div>
-              </Link>
             </div>
             <div className="aw-menu-footer">
-              <Link to="/catalog" onClick={closeMenus}>View full catalog</Link>
+              <Link to="/catalog" onClick={closeMenus} aria-current={currentFor(raw, '/catalog')}>View full catalog</Link>
               <span>{`${departments.length} departments · ${products.length} products`}</span>
             </div>
           </section>
@@ -210,10 +222,11 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
         <nav className="aw-discovery-nav" aria-label="Main navigation">
           <Link to="/#new-arrivals" onClick={closeMenus}><span className="aw-new-dot" aria-hidden="true"></span>New arrivals</Link>
           <Link to="/#bestsellers" onClick={closeMenus}>Bestsellers</Link>
-          <Link className="aw-exotics-link" to={{ page: 'category', category: 'NOVELTIES' }} onClick={closeMenus}>Exotics</Link>
+          <Link className="aw-exotics-link" to={{ page: 'category', category: 'NOVELTIES' }} onClick={closeMenus}
+                aria-current={currentFor(raw, { page: 'category', category: 'NOVELTIES' })}>Exotics</Link>
         </nav>
         <div className="aw-service-nav">
-          <Link to={QUICK_REORDER} onClick={followReorder}>Quick reorder</Link>
+          <Link to={QUICK_REORDER} onClick={followReorder} aria-current={currentFor(raw, '/account')}>Quick reorder</Link>
           <button type="button" onClick={() => runNav(onHelp)}>Help <Icon name="help" /></button>
         </div>
       </div>

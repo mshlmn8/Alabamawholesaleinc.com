@@ -127,14 +127,36 @@ export function fulfillMyPrices(route, rows = seedRows(), options = {}) {
   });
 }
 
-// Serves the seeded catalog to every page of a context (or one page).
-// `rows()` may return a different list per request, e.g. to take a product
-// out of the catalog mid-test.
-export async function serveCatalog(target, { rows = () => seedRows() } = {}) {
+// The hero photos (public.home_slides, AW-119). The live database doesn't
+// have the table until 20261011131000_home_slides.sql is applied, and
+// PostgREST answers that with a 404 and PGRST205, so that is the default
+// answer here; pass rows to serve them instead (active rows only, in sort
+// then id order, the columns in select=, like the database).
+export const HOME_SLIDES_MISSING = Object.freeze({ code: 'PGRST205', message: "Could not find the table 'public.home_slides' in the schema cache" });
+
+export function fulfillHomeSlides(route, slides = null) {
+  const req = route.request();
+  if (req.method() !== 'GET') return route.abort();
+  if (!slides) return postgrestError(route, 404, HOME_SLIDES_MISSING.code, HOME_SLIDES_MISSING.message);
+  const url = new URL(req.url());
+  const columns = (url.searchParams.get('select') || '*').split(',').map((c) => c.trim()).filter(Boolean);
+  const rows = slides.filter((r) => r.active !== false)
+    .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || a.id - b.id)
+    .map((row) => (columns.includes('*') ? row : Object.fromEntries(columns.map((c) => [c, row[c] ?? null]))));
+  return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(rows) });
+}
+
+// Serves the seeded catalog to every page of a context (or one page), and
+// answers the hero photos request (fulfillHomeSlides) so a smoke run never
+// reaches a real project. `rows()` may return a different list per request,
+// e.g. to take a product out of the catalog mid-test; `homeSlides()` returns
+// home_slides rows, or null for "no table yet" (the default).
+export async function serveCatalog(target, { rows = () => seedRows(), homeSlides = () => null } = {}) {
   const calls = [];
   await target.route(/\/rest\/v1\/products/, (route) => {
     calls.push(route.request().url());
     return fulfillProducts(route, rows());
   });
+  await target.route(/\/rest\/v1\/home_slides/, (route) => fulfillHomeSlides(route, homeSlides()));
   return calls;
 }

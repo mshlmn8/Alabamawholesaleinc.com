@@ -1,7 +1,10 @@
 // Site footer: departments, account and help links, contact details, the
 // policy links and the nicotine warning. Destinations are links (AW-043);
 // "Apply for a trade account", "Sign in" and "Help" open dialogs and stay
-// buttons.
+// buttons. Signed in, a "My account" link takes the place of Apply and Sign
+// in (AW-066); the application checklist stays, for documents an
+// application still needs. Links to the page on screen carry aria-current
+// (AW-221).
 //
 // AW-285: the shop links (all products, the departments, new arrivals,
 // bestsellers) are one column and the account and help links another, with
@@ -12,7 +15,8 @@
 
 import { COMPANY, LICENSED_ONLY } from '../data/content.js';
 import { APPLY_LABEL, SIGN_IN_LABEL } from '../data/terms.js';
-import { Link } from '../lib/router.js';
+import { Link, useRoute } from '../lib/router.js';
+import { currentFor } from '../lib/navCurrent.js';
 import { NicotineWarning } from './NicotineWarning.jsx';
 
 // The copyright year, read once when the module loads: render may not read
@@ -26,7 +30,9 @@ export function footerBlurb(departments) {
   return `Wholesale distributor${names ? ` of ${names}` : ''}. Serving licensed retail stores.`;
 }
 
-export function Footer({ departments, onLoginClick, onApplyClick, onHelp }) {
+export function Footer({ departments, signedIn = false, onLoginClick, onApplyClick, onHelp }) {
+  const { raw } = useRoute();
+  const current = (to) => currentFor(raw, to);
   return (
     <footer className="footer-main">
       <div className="container">
@@ -37,21 +43,24 @@ export function Footer({ departments, onLoginClick, onApplyClick, onHelp }) {
           </div>
           <div>
             <h4>Departments</h4>
-            <Link className="footer-link" to="/catalog">All products</Link>
-            {departments.map(c => <Link key={c.key} className="footer-link" to={{ page: 'category', category: c.key }}>{`${c.label} (${c.count})`}</Link>)}
+            <Link className="footer-link" to="/catalog" aria-current={current('/catalog')}>All products</Link>
+            {departments.map(c => <Link key={c.key} className="footer-link" to={{ page: 'category', category: c.key }} aria-current={current({ page: 'category', category: c.key })}>{`${c.label} (${c.count})`}</Link>)}
             <Link className="footer-link" to="/#new-arrivals">New arrivals</Link>
             <Link className="footer-link" to="/#bestsellers">Bestsellers</Link>
           </div>
           <div>
             <h4>Account &amp; help</h4>
-            <button type="button" onClick={onApplyClick}>{APPLY_LABEL}</button>
-            <Link className="footer-link" to="/apply">Application checklist</Link>
-            <button type="button" onClick={onLoginClick}>{SIGN_IN_LABEL}</button>
-            <Link className="footer-link" to="/account">My account</Link>
+            {signedIn
+              ? <Link className="footer-link" to="/account" aria-current={current('/account')}>My account</Link>
+              : <button type="button" onClick={onApplyClick}>{APPLY_LABEL}</button>}
+            <Link className="footer-link" to="/apply" aria-current={current('/apply')}>Application checklist</Link>
+            {!signedIn && <button type="button" onClick={onLoginClick}>{SIGN_IN_LABEL}</button>}
+            {/* A guest's My account says what an account gives (AW-285, AW-086). */}
+            {!signedIn && <Link className="footer-link" to="/account" aria-current={current('/account')}>My account</Link>}
             <Link className="footer-link" to="/account#quick-reorder">Quick reorder</Link>
             <button type="button" onClick={onHelp}>Help</button>
-            <Link className="footer-link" to="/contact">Contact &amp; visit</Link>
-            <Link className="footer-link" to="/delivery">Delivery &amp; service area</Link>
+            <Link className="footer-link" to="/contact" aria-current={current('/contact')}>Contact &amp; visit</Link>
+            <Link className="footer-link" to="/delivery" aria-current={current('/delivery')}>Delivery &amp; service area</Link>
           </div>
           <div>
             <h4>Contact</h4>
@@ -63,9 +72,9 @@ export function Footer({ departments, onLoginClick, onApplyClick, onHelp }) {
         <div className="footer-legal">
           <p>{`© ${YEAR} ${COMPANY.name}. All rights reserved.`}</p>
           <nav className="footer-policies" aria-label="Customer policies">
-            <Link to="/shipping">Delivery policy</Link>
-            <Link to="/privacy">Privacy</Link>
-            <Link to="/terms">Trade terms</Link>
+            <Link to="/shipping" aria-current={current('/shipping')}>Delivery policy</Link>
+            <Link to="/privacy" aria-current={current('/privacy')}>Privacy</Link>
+            <Link to="/terms" aria-current={current('/terms')}>Trade terms</Link>
           </nav>
           <p>{LICENSED_ONLY}</p>
         </div>

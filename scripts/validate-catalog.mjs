@@ -10,9 +10,10 @@
 // axis, a variant label that appears twice in one row (two labels with the
 // same slug share a cart line key), and a label written the ways AW-138 fixed
 // ("IPhone", "Type C To Type C", "Almond reg", "Cookies king", "2gal", "8lbs",
-// "20oz"). With `aliases` (../src/data/catalogAliases.js), also an alias that
-// points at a SKU or label the catalog does not have, or whose old key is
-// still in use (validateAliases).
+// "20oz"), and a name with a retail price or "Cheap" in it (AW-071). With
+// `aliases` (../src/data/catalogAliases.js), also an alias that points at a
+// SKU or label the catalog does not have, or whose old key is still in use
+// (validateAliases).
 // Warnings: how many rows don't say what quantity 1 means (AW-031).
 
 import { VARIANT_AXES, variantSlug } from '../src/lib/lines.js';
@@ -22,6 +23,9 @@ export const SKU_FORMAT = /^AW-[A-Z0-9]+(-[A-Z0-9]+)*$/;
 // Abbreviated or misspelled variant labels (AW-138): write "iPhone", "to",
 // "Regular" / "King size" and "2 gal", "8 lb", "20 oz".
 export const LABEL_PROBLEM = /^I[A-Z]|\bTo\b|\b(reg|king)$|\d(gal|lbs|oz)\b/;
+// A retail price point ("$2.99") or "Cheap" in a product name (AW-071): the
+// buyer's price is their tier's, and value lines are called "Value …".
+export const NAME_PROBLEM = /\$\s?\d|\bcheap\b/i;
 
 export function validateCatalog(rows, { aliases = null } = {}) {
   const problems = [];
@@ -36,6 +40,7 @@ export function validateCatalog(rows, { aliases = null } = {}) {
     skus.add(p.sku);
     if (p.sku && !SKU_FORMAT.test(p.sku)) problems.push(`row ${p.id}: sku ${p.sku} is not AW- plus capital letters and digits between single hyphens (AW-135)`);
     for (const key of ['name', 'brand', 'cat', 'sub']) if (!p[key]) problems.push(`row ${p.id} is missing ${key}`);
+    if (p.name && NAME_PROBLEM.test(p.name)) problems.push(`row ${p.id}: name "${p.name}" has a retail price or "Cheap" in it (AW-071)`);
     if ('price' in p) problems.push(`row ${p.id} has a price; prices live only in the database (AW-003)`);
     if ('flavors' in p) problems.push(`row ${p.id} has flavors; cards count the variants (AW-332)`);
     const variants = Array.isArray(p.variants) ? p.variants : [];

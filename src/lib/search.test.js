@@ -166,7 +166,7 @@ describe('searchProducts on the catalog', () => {
   });
 
   it('finds every word the site suggests in its tips and placeholders (AW-064)', () => {
-    for (const query of ['Geekbar', 'Backwoods', 'BIC', 'energy drinks', 'wraps', 'cigars', 'candy', 'drinks', 'disposables', 'AW-KITE']) {
+    for (const query of ['Geek Bar', 'Geekbar', 'Backwoods', 'BIC', 'energy drinks', 'wraps', 'cigars', 'candy', 'drinks', 'disposables', 'AW-KITE']) {
       expect(searchProducts(PRODUCTS, query).total, query).toBeGreaterThan(0);
     }
   });
