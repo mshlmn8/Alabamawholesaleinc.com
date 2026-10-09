@@ -91,11 +91,12 @@ describe('HomePage sections', () => {
   });
 
   it('passes the signed-in state to the hero calls to action', () => {
+    const hero = () => within(document.querySelector('.home-hero'));
     const { unmount } = renderHome();
-    expect(screen.getByRole('button', { name: 'Apply for a trade account' })).toBeTruthy();
+    expect(hero().getByRole('button', { name: 'Apply for a trade account' })).toBeTruthy();
     unmount();
     renderHome({ signedIn: true });
-    expect(screen.queryByRole('button', { name: 'Apply for a trade account' })).toBeNull();
+    expect(hero().queryByRole('button', { name: 'Apply for a trade account' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Go to my account' }).getAttribute('href')).toBe('/account');
   });
 
@@ -103,7 +104,7 @@ describe('HomePage sections', () => {
     renderHome();
     expect(document.querySelector('.home-hero').nextElementSibling.className).toBe('services');
     const h2s = [...document.querySelectorAll('h2')].map(text);
-    const order = ['Services', 'Shop by department', 'New arrivals', 'Bestsellers', 'Disposables, detox,kratom & more.', 'Tobacco, wraps& accessories.', 'Become a retail account'];
+    const order = ['Services', 'Shop by department', 'New arrivals', 'Bestsellers', 'Disposables, detox,kratom & more.', 'Tobacco, wraps& accessories.', 'Open a trade account'];
     expect(h2s).toEqual(order);
     // The header, menu and footer link to these.
     const ids = [...document.querySelectorAll('section[id]')].map((s) => s.id);
