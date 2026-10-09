@@ -45,7 +45,8 @@
 // While a send runs, the lines and the fields are locked (one disabled
 // fieldset each), and a send that takes too long gives up and says the
 // request may have been saved (AW-194). Offline, the submit button is off
-// with a note, and nothing is sent (AW-344).
+// with a note, and nothing is sent (AW-344). A refusal names the product it
+// is about (AW-200, quoteErrorMessage in src/lib/orders.js).
 
 import { useEffect, useRef, useState } from 'react';
 import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../data/content.js';
@@ -235,8 +236,8 @@ export function QuotePage({
     setErrorField(null);
     setChangeNote(null);
     let saved = null;
+    let lines = orderable;
     try {
-      let lines = orderable;
       if (checkCart) {
         const check = await checkCart();
         if (!check?.ok) {
@@ -268,7 +269,7 @@ export function QuotePage({
     } catch (err) {
       // What the server refused and why, never a reference: a failed quote
       // has none (AW-049). One that took too long may have been saved.
-      setSubmitError(quoteErrorMessage(err));
+      setSubmitError(quoteErrorMessage(err, { items: lines }));
       setErrorField(quoteErrorField(err));
     } finally {
       submittingRef.current = false;

@@ -1,7 +1,7 @@
 // Quote submission against the current submit_quote and, on an older
 // database, PR #12's 16-argument call and the 13-argument one (AW-049,
-// AW-079, AW-198, AW-201, AW-014) and its time limit (AW-194). No network: a
-// fake client answers.
+// AW-079, AW-198, AW-201, AW-014), its time limit (AW-194) and the text for
+// every refusal (AW-200). No network: a fake client answers.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { COMPANY } from '../data/content.js';
 import { QUOTE_SUBMIT_TIMEOUT_MS } from './network.js';
@@ -267,12 +267,82 @@ describe('submitOrder time limit (AW-194)', () => {
     expect(quoteErrorMessage(err)).toEqual(quoteTimeoutMessage(err.refNum));
     expect(quoteErrorMessage(err).after).toBe(` and give quote reference ${err.refNum} before you submit it again.`);
   });
+});
+
+describe('quoteErrorMessage for the remaining refusals (AW-200)', () => {
+  const LINES = [
+    { lineKey: '14', productId: 14, variant: null, name: 'Kite cigarette tobacco', qty: 2 },
+    { lineKey: '1::red', productId: 1, variant: 'Red', name: 'Swisher Sweets cigarillos — Red', qty: 1 },
+    { lineKey: '1::blue', productId: 1, variant: 'Blue', name: 'Swisher Sweets cigarillos — Blue', qty: 1 },
+    { lineKey: '60::mint', productId: 60, variant: 'Mint', name: 'Geek Bar Pulse 15K — Mint', qty: 3 },
+  ];
+  const text = (m) => (typeof m === 'string' ? m : `${m.before} (phone) or email (email)${m.after}`);
+
+  it.each([
+    ['no_items', 'Add at least one item before you submit.'],
+    ['invalid_delivery', 'Choose delivery or will-call pickup.'],
+    ['invalid_quantity', 'Quantities must be a whole number from 1 to 100,000.'],
+  ])('words the %s hint', (hint, expected) => {
+    expect(quoteErrorMessage({ code: 'P0001', message: 'x', hint })).toBe(expected);
+  });
+
+  it('words too many lines, a reference that couldn’t be made, and a quote sent already, around the phone and email', () => {
+    expect(quoteErrorMessage({ hint: 'too_many_items' })).toEqual({
+      before: 'This request has more lines than one request can take. Split it into two, or call', after: '.',
+    });
+    expect(quoteErrorMessage({ hint: 'ref_unavailable' })).toEqual({
+      before: 'We couldn’t assign a reference number, so nothing was sent. Try again in a moment, or call', after: '.',
+    });
+    expect(quoteErrorMessage({ message: 'This quote was already submitted', code: 'P0001' })).toEqual({
+      before: 'This request may already have been sent. Call', after: ' before you submit it again.',
+    });
+  });
+
+  it('names the product from the id in the details, using the lines that were sent', () => {
+    const at = (hint, id, message = 'x') => quoteErrorMessage({ code: 'P0001', message, hint, details: String(id) }, { items: LINES });
+    expect(at('product_unavailable', 14, 'Product is not available')).toBe('‘Kite cigarette tobacco’ is no longer available. Remove it, then submit again.');
+    expect(at('variant_unavailable', 60, 'That variant is not available')).toBe('‘Geek Bar Pulse 15K — Mint’ can’t be ordered right now. Choose another variant or remove it, then submit again.');
+    // Two lines of one product: the product, without a variant.
+    expect(at('unknown_variant', 1, 'Unknown variant for Swisher Sweets cigarillos')).toBe('The variant chosen for ‘Swisher Sweets cigarillos’ is no longer offered. Choose another, then submit again.');
+    expect(at('variant_required', 14, 'Choose a variant for Kite cigarette tobacco')).toBe('Choose a variant for ‘Kite cigarette tobacco’, then submit again.');
+  });
+
+  it('else takes the name from the message, else says “an item”', () => {
+    expect(quoteErrorMessage({ hint: 'variant_required', message: 'Choose a variant for Hershey’s bars', details: '999' }, { items: LINES }))
+      .toBe('Choose a variant for ‘Hershey’s bars’, then submit again.');
+    expect(quoteErrorMessage({ hint: 'product_unavailable', message: 'Product is not available' }))
+      .toBe('An item in this request is no longer available, so nothing was sent. Reload the page to see which, remove it, then submit again.');
+    expect(quoteErrorMessage({ hint: 'variant_unavailable', message: 'That variant is not available' }))
+      .toBe('One of the chosen variants can’t be ordered right now. Choose another or remove it, then submit again.');
+    expect(quoteErrorMessage({ hint: 'unknown_variant', message: 'x' })).toBe('One of the chosen variants is no longer offered. Choose another, then submit again.');
+  });
+
+  it('reads the hint from the message of a database without hints', () => {
+    const live = (message, items = LINES) => text(quoteErrorMessage({ code: 'P0001', message, hint: null, details: null }, { items }));
+    expect(live('Product is not available')).toMatch(/^An item in this request is no longer available/);
+    expect(live('Invalid quantity')).toBe('Quantities must be a whole number from 1 to 100,000.');
+    expect(live('Choose a variant for Swisher Sweets cigarillos')).toBe('Choose a variant for ‘Swisher Sweets cigarillos’, then submit again.');
+    expect(live('Unknown variant for Geek Bar Pulse 15K')).toBe('The variant chosen for ‘Geek Bar Pulse 15K’ is no longer offered. Choose another, then submit again.');
+    expect(live('Too many items')).toMatch(/^This request has more lines than one request can take/);
+    expect(live('Add at least one item')).toBe('Add at least one item before you submit.');
+    expect(live('A ship-to address is required')).toBe('Enter the ship-to street, city, state and ZIP, or choose will-call pickup.');
+    expect(live('Contact details are required')).toBe('Fill in the business, contact, email and phone.');
+    expect(live('Invalid delivery method')).toBe('Choose delivery or will-call pickup.');
+    expect(live('This quote was already submitted')).toMatch(/^This request may already have been sent\. Call/);
+    expect(quoteErrorField({ message: 'A ship-to address is required' })).toBe('shipStreet');
+  });
 
   it('says nothing was sent while offline, and still prefers a server’s answer', () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     expect(QUOTE_OFFLINE).toBe('You’re offline, so nothing was sent. Reconnect and submit again.');
     expect(quoteErrorMessage({ message: 'TypeError: Failed to fetch', code: '' })).toBe(QUOTE_OFFLINE);
     expect(quoteErrorMessage({ hint: 'invalid_zip' })).toBe('Enter a 5-digit ZIP code (or ZIP+4).');
+  });
+
+  it('never cites a reference for a refusal', () => {
+    for (const hint of ['no_items', 'too_many_items', 'invalid_delivery', 'ref_unavailable', 'invalid_quantity', 'product_unavailable', 'variant_required', 'unknown_variant', 'variant_unavailable', 'already_submitted']) {
+      expect(text(quoteErrorMessage({ hint, message: 'x', refNum: 'ALW-Q-0000000000' }, { items: LINES }))).not.toMatch(/ALW-/);
+    }
   });
 });
 

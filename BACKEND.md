@@ -46,14 +46,15 @@ supabase/migrations/20261010121000_admin_bulk_products.sql
 supabase/migrations/20261010122000_order_operations.sql
 supabase/migrations/20261010130000_catalog_apostrophes.sql
 supabase/migrations/20261010131000_photo_filenames.sql
+supabase/migrations/20261011110000_order_item_hints.sql
 supabase/seed/products.sql
 ```
 
 On a project that is already running, apply only the migrations it doesn't
 have yet, in that order, then the seed, then deploy the frontend (see the
 release checklist at the end of this file). The live project has the files
-up to `20260927180000`; the eighteen `20261008…`/`20261009…`/`20261010…` files
-are new.
+up to `20260927180000`; the nineteen `20261008…`/`20261009…`/`20261010…`/`20261011…`
+files are new.
 Review them before applying them; the site keeps working without them (see
 `docs/OWNER-TODO.md` and "Before and after" in the release checklist).
 
@@ -580,6 +581,12 @@ The storefront saves a quote (or an approved buyer's order) with one call,
   honeypot field that simple bots fill in.
 - **Suspended accounts can't submit** (AW-201, hint `account_suspended`);
   the cart and checkout tell them ordering is paused.
+- **Line refusals name the product** (AW-200, `20261011110000`): the
+  order-line trigger's refusals carry a hint (`product_unavailable`,
+  `invalid_quantity`, `variant_required`, `unknown_variant`,
+  `variant_unavailable`) and the line's product id as the error's detail,
+  so the checkout says which item to fix. On a database without it the
+  checkout reads the same refusals from their message text.
 - **A send that takes too long** (AW-194): the checkout gives up on
   `submit_quote` after 25 seconds and says the request may have been saved,
   so the buyer calls before sending it again; it never re-sends it with an
@@ -859,10 +866,10 @@ For each release:
 5. Then apply the migrations the table below marks "Apply AFTER deploying
    the new frontend" (`20261010131000_photo_filenames.sql`).
 
-The live project needs all eighteen, in this order (Cursor's seven
+The live project needs all nineteen, in this order (Cursor's seven
 `20261008…` files, then the six `20261009…` ones, which build on them, then
 the five `20261010…` ones: three for the admin back office and two data-only
-catalog fixes). Apply
+catalog fixes, then `20261011110000`, which can go in any time). Apply
 `20261008200000` and `20261009100000`–`20261009150000` in one session: the
 price boundary hides `products.variant_prices` and `20261009110000` moves it.
 Each `20261009…` migration ends with a commented reverse-SQL block for
@@ -890,6 +897,8 @@ rolling it back.
 17. `20261010130000_catalog_apostrophes.sql` (data only; any time)
 18. `20261010131000_photo_filenames.sql` (data only; **after the new
     frontend is deployed**, step 5 above)
+19. `20261011110000_order_item_hints.sql` (the checkout names the item a
+    refused line is about; any time, after 9)
 
 Then `supabase/seed/products.sql`, then the frontend, then 18.
 
@@ -913,6 +922,7 @@ Then `supabase/seed/products.sql`, then the frontend, then 18.
 | `20261010122000_order_operations.sql` | Admin → Orders' operations (see "Finding, printing and following orders"): `order_events` (status and assignment history, written by the `orders_log_change` trigger, admin read only), `order_admin_notes` (internal notes, admins only, 1–2000 characters, in their own name), `orders.assigned_to` (a profile id; the third foreign key from `orders` to `profiles`) with an index, an index on `orders.preferred_date`, `admin_set_order_status(p_order_id, p_status, p_note)` (admins only; a cancellation needs a reason; hints `reason_required`, `invalid_status`, `note_too_long`, `order_not_found`, `admin_only`), `admin_order_views` and `admin_mark_orders_seen()` (each admin's last visit to Orders), and `public.orders` in the `supabase_realtime` publication (skipped where it doesn't exist). Every new table and function is revoked from guests. A commented Reverse block is at the end. | Apply after `20261009150000` (in order after `20261010121000`). No seed change. The frontend deployed before it keeps working: its plain status updates are logged without a note. The new frontend works before and after: without it, status changes use the plain update, "Staff notes and history" says it needs the update, "Assigned to" is hidden, the New marker counts from the first visit in the tab, the header shows no count, and Orders reloads every minute. Realtime also needs `wss://<project-ref>.supabase.co` in the CSP's `connect-src`. |
 | `20261010130000_catalog_apostrophes.sql` | Data only (AW-064): #163 and #166 get a straight apostrophe in their name and brand ("M&M's", "Reese's"), like every other possessive name in the catalog. Each row changes only while it still has the curly value the seed wrote, so admin edits are kept and a re-run changes nothing. | Apply any time, before or after the frontend: the storefront search treats ’ and ' alike, so both spellings are found before and after. Ids, SKUs and variant labels don't change. |
 | `20261010131000_photo_filenames.sql` | Data only (AW-290): six products' `img` move to the renamed photo files (#21 `p21-speed-stick-mens-deodorant.jpg`, #110 `p110-brillo-basics-dish-liquid.png`, #128 `p128-fabuloso.avif`, #225 `p225-lady-speed-stick-deodorant.webp`, #280 `p280-coastal-motor-oil.jpg`, #292 `p292-electrolit.webp`). Each row changes only while it still names the old file the seed wrote, so a photo an admin has set is kept and a re-run changes nothing. | **Apply AFTER deploying the new frontend.** The frontend deployed before it ships only the old file names, so after this migration it would show "Photo coming soon" for these six products; the new frontend ships only the new files and reads both names (`IMAGE_FILE_ALIASES` in `src/data/catalogAliases.js`). Ids, SKUs and variant labels don't change. |
+| `20261011110000_order_item_hints.sql` | AW-200: recreates the order-line trigger function `enforce_order_item_price()` from `20261009110000`, changing only its refusals: each keeps its message word for word and gets a typed hint (`order_missing`, `product_unavailable`, `invalid_quantity`, `variant_required`, `unknown_variant`; `variant_unavailable` had one) and, as its detail, the line's product id. Still SECURITY DEFINER, revoked from guests and signed-in accounts; Cursor's `order_items_price` trigger is unchanged. A commented Reverse block is at the end. | Apply any time after `20261009110000`. No seed change. The frontend deployed before it shows its generic "couldn't save" message for these refusals either way. The new frontend works before and after: before it, the checkout words these errors from the message text (and names the product only for "Choose a variant for …" and "Unknown variant for …"); after it, it names the product of the refused line from the detail. |
 
 ### Later steps
 

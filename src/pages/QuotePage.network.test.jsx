@@ -1,7 +1,8 @@
-// Checkout on a stalled or missing connection (AW-194, AW-344): the lines
-// and the fields are locked while a send runs, a send that takes too long
-// says the request may have been saved and unlocks the form, and offline
-// turns the submit button off with a note.
+// Checkout on a stalled or missing connection (AW-194, AW-344), and the
+// remaining submit_quote refusals in the page (AW-200): the lines and the
+// fields are locked while a send runs, a send that takes too long says the
+// request may have been saved and unlocks the form, offline turns the submit
+// button off with a note, and a refusal names its product.
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { QUOTE_OFFLINE, submitOrder } from '../lib/orders.js';
@@ -120,5 +121,20 @@ describe('QuotePage offline (AW-344)', () => {
     await act(async () => { fireEvent.submit(form()); });
     expect(submitError().textContent).toBe(QUOTE_OFFLINE);
     expect(submitOrder).not.toHaveBeenCalled();
+  });
+});
+
+describe('QuotePage and the remaining refusals (AW-200)', () => {
+  it('names the line a refusal is about, from the lines that were sent', async () => {
+    render(page());
+    fill();
+    submitOrder.mockImplementationOnce(async () => { throw { code: 'P0001', message: 'That variant is not available', hint: 'variant_unavailable', details: '41' }; });
+    await act(async () => { fireEvent.submit(form()); });
+    expect(submitError().textContent).toBe('‘Test gum — Mint’ can’t be ordered right now. Choose another variant or remove it, then submit again.');
+    // An older database's message without a hint.
+    submitOrder.mockImplementationOnce(async () => { throw { code: 'P0001', message: 'Product is not available', hint: null, details: null }; });
+    await act(async () => { fireEvent.submit(form()); });
+    expect(submitError().textContent).toMatch(/^An item in this request is no longer available, so nothing was sent\./);
+    expect(submitError().textContent).not.toMatch(/ALW-/);
   });
 });
