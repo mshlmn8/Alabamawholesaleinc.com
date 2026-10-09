@@ -26,7 +26,19 @@
 //                        cleared even when Supabase cannot be reached (AW-047).
 //                        Resolves to { ok, scope }; ok is false when Supabase
 //                        could not confirm it.
-//   signIn, signUp, resetPassword, resendConfirmation, updatePassword
+//   signIn, signUp, resetPassword, resendConfirmation
+//   verifyPassword(currentPassword)
+//                        checks the signed-in account's current password by
+//                        signing in again (a fresh session for the same user).
+//                        Throws an Error with code 'wrong_password' when it is
+//                        wrong; other errors (rate limits, the network) as
+//                        Supabase gave them (AW-349)
+//   updatePassword(password, { signOutOthers = true })
+//                        saves the new password, then ends the account's
+//                        sessions on other devices; this one stays signed in.
+//                        Resolves to { othersSignedOut }: false when that last
+//                        step failed or timed out, which never fails the change
+//                        (AW-349)
 //   recovery, linkError, linkChecking, linkConfirmed, dismissLink
 //                        the email link the page was opened with (AW-015,
 //                        src/lib/authLink.js)
@@ -65,6 +77,11 @@ const EMPTY_PROFILE = Object.freeze({ for: null, data: null, error: null, refres
 // Network failures (offline, blocked, a captive portal) as opposed to answers.
 export const isRetryableAuthError = (error) => error?.name === 'AuthRetryableFetchError'
   || /failed to fetch|network|load failed/i.test(error?.message || '');
+
+// Supabase's answer to a sign-in with the wrong password. Older Auth servers
+// send no code, only the 400 and its message.
+const isInvalidCredentials = (error) => error?.code === 'invalid_credentials'
+  || (error?.status === 400 && /invalid login credentials/i.test(error?.message || ''));
 
 // What account pages should show.
 export function accountState({ loading, session, profileReady, profile }) {
@@ -427,12 +444,57 @@ export function AuthProvider({ client = defaultClient, link = null, children }) 
     if (error) throw error;
   }, [client]);
 
-  const updatePassword = useCallback(async (password) => {
+  // A signed-in password change without a reset link asks for the current
+  // password first (AW-349): anyone at an unlocked shop computer could
+  // otherwise take the account over. It signs in again with it, so this
+  // browser gets a fresh session for the same user (the profile is loaded per
+  // user, so it isn't fetched again). A fresh session is also what Supabase's
+  // "Secure password change" setting needs: a session under 24 hours old
+  // changes the password without a reauthentication code.
+  // TODO(owner): Turn on 'Secure password change' in the Supabase Auth settings (AW-349)
+  const userEmail = session?.user?.email || null;
+  const verifyPassword = useCallback(async (currentPassword) => {
+    if (!client) throw new Error(UNAVAILABLE);
+    if (!userEmail) throw new Error('Sign in to change your password.');
+    const { error } = await client.auth.signInWithPassword({ email: userEmail, password: currentPassword });
+    if (!error) return;
+    if (isInvalidCredentials(error)) {
+      throw Object.assign(new Error('That isn’t the current password for this account.'), { code: 'wrong_password', cause: error });
+    }
+    throw error;
+  }, [client, userEmail]);
+
+  // A new password also ends the account's sessions on other devices (AW-349).
+  // Recent Supabase Auth servers revoke them on a password change too; asking
+  // for it here as well means the page can say whether it happened. Those
+  // devices can't refresh their session any more, and their access token runs
+  // out at its expiry (an hour by default). This browser stays signed in:
+  // scope 'others' fires no SIGNED_OUT here. A failure (offline, or no answer
+  // in SIGN_OUT_TIMEOUT_MS) only makes othersSignedOut false, because the
+  // password is already saved.
+  const updatePassword = useCallback(async (password, { signOutOthers = true } = {}) => {
     if (!client) throw new Error(UNAVAILABLE);
     const { error } = await client.auth.updateUser({ password });
     if (error) throw error;
-    // The reset link has done its job.
+    let othersSignedOut = false;
+    if (signOutOthers) {
+      let timer = 0;
+      try {
+        const timeout = new Promise((resolve) => {
+          timer = window.setTimeout(() => resolve({ error: new Error('Sign-out timed out') }), SIGN_OUT_TIMEOUT_MS);
+        });
+        const result = await Promise.race([client.auth.signOut({ scope: 'others' }), timeout]);
+        othersSignedOut = !result?.error;
+      } catch {
+        othersSignedOut = false;
+      } finally {
+        window.clearTimeout(timer);
+      }
+    }
+    // The reset link has done its job. Cleared last, so a reset page doesn't
+    // switch to its signed-in form while the other sessions are ended.
     setLinkState(null);
+    return { othersSignedOut };
   }, [client]);
 
   const dismissLink = useCallback(() => setLinkState(null), []);
@@ -468,6 +530,7 @@ export function AuthProvider({ client = defaultClient, link = null, children }) 
     signOut,
     resetPassword,
     resendConfirmation,
+    verifyPassword,
     updatePassword,
     recovery,
     linkError,
@@ -478,7 +541,7 @@ export function AuthProvider({ client = defaultClient, link = null, children }) 
   }), [
     session, loading, profile, profileReady, profileError, profileState.refreshing, account, refreshProfile,
     sessionEnded, connectionProblem, dismissSessionEnded, dismissConnectionProblem,
-    signIn, signUp, signOut, resetPassword, resendConfirmation, updatePassword,
+    signIn, signUp, signOut, resetPassword, resendConfirmation, verifyPassword, updatePassword,
     recovery, linkError, linkChecking, linkConfirmed, dismissLink, backend,
   ]);
 

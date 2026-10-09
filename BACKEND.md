@@ -252,6 +252,36 @@ browser's saved session is still removed, so a shared computer is never
 signed back in on the next load. Other open tabs follow a sign-out and say
 that the session ended.
 
+### Password changes (AW-349)
+
+`/reset-password` changes the password in two ways:
+
+- **From a reset email.** The link signs the buyer in for this purpose, and
+  the page asks only for the new password.
+- **While signed in, without a link.** The page asks for the current password
+  first and checks it by signing in again with it (`verifyPassword` in
+  `src/lib/auth.jsx`, `POST /auth/v1/token?grant_type=password`). A wrong
+  one saves nothing, and Supabase's sign-in rate limit applies to the tries.
+  A buyer who doesn't know it can ask for a reset email from the same form.
+
+Either way, after the new password is saved (`PUT /auth/v1/user`), the page
+ends the account's sessions on other devices
+(`POST /auth/v1/logout?scope=others`); this browser stays signed in. If that
+last call fails, the password is still changed, and the page asks the buyer
+to use **Sign out of all devices** on `/account`. These are standard Supabase
+Auth endpoints, so no migration is involved.
+
+<!-- TODO(owner): Turn on 'Secure password change' in the Supabase Auth settings (AW-349) -->
+
+**Recommended setting:** turn on **Secure password change** in the Email
+provider's settings (**Authentication → Sign In / Providers → Email**). With
+it on, Supabase itself refuses a password change from a session more than 24
+hours old unless the user enters a code it emails them, so the rule above
+also holds for someone who calls the Auth API directly from a browser left
+signed in. The storefront already works with it: the signed-in form signs in
+again just before it saves, and a reset link starts a new session, so both
+changes come from a session minutes old and never need the code.
+
 ### The storefront catalog
 
 One `CatalogProvider` (`src/lib/catalog.jsx`) reads the active rows of
@@ -925,3 +955,8 @@ Then `supabase/seed/products.sql`, then the frontend, then 18.
   In the same change, the frontend's fallbacks to those signatures
   (`licensedQuoteParams`, `legacyQuoteParams` and the signature chain in
   `submitOrder`, `src/lib/orders.js`) can go.
+
+- **Turn on Secure password change** (any time; AW-349). Under
+  **Authentication → Sign In / Providers → Email**. No migration and no
+  frontend change: `/reset-password` already changes passwords only from a
+  fresh session (see "Password changes").
