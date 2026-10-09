@@ -4,7 +4,7 @@ import { accountNotices, signOutMessage } from './accountNotices.js';
 
 const act = () => ({
   signIn: vi.fn(), requestReset: vi.fn(), signOutHere: vi.fn(), retryProfile: vi.fn(), dismissLink: vi.fn(),
-  dismissSessionEnded: vi.fn(), dismissConnectionProblem: vi.fn(), dismissSignOut: vi.fn(),
+  viewApplication: vi.fn(), dismissSessionEnded: vi.fn(), dismissConnectionProblem: vi.fn(), dismissSignOut: vi.fn(),
 });
 const ids = (list) => list.map((n) => n.id);
 
@@ -44,6 +44,44 @@ describe('accountNotices', () => {
   it('confirms a sign-up link', () => {
     expect(ids(accountNotices({ linkConfirmed: 'signup' }, act()))).toEqual(['link-confirmed']);
     expect(accountNotices({ linkConfirmed: 'invite' }, act())).toEqual([]);
+  });
+
+  it('points an application under review at its status after the confirmation link (AW-016)', () => {
+    const a = act();
+    for (const linkConfirmed of ['signup', 'email']) {
+      const [notice] = accountNotices({ linkConfirmed, account: 'ready', profileStatus: 'pending', routePage: 'home' }, a);
+      expect(notice).toMatchObject({
+        id: 'link-confirmed',
+        title: 'Your email is confirmed',
+        text: 'You’re signed in. Your application is waiting for review — see its status and add your license documents on your trade account page.',
+      });
+      expect(notice.actions.map((x) => x.label)).toEqual(['View application status']);
+      notice.actions[0].onClick();
+      notice.onDismiss();
+    }
+    expect(a.viewApplication).toHaveBeenCalledTimes(2);
+    expect(a.dismissLink).toHaveBeenCalledTimes(2);
+    // Already on that page: no link to it.
+    expect(accountNotices({ linkConfirmed: 'signup', account: 'ready', profileStatus: 'pending', routePage: 'apply' }, a)[0].actions).toEqual([]);
+  });
+
+  it('keeps the plain confirmation for an approved account, or one whose profile did not load (AW-016)', () => {
+    const plain = { id: 'link-confirmed', text: 'Your email is confirmed and you’re signed in.' };
+    for (const state of [
+      { account: 'ready', profileStatus: 'approved' },
+      { account: 'ready', profileStatus: 'suspended' },
+      { account: 'no-profile' },
+      {},
+    ]) {
+      const [notice] = accountNotices({ linkConfirmed: 'signup', ...state }, act());
+      expect(notice, JSON.stringify(state)).toMatchObject(plain);
+      expect(notice.title).toBeUndefined();
+      expect(notice.actions).toBeUndefined();
+    }
+  });
+
+  it('waits for the account to load, so the confirmation appears once with the right wording (AW-016)', () => {
+    expect(accountNotices({ linkConfirmed: 'signup', account: 'loading' }, act())).toEqual([]);
   });
 
   it('says when the session ended, with a sign-in (AW-048)', () => {

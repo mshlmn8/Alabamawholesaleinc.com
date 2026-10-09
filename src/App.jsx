@@ -233,6 +233,8 @@ export default function App() {
     sessionEnded: auth.sessionEnded,
     connectionProblem: auth.connectionProblem,
     account,
+    // A confirmation link for an account under review leads to its status (AW-016).
+    profileStatus: profile?.status,
     routePage: route.page,
     signOutText: signOutNotice?.text || null,
     signingOut,
@@ -243,6 +245,7 @@ export default function App() {
     signOutHere,
     retryProfile: refreshProfile,
     dismissLink,
+    viewApplication: () => navigate('/apply'),
     dismissSessionEnded: auth.dismissSessionEnded,
     dismissConnectionProblem: auth.dismissConnectionProblem,
     dismissSignOut: () => setSignOutNotice(null),
@@ -365,11 +368,9 @@ export default function App() {
                   legacy={cart.legacy} onDismissLegacy={cart.dismissLegacy}
                   profile={profile} isApprovedBuyer={isApprovedBuyer} isSuspended={isSuspended} pricesStatus={prices.status} onLoginClick={openCartSignin} />
       {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} onApply={() => { setHelpOpen(false); openSignup(); }} />}
-      {loginOpen && (
-        <ModalLayer onClose={() => setLoginOpen(false)}>
-          <AuthModal open initialMode={loginMode} onClose={() => setLoginOpen(false)} onSignOut={signOutHere} signingOut={signingOut} />
-        </ModalLayer>
-      )}
+      {/* It has its own ModalLayer, so Escape and Back ask before a typed
+          application is lost (AW-018). Sign Out closes it outright. */}
+      {loginOpen && <AuthModal open initialMode={loginMode} onClose={() => setLoginOpen(false)} onSignOut={signOutHere} signingOut={signingOut} />}
       {/* Last, so it sits above any other layer. No onClose and no history
           entry: Escape and Back leave it open (AW-044, AW-065). */}
       {gated && (

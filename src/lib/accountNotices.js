@@ -4,7 +4,8 @@
 //   link-error      an email link that expired, was used already or did not
 //                   work (AW-015). A link meant for the new-password page is
 //                   explained on that page instead.
-//   link-confirmed  a sign-up confirmation link signed the buyer in
+//   link-confirmed  a sign-up confirmation link signed the buyer in; an
+//                   account under review is pointed at its status (AW-016)
 //   session-ended   the session ended without a sign-out in this tab (AW-048);
 //                   the cart switched to the guest cart with it (AW-189)
 //   connection      a saved session could not be refreshed: Supabase is out
@@ -55,19 +56,38 @@ function linkErrorNotice(linkError, act) {
   };
 }
 
+// After a confirmation link (AW-016). The notice waits while the account
+// loads, so it appears, and is read out, once and with the right wording:
+// an application under review gets its next step, any other account (or
+// one whose profile did not load) the plain confirmation.
+function linkConfirmedNotice(state, act) {
+  if (state.profileStatus === 'pending') {
+    return {
+      id: 'link-confirmed',
+      title: 'Your email is confirmed',
+      text: 'You’re signed in. Your application is waiting for review — see its status and add your license documents on your trade account page.',
+      // No link to the page the buyer is already on.
+      actions: state.routePage === 'apply' ? [] : [{ id: 'view-application', label: 'View application status', onClick: act.viewApplication }],
+      onDismiss: act.dismissLink,
+    };
+  }
+  return {
+    id: 'link-confirmed',
+    text: 'Your email is confirmed and you’re signed in.',
+    onDismiss: act.dismissLink,
+  };
+}
+
 // state: { linkError, linkConfirmed, sessionEnded, connectionProblem, account,
-//          routePage, signOutText, signingOut, retrying }
+//          profileStatus, routePage, signOutText, signingOut, retrying }
 // act:   { signIn, requestReset, signOutHere, retryProfile, dismissLink,
-//          dismissSessionEnded, dismissConnectionProblem, dismissSignOut }
+//          viewApplication, dismissSessionEnded, dismissConnectionProblem,
+//          dismissSignOut }
 export function accountNotices(state, act) {
   const notices = [];
   if (state.linkError && !state.linkError.forReset) notices.push(linkErrorNotice(state.linkError, act));
-  if (state.linkConfirmed === 'signup' || state.linkConfirmed === 'email') {
-    notices.push({
-      id: 'link-confirmed',
-      text: 'Your email is confirmed and you’re signed in.',
-      onDismiss: act.dismissLink,
-    });
+  if ((state.linkConfirmed === 'signup' || state.linkConfirmed === 'email') && state.account !== 'loading') {
+    notices.push(linkConfirmedNotice(state, act));
   }
   if (state.sessionEnded) {
     notices.push({

@@ -1,6 +1,7 @@
 // Accounts against a mocked Supabase (AW-015, AW-047, AW-186, AW-187): email
 // links, sign-out without a connection, and account pages while the profile
-// loads. Every Supabase request is answered here or aborted; nothing leaves
+// loads. Also the sign-up dialog's guard on a half-typed application
+// (AW-018) and the notice after a confirmation link (AW-016). Every Supabase request is answered here or aborted; nothing leaves
 // the browser, and no real account is used. Products come from the seeded
 // catalog (./catalog.js).
 import { test, expect } from '@playwright/test';
@@ -11,6 +12,7 @@ const AUTH_KEY = 'aw-auth'; // AUTH_STORAGE_KEY in src/lib/supabase.js
 const ageRecord = (at) => JSON.stringify({ ok: true, at });
 const UID = '11111111-2222-4333-8444-555555555555';
 const PROFILE = { id: UID, name: 'Test Buyer', business: 'Test Market LLC', email: 'buyer@example.test', phone: '205-555-0100', status: 'approved', role: 'customer', pricing_tier: 'silver' };
+const PENDING_PROFILE = { ...PROFILE, status: 'pending', pricing_tier: null };
 
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
 const jwt = (exp) => `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: UID, role: 'authenticated', aud: 'authenticated', exp, email: PROFILE.email })}.c2ln`;
@@ -35,7 +37,7 @@ function trackErrors(page) {
 
 // Answers Supabase: the user, the profile (after `profileDelay` ms), and a
 // logout that fails like an unreachable server when `logout` is 'abort'.
-async function mockSupabase(page, { profileDelay = 0, logout = 'ok' } = {}) {
+async function mockSupabase(page, { profileDelay = 0, logout = 'ok', profile = PROFILE } = {}) {
   const calls = { profiles: 0, logout: [], prices: 0 };
   await page.route(/supabase\.co\//, async (route) => {
     const req = route.request();
@@ -48,9 +50,10 @@ async function mockSupabase(page, { profileDelay = 0, logout = 'ok' } = {}) {
     if (/\/rest\/v1\/profiles/.test(url) && req.method() === 'GET') {
       calls.profiles += 1;
       if (profileDelay) await new Promise((resolve) => setTimeout(resolve, profileDelay));
-      return route.fulfill({ json: [PROFILE] });
+      return route.fulfill({ json: [profile] });
     }
     if (/\/rest\/v1\/orders/.test(url)) return route.fulfill({ json: [] });
+    if (/\/rest\/v1\/profile_documents/.test(url) && req.method() === 'GET') return route.fulfill({ json: [] });
     if (/\/rest\/v1\/products/.test(url)) return fulfillProducts(route, seedRows());
     // PROFILE is an approved silver buyer: its prices (AW-003).
     if (/\/rest\/v1\/rpc\/my_prices/.test(url)) {
@@ -283,3 +286,54 @@ test('guests never ask for prices and see the lock (AW-003)', async ({ page }) =
   expect(calls.prices).toBe(0);
   expect(errors).toEqual([]);
 });
+
+test('Back on a half-typed application asks first, keeps the answers, and leaves no stray history entry (AW-018)', async ({ page }) => {
+  const errors = trackErrors(page);
+  await mockSupabase(page);
+  await page.goto('/');
+  await page.goto('/apply');
+  await page.getByRole('button', { name: 'Start application' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Apply for an account' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel('Your name').fill('Typed Applicant');
+
+  await page.goBack();
+  await expect(dialog).toBeVisible();
+  const bar = dialog.getByRole('group', { name: /Discard your application\?/ });
+  await expect(bar).toBeVisible();
+  await expect(bar.getByRole('button', { name: 'Keep editing' })).toBeFocused();
+  await expect(dialog.getByLabel('Your name')).toHaveValue('Typed Applicant');
+  await expect(page).toHaveURL(/\/apply$/);
+
+  // A second Back answers Keep editing; the dialog still holds its entry.
+  await page.goBack();
+  await expect(bar).toHaveCount(0);
+  await expect(dialog.getByLabel('Your name')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await bar.getByRole('button', { name: 'Discard' }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page).toHaveURL(/\/apply$/);
+  await page.waitForFunction(() => !window.history.state?.awOverlay);
+
+  // The next Back leaves /apply, as if the dialog had never been opened.
+  await page.goBack();
+  await expect(page).toHaveURL(/:\d+\/$/);
+  expect(errors).toEqual([]);
+});
+
+test('a confirmation link for an application under review says what happens next and leads to its status (AW-016)', async ({ page }) => {
+  const errors = trackErrors(page);
+  await mockSupabase(page, { profile: PENDING_PROFILE });
+  const exp = Math.floor(Date.now() / 1000) + 3600;
+  await page.goto(`/#access_token=${jwt(exp)}&expires_at=${exp}&expires_in=3600&refresh_token=smoke-rt&token_type=bearer&type=signup`);
+  const notice = page.locator('.site-notice[data-notice="link-confirmed"]');
+  await expect(notice.locator('.site-notice-title')).toHaveText('Your email is confirmed');
+  await expect(notice).toContainText('Your application is waiting for review');
+  await expect(page).toHaveURL(/:\d+\/$/);
+  await notice.getByRole('button', { name: 'View application status' }).click();
+  await expect(page).toHaveURL(/\/apply$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Your trade account' })).toBeVisible();
+  await expect(page.locator('.site-notice[data-notice="link-confirmed"]')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+

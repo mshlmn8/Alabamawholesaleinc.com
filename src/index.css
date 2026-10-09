@@ -985,6 +985,18 @@ address.info-lead-small { font-style: normal; }
 .field-hint { display: block; margin-top: 5px; font-size: var(--text-xs); line-height: 1.5; color: var(--muted); }
 .form-error:empty { margin: 0; }
 .dialog h2:focus { outline: none; }
+/* Sign-up dialog (AW-016, AW-018). Layout, plus the faded Resend while it
+   waits: .notice draws the discard bar (the foundation lane's .callout can
+   absorb it), .text-link and .checklist-note the resend row. */
+.dialog .discard-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 0 0 16px; }
+.discard-confirm p { flex: 1 1 16em; margin: 0; }
+.discard-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.dialog .resend { margin-top: 14px; }
+/* Resend waits a minute between sends: show that it can't be used yet. */
+.resend .text-link:disabled { opacity: var(--disabled-opacity); cursor: not-allowed; }
+@media (pointer: coarse) {
+  .discard-actions .button, .resend .text-link { min-height: var(--tap); }
+}
 
 /* application page */
 .apply-layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px 40px; margin-top: 22px; align-items: start; }
