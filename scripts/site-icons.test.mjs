@@ -26,3 +26,22 @@ describe('site.webmanifest icons', () => {
     }
   });
 });
+
+// The logo JPG has a light edge (white side columns and a light band along
+// the bottom). Every tile is cut 3% in, past it, so no touch icon, home-screen
+// icon or share image has a light line along an edge (AW-035).
+describe('brand tiles (AW-035)', () => {
+  it('cuts the touch icons, the home-screen icons and the share image from one tile 3% inside the logo', () => {
+    expect(buildImages).toMatch(/const inset = Math\.round\(meta\.width \* 0\.03\);/);
+    expect(buildImages).not.toMatch(/meta\.width \* 0\.02/);
+    for (const file of ['apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'og.jpg']) {
+      // The statement that writes the file resizes the one tile.
+      const writes = buildImages.split(/;\n/).find((statement) => statement.includes(`'${file}')`) && !statement.includes('const outputs'));
+      expect(writes, file).toMatch(/sharp\(tileBuf\)\.resize\(/);
+    }
+  });
+
+  it('rebuilds the brand files with the new tile', () => {
+    expect(Number(/const BRAND_VERSION = (\d+);/.exec(buildImages)[1])).toBeGreaterThanOrEqual(3);
+  });
+});

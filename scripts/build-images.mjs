@@ -48,7 +48,8 @@ const LOGO = path.join(ASSETS, 'logo.jpg');
 // sizes, crops, colours, a new output), so the next run rebuilds the brand
 // files. A new logo.jpg rebuilds them on its own: its bytes are hashed too.
 // 2: the larger favicon mark (1.05 tile) and the maskable icon (AW-289).
-const BRAND_VERSION = 2;
+// 3: the touch icons and the share image cut from the clean tile (AW-035).
+const BRAND_VERSION = 3;
 const CONCURRENCY = Math.max(2, Math.min(8, os.cpus().length));
 
 const SOURCE_RE = /\.(webp|jpe?g|png|avif)$/i;
@@ -265,10 +266,12 @@ async function buildBrandAssets() {
   if (fresh.every(Boolean)) return { written: 0 };
 
   const meta = await sharp(LOGO).metadata();
-  // The JPG has a thin light edge; inset a little so tiles and the share image are clean.
-  const inset = Math.round(meta.width * 0.02);
-  const tile = sharp(LOGO).extract({ left: inset, top: inset, width: meta.width - inset * 2, height: meta.height - inset * 2 });
-  const tileBuf = await tile.png().toBuffer();
+  // The JPG has a light edge: white columns at the left and right, and a
+  // light band along the bottom (its last eight rows at 320px). Every tile is
+  // cut 3% in, past all of it, so no icon or share image has a light line
+  // along an edge (AW-035). (A 2% inset kept two of the light rows.)
+  const inset = Math.round(meta.width * 0.03);
+  const tileBuf = await sharp(LOGO).extract({ left: inset, top: inset, width: meta.width - inset * 2, height: meta.height - inset * 2 }).png().toBuffer();
   const orange = await averageColor(LOGO, { left: inset, top: inset, width: 12, height: 12 });
 
   // Small sizes use the swoosh mark alone; the wordmark is unreadable below 48px.
@@ -292,13 +295,10 @@ async function buildBrandAssets() {
   await sharp(tileBuf).resize(512, 512).png().toFile(path.join(PUBLIC_DIR, 'icon-512.png'));
   // Maskable icon for Android home screens (AW-289): the logo tile at 360px,
   // centred on the logo's orange, so the logo stays inside the 80% safe zone
-  // whatever shape the launcher cuts. This tile is cut 3% in, past the JPG's
-  // light bottom edge, which would otherwise draw a line across the icon.
+  // whatever shape the launcher cuts.
   const maskableLogo = 360;
-  const clean = Math.round(meta.width * 0.03);
-  const cleanTile = sharp(LOGO).extract({ left: clean, top: clean, width: meta.width - clean * 2, height: meta.height - clean * 2 });
   await sharp({ create: { width: 512, height: 512, channels: 3, background: orange } })
-    .composite([{ input: await cleanTile.resize(maskableLogo, maskableLogo).png().toBuffer(), left: (512 - maskableLogo) / 2, top: (512 - maskableLogo) / 2 }])
+    .composite([{ input: await sharp(tileBuf).resize(maskableLogo, maskableLogo).png().toBuffer(), left: (512 - maskableLogo) / 2, top: (512 - maskableLogo) / 2 }])
     .png().toFile(path.join(PUBLIC_DIR, 'icon-maskable-512.png'));
 
   // 1200x630 share image: the logo tile centred on the site's purple.
