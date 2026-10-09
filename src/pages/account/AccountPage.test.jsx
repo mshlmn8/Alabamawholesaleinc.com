@@ -96,7 +96,15 @@ describe('AccountPage', () => {
     expect(onSignOut).toHaveBeenCalledTimes(1);
     expect([...links.children].map((el) => el.textContent)).toEqual(['Change password', 'Sign out']);
     view.rerender(<AccountPage profile={PROFILE} account="ready" products={[]} onSignOut={onSignOut} signingOut />);
-    expect(screen.getByRole('button', { name: 'Sign out' }).disabled).toBe(true);
+    // It says so while it works, like the header's and the phone menu's (NEW-068).
+    const signingOut = within(links).getByRole('button', { name: 'Signing out…' });
+    expect(signingOut.disabled).toBe(true);
+    // Its words in a span of their own (translate-safe, AW-039).
+    expect(signingOut.firstElementChild.tagName).toBe('SPAN');
+    expect(signingOut.childNodes).toHaveLength(1);
+    expect(within(links).queryByRole('button', { name: 'Sign out' })).toBeNull();
+    view.rerender(<AccountPage profile={PROFILE} account="ready" products={[]} onSignOut={onSignOut} />);
+    expect(within(links).getByRole('button', { name: 'Sign out' }).disabled).toBe(false);
   });
 
   it('signs out of all devices on request', () => {
@@ -223,6 +231,9 @@ describe('AccountPage order history (AW-104, AW-105)', () => {
     expect(first.querySelector('.status-pill').textContent).toBe('Received');
     expect(first.querySelector('.order-notes').textContent).toBe('Your notes: Ring the bell at the back door.');
     expect(within(first).getByRole('button', { name: 'Reorder ALW-O-10100' })).toBeTruthy();
+    // The status is a tag under the reference; Reorder is the head's only action (NEW-070).
+    expect(first.querySelector('.order-summary .order-status > .status-pill')).toBe(first.querySelector('.status-pill'));
+    expect([...first.querySelector('.order-actions').children].map((el) => el.textContent)).toEqual(['Reorder ALW-O-10100']);
     // A quote request: no prices yet.
     expect(within(second).getByRole('heading', { level: 3 }).textContent).toBe('Quote request ALW-Q-10099');
     expect(second.querySelector('.order-head small').textContent).toMatch(/· 6 units · Price on confirmation$/);

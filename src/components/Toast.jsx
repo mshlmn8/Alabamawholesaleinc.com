@@ -8,6 +8,10 @@
 //   (.toast-root sits below .aw-layer).
 // - It never takes focus and is not a live region: showToast() speaks the
 //   text through the shared announce(), so each event is heard once.
+// - While it shows, .toast-root is a landmark, a region named Notifications
+//   (NEW-042): the host sits outside main, the header and the footer, and
+//   content outside every landmark is skipped by landmark navigation (axe
+//   'region'). The landmark goes with the toast, so no empty one is left.
 //   Keyboard users reach its buttons with Tab (it is last in the page); when
 //   the toast goes away under focus, focus goes back to the control it came
 //   from, never to <body>.
@@ -115,7 +119,7 @@ export function Toast({ onAction }) {
   };
 
   return createPortal(
-    <div className="toast-root">
+    <div className="toast-root" role="region" aria-label="Notifications">
       {/* Keyed by toast, so a repeat of the same message shows again. */}
       <div className="toast" key={id} ref={boxRef}
            onMouseEnter={() => setHoverId(id)} onMouseLeave={() => setHoverId(null)}

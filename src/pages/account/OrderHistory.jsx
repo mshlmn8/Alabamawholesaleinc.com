@@ -6,6 +6,10 @@
 // what day, and the buyer's notes. Long orders show their first three lines
 // until 'Show all'. Reorder puts an order's lines back in the cart.
 //
+// The status is a quiet tag under the reference, its tone a coloured dot,
+// so Reorder is the head's only action and the status doesn't read as a
+// second button beside it (NEW-070).
+//
 // The query and the wording are in ./orderHistory.js. Requests are cancelled
 // when the filter changes or the page goes away, and give up after
 // REQUEST_TIMEOUT_MS (AW-194). A load that failed says why in words (offline,
@@ -308,11 +312,11 @@ function OrderCard({ order: o, headingId, onReorder, onOpenCart, note, noteHasLi
           <h3 className="order-title" id={headingId} tabIndex={-1}>
             <span className="order-kind">{KIND_LABEL[orderKind(o)]}</span>{' '}<span className="order-ref">{o.ref_num}</span>
           </h3>
+          <p className="order-status"><span className={`status-pill ${statusTone(o.status)}`.trim()}>{buyerStatus(o)}</span></p>
           <small>{facts}</small>
           {delivery && <small className="order-ship">{delivery}</small>}
         </div>
         <div className="order-actions">
-          <span className={`status-pill ${statusTone(o.status)}`.trim()}>{buyerStatus(o)}</span>
           <button className="button xs ghost" type="button" onClick={() => onReorder(o)} disabled={!items.length}>
             {/* Which order, for a screen reader; the space stays outside the
                 hidden span, where every accessible-name engine keeps it. */}

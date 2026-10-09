@@ -105,7 +105,9 @@ export function AccountPage({
             the header's Sign Out is in the menu (AW-252). */}
         <div className="dialog-actions compact-actions account-links">
           <Link className="text-link" to="/reset-password">Change password</Link>
-          {onSignOut && <button className="text-link" type="button" onClick={onSignOut} disabled={signingOut}>Sign out</button>}
+          {/* Says 'Signing out…' while it works, like every other sign-out
+              control; on phones the header's is hidden (NEW-068). */}
+          {onSignOut && <button className="text-link" type="button" onClick={onSignOut} disabled={signingOut}><span>{signingOut ? 'Signing out…' : 'Sign out'}</span></button>}
         </div>
       </div>
 

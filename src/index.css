@@ -1148,10 +1148,18 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .order-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 16px; background: var(--paper); border-bottom: 1px solid var(--line); }
 .order-ref { display: block; font-size: var(--text-xs); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--purple); }
 .order-head small { display: block; margin-top: 4px; font-size: var(--text-xs); font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--muted); }
-.status-pill { font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; color: #fff; background: var(--purple); padding: 5px 9px; }
-.status-pill.contacted { background: var(--button-orange); }
-.status-pill.fulfilled { background: var(--success); }
-.status-pill.cancelled { background: var(--muted); }
+/* An order's status (NEW-070): a quiet tag under its reference, never a
+   filled block like the buttons beside it. Its tone is the dot, drawn as a
+   border so it prints: purple while under way, orange (and orange text)
+   while waiting on the trade desk, green when delivered, grey when
+   cancelled. --button-orange is for actions only. */
+.order-status { margin: 6px 0 0; }
+.status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border: 1px solid var(--line); background: none; color: var(--ink); font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; line-height: 1.5; }
+.status-pill::before { content: ''; flex: none; width: 0; height: 0; border: .25rem solid var(--purple); border-radius: 50%; }
+.status-pill.contacted { color: var(--orange-dark); }
+.status-pill.contacted::before { border-color: var(--orange-dark); }
+.status-pill.fulfilled::before { border-color: var(--success); }
+.status-pill.cancelled::before { border-color: var(--muted); }
 .order-items { list-style: none; margin: 0; padding: 0; }
 .order-items li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--line-soft); font-size: var(--text-sm); }
 .order-items li:last-child { border-bottom: 0; }
@@ -2154,6 +2162,15 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   /* The product page starts closer under the masthead, so a phone on its
      side reaches the add button sooner (AW-150). */
   .page-head.is-flush { padding-top: 4px; }
+}
+/* Very short windows, such as a 1280x1024 window at 400% zoom (320x256,
+   NEW-085): the fixed head and foot would leave the lines a 58px strip, so
+   the whole drawer scrolls instead and the foot follows the lines (WCAG
+   1.4.10). The cart, the Filter & Sort drawer and the phone menu all share
+   .drawer. */
+@media (max-height: 20em) {
+  .drawer { overflow-y: auto; overscroll-behavior: contain; }
+  .drawer .drawer-body { flex: none; overflow: visible; }
 }
 @media(prefers-reduced-motion:reduce) {
   html { scroll-behavior: auto; }

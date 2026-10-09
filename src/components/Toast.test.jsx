@@ -1,6 +1,6 @@
-// The toast (AW-072, AW-042): outside #root, never a live region, never
-// taking focus, hidden after six seconds unless hovered or focused, and its
-// action handed to App.
+// The toast (AW-072, AW-042, NEW-042): outside #root, a named region while
+// it shows, never a live region, never taking focus, hidden after six
+// seconds unless hovered or focused, and its action handed to App.
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { act, fireEvent, render, screen } from '@testing-library/react';
@@ -44,6 +44,23 @@ describe('Toast', () => {
     expect(host().querySelector('[aria-live], [role="status"], [role="alert"], [role="log"]')).toBeNull();
     expect(host().querySelector('.toast').getAttribute('aria-live')).toBeNull();
     expect(announce).toHaveBeenCalledTimes(1);
+  });
+
+  // axe 'region' (NEW-042): the host is outside main, the header and the
+  // footer, so the toast is a landmark of its own, named, and only while it
+  // shows; it is still not a live region (above).
+  it('is a region named Notifications while it shows, and leaves no empty landmark when it goes', () => {
+    render(<Toast onAction={vi.fn()} />);
+    act(() => { showToast(ADDED); });
+    const region = screen.getByRole('region', { name: 'Notifications' });
+    expect(region.className).toBe('toast-root');
+    expect(region.parentElement).toBe(host());
+    expect(region.contains(host().querySelector('.toast-text'))).toBe(true);
+    expect(region.contains(screen.getByRole('button', { name: 'View quote' }))).toBe(true);
+    expect(region.getAttribute('aria-live')).toBeNull();
+    act(() => vi.advanceTimersByTime(TOAST_MS));
+    expect(screen.queryByRole('region')).toBeNull();
+    expect(host().querySelector('[role="region"]')).toBeNull();
   });
 
   it('never takes focus', () => {

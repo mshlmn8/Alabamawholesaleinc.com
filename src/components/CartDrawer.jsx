@@ -18,9 +18,12 @@
 // and an approved buyer's progress to the order minimum and free delivery.
 // On a short screen (a phone in landscape) and in the compact layout (a
 // phone upright) it follows the lines instead, so the fixed foot takes no
-// more height from the list than before (AW-152). After the lines, a note
-// says where the cart is kept (AW-334): on this device, or with the account
-// while it is saved there (cartSynced, src/lib/cartSync.js).
+// more height from the list than before (AW-152). On a very short window (a
+// laptop at 400% zoom) the whole drawer scrolls, head, lines and foot
+// together, and focus moved by Remove or the focus trap scrolls into view
+// within it (index.css, NEW-085). After the lines, a note says where the
+// cart is kept (AW-334): on this device, or with the account while it is
+// saved there (cartSynced, src/lib/cartSync.js).
 
 import { useEffect, useRef } from 'react';
 import { basketTerms, cartDeviceNote } from '../data/terms.js';

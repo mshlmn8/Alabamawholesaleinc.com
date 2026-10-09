@@ -1164,6 +1164,48 @@ describe('one empty state, and a cart drawer that keeps room for its lines (AW-2
     expect(drawer.indexOf('{short && summary}')).toBeGreaterThan(drawer.indexOf('className="drawer-body"'));
     expect(drawer.indexOf('{short && summary}')).toBeLessThan(drawer.indexOf('className="drawer-foot"'));
   });
+
+  it('scrolls the whole drawer on a very short window, so the lines are not a strip between a fixed head and foot (NEW-085)', () => {
+    // 20em: a 1280x1024 window at 400% zoom is 320x256.
+    const tiny = mediaBlocks(css).filter((b) => b.prelude === '(max-height: 20em)').flatMap((b) => rules(b.body));
+    const own = (selector) => declarations(tiny.find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+    expect(own('.drawer')).toEqual({ 'overflow-y': 'auto', 'overscroll-behavior': 'contain' });
+    // Two classes: it outranks the base .drawer-body rule (flex: 1; overflow: auto).
+    expect(own('.drawer .drawer-body')).toEqual({ flex: 'none', overflow: 'visible' });
+    expect(rule('.drawer-body')).toMatchObject({ flex: '1', overflow: 'auto' });
+    // The cart, the Filter & Sort drawer and the phone menu are each a .drawer with a .drawer-body.
+    for (const file of ['src/components/CartDrawer.jsx', 'src/components/MobileMenu.jsx', 'src/pages/CategoryPage.jsx']) {
+      expect(code(read(file)), file).toMatch(/className="drawer[ "]/);
+      expect(code(read(file)), file).toMatch(/className="drawer-body[ "]/);
+    }
+  });
+});
+
+// My account's order status (NEW-070): a quiet tag, not a filled block the
+// size and colour of the buttons beside it. The tone is a dot drawn as a
+// border (so it prints); the orange that fills buttons is not used.
+describe('the order status is a quiet tag, its tone a dot (NEW-070)', () => {
+  const rule = (selector) => declarations(rules(css).find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+
+  it('has no fill, ink text and a thin rule, and its tone only in the dot (and the orange text while the trade desk has it)', () => {
+    expect(rule('.status-pill')).toMatchObject({ border: '1px solid var(--line)', background: 'none', color: 'var(--ink)', 'font-size': 'var(--text-xs)' });
+    expect(rule('.status-pill::before')).toMatchObject({ content: "''", border: '.25rem solid var(--purple)', 'border-radius': '50%' });
+    expect(rule('.status-pill.contacted')).toEqual({ color: 'var(--orange-dark)' });
+    expect(rule('.status-pill.contacted::before')).toEqual({ 'border-color': 'var(--orange-dark)' });
+    expect(rule('.status-pill.fulfilled::before')).toEqual({ 'border-color': 'var(--success)' });
+    expect(rule('.status-pill.cancelled::before')).toEqual({ 'border-color': 'var(--muted)' });
+    // No status selector fills itself or uses the buttons' orange.
+    for (const { selectors, body } of rules(css).filter((r) => r.selectors.some((x) => x.startsWith('.status-pill')))) {
+      expect(body, selectors.join(', ')).not.toMatch(/--button-orange|background:\s*var/);
+    }
+  });
+
+  it('sits under the reference, so Reorder is the only action in the card head', () => {
+    const history = code(read('src/pages/account/OrderHistory.jsx'));
+    expect(history).toMatch(/<p className="order-status"><span className=\{`status-pill \$\{statusTone\(o\.status\)\}`\.trim\(\)\}>\{buyerStatus\(o\)\}<\/span><\/p>/);
+    expect(history.indexOf('className="order-status"')).toBeLessThan(history.indexOf('className="order-actions"'));
+    expect(history.indexOf('className="order-status"')).toBeGreaterThan(history.indexOf('className="order-summary"'));
+  });
 });
 
 // The footer (AW-305, AW-313, LEFT-4): h2 column labels in the footer's own
