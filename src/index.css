@@ -774,6 +774,8 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .checkout-form-title { font-size: var(--h3); margin: 0 0 4px; }
 .checkout-form-grid { margin-top: 12px; }
 .checkout-total { margin-top: 18px; }
+/* Where the ship-to address came from, and "Use a different address" (AW-102). */
+.ship-from { display: flex; flex-wrap: wrap; align-items: center; column-gap: .5rem; font-size: var(--text-sm); color: var(--muted); }
 
 /* ============================ account / admin ============================ */
 .account-stats { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 18px; margin: 8px 0 8px; }

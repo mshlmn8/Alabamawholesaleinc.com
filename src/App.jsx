@@ -19,6 +19,7 @@ import { usePrices } from './lib/prices.jsx';
 import { priceFor } from './lib/pricing.js';
 import { cartOwner, clearGuestCart } from './lib/cartStorage.js';
 import { clearReceipt, saveReceipt, useLastReceipt } from './lib/receipt.js';
+import { loadAccountShipTo } from './lib/shipTo.js';
 import { confirmLeave, focusPageHeading, navigate, pathFor, resolveRoute, routeKey, useNavigationEffects, useRoute } from './lib/router.js';
 import { pageKeyFor } from './lib/routes.js';
 import { confirmAge, declineAge, endAgeConfirmationOnSignOut, reconsiderAge, useAgeGate } from './lib/ageGate.js';
@@ -333,7 +334,8 @@ export default function App() {
                      removeLines={cart.removeLines} clearCart={cart.clearCart} legacy={cart.legacy} onDismissLegacy={cart.dismissLegacy}
                      profile={profile} account={account} signedIn={!!session} onSignIn={openSignin} onApplyClick={openSignup}
                      isApprovedBuyer={isApprovedBuyer} isSuspended={isSuspended} pricesStatus={prices.status} isBackendConfigured={isBackendConfigured} checkCart={checkCart}
-                     savedReceipt={receiptHere} entryKey={location.key} onSubmitted={(receipt) => saveReceipt({ owner, entryKey: location.key, receipt })} />
+                     savedReceipt={receiptHere} entryKey={location.key} onSubmitted={(receipt) => saveReceipt({ owner, entryKey: location.key, receipt })}
+                     loadShipTo={isBackendConfigured ? loadAccountShipTo : null} />
         );
       case 'account':
         // Keyed by account: another buyer never sees the last one's orders (AW-190).

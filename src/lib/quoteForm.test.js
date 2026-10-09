@@ -1,6 +1,8 @@
 // The quote form follows the signed-in account (AW-186, AW-190).
 import { describe, expect, it } from 'vitest';
-import { EMPTY_QUOTE_FORM, initialQuoteForm, quoteFormForAccount } from './quoteForm.js';
+import {
+  EMPTY_QUOTE_FORM, accountShipToSource, applyShipTo, clearShipTo, initialQuoteForm, profileShipTo, quoteFormForAccount,
+} from './quoteForm.js';
 
 const A = { id: 'a', business: 'Alpha Food Mart', name: 'Alice Alpha', email: 'alpha@example.test', phone: '205-000-0001' };
 const B = { id: 'b', business: 'Bravo Tobacco Outlet', name: 'Bea Bravo', email: 'bravo@example.test', phone: null };
@@ -50,6 +52,43 @@ describe('quoteForm', () => {
     // Buyer B never gets buyer A's store address.
     const filled = initialQuoteForm(store);
     expect(quoteFormForAccount(filled, { ...B, store_street: '2 Bravo Rd' }, 'a')).toMatchObject({ shipStreet: '2 Bravo Rd', shipCity: '', shipZip: '' });
+  });
+
+  describe('the last delivery address (AW-102)', () => {
+    const store = { ...A, store_street: '1 Alpha Way', store_city: 'Birmingham', state: 'AL', store_zip: '35203' };
+    const SAVED = { shipStreet: '4100 Test Rd', shipCity: 'Hoover', shipState: 'AL', shipZip: '35244' };
+
+    it('replaces the store address the profile filled in, or empty fields', () => {
+      expect(profileShipTo(store)).toEqual({ shipStreet: '1 Alpha Way', shipCity: 'Birmingham', shipState: 'AL', shipZip: '35203' });
+      expect(applyShipTo(initialQuoteForm(store), store, SAVED)).toMatchObject(SAVED);
+      // A profile without a store address fills only its state.
+      expect(applyShipTo(initialQuoteForm({ ...A, state: 'AL' }), { ...A, state: 'AL' }, SAVED)).toMatchObject(SAVED);
+      expect(applyShipTo(initialQuoteForm(A), A, SAVED)).toMatchObject(SAVED);
+      // The rest of the form is left alone.
+      expect(applyShipTo(initialQuoteForm(store), store, SAVED)).toMatchObject({ business: 'Alpha Food Mart', phone: '205-000-0001' });
+    });
+
+    it('never writes over a typed address, not even one field of it', () => {
+      const typed = { ...initialQuoteForm(store), shipStreet: '9 Typed Rd' };
+      expect(applyShipTo(typed, store, SAVED)).toBe(typed);
+      const zipOnly = { ...initialQuoteForm(A), shipZip: '36000' };
+      expect(applyShipTo(zipOnly, A, SAVED)).toBe(zipOnly);
+      const form = initialQuoteForm(store);
+      expect(applyShipTo(form, store, null)).toBe(form);
+    });
+
+    it('knows when the fields hold the account’s own address, and empties them', () => {
+      const saved = applyShipTo(initialQuoteForm(store), store, SAVED);
+      expect(accountShipToSource(saved, store, SAVED)).toBe('saved');
+      expect(accountShipToSource(initialQuoteForm(store), store, null)).toBe('store');
+      expect(accountShipToSource(initialQuoteForm(store), store, SAVED)).toBe('store');
+      expect(accountShipToSource({ ...saved, shipCity: 'Vestavia' }, store, SAVED)).toBeNull();
+      // A state alone is no address to offer to replace.
+      expect(accountShipToSource(initialQuoteForm({ ...A, state: 'AL' }), { ...A, state: 'AL' }, null)).toBeNull();
+      const cleared = clearShipTo(saved);
+      expect(cleared).toMatchObject({ shipStreet: '', shipCity: '', shipState: '', shipZip: '', business: 'Alpha Food Mart' });
+      expect(accountShipToSource(cleared, store, SAVED)).toBeNull();
+    });
   });
 
   it('starts the tobacco license answers empty and clears them for the next buyer (AW-014)', () => {
