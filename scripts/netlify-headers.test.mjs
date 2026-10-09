@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { cspProblems, inlineScriptHashes, parseCsp, previewHeaders, readNetlifyHeaders } from './netlify-headers.mjs';
+import { cspProblems, inlineScriptHashes, parseCsp, pathHeaders, previewHeaders, readNetlifyHeaders } from './netlify-headers.mjs';
 
 // Vitest runs from the repository root.
 const ROOT = process.cwd();
@@ -80,6 +80,23 @@ describe('readNetlifyHeaders', () => {
     const config = viteConfig({ command: 'serve', mode: 'development', isPreview: true });
     expect(config.preview.headers).toEqual(all);
     expect(config.server.headers).toBeUndefined();
+  });
+});
+
+describe('pathHeaders (NEW-006)', () => {
+  it('gives the values of the rules other than "/*" that match a path, which `vite preview` adds for files that exist', async () => {
+    expect(pathHeaders(rules, '/assets/QuotePage-abc.js')).toEqual({ 'Cache-Control': 'public, max-age=31536000, immutable' });
+    expect(pathHeaders(rules, '/img/kite--640x582-ab12.webp')).toEqual({ 'Cache-Control': 'public, max-age=31536000, immutable' });
+    expect(pathHeaders(rules, '/favicon.ico')).toEqual({ 'Cache-Control': 'public, max-age=604800' });
+    expect(pathHeaders(rules, '/contact')).toEqual({});
+    expect(pathHeaders(rules, '/')).toEqual({});
+    expect(pathHeaders(rules, '/assets')).toEqual({});
+    const { default: viteConfig } = await import('../vite.config.js');
+    const config = viteConfig({ command: 'serve', mode: 'development', isPreview: true });
+    // No CORS middleware, so no 'Vary: Origin' keeps a fetched-ahead file
+    // from serving its import().
+    expect(config.preview.cors).toBe(false);
+    expect(config.plugins.map((p) => p?.name)).toEqual(expect.arrayContaining(['aw-chunk-urls', 'aw-preview-path-headers']));
   });
 });
 

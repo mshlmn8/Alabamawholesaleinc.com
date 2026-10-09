@@ -9,6 +9,7 @@ import { AuthProvider } from './lib/auth.jsx';
 import { CatalogProvider } from './lib/catalog.jsx';
 import { PricesProvider } from './lib/prices.jsx';
 import { redirectLegacyHash } from './lib/router.js';
+import { installChunkRecovery } from './lib/chunks.js';
 import './index.css';
 
 // Before React touches the DOM: translated pages must not crash it (AW-039).
@@ -23,6 +24,9 @@ const authLink = takeAuthLink();
 
 // Old '#/…' links become their path (AW-043).
 redirectLegacyHash();
+
+// A page whose code didn't download reloads once (NEW-006).
+installChunkRecovery();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

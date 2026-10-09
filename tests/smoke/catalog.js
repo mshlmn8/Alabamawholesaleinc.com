@@ -164,3 +164,39 @@ export async function serveCatalog(target, { rows = () => seedRows(), homeSlides
   await target.route(/\/rest\/v1\/home_slides/, (route) => fulfillHomeSlides(route, homeSlides()));
   return calls;
 }
+
+// serveCatalog without Playwright routing (NEW-006). page.route and
+// context.route turn the browser's HTTP cache off, and the offline specs
+// need it on: the files fetched ahead must come from that cache. So a
+// stand-in for window.fetch, installed before the site's code runs, answers
+// Supabase inside the page: products as fulfillProducts does, home_slides as
+// "no table yet", and every other Supabase request fails like a dropped
+// connection. Nothing reaches a real project; other requests go out as
+// usual (only the preview server's own files, under the site's CSP).
+export async function serveCatalogInPage(context, { rows = seedRows() } = {}) {
+  await context.addInitScript(({ rows: all, columnsOfTable, revoked }) => {
+    const realFetch = window.fetch.bind(window);
+    const json = (status, body, headers = {}) => Promise.resolve(new Response(JSON.stringify(body), {
+      status, headers: { 'content-type': 'application/json', ...headers },
+    }));
+    const products = (url) => {
+      const columns = (url.searchParams.get('select') || '*').split(',').map((c) => c.trim()).filter(Boolean);
+      if (columns.includes('*') || columns.some((c) => revoked.includes(c))) return json(401, { code: '42501', message: 'permission denied for table products', details: null, hint: null });
+      const unknown = columns.find((c) => !columnsOfTable.includes(c));
+      if (unknown) return json(400, { code: '42703', message: `column products.${unknown} does not exist`, details: null, hint: null });
+      const active = all.filter((r) => r.active !== false).sort((a, b) => a.id - b.id);
+      const offset = Number(url.searchParams.get('offset') || 0);
+      const limit = Number(url.searchParams.get('limit') || active.length);
+      const page = active.slice(offset, offset + limit).map((row) => Object.fromEntries(columns.map((c) => [c, row[c] ?? null])));
+      return json(200, page, { 'content-range': page.length ? `${offset}-${offset + page.length - 1}/${active.length}` : `*/${active.length}` });
+    };
+    window.fetch = (input, init) => {
+      const url = new URL(typeof input === 'string' || input instanceof URL ? String(input) : input.url, window.location.href);
+      if (!/\.supabase\.co$/.test(url.hostname)) return realFetch(input, init);
+      const method = (init?.method || (typeof input === 'object' && input.method) || 'GET').toUpperCase();
+      if (method === 'GET' && /\/rest\/v1\/products$/.test(url.pathname)) return products(url);
+      if (method === 'GET' && /\/rest\/v1\/home_slides$/.test(url.pathname)) return json(404, { code: 'PGRST205', message: "Could not find the table 'public.home_slides' in the schema cache" });
+      return Promise.reject(new TypeError('Failed to fetch'));
+    };
+  }, { rows, columnsOfTable: TABLE_COLUMNS, revoked: REVOKED_COLUMNS });
+}

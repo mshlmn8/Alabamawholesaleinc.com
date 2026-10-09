@@ -12,11 +12,13 @@
 //                      'This didn't open' dialog with Reload when it can't
 //                      (or when it fails some other way, said apart).
 //
-// App's route ErrorBoundary says when a page's code didn't load
-// (isChunkLoadError in src/lib/chunks.js). Nothing reloads by itself.
+// App's factories wait for the connection and reload a page whose code
+// didn't download once (loadPage in src/lib/chunks.js, NEW-006); App's route
+// ErrorBoundary says when it still didn't load after that. A dialog never
+// reloads by itself.
 
 import { Suspense, lazy, useEffect } from 'react';
-import { isChunkLoadError } from '../lib/chunks.js';
+import { clearChunkReload, isChunkLoadError } from '../lib/chunks.js';
 import { focusPageHeading, useLocation } from '../lib/router.js';
 import { ErrorBoundary } from './ErrorBoundary.jsx';
 import { Icon } from './Icon.jsx';
@@ -38,6 +40,9 @@ function PageArrived() {
   const { action } = useLocation();
   const navigated = action !== 'load';
   useEffect(() => {
+    // Its code loaded: a later file that fails may reload once again
+    // (src/lib/chunks.js, NEW-006).
+    clearChunkReload();
     if (!navigated) return;
     const active = document.activeElement;
     if (!active || active === document.body || active.tagName === 'MAIN') focusPageHeading();

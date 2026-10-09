@@ -13,9 +13,12 @@
 // Code splitting (AW-179): the storefront pages (home, departments, products,
 // search, All products, not found) are in the first download. The account,
 // admin, quote and support pages and the sign-in dialog load when first
-// opened, and Quote, Account and the dialog (Admin for an admin) also load in
-// the background once the page is idle. src/components/LazyPage.jsx has the
-// loading views; ErrorBoundary says when that code didn't load.
+// opened. Once the page is idle their files (Admin's only for an admin) are
+// fetched into the browser's cache, so they open at once and offline
+// (NEW-006, AW-344); offline, a page whose files aren't cached shows
+// 'Loading…' until the connection is back. src/lib/chunks.js has the rules,
+// src/components/LazyPage.jsx the loading views; ErrorBoundary says when
+// that code didn't load even after a reload.
 
 import { Suspense, lazy, useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 
@@ -61,23 +64,24 @@ import { SearchPage } from './pages/SearchPage.jsx';
 import { useAdminUnseen } from './pages/admin/useAdminUnseen.js';
 // Eager: its '#dept-…' links scroll to their department before paint.
 import { CatalogIndexPage } from './pages/support/CatalogIndexPage.jsx';
-import { prefetch, whenIdle } from './lib/chunks.js';
+import { loadDialog, loadPage, prefetchChunks, whenIdle } from './lib/chunks.js';
 
-// Loaded when first opened (AW-179). Each loader is also what the idle
-// prefetch below calls, so both share one download.
-const loadQuotePage = () => import('./pages/QuotePage.jsx');
-const loadAccountPage = () => import('./pages/account/AccountPage.jsx');
-const loadAdminPage = () => import('./pages/admin/AdminPage.jsx');
-const loadAuthModal = () => import('./components/AuthModal.jsx');
-const QuotePage = lazyPage(() => loadQuotePage().then((m) => ({ default: m.QuotePage })));
-const AccountPage = lazyPage(() => loadAccountPage().then((m) => ({ default: m.AccountPage })));
-const AdminPage = lazyPage(() => loadAdminPage().then((m) => ({ default: m.AdminPage })));
-const ContactPage = lazyPage(() => import('./pages/support/ContactPage.jsx').then((m) => ({ default: m.ContactPage })));
-const DeliveryPage = lazyPage(() => import('./pages/support/DeliveryPage.jsx').then((m) => ({ default: m.DeliveryPage })));
-const PolicyPage = lazyPage(() => import('./pages/support/PolicyPage.jsx').then((m) => ({ default: m.PolicyPage })));
-const ApplyPage = lazyPage(() => import('./pages/support/ApplyPage.jsx').then((m) => ({ default: m.ApplyPage })));
-const ResetPasswordPage = lazyPage(() => import('./pages/support/ResetPasswordPage.jsx').then((m) => ({ default: m.ResetPasswordPage })));
-const AuthModal = lazy(() => loadAuthModal().then((m) => ({ default: m.AuthModal })));
+// Loaded when first opened (AW-179), each under its name in
+// scripts/chunk-urls.mjs LAZY_CHUNKS: loadPage and loadDialog wait for the
+// connection when the file isn't cached, and a page whose file didn't
+// download reloads once (NEW-006).
+const QuotePage = lazyPage(() => loadPage('quote', () => import('./pages/QuotePage.jsx')).then((m) => ({ default: m.QuotePage })));
+const AccountPage = lazyPage(() => loadPage('account', () => import('./pages/account/AccountPage.jsx')).then((m) => ({ default: m.AccountPage })));
+const AdminPage = lazyPage(() => loadPage('admin', () => import('./pages/admin/AdminPage.jsx')).then((m) => ({ default: m.AdminPage })));
+const ContactPage = lazyPage(() => loadPage('contact', () => import('./pages/support/ContactPage.jsx')).then((m) => ({ default: m.ContactPage })));
+const DeliveryPage = lazyPage(() => loadPage('delivery', () => import('./pages/support/DeliveryPage.jsx')).then((m) => ({ default: m.DeliveryPage })));
+const PolicyPage = lazyPage(() => loadPage('policy', () => import('./pages/support/PolicyPage.jsx')).then((m) => ({ default: m.PolicyPage })));
+const ApplyPage = lazyPage(() => loadPage('apply', () => import('./pages/support/ApplyPage.jsx')).then((m) => ({ default: m.ApplyPage })));
+const ResetPasswordPage = lazyPage(() => loadPage('reset', () => import('./pages/support/ResetPasswordPage.jsx')).then((m) => ({ default: m.ResetPasswordPage })));
+const AuthModal = lazy(() => loadDialog('auth', () => import('./components/AuthModal.jsx')).then((m) => ({ default: m.AuthModal })));
+// Fetched ahead once the page is idle (NEW-006): the pages and dialog a
+// visit opens most, and every support page, so they open offline too.
+const IDLE_CHUNKS = ['quote', 'account', 'auth', 'contact', 'delivery', 'policy', 'apply', 'reset'];
 
 // Not-found routes that depend on what is in the catalog.
 const CATALOG_KINDS = ['product', 'department', 'line'];
@@ -145,10 +149,11 @@ export default function App() {
   // Orders placed since this admin last opened Admin -> Orders (AW-111): the
   // header's Admin link and the admin pages' titles show the count.
   const adminUnseen = useAdminUnseen(isAdmin ? profile.id : null);
-  // Once the page is idle, the pages and dialog a visit most often opens next
-  // load in the background (AW-179); Admin only for an admin.
-  useEffect(() => whenIdle(() => prefetch([loadQuotePage, loadAccountPage, loadAuthModal])), []);
-  useEffect(() => (isAdmin ? whenIdle(() => prefetch([loadAdminPage])) : undefined), [isAdmin]);
+  // Once the page is idle, the files of the pages and dialog that load on
+  // demand go into the browser's cache (AW-179, NEW-006); Admin's only for
+  // an admin.
+  useEffect(() => whenIdle(() => prefetchChunks(IDLE_CHUNKS)), []);
+  useEffect(() => (isAdmin ? whenIdle(() => prefetchChunks(['admin'])) : undefined), [isAdmin]);
   const departments = useMemo(() => departmentsFor(products), [products]);
   // The signed-in buyer's unit price for a product (and variant), or null:
   // no approved account, prices still loading, or price on request (AW-003).

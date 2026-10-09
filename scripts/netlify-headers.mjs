@@ -4,6 +4,10 @@
 // - inlineScriptHashes(html): the CSP hash of each inline script;
 // - previewHeaders(root): the "/*" values, which `vite preview` sends so a
 //   local production check runs under the same policy as Netlify;
+// - pathHeaders(rules, pathname): the values of the other rules that match
+//   a path (the year-long Cache-Control on /assets/*), which `vite preview`
+//   adds for files that exist, so the browser caches the built files as it
+//   does from Netlify (NEW-006);
 // - cspProblems(csp, hashes): what scripts/check-headers.mjs and the unit
 //   tests refuse in the policy.
 import { createHash } from 'node:crypto';
@@ -163,4 +167,22 @@ export function previewHeaders(root) {
   const rule = readNetlifyHeaders(readFileSync(path.join(root, 'netlify.toml'), 'utf8')).find((r) => r.for === '/*');
   if (!rule) throw new Error('netlify.toml has no [[headers]] rule for "/*"');
   return { ...rule.values };
+}
+
+/**
+ * The values of every rule other than "/*" whose `for` matches `pathname`:
+ * "/assets/*" matches anything under /assets/, "/favicon.ico" only itself.
+ * Later rules win, as on Netlify.
+ * @param {{ for: string, values: Record<string, string> }[]} rules
+ * @param {string} pathname
+ * @returns {Record<string, string>}
+ */
+export function pathHeaders(rules, pathname) {
+  const out = {};
+  for (const rule of rules) {
+    if (rule.for === '/*') continue;
+    const matches = rule.for.endsWith('/*') ? pathname.startsWith(rule.for.slice(0, -1)) : pathname === rule.for;
+    if (matches) Object.assign(out, rule.values);
+  }
+  return out;
 }

@@ -8,8 +8,9 @@
 // apart from any other error, NEW-019).
 //
 // A page whose code didn't download (AW-179: after a new deploy, or with the
-// connection gone) says so, with the same Reload button. It never reloads by
-// itself.
+// connection gone) says so, with the same Reload button. By then App's
+// loader has already reloaded the page once for it (loadPage in
+// src/lib/chunks.js, NEW-006); this boundary never reloads by itself.
 
 import { Component, useEffect, useRef } from 'react';
 import { IMG } from '../data/theme.js';

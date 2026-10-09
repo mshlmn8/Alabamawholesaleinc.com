@@ -6,7 +6,11 @@
 //
 // Browsing, search and the cart keep working offline; anything that has to
 // reach the server waits, and says so where it is offered (QuotePage, the
-// sign-in dialog through friendlyAuthError in src/lib/authErrors.js).
+// sign-in dialog through friendlyAuthError in src/lib/authErrors.js). The
+// pages that load on demand open offline too: once the page is idle their
+// files are fetched into the browser's cache (every support page, Quote, My
+// account and the sign-in dialog), and one opened before that says
+// 'Loading…' until the connection is back (src/lib/chunks.js, NEW-006).
 
 // TODO(owner): Should a reload while offline still open the site (an installable app with an offline copy of the pages and catalog)? Not built: a service worker's cache would fight the cache rules for the site's code files (AW-179, AW-182). (AW-344)
 

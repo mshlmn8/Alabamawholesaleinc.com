@@ -64,6 +64,16 @@ describe('lazyPage', () => {
     expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Contact' }));
   });
 
+  it('clears the one-reload flag once a page’s code has loaded and it rendered (NEW-006)', async () => {
+    window.sessionStorage.setItem('aw-chunk-reload', '/contact');
+    const load = deferred();
+    const Page = lazyPage(() => load.promise);
+    render(shell(<Page title="Contact" />));
+    expect(window.sessionStorage.getItem('aw-chunk-reload')).toBe('/contact');
+    await act(async () => { load.resolve({ default: Heading }); await load.promise; });
+    expect(window.sessionStorage.getItem('aw-chunk-reload')).toBeNull();
+  });
+
   it('leaves focus where the visitor moved it while the page loaded', async () => {
     act(() => navigate('/delivery'));
     const load = deferred();

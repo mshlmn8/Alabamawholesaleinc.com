@@ -1,8 +1,39 @@
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { backendEnvError } from './scripts/build-env.mjs';
-import { previewHeaders } from './scripts/netlify-headers.mjs';
+import { chunkUrlsPlugin } from './scripts/chunk-urls.mjs';
+import { pathHeaders, previewHeaders, readNetlifyHeaders } from './scripts/netlify-headers.mjs';
+
+const ROOT = fileURLToPath(new URL('.', import.meta.url));
+
+// `vite preview` also sends netlify.toml's per-path headers for files that
+// exist in dist (the year-long Cache-Control on /assets/* and /img/*), so a
+// local production check caches the built files as browsers do from Netlify
+// and an offline check sees what a visitor would (NEW-006). Set before the
+// static file server, which keeps a Cache-Control already on the response.
+// A missing file gets none: the page served in its place must not be kept.
+function previewPathHeaders() {
+  return {
+    name: 'aw-preview-path-headers',
+    configurePreviewServer(server) {
+      const rules = readNetlifyHeaders(readFileSync(path.join(ROOT, 'netlify.toml'), 'utf8'));
+      const dist = path.resolve(ROOT, server.config.build.outDir);
+      server.middlewares.use((req, res, next) => {
+        let pathname = '/';
+        try { pathname = decodeURIComponent(new URL(req.url, 'http://preview.local').pathname); } catch { return next(); }
+        const values = pathHeaders(rules, pathname);
+        if (!Object.keys(values).length) return next();
+        const file = path.join(dist, pathname);
+        if (!file.startsWith(dist + path.sep) || !existsSync(file) || !statSync(file).isFile()) return next();
+        for (const [name, value] of Object.entries(values)) res.setHeader(name, value);
+        return next();
+      });
+    }
+  };
+}
 
 export default defineConfig(({ command, mode }) => {
   // Production builds must carry the Supabase settings (AW-053). Dev servers,
@@ -13,7 +44,9 @@ export default defineConfig(({ command, mode }) => {
   }
 
   return {
-    plugins: [react()],
+    // chunkUrlsPlugin (build only): the files src/lib/chunks.js fetches
+    // ahead, written into the built code (NEW-006).
+    plugins: [react(), chunkUrlsPlugin(), previewPathHeaders()],
     server: {
       port: 3000,
       // CI and Playwright runs must not try to open a browser (preview.open
@@ -25,7 +58,12 @@ export default defineConfig(({ command, mode }) => {
     // under the real Content-Security-Policy (AW-205). Never on the dev
     // server: React Refresh injects inline scripts the policy would block.
     preview: {
-      headers: previewHeaders(fileURLToPath(new URL('.', import.meta.url)))
+      headers: previewHeaders(ROOT),
+      // No CORS middleware: the site is same-origin, and its 'Vary: Origin'
+      // would keep the files src/lib/chunks.js fetches ahead (no Origin
+      // header) from serving the import() of them (Chromium sends Origin),
+      // which Netlify's responses don't (NEW-006).
+      cors: false
     },
     build: {
       outDir: 'dist',
