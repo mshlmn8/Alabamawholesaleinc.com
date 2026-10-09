@@ -23,8 +23,10 @@ deploy → Continuous deployment**):
 `netlify.toml` also sets `NPM_FLAGS = "--no-fund"` (npm audit stays on) and the
 `/* → /index.html` fallback the single-page app needs: every page has a path
 URL (`/product/12`, `/category/tobacco`), and loading or reloading one must
-serve `index.html`. Keep that rule. `npm run build` also writes
-`dist/sitemap.xml` from the catalog; `public/robots.txt` points at it.
+serve `index.html`. Keep that rule, below the two rules that answer a missing
+`/assets` or `/img` file with a 404 ("Headers and caching"). `npm run build`
+also writes `dist/sitemap.xml` from the catalog; `public/robots.txt` points at
+it.
 
 Optional: `VITE_SITE_URL` sets the public origin used for canonical links,
 share tags and the sitemap. It defaults to `https://alabamawholesaleinc.com`;
@@ -89,6 +91,17 @@ Caching:
   `public, max-age=604800` (a week), so a new logo still reaches visitors.
 - Everything else (`robots.txt`, `sitemap.xml`, `site.webmanifest`) keeps the
   Netlify default.
+- A file under `/assets/*` or `/img/*` that isn't in the deploy gets a real
+  404 (`public/404.html`, a static page with no script) instead of
+  `index.html`. Two `[[redirects]]` rules above the `/*` page rewrite do this.
+  They aren't forced, and Netlify serves a file that exists before any rule,
+  so they only answer for missing files. This matters after a deploy: the
+  account, admin, quote and support pages and the sign-in dialog are separate
+  code files that load when first opened (AW-179), and a tab still open on the
+  last version asks for their old names. With a 404 the page says it didn't
+  load and offers Reload; `index.html` sent under that name would fail as a
+  script and, under the `/assets/*` rule above, be kept for a year. Keep both
+  rules above `/*`: `scripts/netlify-headers.test.mjs` checks the order.
 
 When you change something:
 

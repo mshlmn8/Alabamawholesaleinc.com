@@ -12,7 +12,7 @@
 // and fitSentences() whole sentences, so neither ends mid-phrase.
 
 import { COMPANY, HOME_PITCH, HOME_TITLE, HOURS, ORDER_MINIMUM, hoursLine } from '../data/content.js';
-import { POLICY_TITLES, POLICY_INTROS } from '../pages/support/PolicyPage.jsx';
+import { POLICY_TITLES, POLICY_INTROS } from '../pages/support/policyText.js';
 import { topLines } from './departments.js';
 import { brandLabel, catLabel, formatMoney } from './format.js';
 import { underLegalReview } from './merchandising.js';

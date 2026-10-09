@@ -8,6 +8,10 @@ function Page({ name, broken }) {
   if (broken) throw new Error(`${name} is broken`);
   return <h1>{name}</h1>;
 }
+// What a page whose code can't be downloaded throws (AW-179).
+function NotLoaded({ message }) {
+  throw new TypeError(message);
+}
 
 const quietConsole = () => vi.spyOn(console, 'error').mockImplementation(() => {});
 // React's development build re-dispatches render errors as window errors,
@@ -32,6 +36,31 @@ describe('ErrorBoundary', () => {
     expect(screen.getByRole('link', { name: COMPANY.phone }).getAttribute('href')).toBe(`tel:${COMPANY.phoneRaw}`);
     expect(screen.getByRole('link', { name: COMPANY.email }).getAttribute('href')).toBe(`mailto:${COMPANY.email}`);
     expect(log).toHaveBeenCalledWith('A page failed to render.', expect.any(Error), expect.anything());
+  });
+
+  it('says a page whose code didn’t download wasn’t loaded, with the same Reload (AW-179)', () => {
+    quietConsole();
+    for (const message of [
+      'Failed to fetch dynamically imported module: https://alabamawholesaleinc.com/assets/AdminPage-abc.js',
+      'Importing a module script failed.',
+      'error loading dynamically imported module: https://alabamawholesaleinc.com/assets/AdminPage-abc.js',
+      'Unable to preload CSS for /assets/AdminPage-abc.css',
+    ]) {
+      const { unmount } = render(<ErrorBoundary resetKey="a"><NotLoaded message={message} /></ErrorBoundary>);
+      const heading = screen.getByRole('heading', { level: 1, name: 'This page didn’t load' });
+      expect(document.activeElement).toBe(heading);
+      expect(screen.getByRole('alert').textContent).toContain('The site may have been updated, or the connection dropped. Reload to try again');
+      expect(screen.getByRole('button', { name: 'Reload' })).toBeTruthy();
+      expect(screen.getByRole('link', { name: 'Go to home' }).getAttribute('href')).toBe('/');
+      unmount();
+    }
+  });
+
+  it('shows the fallback it is given instead of the page fallback', () => {
+    quietConsole();
+    render(<ErrorBoundary fallback={<p>This didn’t open</p>}><Page name="Dialog" broken /></ErrorBoundary>);
+    expect(screen.getByText('This didn’t open')).toBeTruthy();
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
   });
 
   it('shows the logo in the full-page fallback', () => {

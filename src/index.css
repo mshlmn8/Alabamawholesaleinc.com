@@ -642,6 +642,12 @@ p > .text-link { min-height: 0; min-width: 0; }
 .page-head .eyebrow { color: var(--orange-dark); margin-bottom: 9px; }
 .page-head h1 { margin-bottom: 10px; }
 .page-head > p:not([class]) { max-width: 560px; color: var(--muted); font-size: var(--text-base); line-height: 1.7; }
+/* A page whose code is still downloading (AW-179, src/components/LazyPage.jsx):
+   it keeps the footer down where the page will be, and its status line
+   shows only after a moment, so a quick load doesn't flash it. */
+.page-loading { min-height: 60vh; }
+.page-loading > p { animation: page-loading-in 0s 0.4s both; }
+@keyframes page-loading-in { from { visibility: hidden; } }
 /* Page-head modifiers (AW-301), one class each, so the phone page-head padding
    in the compact block below still wins: no bottom padding above the product,
    and the centred message of the empty and submitted checkout. */

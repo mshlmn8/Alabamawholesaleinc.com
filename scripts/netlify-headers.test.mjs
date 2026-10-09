@@ -191,3 +191,35 @@ describe('caching (AW-182)', () => {
     }
   });
 });
+
+describe('missing code and photo files (AW-179)', () => {
+  // The [[redirects]] rules of netlify.toml, in file order.
+  const redirects = toml.split(/^\[\[redirects\]\]\s*$/m).slice(1).map((block) => {
+    const body = block.split(/^\[/m)[0];
+    const value = (key) => new RegExp(`^\\s*${key}\\s*=\\s*"?([^"\\n]*)"?\\s*$`, 'm').exec(body)?.[1] ?? null;
+    return { from: value('from'), to: value('to'), status: Number(value('status')), force: value('force') };
+  });
+  const at = (from) => redirects.findIndex((r) => r.from === from);
+
+  it('answers a missing /assets or /img file with a real 404, above the "/*" page rewrite', () => {
+    const spa = at('/*');
+    expect(redirects[spa]).toMatchObject({ to: '/index.html', status: 200, force: null });
+    for (const from of ['/assets/*', '/img/*']) {
+      // Not forced: Netlify serves a file that exists before any rule, so
+      // only a missing (old) file reaches this one.
+      expect(redirects[at(from)]).toEqual({ from, to: '/404.html', status: 404, force: null });
+      expect([from, at(from) < spa]).toEqual([from, true]);
+    }
+  });
+
+  it('has a static 404 page: no script, only an inline style the CSP allows', () => {
+    const page = readFileSync(resolve(ROOT, 'public/404.html'), 'utf8');
+    expect(page).toMatch(/^<!doctype html>/i);
+    expect(page).toContain('<meta name="robots" content="noindex" />');
+    expect(page).not.toMatch(/<script\b/i);
+    expect(page).not.toMatch(/<link\b[^>]*stylesheet|@import|url\(/i);
+    expect(inlineScriptHashes(page)).toEqual([]);
+    expect(csp.get('style-src')).toContain("'unsafe-inline'");
+    expect(page).toContain('<a href="/">');
+  });
+});

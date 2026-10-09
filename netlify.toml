@@ -11,6 +11,24 @@
 [[plugins]]
   package = "./netlify/plugins/image-cache"
 
+# A file under /assets or /img that isn't in this deploy is a real 404
+# (AW-179), not index.html: a tab still running the last deploy asks for its
+# old, renamed code files, and index.html sent under those names would be
+# kept for a year (the "/assets/*" and "/img/*" Cache-Control below) and fail
+# as a script. Netlify serves a file that exists before any redirect rule
+# (rules don't force unless `force = true`), so these only answer for
+# missing files. They must stay above the "/*" rule, which answers every
+# other path.
+[[redirects]]
+  from = "/assets/*"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/img/*"
+  to = "/404.html"
+  status = 404
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
