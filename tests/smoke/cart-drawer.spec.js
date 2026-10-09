@@ -50,7 +50,8 @@ const measure = (page) => page.evaluate(() => {
     foot: box('.drawer-foot').height,
     closeBottom: close.bottom,
     removeTop: remove.top,
-    fineInBody: !!document.querySelector('.drawer-body > .drawer-fine'),
+    // The cart's summary (AW-238) follows the lines on a short screen.
+    summaryInBody: !!document.querySelector('.drawer-body > .cart-summary'),
   };
 });
 
@@ -66,16 +67,16 @@ test.describe('a phone on its side', () => {
     await page.goto('/category/grocery');
     await expect(cartButton(page)).toContainText('9');
     await cartButton(page).click();
-    const drawer = page.getByRole('dialog', { name: 'Your order' });
+    const drawer = page.getByRole('dialog', { name: 'Your quote' });
     await expect(drawer.locator('.drawer-line')).toHaveCount(5);
 
     const landscape = await measure(page);
     // At least half the drawer is the scrolling list (the review measured 90 of 390px).
     expect(landscape.body).toBeGreaterThanOrEqual(landscape.drawer / 2);
-    expect(landscape.fineInBody).toBe(true);
+    expect(landscape.summaryInBody).toBe(true);
     // The guest's foot keeps its 44px controls.
-    for (const name of ['Request quote', 'Sign in for account pricing']) {
-      const height = await drawer.getByRole(name === 'Request quote' ? 'link' : 'button', { name }).evaluate((el) => el.getBoundingClientRect().height);
+    for (const name of ['Review quote', 'Sign in for account pricing']) {
+      const height = await drawer.getByRole(name === 'Review quote' ? 'link' : 'button', { name }).evaluate((el) => el.getBoundingClientRect().height);
       expect(height, name).toBeGreaterThanOrEqual(44);
     }
 
@@ -101,14 +102,15 @@ test('an empty cart offers the catalog, with no total or fine print, and the lin
   const errors = trackErrors(page);
   await page.goto('/');
   await cartButton(page).click();
-  const drawer = page.getByRole('dialog', { name: 'Your order' });
-  await expect(drawer.getByRole('heading', { level: 3, name: 'Your cart is empty' })).toBeVisible();
+  const drawer = page.getByRole('dialog', { name: 'Your quote' });
+  // In the basket's words (AW-132): a guest's is a quote.
+  await expect(drawer.getByRole('heading', { level: 3, name: 'Your quote is empty' })).toBeVisible();
   await expect(drawer.getByText('Estimated total')).toHaveCount(0);
   await expect(drawer.locator('.drawer-fine')).toHaveCount(0);
   await expect(drawer.locator('.drawer-foot')).toBeHidden();
   await drawer.getByRole('link', { name: 'Browse the catalog' }).click();
   await expect(page).toHaveURL(/\/catalog$/);
-  await expect(page.getByRole('dialog', { name: 'Your order' })).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'Your quote' })).toHaveCount(0);
   await expect(page.locator('main h1')).toBeVisible();
   expect(errors).toEqual([]);
 });

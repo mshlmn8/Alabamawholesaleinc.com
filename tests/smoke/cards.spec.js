@@ -157,10 +157,18 @@ test('section links stay on one line beside their heading, with no sideways scro
     await page.goto(path);
     await expect(page.locator('.section-head > a').first()).toBeVisible();
     const result = await page.evaluate(() => ({
+      // The visible text's lines: a link's sr-only words (storefront's
+      // 'View all <line>') sit in a 1px box of their own.
       lines: [...document.querySelectorAll('.section-head > a')].map((a) => {
-        const range = document.createRange();
-        range.selectNodeContents(a);
-        return [a.textContent, new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size];
+        const tops = new Set();
+        const walker = document.createTreeWalker(a, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          if (node.parentElement.closest('.sr-only')) continue;
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          for (const r of range.getClientRects()) if (r.width > 0) tops.add(Math.round(r.top));
+        }
+        return [a.textContent, tops.size];
       }),
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     }));

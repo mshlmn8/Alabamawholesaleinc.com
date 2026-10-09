@@ -144,7 +144,8 @@ test('signing out without a connection stays signed out after a reload, in every
     await menu.click();
     await page.getByRole('dialog').getByRole('button', { name: 'Sign out', exact: true }).click();
   } else {
-    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+    // The header's; My account has its own Sign out too (AW-252).
+    await page.getByRole('banner').getByRole('button', { name: 'Sign out', exact: true }).click();
   }
   await expect(page.locator('.site-notice[data-notice="signed-out"]')).toContainText('You’re signed out on this computer.');
   expect(calls.logout).toEqual(['?scope=local']);

@@ -48,7 +48,7 @@ const TYPED = [['Business name', 'Draft Market LLC'], ['Contact name', 'Dee Draf
 async function expectTyped(page, notes = 'Dock B\nBefore 10 AM') {
   for (const [label, value] of TYPED) await expect(field(page, label), label).toHaveValue(value);
   await expect(field(page, 'State')).toHaveValue('MS');
-  await expect(field(page, 'Notes')).toHaveValue(notes);
+  await expect(field(page, 'Notes (optional)')).toHaveValue(notes);
 }
 
 test.describe('a guest', () => {
@@ -65,7 +65,7 @@ test.describe('a guest', () => {
     const state = field(page, 'State');
     await expect(state.locator('option')).toHaveText(['Choose a state…', 'Alabama', 'Georgia', 'Mississippi']);
     await expect(state).toHaveAccessibleDescription('Delivery routes cover AL, MS and GA. For another state, choose will-call pickup.');
-    await expect(field(page, 'Notes')).toHaveJSProperty('tagName', 'TEXTAREA');
+    await expect(field(page, 'Notes (optional)')).toHaveJSProperty('tagName', 'TEXTAREA');
     const phone = field(page, 'Phone');
     await expect(phone).toHaveAccessibleDescription('10 digits, for example (205) 555-0123');
     // The browser refuses letters (the pattern compiles with the v flag).
@@ -84,7 +84,8 @@ test.describe('a guest', () => {
     const sent = [];
     await page.route(/\/rest\/v1\/rpc\/submit_quote/, (route) => { sent.push(1); return route.abort(); });
     await page.getByRole('button', { name: 'Submit quote request' }).click();
-    await expect(page.getByRole('alert')).toHaveText('Enter a 10-digit phone number.');
+    // Under the field (AW-173), before anything is sent.
+    await expect(page.locator('#quote-phone-error')).toHaveText('Enter a 10-digit phone number.');
     await expect(phone).toHaveAttribute('aria-invalid', 'true');
     await expect(phone).toBeFocused();
     expect(sent).toEqual([]);
@@ -97,7 +98,7 @@ test.describe('a guest', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Request a quote' })).toBeVisible();
     for (const [label, value] of TYPED) await field(page, label).fill(value);
     await field(page, 'State').selectOption('MS');
-    await field(page, 'Notes').fill('Dock B\nBefore 10 AM');
+    await field(page, 'Notes (optional)').fill('Dock B\nBefore 10 AM');
     await page.getByLabel('State tobacco/retail license #').fill('TL-SECRET');
     await page.getByLabel('Sales-tax / resale certificate #').fill('RS-SECRET');
     await page.getByRole('checkbox', { name: /all purchasers are 21\+/ }).check();
@@ -120,7 +121,7 @@ test.describe('a guest', () => {
     await expectTyped(page);
 
     // A reload straight after an edit.
-    await field(page, 'Notes').fill('Dock C\nAfter 2 PM');
+    await field(page, 'Notes (optional)').fill('Dock C\nAfter 2 PM');
     await page.reload();
     await expectTyped(page, 'Dock C\nAfter 2 PM');
 
@@ -176,11 +177,11 @@ test('an approved buyer’s draft wins over the profile, survives a reload, and 
   await expect(field(page, 'State')).toHaveValue('AL');
   await field(page, 'Contact name').fill('Dock Manager');
   await field(page, 'Street').fill('9 Loading Dock Rd');
-  await field(page, 'Notes').fill('Ring the bell');
+  await field(page, 'Notes (optional)').fill('Ring the bell');
   await page.reload();
   await expect(field(page, 'Contact name')).toHaveValue('Dock Manager');
   await expect(field(page, 'Street')).toHaveValue('9 Loading Dock Rd');
-  await expect(field(page, 'Notes')).toHaveValue('Ring the bell');
+  await expect(field(page, 'Notes (optional)')).toHaveValue('Ring the bell');
   // Fields the buyer left alone still come from the profile.
   await expect(field(page, 'Business name')).toHaveValue('Test Market LLC');
   expect((await draft(page)).owner).toBe(UID);
@@ -199,7 +200,7 @@ test('an approved buyer’s draft wins over the profile, survives a reload, and 
   await page.evaluate(([key, cart]) => localStorage.setItem(key, cart), [GUEST_CART, JSON.stringify({ 45: 1 })]);
   await page.goto('/quote');
   await expect(page.getByRole('heading', { level: 1, name: 'Request a quote' })).toBeVisible();
-  for (const label of ['Business name', 'Contact name', 'Street', 'Notes']) await expect(field(page, label), label).toHaveValue('');
+  for (const label of ['Business name', 'Contact name', 'Street', 'Notes (optional)']) await expect(field(page, label), label).toHaveValue('');
   await expect(field(page, 'State')).toHaveValue('');
   expect(errors).toEqual([]);
 });

@@ -50,9 +50,13 @@ test.describe('the Categories menu (AW-062)', () => {
       const catalog = menu.getByRole('link', { name: 'View full catalog' });
       const close = menu.getByRole('button', { name: 'Close categories' });
       await expect(catalog).toBeInViewport({ ratio: 1 });
-      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-      await page.mouse.wheel(0, 400);
-      await expect.poll(() => menu.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+      // With the shorter header (AW-153) the whole menu can fit: it scrolls
+      // only when it is taller than the room it has.
+      if (await menu.evaluate((el) => el.scrollHeight > el.clientHeight + 1)) {
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+        await page.mouse.wheel(0, 400);
+        await expect.poll(() => menu.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+      }
       for (const control of [close, catalog]) {
         // On screen and not covered by the departments scrolling under it.
         await expect(control).toBeInViewport({ ratio: 1 });
@@ -98,7 +102,8 @@ test('a Help link opens its page, and Back returns to the page Help was opened o
     await page.getByRole('button', { name: 'Menu' }).click();
     await page.getByRole('dialog', { name: 'Menu' }).getByRole('button', { name: 'Help' }).click();
   } else {
-    await page.getByRole('button', { name: /^Help/ }).click();
+    // The header's; the footer has a Help button too (AW-285).
+    await page.getByRole('banner').getByRole('button', { name: /^Help/ }).click();
   }
   const help = page.getByRole('dialog', { name: 'Talk to the warehouse' });
   await expect(help.locator('.eyebrow, .kicker')).toHaveText(['ACCOUNT SERVICE']);

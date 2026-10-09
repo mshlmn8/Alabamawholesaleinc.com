@@ -61,7 +61,8 @@ test('one banner holds the skip link and the trade bar, whose Apply comes before
   const banner = page.getByRole('banner');
   await expect(banner).toHaveCount(1);
   const pause = banner.getByRole('button', { name: 'Pause announcements' });
-  const apply = banner.getByRole('button', { name: 'Apply for a trade account' });
+  // The trade bar's; the header's account actions say Apply too (AW-132).
+  const apply = banner.locator('.trade-bar').getByRole('button', { name: 'Apply for a trade account' });
   const call = banner.getByRole('link', { name: /^Call \(205\) 354-4473$/ });
   await expect(apply).toBeVisible();
   await expect(call).toBeVisible();
@@ -166,7 +167,7 @@ test.describe('the sticky header and the department page', () => {
     const banner = page.getByRole('banner');
     await expect(banner.locator('.trade-bar')).not.toBeInViewport();
     const search = banner.getByRole('combobox', { name: 'Search products' });
-    const cart = banner.getByRole('button', { name: /^Cart/ });
+    const cart = banner.getByRole('button', { name: /^(Quote|Order), / });
     const categories = banner.getByRole('button', { name: 'Categories' });
     for (const control of [search, cart, categories]) await expect(control).toBeInViewport({ ratio: 1 });
     // The header's bottom edge is what --header-h says.
@@ -204,7 +205,7 @@ test.describe('the sticky header and the department page', () => {
       expect(Math.abs(middle(call) - middle(announcements))).toBeLessThan(12);
       const search = await rect(banner.getByRole('combobox', { name: 'Search products' }));
       const logo = await rect(banner.getByRole('link', { name: 'Alabama Wholesale home' }));
-      const cart = await rect(banner.getByRole('button', { name: /^Cart/ }));
+      const cart = await rect(banner.getByRole('button', { name: /^(Quote|Order), / }));
       expect(Math.abs(middle(search) - middle(cart))).toBeLessThan(12);
       expect(logo.right).toBeLessThanOrEqual(search.left);
       expect(search.right).toBeLessThanOrEqual(cart.left);
@@ -238,11 +239,14 @@ test.describe('the sticky header and the department page', () => {
       expect((await rect(panel)).bottom).toBeLessThanOrEqual(size.height);
       // Its last control is reached by keyboard, scrolled into the panel.
       await panel.getByRole('searchbox').focus();
-      const locked = panel.getByRole('button', { name: /Wholesale pricing is locked/ });
-      for (let i = 0; i < 10 && !(await locked.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('Tab');
-      await expect(locked).toBeFocused();
-      await expect(locked).toBeInViewport({ ratio: 1 });
-      const box = await rect(locked);
+      // (The sidebar's own sign-in box is gone: the PricingNotice above the
+      // grid has it, AW-224. Its last control is the Variants box.)
+      const last = panel.locator('input, button, select, a[href]').last();
+      for (let i = 0; i < 40 && !(await last.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('Tab');
+      await expect(last).toBeFocused();
+      // A checkbox's sub-pixel edge can round outside the panel's scrollport.
+      await expect(last).toBeInViewport({ ratio: 0.95 });
+      const box = await rect(last);
       expect(box.bottom).toBeLessThanOrEqual((await rect(panel)).bottom);
     }
     expect(errors).toEqual([]);

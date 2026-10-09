@@ -137,7 +137,7 @@ test('focus stays on the cart controls after adds and removals (AW-042)', async 
   await expect(drawer.getByRole('textbox', { name: 'Quantity of Argo corn starch' })).toBeFocused();
   await expect.poll(async () => (await said(page)).at(-1)).toBe('Removed Kite cigarette tobacco.');
   await drawer.getByRole('button', { name: 'Remove Argo corn starch' }).click();
-  await expect(drawer.getByRole('heading', { name: 'Your quote' })).toBeFocused();
+  await expect(drawer.getByRole('heading', { name: 'Your quote', exact: true })).toBeFocused();
   await expect.poll(async () => (await said(page)).at(-1)).toBe('Removed Argo corn starch.');
 
   // Checkout: × on a line, then "Clear all items".

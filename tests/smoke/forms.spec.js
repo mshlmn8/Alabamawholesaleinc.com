@@ -47,17 +47,17 @@ test('an empty quote names each missing answer under its field, focuses Business
     return route.fulfill({ json: { id: 'smoke-order', ref_num: 'ALW-Q-FORMS00001', kind: 'quote', total_units: 2, subtotal: null, priced_lines: 0, unpriced_lines: 1 } });
   });
   await page.goto('/quote');
-  await expect(page.getByRole('heading', { level: 1, name: 'Request your quote' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Request a quote' })).toBeVisible();
   await expect(page.getByText('All fields are required unless marked optional.')).toBeVisible();
   await expect(page.getByLabel('Preferred date (optional)')).toHaveValue('');
 
   await page.getByRole('button', { name: /Submit quote request/ }).click();
-  const business = page.getByLabel('Business', { exact: true });
+  const business = page.getByLabel('Business name', { exact: true });
   await expect(business).toBeFocused();
   await expect(business).toHaveAttribute('aria-invalid', 'true');
-  await expect(page.locator('#quote-business-error')).toHaveText('Enter business');
+  await expect(page.locator('#quote-business-error')).toHaveText('Enter business name');
   await expect(page.locator('#quote-business-error')).toBeVisible();
-  await expect(business).toHaveAccessibleDescription('Enter business');
+  await expect(business).toHaveAccessibleDescription('Enter business name');
   for (const [label, message] of [['Email', 'Enter email'], ['ZIP', 'Enter ZIP'], ['State tobacco/retail license #', 'Enter state tobacco/retail license #']]) {
     const field = page.getByLabel(label, { exact: true });
     await expect(field, label).toHaveAttribute('aria-invalid', 'true');
@@ -72,11 +72,13 @@ test('an empty quote names each missing answer under its field, focuses Business
   await expect(business).not.toHaveAttribute('aria-invalid', 'true');
 
   // The rest, then the quote goes out as before.
-  for (const [label, value] of [['Contact', 'Test Buyer'], ['Email', 'buyer@example.test'], ['Phone', '205-555-0100'],
-    ['Street', '1 Test Way'], ['City', 'Birmingham'], ['State', 'AL'], ['ZIP', '35203'],
+  for (const [label, value] of [['Contact name', 'Test Buyer'], ['Email', 'buyer@example.test'], ['Phone', '205-555-0100'],
+    ['Street', '1 Test Way'], ['City', 'Birmingham'], ['ZIP', '35203'],
     ['State tobacco/retail license #', 'TL-SMOKE-1'], ['Sales-tax / resale certificate #', 'RS-SMOKE-1']]) {
     await page.getByLabel(label, { exact: true }).fill(value);
   }
+  // The State lists the route states (AW-078).
+  await page.getByLabel('State', { exact: true }).selectOption('AL');
   await page.getByRole('checkbox', { name: /all purchasers are 21\+/ }).check();
   expect(sent).toHaveLength(0);
   await page.getByRole('button', { name: /Submit quote request/ }).click();
@@ -89,8 +91,8 @@ test('an empty quote names each missing answer under its field, focuses Business
 test('the application dialog explains a mistyped EIN under the field (AW-173)', async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto('/quote');
-  await page.getByRole('button', { name: 'New? Apply for a trade account' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Apply for an account' });
+  await page.getByRole('button', { name: 'New here? Apply for a trade account' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Apply for a trade account' });
   // The checklist first, then the form.
   await dialog.getByRole('button', { name: 'Continue to the application' }).click();
   await expect(dialog.getByText('All fields are required unless marked optional.')).toBeVisible();

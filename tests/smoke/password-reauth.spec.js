@@ -85,7 +85,7 @@ test('a signed-in password change needs the current password and signs out the o
   await seedSession(context);
   const calls = await mockSupabase(page);
   await page.goto('/reset-password');
-  await expect(form(page).getByText('SIGNED IN', { exact: true })).toBeVisible();
+  await expect(form(page).getByText('YOUR ACCOUNT', { exact: true })).toBeVisible();
   const current = form(page).getByLabel('Current password');
   await expect(current).toHaveAttribute('autocomplete', 'current-password');
   await expect(form(page).getByRole('button', { name: 'Forgot it? Email me a reset link' })).toBeVisible();
