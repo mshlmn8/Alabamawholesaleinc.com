@@ -114,6 +114,34 @@ export function orderEmail(order, lines, quote = isQuote(order)) {
   return `mailto:${order.email}?subject=${encodeURIComponent(`${label} ${order.ref_num}`)}&body=${encodeURIComponent(body)}`;
 }
 
+// The facts in an order card's head (AW-020).
+// Will-call has no address (submit_quote v3, AW-079); delivery names it.
+export function orderMethod(o) {
+  if (o.delivery === 'willcall') return 'Will-call pickup';
+  if (o.ship_street) return `Delivery to ${[o.ship_street, o.ship_city, [o.ship_state, o.ship_zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')}`;
+  return o.delivery === 'delivery' ? 'Delivery' : '—';
+}
+// The date the buyer asked for, e.g. 'Oct 1, 2026', read as a calendar day.
+export function requestedDate(value) {
+  if (!value) return '—';
+  const date = new Date(`${String(value).slice(0, 10)}T00:00`);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+export function orderTotal(o, quote = isQuote(o)) {
+  if (o.subtotal == null) return quote ? 'Unpriced quote' : 'Not priced yet';
+  const units = o.total_units ?? (o.order_items || []).reduce((sum, it) => sum + (Number(it.qty) || 0), 0);
+  return `${units} ${units === 1 ? 'unit' : 'units'} · ${formatMoney(o.subtotal)}`;
+}
+// The business, and the account's tier when the order came from an account.
+export function orderAccount(o) {
+  const business = o.profiles?.business || o.business;
+  return [business, o.profiles?.pricing_tier].filter(Boolean).join(' · ') || '—';
+}
+function placedAt(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
 // order_items(*): the workflow columns (original_qty, sell_unit) exist only
 // after the October 2026 update. The account is named through its foreign key:
 // since 20261008200000, orders.quoted_by is a second link to profiles, and
@@ -281,24 +309,31 @@ function OrderCard({ order: o, states, workflow, tiers, onStatus, onReload, noti
 
   return (
     <article className={`order-card${quote ? ' is-quote' : ''}`}>
-      <div className="order-head">
-        <div>
+      {/* AW-020: the status beside the ref, then what staff need to pick and
+          deliver it, one fact per line instead of a run-on sentence. */}
+      <div className="order-head admin-order-head">
+        <div className="order-title">
           <span className="order-kind">{kindLabel}</span>
           <b className="order-ref">{o.ref_num}</b>
-          <small>
-            <span>{`${new Date(o.created_at).toLocaleString()} · ${o.business} · ${o.contact} · `}</span>
-            <a href={`mailto:${o.email}`}>{o.email}</a>
-            {o.phone && <span> · </span>}
-            {o.phone && <a href={`tel:${String(o.phone).replace(/[^\d+]/g, '')}`}>{o.phone}</a>}
-            {o.ship_street && <span>{` · Deliver to ${o.ship_street}, ${o.ship_city} ${o.ship_state} ${o.ship_zip}`}</span>}
-            {/* Will-call quotes have no address since submit_quote v3 (AW-079). */}
-            {o.delivery === 'willcall' && <span> · Will-call pickup</span>}
-            {o.profiles?.pricing_tier && <span> · tier: <b>{o.profiles.pricing_tier}</b></span>}
-          </small>
+          <select aria-label={`Status for ${o.ref_num}`} value={o.status} onChange={e => onStatus(o, e.target.value)}>
+            {options.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+          </select>
         </div>
-        <select aria-label={`Status for ${o.ref_num}`} value={o.status} onChange={e => onStatus(o, e.target.value)}>
-          {options.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
-        </select>
+        <dl className="order-facts">
+          <div><dt>Method</dt><dd>{orderMethod(o)}</dd></div>
+          <div><dt>Requested</dt><dd>{requestedDate(o.preferred_date)}</dd></div>
+          <div><dt>Total</dt><dd>{orderTotal(o, quote)}</dd></div>
+          <div><dt>Placed</dt><dd>{placedAt(o.created_at)}</dd></div>
+          <div>
+            <dt>Contact</dt>
+            <dd className="order-contact">
+              <span>{o.contact || '—'}</span>
+              {o.email && <a href={`mailto:${o.email}`}>{o.email}</a>}
+              {o.phone && <a href={`tel:${String(o.phone).replace(/[^\d+]/g, '')}`}>{o.phone}</a>}
+            </dd>
+          </div>
+          <div><dt>Account</dt><dd>{orderAccount(o)}</dd></div>
+        </dl>
       </div>
       {draft ? (
         <div className="order-edit">

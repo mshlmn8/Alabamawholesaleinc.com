@@ -587,7 +587,17 @@ p > .text-link { min-height: 0; }
 /* An uploaded document's status starts with the check icon (drawn, AW-293). */
 .doc-status .icon { margin-right: .25em; }
 .order-kind { display: inline-block; margin-right: 8px; padding: 2px 8px; background: var(--cream); color: var(--purple); font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; }
-.order-head small a { color: var(--purple); text-decoration: underline; text-underline-offset: 2px; }
+/* Admin -> Orders card head (AW-020): kind, ref and status on one line, then
+   the order's facts in a grid. */
+.order-head.admin-order-head { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 12px; }
+.order-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.order-title .order-kind { margin-right: 0; }
+.order-title .order-ref { display: inline; font-size: var(--text-sm); }
+.order-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(13.75rem, 1fr)); gap: 10px 20px; margin: 0; }
+.order-facts dt { font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted); }
+.order-facts dd { margin: 2px 0 0; font-size: var(--text-sm); line-height: 1.45; color: var(--ink); overflow-wrap: anywhere; }
+.order-contact { display: flex; flex-wrap: wrap; column-gap: 12px; }
+.order-contact a { color: var(--purple); text-decoration: underline; text-underline-offset: 2px; }
 /* Admin -> Orders: editing a quote's quantities and prices (AW-024). */
 .order-edit { display: grid; gap: 10px; padding: 12px 16px; }
 .order-edit-line { display: grid; grid-template-columns: minmax(0, 1fr) 88px 120px; gap: 8px 12px; align-items: end; font-size: var(--text-sm); }

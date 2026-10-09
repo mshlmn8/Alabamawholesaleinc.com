@@ -15,6 +15,7 @@ const { fake } = await import('../../lib/supabase.js');
 const {
   AdminPage, approvalEmail, hasQuoteWorkflow, isQuote, orderActionError, orderEmail, parseOrderLines, suggestedUnitPrice,
 } = await import('./AdminPage.jsx');
+const { orderAccount, orderMethod, orderTotal, requestedDate } = await import('./OrdersSection.jsx');
 const { navigate, useRoute } = await import('../../lib/router.js');
 
 // The admin page as App renders it: its route follows the URL.
@@ -225,6 +226,45 @@ describe('Admin orders with the quote workflow', () => {
     });
     expect(updates()).toEqual([{ table: 'orders', id: 'o-order', patch: { status: 'picking' } }]);
     expect(screen.getByRole('alert').textContent).toBe('ALW-O-BBBB222233: That status needs the October 2026 database update (see BACKEND.md).');
+  });
+});
+
+describe('the order card head (AW-020)', () => {
+  const facts = (ref) => Object.fromEntries([...card(ref).querySelectorAll('.order-facts > div')]
+    .map((row) => [row.querySelector('dt').textContent, row.querySelector('dd').textContent]));
+
+  it('shows the method, requested date, total, placed time, contact and account as separate facts', async () => {
+    setOrders([
+      guestQuote({ preferred_date: '2026-10-01', total_units: 3, ship_street: '2 Guest Rd', ship_city: 'Hoover', ship_state: 'AL', ship_zip: '35244' }),
+      tradeOrder({ preferred_date: '2026-10-09', total_units: 2, ship_street: '2 Test Way', ship_city: 'Hoover', ship_state: 'AL', ship_zip: '35244', profiles: { business: 'Test Market LLC', pricing_tier: 'silver' } }),
+    ]);
+    await openOrders();
+    // Will-call: no address, even when the request carried one.
+    expect(facts('ALW-Q-5E4F3A2B1C')).toMatchObject({ Method: 'Will-call pickup', Requested: 'Oct 1, 2026', Total: 'Unpriced quote', Account: 'Guest Mart' });
+    expect(facts('ALW-O-BBBB222233')).toMatchObject({
+      Method: 'Delivery to 2 Test Way, Hoover, AL 35244', Requested: 'Oct 9, 2026', Total: '2 units · $21.70', Account: 'Test Market LLC · silver',
+    });
+    expect(facts('ALW-O-BBBB222233').Placed).toMatch(/^Oct 6, 2026, \d{1,2}:\d{2} [AP]M$/);
+    expect(facts('ALW-Q-5E4F3A2B1C').Contact).toBe('Gusgus@example.test(205) 000-0002');
+    // The status sits in the title row, beside the ref.
+    const title = card('ALW-O-BBBB222233').querySelector('.order-title');
+    expect(within(title).getByRole('combobox', { name: 'Status for ALW-O-BBBB222233' })).toBeTruthy();
+    expect(card('ALW-O-BBBB222233').querySelector('.order-head small')).toBeNull();
+  });
+
+  it('formats each fact', () => {
+    expect(orderMethod({ delivery: 'willcall', ship_street: '1 A St', ship_city: 'B', ship_state: 'AL', ship_zip: '35000' })).toBe('Will-call pickup');
+    expect(orderMethod({ delivery: 'delivery', ship_street: '1 A St', ship_city: 'Bessemer', ship_state: 'AL', ship_zip: '35020' })).toBe('Delivery to 1 A St, Bessemer, AL 35020');
+    expect(orderMethod({ delivery: 'delivery' })).toBe('Delivery');
+    expect(orderMethod({})).toBe('—');
+    expect(requestedDate('2026-10-01')).toBe('Oct 1, 2026');
+    expect(requestedDate(null)).toBe('—');
+    expect(requestedDate('soon')).toBe('—');
+    expect(orderTotal({ subtotal: 1500, total_units: 1, kind: 'order' })).toBe('1 unit · $1,500.00');
+    expect(orderTotal({ subtotal: 12.5, order_items: [{ qty: 2 }, { qty: 3 }], kind: 'order' })).toBe('5 units · $12.50');
+    expect(orderTotal({ subtotal: null, kind: 'quote' })).toBe('Unpriced quote');
+    expect(orderAccount({ business: 'Guest Mart', profiles: null })).toBe('Guest Mart');
+    expect(orderAccount({ business: 'Typed Name', profiles: { business: 'Account Name', pricing_tier: 'gold' } })).toBe('Account Name · gold');
   });
 });
 
