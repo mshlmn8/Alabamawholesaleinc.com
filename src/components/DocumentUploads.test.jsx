@@ -70,3 +70,16 @@ describe('ApplicationDocuments', () => {
     expect(screen.getByRole('alert').textContent).toBe('Couldn’t open your state retail tobacco license. Try again.');
   });
 });
+
+describe('ApplicationDocuments file names (AW-264)', () => {
+  it('shortens a long name, with the full one in its title', async () => {
+    const long = 'TEST_ONLY_State_retail_tobacco_license_2026_renewal_Pending_Mart_LLC_Birmingham_scan01.pdf';
+    docs.rows = [{ ...LICENSE, original_filename: long }];
+    docs.fail = false;
+    panel();
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('1 of 2 documents received.'));
+    const name = document.querySelector('#apply-doc-tobacco_license-status span[title]');
+    expect(name.textContent).toBe('Uploaded on October 1, 2026 · TEST_ONLY_State_retail_tob…scan01.pdf');
+    expect(name.title).toBe(long);
+  });
+});

@@ -1657,7 +1657,8 @@ address.info-lead-small { font-style: normal; }
 /* The padding centres the Choose file button in the 44px field. */
 .doc-file { width: 100%; padding-block: .1875rem; cursor: pointer; }
 .doc-file:disabled, fieldset:disabled .doc-file { opacity: var(--disabled-opacity); cursor: not-allowed; }
-.doc-status { margin: 6px 0 0; font-size: var(--text-sm); line-height: 1.5; color: var(--ink); }
+/* A long file name breaks rather than widening the panel (AW-264). */
+.doc-status { margin: 6px 0 0; font-size: var(--text-sm); line-height: 1.5; color: var(--ink); overflow-wrap: anywhere; }
 .doc-status.is-missing { color: var(--muted); }
 .doc-panel { margin-top: 22px; padding: 28px; background: var(--paper); border: 1px solid var(--line); border-top: 4px solid var(--orange); }
 .doc-panel .eyebrow { color: var(--orange-dark); margin-bottom: 8px; }

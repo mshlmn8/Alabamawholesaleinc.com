@@ -18,6 +18,7 @@ import {
   documentErrorMessage,
   formatUploadedOn,
   listProfileDocuments,
+  shortFileName,
   uploadProfileDocument,
   validateDocumentFile,
 } from '../lib/documents.js';
@@ -81,7 +82,8 @@ function DocumentFields({
         let status = 'Not uploaded';
         if (records == null) status = 'Checking…';
         else if (isBusy) status = 'Uploading…';
-        else if (record) status = `${formatUploadedOn(record.uploaded_at)}${record.original_filename ? ` · ${record.original_filename}` : ''}`;
+        // The file name shortened, the full one in the title (AW-264).
+        else if (record) status = `${formatUploadedOn(record.uploaded_at)}${record.original_filename ? ` · ${shortFileName(record.original_filename)}` : ''}`;
         return (
           <div className="doc-upload" key={doc.id}>
             <label htmlFor={id}>
@@ -103,7 +105,7 @@ function DocumentFields({
             {showStatus && (
               <p className={`doc-status${record ? '' : ' is-missing'}`} id={statusId} data-document-status={record ? 'uploaded' : 'missing'} aria-live="polite">
                 {record && <Icon name="check" />}
-                <span>{status}</span>
+                <span title={record?.original_filename || undefined}>{status}</span>
                 {record && !isBusy && (
                   <button type="button" className="text-link doc-view" onClick={() => openFile(doc, record)}>
                     <span>View</span> <span className="sr-only">{`your ${doc.label.toLowerCase()}`}</span>

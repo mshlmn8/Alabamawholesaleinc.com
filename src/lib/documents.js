@@ -54,6 +54,16 @@ export function isDocumentPermissionError(err) {
   return code === '42501' || status === '403' || /row-level security/i.test(String(err.message || ''));
 }
 
+// A file name as the page shows it (AW-264): up to `max` characters whole,
+// a longer one as its first 26 and last 10 (which keep the extension) around
+// an ellipsis. The full name goes in a title attribute beside it. Counted in
+// code points, so an emoji is never cut in half.
+export function shortFileName(name, max = 40) {
+  const chars = Array.from(String(name ?? ''));
+  if (chars.length <= max) return chars.join('');
+  return `${chars.slice(0, 26).join('')}…${chars.slice(-10).join('')}`;
+}
+
 // What a picked file that can't be sent says, here and from Storage.
 export const FILE_MISSING_MESSAGE = 'Choose a PDF, JPG, PNG, or HEIC file.';
 export const FILE_TYPE_MESSAGE = 'Use a PDF, JPG, PNG, or HEIC file.';
@@ -105,9 +115,19 @@ function safeFilename(name) {
   return (cleaned || 'document').slice(0, 180);
 }
 
+// The bucket takes only pdf, jpeg, png, heic and heif
+// (20260927180000_application_documents.sql). Some iPhone photos report the
+// HEIC/HEIF sequence types, which the bucket would refuse after the file
+// passed the check above (AW-251), so they go up as the plain type.
+const STORED_MIME = {
+  'image/jpg': 'image/jpeg',
+  'image/heic-sequence': 'image/heic',
+  'image/heif-sequence': 'image/heif',
+};
+
 function contentTypeFor(file) {
   const mime = (file.type || '').toLowerCase();
-  if (mime === 'image/jpg') return 'image/jpeg';
+  if (STORED_MIME[mime]) return STORED_MIME[mime];
   if (ALLOWED_MIME.has(mime)) return mime;
   const ext = (file.name || '').split('.').pop()?.toLowerCase();
   return MIME_FOR_EXT[ext] || 'application/octet-stream';

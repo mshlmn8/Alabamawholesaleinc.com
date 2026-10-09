@@ -32,7 +32,8 @@ vi.mock('./supabase.js', () => {
 
 const {
   DOCUMENTS_REFUSED_MESSAGE, DOCUMENT_UPLOAD_FAILED_MESSAGE, FILE_TOO_LARGE_MESSAGE, FILE_TYPE_MESSAGE,
-  createDocumentViewUrl, documentErrorMessage, isDocumentPermissionError, openDocument, uploadProfileDocument,
+  createDocumentViewUrl, documentErrorMessage, isDocumentPermissionError, openDocument, shortFileName,
+  uploadProfileDocument,
 } = await import('./documents.js');
 const { unavailableMessage } = await import('./errors.js');
 
@@ -62,6 +63,37 @@ describe('uploadProfileDocument', () => {
     const err = await uploadProfileDocument(SESSION, 'tobacco_license', file('l.pdf')).catch((e) => e);
     expect(err).toBe(mock.uploadError);
     expect(documentErrorMessage(err)).toBe(DOCUMENTS_REFUSED_MESSAGE);
+  });
+});
+
+describe('the bucket’s file types (AW-251)', () => {
+  it('sends HEIC and HEIF sequence photos as plain HEIC and HEIF, which the bucket accepts', async () => {
+    for (const [type, stored] of [['image/heic-sequence', 'image/heic'], ['image/heif-sequence', 'image/heif'], ['image/jpg', 'image/jpeg'], ['image/png', 'image/png'], ['', 'application/pdf']]) {
+      mock.calls = [];
+      const name = type ? 'IMG_0001.HEIC' : 'license.pdf';
+      await uploadProfileDocument(SESSION, 'tobacco_license', { name, type, size: 1000 });
+      expect(mock.calls[0][2], type).toMatchObject({ contentType: stored });
+    }
+  });
+});
+
+describe('shortFileName (AW-264)', () => {
+  it('keeps a name of up to 40 characters, and shortens a longer one around an ellipsis, extension kept', () => {
+    expect(shortFileName('license.pdf')).toBe('license.pdf');
+    const forty = `${'a'.repeat(36)}.pdf`;
+    expect(shortFileName(forty)).toBe(forty);
+    const long = 'TEST_ONLY_State_retail_tobacco_license_2026_renewal_Pending_Mart_LLC_Birmingham_scan01.pdf';
+    expect(shortFileName(long)).toBe('TEST_ONLY_State_retail_tob…scan01.pdf');
+    expect(Array.from(shortFileName(long))).toHaveLength(37);
+    expect(shortFileName(long, 100)).toBe(long);
+    expect(shortFileName(null)).toBe('');
+  });
+
+  it('never cuts an emoji in half', () => {
+    const name = `${'😀'.repeat(30)}-scan-of-the-license.pdf`;
+    const short = shortFileName(name);
+    expect(short.startsWith('😀'.repeat(26))).toBe(true);
+    expect(short.endsWith('icense.pdf')).toBe(true);
   });
 });
 
