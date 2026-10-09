@@ -17,7 +17,8 @@
 // the next person on a shared store computer.
 //
 // 'Check your inbox' and 'Confirm your email first' can send the
-// confirmation email again, once a minute (AW-016).
+// confirmation email again, once a minute (AW-016); the password reset step
+// can send its link again, on its own minute (AW-259).
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth.jsx';
@@ -39,8 +40,9 @@ const VOLUMES = ['Under $5K','$5K — $15K','$15K — $50K','$50K — $100K','$1
 
 // How long "Signing you in…" waits for the account before saying so.
 export const CHECKING_TIMEOUT_MS = 10000;
-// How long Resend waits before it can send the confirmation email again
-// (AW-016). Supabase limits these emails too; see RESEND_RATE_LIMITED.
+// How long Resend waits before it can send the confirmation email, or Send
+// again the reset link, once more (AW-016, AW-259). Supabase limits these
+// emails too; see RESEND_RATE_LIMITED.
 export const RESEND_COOLDOWN_MS = 60000;
 export const RESEND_RATE_LIMITED = 'We just sent one. Wait a minute, then try again.';
 // Screens that ask a signed-out visitor for something. When a session appears
@@ -64,6 +66,17 @@ const EMPTY_SIGNUP = {
   store_street: '', store_city: '', store_zip: '',
   agreeTerms: false, ageConfirmed: false,
 };
+
+// True for RESEND_COOLDOWN_MS after start(); each start begins a new minute.
+function useCooldown() {
+  const [round, setRound] = useState(0);
+  useEffect(() => {
+    if (!round) return undefined;
+    const id = window.setTimeout(() => setRound(0), RESEND_COOLDOWN_MS);
+    return () => window.clearTimeout(id);
+  }, [round]);
+  return [round > 0, () => setRound((r) => r + 1)];
+}
 
 function Field({ id, label, hint, full = false, children }) {
   return (
@@ -95,9 +108,12 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
   const [proofWaiting, setProofWaiting] = useState(false);
   const [resent, setResent] = useState(false);
   // A confirmation email sent again: to whom, and whether the minute before
-  // the next one is still running (AW-016).
+  // the next one is still running (AW-016). The reset link has its own
+  // minute, and resetAgain says the last one went from Send again (AW-259).
   const [resentTo, setResentTo] = useState('');
-  const [cooling, setCooling] = useState(false);
+  const [cooling, startCooling] = useCooldown();
+  const [resetCooling, startResetCooling] = useCooldown();
+  const [resetAgain, setResetAgain] = useState(false);
   // The 'Discard your application?' bar (AW-018).
   const [confirming, setConfirming] = useState(false);
   const titleRef = useRef(null);
@@ -151,16 +167,10 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
     return () => window.clearTimeout(id);
   }, [mode]);
 
-  // Resend can be used again a minute after it sent (AW-016).
-  useEffect(() => {
-    if (!cooling) return undefined;
-    const id = window.setTimeout(() => setCooling(false), RESEND_COOLDOWN_MS);
-    return () => window.clearTimeout(id);
-  }, [cooling]);
-  // A Resend button disabled (or hidden) while it had focus drops focus to
-  // <body> (Chrome) or leaves it on a dead control. When the send has
-  // finished, focus goes back to it if it can be used again (it failed),
-  // else to the dialog's heading.
+  // A Resend or Send again button disabled (or hidden) while it had focus
+  // drops focus to <body> (Chrome) or leaves it on a dead control. When the
+  // send has finished, focus goes back to it if it can be used again (it
+  // failed), else to the dialog's heading.
   useEffect(() => {
     if (!resending.current || submitting) return;
     resending.current = false;
@@ -168,7 +178,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
     if (active && active !== document.body && !active.disabled && dialogRef.current?.contains(active)) return;
     const button = resendRef.current;
     (button && !button.disabled ? button : titleRef.current)?.focus({ preventScroll: true });
-  }, [submitting, cooling]);
+  }, [submitting, cooling, resetCooling]);
 
   // Typed application answers (AW-018). Guarded in every mode, so they stay
   // guarded after 'Back to the checklist' or 'Already approved? Sign in',
@@ -233,7 +243,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
       await resendConfirmation(email);
       setResent(true);
       setResentTo(email);
-      setCooling(true);
+      startCooling();
     } catch (err) {
       setError(isRateLimitError(err)
         ? RESEND_RATE_LIMITED
@@ -278,12 +288,37 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
     finally { setSubmitting(false); }
   };
 
-  const handleReset = async (e) => {
-    e.preventDefault();
+  // Sends the password reset link to resetEmail, from the form or from Send
+  // again on 'Check your inbox'. Each send starts the minute before Send
+  // again can be used (AW-259).
+  const sendResetLink = async (again) => {
+    if (again) resending.current = true;
     setSubmitting(true); setError(null);
-    try { await resetPassword(resetEmail); setMode('reset-sent'); }
-    catch (err) { setError(friendlyAuthError(err, { what: 'Password reset', fallback: 'We couldn’t send the reset link. Try again in a moment.' })); }
-    finally { setSubmitting(false); }
+    try {
+      await resetPassword(resetEmail);
+      setResetAgain(again);
+      startResetCooling();
+      setMode('reset-sent');
+    } catch (err) {
+      setError(again && isRateLimitError(err)
+        ? RESEND_RATE_LIMITED
+        : friendlyAuthError(err, { what: 'Password reset', fallback: 'We couldn’t send the reset link. Try again in a moment.' }));
+    } finally { setSubmitting(false); }
+  };
+  const handleReset = (e) => {
+    e.preventDefault();
+    sendResetLink(false);
+  };
+  // Sign in keeps the email typed for the reset link, and the reset form the
+  // one typed for sign-in (AW-259).
+  const backToSignin = () => {
+    if (resetEmail) setSignin((s) => ({ ...s, email: resetEmail }));
+    switchMode('signin');
+  };
+  // From 'Check your inbox': sign in with the email the application used (AW-260).
+  const signInWithApplication = () => {
+    setSignin((s) => ({ ...s, email: signup.email }));
+    switchMode('signin');
   };
 
   const status = profile?.status || 'pending';
@@ -322,6 +357,8 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
   const resendStatus = cooling
     ? `Sent again to ${resentTo}. It can take a few minutes; check your spam folder too. You can ask for another in a minute.`
     : '';
+  // Said once Send again has sent the reset link, for that minute (AW-259).
+  const resetStatus = resetCooling && resetAgain ? `Sent again to ${resetEmail}. You can ask for another in a minute.` : '';
 
   const dialog = (
     // Backdrop click is a mouse shortcut; Escape (ModalLayer) and the Close button are the keyboard paths.
@@ -353,7 +390,8 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
         {/* TODO(owner): How long does approval actually take, what should the application promise, and is Net-30 offered (with credit verification)? Kept as published. (AW-246, AW-272, AW-025) */}
         {/* TODO(owner): A Cloudflare Turnstile site key, so Supabase can require a CAPTCHA on sign-up. (AW-206) */}
         {mode === 'signup' && <p className="desc">Alabama Wholesale sells exclusively to licensed retail businesses. Most applications are approved within one business day. Net-30 terms available with credit verification.</p>}
-        {mode === 'sent' && <p className="desc">{`We sent a confirmation link to ${signup.email}. Click it to activate your account — a trade rep will verify your license within one business day.`}</p>}
+        {/* TODO(owner): "within one business day" is kept as published; see the AW-246 row in docs/OWNER-TODO.md. (AW-246) */}
+        {mode === 'sent' && <p className="desc">We sent a confirmation link to <strong>{signup.email}</strong>. Click it to activate your account — a trade rep will verify your license within one business day.</p>}
         {mode === 'checking' && <p className="desc" aria-live="polite">One moment while we load your account.</p>}
         {mode === 'profile-error' && <p className="desc">We signed you in but couldn’t load your account. <CallOrEmail before="Try again, or call" after=" and a trade rep will help you." /></p>}
         {mode === 'unconfirmed' && (
@@ -362,7 +400,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             : `${signin.email} isn’t confirmed yet. Open the confirmation link we emailed when you applied, or send a new one. Links work once and expire after a while.`}</p>
         )}
         {mode === 'reset' && <p className="desc">Enter the business email on your account and we’ll send a link to choose a new password.</p>}
-        {mode === 'reset-sent' && <p className="desc">{`If an account exists for ${resetEmail}, a password reset link is on its way. The link works once — if it doesn’t arrive within a few minutes, check your spam folder or call us.`}</p>}
+        {mode === 'reset-sent' && <p className="desc">If an account exists for <strong>{resetEmail}</strong>, a password reset link is on its way. The link works once. If it doesn’t arrive within a few minutes, check your spam folder. <CallOrEmail before="Still nothing? Call" /></p>}
         {mode === 'status' && (
           status === 'suspended'
             ? <p className="desc">Ordering is paused on this account. <CallOrEmail after=" and a trade rep will help you sort it out." /></p>
@@ -384,7 +422,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
               <button className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Signing in…' : 'Sign in'}</span></button>
-              <button className="text-link" type="button" onClick={() => { setResetEmail(signin.email); switchMode('reset'); }}>Forgot password?</button>
+              <button className="text-link" type="button" onClick={() => { setResetEmail(signin.email || resetEmail); switchMode('reset'); }}>Forgot password?</button>
               <button className="text-link" type="button" onClick={() => switchMode('checklist')}>No account? Apply instead</button>
             </div>
           </form>
@@ -519,9 +557,11 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
           <>
             <h3 className="checklist-heading">What happens next</h3>
             <ol className="next-steps">
-              <li><b>Confirm your email.</b><span>{`Open the link we sent to ${signup.email}. If it doesn’t arrive within a few minutes, check your spam folder. Already have an account with this email? Sign in instead.`}</span></li>
+              <li><b>Confirm your email.</b><span>Open the link in that email. Not there after a few minutes? Check your spam folder. Already have an account with this email? <button className="text-link" type="button" onClick={signInWithApplication}>Sign in instead</button>.</span></li>
               <li><b>We review your application.</b><span>A trade rep checks your EIN, state retail tobacco license and resale certificate.</span></li>
-              <li><b>You hear from us.</b><span>{`We’ll contact you at ${signup.email} or ${signup.phone} when your account is approved. Wholesale pricing and ordering unlock then.`}</span></li>
+              <li><b>You hear from us.</b><span>{signup.phone
+                ? `We’ll email you or call ${signup.phone} when your account is approved. Wholesale pricing and ordering unlock then.`
+                : 'We’ll email you when your account is approved. Wholesale pricing and ordering unlock then.'}</span></li>
             </ol>
             {proofWaiting && (
               <p className="checklist-note">Your files stay on this device until you are signed in. After you confirm your email, upload them from your application status, or send proof later to <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.</p>
@@ -536,7 +576,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
               <button className="button" type="button" onClick={requestClose} data-autofocus>Done</button>
-              <button className="text-link" type="button" onClick={() => switchMode('signin')}>Sign in</button>
+              <button className="text-link" type="button" onClick={signInWithApplication}>Sign in</button>
             </div>
           </>
         )}
@@ -548,7 +588,6 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
               <>
                 <h3 className="checklist-heading">While you wait</h3>
                 <ul className="checklist">
-                  <li><b>Browse the catalog.</b><span>You can look through every department and build a quote request now.</span></li>
                   <li><b>Pricing unlocks on approval.</b><span>Wholesale prices and checkout appear as soon as a trade rep approves the account.</span></li>
                   <li><b>Questions?</b><span><CallOrEmail /></span></li>
                 </ul>
@@ -583,16 +622,26 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
               <button className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Sending…' : 'Send reset link'}</span></button>
-              <button className="text-link" type="button" onClick={() => switchMode('signin')}>Back to sign in</button>
+              <button className="text-link" type="button" onClick={backToSignin}>Back to sign in</button>
             </div>
           </form>
         )}
 
         {mode === 'reset-sent' && (
-          <div className="dialog-actions">
-            <button className="button" type="button" onClick={requestClose} data-autofocus>Done</button>
-            <button className="text-link" type="button" onClick={() => switchMode('signin')}>Back to sign in</button>
-          </div>
+          <>
+            {/* No email? Send the link again, once a minute (AW-259). */}
+            <div className="resend">
+              <button ref={resendRef} className="text-link" type="button" onClick={() => sendResetLink(true)} disabled={submitting || resetCooling || !isBackendConfigured}>
+                <span>{submitting ? 'Sending…' : 'Send again'}</span>
+              </button>
+              <p className="checklist-note" role="status">{resetStatus}</p>
+            </div>
+            <p className="form-error" role="alert">{error}</p>
+            <div className="dialog-actions">
+              <button className="button" type="button" onClick={requestClose} data-autofocus>Done</button>
+              <button className="text-link" type="button" onClick={backToSignin}>Back to sign in</button>
+            </div>
+          </>
         )}
 
         {mode === 'signup' && <p className="fine">21+ licensed businesses only. By applying you confirm all store staff handling tobacco products meet federal and state age requirements.</p>}

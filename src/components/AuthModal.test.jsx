@@ -556,3 +556,161 @@ describe('AuthModal step changes (AW-090, AW-096, AW-245)', () => {
     expect(top.querySelector('.kicker').textContent).toBe('NEW ACCOUNTS · LICENSED RETAILERS ONLY');
   });
 });
+
+// AW-259: 'Check your inbox' after a reset request names the trade desk, can
+// send the link again on its own minute, and the email typed on either form
+// carries over to the other.
+describe('AuthModal password reset (AW-259)', () => {
+  const dialogStatus = () => screen.getAllByRole('status').find((el) => el.closest('[role="dialog"]'));
+  const requestReset = async (resetPassword = vi.fn(async () => {})) => {
+    const t = setup({ resetPassword }, { initialMode: 'reset' });
+    fireEvent.change(screen.getByLabelText('Business email'), { target: { value: 'buyer@example.test' } });
+    await act(async () => { fireEvent.submit(screen.getByLabelText('Business email').closest('form')); });
+    expect(screen.getByRole('heading', { name: 'Check your inbox' })).toBeTruthy();
+    return t;
+  };
+
+  it('names the email alone in its element and points to the trade desk', async () => {
+    await requestReset();
+    const desc = document.querySelector('[role="dialog"] > .desc');
+    expect(desc.querySelector('strong').textContent).toBe('buyer@example.test');
+    expect(desc.textContent).toMatch(/^If an account exists for buyer@example\.test, a password reset link is on its way\. The link works once\. If it doesn’t arrive within a few minutes, check your spam folder\. Still nothing\? Call .+ or email .+\.$/);
+    expect([...desc.querySelectorAll('a')].map((a) => a.getAttribute('href'))).toEqual([expect.stringMatching(/^tel:/), expect.stringMatching(/^mailto:/)]);
+  });
+
+  it('sends the link again once its minute is over, then waits another minute', async () => {
+    vi.useFakeTimers();
+    const t = await requestReset();
+    const again = screen.getByRole('button', { name: 'Send again' });
+    // The first link just went: Send again waits out its minute, quietly.
+    expect(again.disabled).toBe(true);
+    expect(dialogStatus().textContent).toBe('');
+    act(() => { vi.advanceTimersByTime(RESEND_COOLDOWN_MS); });
+    expect(again.disabled).toBe(false);
+    again.focus(); // a click focuses the button in the browser, not in jsdom
+    await act(async () => { fireEvent.click(again); });
+    expect(t.value.resetPassword).toHaveBeenCalledTimes(2);
+    expect(t.value.resetPassword).toHaveBeenLastCalledWith('buyer@example.test');
+    expect(again.disabled).toBe(true);
+    expect(dialogStatus().textContent).toBe('Sent again to buyer@example.test. You can ask for another in a minute.');
+    // Focus left the disabled button for the heading, not <body>.
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Check your inbox' }));
+    act(() => { vi.advanceTimersByTime(RESEND_COOLDOWN_MS - 1); });
+    expect(again.disabled).toBe(true);
+    act(() => { vi.advanceTimersByTime(1); });
+    expect(again.disabled).toBe(false);
+    expect(dialogStatus().textContent).toBe('');
+  });
+
+  it('says to wait a minute when Supabase refuses another link so soon', async () => {
+    vi.useFakeTimers();
+    const limited = Object.assign(new Error('For security purposes, you can only request this after 12 seconds.'), { code: 'over_email_send_rate_limit', status: 429 });
+    const resetPassword = vi.fn(async () => {});
+    await requestReset(resetPassword);
+    act(() => { vi.advanceTimersByTime(RESEND_COOLDOWN_MS); });
+    resetPassword.mockImplementation(async () => { throw limited; });
+    const again = screen.getByRole('button', { name: 'Send again' });
+    again.focus();
+    await act(async () => { fireEvent.click(again); });
+    expect(screen.getByRole('alert').textContent).toBe(RESEND_RATE_LIMITED);
+    expect(screen.queryByText(/For security purposes/)).toBeNull();
+    // Nothing went: the button can be used again at once, and keeps focus.
+    expect(again.disabled).toBe(false);
+    expect(document.activeElement).toBe(again);
+    expect(dialogStatus().textContent).toBe('');
+  });
+
+  it('keeps the confirmation email’s minute separate from the reset link’s', async () => {
+    vi.useFakeTimers();
+    const t = setup({ signIn: vi.fn(async () => { throw Object.assign(new Error('Email not confirmed'), { code: 'email_not_confirmed' }); }), resetPassword: vi.fn(async () => {}) });
+    await signInWith();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Send a new confirmation link/ })); });
+    expect(t.value.resendConfirmation).toHaveBeenCalledTimes(1);
+    act(() => { vi.advanceTimersByTime(40000); });
+    fireEvent.click(screen.getByRole('button', { name: 'Back to sign in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Forgot password?' }));
+    await act(async () => { fireEvent.submit(screen.getByLabelText('Business email').closest('form')); });
+    expect(t.value.resetPassword).toHaveBeenCalledWith('buyer@example.test');
+    const again = screen.getByRole('button', { name: 'Send again' });
+    // The confirmation email's minute ends; the reset link's runs on.
+    act(() => { vi.advanceTimersByTime(RESEND_COOLDOWN_MS - 40000); });
+    expect(again.disabled).toBe(true);
+    act(() => { vi.advanceTimersByTime(40000); });
+    expect(again.disabled).toBe(false);
+  });
+
+  it('carries the email between Sign in and the reset form, both ways', async () => {
+    setup({ resetPassword: vi.fn(async () => {}) });
+    const email = () => document.getElementById('aw-email');
+    const resetField = () => document.getElementById('aw-reset-email');
+    fireEvent.change(email(), { target: { value: 'buyer@example.test' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Forgot password?' }));
+    expect(resetField().value).toBe('buyer@example.test');
+    fireEvent.change(resetField(), { target: { value: 'owner@example.test' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Back to sign in' }));
+    expect(email().value).toBe('owner@example.test');
+    // An empty sign-in field still opens the reset form with the email typed there.
+    fireEvent.change(email(), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Forgot password?' }));
+    expect(resetField().value).toBe('owner@example.test');
+    await act(async () => { fireEvent.submit(resetField().closest('form')); });
+    fireEvent.click(screen.getByRole('button', { name: 'Back to sign in' }));
+    expect(screen.getByRole('heading', { name: 'Sign in' })).toBeTruthy();
+    expect(email().value).toBe('owner@example.test');
+  });
+});
+
+// AW-260: 'Check your inbox' after an application names the address once,
+// offers Sign in as a real control, and the status step lists only real
+// tasks.
+describe('AuthModal after the application is sent (AW-260)', () => {
+  const sendApplication = async ({ phone = '205-555-0199' } = {}) => {
+    const t = setup({ signUp: vi.fn(async () => ({ session: null })) }, { initialMode: 'application' });
+    fireEvent.change(screen.getByLabelText('Business email'), { target: { value: 'new@example.test' } });
+    fireEvent.change(screen.getByLabelText('Phone'), { target: { value: phone } });
+    await act(async () => { fireEvent.submit(screen.getByLabelText('Business email').closest('form')); });
+    expect(screen.getByRole('heading', { name: 'Check your inbox' })).toBeTruthy();
+    return t;
+  };
+  const steps = () => [...document.querySelectorAll('[role="dialog"] .next-steps li')].map((li) => li.textContent);
+
+  it('names the email once, in the description, alone in its element', async () => {
+    await sendApplication();
+    const desc = document.querySelector('[role="dialog"] > .desc');
+    expect(desc.querySelector('strong').textContent).toBe('new@example.test');
+    expect(desc.textContent).toBe('We sent a confirmation link to new@example.test. Click it to activate your account — a trade rep will verify your license within one business day.');
+    expect(steps().join(' ')).not.toContain('new@example.test');
+    expect(steps()).toEqual([
+      'Confirm your email.Open the link in that email. Not there after a few minutes? Check your spam folder. Already have an account with this email? Sign in instead.',
+      'We review your application.A trade rep checks your EIN, state retail tobacco license and resale certificate.',
+      'You hear from us.We’ll email you or call 205-555-0199 when your account is approved. Wholesale pricing and ordering unlock then.',
+    ]);
+  });
+
+  it('leaves out “or call” without a phone number', async () => {
+    await sendApplication({ phone: '' });
+    expect(steps()[2]).toBe('You hear from us.We’ll email you when your account is approved. Wholesale pricing and ordering unlock then.');
+  });
+
+  for (const [label, find] of [
+    ['Sign in instead, in step 1', () => screen.getByRole('button', { name: 'Sign in instead' })],
+    ['the Sign in link under the steps', () => screen.getByRole('button', { name: 'Sign in' })],
+  ]) {
+    it(`opens Sign in with the application’s email from ${label}`, async () => {
+      await sendApplication();
+      fireEvent.click(find());
+      expect(screen.getByRole('heading', { name: 'Sign in' })).toBeTruthy();
+      expect(document.getElementById('aw-email').value).toBe('new@example.test');
+    });
+  }
+
+  it('lists only real tasks while an application is under review', () => {
+    const t = setup();
+    t.update({ session: SESSION, profileReady: true, profile: { id: 'u1', status: 'pending', email: 'buyer@example.test' } });
+    const items = [...document.querySelectorAll('[role="dialog"] .checklist li b')].map((b) => b.textContent);
+    expect(items).toEqual(['Pricing unlocks on approval.', 'Questions?']);
+    expect(screen.queryByText('Browse the catalog.')).toBeNull();
+    // The action still offers the catalog.
+    expect(screen.getByRole('link', { name: 'Browse the catalog' })).toBeTruthy();
+  });
+});
