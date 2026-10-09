@@ -156,7 +156,7 @@ test('the receipt replaces checkout: the cart empties, and a reload or Back keep
   await expect(page.locator('.aw-cart-count')).toHaveText('2');
   await fillGuest(page);
   await fillAddress(page);
-  await page.getByLabel('Notes', { exact: true }).fill('Back door, before 10');
+  await page.getByLabel('Notes (optional)', { exact: true }).fill('Back door, before 10');
   await fillLicense(page);
   await page.getByRole('button', { name: /Submit quote request/ }).click();
 

@@ -848,6 +848,39 @@ describe('one field system (AW-146, AW-172, AW-147, AW-309)', () => {
   });
 });
 
+// The shared field layer (AW-173, src/components/Field.jsx), Safari's empty
+// date (AW-310) and the checkout column (AW-159).
+describe('field messages, optional markers and the checkout column (AW-173, AW-310, AW-159)', () => {
+  const rule = (selector) => declarations(rules(css).find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+
+  it('sets a field’s message close under it, beside a checkbox’s label, and keeps the empty one flat', () => {
+    expect(rule('.field-error')).toEqual({ 'margin-top': '6px' });
+    expect(rule('.consent + .field-error')).toEqual({ 'margin-left': '28px' });
+    // .form-error:empty (two classes) outranks .field-error, so an empty message takes no room.
+    expect(rule('.form-error:empty')).toEqual({ margin: '0' });
+    expect(css.indexOf('.field-error {')).toBeGreaterThan(css.indexOf('.form-error {'));
+  });
+
+  it('marks optional fields in muted running text, and draws no required marker', () => {
+    expect(rule('.field-optional')).toMatchObject({ color: 'var(--muted)', 'text-transform': 'none', 'letter-spacing': '0' });
+    expect(declared('content').filter(({ selector }) => /field|required|optional/.test(selector))).toEqual([]);
+  });
+
+  it('gives a refused field the danger border at zero specificity, so its own layout rules still apply', () => {
+    const invalid = rules(css).find((r) => r.selectors.some((s) => s.includes('[aria-invalid="true"]') && s.startsWith(':where(.form-grid')));
+    expect(invalid.selectors).toEqual([':where(.form-grid :is(input, select, textarea)[aria-invalid="true"]:not([type=checkbox]):not([type=radio]))']);
+    expect(declarations(invalid.body)).toEqual({ 'border-color': 'var(--danger)' });
+  });
+
+  it('hides Safari’s grey stand-in date in an empty date field until it has focus (AW-310)', () => {
+    expect(rule('.form-grid input[type="date"].is-empty:not(:focus)::-webkit-datetime-edit')).toEqual({ color: 'transparent', '-webkit-text-fill-color': 'transparent' });
+  });
+
+  it('keeps the checkout form at least 420px wide beside the lines (AW-159)', () => {
+    expect(rule('.checkout-grid')['grid-template-columns']).toBe('minmax(0,1.4fr) minmax(min(26.25rem, 100%), 1fr)');
+  });
+});
+
 // The components' markup uses the design system: the pieces PR #12, PR #13 and
 // lane p2 added (warning band, licence and consent fields, admin details row
 // and quote editor, "Photo coming soon", the card buttons and "Added", variant

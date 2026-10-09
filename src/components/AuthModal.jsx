@@ -18,6 +18,10 @@
 //
 // 'Check your inbox' and 'Confirm your email first' can send the
 // confirmation email again, once a minute (AW-016).
+//
+// The sign-in, application and reset forms check themselves before sending
+// (AW-173): what is missing or mistyped shows under its field, and the first
+// one takes focus (Field and ValidatedForm, ./Field.jsx).
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth.jsx';
@@ -29,6 +33,7 @@ import { DOCUMENT_TYPES, documentErrorMessage, uploadSelectedProof } from '../li
 import { ServiceUnavailable } from './ServiceUnavailable.jsx';
 import { CallOrEmail } from './ContactLinks.jsx';
 import { DocumentUploads } from './DocumentUploads.jsx';
+import { Field, ValidatedForm } from './Field.jsx';
 import { Icon } from './Icon.jsx';
 import { ModalLayer } from './ModalLayer.jsx';
 
@@ -63,16 +68,6 @@ const EMPTY_SIGNUP = {
   store_street: '', store_city: '', store_zip: '',
   agreeTerms: false, ageConfirmed: false,
 };
-
-function Field({ id, label, hint, full = false, children }) {
-  return (
-    <div className={full ? 'full' : undefined}>
-      <label htmlFor={id}>{label}</label>
-      {children}
-      {hint && <small className="field-hint" id={`${id}-hint`}>{hint}</small>}
-    </div>
-  );
-}
 
 export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, signingOut = false }) {
   const {
@@ -363,7 +358,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
         {unavailableWhat && !isBackendConfigured && <ServiceUnavailable what={unavailableWhat} />}
 
         {mode === 'signin' && (
-          <form onSubmit={handleSignin}>
+          <ValidatedForm onSubmit={handleSignin}>
             <div className="form-grid">
               <Field id="aw-email" label="Business email" full>
                 <input id="aw-email" type="email" name="email" value={signin.email} onChange={setS('email')} required autoComplete="email" inputMode="email" data-autofocus />
@@ -378,7 +373,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
               <button className="text-link" type="button" onClick={() => { setResetEmail(signin.email); switchMode('reset'); }}>Forgot password?</button>
               <button className="text-link" type="button" onClick={() => switchMode('checklist')}>No account? Apply instead</button>
             </div>
-          </form>
+          </ValidatedForm>
         )}
 
         {mode === 'checking' && (
@@ -430,7 +425,8 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
         )}
 
         {mode === 'signup' && (
-          <form onSubmit={handleSignup}>
+          <ValidatedForm onSubmit={handleSignup}>
+            <p className="form-note">All fields are required unless marked optional.</p>
             <div className="form-grid">
               <Field id="aw-su-name" label="Your name">
                 <input id="aw-su-name" name="name" value={signup.name} onChange={setU('name')} required autoComplete="name" data-autofocus />
@@ -485,17 +481,15 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             {/* Consent and 21+ (AW-019). The policies open in a new tab so the
                 answers typed here stay put. */}
             <div className="consent-block">
-              <div className="consent">
-                <input id="aw-su-terms" name="agreeTerms" type="checkbox" checked={signup.agreeTerms} onChange={e => setSignup({ ...signup, agreeTerms: e.target.checked })} required />
-                <label htmlFor="aw-su-terms">
+              <Field id="aw-su-terms" inline label={<>
                   I agree to the <Link to={{ page: 'terms' }} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>Trade terms<span className="sr-only"> (opens in a new tab)</span></Link>
                   {' '}and <Link to={{ page: 'privacy' }} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>Privacy policy<span className="sr-only"> (opens in a new tab)</span></Link>
-                </label>
-              </div>
-              <div className="consent">
+                </>}>
+                <input id="aw-su-terms" name="agreeTerms" type="checkbox" checked={signup.agreeTerms} onChange={e => setSignup({ ...signup, agreeTerms: e.target.checked })} required />
+              </Field>
+              <Field id="aw-su-age" label="I am 21 or older" inline>
                 <input id="aw-su-age" name="ageConfirmed" type="checkbox" checked={signup.ageConfirmed} onChange={e => setSignup({ ...signup, ageConfirmed: e.target.checked })} required />
-                <label htmlFor="aw-su-age">I am 21 or older</label>
-              </div>
+              </Field>
             </div>
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
@@ -503,7 +497,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
               <button className="text-link" type="button" onClick={() => switchMode('checklist')}>Back to the checklist</button>
               <button className="text-link" type="button" onClick={() => switchMode('signin')}>Already approved? Sign in</button>
             </div>
-          </form>
+          </ValidatedForm>
         )}
 
         {mode === 'sent' && (
@@ -554,7 +548,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
         )}
 
         {mode === 'reset' && (
-          <form onSubmit={handleReset}>
+          <ValidatedForm onSubmit={handleReset}>
             <div className="form-grid">
               <Field id="aw-reset-email" label="Business email" full>
                 <input id="aw-reset-email" type="email" name="email" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} required autoComplete="email" inputMode="email" data-autofocus />
@@ -565,7 +559,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
               <button className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Sending…' : 'Send reset link'}</span></button>
               <button className="text-link" type="button" onClick={() => switchMode('signin')}>Back to sign in</button>
             </div>
-          </form>
+          </ValidatedForm>
         )}
 
         {mode === 'reset-sent' && (

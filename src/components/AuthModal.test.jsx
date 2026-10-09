@@ -40,6 +40,21 @@ const signInWith = async () => {
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^Sign in/ })); });
 };
 
+// Every answer the application requires: it checks them before it sends
+// (AW-173). `answers` replaces any of them, by label.
+const APPLICATION = {
+  'Your name': 'New Buyer', 'Business name': 'New Store', 'Business email': 'new@example.test', Phone: '205-555-0199',
+  Password: 'test-password-1', 'Federal EIN': '12-3456789', 'State retail tobacco license #': 'TL-TEST', 'Resale certificate #': 'RS-TEST',
+  'Store street address': '1 Test Way', City: 'Testville', ZIP: '35203',
+};
+const fillApplication = (answers = {}) => {
+  for (const [label, value] of Object.entries({ ...APPLICATION, ...answers })) fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  for (const name of [/I agree to the Trade terms/, 'I am 21 or older']) {
+    const box = screen.getByRole('checkbox', { name });
+    if (!box.checked) fireEvent.click(box);
+  }
+};
+
 afterEach(() => vi.useRealTimers());
 
 describe('AuthModal after sign-in', () => {
@@ -153,6 +168,7 @@ describe('AuthModal application form', () => {
     fireEvent.change(zip, { target: { value: '35203' } });
     fireEvent.click(terms);
     fireEvent.click(age);
+    fillApplication({ 'Store street address': '1 Test St', City: 'Birmingham' });
     await act(async () => { fireEvent.submit(street.closest('form')); });
     expect(signUp).toHaveBeenCalledWith(expect.objectContaining({
       store_street: '1 Test St', store_city: 'Birmingham', store_zip: '35203',
@@ -296,7 +312,7 @@ describe('AuthModal guards a half-typed application (AW-018)', () => {
   it('closes without asking once the application is sent', async () => {
     const signUp = vi.fn(async () => ({ session: null }));
     const t = setup({ signUp }, { initialMode: 'application' });
-    fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'New Buyer' } });
+    fillApplication();
     await act(async () => { fireEvent.submit(screen.getByLabelText('Your name').closest('form')); });
     expect(screen.getByRole('heading', { name: 'Check your inbox' })).toBeTruthy();
     fireEvent.click(closeButton());
@@ -322,7 +338,7 @@ describe('AuthModal guards a half-typed application (AW-018)', () => {
 describe('AuthModal resends the confirmation email (AW-016)', () => {
   const sendApplication = async (overrides = {}) => {
     const t = setup({ signUp: vi.fn(async () => ({ session: null })), ...overrides }, { initialMode: 'application' });
-    fireEvent.change(screen.getByLabelText('Business email'), { target: { value: 'new@example.test' } });
+    fillApplication();
     await act(async () => { fireEvent.submit(screen.getByLabelText('Business email').closest('form')); });
     expect(screen.getByRole('heading', { name: 'Check your inbox' })).toBeTruthy();
     return t;

@@ -5,11 +5,15 @@
 //
 // App keys it by account, so signing out ends a half-done or finished reset
 // and shows the signed-out view, not "link expired".
+//
+// A short or mismatched password is named under the field it is about, which
+// takes focus (AW-173, ValidatedForm's validate).
 
 import { useState } from 'react';
 import { describeError } from '../../lib/errors.js';
 import { ServiceUnavailable } from '../../components/ServiceUnavailable.jsx';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
+import { Field, ValidatedForm } from '../../components/Field.jsx';
 import { Link } from '../../lib/router.js';
 import { PageHead } from './SupportShell.jsx';
 
@@ -36,11 +40,13 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
 
+  const validate = () => ({
+    'reset-password': password.length < 8 ? 'Choose a password with at least 8 characters.' : '',
+    'reset-confirm': (!confirm && 'Enter the new password again.') || (password !== confirm && 'The two passwords don’t match.') || '',
+  });
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-    if (password.length < 8) { setError('Choose a password with at least 8 characters.'); return; }
-    if (password !== confirm) { setError('The two passwords don’t match.'); return; }
     setSaving(true);
     try { await updatePassword(password); setDone(true); }
     catch (err) { setError(describeError(err, 'Password reset', 'We couldn’t update the password.')); }
@@ -68,26 +74,23 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
     body = <p className="support-note" role="status">{linkChecking ? 'Checking your reset link…' : 'Loading your account…'}</p>;
   } else if (session) {
     body = (
-      <form className="reset-form" onSubmit={handleSubmit} aria-labelledby="reset-form-title">
+      <ValidatedForm className="reset-form" onSubmit={handleSubmit} validate={validate} aria-labelledby="reset-form-title">
         <p className="eyebrow">{recovery ? 'RESET LINK CONFIRMED' : 'SIGNED IN'}</p>
         <h2 id="reset-form-title">{`New password for ${session.user?.email}`}</h2>
         <div className="form-grid">
-          <div className="full">
-            <label htmlFor="reset-password">New password</label>
+          <Field id="reset-password" label="New password" hint="At least 8 characters." full>
             <input id="reset-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} autoComplete="new-password" aria-describedby="reset-password-hint" data-autofocus />
-            <small className="field-hint" id="reset-password-hint">At least 8 characters.</small>
-          </div>
-          <div className="full">
-            <label htmlFor="reset-confirm">Confirm new password</label>
+          </Field>
+          <Field id="reset-confirm" label="Confirm new password" full>
             <input id="reset-confirm" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={8} autoComplete="new-password" />
-          </div>
+          </Field>
         </div>
         <p className="form-error" role="alert">{error}</p>
         <div className="dialog-actions">
           <button className="button" type="submit" disabled={saving}><span>{saving ? 'Saving…' : 'Save new password'}</span></button>
           <Link className="text-link" to="/">Cancel</Link>
         </div>
-      </form>
+      </ValidatedForm>
     );
   } else if (linkError?.forReset) {
     const problem = linkProblem(linkError);

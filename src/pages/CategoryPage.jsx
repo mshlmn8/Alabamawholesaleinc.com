@@ -170,7 +170,7 @@ export function CategoryPage({
   const filterPanel = (
     <div className="filter-panel">
       <label className="filter-search" htmlFor="category-search"><span>{`Search in ${catLabel(category)}`}</span>
-        <input id="category-search" type="search" value={draft} onChange={(e) => onSearchInput(e.target.value)} placeholder="Item, brand, SKU, variant…" autoComplete="off" />
+        <input id="category-search" type="search" value={draft} onChange={(e) => onSearchInput(e.target.value)} placeholder="Name, brand or SKU" autoComplete="off" />
       </label>
       {featured.length > 0 && (
         <fieldset>
