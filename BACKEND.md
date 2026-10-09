@@ -492,9 +492,13 @@ it needs:
   editor uploads to `products/<id>/<upload time>-<name>.<ext>`
   (`products/new/…` for a product not saved yet) and saves the file's public
   URL in `products.img`; a photo file bundled with the site (`kite.jpg`) still
-  works. A replaced or removed photo stays in the bucket. A deploy with a
-  Content-Security-Policy must allow `https://<project>.supabase.co` in
-  `img-src` for these photos.
+  works. A replaced or removed photo stays in the bucket. The site's
+  Content-Security-Policy (`netlify.toml`) allows images only from the site
+  and `https://*.supabase.co`, so the editor accepts only a bundled file name
+  or a public Supabase Storage address
+  (`https://<project>.supabase.co/storage/v1/object/public/…`); a photo on
+  any other host would be blocked. A new image host needs `img-src` and the
+  privacy policy's processor list changed first.
 
 Without this migration the editor still works on the live database: a new
 product is inserted with the next free id (the table has no id default), the
