@@ -169,8 +169,8 @@ export default function App() {
   // A product's (or variant's) list price for the same buyer, to show beside
   // the tier price on the product page (AW-265); null without one.
   const listOf = useMemo(() => (id, variant) => priceFor(prices.prices, id, variant)?.list ?? null, [prices.prices]);
-  // "Try again" on prices that didn't load (NEW-054); the notice stays when
-  // it fails again, so say so.
+  // "Try again" on prices that didn't load (NEW-054), and checkout's "Load
+  // prices again" (NEW-010); the notice stays when it fails again, so say so.
   const retryPrices = async () => {
     const result = await prices.refresh();
     if (!result.ok) announce('Your prices still didn’t load. Try again in a moment.');
@@ -364,11 +364,12 @@ export default function App() {
 
   // Checkout loads the catalog and the buyer's prices again right before a
   // submit and stops when a line changed (AW-191): the cart as stored now,
-  // priced against them.
+  // priced against them. A failure names the part that failed, 'catalog' or
+  // 'prices', so checkout can say which (NEW-010).
   const checkCart = async () => {
     const [latest, latestPrices] = await Promise.all([catalog.refresh(), prices.refresh()]);
-    if (!latest.ok) return { ok: false, error: latest.error };
-    if (!latestPrices.ok) return { ok: false, error: latestPrices.error };
+    if (!latest.ok) return { ok: false, part: 'catalog', error: latest.error };
+    if (!latestPrices.ok) return { ok: false, part: 'prices', error: latestPrices.error };
     const latestPriceOf = (id, variant) => priceFor(latestPrices.prices, id, variant)?.unit ?? null;
     return { ok: true, items: cart.itemsFor(latest.products, latestPriceOf) };
   };
@@ -412,6 +413,7 @@ export default function App() {
                      removeLines={cart.removeLines} clearCart={cart.clearCart} restoreLines={cart.restoreLines} owner={owner} legacy={cart.legacy} onDismissLegacy={cart.dismissLegacy}
                      profile={profile} account={account} signedIn={!!session} onSignIn={openSignin} onApplyClick={openSignup}
                      isApprovedBuyer={isApprovedBuyer} isSuspended={isSuspended} pricesStatus={prices.status} isBackendConfigured={isBackendConfigured} checkCart={checkCart}
+                     onRetryPrices={retryPrices} pricesRefreshing={prices.refreshing}
                      savedReceipt={receiptHere} entryKey={location.key} onSubmitted={(receipt) => saveReceipt({ owner, entryKey: location.key, receipt })} cartSynced={cartSynced}
                      loadShipTo={isBackendConfigured ? loadAccountShipTo : null} />
         );

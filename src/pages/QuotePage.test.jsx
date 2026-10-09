@@ -357,37 +357,143 @@ describe('QuotePage totals for an approved buyer', () => {
   });
 });
 
-// The $500 minimum isn't enforced (AW-076, owner question); the note that says
-// so appears only while the submit button can be used (Cursor's PR #13).
-describe('QuotePage minimum note (AW-076)', () => {
-  const minimum = () => screen.queryByText(/The order minimum is \$500\.00\. You can still submit this order\./);
-  it('shows below the minimum only when the order can be submitted', () => {
-    const buyer = { profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true, pricesStatus: 'ready', total: 20 };
+// The $500 minimum isn't enforced (AW-076, owner question). The page states
+// it once, as $500 (AW-283, NEW-059): in the intro, or, while an approved
+// buyer's meter asks for the rest of it, in the meter alone, which adds "You
+// can still submit this order." only while the submit button can be used
+// (Cursor's PR #13).
+describe('QuotePage minimum (AW-076, AW-283, NEW-059, NEW-010)', () => {
+  const intro = () => document.querySelector('.page-head > p:not([class])').textContent;
+  const meter = () => document.querySelector('.cart-meter-text')?.textContent ?? null;
+  const allowed = () => screen.queryByText(/You can still submit this order\./);
+  // The minimum as a threshold: '$500', not an amount such as a $500.00 total.
+  const mentions = () => (document.body.textContent.match(/\$500(?![.,]?\d)/g) || []).length;
+  const buyer = { profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true, pricesStatus: 'ready', total: 20 };
+
+  it('says it once, in the meter, with "You can still submit" only when the order can be submitted', () => {
     const view = render(page(buyer));
-    expect(minimum()).toBeTruthy();
+    expect(meter()).toBe('Add $480.00 to reach the $500 order minimum. You can still submit this order.');
+    expect(intro()).toBe('Review your items and submit. A trade desk rep will confirm pricing, availability and delivery within one business day.');
+    expect(mentions()).toBe(1);
+    expect(document.querySelector('p.notice')).toBeNull();
     expect(submit().disabled).toBe(false);
-    // A line still needs a variant: the button is off, so no "you can still submit".
+    // A line still needs a variant: no meter (its price isn't known), so the
+    // intro says the minimum, and nothing says "you can still submit".
     view.rerender(page({ ...buyer, items: [{ ...ITEMS[0], needsVariant: true }] }));
     expect(submit().disabled).toBe(true);
-    expect(minimum()).toBeNull();
-    // A line that can no longer be ordered.
-    view.rerender(page({ ...buyer, items: [{ ...ITEMS[0], unavailable: 'product' }] }));
-    expect(minimum()).toBeNull();
+    expect(allowed()).toBeNull();
+    expect(intro()).toMatch(/The minimum order is \$500\./);
+    expect(mentions()).toBe(1);
+    // A line that can no longer be ordered, beside one that can: the meter
+    // stays, the button is off.
+    const gone = { ...ITEMS[0], lineKey: '999', productId: 999, unavailable: 'product' };
+    view.rerender(page({ ...buyer, items: [...ITEMS, gone] }));
+    expect(meter()).toBe('Add $480.00 to reach the $500 order minimum.');
+    expect(mentions()).toBe(1);
     // Quotes can't be saved (no backend).
     view.rerender(page({ ...buyer, isBackendConfigured: false }));
-    expect(minimum()).toBeNull();
-    // At the minimum, nothing to say.
+    expect(meter()).toBe('Add $480.00 to reach the $500 order minimum.');
+    // At the minimum, the meter moves on and the intro says it.
     view.rerender(page({ ...buyer, total: 500 }));
-    expect(minimum()).toBeNull();
+    expect(allowed()).toBeNull();
+    expect(meter()).toBe('Add $1,000.00 for free delivery on a delivery route.');
+    expect(intro()).toMatch(/The minimum order is \$500\./);
+    expect(mentions()).toBe(1);
   });
 
-  // The minimum is printed once per page, in the intro (AW-283); the
-  // free-delivery claim stays in the form's fine print.
-  it('prints the minimum and free-delivery amounts from content.js', () => {
+  // NEW-010: a total without every line's price is not measured.
+  it('says nothing about reaching the minimum when prices failed or a line has no price', () => {
+    const view = render(page({ ...buyer, items: [{ ...ITEMS[0], price: null }], total: 0, pricesStatus: 'error' }));
+    expect(allowed()).toBeNull();
+    expect(meter()).toBeNull();
+    expect(screen.queryByText(/to reach the \$500 order minimum/)).toBeNull();
+    expect(document.querySelector('.cart-summary-note').textContent).toBe('The minimum and free delivery are worked out once every line has a price.');
+    expect(intro()).toMatch(/The minimum order is \$500\./);
+    expect(mentions()).toBe(1);
+    // Price on request, with the prices in.
+    const onRequest = { lineKey: '187::regular', productId: 187, variant: 'Regular', name: 'Gushers box — Regular', sku: 'AW-GUSHER', cat: 'CANDIES', qty: 1, price: null };
+    view.rerender(page({ ...buyer, items: [onRequest, ...ITEMS], total: 20 }));
+    expect(allowed()).toBeNull();
+    expect(meter()).toBeNull();
+    expect(mentions()).toBe(1);
+    // While prices load.
+    view.rerender(page({ ...buyer, pricesStatus: 'loading' }));
+    expect(allowed()).toBeNull();
+    expect(meter()).toBeNull();
+  });
+
+  it('prints the minimum once, as $500, and the free-delivery amount from content.js', () => {
     render(page({ profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false }));
-    expect(document.querySelector('.page-head p:last-of-type').textContent).toMatch(/The minimum order is \$500\.00\./);
+    expect(intro()).toBe('Review your items and submit. The minimum order is $500. A trade desk rep will confirm pricing, availability and delivery within one business day.');
     expect(document.querySelector('form .fine:last-of-type').textContent).toMatch(/^Orders over \$1,500 qualify for free delivery/);
-    expect(document.body.textContent.split('$500.00')).toHaveLength(2);
+    expect(mentions()).toBe(1);
+    expect(document.body.textContent).not.toMatch(/\$500\.00/);
+  });
+});
+
+// The buyer's prices didn't load (NEW-010): a way to load them again by the
+// total, and a submit that can't re-check them says that, not "check your
+// connection".
+describe('QuotePage when the buyer’s prices didn’t load (NEW-010)', () => {
+  const failed = { profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true, items: [{ ...ITEMS[0], price: null }], total: 0, pricesStatus: 'error' };
+  const reload = () => screen.queryByRole('button', { name: /Load prices again|Loading prices…/ });
+
+  it('offers “Load prices again” by the total, and gives the total focus once they are in', () => {
+    const onRetryPrices = vi.fn();
+    const view = render(page({ ...failed, onRetryPrices }));
+    expect(document.querySelector('.checkout-total').textContent).toBe('Estimated subtotal · 2 unitsPrices didn’t load');
+    const button = reload();
+    expect(button.textContent).toBe('Load prices again');
+    expect(button.closest('.prices-retry').previousElementSibling.classList.contains('checkout-total')).toBe(true);
+    button.focus();
+    fireEvent.click(button);
+    expect(onRetryPrices).toHaveBeenCalledTimes(1);
+    // While they load it says so, stays focusable, and a second click does nothing.
+    view.rerender(page({ ...failed, onRetryPrices, pricesRefreshing: true }));
+    expect(reload().textContent).toBe('Loading prices…');
+    expect(reload().getAttribute('aria-disabled')).toBe('true');
+    expect(reload().disabled).toBe(false);
+    fireEvent.click(reload());
+    expect(onRetryPrices).toHaveBeenCalledTimes(1);
+    // In: the button goes, and the total takes focus.
+    view.rerender(page({ ...failed, items: ITEMS, total: 20, pricesStatus: 'ready', onRetryPrices }));
+    expect(reload()).toBeNull();
+    expect(document.activeElement).toBe(document.getElementById('checkout-total'));
+    expect(document.activeElement.textContent).toBe('Estimated subtotal · 2 units$20.00');
+  });
+
+  it('keeps the button when they fail again, and shows none to guests or once they load', () => {
+    const onRetryPrices = vi.fn();
+    const view = render(page({ ...failed, onRetryPrices }));
+    reload().focus();
+    fireEvent.click(reload());
+    view.rerender(page({ ...failed, onRetryPrices, pricesRefreshing: true }));
+    view.rerender(page({ ...failed, onRetryPrices }));
+    expect(document.activeElement).toBe(reload());
+    view.rerender(page({ ...failed, pricesStatus: 'ready', onRetryPrices }));
+    expect(reload()).toBeNull();
+    view.rerender(page({ profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false, pricesStatus: 'off', onRetryPrices }));
+    expect(reload()).toBeNull();
+  });
+
+  it('says the prices didn’t load, not “check your connection”, when only they fail on submit', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
+    const before = vi.mocked(submitOrder).mock.calls.length;
+    const view = render(page({ ...failed, items: ITEMS, total: 20, pricesStatus: 'ready', checkCart: vi.fn(async () => ({ ok: false, part: 'prices', error: { message: 'x' } })) }));
+    for (const [id, value] of [['ship-street', '1 Alpha Way'], ['ship-city', 'Hoover'], ['ship-state', 'AL'], ['ship-zip', '35216']]) {
+      fireEvent.change(document.getElementById(id), { target: { value } });
+    }
+    await act(async () => { fireEvent.submit(document.querySelector('form[aria-labelledby="quote-form-title"]')); });
+    expect(screen.getByRole('alert').textContent).toMatch(/^Your prices didn’t load, so nothing was sent\. Try again, or call the trade desk at \(205\) 354-4473 or email .+\.$/);
+    view.unmount();
+    render(page({ ...failed, items: ITEMS, total: 20, pricesStatus: 'ready', checkCart: vi.fn(async () => ({ ok: false, part: 'catalog', error: { message: 'x' } })) }));
+    for (const [id, value] of [['ship-street', '1 Alpha Way'], ['ship-city', 'Hoover'], ['ship-state', 'AL'], ['ship-zip', '35216']]) {
+      fireEvent.change(document.getElementById(id), { target: { value } });
+    }
+    await act(async () => { fireEvent.submit(document.querySelector('form[aria-labelledby="quote-form-title"]')); });
+    expect(screen.getByRole('alert').textContent).toMatch(/^We couldn’t check the latest prices and availability, so nothing was sent\. Check your connection/);
+    expect(vi.mocked(submitOrder).mock.calls.length).toBe(before);
+    vi.restoreAllMocks();
   });
 });
 
@@ -499,13 +605,23 @@ describe('QuotePage and submit_quote', () => {
     expect(check).not.toHaveBeenCalled();
   });
 
-  it('tells a suspended account ordering is paused, instead of a submit button (AW-201)', () => {
+  it('tells a suspended account ordering is paused, instead of a submit button, and locks the details (AW-201, NEW-064)', () => {
     const suspended = { ...A, status: 'suspended' };
     const view = render(page({ profile: suspended, account: 'ready', signedIn: true, isApprovedBuyer: false, isSuspended: true }));
     expect(screen.queryByRole('button', { name: /Submit/ })).toBeNull();
     const paused = document.querySelector('.quote-paused');
-    expect(paused.textContent).toMatch(/^Ordering is paused on this account\. Call \(205\) 354-4473 or email/);
+    expect(paused.textContent).toMatch(/^Ordering is paused on this account\. Call \(205\) 354-4473 or email .+ and a trade rep will help you sort it out\.$/);
     expect(paused.querySelector(`a[href="tel:${COMPANY.phoneRaw}"]`)).toBeTruthy();
+    // NEW-064: it is the page's intro, said once; nothing invites a submit.
+    expect(paused.parentElement.classList.contains('page-head')).toBe(true);
+    expect(document.body.textContent.split('Ordering is paused on this account.')).toHaveLength(2);
+    expect(document.body.textContent).not.toMatch(/Review your items and submit/);
+    expect(document.querySelector('.form-note')).toBeNull();
+    // The details show, locked; the lines can still be changed, for later.
+    const details = document.getElementById('quote-business').closest('fieldset');
+    expect(details.disabled).toBe(true);
+    expect(document.getElementById('quote-business').value).toBe(A.business);
+    expect(screen.getByRole('button', { name: 'Clear all items' }).closest('fieldset').disabled).toBe(false);
     // Not the "send it as a quote instead" warning, nor pricing talk.
     expect(screen.queryByText(/can’t place orders yet/)).toBeNull();
     expect(document.querySelector('.checkout-total').textContent).toBe('Estimated subtotal · 2 unitsOrdering paused');

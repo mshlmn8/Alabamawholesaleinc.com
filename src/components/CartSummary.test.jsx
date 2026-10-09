@@ -43,11 +43,27 @@ describe('CartSummary', () => {
     const status = screen.getByRole('status');
     expect(status.textContent).toBe(`Add ${formatMoney(ORDER_MINIMUM - 306)} to reach the ${formatMoneyShort(ORDER_MINIMUM)} order minimum.`);
     const meter = screen.getByRole('progressbar');
-    expect(meter.getAttribute('aria-labelledby')).toBe(status.id);
+    expect(meter.getAttribute('aria-labelledby')).toBe(status.firstElementChild.id);
     expect(Number(meter.getAttribute('max'))).toBe(ORDER_MINIMUM);
     expect(Number(meter.getAttribute('value'))).toBe(306);
     expect(meter.getAttribute('style')).toBeNull();
     expect(meter.className).toBe('cart-meter');
+  });
+
+  // Checkout, while its submit button can be used (AW-076, NEW-059): the one
+  // mention of the minimum on the page says the order can still be sent.
+  it('adds that the order can still be submitted, below the minimum only, and leaves it out of the meter’s name', () => {
+    const view = summary({ isApprovedBuyer: true, canSubmitBelowMinimum: true });
+    const add = `Add ${formatMoney(ORDER_MINIMUM - 306)} to reach the ${formatMoneyShort(ORDER_MINIMUM)} order minimum.`;
+    expect(screen.getByRole('status').textContent).toBe(`${add} You can still submit this order.`);
+    const meter = screen.getByRole('progressbar');
+    expect(document.getElementById(meter.getAttribute('aria-labelledby')).textContent).toBe(add);
+    // At the minimum, there is nothing to excuse.
+    view.rerender(<CartSummary items={ITEMS} total={ORDER_MINIMUM} isApprovedBuyer pricesStatus="ready" canSubmitBelowMinimum />);
+    expect(screen.getByRole('status').textContent).toBe(`Add ${formatMoney(FREE_DELIVERY_THRESHOLD - ORDER_MINIMUM)} for free delivery on a delivery route.`);
+    // Not while the button is off, and never in the drawer (no prop).
+    view.rerender(<CartSummary items={ITEMS} total={306} isApprovedBuyer pricesStatus="ready" canSubmitBelowMinimum={false} />);
+    expect(screen.getByRole('status').textContent).toBe(add);
   });
 
   it('moves on to free delivery, and marks it reached only over the threshold', () => {

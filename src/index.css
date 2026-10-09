@@ -1004,6 +1004,10 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .checkout-form-title { font-size: var(--h3); margin: 0 0 4px; line-height: 1; }
 .checkout-form-grid { margin-top: 12px; }
 .checkout-total { margin-top: 18px; }
+/* The submit button sits 12px under whatever comes before it (NEW-059): the
+   total, its notes and the summary end with that margin; a message right
+   above it (.form-error, which has none below) gets it here. */
+.checkout-total ~ .form-error + .button.wide { margin-top: 12px; }
 /* Where the ship-to address came from, and "Use a different address" (AW-102). */
 .ship-from { display: flex; flex-wrap: wrap; align-items: center; column-gap: .5rem; font-size: var(--text-sm); color: var(--muted); }
 
@@ -2330,9 +2334,10 @@ ul.sub-pills { list-style: none; padding: 0; }
    the add button of a card whose only variant it is. The text says so too. */
 .variant-chips button:disabled { border-style: dashed; color: var(--muted); cursor: not-allowed; }
 /* Checkout: the guests' sign-in and apply links are tap-sized (AW-014), and
-   the paused-ordering note replaces the submit and quote buttons (AW-201). */
+   for a suspended account the paused-ordering note takes the intro's place
+   and width, with no submit button (AW-201, NEW-064). */
 .quote-account-links .text-link { min-height: var(--tap); }
-.quote-paused { margin: 16px 0 0; }
+.quote-paused { max-width: 560px; margin: 16px 0 0; }
 .drawer-paused { margin: 4px 0 0; }
 /* Its phone and email are links like any other (the shared link rule above).
    The email may break anywhere, so large text never widens the page; the

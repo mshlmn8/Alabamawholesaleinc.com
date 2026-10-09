@@ -43,9 +43,20 @@
 // (AW-014, PR #12; the rule is src/lib/regulated.js, and submit_quote applies
 // the same one). Guests also get sign-in and apply links.
 //
-// The $500 minimum is not enforced (AW-076, owner question). An approved
-// buyer below it is told "You can still submit this order" only while the
-// submit button can actually be used (Cursor's PR #13).
+// The $500 minimum is not enforced (AW-076, owner question), and the page
+// states it once, as $500 (AW-283, NEW-059): in the intro, or, for an
+// approved buyer whose meter asks for the rest of it, in the meter alone,
+// which adds "You can still submit this order." only while the submit
+// button can actually be used (Cursor's PR #13). Lines without a price yet
+// (prices loading or failed, price on request, a variant to choose) are not
+// measured against it (NEW-010). When the buyer's prices didn't load, a
+// "Load prices again" button sits by the total, and a submit that can't
+// re-check them says so instead of blaming the connection.
+//
+// A suspended account (AW-201, NEW-064) reads that ordering is paused, and
+// how to reach the trade desk, in place of the intro. Its lines can still be
+// changed (the cart is kept for later); the details are locked, and there is
+// no submit button.
 //
 // A signed-in buyer's ship-to address starts from the store address on the
 // application (src/lib/quoteForm.js), then from the address of their last
@@ -84,9 +95,10 @@ import { QUOTE_ERROR_GENERIC, QUOTE_OFFLINE, quoteErrorField, quoteErrorMessage,
 import { isOffline } from '../lib/network.js';
 import { useOnlineStatus } from '../lib/useOnlineStatus.js';
 import { cartChanges, describeCartChanges, variantExcludedText } from '../lib/cart.js';
-import { cartCounts, countsLabel } from '../lib/cartSummary.js';
+import { cartCounts, countsLabel, deliveryProgress, meterReady } from '../lib/cartSummary.js';
+import { PRICE_LOCK } from '../lib/accountStatus.js';
 import { QTY_RANGE_TEXT, isOrderableQty } from '../lib/quantity.js';
-import { formatMoney, formatMoneyShort } from '../lib/format.js';
+import { formatMoneyShort } from '../lib/format.js';
 import { totalLabel } from '../lib/pricing.js';
 import { cartNeedsTobaccoLicense } from '../lib/regulated.js';
 import { Link, focusPageHeading, scrollToTop } from '../lib/router.js';
@@ -127,6 +139,12 @@ const CHECK_FAILED = {
   before: 'We couldn’t check the latest prices and availability, so nothing was sent. Check your connection and try again, or call the trade desk at',
   after: '.',
 };
+// Only the buyer's prices failed to load again, and the browser is online:
+// the connection is not the problem (NEW-010).
+const PRICES_CHECK_FAILED = {
+  before: 'Your prices didn’t load, so nothing was sent. Try again, or call the trade desk at',
+  after: '.',
+};
 const PHONE_EXAMPLE = '(205) 555-0123';
 const PHONE_ERROR = 'Enter a 10-digit phone number.';
 
@@ -137,7 +155,7 @@ const itemsSignature = (items) => items.map((it) => `${it.lineKey}|${it.qty}|${i
 export function QuotePage({
   items, total, setLine, chooseVariant, removeLine, removeLines, clearCart, restoreLines, owner = null, legacy = [], onDismissLegacy,
   profile, account = profile ? 'ready' : 'signed-out', signedIn = !!profile, onSignIn, onApplyClick, isApprovedBuyer, isBackendConfigured,
-  checkCart = null, pricesStatus = 'ready', isSuspended = false,
+  checkCart = null, pricesStatus = 'ready', onRetryPrices = null, pricesRefreshing = false, isSuspended = false,
   savedReceipt = null, entryKey = null, onSubmitted, loadShipTo = null, cartSynced = false,
 }) {
   // A quote, or an order for an approved buyer (AW-132, src/data/terms.js).
@@ -313,11 +331,14 @@ export function QuotePage({
   // can't submit).
   const needsLicense = !isApprovedBuyer && !isSuspended && cartNeedsTobaccoLicense(orderable);
   const minDate = todayInBirmingham();
-  // Not while the buyer's prices are still loading (the total is not known yet).
-  const pricedBelowMinimum = isApprovedBuyer && pricesStatus !== 'loading' && Number(total) < ORDER_MINIMUM;
+  // The approved buyer's meter asks for the rest of the minimum (AW-283): only
+  // when every line has a price (meterReady, as CartSummary decides; not
+  // while prices load or after they failed, nor with a price-on-request line,
+  // NEW-010), measured in cents like the meter.
+  const pricedBelowMinimum = isApprovedBuyer && meterReady(items, pricesStatus) && deliveryProgress(total).stage === 'minimum';
   const online = useOnlineStatus();
   // What keeps the submit button off (apart from a send in progress). The
-  // minimum note says "you can still submit" only when nothing does (AW-076).
+  // meter says "you can still submit" only when nothing does (AW-076).
   const submitBlocked = isSuspended || !isBackendConfigured || needsVariant || unavailable.length > 0 || invalidQty || lostOrdering || !online;
   // Why the submit button is off, said under it as plain text it is
   // described by (NEW-021): these show from the start, before the buyer has
@@ -332,6 +353,23 @@ export function QuotePage({
     },
     invalidQty && { id: 'quote-blocked-qty', text: QTY_ERROR },
   ].filter(Boolean);
+  // "Load prices again" (NEW-010): App's retry, which says so when they fail
+  // again. Once they are in, the button goes, and focus moves to the total
+  // they make instead of falling to <body>.
+  const focusTotalNext = useRef(false);
+  const reloadPrices = () => {
+    if (pricesRefreshing || !onRetryPrices) return;
+    focusTotalNext.current = true;
+    onRetryPrices();
+  };
+  useEffect(() => {
+    if (!focusTotalNext.current || pricesRefreshing) return;
+    focusTotalNext.current = false;
+    if (pricesStatus === 'error') return;
+    const active = document.activeElement;
+    if (active && active !== document.body) return;
+    document.getElementById('checkout-total')?.focus();
+  }, [pricesStatus, pricesRefreshing]);
   let submitLabel = basket.submit;
   if (phase === 'checking') submitLabel = 'Checking the catalog…';
   else if (phase === 'sending') submitLabel = 'Sending…';
@@ -422,7 +460,8 @@ export function QuotePage({
       if (checkCart) {
         const check = await checkCart();
         if (!check?.ok) {
-          setSubmitError(isOffline() ? QUOTE_OFFLINE : CHECK_FAILED);
+          if (isOffline()) setSubmitError(QUOTE_OFFLINE);
+          else setSubmitError(check?.part === 'prices' ? PRICES_CHECK_FAILED : CHECK_FAILED);
           focusWhenDone(returnFocusTo, 'error');
           return;
         }
@@ -523,7 +562,15 @@ export function QuotePage({
         <Breadcrumbs items={[HOME_CRUMB, { label: basket.page }]} />
         <p className="eyebrow">{isApprovedBuyer ? 'CHECKOUT' : 'QUOTE REQUEST'}</p>
         <h1>{basket.page}</h1>
-        <p>{`Review your items and submit. The minimum order is ${formatMoney(ORDER_MINIMUM)}. A trade desk rep will confirm pricing, availability and delivery within one business day.`}</p>
+        {/* A suspended account can't order (AW-201, NEW-064): that, and a way
+            to reach the trade desk, instead of "Review your items and submit". */}
+        {isSuspended ? (
+          <p className="notice quote-paused"><span>{PRICE_LOCK.suspended.line}</span> <CallOrEmail after=" and a trade rep will help you sort it out." /></p>
+        ) : (
+          <p>{pricedBelowMinimum
+            ? 'Review your items and submit. A trade desk rep will confirm pricing, availability and delivery within one business day.'
+            : `Review your items and submit. The minimum order is ${formatMoneyShort(ORDER_MINIMUM)}. A trade desk rep will confirm pricing, availability and delivery within one business day.`}</p>
+        )}
       </div>
       <div className="checkout-grid">
         <div>
@@ -565,9 +612,10 @@ export function QuotePage({
             <label htmlFor="quote-company-website">Company website</label>
             <input id="quote-company-website" name="company_website" type="text" tabIndex={-1} autoComplete="off" defaultValue="" />
           </div>
-          {/* Locked while a send runs (AW-194). */}
-          <fieldset className="checkout-fieldset" disabled={sending}>
-          <p className="form-note">All fields are required unless marked optional.</p>
+          {/* Locked while a send runs (AW-194), and for a suspended account,
+              which can't submit (NEW-064): the fields show, read-only. */}
+          <fieldset className="checkout-fieldset" disabled={sending || isSuspended}>
+          {!isSuspended && <p className="form-note">All fields are required unless marked optional.</p>}
           <div className="form-grid checkout-form-grid">
             <Field id="quote-business" label="Business name">
               <input id="quote-business" name="business" value={data.business} onChange={set('business')} required maxLength={200} autoComplete="organization" {...fieldProps('business')} />
@@ -643,16 +691,30 @@ export function QuotePage({
           </div>
           </fieldset>
           {/* Lines still waiting for a variant, or priced by the trade desk, are not in the estimate (AW-103, NEW-063). */}
-          <div className="drawer-total checkout-total">
+          <div className="drawer-total checkout-total" id="checkout-total" tabIndex={-1}>
             <span>{`Estimated subtotal · ${totalUnits} ${totalUnits === 1 ? 'unit' : 'units'}`}</span>
             <span>{isApprovedBuyer ? totalLabel(items, total, pricesStatus) : (isSuspended ? 'Ordering paused' : (signedIn ? 'Pricing after approval' : 'Pricing confirmed by the trade desk'))}</span>
           </div>
           {excluded && <p className="total-note">{excluded}</p>}
-          {/* The approved buyer's way to the minimum and free delivery (AW-238).
-              Guests and pending accounts already read who confirms pricing in
-              the row above; the counts are under the list. */}
-          {isApprovedBuyer && <CartSummary items={items} total={total} isApprovedBuyer isSuspended={isSuspended} pricesStatus={pricesStatus} showCounts={false} />}
-          {pricedBelowMinimum && !submitBlocked && <p className="notice" role="status">{`The order minimum is ${formatMoney(ORDER_MINIMUM)}. You can still submit this order.`}</p>}
+          {/* The buyer's prices didn't load (NEW-010): load them again here,
+              beside the total they make. It stays enabled while they load,
+              so it keeps focus; the total takes it once they are in. */}
+          {isApprovedBuyer && pricesStatus === 'error' && onRetryPrices && (
+            <div className="total-note prices-retry">
+              <button className="text-link" type="button" onClick={reloadPrices} aria-disabled={pricesRefreshing || undefined}>
+                {pricesRefreshing ? 'Loading prices…' : 'Load prices again'}
+              </button>
+            </div>
+          )}
+          {/* The approved buyer's way to the minimum and free delivery (AW-238),
+              with "You can still submit this order." below the minimum while
+              the button can be used (AW-076, NEW-059). Guests and pending
+              accounts already read who confirms pricing in the row above; the
+              counts are under the list. */}
+          {isApprovedBuyer && (
+            <CartSummary items={items} total={total} isApprovedBuyer isSuspended={isSuspended} pricesStatus={pricesStatus} showCounts={false}
+                         canSubmitBelowMinimum={!submitBlocked} />
+          )}
           {!isBackendConfigured && <p className="form-error" role="status"><CallOrEmail before="Quote requests can’t be saved right now. Call" after=" and the trade desk will write it up with you." /></p>}
           {blockedNotes.map((note) => <p key={note.id} className="form-error" id={note.id}>{note.text}</p>)}
           {/* Both take focus after a submit that didn't save (NEW-009). */}
@@ -669,8 +731,8 @@ export function QuotePage({
               </div>
             </div>
           )}
-          {/* A suspended account can't order (AW-201): no submit, a way to reach the trade desk. */}
-          {isSuspended && <p className="notice quote-paused">Ordering is paused on this account. <CallOrEmail after=" and a trade rep will help you sort it out." /></p>}
+          {/* A suspended account can't order (AW-201): no submit; the page
+              head says so, with a way to reach the trade desk (NEW-064). */}
           {!isSuspended && (
           <button className="button wide" type="submit" disabled={sending || submitBlocked}
                   aria-describedby={blockedNotes.length ? blockedNotes.map((note) => note.id).join(' ') : undefined}>

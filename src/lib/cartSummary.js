@@ -70,6 +70,12 @@ export function meterReady(items, pricesStatus) {
   return orderable.length > 0 && orderable.every((item) => !item.needsVariant && item.price != null);
 }
 
+// Below the minimum, checkout adds this to the meter's sentence while its
+// submit button can be used (AW-076, NEW-059): the minimum is not enforced,
+// the owner question at ORDER_MINIMUM in src/data/content.js. It is the
+// page's one mention of the minimum then (AW-283).
+export const BELOW_MINIMUM_ALLOWED = 'You can still submit this order.';
+
 // An approved buyer's cart that can't be measured yet (prices loading or
 // failed, price on request, a variant to choose).
 export const SUMMARY_NOT_READY = 'The minimum and free delivery are worked out once every line has a price.';
