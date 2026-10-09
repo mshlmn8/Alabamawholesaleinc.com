@@ -31,9 +31,9 @@ vi.mock('./supabase.js', () => {
 });
 
 const {
-  DOCUMENTS_REFUSED_MESSAGE, DOCUMENT_UPLOAD_FAILED_MESSAGE, FILE_TOO_LARGE_MESSAGE, FILE_TYPE_MESSAGE,
+  DOCUMENTS_REFUSED_MESSAGE, DOCUMENT_UPLOAD_FAILED_MESSAGE, FILE_MISSING_MESSAGE, FILE_TOO_LARGE_MESSAGE, FILE_TYPE_MESSAGE,
   createDocumentViewUrl, documentErrorMessage, isDocumentPermissionError, openDocument, shortFileName,
-  uploadProfileDocument,
+  uploadProfileDocument, validateDocumentFile,
 } = await import('./documents.js');
 const { unavailableMessage } = await import('./errors.js');
 
@@ -97,6 +97,16 @@ describe('shortFileName (AW-264)', () => {
   });
 });
 
+describe('validateDocumentFile (AW-244)', () => {
+  it('names the file it refuses', () => {
+    expect(validateDocumentFile(null)).toBe(FILE_MISSING_MESSAGE);
+    expect(validateDocumentFile({ name: 'notes.txt', type: 'text/plain', size: 10 })).toBe('notes.txt isn’t a PDF, JPG, PNG or HEIC file.');
+    expect(validateDocumentFile({ name: 'scan.pdf', type: 'application/pdf', size: 11 * 1024 * 1024 })).toBe('scan.pdf is over the 10 MB limit.');
+    expect(validateDocumentFile({ name: `${'x'.repeat(60)}.docx`, type: '', size: 10 })).toBe('xxxxxxxxxxxxxxxxxxxxxxxxxx…xxxxx.docx isn’t a PDF, JPG, PNG or HEIC file.');
+    expect(validateDocumentFile({ name: 'IMG_0001.HEIC', type: 'image/heic-sequence', size: 10 })).toBeNull();
+  });
+});
+
 describe('documentErrorMessage', () => {
   it('maps row-level security refusals from the database and Storage', () => {
     expect(isDocumentPermissionError({ code: '42501', message: 'new row violates row-level security policy for table "profile_documents"' })).toBe(true);
@@ -130,15 +140,17 @@ describe('documentErrorMessage', () => {
     expect(documentErrorMessage({ statusCode: '500', status: 500, message: 'Internal Server Error' })).toBe(unavailableMessage('Document upload'));
   });
 
-  it('shows this file’s own check, and the generic sentence for anything else', async () => {
+  it('shows this file’s own check, naming the file, and the generic sentence for anything else', async () => {
     const err = await uploadProfileDocument(SESSION, 'tobacco_license', { name: 'big.pdf', type: 'application/pdf', size: 11 * 1024 * 1024 }).catch((e) => e);
-    expect(documentErrorMessage(err)).toBe(FILE_TOO_LARGE_MESSAGE);
+    expect(documentErrorMessage(err)).toBe('big.pdf is over the 10 MB limit.');
     const wrong = await uploadProfileDocument(SESSION, 'tobacco_license', { name: 'notes.txt', type: 'text/plain', size: 10 }).catch((e) => e);
-    expect(documentErrorMessage(wrong)).toBe(FILE_TYPE_MESSAGE);
+    expect(documentErrorMessage(wrong)).toBe('notes.txt isn’t a PDF, JPG, PNG or HEIC file.');
     expect(mock.calls).toEqual([]);
     for (const raw of [
       { code: '23505', message: 'duplicate key value violates unique constraint "profile_documents_pkey"' },
       { code: 'invalid_file', message: 'Something injected' },
+      // Only this file's own sentence for the file it checked.
+      { code: 'invalid_file', fileName: 'a.pdf', message: 'b.pdf is over the 10 MB limit.' },
       new Error('Unknown document.'),
       {},
       null,

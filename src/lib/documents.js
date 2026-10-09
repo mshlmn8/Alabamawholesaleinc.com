@@ -64,12 +64,15 @@ export function shortFileName(name, max = 40) {
   return `${chars.slice(0, 26).join('')}…${chars.slice(-10).join('')}`;
 }
 
-// What a picked file that can't be sent says, here and from Storage.
+// What a picked file that can't be sent says, here and from Storage. A file
+// checked here is named (AW-244); Storage's refusals don't say which file.
 export const FILE_MISSING_MESSAGE = 'Choose a PDF, JPG, PNG, or HEIC file.';
 export const FILE_TYPE_MESSAGE = 'Use a PDF, JPG, PNG, or HEIC file.';
 export const FILE_TOO_LARGE_MESSAGE = 'That file is over the 10 MB limit.';
 export const DOCUMENT_UPLOAD_FAILED_MESSAGE = 'That file did not upload. You can try again, or send proof later.';
-const FILE_MESSAGES = [FILE_MISSING_MESSAGE, FILE_TYPE_MESSAGE, FILE_TOO_LARGE_MESSAGE];
+const fileLabel = (name) => shortFileName(name) || 'That file';
+export const fileTypeMessage = (name) => `${fileLabel(name)} isn’t a PDF, JPG, PNG or HEIC file.`;
+export const fileTooLargeMessage = (name) => `${fileLabel(name)} is over the 10 MB limit.`;
 
 // Storage answers a too-large or wrong-type file with its own status code
 // (often inside an HTTP 400) and English text.
@@ -81,8 +84,12 @@ const storageStatus = (err) => [err?.statusCode, err?.status].map((v) => String(
 // an applicant.
 export function documentErrorMessage(err) {
   if (isDocumentPermissionError(err)) return DOCUMENTS_REFUSED_MESSAGE;
-  // This file's own check (uploadProfileDocument), before anything is sent.
-  if (err?.code === 'invalid_file') return FILE_MESSAGES.find((text) => text === err.message) || FILE_TYPE_MESSAGE;
+  // This file's own check (uploadProfileDocument), before anything is sent:
+  // only its own sentences, for the file it checked.
+  if (err?.code === 'invalid_file') {
+    const own = [FILE_MISSING_MESSAGE, fileTypeMessage(err.fileName), fileTooLargeMessage(err.fileName)];
+    return own.find((text) => text === err.message) || FILE_TYPE_MESSAGE;
+  }
   const message = String(err?.message || '');
   const status = storageStatus(err);
   if (status.includes('413') || /exceeded the maximum allowed size|payload too large/i.test(message)) return FILE_TOO_LARGE_MESSAGE;
@@ -97,8 +104,8 @@ export function validateDocumentFile(file) {
   const mime = (file.type || '').toLowerCase();
   const extOk = ALLOWED_EXT.has(ext);
   const mimeOk = !mime || mime === 'application/octet-stream' || ALLOWED_MIME.has(mime);
-  if (!extOk || !mimeOk) return FILE_TYPE_MESSAGE;
-  if (file.size > MAX_DOCUMENT_BYTES) return FILE_TOO_LARGE_MESSAGE;
+  if (!extOk || !mimeOk) return fileTypeMessage(file.name);
+  if (file.size > MAX_DOCUMENT_BYTES) return fileTooLargeMessage(file.name);
   return null;
 }
 
@@ -159,8 +166,8 @@ export async function uploadProfileDocument(session, documentType, file) {
   if (!DOCUMENT_TYPES.some(doc => doc.id === documentType)) {
     throw new Error('Unknown document.');
   }
-  const problem = validateDocumentFile(file);
-  if (problem) throw Object.assign(new Error(problem), { code: 'invalid_file' });
+  const problem = await validateDocumentFile(file);
+  if (problem) throw Object.assign(new Error(problem), { code: 'invalid_file', fileName: file?.name });
 
   const userId = session.user.id;
   // A new object name keeps the previous file in the bucket when a license is renewed.

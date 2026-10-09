@@ -639,7 +639,9 @@ describe('one field system (AW-146, AW-172, AW-147, AW-309)', () => {
 
   it('gives every field label one style', () => {
     const labels = ['.form-grid label', '.contact-grid dt', '.eligibility-form label', '.qr-field span', '.qr-choice span',
-      '.category-sort', '.filter-search', '.doc-upload label', '.filter-panel legend', '.doc-uploads legend',
+      '.category-sort', '.filter-search',
+      // Not the Choose file label, which is a button (AW-244).
+      '.doc-upload label:not(.doc-choose)', '.filter-panel legend', '.doc-uploads legend',
       // The application form's group legends (AW-243).
       '.form-section legend', '.order-edit-line label', '.account-note',
       '.admin-toolbar label'];
