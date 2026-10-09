@@ -83,7 +83,7 @@
   --grid-gap: 24px;
   /* The sticky header (AW-153): what stays on screen when it is stuck, and the
      trade bar that scrolls away above it. src/lib/stickyHeader.js measures
-     them; 0px where the header doesn't stick (compact layout, short windows). */
+     them; 0px where the header doesn't stick (short windows). */
   --header-h: 0px;
   --trade-bar-h: 0px;
   /* Touch targets grow with the text size. */
@@ -196,14 +196,15 @@ input[type="search"]:focus-visible { outline-offset: -3px; }
    focus, then shows over the top-left corner, above the header; fixed, so it
    shows however far the page is scrolled. */
 .site-header { background: #fff; }
-/* On a wide window at least 600px tall the header sticks, with the trade bar
-   scrolled away, so search, the cart and Categories stay in reach on long
-   pages (AW-153). Not in the compact layout, where the Filter & Sort bar
-   sticks instead, nor on short windows (zoomed laptops, AW-312; phones on
-   their side). Its menus stay above the page and below the toast and the
+/* On a window at least 600px tall the header sticks, with the trade bar
+   scrolled away, so search, the cart and Categories (the menu on a phone)
+   stay in reach on long pages (AW-153). In the compact layout that is the
+   masthead, and the Filter & Sort bar sticks under it. Not on short windows
+   (zoomed laptops, AW-312; phones on their side), where only the Filter &
+   Sort bar sticks. Its menus stay above the page and below the toast and the
    dialogs. The prelude is STICKY_HEADER_QUERY in src/lib/stickyHeader.js. No
    transform, filter or contain here: the skip link is fixed to the window. */
-@media (min-width: 53.13em) and (min-height: 37.5em) {
+@media (min-height: 37.5em) {
   .site-header { position: sticky; top: calc(-1 * var(--trade-bar-h)); z-index: 20; }
   /* While focus is in the trade bar the whole header shows, so its controls
      are never focused out of sight above the window and Shift+Tab doesn't
@@ -224,6 +225,9 @@ input[type="search"]:focus-visible { outline-offset: -3px; }
 .trade-bar { background: var(--purple); color: #fff; font-size: var(--text-xs); letter-spacing: var(--track-label); font-weight: 600; }
 .trade-bar .container { display: flex; justify-content: space-between; align-items: center; gap: 20px; min-height: 2.25rem; }
 .trade-bar a, .trade-bar button { flex: 0 0 auto; display: inline-flex; align-items: center; min-height: 34px; white-space: nowrap; font-size: var(--text-xs); letter-spacing: 0; font-weight: 600; text-decoration: underline; text-underline-offset: var(--link-offset); background: none; border: 0; color: #fff; padding: 0; }
+/* 'Call' and the number are two flex items, so the space between them is a
+   gap (a leading space in the number's span would be dropped). */
+.trade-call { gap: .25em; }
 /* The announcements (AW-167, TradeBar.jsx): the pause toggle, then the
    messages. They share one grid cell and only the current one is opaque, so
    the bar is as tall as the longest message at this width (at the default
@@ -231,9 +235,17 @@ input[type="search"]:focus-visible { outline-offset: -3px; }
    and doesn't move when it changes. The change fades, except with reduced
    motion. */
 .announcements { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; }
-.announcement-list { display: grid; align-items: center; flex: 1 1 auto; min-width: 0; padding-block: 4px; line-height: 1.4; }
+.announcement-list { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; flex: 1 1 auto; min-width: 0; padding-block: 4px; line-height: 1.4; }
 .announcement-list li { grid-area: 1 / 1; opacity: 0; pointer-events: none; transition: opacity .4s ease; }
 .announcement-list li.is-current { opacity: 1; pointer-events: auto; }
+/* The marquee (AW-153): in the compact layout a message longer than its one
+   row shows its start for a moment, moves left by what overflows (TradeBar.jsx
+   measures it and sets the distance and timing) and rests at its end. It
+   stops where it is while the bar is paused, hovered or focused (.is-still);
+   with reduced motion the message wraps instead and nothing moves. */
+@keyframes announcement-marquee { from { transform: translateX(0); } to { transform: translateX(var(--marquee-shift, 0px)); } }
+.announcement-list li.is-marquee { animation: announcement-marquee var(--marquee-ms, 0ms) linear var(--marquee-hold, 0ms) 1 both; }
+.trade-bar.is-still .announcement-list li { animation-play-state: paused; }
 .trade-bar .icon-btn { display: inline-grid; place-items: center; flex: none; width: 2rem; height: 2rem; min-height: 0; border: 1px solid var(--on-dark-line); background: transparent; color: #fff; font-size: 1rem; }
 @media (hover: hover) {
   .trade-bar .icon-btn:not(:disabled):hover { background: var(--on-dark-fill); }
@@ -815,7 +827,7 @@ p > .text-link { min-height: 0; min-width: 0; }
 .active-filters > li > button.text-link { border: 0; background: none; color: var(--purple); padding: 0 4px; border-radius: 0; }
 .active-filters > li > button:not(.text-link):active { background: var(--purple-hover); }
 /* The chips sit under the toolbar, not in it, so on phones they scroll away
-   and only the Filter & Sort row stays stuck (AW-158). */
+   and only the Filter & Sort row stays stuck under the masthead (AW-158). */
 .category-toolbar + .active-filters { margin: -4px 0 16px; }
 .catalog-layout { display: grid; grid-template-columns: 220px minmax(0,1fr); gap: 34px; align-items: start; }
 .catalog-layout.is-stacked { grid-template-columns: 1fr; }
@@ -1773,15 +1785,23 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
 @media (max-width: 53.125em), (hover: none) and (pointer: coarse) and (max-height: 31.25em) {
   .container { width: calc(100% - 32px); }
   .aw-navigation, .aw-desktop-only, .aw-account-or, .aw-account-actions .aw-desktop-only { display: none; }
-  /* The announcements take the first row, and Apply and Call share the
-     second; large text wraps them rather than scrolling the page sideways
-     (AW-162, AW-311). */
-  .trade-bar .container { flex-wrap: wrap; gap: 0 14px; }
-  .announcements { flex-basis: 100%; }
-  /* Untracked, the longest message takes two lines on a 390px phone, not three. */
-  .announcement-list { letter-spacing: 0; }
-  .trade-bar a, .trade-bar button { flex: 0 1 auto; white-space: normal; text-align: left; }
-  .aw-masthead { flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 6px 0 12px; min-height: 0; }
+  /* One row (AW-153): the pause toggle, the shown message on one line,
+     untracked, which scrolls sideways when it is longer than the row
+     (TradeBar.jsx) and wraps instead with reduced motion, then 'Call' (its
+     number from 37.5625em). My account is in the masthead and the menu. The
+     next message fades in over the last, which goes at once. */
+  .trade-bar .container { gap: 12px; }
+  .announcement-list { letter-spacing: 0; overflow: hidden; }
+  .announcement-list li { white-space: nowrap; }
+  .announcement-list li:not(.is-current) { transition: none; }
+  .trade-bar .trade-account, .trade-call-number { display: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .announcement-list li { white-space: normal; }
+  }
+  /* Two rows on a phone, menu, logo, account and cart over the search, with
+     little space around them: with the one-row trade bar the header is 158px
+     at 390x844 (210 before), and the masthead is what sticks (AW-153). */
+  .aw-masthead { flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 4px 0 8px; min-height: 0; }
   .aw-menu-toggle { display: inline-flex; align-items: center; gap: 8px; order: 0; min-height: var(--tap); min-width: var(--tap); padding: 0 8px 0 4px; margin-left: -4px; border: 0; background: none; color: var(--purple); font-size: var(--text-sm); font-weight: 700; }
   .aw-menu-toggle .icon { font-size: 1.5rem; }
   .aw-logo { order: 1; margin: 0; }
@@ -1802,15 +1822,18 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
     .aw-search > button:hover { background: var(--purple-hover); }
   }
   .aw-search > button:active { background: var(--purple-hover); }
-  .aw-search-results { top: calc(100% + 6px); max-height: calc(100vh - 6.5rem); max-height: calc(100dvh - 6.5rem); } /* ends on screen once focus has scrolled the bar to the top: scroll-padding 24px + scroll-margin 8px + the 48px bar (AW-307) */
+  /* It ends on screen once focus has scrolled the box up (AW-307): under the
+     stuck masthead (--header-h, AW-153), or where the header doesn't stick
+     8px from the top (scroll-margin 8px + the 48px box + the gap). */
+  .aw-search-results { top: calc(100% + 6px); max-height: calc(100vh - max(6.5rem, var(--header-h) + 1rem)); max-height: calc(100dvh - max(6.5rem, var(--header-h) + 1rem)); }
   /* A wider compact screen, a tablet or a phone on its side, has room for
-     Apply and Call beside the announcements and for the search between the
-     logo and the account actions: a row each, so the header is about half
-     as tall (108px instead of 210 at 844x390, AW-153), and the masthead is
-     in its DOM order. In em, so large text keeps the phone's rows. */
+     the number beside 'Call' and for the search between the logo and the
+     account actions: one masthead row, so the header is about half as tall
+     (104px instead of 210 at 844x390, AW-153), and the masthead is in its
+     DOM order. In em, so large text keeps the phone's rows. */
   @media (min-width: 37.5625em) {
-    .announcements { flex: 1 1 16rem; }
-    .aw-masthead { padding-block: 8px; }
+    .trade-call-number { display: inline; }
+    .aw-masthead { padding-block: 6px; }
     .aw-search { order: 2; flex: 1 1 12rem; }
     .aw-account-actions { order: 3; }
   }
@@ -1840,6 +1863,10 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
     .pd-grid { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
   }
   .page-head { padding-top: 18px; }
+  /* A department or line page starts closer under the masthead, so its first
+     products come up sooner on a phone (AW-153). */
+  .category-head { padding-top: 8px; }
+  .category-head .crumbs { margin-bottom: 4px; }
   .sub-pills { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 6px 16px; margin-inline: -16px; -webkit-overflow-scrolling: touch; }
   .sub-pills::-webkit-scrollbar { display: none; }
   /* The admin's section and status pills wrap, so 'All (40)' is never off screen (AW-266). */

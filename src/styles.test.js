@@ -302,9 +302,16 @@ describe('breakpoints in em, one compact-layout condition (AW-162, AW-151)', () 
 describe('the page frame (AW-166, AW-167, AW-315)', () => {
   const rule = (selector) => declarations(rules(css).find((r) => r.selectors.join(', ') === selector)?.body ?? '');
 
-  it('shows the trade bar in its DOM order, with no scrolling ticker', () => {
+  it('shows the trade bar in its DOM order, with no ticker: only a message too long for the compact row scrolls, once, stopping with the bar', () => {
     for (const { selector, value } of declared('order')) expect(selector, `order: ${value}`).not.toMatch(/trade|announcement/);
     expect(css).not.toMatch(/\.ticker|@keyframes tick\b|\.trade-only\s*\{/);
+    // The marquee (AW-153): one run, by the measured overflow, after a hold.
+    expect(rule('.announcement-list li.is-marquee')).toEqual({ animation: 'announcement-marquee var(--marquee-ms, 0ms) linear var(--marquee-hold, 0ms) 1 both' });
+    expect(css).toMatch(/@keyframes announcement-marquee \{ from \{ transform: translateX\(0\); \} to \{ transform: translateX\(var\(--marquee-shift, 0px\)\); \} \}/);
+    // Paused, hovered or focused: it stops where it is (WCAG 2.2.2).
+    expect(rule('.trade-bar.is-still .announcement-list li')).toEqual({ 'animation-play-state': 'paused' });
+    // The row is the list's width, so a long message overflows it rather than widening it.
+    expect(rule('.announcement-list')).toMatchObject({ 'grid-template-columns': 'minmax(0, 1fr)', 'min-width': '0' });
   });
 
   it('keeps the skip link above the window until it has focus, then fixed in the corner above the header', () => {
@@ -328,8 +335,8 @@ describe('the sticky header and what sticks under it (AW-153, AW-300, AW-312, AW
     expect(root['--trade-bar-h']).toBe('0px');
   });
 
-  it('sticks the header, its trade bar scrolled away, only on wide windows at least 600px tall', () => {
-    expect(STICKY_HEADER_QUERY).not.toContain('53.125em');
+  it('sticks the header, its trade bar scrolled away, on windows at least 600px tall, the compact masthead too', () => {
+    expect(STICKY_HEADER_QUERY).toBe('(min-height: 37.5em)');
     expect(mediaPreludes.filter((p) => p === STICKY_HEADER_QUERY)).toHaveLength(1);
     const sticky = inBlocks(STICKY_HEADER_QUERY, '.site-header');
     expect(sticky).toEqual([{ position: 'sticky', top: 'calc(-1 * var(--trade-bar-h))', 'z-index': '20' }]);
@@ -378,15 +385,27 @@ describe('the sticky header and what sticks under it (AW-153, AW-300, AW-312, AW
     expect(inBlocks(MOBILE_QUERY, '.category-head .sub-pills')[0]).not.toHaveProperty('margin');
   });
 
-  it('gives a tablet or a phone on its side one trade-bar row and one masthead row, in DOM order (AW-153)', () => {
+  it('gives the compact layout one trade-bar row, and a tablet or a phone on its side one masthead row, in DOM order (AW-153)', () => {
     const wide = '(min-width: 37.5625em)';
     // Nested in the main compact block, after its phone rows, so it overrides them.
     const compact = mediaBlocks(css).find((b) => b.prelude === MOBILE_QUERY && b.body.includes('.aw-search > button {'));
+    const own = (selector) => rules(withoutMedia(compact.body)).filter((r) => r.selectors.join(', ') === selector).map((r) => declarations(r.body));
+    // The trade bar: one row, the message on one line (it scrolls, TradeBar.jsx), 'Call' without its number.
+    expect(own('.trade-bar .container')).toEqual([{ gap: '12px' }]);
+    expect(own('.announcement-list li')).toEqual([{ 'white-space': 'nowrap' }]);
+    expect(own('.announcement-list')).toEqual([{ 'letter-spacing': '0', overflow: 'hidden' }]);
+    expect(own('.trade-bar .trade-account, .trade-call-number')).toEqual([{ display: 'none' }]);
+    expect(compact.body).not.toMatch(/\.announcements \{|flex-wrap: wrap; gap: 0 14px/);
+    // With reduced motion the message wraps instead of scrolling.
+    const still = mediaBlocks(compact.body).filter((b) => b.prelude === '(prefers-reduced-motion: reduce)').flatMap((b) => rules(b.body));
+    expect(still.map((r) => [r.selectors.join(', '), declarations(r.body)])).toEqual([['.announcement-list li', { 'white-space': 'normal' }]]);
+    // The phone masthead's two rows, tight enough for the header to stick.
+    expect(own('.aw-masthead')[0]).toMatchObject({ gap: '6px 10px', padding: '4px 0 8px' });
     expect(compact.body.indexOf(`@media ${wide}`)).toBeGreaterThan(compact.body.indexOf('.aw-search {'));
-    expect(compact.body.indexOf(`@media ${wide}`)).toBeGreaterThan(compact.body.indexOf('.announcements {'));
+    expect(compact.body.indexOf(`@media ${wide}`)).toBeGreaterThan(compact.body.indexOf('.trade-call-number {'));
     const inWide = (selector) => mediaBlocks(compact.body).filter((b) => b.prelude === wide).flatMap((b) => rules(b.body))
       .filter((r) => r.selectors.join(', ') === selector).map((r) => declarations(r.body));
-    expect(inWide('.announcements')).toEqual([{ flex: '1 1 16rem' }]);
+    expect(inWide('.trade-call-number')).toEqual([{ display: 'inline' }]);
     expect(inWide('.aw-search')).toEqual([{ order: '2', flex: '1 1 12rem' }]);
     expect(inWide('.aw-account-actions')).toEqual([{ order: '3' }]);
   });

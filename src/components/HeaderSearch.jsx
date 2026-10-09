@@ -24,7 +24,9 @@
 // - Picking a product clears the box; /search keeps the text, and on /search
 //   the box shows that page's query.
 // - In the compact layout, focusing the box scrolls the bar to the top of
-//   the screen, so the list has the height below it (AW-307).
+//   the screen, so the list has the height below it (AW-307). Where the
+//   masthead sticks and is stuck already, the box is as high as it goes and
+//   the page stays put (AW-153).
 // It never changes the page title (AW-338).
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -48,6 +50,15 @@ const queryOf = (location) => {
 // box (in Safari, to nowhere); cancelling it keeps focus, and the phone
 // keyboard, where they are. The click still follows the link.
 const keepFocus = (e) => e.preventDefault();
+
+// Whether the sticky header (App's .site-header) is stuck with its trade bar
+// scrolled away (src/lib/stickyHeader.js).
+export function headerStuck(el) {
+  const header = el?.closest?.('.site-header');
+  if (!header || window.getComputedStyle(header).position !== 'sticky') return false;
+  const bar = header.querySelector('.trade-bar');
+  return header.getBoundingClientRect().top <= -(bar ? bar.getBoundingClientRect().height : 0) + 1;
+}
 
 export function HeaderSearch({ products, isMobile = false, onOpen }) {
   const location = useLocation();
@@ -214,7 +225,7 @@ export function HeaderSearch({ products, isMobile = false, onOpen }) {
              aria-activedescendant={current >= 0 ? optionId(current) : undefined}
              onChange={(e) => { setQuery(e.target.value); setTooShort(false); setActive(-1); openList(); }}
              onFocus={() => {
-               if (isMobile) formRef.current?.scrollIntoView?.({ block: 'start' });
+               if (isMobile && !headerStuck(formRef.current)) formRef.current?.scrollIntoView?.({ block: 'start' });
                if (searching) openList();
              }}
              onKeyDown={onKeyDown} />

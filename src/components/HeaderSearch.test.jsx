@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PRODUCTS } from '../data/products.js';
 import { navigate } from '../lib/router.js';
 import { searchProducts } from '../lib/search.js';
-import { HeaderSearch, SEARCH_PREVIEW, STATUS_DELAY_MS } from './HeaderSearch.jsx';
+import { HeaderSearch, SEARCH_PREVIEW, STATUS_DELAY_MS, headerStuck } from './HeaderSearch.jsx';
 
 const url = () => window.location.pathname + window.location.search;
 const box = () => screen.getByRole('combobox', { name: 'Search products' });
@@ -319,6 +319,41 @@ describe('phones (AW-307)', () => {
       expect(scroll.mock.contexts[0]).toBe(box().closest('form'));
     } finally {
       HTMLElement.prototype.scrollIntoView = original;
+    }
+  });
+
+  it('leaves the page where it is when the sticky masthead is stuck at the top already (AW-153)', () => {
+    const scroll = vi.fn();
+    const original = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = scroll;
+    const at = { top: 0 };
+    const realStyle = window.getComputedStyle;
+    vi.spyOn(window, 'getComputedStyle').mockImplementation((el) => (el.classList?.contains('site-header') ? { position: 'sticky' } : realStyle(el)));
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function rect() {
+      const height = this.classList.contains('trade-bar') ? 44 : 158;
+      const top = this.classList.contains('site-header') ? at.top : 0;
+      return { top, bottom: top + height, height, left: 0, right: 0, width: 0, x: 0, y: top };
+    });
+    try {
+      const header = document.createElement('header');
+      header.className = 'site-header';
+      header.innerHTML = '<div class="trade-bar"></div>';
+      document.body.append(header);
+      render(<HeaderSearch products={PRODUCTS} isMobile />, { container: header.appendChild(document.createElement('div')) });
+      // At the top of the page: the bar scrolls up.
+      fireEvent.focus(box());
+      expect(scroll).toHaveBeenCalledTimes(1);
+      expect(headerStuck(box())).toBe(false);
+      // Stuck, the trade bar scrolled away: nothing to do.
+      at.top = -44;
+      fireEvent.blur(box());
+      fireEvent.focus(box());
+      expect(headerStuck(box())).toBe(true);
+      expect(scroll).toHaveBeenCalledTimes(1);
+    } finally {
+      HTMLElement.prototype.scrollIntoView = original;
+      vi.restoreAllMocks();
+      document.querySelector('header.site-header')?.remove();
     }
   });
 });

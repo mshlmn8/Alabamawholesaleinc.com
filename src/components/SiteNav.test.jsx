@@ -23,22 +23,37 @@ beforeEach(() => {
   go('/');
 });
 
-describe('TradeBar (AW-066)', () => {
-  it('asks a guest to apply', () => {
-    const onApplyClick = vi.fn();
-    render(<TradeBar onApplyClick={onApplyClick} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Apply for a trade account' }));
-    expect(onApplyClick).toHaveBeenCalledTimes(1);
+describe('TradeBar (AW-066, LEFT-2)', () => {
+  it('leaves Apply to the header for a guest: one apply entry in the banner', () => {
+    const { container } = render(<TradeBar />);
+    expect(screen.queryByRole('button', { name: /apply/i })).toBeNull();
     expect(screen.queryByRole('link', { name: 'My account' })).toBeNull();
+    expect([...container.querySelector('.trade-bar .container').children].map((el) => el.className))
+      .toEqual(['announcements', 'trade-call']);
   });
 
-  it('links a signed-in visitor to their account instead, in the same place', () => {
-    const { container } = render(<TradeBar signedIn onApplyClick={noop} />);
+  it('links a signed-in visitor to their account, before Call (the compact layout leaves it to the masthead and the menu)', () => {
+    const { container } = render(<TradeBar signedIn />);
     expect(screen.queryByRole('button', { name: /apply/i })).toBeNull();
     const account = screen.getByRole('link', { name: 'My account' });
     expect(account.getAttribute('href')).toBe('/account');
-    expect([...container.querySelector('.trade-bar .container').children].map((el) => el.className || el.tagName))
-      .toEqual(['announcements', 'A', 'trade-call']);
+    expect([...container.querySelector('.trade-bar .container').children].map((el) => el.className))
+      .toEqual(['announcements', 'trade-account', 'trade-call']);
+  });
+});
+
+describe('one apply entry in the banner (LEFT-2)', () => {
+  it('has exactly one Apply control across the trade bar and the header for a guest, the header’s orange button', () => {
+    render(
+      <header>
+        <TradeBar />
+        <Header cartCount={0} onCart={noop} products={PRODUCTS} departments={departments} user={null} isAdmin={false}
+                onLoginClick={noop} onSignupClick={noop} onLogout={noop} onHelp={noop} />
+      </header>,
+    );
+    const apply = screen.getAllByRole('button', { name: 'Apply for a trade account' });
+    expect(apply).toHaveLength(1);
+    expect(apply[0].className).toBe('button aw-desktop-only');
   });
 });
 

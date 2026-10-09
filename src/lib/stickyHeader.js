@@ -2,14 +2,15 @@
 // an anchor (AW-153, AW-312; the AW-037/062/153/158/312 entry in the plan's
 // conflicts list).
 //
-// On a wide window at least 600px tall, .site-header sticks to the top with
-// its purple trade bar scrolled away (src/index.css, the STICKY_HEADER_QUERY
-// block). App measures it with useStickyHeader and writes two custom
-// properties on <html>:
+// On a window at least 600px tall, .site-header sticks to the top with its
+// purple trade bar scrolled away (src/index.css, the STICKY_HEADER_QUERY
+// block): the masthead and navigation rows on a wide window, the masthead
+// (menu, logo, account, cart and search) in the compact layout. App measures
+// it with useStickyHeader and writes two custom properties on <html>:
 //   --trade-bar-h  the trade bar's height (the header's negative sticky top)
 //   --header-h     what stays on screen when the header is stuck: the header
-//                  minus the trade bar, or 0px where it doesn't stick (the
-//                  compact layout and short windows)
+//                  minus the trade bar, or 0px where it doesn't stick (short
+//                  windows: zoomed laptops, phones on their side)
 //   --site-header-h  the whole header, trade bar included, sticky or not:
 //                  how far down the page the Categories menu opens (AW-062)
 // The first two are 0px in :root until they are measured; --site-header-h
@@ -36,9 +37,11 @@
 import { useLayoutEffect } from 'react';
 
 // The @media prelude of the sticky .site-header rule in src/index.css
-// (src/styles.test.js checks they match). 53.13em, not MOBILE_QUERY's
-// 53.125em: the compact layout ends at 850px and this starts just past it.
-export const STICKY_HEADER_QUERY = '(min-width: 53.13em) and (min-height: 37.5em)';
+// (src/styles.test.js checks they match). Any width: the compact layout's
+// masthead sticks too (AW-153). The short windows it leaves out include the
+// compact layout's other branch, phones on their side (MOBILE_QUERY's
+// max-height 31.25em).
+export const STICKY_HEADER_QUERY = '(min-height: 37.5em)';
 
 // The class that shows the whole stuck header, trade bar included (NEW-017).
 export const REVEALED_CLASS = 'is-revealed';

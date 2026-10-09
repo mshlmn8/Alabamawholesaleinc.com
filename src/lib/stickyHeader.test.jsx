@@ -14,7 +14,7 @@ describe('stickyHeaderVars', () => {
     expect(stickyHeaderVars({ headerHeight: 160, barHeight: 36, sticky: true })).toEqual({ '--trade-bar-h': '36px', '--header-h': '124px', '--site-header-h': '160px' });
   });
 
-  it('is 0px where the header does not stick (compact layout, short windows); the bar is still measured', () => {
+  it('is 0px where the header does not stick (short windows); the bar is still measured', () => {
     expect(stickyHeaderVars({ headerHeight: 210, barHeight: 88, sticky: false })).toEqual({ '--trade-bar-h': '88px', '--header-h': '0px', '--site-header-h': '210px' });
   });
 
@@ -24,8 +24,8 @@ describe('stickyHeaderVars', () => {
     expect(stickyHeaderVars({ headerHeight: undefined, barHeight: null, sticky: true })).toEqual({ '--trade-bar-h': '0px', '--header-h': '0px', '--site-header-h': '0px' });
   });
 
-  it('starts just past the compact layout, in em, on windows at least 37.5em tall', () => {
-    expect(STICKY_HEADER_QUERY).toBe('(min-width: 53.13em) and (min-height: 37.5em)');
+  it('sticks at any width (the compact masthead too, AW-153) on windows at least 37.5em tall, in em', () => {
+    expect(STICKY_HEADER_QUERY).toBe('(min-height: 37.5em)');
   });
 });
 

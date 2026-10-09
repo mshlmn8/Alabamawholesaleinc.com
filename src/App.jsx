@@ -466,11 +466,12 @@ export default function App() {
       {/* On paper only, above the page, in place of the header (AW-148). */}
       <PrintLetterhead />
       {/* The page's one banner landmark (AW-314): the skip link, first in the
-          tab order (AW-166), the trade bar and the header. On tall wide
-          windows it sticks, its trade bar scrolled away (AW-153). */}
+          tab order (AW-166), the trade bar and the header. On windows at
+          least 600px tall it sticks, its trade bar scrolled away: the
+          compact layout's masthead too (AW-153). */}
       <header className="site-header" ref={siteHeaderRef}>
         <a className="skip-link" href="#main" onClick={skipToMain}>Skip to main content</a>
-        <TradeBar signedIn={!!session} onApplyClick={openSignup} />
+        <TradeBar signedIn={!!session} />
 
         <Header
           cartCount={cart.count} onCart={() => setCartOpen(true)}
