@@ -78,7 +78,11 @@ describe('SIZES follow the card and product-page geometry (AW-322)', () => {
     if (!m) throw new Error(`index.css no longer has ${re}`);
     return Number(m[1]);
   };
+  // A phone on its side: the photo's share of the two columns (AW-150).
+  const sideways = /@media \(orientation: landscape\) \{\s*\.pd-grid \{ grid-template-columns: minmax\(0, (\d+)fr\) minmax\(0, (\d+)fr\)/.exec(css);
+  if (!sideways) throw new Error('index.css no longer has the sideways product page columns');
   const g = {
+    pdSideways: Number(sideways[1]) / (Number(sideways[1]) + Number(sideways[2])),
     margin: px(/\.container \{ width: calc\(100% - (\d+)px\)/),
     compactMargin: px(/@media \(max-width: 53\.125em\), \(hover: none\) and \(pointer: coarse\) and \(max-height: 31\.25em\) \{[\s\S]*?\.container \{ width: calc\(100% - (\d+)px\)/),
     max: px(/\.container \{[^}]*max-width: (\d+)px/),
@@ -94,7 +98,7 @@ describe('SIZES follow the card and product-page geometry (AW-322)', () => {
     cardInset: px(/\.card-block img \{[^}]*inset: (\d+)px/),
     pdBorder: px(/\.pd-media \{[^}]*border: (\d+)px solid/),
     pdInset: px(/\.pd-media img \{[^}]*inset: (\d+)px/),
-    pdPhoneInset: px(/\.pd-media img \{ inset: (\d+)px; max-width: calc\(100% - \d+px\)/),
+    pdCompactInset: px(/@media \(max-width: 53\.125em\), \(hover: none\) and \(pointer: coarse\) and \(max-height: 31\.25em\) \{[\s\S]*?\.pd-media img \{ inset: (\d+)px; max-width: calc\(100% - \d+px\)/),
     pdGap: px(/\.pd-grid \{[^}]*gap: (\d+)px/),
     pdNarrowGap: px(/@media \(max-width: 68\.75em\) \{[\s\S]*?\.pd-grid \{ gap: (\d+)px/),
   };
@@ -112,9 +116,10 @@ describe('SIZES follow the card and product-page geometry (AW-322)', () => {
     return Math.max(row, width(category, category >= 3 * g.minCard + 2 * g.gap ? 3 : 2));
   };
   const detail = (vw, compact) => {
-    if (vw <= 600) return vw - g.compactMargin - 2 * (g.pdBorder + g.pdPhoneInset);
+    const compactChrome = 2 * (g.pdBorder + g.pdCompactInset);
+    if (compact) return (vw - g.compactMargin - g.pdNarrowGap) * g.pdSideways - compactChrome;
+    if (vw <= 850) return vw - g.compactMargin - compactChrome;
     const chrome = 2 * (g.pdBorder + g.pdInset);
-    if (compact || vw <= 850) return vw - g.compactMargin - chrome;
     const gap = vw <= 1100 ? g.pdNarrowGap : g.pdGap;
     return (Math.min(vw - g.margin, g.max) - gap) / 2 - chrome;
   };

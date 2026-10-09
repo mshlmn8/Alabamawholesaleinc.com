@@ -130,9 +130,6 @@ export function ProductPage({
           {showsNicotineWarning(p) && <NicotineWarning />}
           <p className="pd-brand">{brand ? `${brand} · ${p.sub}` : p.sub}</p>
           <h1>{p.name}</h1>
-          <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()}${brand ? ` from ${brand}` : ''}.`}</p>
-          {p.sellUnit && <p className="pd-unit">{`Sold by the ${p.sellUnit} — quantity 1 is one ${p.sellUnit}.`}</p>}
-          <p className="pd-desc pd-fine">{`SKU ${p.sku}. Supplied to licensed retail businesses for lawful resale. Next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
           {choiceRequired && (
             <div className="variant-chips" role="group" aria-label={`Choose a ${axis.noun}`}>
               {variants.map(v => (
@@ -152,6 +149,7 @@ export function ProductPage({
               ? <><b>Pending</b><span>Pricing unlocks after your account is approved</span></>
               : <><b>Sign in</b><span>Wholesale pricing is visible to approved trade accounts</span></>}
           </div>
+          {p.sellUnit && <p className="pd-unit">{`Sold by the ${p.sellUnit} — quantity 1 is one ${p.sellUnit}.`}</p>}
           <div className="qty-row">
             {/* Typed or stepped, 1 to 100,000 (AW-013). */}
             <QuantityInput value={desiredQty} onChange={setDesiredQty} min={1} label={`Quantity of ${p.name} to add`} groupLabel="Quantity to add" />
@@ -169,6 +167,8 @@ export function ProductPage({
               <Link className="text-link" to="/account">View approval status</Link>
             </div>
           )}
+          <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()}${brand ? ` from ${brand}` : ''}.`}</p>
+          <p className="pd-desc pd-fine">{`SKU ${p.sku}. Supplied to licensed retail businesses for lawful resale. Next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
         </div>
       </div>
       {related.length > 0 && (

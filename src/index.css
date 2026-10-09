@@ -800,7 +800,11 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .drawer-actions .button { flex: 1 1 auto; }
 
 /* ============================ product page ============================ */
-.pd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; padding: 26px 0 40px; }
+/* The purchase column runs name, variant, price, quantity and add, with the
+   description and the SKU fine print after them, so the add button is on the
+   first screen of a laptop (AW-163). The photo doesn't stretch to the
+   column's height. */
+.pd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; padding: 12px 0 40px; align-items: start; }
 .pd-figure { margin: 0; min-width: 0; }
 .pd-media { position: relative; background: var(--tile); border: 1px solid var(--line); aspect-ratio: 1.05; display: grid; place-items: center; overflow: hidden; }
 /* Out of the grid (a <picture>'s <source> would take a grid row), centred,
@@ -1414,6 +1418,18 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .services { grid-template-columns: 1fr; gap: 20px; }
   .dept-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pd-grid { grid-template-columns: 1fr; }
+  /* The product photo is a wide frame no taller than 45% of the screen, so
+     the name, price and add button follow it within about a screen; a phone
+     held sideways shows them beside it (AW-150). The photo stays out of the
+     grid flow, contained in the frame. The frame's width is set, or the
+     height cap would narrow it through its aspect ratio. */
+  .pd-media { width: 100%; aspect-ratio: 4 / 3; max-height: 45vh; max-height: 45svh; }
+  .pd-media img { inset: 20px; max-width: calc(100% - 40px); max-height: calc(100% - 40px); }
+  /* "Photo coming soon" needs no photo-sized frame: just its own height. */
+  .pd-media:has(.photo-soon) { aspect-ratio: auto; max-height: none; padding-block: 24px; }
+  @media (orientation: landscape) {
+    .pd-grid { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+  }
   .page-head { padding-top: 18px; }
   .sub-pills { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 6px 16px; margin-inline: -16px; -webkit-overflow-scrolling: touch; }
   .sub-pills::-webkit-scrollbar { display: none; }
@@ -1476,7 +1492,6 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .dialog h2 { font-size: var(--h2-sm); }
   .form-grid, .contact-grid { grid-template-columns: minmax(0, 1fr); }
   .pd-info h1 { font-size: 2.375rem; }
-  .pd-media img { inset: 20px; max-width: calc(100% - 40px); max-height: calc(100% - 40px); }
   .drawer-head { padding: 14px 18px; }
   .drawer-body { padding-inline: 18px; }
   .drawer-foot { padding-inline: 18px; }

@@ -611,6 +611,46 @@ describe('cards with a stretched link (AW-170, AW-154, AW-304, AW-303)', () => {
   });
 });
 
+// The product page (AW-163, AW-150): the purchase column starts 12px under
+// the breadcrumb, and in the compact layout the photo frame is capped, with
+// the name and price beside it on a phone held sideways.
+describe('the product page photo and purchase column (AW-163, AW-150)', () => {
+  const all = rules(css);
+  const own = (selector) => declarations(all.find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+  const blocks = mediaBlocks(css);
+  const compact = blocks.filter((b) => b.prelude === MOBILE_QUERY && b.body.includes('.pd-grid {'));
+  const inCompact = (selector) => compact.flatMap((b) => rules(b.body)).filter((r) => r.selectors.join(', ') === selector).map((r) => declarations(r.body));
+
+  it('starts the columns 12px under the breadcrumb, the photo not stretched to the column', () => {
+    expect(own('.pd-grid')).toMatchObject({ padding: '12px 0 40px', 'align-items': 'start' });
+    // Never sticky: it wouldn't move the add button.
+    expect(declared('position').filter(({ selector }) => /pd-(media|figure)/.test(selector)).map(({ value }) => value)).not.toContain('sticky');
+  });
+
+  it('caps the compact photo frame at 4:3 and 45% of the screen, full width, with the photo out of the grid flow', () => {
+    expect(compact).toHaveLength(1);
+    expect(inCompact('.pd-media')).toEqual([{ width: '100%', 'aspect-ratio': '4 / 3', 'max-height': '45svh' }]);
+    // The vh line before it is the fallback for browsers without svh.
+    expect(compact[0].body).toMatch(/\.pd-media \{ width: 100%; aspect-ratio: 4 \/ 3; max-height: 45vh; max-height: 45svh; \}/);
+    expect(inCompact('.pd-media img')).toEqual([{ inset: '20px', 'max-width': 'calc(100% - 40px)', 'max-height': 'calc(100% - 40px)' }]);
+    expect(own('.pd-media img')).toMatchObject({ position: 'absolute' });
+    for (const { selector } of declared('width')) expect(selector).not.toMatch(/\.pd-media img/);
+    // "Photo coming soon" takes only its own height.
+    expect(inCompact('.pd-media:has(.photo-soon)')).toEqual([{ 'aspect-ratio': 'auto', 'max-height': 'none', 'padding-block': '24px' }]);
+  });
+
+  it('puts the name and price beside the photo on a phone held sideways', () => {
+    const sideways = blocks.filter((b) => b.prelude === '(orientation: landscape)');
+    expect(sideways).toHaveLength(1);
+    // Nested in the compact block, so it never changes the desktop layout.
+    expect(sideways[0].start).toBeGreaterThan(compact[0].start);
+    expect(sideways[0].end).toBeLessThan(compact[0].end);
+    expect(rules(sideways[0].body).map((r) => [r.selectors.join(', '), declarations(r.body)])).toEqual([
+      ['.pd-grid', { 'grid-template-columns': 'minmax(0, 2fr) minmax(0, 3fr)' }],
+    ]);
+  });
+});
+
 // Photos while they load and when they fail (AW-192, AW-341, AW-345). Picture
 // and Thumb add .is-loaded once a photo is in, and swap a failed photo for its
 // placeholder in the markup; these rules cover the moments in between.
