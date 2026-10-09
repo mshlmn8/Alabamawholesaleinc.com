@@ -7,7 +7,7 @@ import { act, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   CATALOG_BASE_COLUMNS, CATALOG_COLUMNS, CATALOG_COLUMN_FALLBACKS, CATALOG_MAX_AGE_MS, CATALOG_RANKED_COLUMNS, CATALOG_RETRY_MS, CATALOG_SLOW_MS, CatalogProvider,
-  catalogIsStale, fetchCatalogRows, hydrateProducts, loadCatalog, useCatalog,
+  catalogIsStale, fetchCatalogRows, hydrateProducts, loadCatalog, resetCatalogColumnsForTests, useCatalog,
 } from './catalog.jsx';
 import { CATALOG, PRODUCTS as BUNDLED } from '../data/products.js';
 import { IMAGE_FILE_ALIASES, currentImageFile } from '../data/catalogAliases.js';
@@ -69,6 +69,7 @@ let now = 1_000_000;
 beforeEach(() => {
   seen = null;
   now = 1_000_000;
+  resetCatalogColumnsForTests();
   vi.spyOn(Date, 'now').mockImplementation(() => now);
   Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
 });
@@ -148,6 +149,8 @@ describe('loadCatalog', () => {
     const result = await loadCatalog(before);
     expect(result.ok).toBe(true);
     expect(before.calls.map((q) => q.columns)).toEqual([CATALOG_RANKED_COLUMNS, CATALOG_COLUMNS]);
+    // Another database, as on a new page load (NEW-024 remembers the list per page).
+    resetCatalogColumnsForTests();
     const ranked = fakeClient({ rows: [row(1, { featured_rank: 2 }), row(2)] });
     expect((await loadCatalog(ranked)).rows.map((r) => r.featured_rank)).toEqual([2, undefined]);
     expect(ranked.calls.map((q) => q.columns)).toEqual([CATALOG_RANKED_COLUMNS]);
@@ -165,6 +168,65 @@ describe('loadCatalog', () => {
     const result = await loadCatalog(old);
     expect(result.ok).toBe(true);
     expect(old.calls.map((q) => q.columns)).toEqual([CATALOG_RANKED_COLUMNS, CATALOG_COLUMNS, CATALOG_BASE_COLUMNS]);
+  });
+
+  it('starts the next load from the column list that worked, until CATALOG_MAX_AGE_MS has passed (NEW-024)', async () => {
+    // Today's live database: no variant_axis, no featured_rank.
+    let migrated = false;
+    const missing = { data: null, error: { message: 'column products.variant_axis does not exist', code: '42703' } };
+    const live = fakeClient({ respond: (q, n, serve) => (!migrated && q.columns.split(',').includes('variant_axis') ? missing : serve(q)) });
+    const sent = () => live.calls.splice(0).map((q) => q.columns);
+    expect((await loadCatalog(live)).ok).toBe(true);
+    expect(sent()).toEqual([CATALOG_RANKED_COLUMNS, CATALOG_COLUMNS, CATALOG_BASE_COLUMNS]);
+    // The second load sends one request, with the list that worked.
+    now += CATALOG_MAX_AGE_MS - 1;
+    expect((await loadCatalog(live)).ok).toBe(true);
+    expect(sent()).toEqual([CATALOG_BASE_COLUMNS]);
+    // CATALOG_MAX_AGE_MS after it was chosen, the full list is tried again,
+    // so once the migrations are applied the new columns are read.
+    migrated = true;
+    now += 1;
+    expect((await loadCatalog(live)).ok).toBe(true);
+    expect(sent()).toEqual([CATALOG_RANKED_COLUMNS]);
+    expect((await loadCatalog(live)).ok).toBe(true);
+    expect(sent()).toEqual([CATALOG_RANKED_COLUMNS]);
+    // Still missing then: the walk finds the list again, which counts from now.
+    migrated = false;
+    now += CATALOG_MAX_AGE_MS;
+    await loadCatalog(live);
+    expect(sent()).toEqual([CATALOG_RANKED_COLUMNS, CATALOG_COLUMNS, CATALOG_BASE_COLUMNS]);
+    now += CATALOG_MAX_AGE_MS - 1;
+    await loadCatalog(live);
+    expect(sent()).toEqual([CATALOG_BASE_COLUMNS]);
+  });
+
+  it('forgets the column list after a failed load, and only remembers it for the default lists (NEW-024)', async () => {
+    let down = false;
+    const missing = { data: null, error: { message: 'column products.featured_rank does not exist', code: '42703' } };
+    const client = fakeClient({
+      respond: (q, n, serve) => {
+        if (down) return { data: null, error: { message: 'TypeError: Failed to fetch', code: '' } };
+        return q.columns.split(',').includes('featured_rank') ? missing : serve(q);
+      },
+    });
+    await loadCatalog(client);
+    client.calls.length = 0;
+    down = true;
+    expect((await loadCatalog(client)).error.kind).toBe('network');
+    expect(client.calls.map((q) => q.columns)).toEqual([CATALOG_COLUMNS]);
+    client.calls.length = 0;
+    down = false;
+    await loadCatalog(client);
+    expect(client.calls.map((q) => q.columns)).toEqual([CATALOG_RANKED_COLUMNS, CATALOG_COLUMNS]);
+    // A load with its own lists neither uses nor changes the memory.
+    const fallbacks = ['id,name,new_column', 'id,name'];
+    const own = fakeClient({ respond: (q, n, serve) => (q.columns === fallbacks[0] ? missing : serve(q)) });
+    await loadCatalog(own, { fallbacks });
+    await loadCatalog(own, { fallbacks });
+    expect(own.calls.map((q) => q.columns)).toEqual([...fallbacks, ...fallbacks]);
+    client.calls.length = 0;
+    await loadCatalog(client);
+    expect(client.calls.map((q) => q.columns)).toEqual([CATALOG_COLUMNS]);
   });
 
   it('never asks for price, and falls back column list by column list, ending with *', async () => {

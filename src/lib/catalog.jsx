@@ -87,6 +87,36 @@ export const CATALOG_RANKED_COLUMNS = `${CATALOG_COLUMNS},featured_rank`;
 // from before 20261009100000, where every column is readable.
 export const CATALOG_COLUMN_FALLBACKS = [...new Set([CATALOG_RANKED_COLUMNS, CATALOG_COLUMNS, CATALOG_BASE_COLUMNS, '*'])];
 
+// The list that worked last (NEW-024). A database without 20261009110000
+// and 20261010120000 answers the first two lists with 42703, so walking the
+// whole list on every load (first paint, each refreshIfStale, each check
+// before a quote is sent) cost two failed requests, and two console errors,
+// each time. A load starts from the list that worked instead, as orders.js
+// does with submit_quote's signature. It goes back to the full list once
+// CATALOG_MAX_AGE_MS has passed since that list was chosen, and on each page
+// load (this is module state), so the full columns come back within minutes
+// of the migrations being applied. A failed load forgets it. Only loads with
+// CATALOG_COLUMN_FALLBACKS use it.
+let workingColumns = null; // { index, at }
+export const resetCatalogColumnsForTests = () => { workingColumns = null; };
+
+function firstColumnList(fallbacks, now) {
+  if (fallbacks !== CATALOG_COLUMN_FALLBACKS || !workingColumns) return 0;
+  if (now - workingColumns.at >= CATALOG_MAX_AGE_MS) {
+    workingColumns = null;
+    return 0;
+  }
+  return workingColumns.index;
+}
+
+// index: the list that worked, or null when the load failed.
+function rememberColumnList(fallbacks, index, now) {
+  if (fallbacks !== CATALOG_COLUMN_FALLBACKS) return;
+  if (!index) workingColumns = null;
+  // The same list again keeps the time it was first chosen.
+  else if (workingColumns?.index !== index) workingColumns = { index, at: now };
+}
+
 const STATIC_BY_ID = new Map(STATIC_PRODUCTS.map((p) => [Number(p.id), p]));
 
 // Live rows in the shape the storefront uses. Rows saved before the product
@@ -160,24 +190,29 @@ function failure(err, timedOut) {
 // One load of the live catalog: { ok: true, rows } or { ok: false, error }.
 // Gives up after timeoutMs. A table without one of CATALOG_COLUMNS (a
 // database that is missing a migration) is read with the next column list in
-// CATALOG_COLUMN_FALLBACKS instead.
+// CATALOG_COLUMN_FALLBACKS instead, and the next load starts from the list
+// that worked (workingColumns, NEW-024).
 export async function loadCatalog(client, { timeoutMs = CATALOG_TIMEOUT_MS, fallbacks = CATALOG_COLUMN_FALLBACKS } = {}) {
   const controller = typeof AbortController === 'function' ? new AbortController() : null;
   const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : 0;
   const signal = controller?.signal || null;
+  let index = firstColumnList(fallbacks, Date.now());
+  let worked = null;
   try {
     let result = null;
-    for (const columns of fallbacks) {
-      result = await fetchCatalogRows(client, { signal, columns });
+    for (; index < fallbacks.length; index += 1) {
+      result = await fetchCatalogRows(client, { signal, columns: fallbacks[index] });
       if (result.error?.code !== '42703') break;
     }
     if (result.error) return { ok: false, error: failure(result.error, !!signal?.aborted) };
     if (!result.rows.length) return { ok: false, error: { kind: 'empty', message: 'The live catalog has no active products.' } };
+    worked = index;
     return { ok: true, rows: result.rows };
   } catch (err) {
     return { ok: false, error: failure(err, !!signal?.aborted) };
   } finally {
     clearTimeout(timer);
+    rememberColumnList(fallbacks, worked, Date.now());
   }
 }
 
