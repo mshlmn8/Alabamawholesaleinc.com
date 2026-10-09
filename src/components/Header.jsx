@@ -13,10 +13,11 @@ import { getSearchMatches } from '../lib/search.js';
 import { catLabel } from '../lib/format.js';
 import { Link, navigate, useLocation } from '../lib/router.js';
 import { MobileMenu } from './MobileMenu.jsx';
+import { AdminUnseenBadge } from './AdminUnseenBadge.jsx';
 import { Icon } from './Icon.jsx';
 import { MissingPhoto } from './MissingPhoto.jsx';
 
-export function Header({ cartCount, onCart, products, departments, user, isAdmin, onLoginClick, onSignupClick, onLogout, signingOut = false, onHelp }) {
+export function Header({ cartCount, onCart, products, departments, user, isAdmin, adminUnseen = 0, onLoginClick, onSignupClick, onLogout, signingOut = false, onHelp }) {
   const [megaOpen, setMegaOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -135,7 +136,7 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
           {user ? (
             <>
               <Link className="aw-signin aw-account-name" to="/account" onClick={closeMenus}>{user.business || user.name || 'My Account'}</Link>
-              {isAdmin && <Link className="aw-signin aw-desktop-only" to="/admin" onClick={closeMenus}>Admin</Link>}
+              {isAdmin && <Link className="aw-signin aw-desktop-only" to="/admin" onClick={closeMenus}>Admin<AdminUnseenBadge count={adminUnseen} /></Link>}
               <span className="aw-account-or">·</span>
               <button className="aw-signin aw-desktop-only" type="button" onClick={() => runNav(onLogout)} disabled={signingOut}>
                 <span>{signingOut ? 'Signing out…' : 'Sign Out'}</span>
@@ -157,7 +158,7 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
 
       {menuOpen && isMobile && (
         <MobileMenu
-          onClose={() => setMenuOpen(false)} onFollowLink={closeMenus} departments={departments} products={products} user={user} isAdmin={isAdmin}
+          onClose={() => setMenuOpen(false)} onFollowLink={closeMenus} departments={departments} products={products} user={user} isAdmin={isAdmin} adminUnseen={adminUnseen}
           signingOut={signingOut}
           go={{
             logout: () => onLogout(), signin: () => runNav(onLoginClick), signup: () => runNav(onSignupClick), help: () => runNav(onHelp),

@@ -15,10 +15,13 @@
 // and hands back a returnFocusId that its list focuses when it shows again.
 //
 // The Orders search is kept here, not in the URL (it names people), so it
-// survives a visit to a print view.
+// survives a visit to a print view. Opening Orders (a print view included)
+// is a visit: orders placed since the previous one are marked New (AW-111,
+// ordersSeen.js).
 
 import { useEffect, useState } from 'react';
 import { Link, navigate } from '../../lib/router.js';
+import { supabase } from '../../lib/supabase.js';
 import { adminHref, adminPath, adminSection } from '../../lib/adminRoutes.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
@@ -28,6 +31,7 @@ import { ProductsTab } from './ProductsSection.jsx';
 import { PricingTab } from './PricingSection.jsx';
 import { PrintSheet } from './PrintSheet.jsx';
 import { AdminStatus, useAdminStatus } from './AdminStatus.jsx';
+import { useOrdersSeen } from './ordersSeen.js';
 
 export {
   ORDER_STATES, LEGACY_ORDER_STATES, hasQuoteWorkflow, isQuote, orderActionError, loadListPrices, suggestedUnitPrice,
@@ -66,6 +70,8 @@ export function AdminPage({
   // ({ path, linkId }), so Back from it goes back in history to the list.
   const [orderSearch, setOrderSearch] = useState('');
   const [printFrom, setPrintFrom] = useState(null);
+  const approvedAdmin = profile?.role === 'admin' && profile?.status === 'approved';
+  const ordersSince = useOrdersSeen(approvedAdmin && account === 'ready' && section === 'orders', supabase);
   // A filter change replaces the history entry and keeps the scroll position.
   // options.force: the change keeps any unsaved edit, so it skips the leave guard.
   const setQuery = (next, options = {}) => navigate(adminHref({ section, query: next }), { replace: true, scroll: false, ...options });
@@ -164,7 +170,7 @@ export function AdminPage({
         <PrintSheet orderId={route.id} doc={query.doc} listHref={adminHref({ section: 'orders', query: lastQuery.orders })} onBack={leavePrint} />
       )}
       {section === 'orders' && !detail && (
-        <OrdersTab query={query} onQuery={setQuery} notify={status.show} search={orderSearch} onSearch={setOrderSearch}
+        <OrdersTab query={query} onQuery={setQuery} notify={status.show} search={orderSearch} onSearch={setOrderSearch} since={ordersSince}
           onOpenPrint={(href, linkId) => setPrintFrom({ path: href.split('?')[0], linkId })}
           returnFocusId={returnFocusId} onReturnFocus={setReturnFocusId} />
       )}

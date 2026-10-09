@@ -208,6 +208,8 @@ input[type="search"]:focus-visible, .aw-search input:focus-visible { outline-off
 .aw-account-or { color: var(--muted); font-size: var(--text-xs); }
 .aw-cart-btn { position: relative; }
 .aw-cart-count { position: absolute; top: -9px; right: -9px; min-width: 1.25rem; height: 1.25rem; border-radius: 50%; background: var(--orange-dark); color: #fff; font-size: var(--text-xs); font-weight: 700; display: grid; place-items: center; padding: 0 5px; }
+/* Orders placed since the admin's last visit to Orders, beside the Admin link (AW-111). */
+.admin-unseen { display: inline-grid; place-items: center; min-width: 1.25rem; height: 1.25rem; margin-left: 6px; padding: 0 5px; border-radius: 999px; background: var(--orange-dark); color: #fff; font-size: var(--text-xs); font-weight: 700; line-height: 1; vertical-align: middle; }
 
 .aw-navigation { display: flex; align-items: stretch; gap: 32px; min-height: 55px; position: relative; border-block: 1px solid var(--line); margin-bottom: var(--block-gap); }
 .aw-category-toggle { display: flex; align-items: center; justify-content: flex-start; gap: 13px; flex: 0 0 205px; padding: 15px 20px; margin: -1px 0; background: var(--purple); color: #fff; border: 1px solid var(--purple); font-size: var(--text-sm); font-weight: 700; }
@@ -716,15 +718,20 @@ p > .text-link { min-height: 0; }
   .variant-row.has-price, .product-photo-body { grid-template-columns: minmax(0, 1fr); }
   .product-editor-actions .product-delete { margin-left: 0; }
 }
-/* Admin -> Orders' operations (AW-110): a wider search box among the
-   filters; a bar with the 200-order note and Export; and each card's "Staff
-   notes and history" (drawn plus and minus, like the SKU details). */
+/* Admin -> Orders' operations (AW-110, AW-111): a wider search box among the
+   filters; a bar with the 200-order note, Export, Refresh and the time of the
+   last update; a New marker on orders placed since the last visit; and each
+   card's "Staff notes and history" (drawn plus and minus, like the SKU
+   details). */
 .admin-toolbar .admin-order-search { flex: 1 1 16rem; }
 .admin-order-search input { width: 100%; }
 .admin-account-filter { margin: -4px 0 12px; }
 .admin-orders-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin: 0 0 12px; }
 .admin-orders-bar .admin-count { margin: 0; }
 .admin-orders-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-left: auto; }
+.admin-updated { margin: 0; font-size: var(--text-sm); color: var(--muted); }
+.order-card.is-new { border-left: 3px solid var(--orange); }
+.order-new { display: inline-block; padding: 2px 8px; background: var(--orange-dark); color: #fff; font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; }
 .order-status-print { display: none; }
 .order-staff { margin: 0 16px 12px; border-top: 1px solid var(--line-soft); }
 .order-staff summary { display: inline-flex; align-items: center; gap: 10px; min-height: var(--tap); cursor: pointer; color: var(--purple); font-size: var(--text-sm); font-weight: 700; list-style: none; }

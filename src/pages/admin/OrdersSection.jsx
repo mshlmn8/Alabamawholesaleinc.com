@@ -1,5 +1,6 @@
 // Admin -> Orders: the order list with its toolbar (search, dates, method,
-// account; AW-110), status filter and export, and each order or quote's card
+// account; AW-110), status filter, export, live updates and the marker for
+// orders new since the last visit (AW-111), and each order or quote's card
 // with Cursor's quote editor, Convert and Email (AW-024), its print links,
 // and its staff notes and history.
 
@@ -19,6 +20,8 @@ import {
   ADMIN_ORDER_SELECT, MAX_ORDER_SEARCH, ORDER_LIMIT, hasOrderFilters, isQuote, orderCsvRecords, orderFilters, ordersCsvFileName, ordersQuery,
 } from './orderQueries.js';
 import { hasAssignment, staffName, statusLabel } from './orderStaff.js';
+import { isNewSince, ordersActivity } from './ordersSeen.js';
+import { useLiveOrders } from './liveOrders.js';
 import { printHref } from './printSheet.js';
 import { OrderStaff } from './OrderStaff.jsx';
 
@@ -183,6 +186,7 @@ export async function setOrderStatus(client, order, status, note = null) {
 // The search box waits this long after typing before it asks the database.
 export const ORDER_SEARCH_DEBOUNCE_MS = 300;
 const METHOD_OPTIONS = [['', 'Any'], ['delivery', 'Delivery'], ['willcall', 'Will-call']];
+const timeFormat = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
 export const printLinkId = (orderId, doc) => `print-${doc}-${orderId}`;
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -218,15 +222,19 @@ function OrderFilters({ query, onFilter, search, onSearch, clearHref, filtered }
 // query: the URL's filters (status, from, to, on, method, account; AW-118);
 // onQuery writes them. search/onSearch: the free-text search, kept by
 // AdminPage (never in the URL). notify: shows what a change did
-// (useAdminStatus). onOpenPrint(href, linkId): a print link was followed. returnFocusId/onReturnFocus: the print link to focus when the
+// (useAdminStatus). since: the previous visit (ordersSeen.js); orders placed
+// after it are marked New. onOpenPrint(href, linkId): a print link was
+// followed. returnFocusId/onReturnFocus: the print link to focus when the
 // list shows again.
 export function OrdersTab({
-  query = {}, onQuery, notify, search = '', onSearch, onOpenPrint, returnFocusId = null, onReturnFocus,
+  query = {}, onQuery, notify, search = '', onSearch, since = null, onOpenPrint, returnFocusId = null, onReturnFocus,
 }) {
   const [orders, setOrders] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [retrying, setRetrying] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [statusError, setStatusError] = useState(null);
+  const [updatedAt, setUpdatedAt] = useState(null);
   const [admins, setAdmins] = useState(null);
   const filter = query.status || DEFAULT_ORDER_STATUS;
   const [tiers, setTiers] = useState({});
@@ -248,12 +256,16 @@ export function OrdersTab({
   // request's answer is used. ordersQuery keeps the newest 200: paging and
   // per-status counts from the server are AW-199, not built yet.
   const filtersRef = useRef(filters);
+  const notifyRef = useRef(notify);
   useEffect(() => {
     filtersRef.current = filters;
+    notifyRef.current = notify;
   });
   const requestRef = useRef(0);
+  const lastLoad = useRef({ key: null, newest: null });
   const reload = useCallback(async () => {
     const current = filtersRef.current;
+    const key = JSON.stringify(current);
     const request = ++requestRef.current;
     let result;
     try {
@@ -265,14 +277,36 @@ export function OrdersTab({
     const error = withStatus(result || {});
     setLoadError(error ? adminErrorMessage(error, 'The orders didn’t load') : null);
     if (error) return false;
-    setOrders(result.data || []);
+    const rows = result.data || [];
+    // Orders placed since the last load of the same filters: say so, and
+    // let the header count them.
+    const newest = rows.reduce((max, row) => Math.max(max, Date.parse(row.created_at) || 0), 0);
+    const last = lastLoad.current;
+    if (last.key === key && last.newest != null) {
+      const fresh = rows.filter((row) => (Date.parse(row.created_at) || 0) > last.newest).length;
+      if (fresh) {
+        notifyRef.current?.(`${plural(fresh, 'new order')} came in.`);
+        ordersActivity();
+      }
+    }
+    lastLoad.current = { key, newest: Math.max(newest, last.key === key ? last.newest ?? 0 : 0) };
+    setOrders(rows);
+    setUpdatedAt(new Date());
     return true;
   }, []);
   useEffect(() => { reload(); }, [filtersKey, reload]);
+  // Realtime, plus a reload every minute while the tab is visible (AW-111).
+  useLiveOrders(reload, { client: supabase });
   const retry = async () => {
     setRetrying(true);
     await reload();
     setRetrying(false);
+  };
+  const refresh = async () => {
+    setRefreshing(true);
+    const ok = await reload();
+    setRefreshing(false);
+    if (ok) notify?.(`Orders updated at ${timeFormat.format(new Date())}.`);
   };
 
   useEffect(() => {
@@ -332,12 +366,14 @@ export function OrdersTab({
   const toolbar = (
     <OrderFilters query={query} onFilter={setFilter} search={search} onSearch={onSearch} clearHref={clearHref} filtered={filtered} />
   );
+  const updatedText = <p className="admin-updated">{updatedAt ? `Updated ${timeFormat.format(updatedAt)}` : ''}</p>;
 
   if (!orders) {
     return (
       <div className="admin-orders">
         {toolbar}
         {loadError ? <LoadProblem message={loadError} onRetry={retry} retrying={retrying} /> : <p className="result-note">Loading…</p>}
+        {updatedText}
       </div>
     );
   }
@@ -381,6 +417,8 @@ export function OrdersTab({
         <p className="result-note admin-count">{orders.length >= ORDER_LIMIT ? `Showing the newest ${ORDER_LIMIT} matching orders.` : ''}</p>
         <div className="admin-orders-actions">
           <button className="button xs ghost" type="button" disabled={shown.length === 0} onClick={exportCsv}>Export CSV</button>
+          <button className="button xs ghost" type="button" disabled={refreshing} onClick={refresh}>{refreshing ? 'Refreshing…' : 'Refresh'}</button>
+          {updatedText}
         </div>
       </div>
       {statusError && <p className="form-error" role="alert">{statusError}</p>}
@@ -391,7 +429,7 @@ export function OrdersTab({
       <div className="order-list">
         {shown.map(o => (
           <OrderCard key={o.id} order={o} states={states} workflow={workflow} tiers={tiers} onStatus={updateStatus} onReload={reload} notify={notify}
-            admins={admins} assignment={assignment} onAssigned={assigned} onOpenPrint={onOpenPrint} />
+            isNew={isNewSince(o, since)} admins={admins} assignment={assignment} onAssigned={assigned} onOpenPrint={onOpenPrint} />
         ))}
       </div>
       {shown.length === 0 && !loadError && (
@@ -411,9 +449,10 @@ export function OrdersTab({
 // One order or quote (AW-024, Cursor's PR #13): staff edit quantities and unit
 // prices (suggested from the list price and the account's tier), email the
 // quote, and convert a priced quote into a confirmed order. AW-110 adds the
-// print links, the cancellation reason and "Staff notes and history".
+// print links, the cancellation reason and "Staff notes and history";
+// AW-111 the New marker (isNew).
 function OrderCard({
-  order: o, states, workflow, tiers, onStatus, onReload, notify, admins = null, assignment = false, onAssigned, onOpenPrint,
+  order: o, states, workflow, tiers, onStatus, onReload, notify, isNew = false, admins = null, assignment = false, onAssigned, onOpenPrint,
 }) {
   const quote = isQuote(o);
   const items = o.order_items || [];
@@ -500,11 +539,12 @@ function OrderCard({
   const kindLabel = !quote ? 'Trade order' : (o.user_id == null ? 'Guest quote' : 'Account quote');
 
   return (
-    <article className={`order-card${quote ? ' is-quote' : ''}`}>
+    <article className={`order-card${quote ? ' is-quote' : ''}${isNew ? ' is-new' : ''}`}>
       {/* AW-020: the status beside the ref, then what staff need to pick and
           deliver it, one fact per line instead of a run-on sentence. */}
       <div className="order-head admin-order-head">
         <div className="order-title">
+          {isNew && <span className="order-new"><span>New</span><span className="sr-only"> since your last visit</span></span>}
           <span className="order-kind">{kindLabel}</span>
           <b className="order-ref">{o.ref_num}</b>
           <select aria-label={`Status for ${o.ref_num}`} value={o.status} onChange={chooseStatus}>

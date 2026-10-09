@@ -2,8 +2,8 @@
 // the toolbar (dates, method and account in the URL, the search never),
 // status changes through admin_set_order_status with a cancellation reason
 // (and the plain update on a database without it), "Staff notes and
-// history" (lazy, notes, optimistic assignment), CSV export and the print
-// view.
+// history" (lazy, notes, optimistic assignment), CSV export, the print view,
+// live updates that keep an open editor, and the New marker.
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -16,7 +16,9 @@ vi.mock('../../lib/supabase.js', async () => {
 const { fake } = await import('../../lib/supabase.js');
 const { AdminPage } = await import('./AdminPage.jsx');
 const { resetOrderStatusForTests, ORDER_SEARCH_DEBOUNCE_MS } = await import('./OrdersSection.jsx');
+const { resetOrdersSeenForTests } = await import('./ordersSeen.js');
 const { orderSearchFilter } = await import('./orderQueries.js');
+const { POLL_MS } = await import('./liveOrders.js');
 const { navigate, useRoute } = await import('../../lib/router.js');
 
 function RoutedAdmin(props) {
@@ -47,10 +49,12 @@ beforeEach(() => {
   act(() => navigate('/admin/orders?status=all', { replace: true }));
   fake.reset();
   resetOrderStatusForTests();
+  resetOrdersSeenForTests();
   db.rpcError = {};
   db.updateResult = null;
   db.tableError = {};
   fake.tables = { orders: [order(), quote()], profiles: [ADMIN, PAT], pricing_tiers: [], order_events: [], order_admin_notes: [] };
+  fake.rpcData.admin_mark_orders_seen = '2026-10-07T20:00:00Z';
   fake.respond = (request) => {
     if (request.kind === 'rpc' && db.rpcError[request.name]) return { data: null, error: db.rpcError[request.name] };
     if (request.table && db.tableError[request.table]) return { data: null, error: db.tableError[request.table] };
@@ -258,7 +262,7 @@ describe('staff notes and history', () => {
   });
 });
 
-describe('export and print', () => {
+describe('export, print and live updates', () => {
   it('exports the orders on screen as CSV, one row per line', async () => {
     const blobs = [];
     URL.createObjectURL = vi.fn((blob) => { blobs.push(blob); return 'blob:aw/1'; });
@@ -287,5 +291,43 @@ describe('export and print', () => {
     expect(screen.queryByRole('group', { name: 'Filter orders' })).toBeNull();
     await act(async () => { fireEvent.click(screen.getByRole('link', { name: 'Back to orders' })); });
     expect(back).toHaveBeenCalledTimes(1);
+  });
+
+  it('subscribes once, reloads on a change without losing an open editor, and unsubscribes when Orders closes', async () => {
+    vi.useFakeTimers();
+    await open();
+    expect(fake.channels.map((c) => c.name)).toEqual(['admin-orders']);
+    const guest = card('ALW-Q-5E4F3A2B1C');
+    await act(async () => { fireEvent.click(within(guest).getByRole('button', { name: /^Edit quantities and prices/ })); });
+    fireEvent.change(within(guest).getByLabelText('Quantity for Kite cigarette tobacco'), { target: { value: '7' } });
+    const loads = orderSelects().length;
+    fake.tables.orders = [order({ id: 'o-new', ref_num: 'ALW-O-NEW0000001', created_at: '2026-10-08T17:00:00Z' }), order(), quote()];
+    await act(async () => { fake.channels[0].handlers[0][2]({ eventType: 'INSERT' }); vi.advanceTimersByTime(600); });
+    await act(async () => {});
+    expect(orderSelects()).toHaveLength(loads + 1);
+    expect(screen.getByText('ALW-O-NEW0000001')).toBeTruthy();
+    expect(within(card('ALW-Q-5E4F3A2B1C')).getByLabelText('Quantity for Kite cigarette tobacco').value).toBe('7');
+    expect(screen.getByRole('status').textContent).toBe('1 new order came in.');
+    // A minute later it reloads again.
+    await act(async () => { vi.advanceTimersByTime(POLL_MS); });
+    expect(orderSelects()).toHaveLength(loads + 2);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await act(async () => { navigate('/admin/accounts'); });
+    expect(fake.channels).toHaveLength(0);
+  });
+
+  it('marks orders placed since the last visit, and says when the list was updated', async () => {
+    await open();
+    expect(fake.find({ kind: 'rpc', name: 'admin_mark_orders_seen' })).toHaveLength(1);
+    const fresh = card('ALW-O-BBBB222233');
+    expect(fresh.className).toContain('is-new');
+    expect(fresh.querySelector('.order-new').textContent).toBe('New since your last visit');
+    // The status as print-only text (the select doesn't print).
+    expect(fresh.querySelector('.order-status-print').textContent).toBe('New');
+    expect(card('ALW-Q-5E4F3A2B1C').className).not.toContain('is-new');
+    expect(document.querySelector('.admin-updated').textContent).toMatch(/^Updated \d{1,2}:\d{2} [AP]M$/);
+    // Moving between filters is the same visit.
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^new \(/ })); });
+    expect(fake.find({ kind: 'rpc', name: 'admin_mark_orders_seen' })).toHaveLength(1);
   });
 });

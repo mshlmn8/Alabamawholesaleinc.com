@@ -43,6 +43,7 @@ import { QuotePage } from './pages/QuotePage.jsx';
 import { NotFoundPage } from './pages/NotFoundPage.jsx';
 import { AccountPage } from './pages/account/AccountPage.jsx';
 import { AdminPage } from './pages/admin/AdminPage.jsx';
+import { useAdminUnseen } from './pages/admin/useAdminUnseen.js';
 import { CatalogIndexPage } from './pages/support/CatalogIndexPage.jsx';
 import { ContactPage } from './pages/support/ContactPage.jsx';
 import { DeliveryPage } from './pages/support/DeliveryPage.jsx';
@@ -89,6 +90,9 @@ export default function App() {
   // Only an approved admin is one; the database's is_admin() says the same
   // (AW-352).
   const isAdmin = profile?.role === 'admin' && profile?.status === 'approved';
+  // Orders placed since this admin last opened Admin -> Orders (AW-111): the
+  // header's Admin link and the admin pages' titles show the count.
+  const adminUnseen = useAdminUnseen(isAdmin ? profile.id : null);
   const departments = useMemo(() => departmentsFor(products), [products]);
   // The signed-in buyer's unit price for a product (and variant), or null:
   // no approved account, prices still loading, or price on request (AW-003).
@@ -126,9 +130,10 @@ export default function App() {
     }
   }, [canonicalPath, location]);
 
+  const metaRoute = useMemo(() => (route.page === 'admin' && adminUnseen > 0 ? { ...route, unseen: adminUnseen } : route), [route, adminUnseen]);
   useEffect(() => {
-    applyPageMeta(pageMeta(route, products, departments));
-  }, [route, products, departments]);
+    applyPageMeta(pageMeta(metaRoute, products, departments));
+  }, [metaRoute, products, departments]);
   // Scroll, focus and announcement on page changes (after the title is set).
   useNavigationEffects();
 
@@ -328,7 +333,7 @@ export default function App() {
       <Header
         cartCount={cart.count} onCart={() => setCartOpen(true)}
         products={products} departments={departments}
-        user={user} isAdmin={isAdmin}
+        user={user} isAdmin={isAdmin} adminUnseen={adminUnseen}
         onLoginClick={openSignin} onSignupClick={openSignup} onLogout={signOutHere} signingOut={signingOut}
         onHelp={() => setHelpOpen(true)}
       />

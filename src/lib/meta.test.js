@@ -76,6 +76,10 @@ describe('pageMeta', () => {
     expect(title({ section: 'products', id: 12 })).toBe('Edit product · Admin · Alabama Wholesale Inc');
     expect(title({ section: 'pricing' })).toBe('Pricing · Admin · Alabama Wholesale Inc');
     expect(pageMeta({ page: 'admin', section: 'products', id: 12 }, products, departments)).toMatchObject({ noindex: true, path: null });
+    // Orders placed since the last visit to Orders (AW-111): a count, never a name.
+    expect(title({ unseen: 2 })).toBe('(2) Orders · Admin · Alabama Wholesale Inc');
+    expect(title({ section: 'accounts', unseen: 1 })).toBe('(1) Accounts · Admin · Alabama Wholesale Inc');
+    expect(title({ unseen: 0 })).toBe('Orders · Admin · Alabama Wholesale Inc');
   });
 
   it('titles a catalog page that is still loading, or did not load (AW-204)', () => {
