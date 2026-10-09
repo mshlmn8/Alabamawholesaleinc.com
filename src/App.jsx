@@ -26,6 +26,8 @@ import { pageMeta, applyPageMeta } from './lib/meta.js';
 import { departmentsFor } from './lib/departments.js';
 import { accountNotices, signOutMessage } from './lib/accountNotices.js';
 import { catalogNotices } from './lib/catalogNotices.js';
+import { offlineNotices } from './lib/offlineNotice.js';
+import { useOnlineStatus } from './lib/useOnlineStatus.js';
 import { announce } from './lib/announce.js';
 import { AgeGate } from './components/AgeGate.jsx';
 import { TradeBar } from './components/TradeBar.jsx';
@@ -83,6 +85,16 @@ export default function App() {
     if (!result.ok) announce('The latest catalog still didn’t load. Try again in a moment.');
   };
   const { session, profile, account, signOut, refreshProfile, dismissLink, isBackendConfigured } = auth;
+  // Offline (AW-344): a notice while it lasts; back online, say so and load a catalog that failed meanwhile.
+  const online = useOnlineStatus();
+  const wasOnline = useRef(online);
+  useEffect(() => {
+    if (online && !wasOnline.current) {
+      announce('You’re back online.');
+      if (catalog.status === 'error') catalog.refresh();
+    }
+    wasOnline.current = online;
+  }, [online, catalog]);
   // Signed in whenever there is a session, also before (or without) its
   // profile, so Sign Out is always within reach (AW-089).
   const user = session ? { name: profile?.name || '', business: profile?.business || '' } : null;
@@ -238,7 +250,7 @@ export default function App() {
     openSignin();
   };
 
-  const notices = [...accountNotices({
+  const notices = [...offlineNotices({ online }), ...accountNotices({
     linkError: auth.linkError,
     linkConfirmed: auth.linkConfirmed,
     sessionEnded: auth.sessionEnded,

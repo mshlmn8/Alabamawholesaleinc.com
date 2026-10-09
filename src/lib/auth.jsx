@@ -27,6 +27,11 @@
 //                        Resolves to { ok, scope }; ok is false when Supabase
 //                        could not confirm it.
 //   signIn, signUp, resetPassword, resendConfirmation, updatePassword
+//                        the first four give up after AUTH_REQUEST_TIMEOUT_MS
+//                        with a code 'timeout' error (AW-194; src/lib/network.js).
+//                        The request itself goes on: a sign-in that answers
+//                        later still signs the buyer in, through
+//                        onAuthStateChange like a sign-in in another tab.
 //   recovery, linkError, linkChecking, linkConfirmed, dismissLink
 //                        the email link the page was opened with (AW-015,
 //                        src/lib/authLink.js)
@@ -39,6 +44,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase as defaultClient, AUTH_STORAGE_KEY } from './supabase.js';
 import { RESET_PASSWORD_PATH } from './authLink.js';
+import { AUTH_REQUEST_TIMEOUT_MS, withTimeout } from './network.js';
 import { TERMS_VERSION } from '../data/content.js';
 
 const UNAVAILABLE = 'Account access is temporarily unavailable. Please call or email the trade desk.';
@@ -348,7 +354,7 @@ export function AuthProvider({ client = defaultClient, link = null, children }) 
     terms_accepted = false, terms_version = TERMS_VERSION, age_confirmed = false,
   }) => {
     if (!client) throw new Error(UNAVAILABLE);
-    const { data, error } = await client.auth.signUp({
+    const { data, error } = await withTimeout(client.auth.signUp({
       email,
       password,
       options: {
@@ -359,14 +365,14 @@ export function AuthProvider({ client = defaultClient, link = null, children }) 
           terms_version, terms_accepted: terms_accepted === true, age_confirmed: age_confirmed === true,
         },
       },
-    });
+    }), AUTH_REQUEST_TIMEOUT_MS);
     if (error) throw error;
     return data;
   }, [client]);
 
   const signIn = useCallback(async ({ email, password }) => {
     if (!client) throw new Error(UNAVAILABLE);
-    const { error } = await client.auth.signInWithPassword({ email, password });
+    const { error } = await withTimeout(client.auth.signInWithPassword({ email, password }), AUTH_REQUEST_TIMEOUT_MS);
     if (error) throw error;
   }, [client]);
 
@@ -416,14 +422,20 @@ export function AuthProvider({ client = defaultClient, link = null, children }) 
   // the link to the site root and authLink.js still opens the reset page.
   const resetPassword = useCallback(async (email) => {
     if (!client) throw new Error(UNAVAILABLE);
-    const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}${RESET_PASSWORD_PATH}` });
+    const { error } = await withTimeout(
+      client.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}${RESET_PASSWORD_PATH}` }),
+      AUTH_REQUEST_TIMEOUT_MS,
+    );
     if (error) throw error;
   }, [client]);
 
   // A new sign-up confirmation email, for an account whose link expired.
   const resendConfirmation = useCallback(async (email) => {
     if (!client) throw new Error(UNAVAILABLE);
-    const { error } = await client.auth.resend({ type: 'signup', email, options: { emailRedirectTo: confirmationRedirect() } });
+    const { error } = await withTimeout(
+      client.auth.resend({ type: 'signup', email, options: { emailRedirectTo: confirmationRedirect() } }),
+      AUTH_REQUEST_TIMEOUT_MS,
+    );
     if (error) throw error;
   }, [client]);
 

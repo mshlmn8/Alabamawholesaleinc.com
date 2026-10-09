@@ -22,7 +22,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth.jsx';
 import { COMPANY, TERMS_VERSION } from '../data/content.js';
-import { describeError, isRateLimitError } from '../lib/errors.js';
+import { APPLICATION_TIMEOUT_MESSAGE, describeError, isRateLimitError } from '../lib/errors.js';
+import { isTimeoutError } from '../lib/network.js';
 import { Link, restoreOverlayEntry } from '../lib/router.js';
 import { APPLICATION_CHECKLIST } from '../data/onboarding.js';
 import { DOCUMENT_TYPES, documentErrorMessage, uploadSelectedProof } from '../lib/documents.js';
@@ -129,6 +130,8 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
   // After a sign-in (here or in another tab), wait for the account's profile.
   const waiting = mode === 'checking' || signedInMeanwhile;
   const settled = waiting && !loading && !!session && profileReady && !profileRefreshing;
+  // A sign-in that timed out here went through after all (AW-194): its error is moot.
+  if (settled && error) setError(null);
   if (settled && profile && profile.status !== 'approved') setMode('status');
   else if (settled && !profile) setMode('profile-error');
   else if (mode === 'profile-error' && !loading && !session) setMode('signin');
@@ -266,7 +269,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
       setMode(data?.session ? 'status' : 'sent');
       if (uploadError) setError(uploadError);
     }
-    catch (err) { setError(describeError(err, 'The online application', 'Sign-up failed')); }
+    catch (err) { setError(isTimeoutError(err) ? APPLICATION_TIMEOUT_MESSAGE : describeError(err, 'The online application', 'Sign-up failed')); }
     finally { setSubmitting(false); }
   };
 

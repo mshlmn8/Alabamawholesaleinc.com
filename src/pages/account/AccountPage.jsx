@@ -6,16 +6,21 @@
 // Sign out (AW-089). App keys this page by account (AW-190). "Sign out of all
 // devices" ends the buyer's sessions everywhere (AW-337); the header's Sign
 // Out only ends this browser's.
+//
+// Order history comes from useOrderHistory (AW-326, AW-194): it gives up on
+// a stalled request, and a load that failed says so in words, with Try
+// again and the trade desk's phone and email.
 
-import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase.js';
+import { useState } from 'react';
 import { linesFromOrder } from '../../lib/lines.js';
 import { formatMoney } from '../../lib/format.js';
 import { Link } from '../../lib/router.js';
 import { lineTotal } from '../../lib/pricing.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
+import { CallOrEmail } from '../../components/ContactLinks.jsx';
 import { QuickReorder } from './QuickReorder.jsx';
+import { useOrderHistory } from './useOrderHistory.js';
 
 const STATUS_CLASS = {
   new: '',
@@ -39,6 +44,13 @@ const STATUS_LABEL = {
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
+// Why the order history isn't on screen (useOrderHistory's error).
+export const ORDER_HISTORY_ERRORS = {
+  offline: 'You’re offline. Your orders will load when you reconnect.',
+  timeout: 'Your orders are taking too long to load.',
+  failed: 'We couldn’t load your orders.',
+};
+
 // The note under an order after Reorder, as one string (AW-039).
 const reorderMessage = (note, target) => (note.lines > 0
   ? `Added ${plural(note.lines, 'line')} (${plural(note.units, 'unit')}) to your ${target}.`
@@ -50,23 +62,8 @@ export function AccountPage({
   profile, account = profile ? 'ready' : 'signed-out', onSignIn, onRetry, retrying = false, onSignOut, onSignOutEverywhere,
   signingOut = false, products = [], addLines, onOpenCart, isApprovedBuyer,
 }) {
-  const [orders, setOrders] = useState(null);
-  const [error, setError] = useState(null);
+  const { orders, error, reload } = useOrderHistory(profile?.id ?? null);
   const [reorderNote, setReorderNote] = useState(null);
-
-  const profileId = profile?.id;
-  useEffect(() => {
-    if (!supabase || !profileId) return;
-    supabase
-      .from('orders')
-      .select('id, ref_num, status, total_units, subtotal, created_at, order_items(id, product_id, variant, product_name, sku, qty, unit_price)')
-      .eq('user_id', profileId)
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) setError(error.message);
-        else setOrders(data || []);
-      });
-  }, [profileId]);
 
   // The same heading element in every state, so focus on it survives the
   // profile arriving.
@@ -156,7 +153,12 @@ export function AccountPage({
           </div>
         </div>
 
-        {error && <p className="form-error">{`Couldn't load orders: ${error}`}</p>}
+        {error && (
+          <div className="orders-problem" role="alert">
+            <p className="form-error"><span>{ORDER_HISTORY_ERRORS[error] || ORDER_HISTORY_ERRORS.failed}</span> <CallOrEmail before="Need an order now? Call" after="." /></p>
+            <button className="text-link" type="button" onClick={reload}>Try again</button>
+          </div>
+        )}
         {orders === null && !error && <p className="result-note">Loading…</p>}
         {orders && orders.length === 0 && (
           <div className="empty-results">

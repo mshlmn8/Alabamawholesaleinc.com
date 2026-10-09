@@ -22,10 +22,17 @@
 // sends the warehouse address. The signature that worked is remembered for
 // the rest of the visit, so a live database without the new functions costs
 // one call per quote after the first.
+//
+// Each call gives up after QUOTE_SUBMIT_TIMEOUT_MS (AW-194,
+// src/lib/network.js). A call that timed out may still have been saved, so
+// it is never sent again with an older signature: the buyer is told to call
+// before submitting again, with the reference an older signature was sent
+// with (the only reference ever shown for a quote that wasn't confirmed).
 
 import { COMPANY } from '../data/content.js';
 import { DELIVERY_ROUTE_STATES } from '../data/quoteRules.js';
 import { MISSING_FUNCTION_CODES } from './pricing.js';
+import { QUOTE_SUBMIT_TIMEOUT_MS, isOffline, isTimeoutError, timeoutError, timeoutSignal } from './network.js';
 import { supabase } from './supabase.js';
 
 const text = (value) => String(value ?? '').trim();
@@ -107,13 +114,27 @@ const SIGNATURES = ['current', 'licensed', 'legacy'];
 let workingSignature = null;
 export const resetQuoteSignatureForTests = () => { workingSignature = null; };
 
+// One submit_quote call, abandoned after timeoutMs: { data, error }.
+async function callSubmitQuote(client, args, timeoutMs) {
+  const t = timeoutSignal(timeoutMs);
+  try {
+    const request = client.rpc('submit_quote', args);
+    return await (typeof request?.abortSignal === 'function' ? request.abortSignal(t.signal) : request);
+  } catch (error) {
+    return { data: null, error };
+  } finally {
+    t.clear();
+  }
+}
+
 // Saves the quote. Resolves { ok, order, legacy }, where order is what
 // submit_quote returned ({ id, ref_num, total_units, subtotal, and from the
 // current function kind, priced_lines, unpriced_lines }) and legacy says an
 // older signature saved it; throws the error otherwise (quoteErrorMessage()
-// words it).
+// words it). A call that took too long throws code 'timeout', with refNum
+// when an older signature was sent that reference.
 // TODO(owner): Which address or phone should hear about a new quote, and which provider sends it? Nothing is sent on its own yet. (AW-050)
-export async function submitOrder({ formData, items }, { client = supabase } = {}) {
+export async function submitOrder({ formData, items }, { client = supabase, timeoutMs = QUOTE_SUBMIT_TIMEOUT_MS } = {}) {
   if (!client) {
     const err = new Error('Quote requests can’t be saved right now.');
     err.code = 'unavailable';
@@ -130,8 +151,13 @@ export async function submitOrder({ formData, items }, { client = supabase } = {
       refNum = refNum || makeClientRef();
       args = signature === 'licensed' ? licensedQuoteParams(params, refNum) : legacyQuoteParams(params, refNum);
     }
-    const { data, error } = await client.rpc('submit_quote', args);
+    const { data, error } = await callSubmitQuote(client, args, timeoutMs);
     if (error && isMissingFunction(error)) { missing = error; continue; }
+    if (error && isTimeoutError(error)) {
+      const late = Object.assign(timeoutError('The quote request took too long.'), { cause: error });
+      if (signature !== 'current') late.refNum = refNum;
+      throw late;
+    }
     if (error) throw error;
     if (!data?.id) throw new Error('The quote was not saved.');
     workingSignature = signature;
@@ -177,14 +203,28 @@ const hintOf = (err) => err?.hint
 
 export const QUOTE_ERROR_GENERIC = { before: 'We couldn’t save this quote. Please call the trade desk at', after: '.' };
 export const QUOTE_UNAVAILABLE = { before: 'Quote requests can’t be saved right now. Call', after: ' and the trade desk will write it up with you.' };
+export const QUOTE_OFFLINE = 'You’re offline, so nothing was sent. Reconnect and submit again.';
 
-// What to tell the buyer when submitOrder() failed: the text for its hint,
-// else the generic "call the trade desk" copy. Never a reference number: a
-// failed quote has none.
+// A submit that took too long may have been saved (AW-194). With the
+// reference an older signature was sent, the trade desk can look it up.
+export function quoteTimeoutMessage(refNum = null) {
+  const before = 'This is taking longer than expected, and the request may have been saved. Call';
+  return refNum
+    ? { before, after: ` and give quote reference ${refNum} before you submit it again.` }
+    : { before, after: ' before you submit it again, so it isn’t sent twice.' };
+}
+
+// What to tell the buyer when submitOrder() failed: a timeout first, then
+// the text for its hint, then that the browser is offline, else the generic
+// "call the trade desk" copy. Never a reference number for a quote that
+// failed; a timed-out one may have been saved, and is cited only with "may".
 export function quoteErrorMessage(err) {
+  if (isTimeoutError(err)) return quoteTimeoutMessage(err.refNum || null);
   if (err?.code === 'unavailable') return QUOTE_UNAVAILABLE;
   const hint = hintOf(err);
-  return (hint && HINT_MESSAGES[hint]) || QUOTE_ERROR_GENERIC;
+  if (hint && HINT_MESSAGES[hint]) return HINT_MESSAGES[hint];
+  if (isOffline()) return QUOTE_OFFLINE;
+  return QUOTE_ERROR_GENERIC;
 }
 
 // The form field a hint is about (quoteForm names), so the page can mark it.

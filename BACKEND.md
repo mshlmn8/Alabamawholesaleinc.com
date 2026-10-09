@@ -580,6 +580,10 @@ The storefront saves a quote (or an approved buyer's order) with one call,
   honeypot field that simple bots fill in.
 - **Suspended accounts can't submit** (AW-201, hint `account_suspended`);
   the cart and checkout tell them ordering is paused.
+- **A send that takes too long** (AW-194): the checkout gives up on
+  `submit_quote` after 25 seconds and says the request may have been saved,
+  so the buyer calls before sending it again; it never re-sends it with an
+  older signature.
 - **Tobacco license answers** (AW-014, PR #12's rule, unchanged): a quote
   with a tobacco line (department Tobacco) or a vape line (Disposable Vapes
   or Vape Pods) from a guest or an account that isn't approved must name a

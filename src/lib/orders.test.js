@@ -1,11 +1,13 @@
 // Quote submission against the current submit_quote and, on an older
 // database, PR #12's 16-argument call and the 13-argument one (AW-049,
-// AW-079, AW-198, AW-201, AW-014). No network: a fake client answers.
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+// AW-079, AW-198, AW-201, AW-014) and its time limit (AW-194). No network: a
+// fake client answers.
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { COMPANY } from '../data/content.js';
+import { QUOTE_SUBMIT_TIMEOUT_MS } from './network.js';
 import {
-  QUOTE_ERROR_GENERIC, QUOTE_UNAVAILABLE, legacyQuoteParams, licensedQuoteParams, makeClientRef, quoteErrorField, quoteErrorMessage,
-  quoteParams, resetQuoteSignatureForTests, submitOrder, todayInBirmingham,
+  QUOTE_ERROR_GENERIC, QUOTE_OFFLINE, QUOTE_UNAVAILABLE, legacyQuoteParams, licensedQuoteParams, makeClientRef, quoteErrorField, quoteErrorMessage,
+  quoteParams, quoteTimeoutMessage, resetQuoteSignatureForTests, submitOrder, todayInBirmingham,
 } from './orders.js';
 
 const FORM = {
@@ -19,19 +21,35 @@ const ITEMS = [{ productId: 14, variant: null, qty: 2 }, { productId: 1, variant
 const SAVED = { id: 'o1', ref_num: 'ALW-Q-0123456789', kind: 'quote', total_units: 3, subtotal: null, priced_lines: 0, unpriced_lines: 2 };
 const MISSING = { code: 'PGRST202', message: 'Could not find the function public.submit_quote(p_business, …) in the schema cache' };
 
-// A supabase client whose rpc answers each call in turn.
+// A supabase client whose rpc answers each call in turn, like
+// supabase-js's builder: .abortSignal(signal) and then await. An answer
+// 'stall' never comes, unless the signal aborts, when it resolves the way
+// postgrest-js does for an aborted fetch.
 function fakeClient(...answers) {
   const calls = [];
   return {
     calls,
-    rpc: vi.fn(async (name, args) => {
-      calls.push({ name, args });
-      return answers.shift();
+    rpc: vi.fn((name, args) => {
+      const call = { name, args, signal: null };
+      calls.push(call);
+      const answer = answers.shift();
+      const respond = () => (answer === 'stall'
+        ? new Promise((resolve) => {
+          call.signal?.addEventListener('abort', () => resolve({
+            data: null, error: { message: `${call.signal.reason.name}: ${call.signal.reason.message}`, code: '', hint: '', details: '' },
+          }));
+        })
+        : Promise.resolve(answer));
+      return {
+        abortSignal(signal) { call.signal = signal; return respond(); },
+        then(resolve, reject) { return respond().then(resolve, reject); },
+      };
     }),
   };
 }
 
 beforeEach(() => resetQuoteSignatureForTests());
+afterEach(() => vi.useRealTimers());
 
 describe('quoteParams', () => {
   it('sends the details trimmed, the state upper-case and no reference', () => {
@@ -208,6 +226,53 @@ describe('quoteErrorMessage', () => {
     expect(quoteErrorField({ hint: 'delivery_state' })).toBe('shipState');
     expect(quoteErrorField({ hint: 'rate_limited' })).toBeNull();
     expect(quoteErrorField(new Error('x'))).toBeNull();
+  });
+});
+
+describe('submitOrder time limit (AW-194)', () => {
+  it('sends every call with an abort signal and clears its timer', async () => {
+    vi.useFakeTimers();
+    const client = fakeClient({ data: SAVED, error: null });
+    await submitOrder({ formData: FORM, items: ITEMS }, { client });
+    expect(client.calls[0].signal).toBeInstanceOf(AbortSignal);
+    expect(client.calls[0].signal.aborted).toBe(false);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('gives up after 25 s, never tries an older signature, and says it may have been saved', async () => {
+    vi.useFakeTimers();
+    const client = fakeClient('stall', { data: SAVED, error: null });
+    const caught = submitOrder({ formData: FORM, items: ITEMS }, { client }).catch((e) => e);
+    await vi.advanceTimersByTimeAsync(QUOTE_SUBMIT_TIMEOUT_MS);
+    const err = await caught;
+    expect(err).toMatchObject({ name: 'TimeoutError', code: 'timeout' });
+    expect(err.refNum).toBeUndefined();
+    expect(client.calls).toHaveLength(1);
+    expect(client.calls[0].signal.aborted).toBe(true);
+    expect(quoteErrorMessage(err)).toEqual({
+      before: 'This is taking longer than expected, and the request may have been saved. Call',
+      after: ' before you submit it again, so it isn’t sent twice.',
+    });
+  });
+
+  it('on an older signature, gives the reference it was sent with', async () => {
+    vi.useFakeTimers();
+    const client = fakeClient({ data: null, error: MISSING }, 'stall');
+    const caught = submitOrder({ formData: FORM, items: ITEMS }, { client, timeoutMs: 1000 }).catch((e) => e);
+    await vi.advanceTimersByTimeAsync(1000);
+    const err = await caught;
+    expect(client.calls).toHaveLength(2);
+    expect(err.code).toBe('timeout');
+    expect(err.refNum).toBe(client.calls[1].args.p_ref_num);
+    expect(quoteErrorMessage(err)).toEqual(quoteTimeoutMessage(err.refNum));
+    expect(quoteErrorMessage(err).after).toBe(` and give quote reference ${err.refNum} before you submit it again.`);
+  });
+
+  it('says nothing was sent while offline, and still prefers a server’s answer', () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    expect(QUOTE_OFFLINE).toBe('You’re offline, so nothing was sent. Reconnect and submit again.');
+    expect(quoteErrorMessage({ message: 'TypeError: Failed to fetch', code: '' })).toBe(QUOTE_OFFLINE);
+    expect(quoteErrorMessage({ hint: 'invalid_zip' })).toBe('Enter a 5-digit ZIP code (or ZIP+4).');
   });
 });
 

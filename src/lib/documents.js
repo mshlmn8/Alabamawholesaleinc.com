@@ -10,6 +10,7 @@
 
 import { supabase } from './supabase.js';
 import { describeError } from './errors.js';
+import { REQUEST_TIMEOUT_MS, timeoutSignal } from './network.js';
 
 export const DOCUMENT_BUCKET = 'application-documents';
 export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
@@ -91,14 +92,22 @@ function contentTypeFor(file) {
   return MIME_FOR_EXT[ext] || 'application/octet-stream';
 }
 
+// Gives up after REQUEST_TIMEOUT_MS (AW-194) and throws, like any failed
+// load. Uploads have no time limit: a large file on a slow line takes long.
 export async function listProfileDocuments(userId) {
   if (!supabase || !userId) return [];
-  const { data, error } = await supabase
-    .from('profile_documents')
-    .select('profile_id, document_type, storage_path, original_filename, uploaded_at')
-    .eq('profile_id', userId);
-  if (error) throw error;
-  return data || [];
+  const t = timeoutSignal(REQUEST_TIMEOUT_MS);
+  try {
+    const { data, error } = await supabase
+      .from('profile_documents')
+      .select('profile_id, document_type, storage_path, original_filename, uploaded_at')
+      .eq('profile_id', userId)
+      .abortSignal(t.signal);
+    if (error) throw error;
+    return data || [];
+  } finally {
+    t.clear();
+  }
 }
 
 export async function listAllProfileDocuments() {

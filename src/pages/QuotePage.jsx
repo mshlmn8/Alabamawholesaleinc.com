@@ -41,10 +41,17 @@
 // from what was sent and what submit_quote answered. App keeps that receipt
 // for this history entry (src/lib/receipt.js) and passes it back as
 // savedReceipt, so a reload or Back shows it again instead of checkout.
+//
+// While a send runs, the lines and the fields are locked (one disabled
+// fieldset each), and a send that takes too long gives up and says the
+// request may have been saved (AW-194). Offline, the submit button is off
+// with a note, and nothing is sent (AW-344).
 
 import { useEffect, useRef, useState } from 'react';
 import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../data/content.js';
-import { QUOTE_ERROR_GENERIC, quoteErrorField, quoteErrorMessage, submitOrder, todayInBirmingham } from '../lib/orders.js';
+import { QUOTE_ERROR_GENERIC, QUOTE_OFFLINE, quoteErrorField, quoteErrorMessage, submitOrder, todayInBirmingham } from '../lib/orders.js';
+import { isOffline } from '../lib/network.js';
+import { useOnlineStatus } from '../lib/useOnlineStatus.js';
 import { cartChanges, describeCartChanges } from '../lib/cart.js';
 import { QTY_RANGE_TEXT, isOrderableQty } from '../lib/quantity.js';
 import { formatMoney, formatMoneyShort } from '../lib/format.js';
@@ -178,9 +185,10 @@ export function QuotePage({
   const minDate = todayInBirmingham();
   // Not while the buyer's prices are still loading (the total is not known yet).
   const pricedBelowMinimum = isApprovedBuyer && pricesStatus !== 'loading' && Number(total) < ORDER_MINIMUM;
+  const online = useOnlineStatus();
   // What keeps the submit button off (apart from a send in progress). The
   // minimum note says "you can still submit" only when nothing does (AW-076).
-  const submitBlocked = isSuspended || !isBackendConfigured || needsVariant || unavailable.length > 0 || invalidQty || lostOrdering;
+  const submitBlocked = isSuspended || !isBackendConfigured || needsVariant || unavailable.length > 0 || invalidQty || lostOrdering || !online;
   let submitLabel = isApprovedBuyer ? 'Submit order' : 'Submit quote request';
   if (phase === 'checking') submitLabel = 'Checking the catalog…';
   else if (phase === 'sending') submitLabel = 'Sending…';
@@ -214,6 +222,10 @@ export function QuotePage({
       setSubmitError(QTY_ERROR);
       return;
     }
+    if (isOffline()) {
+      setSubmitError(QUOTE_OFFLINE);
+      return;
+    }
     submittingRef.current = true;
     // What is sent, and what the receipt shows: edits made while it is on
     // its way change neither.
@@ -228,7 +240,7 @@ export function QuotePage({
       if (checkCart) {
         const check = await checkCart();
         if (!check?.ok) {
-          setSubmitError({
+          setSubmitError(isOffline() ? QUOTE_OFFLINE : {
             before: 'We couldn’t check the latest prices and availability, so nothing was sent. Check your connection and try again, or call the trade desk at',
             after: '.',
           });
@@ -255,7 +267,7 @@ export function QuotePage({
       saved = buildReceipt({ order: r.order, lines, data: formData, asOrder });
     } catch (err) {
       // What the server refused and why, never a reference: a failed quote
-      // has none (AW-049).
+      // has none (AW-049). One that took too long may have been saved.
       setSubmitError(quoteErrorMessage(err));
       setErrorField(quoteErrorField(err));
     } finally {
@@ -319,6 +331,8 @@ export function QuotePage({
         <div>
           <SavedLinesNotice items={legacy} onDismiss={onDismissLegacy} />
           <UnavailableNotice items={unavailable} onRemoveAll={removeLines} />
+          {/* Locked while a send runs (AW-194): no −/+/×, variant or Clear. */}
+          <fieldset className="checkout-fieldset" disabled={sending}>
           <ul className="checkout-lines" aria-label="Items in this request" ref={linesRef}>
             {items.map(it => (
               <CartLine key={it.lineKey} item={it} layout="checkout" showPrice={isApprovedBuyer} pricesStatus={pricesStatus}
@@ -327,6 +341,7 @@ export function QuotePage({
             ))}
           </ul>
           <button className="text-link checkout-clear" type="button" onClick={clearAll}>Clear all items</button>
+          </fieldset>
         </div>
         <form onSubmit={handleQuoteSubmit} aria-labelledby="quote-form-title">
           <h2 id="quote-form-title" className="checkout-form-title">Your details</h2>
@@ -346,6 +361,7 @@ export function QuotePage({
             <label htmlFor="quote-company-website">Company website</label>
             <input id="quote-company-website" name="company_website" type="text" tabIndex={-1} autoComplete="off" defaultValue="" />
           </div>
+          <fieldset className="checkout-fieldset" disabled={sending}>
           <div className="form-grid checkout-form-grid">
             <div><label htmlFor="quote-business">Business</label><input id="quote-business" name="business" value={data.business} onChange={set('business')} required maxLength={200} autoComplete="organization" {...fieldProps('business')} /></div>
             <div><label htmlFor="quote-contact">Contact</label><input id="quote-contact" name="contact" value={data.contact} onChange={set('contact')} required maxLength={120} autoComplete="name" {...fieldProps('contact')} /></div>
@@ -383,6 +399,7 @@ export function QuotePage({
             <div><label htmlFor="quote-date">Preferred date</label><input id="quote-date" name="preferredDate" type="date" value={data.preferredDate} onChange={set('preferredDate')} min={minDate} autoComplete="off" {...fieldProps('preferredDate')} /></div>
             <div className="full"><label htmlFor="quote-notes">Notes</label><input id="quote-notes" name="notes" value={data.notes} onChange={set('notes')} maxLength={2000} placeholder="Dock hours, pallet needs, substitutions…" autoComplete="off" /></div>
           </div>
+          </fieldset>
           <div className="drawer-total checkout-total">
             <span>{`${totalUnits} ${totalUnits === 1 ? 'unit' : 'units'}`}</span>
             <span>{isApprovedBuyer ? totalLabel(items, total, pricesStatus) : (isSuspended ? 'Ordering paused' : (signedIn ? 'Pricing after approval' : 'Pricing after sign-in'))}</span>
@@ -411,6 +428,8 @@ export function QuotePage({
           <button className="button wide" type="submit" disabled={sending || submitBlocked}>
             <span>{submitLabel}</span></button>
           )}
+          {/* The site notice reads "You’re offline" out; this says why the button is off. */}
+          {!online && <p className="result-note quote-offline">You’re offline. Reconnect to submit.</p>}
           <p className="fine">{`Orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} qualify for free delivery on a delivery route in AL, MS & GA. Will-call is pickup at the Birmingham warehouse during business hours. Tobacco products supplied to licensed retailers only — 21+.`}</p>
         </form>
       </div>

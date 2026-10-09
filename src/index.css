@@ -748,6 +748,9 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .checkout-line { border: 1px solid var(--line); padding: 12px; }
 .checkout-line .line-total { grid-area: total; justify-self: end; color: var(--purple); font-size: var(--text-sm); }
 .checkout-clear { margin-top: 14px; }
+/* The lines and the fields while a send runs (AW-194): disabled, no frame. */
+.checkout-fieldset { border: 0; margin: 0; padding: 0; min-inline-size: 0; }
+.quote-offline { margin-top: 8px; }
 .checkout-form-title { font-size: var(--h3); margin: 0 0 4px; }
 .checkout-form-grid { margin-top: 12px; }
 .checkout-total { margin-top: 18px; }
