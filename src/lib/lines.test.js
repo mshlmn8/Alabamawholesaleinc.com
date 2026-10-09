@@ -184,6 +184,42 @@ describe('SKU entry', () => {
   it('reports empty input', () => {
     expect(resolveSkuLine(P, '  ').status).toBe('empty');
   });
+
+  // The guard kept for a live database that still has a duplicate SKU, before
+  // products_sku_upper_key exists, and for codes two products reach some
+  // other way (AW-074).
+  it('asks which product when two share a code, and takes the one chosen', () => {
+    const shared = [...P, { id: 15, sku: 'AW-KITE', name: 'Kite pipe tobacco', variants: [] }];
+    const res = resolveSkuLine(shared, 'aw-kite');
+    expect(res.status).toBe('choose-product');
+    expect(res.candidates.map((c) => c.product.id)).toEqual([14, 15]);
+    expect(resolveSkuLine(shared, 'AW-KITE', { productId: 15 })).toMatchObject({ status: 'ok', product: { id: 15 }, variant: null });
+    expect(resolveSkuLine(shared, 'AW-KITE', { productId: '14' })).toMatchObject({ status: 'ok', product: { id: 14 } });
+    // A choice that isn't one of them asks again.
+    expect(resolveSkuLine(shared, 'AW-KITE', { productId: 1 }).status).toBe('choose-product');
+  });
+
+  it('asks which product when two SKUs differ only in hyphens and the code doesn’t say which', () => {
+    // As #36 AW-NOW-AND-LATER and #276 AW-NOW-AND-LATER- on the live catalog.
+    const near = [...P, { id: 16, sku: 'AW-KITE-', name: 'Kite tobacco jar', variants: [] }];
+    expect(resolveSkuLine(near, 'AW-KITE')).toMatchObject({ status: 'ok', product: { id: 14 } });
+    expect(resolveSkuLine(near, 'AW-KITE-')).toMatchObject({ status: 'ok', product: { id: 16 } });
+    const either = resolveSkuLine(near, 'AW-KITE--');
+    expect(either.status).toBe('choose-product');
+    expect(either.candidates.map((c) => c.product.id)).toEqual([14, 16]);
+    expect(resolveSkuLine(near, 'AW-KITE--', { productId: 16 })).toMatchObject({ status: 'ok', product: { id: 16 } });
+  });
+
+  it('asks for the product, then the variant, when two multi-variant products share a code', () => {
+    const shared = [...P, { id: 2, sku: 'AW-SS', name: 'Cigarillos, tins', variants: ['Diamond', 'Gold'] }];
+    expect(resolveSkuLine(shared, 'AW-SS').status).toBe('choose-product');
+    // Both have a Diamond variant: the variant code alone doesn't settle it.
+    expect(resolveSkuLine(shared, 'AW-SS-DIAMOND').candidates.map((c) => c.product.id)).toEqual([1, 2]);
+    expect(resolveSkuLine(shared, 'AW-SS-DIAMOND', { productId: 1 })).toMatchObject({ status: 'ok', product: { id: 1 }, variant: 'Diamond' });
+    expect(resolveSkuLine(shared, 'AW-SS-GOLD')).toMatchObject({ status: 'ok', product: { id: 2 }, variant: 'Gold' });
+    expect(resolveSkuLine(shared, 'AW-SS', { productId: 2 })).toMatchObject({ status: 'choose-variant', product: { id: 2 } });
+    expect(resolveSkuLine(shared, 'AW-SS', { productId: 2, variant: 'gold' })).toMatchObject({ status: 'ok', product: { id: 2 }, variant: 'Gold' });
+  });
 });
 
 // Corrected SKUs and variant labels keep resolving (AW-135, AW-138, AW-126).

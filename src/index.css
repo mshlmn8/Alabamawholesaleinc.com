@@ -1064,8 +1064,9 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .qr-rows .qr-row:last-child { border-bottom: 0; }
 .qr-field span, .qr-choice span { display: block; margin-bottom: 6px; }
 .qr-field input, .qr-choice select { width: 100%; }
-.qr-field input { text-transform: uppercase; }
-.qr-field input::placeholder { text-transform: none; }
+/* SKUs show in capitals; the Qty box shows what was typed (NEW-060). */
+.qr-sku input { text-transform: uppercase; }
+.qr-sku input::placeholder { text-transform: none; }
 /* As tall as the fields beside it, so a one-line match sits level with them. */
 /* The match and, below it, a quantity problem (AW-100), centred on the row. */
 .qr-status { min-height: var(--field-h); display: flex; flex-direction: column; justify-content: center; }

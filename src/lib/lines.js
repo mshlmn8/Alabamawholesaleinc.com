@@ -204,9 +204,23 @@ function variantHits(products, code, basesOf) {
 // product's variants. A product's earlier or later codes (SKU_ALIASES) count
 // after its own: a code from an old order finds the product under its new
 // code, and a new code finds it while the live catalog still has the old one.
-// `choice` carries the buyer's answers when a code is ambiguous: two products
-// can share a code, and a bare SKU of a multi-variant product still needs a
-// variant.
+// `choice` carries the buyer's answers when a code is ambiguous: a bare SKU of
+// a multi-variant product still needs a variant ('choose-variant'), and a code
+// more than one product answers to needs a product ('choose-product',
+// answered by choice.productId).
+//
+// 'choose-product' is a guard, kept on purpose (AW-074). The bundled catalog
+// has no shared SKUs, and the unique index products_sku_upper_key stops new
+// ones once it exists. The guard covers:
+// - a live database where that index isn't created yet:
+//   20261010120000_admin_product_editor.sql skips creating it, with only a
+//   notice, while some SKU is used by more than one product;
+// - codes that reach two products in a way an index on the column can't
+//   catch: SKUs that differ only in spaces or hyphens read as one code
+//   (normalizeSku), and so do their variant codes (BASE-SUFFIX), and a code
+//   can match through SKU_ALIASES. On the live catalog before
+//   20261009120000_catalog_corrections.sql, 'AW-NOW-AND-LATER--' is both
+//   #36 (AW-NOW-AND-LATER) and #276 (still AW-NOW-AND-LATER-).
 export function resolveSkuLine(products, sku, choice = {}) {
   if (!normalizeSku(sku)) return { status: 'empty', code: '' };
   const active = products.filter((p) => p.active !== false);

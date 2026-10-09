@@ -55,6 +55,7 @@ describe('AccountPage Reorder with old SKUs', () => {
       { productId: 329, variant: null, qty: 5 },
       { productId: 367, variant: 'Watermelon', qty: 6 },
     ]);
-    expect(screen.getByRole('status').textContent).toBe('Added 6 lines (21 units) to your order.View order');
+    // Quick Reorder's count of lines that need attention is a status too (NEW-012).
+    expect(document.querySelector('.order-foot[role=status]').textContent).toBe('Added 6 lines (21 units) to your order.View order');
   });
 });
