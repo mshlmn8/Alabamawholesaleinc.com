@@ -391,7 +391,7 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
     expect(inHover('.editorial-card:hover img.bg')).toEqual({ opacity: '.36' });
     expect(inHover('.aw-menu-feature:hover')).toEqual({ background: 'var(--purple-hover)' });
     for (const s of ['.section-head > a:hover', '.aw-utility a:hover', '.sku-details summary:hover']) expect(inHover(s), s).toEqual({ color: 'var(--orange-dark)' });
-    expect(inHover('.variant-chips button:not(:disabled):not([aria-pressed="true"]):hover')).toEqual({ 'border-color': 'var(--purple)' });
+    expect(inHover('.variant-chips button:not(:disabled):not([aria-checked="true"]):hover')).toEqual({ 'border-color': 'var(--purple)' });
     expect(inHover('button.filter-signin:hover')).toEqual({ 'border-left-color': 'var(--purple)' });
     expect(inHover('button.filter-signin:hover span')).toEqual({ 'text-decoration-thickness': '2px' });
     // Keyboard focus underlines the card title too, outside the hover blocks.
@@ -408,7 +408,7 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
   it('gives tappable controls a pressed state outside the hover blocks that never hides the selected one', () => {
     const pressed = {
       '.sub-pill:not(.active):active': 'var(--paper)',
-      '.variant-chips button:not(:disabled):not([aria-pressed="true"]):active': 'var(--line)',
+      '.variant-chips button:not(:disabled):not([aria-checked="true"]):active': 'var(--line)',
       '.dept-jump a:active': 'var(--paper)',
       '.policy-nav a:active': 'var(--line)',
       '.menu-group a:active': 'var(--paper)',
@@ -426,7 +426,7 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
   it('shows the chosen variant, line, admin tab, policy page and hero slide dot in the system highlight in forced colours', () => {
     const forced = blocks.find((b) => b.prelude === '(forced-colors: active)');
     const selected = rules(forced.body).find((r) => r.selectors.includes('.sub-pill.active'));
-    expect(selected.selectors).toEqual(['.variant-chips button[aria-pressed="true"]', '.sub-pill.active', '.sub-pill[aria-current="page"]', 'nav.policy-nav a[aria-current="page"]',
+    expect(selected.selectors).toEqual(['.variant-chips button[aria-checked="true"]', '.sub-pill.active', '.sub-pill[aria-current="page"]', 'nav.policy-nav a[aria-current="page"]',
       '.home-carousel-dots [aria-current="true"] span']);
     expect(declarations(selected.body)).toEqual({ 'forced-color-adjust': 'none', background: 'Highlight', color: 'HighlightText', 'border-color': 'Highlight' });
     const ring = rules(forced.body).find((r) => r.selectors.includes('.sub-pill.active:focus-visible'));
@@ -663,7 +663,7 @@ describe('one field system (AW-146, AW-172, AW-147, AW-309)', () => {
   it('gives every field label one style', () => {
     const labels = ['.form-grid label', '.contact-grid dt', '.eligibility-form label', '.qr-field span', '.qr-choice span',
       '.category-sort', '.filter-search', '.doc-upload label', '.filter-panel legend', '.doc-uploads legend', '.order-edit-line label', '.account-note',
-      '.admin-toolbar label'];
+      '.admin-toolbar label', '.pd-variant-label'];
     const typography = { 'font-size': 'var(--text-xs)', 'font-weight': '700', 'letter-spacing': 'var(--track-label)', color: 'var(--purple)', 'text-transform': 'uppercase' };
     const shared = all.find((r) => r.selectors.includes('.doc-uploads legend') && declarations(r.body)['text-transform']);
     expect(shared.selectors).toEqual(labels);

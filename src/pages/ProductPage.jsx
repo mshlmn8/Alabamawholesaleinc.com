@@ -16,6 +16,13 @@
 // disabled chip that says so (AW-030). A product with one variant has no
 // chips; its variant shows as text when the name doesn't already say it.
 //
+// The chips are one required choice (AW-235): a radiogroup named by the
+// visible "Choose a flavor" above it, one radio per chip with a roving
+// tabindex, and the arrow keys, Home and End move to the next variant that
+// can be chosen and choose it. The add button stays enabled (AW-074): adding
+// before a choice shows "Select a flavor…" under the chips and puts focus on
+// the first variant that can be chosen.
+//
 // The quantity to add is typed or stepped (QuantityInput, AW-013), and
 // a bare cart line of this product (AW-011) doesn't count as "Already in"
 // any variant.
@@ -28,7 +35,7 @@
 // sell unit badged on a photo other rows share (AW-136), the Wikimedia credit
 // under the photo (AW-033), and no placeholder brand "Assorted" (AW-286).
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   informativeVariant, isVariantAvailable, lineKey, requiresVariantChoice, variantAxis, variantList, variantSku,
 } from '../lib/lines.js';
@@ -61,6 +68,7 @@ export function ProductPage({
   }
   const [chosenVariant, setChosenVariant] = useState(null);
   const [variantError, setVariantError] = useState(false);
+  const chipsRef = useRef(null);
   const p = products.find(x => Number(x.id) === Number(productId));
   // App renders NotFound for ids that are not in the catalog.
   if (!p) return null;
@@ -73,6 +81,9 @@ export function ProductPage({
   const chosen = chosenVariant && available(chosenVariant) ? chosenVariant : null;
   const selected = choiceRequired ? chosen : (variants.length === 1 ? variants[0] : null);
   const soleUnavailable = variants.length === 1 && !available(variants[0]);
+  const choosable = variants.filter(available);
+  // The chip Tab lands on: the chosen one, else the first that can be chosen.
+  const tabStop = selected || choosable[0] || null;
   const soleShown = soleUnavailable ? variants[0] : informativeVariant(p);
   const key = lineKey(p.id, selected);
   // Before a variant is chosen, the key is the bare product id: a bare cart
@@ -88,9 +99,32 @@ export function ProductPage({
       ? variantPriceRange(variants.filter(available).map(v => priceOf(p.id, v)))
       : { unit: priceOf(p.id, selected), from: false };
   }
+  const chipFor = (v) => chipsRef.current?.querySelectorAll('[role="radio"]')[variants.indexOf(v)] || null;
+  const choose = (v) => {
+    setChosenVariant(v);
+    setVariantError(false);
+  };
+  // Arrows move to the next (or previous) variant that can be chosen, round
+  // the ends; Home and End to the first and last. Each move chooses it, as in
+  // a group of radio buttons. Space and Enter are the chip's own click.
+  const STEPS = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
+  const onChipKeyDown = (e) => {
+    if (!(e.key in STEPS) && e.key !== 'Home' && e.key !== 'End') return;
+    if (choosable.length === 0) return;
+    e.preventDefault();
+    const radios = [...e.currentTarget.querySelectorAll('[role="radio"]')];
+    const from = Math.max(0, choosable.indexOf(variants[radios.indexOf(e.target)]));
+    let to = from + (STEPS[e.key] || 0);
+    if (e.key === 'Home') to = 0;
+    if (e.key === 'End') to = choosable.length - 1;
+    const next = choosable[(to + choosable.length) % choosable.length];
+    choose(next);
+    chipFor(next)?.focus();
+  };
   const handleAdd = () => {
     if (choiceRequired && !chosen) {
       setVariantError(true);
+      chipFor(choosable[0])?.focus();
       return;
     }
     if (soleUnavailable) return;
@@ -133,18 +167,21 @@ export function ProductPage({
           <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()}${brand ? ` from ${brand}` : ''}.`}</p>
           {p.sellUnit && <p className="pd-unit">{`Sold by the ${p.sellUnit} — quantity 1 is one ${p.sellUnit}.`}</p>}
           <p className="pd-desc pd-fine">{`SKU ${p.sku}. Supplied to licensed retail businesses for lawful resale. Next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
+          {choiceRequired && <p id="pd-variant-label" className="pd-variant-label">{`Choose a ${axis.noun}`}</p>}
           {choiceRequired && (
-            <div className="variant-chips" role="group" aria-label={`Choose a ${axis.noun}`}>
+            // eslint-disable-next-line jsx-a11y/interactive-supports-focus -- the radios inside take focus (roving tabindex); the group only hears their keys
+            <div className="variant-chips" role="radiogroup" ref={chipsRef} aria-labelledby="pd-variant-label" aria-required="true"
+                 aria-invalid={variantError || undefined} aria-describedby={variantError ? 'pd-variant-error' : undefined} onKeyDown={onChipKeyDown}>
               {variants.map(v => (
-                <button key={v} type="button" aria-pressed={selected === v} disabled={!available(v)} onClick={() => { setChosenVariant(v); setVariantError(false); }}>{available(v) ? v : `${v} (not available)`}</button>
+                <button key={v} type="button" role="radio" aria-checked={selected === v} tabIndex={v === tabStop ? 0 : -1} disabled={!available(v)} onClick={() => choose(v)}>{available(v) ? v : `${v} (not available)`}</button>
               ))}
             </div>
           )}
+          {variantError && <p id="pd-variant-error" className="form-error" role="alert">{`Select a ${axis.noun} before adding this product.`}</p>}
           {soleShown && <p className="pd-desc">{`${axis.label}: ${soleShown}${soleUnavailable ? ' (not available)' : ''}`}</p>}
           {choiceRequired && axis.label === 'Flavor' && <p className="in-cart-note">Flavors and availability change often. The trade desk confirms what is in stock.</p>}
-          {choiceRequired && <p className="in-cart-note">{`Pick a ${axis.noun} to add it. Add each ${axis.noun} you want separately.`}</p>}
+          {choiceRequired && <p className="in-cart-note">{`Add each ${axis.noun} you want separately.`}</p>}
           {savedQty > 0 && <p className="pd-saved">{`From your last visit: quantity ${savedQty}.${choiceRequired ? ` Choose a ${axis.noun}, then add it.` : ''}`}</p>}
-          {variantError && <p className="form-error" role="alert">{`Select a ${axis.noun} before adding this product.`}</p>}
           <div className="pd-price">
             {isApprovedBuyer
               ? <><b>{priceLabel(shown.unit, pricesStatus, { from: shown.from })}</b><span>{`Wholesale unit price · ${variantSku(p.sku, selected)}`}</span></>
@@ -155,7 +192,7 @@ export function ProductPage({
           <div className="qty-row">
             {/* Typed or stepped, 1 to 100,000 (AW-013). */}
             <QuantityInput value={desiredQty} onChange={setDesiredQty} min={1} label={`Quantity of ${p.name} to add`} groupLabel="Quantity to add" />
-            <button className="button" type="button" onClick={handleAdd} disabled={(choiceRequired && !chosen) || soleUnavailable}><span>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</span></button>
+            <button className="button" type="button" onClick={handleAdd} disabled={soleUnavailable || (choiceRequired && choosable.length === 0)}><span>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</span></button>
           </div>
           {qty > 0 && <p className="in-cart-note"><span>{`Already in ${isApprovedBuyer ? 'order' : 'quote'}: `}</span><strong>{qty}</strong><span>{selected ? ` · ${selected}` : ''}</span></p>}
           {!profile && (

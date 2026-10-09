@@ -22,9 +22,9 @@ describe('ProductPage prices', () => {
     const priceOf = (id, variant) => (variant === 'Red' ? 13.5 : 12.25);
     render(page({ profile: APPROVED, isApprovedBuyer: true, priceOf, pricesStatus: 'ready' }));
     expect(pd()).toBe('From $12.25Wholesale unit price · AW-SS');
-    fireEvent.click(screen.getByRole('button', { name: 'Red' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Red' }));
     expect(pd()).toBe('$13.50Wholesale unit price · AW-SS-RED');
-    fireEvent.click(screen.getByRole('button', { name: 'Diamond' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Diamond' }));
     expect(pd()).toBe('$12.25Wholesale unit price · AW-SS-DIAMOND');
   });
 
@@ -56,26 +56,26 @@ describe('ProductPage variants (AW-233, AW-128, AW-030)', () => {
 
   it('names the choice by the product’s axis, and shows the flavor note only for flavors', () => {
     const view = render(page({ products: [product({ variantAxis: 'Flavor' })] }));
-    expect(screen.getByRole('group', { name: 'Choose a flavor' })).toBeTruthy();
+    expect(screen.getByRole('radiogroup', { name: 'Choose a flavor' })).toBeTruthy();
     expect(note(FLAVOR_NOTE)).toBeTruthy();
-    expect(note('Pick a flavor to add it. Add each flavor you want separately.')).toBeTruthy();
+    expect(note('Add each flavor you want separately.')).toBeTruthy();
     expect(note(/Choose one variant/)).toBeNull();
     view.rerender(page({ products: [product({ variantAxis: 'Size' })] }));
-    expect(screen.getByRole('group', { name: 'Choose a size' })).toBeTruthy();
+    expect(screen.getByRole('radiogroup', { name: 'Choose a size' })).toBeTruthy();
     expect(note(FLAVOR_NOTE)).toBeNull();
-    expect(note('Pick a size to add it. Add each size you want separately.')).toBeTruthy();
+    expect(note('Add each size you want separately.')).toBeTruthy();
     view.rerender(page({ products: [product({ variantAxis: undefined })] }));
-    expect(screen.getByRole('group', { name: 'Choose a variant' })).toBeTruthy();
+    expect(screen.getByRole('radiogroup', { name: 'Choose a variant' })).toBeTruthy();
     expect(note(FLAVOR_NOTE)).toBeNull();
   });
 
   it('shows no chips for a single variant, and its label as text when the name doesn’t say it', () => {
     const view = render(page({ products: [product({ name: 'Garcia y Vega cigars', variants: ['Green'] })] }));
-    expect(screen.queryByRole('group', { name: /Choose/ })).toBeNull();
+    expect(screen.queryByRole('radiogroup')).toBeNull();
     expect(document.querySelector('.variant-chips')).toBeNull();
     expect(screen.getByText('Variety: Green')).toBeTruthy();
     expect(note(FLAVOR_NOTE)).toBeNull();
-    expect(note(/Pick a/)).toBeNull();
+    expect(note(/Add each/)).toBeNull();
     view.rerender(page({ products: [product({ name: 'RAW tips', variants: ['Tips'] })] }));
     expect(screen.queryByText(/Variety:/)).toBeNull();
     expect(document.querySelector('.variant-chips')).toBeNull();
@@ -98,13 +98,15 @@ describe('ProductPage variants (AW-233, AW-128, AW-030)', () => {
       addLine, profile: APPROVED, isApprovedBuyer: true, priceOf, pricesStatus: 'ready',
       products: [product({ variantAxis: 'Flavor', unavailableVariants: ['Red'] })],
     }));
-    const red = screen.getByRole('button', { name: 'Red (not available)' });
+    const red = screen.getByRole('radio', { name: 'Red (not available)' });
     expect(red.disabled).toBe(true);
-    expect(screen.getByRole('button', { name: 'Diamond' }).disabled).toBe(false);
+    expect(screen.getByRole('radio', { name: 'Diamond' }).disabled).toBe(false);
     expect(pd()).toBe('$12.25Wholesale unit price · AW-SS');
     fireEvent.click(red);
-    expect(screen.getByRole('button', { name: /Add to order/ }).disabled).toBe(true);
-    fireEvent.click(screen.getByRole('button', { name: 'Diamond' }));
+    expect(red.getAttribute('aria-checked')).toBe('false');
+    fireEvent.click(screen.getByRole('button', { name: /Add to order/ }));
+    expect(addLine).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('radio', { name: 'Diamond' }));
     fireEvent.click(screen.getByRole('button', { name: /Add to order/ }));
     expect(addLine).toHaveBeenCalledWith(1, 'Diamond', 1);
   });
@@ -127,13 +129,94 @@ describe('ProductPage variants (AW-233, AW-128, AW-030)', () => {
   });
 });
 
+// The chips are one required choice (AW-235), and adding before a choice says
+// so instead of a disabled button (AW-074).
+describe('ProductPage variant choice (AW-235, AW-074)', () => {
+  const FLAVORS = [{ ...P[0], variantAxis: 'Flavor', variants: ['Diamond', 'Red', 'Grape', 'Wine'], unavailableVariants: ['Diamond'] }];
+  const radio = (name) => screen.getByRole('radio', { name });
+  const tabStops = () => screen.getAllByRole('radio').filter((r) => r.tabIndex === 0).map((r) => r.textContent);
+  const press = (key) => fireEvent.keyDown(document.activeElement, { key });
+
+  it('is a required radiogroup named by the visible label, with one radio in the tab order', () => {
+    render(page({ products: FLAVORS }));
+    const group = screen.getByRole('radiogroup', { name: 'Choose a flavor' });
+    expect(group.getAttribute('aria-labelledby')).toBe('pd-variant-label');
+    expect(document.getElementById('pd-variant-label').textContent).toBe('Choose a flavor');
+    expect(group.getAttribute('aria-required')).toBe('true');
+    expect(group.getAttribute('aria-invalid')).toBeNull();
+    expect(screen.getAllByRole('radio').map((r) => [r.textContent, r.getAttribute('aria-checked'), r.disabled]))
+      .toEqual([['Diamond (not available)', 'false', true], ['Red', 'false', false], ['Grape', 'false', false], ['Wine', 'false', false]]);
+    // Before a choice the first variant that can be chosen takes Tab, then the chosen one.
+    expect(tabStops()).toEqual(['Red']);
+    fireEvent.click(radio('Grape'));
+    expect(radio('Grape').getAttribute('aria-checked')).toBe('true');
+    expect(radio('Red').getAttribute('aria-checked')).toBe('false');
+    expect(tabStops()).toEqual(['Grape']);
+  });
+
+  it('moves and chooses with the arrow keys, Home and End, past a variant that is not available', () => {
+    render(page({ products: FLAVORS }));
+    radio('Red').focus();
+    press('ArrowRight');
+    expect(document.activeElement).toBe(radio('Grape'));
+    expect(radio('Grape').getAttribute('aria-checked')).toBe('true');
+    press('ArrowDown');
+    expect(document.activeElement).toBe(radio('Wine'));
+    // Round the end, past "Diamond (not available)".
+    press('ArrowRight');
+    expect(document.activeElement).toBe(radio('Red'));
+    press('ArrowLeft');
+    expect(document.activeElement).toBe(radio('Wine'));
+    press('ArrowUp');
+    expect(document.activeElement).toBe(radio('Grape'));
+    press('Home');
+    expect(document.activeElement).toBe(radio('Red'));
+    expect(radio('Red').getAttribute('aria-checked')).toBe('true');
+    press('End');
+    expect(document.activeElement).toBe(radio('Wine'));
+    expect(screen.getAllByRole('radio').filter((r) => r.getAttribute('aria-checked') === 'true').map((r) => r.textContent)).toEqual(['Wine']);
+    expect(tabStops()).toEqual(['Wine']);
+  });
+
+  it('keeps the add button enabled; adding before a choice says so under the chips and focuses the first variant', () => {
+    const addLine = vi.fn();
+    render(page({ addLine, products: FLAVORS }));
+    const add = screen.getByRole('button', { name: /Add to quote/ });
+    expect(add.disabled).toBe(false);
+    add.focus();
+    fireEvent.click(add);
+    expect(addLine).not.toHaveBeenCalled();
+    const error = screen.getByRole('alert');
+    expect(error.textContent).toBe('Select a flavor before adding this product.');
+    expect(error.id).toBe('pd-variant-error');
+    expect(error.previousElementSibling.getAttribute('role')).toBe('radiogroup');
+    const group = screen.getByRole('radiogroup');
+    expect(group.getAttribute('aria-invalid')).toBe('true');
+    expect(group.getAttribute('aria-describedby')).toBe('pd-variant-error');
+    expect(document.activeElement).toBe(radio('Red'));
+    // Choosing clears the error.
+    press('ArrowRight');
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(group.getAttribute('aria-invalid')).toBeNull();
+    expect(group.getAttribute('aria-describedby')).toBeNull();
+    fireEvent.click(add);
+    expect(addLine).toHaveBeenCalledWith(1, 'Grape', 1);
+  });
+
+  it('disables the add button only when no variant can be chosen', () => {
+    render(page({ products: [{ ...FLAVORS[0], unavailableVariants: ['Diamond', 'Red', 'Grape', 'Wine'] }] }));
+    expect(screen.getByRole('button', { name: /Add to quote/ }).disabled).toBe(true);
+    expect(tabStops()).toEqual([]);
+  });
+});
+
 describe('ProductPage and a saved quantity', () => {
   it('fills in the saved quantity, then what is left of it after an add', () => {
     const addLine = vi.fn();
     const view = render(page({ savedQty: 3, addLine }));
     expect(qty()).toBe('3');
     expect(screen.getByText('From your last visit: quantity 3. Choose a variant, then add it.')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Red' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Red' }));
     fireEvent.click(screen.getByRole('button', { name: 'Decrease quantity' }));
     fireEvent.click(screen.getByRole('button', { name: /Add to quote/ }));
     expect(addLine).toHaveBeenCalledWith(1, 'Red', 2);
@@ -163,7 +246,7 @@ describe('ProductPage quantity (AW-013) and a bare cart line (AW-011)', () => {
     fireEvent.blur(input);
     expect(qty()).toBe('48');
     expect(screen.getByRole('button', { name: 'Decrease quantity' }).disabled).toBe(false);
-    fireEvent.click(screen.getByRole('button', { name: 'Red' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Red' }));
     fireEvent.click(screen.getByRole('button', { name: /Add to quote/ }));
     expect(addLine).toHaveBeenCalledWith(1, 'Red', 48);
     expect(qty()).toBe('1');
@@ -174,7 +257,7 @@ describe('ProductPage quantity (AW-013) and a bare cart line (AW-011)', () => {
     expect(screen.queryByText(/Already in/)).toBeNull();
     view.rerender(page({ cart: { 1: 12, '1::red': 3 } }));
     expect(screen.queryByText(/Already in/)).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Red' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Red' }));
     expect([...document.querySelectorAll('.in-cart-note')].map((n) => n.textContent)).toContain('Already in quote: 3 · Red');
   });
 });
@@ -196,7 +279,7 @@ describe('ProductPage add feedback', () => {
   it('names the quantity, the product and its variant, spoken once, and keeps focus on the button', () => {
     const addLine = vi.fn(() => ({ key: '1::red', qty: 3, capped: false }));
     render(page({ addLine }));
-    fireEvent.click(screen.getByRole('button', { name: 'Red' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Red' }));
     typeQty(3);
     const add = screen.getByRole('button', { name: /Add to quote/ });
     add.focus();
@@ -216,7 +299,7 @@ describe('ProductPage add feedback', () => {
   it('says what fits when the line reaches the 100,000 limit (AW-013)', () => {
     const addLine = vi.fn(() => ({ key: '1::red', qty: 100000, capped: true }));
     const view = render(page({ addLine, cart: { '1::red': 99990 } }));
-    fireEvent.click(screen.getByRole('button', { name: 'Red' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Red' }));
     typeQty(48);
     fireEvent.click(screen.getByRole('button', { name: /Add to quote/ }));
     expect(getToast().text).toBe('Added 10 × Swisher Sweets cigarillos — Red to your quote. The most per line is 100,000.');
@@ -234,7 +317,7 @@ describe('ProductPage add feedback', () => {
 
   it('keeps the "Already in" note plain text, not a live region', () => {
     render(page({ cart: { '1::red': 3 } }));
-    fireEvent.click(screen.getByRole('button', { name: 'Red' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Red' }));
     const note = [...document.querySelectorAll('.in-cart-note')].find((n) => /Already in/.test(n.textContent));
     expect(note.getAttribute('aria-live')).toBeNull();
     expect(note.getAttribute('role')).toBeNull();
