@@ -23,6 +23,7 @@ import { formatMoney } from '../../lib/format.js';
 import { productImage } from '../../lib/images.js';
 import { currentImageFile } from '../../data/catalogAliases.js';
 import { MISSING_FUNCTION_CODES } from '../../lib/pricing.js';
+import { variantCount } from '../../lib/lines.js';
 import { MAX_PRODUCT_QUERY, adminHref } from '../../lib/adminRoutes.js';
 import { Link, navigate } from '../../lib/router.js';
 import { Thumb } from '../../components/Thumb.jsx';
@@ -180,13 +181,16 @@ function RowPhoto({ img }) {
 }
 
 // The list's columns; those with a `sort` have a sort button in their header
-// (AW-115).
+// (AW-115). The SKU, which the search matches, and the number of variants
+// show too (AW-106).
 const COLUMNS = [
   { label: 'ID', sort: 'id' },
   { label: 'Photo' },
   { label: 'Name', sort: 'name' },
+  { label: 'SKU' },
   { label: 'Brand', sort: 'brand' },
   { label: 'Category' },
+  { label: 'Variants' },
   { label: 'Price', sort: 'price' },
   { label: 'Tag' },
   { label: 'Active' },
@@ -491,8 +495,10 @@ function ProductsList({
                     <td>{p.id}</td>
                     <td className="product-thumb-cell"><RowPhoto img={p.img} /></td>
                     <td>{p.name}</td>
+                    <td className="muted">{p.sku ? <code>{p.sku}</code> : <span>—</span>}</td>
                     <td>{p.brand}</td>
                     <td className="muted">{`${p.cat} / ${p.sub}`}</td>
+                    <td>{variantCount(p) || '—'}</td>
                     <td className="price">{p.price != null ? formatMoney(p.price) : 'On request'}</td>
                     <td>
                       {p.tag ? <span>{p.tag}</span> : <span>—</span>}

@@ -954,6 +954,8 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .aw-table th[aria-sort] .sort-button { color: var(--purple); }
 .sort-icon.is-ascending { transform: rotate(180deg); }
 .aw-table tr.inactive td { color: var(--muted); background: var(--surface-soft); }
+/* A product's SKU (AW-106): in the site's face, like the Quick Reorder help's. */
+.aw-table code { font: 600 var(--text-xs)/1.4 var(--body); color: var(--purple); }
 .admin-pill { display: inline-block; padding: 2px 8px; border: 1px solid var(--line); background: #fff; color: var(--muted); font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; white-space: nowrap; }
 .admin-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 16px; margin-top: 14px; }
 .admin-pager-text { margin: 0; font-size: var(--text-sm); color: var(--muted); }
