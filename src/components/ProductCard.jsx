@@ -98,8 +98,11 @@ export function cardDetail(p, options) {
   return joinParts(cardDetailParts(p, options));
 }
 
+// `sizes` is the photo's shown width (images.js SIZES): the rows of cards by
+// default; the department grid passes its own (AW-322).
 export function ProductCard({
   p, profile = null, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, showSku = true, eager = false, priority = false,
+  sizes = SIZES.card,
 }) {
   // Counts the adds since "Added" last went away; each add restarts its timer.
   const [adds, setAdds] = useState(0);
@@ -174,7 +177,7 @@ export function ProductCard({
   return (
     <article className="content-card" aria-labelledby={titleId}>
       <div className="card-block">
-        <ProductPhoto product={p} sizes={SIZES.card} priority={priority} loading={eager ? 'eager' : 'lazy'} />
+        <ProductPhoto product={p} sizes={sizes} priority={priority} loading={eager ? 'eager' : 'lazy'} />
         {/* TODO(owner): A correct photo for each product that shares a file with a different size or pack. (AW-136) */}
         {p.picture && p.sharedPhoto && badge && <span className="pack-badge">{badge}</span>}
       </div>

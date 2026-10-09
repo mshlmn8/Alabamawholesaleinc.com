@@ -203,17 +203,23 @@ describe('SIZES follow the card and product-page geometry (AW-322)', () => {
     pdNarrowGap: px(/@media \(max-width: 68\.75em\) \{[\s\S]*?\.pd-grid \{ gap: (\d+)px/),
   };
 
-  // The photo's widest shown size at a viewport width, from those numbers:
-  // the wider of a card in a row of four (or two) and one in the category
-  // grid (three, or two where three would be narrower than minCard).
-  const card = (vw, compact) => {
-    const chrome = 2 * (g.cardBorder + g.cardInset);
+  // The photo's shown size at a viewport width, from those numbers. A card
+  // in the category grid: three columns, or two where three would be
+  // narrower than minCard; the page wide in the compact layout, beside the
+  // filter column above it. `card` is the wider of that and a card in a row
+  // of four (or two): the widest card in any grid.
+  const chrome = 2 * (g.cardBorder + g.cardInset);
+  const columnsOf = (space, columns) => (space - (columns - 1) * g.gap) / columns - chrome;
+  const containerAt = (vw, compact) => (compact || vw <= 850 ? vw - g.compactMargin : Math.min(vw - g.margin, g.max));
+  const categoryCard = (vw, compact) => {
     if (vw <= 600) return (vw - g.compactMargin - g.phoneColumnGap) / 2 - chrome;
-    const width = (space, columns) => (space - (columns - 1) * g.gap) / columns - chrome;
-    const container = compact || vw <= 850 ? vw - g.compactMargin : Math.min(vw - g.margin, g.max);
-    const category = compact || vw <= 850 ? container : container - g.sidebar - g.sidebarGap;
-    const row = width(container, vw <= g.rowsOfTwo ? 2 : 4);
-    return Math.max(row, width(category, category >= 3 * g.minCard + 2 * g.gap ? 3 : 2));
+    const space = compact || vw <= 850 ? containerAt(vw, compact) : containerAt(vw, compact) - g.sidebar - g.sidebarGap;
+    return columnsOf(space, space >= 3 * g.minCard + 2 * g.gap ? 3 : 2);
+  };
+  const card = (vw, compact) => {
+    if (vw <= 600) return categoryCard(vw, compact);
+    const row = columnsOf(containerAt(vw, compact), vw <= g.rowsOfTwo ? 2 : 4);
+    return Math.max(row, categoryCard(vw, compact));
   };
   const detail = (vw, compact) => {
     const compactChrome = 2 * (g.pdBorder + g.pdCompactInset);
@@ -244,17 +250,35 @@ describe('SIZES follow the card and product-page geometry (AW-322)', () => {
   it('uses the short-landscape half of MOBILE_QUERY', () => {
     expect(shortLandscape).toBe('(hover: none) and (pointer: coarse) and (max-height: 31.25em)');
     expect(SIZES.card).toContain(shortLandscape);
+    expect(SIZES.categoryCard).toContain(shortLandscape);
     expect(SIZES.detail).toContain(shortLandscape);
   });
 
-  it.each([320, 360, 390, 412, 430, 600, 601, 679, 680, 768, 820, 850, 851, 900, 936, 937, 965, 966, 1000, 1024, 1056, 1057, 1100, 1101, 1280, 1344, 1345, 1440, 1920])('matches the CSS at %ipx', (vw) => {
+  it.each([320, 360, 390, 412, 430, 600, 601, 640, 679, 680, 700, 768, 800, 820, 850, 851, 900, 936, 937, 965, 966, 1000, 1024, 1056, 1057, 1100, 1101, 1280, 1344, 1345, 1440, 1920])('matches the CSS at %ipx', (vw) => {
     expect(evaluate(SIZES.card, vw, false)).toBeCloseTo(card(vw, false), 5);
+    expect(evaluate(SIZES.categoryCard, vw, false)).toBeCloseTo(categoryCard(vw, false), 5);
     expect(evaluate(SIZES.detail, vw, false)).toBeCloseTo(detail(vw, false), 5);
   });
 
-  it.each([667, 740, 844, 932])('matches the compact layout on a %ipx-wide phone held sideways', (vw) => {
+  it.each([667, 740, 844, 896, 932])('matches the compact layout on a %ipx-wide phone held sideways', (vw) => {
     expect(evaluate(SIZES.card, vw, true)).toBeCloseTo(card(vw, true), 5);
+    expect(evaluate(SIZES.categoryCard, vw, true)).toBeCloseTo(categoryCard(vw, true), 5);
     expect(evaluate(SIZES.detail, vw, true)).toBeCloseTo(detail(vw, true), 5);
+  });
+
+  // AW-322: from 680 to 850px the department grid is three across, the
+  // rows of cards two; the grid used to ask for the row's card, 1.5 to 2
+  // times its own.
+  it('asks the department grid for its own cards: three across from 680 to 850px', () => {
+    expect(categoryCard(679, false)).toBeGreaterThan(categoryCard(680, false) * 1.5);
+    for (const vw of [680, 768, 850]) {
+      expect(evaluate(SIZES.categoryCard, vw, false)).toBeCloseTo((vw - 170) / 3, 5);
+      expect(evaluate(SIZES.card, vw, false) / evaluate(SIZES.categoryCard, vw, false)).toBeGreaterThan(1.4);
+    }
+    // At 768 on a 2x screen: about 400 device px, so the 480 rendition, not the 1024 one.
+    expect(evaluate(SIZES.categoryCard, 768, false) * 2).toBeLessThanOrEqual(480);
+    // The same everywhere the grid matches a row of cards.
+    for (const vw of [390, 600, 851, 1000, 1440]) expect(evaluate(SIZES.categoryCard, vw, false)).toBeCloseTo(categoryCard(vw, false), 5);
   });
 
   it('asks a 390px phone for about 141px cards, so 2x screens take the 320 rendition and 3x the 480', () => {

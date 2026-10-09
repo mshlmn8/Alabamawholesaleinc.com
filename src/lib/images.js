@@ -161,6 +161,17 @@ export function zoomSizes(width) {
 //   to 66em      rows of four: (100vw − 64 − 72) / 4 − 30 = (100vw − 256px) / 4
 //   desktop      category in three: (100vw − 64 − 254 − 48) / 3 − 30 = (100vw − 456px) / 3
 //   max          (1280 − 254 − 48) / 3 − 30        = 296px
+// categoryCard: the department grid's own card (AW-322), which in the compact
+// layout is the page wide with no filter column: two columns up to 42.4375em
+// (679px), three from 42.5em (680px), where three 200px cards and their two
+// 24px gaps first fit in 100vw − 32. The value above is the rows-of-two card
+// there, 1.5 to 2 times as wide. Wider, the category values above.
+//   phone        (100vw − 32 − 16) / 2 − 30        = (100vw − 108px) / 2
+//   to 679px     (100vw − 32 − 24) / 2 − 30        = (100vw − 116px) / 2
+//   compact      (100vw − 32 − 48) / 3 − 30        = (100vw − 170px) / 3
+//                (a phone held sideways follows the widths up to 850px, and
+//                is three across beyond)
+//   to 965px     (100vw − 402px) / 2, then (100vw − 456px) / 3, then 296px
 // detail: .pd-media minus its 1px borders and the img's 34px inset (20px in
 // the compact layout). One column in the compact layout, except a phone held
 // sideways, whose photo takes 2 of 5 parts beside the name and price (AW-150);
@@ -175,6 +186,7 @@ export function zoomSizes(width) {
 const SHORT_LANDSCAPE = '(hover: none) and (pointer: coarse) and (max-height: 31.25em)';
 export const SIZES = {
   card: `(max-width: 37.5em) calc((100vw - 108px) / 2), (max-width: 53.125em) calc((100vw - 116px) / 2), ${SHORT_LANDSCAPE} calc((100vw - 116px) / 2), (max-width: 58.5em) calc((100vw - 148px) / 2), (max-width: 60.3125em) calc((100vw - 402px) / 2), (max-width: 66em) calc((100vw - 256px) / 4), (max-width: 84em) calc((100vw - 456px) / 3), 296px`,
+  categoryCard: `(max-width: 37.5em) calc((100vw - 108px) / 2), (max-width: 42.4375em) calc((100vw - 116px) / 2), (max-width: 53.125em) calc((100vw - 170px) / 3), ${SHORT_LANDSCAPE} calc((100vw - 170px) / 3), (max-width: 60.3125em) calc((100vw - 402px) / 2), (max-width: 84em) calc((100vw - 456px) / 3), 296px`,
   detail: `${SHORT_LANDSCAPE} calc((100vw - 163px) * 2 / 5), (max-width: 53.125em) calc(100vw - 74px), (max-width: 68.75em) calc((100vw - 230px) / 2), (max-width: 84em) calc((100vw - 244px) / 2), 550px`,
   editorial: '(max-width: 37.5em) 100vw, (max-width: 84em) 50vw, 628px',
 };

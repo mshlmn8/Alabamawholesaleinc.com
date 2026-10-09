@@ -3,6 +3,7 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { navigate, resolveRoute, useRoute } from '../lib/router.js';
+import { SIZES } from '../lib/images.js';
 import { brandOptions, CategoryPage, centredScrollLeft } from './CategoryPage.jsx';
 
 const products = [
@@ -162,6 +163,11 @@ describe('CategoryPage', () => {
     const imgs = [...document.querySelectorAll('.category-card-grid .card-block img')];
     expect(imgs.map((img) => img.getAttribute('loading'))).toEqual(['eager', 'eager', 'eager', 'lazy', 'lazy']);
     expect(imgs.map((img) => img.getAttribute('fetchpriority'))).toEqual(['high', null, null, null, null]);
+    // The grid's own photo width (AW-322), on the WebP sources and the JPEG fallback.
+    const sources = [...document.querySelectorAll('.category-card-grid .card-block source')];
+    expect(sources).toHaveLength(5);
+    for (const el of [...imgs, ...sources]) expect(el.getAttribute('sizes')).toBe(SIZES.categoryCard);
+    expect(SIZES.categoryCard).not.toBe(SIZES.card);
   });
 
   it('sorts Featured by homepage rank, then tag, then photo, then id, without lifting restricted lines (AW-227)', () => {

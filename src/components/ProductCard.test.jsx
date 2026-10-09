@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { announce } from '../lib/announce.js';
 import { dismissToast, getToast } from '../lib/toast.js';
+import { SIZES } from '../lib/images.js';
 import { ProductCard, cardDetail, cardDetailParts } from './ProductCard.jsx';
 
 vi.mock('../lib/announce.js', async (importOriginal) => ({ ...(await importOriginal()), announce: vi.fn() }));
@@ -133,6 +134,15 @@ describe('ProductCard', () => {
     expect(document.querySelector('.pack-badge')).toBeNull();
     view.rerender(card({ ...base, variants: [], picture, sharedPhoto: true, sellUnit: '' }));
     expect(document.querySelector('.pack-badge')).toBeNull();
+  });
+
+  it('asks for the photo at the rows’ card width, or the width its grid passes (AW-322)', () => {
+    const picture = { src: '/x.jpg', srcSet: '/x-320.jpg 320w', webpSrcSet: '/x-320.webp 320w', width: 320, height: 320 };
+    const view = render(card({ ...base, variants: [], picture }));
+    const sizes = () => [...document.querySelectorAll('.card-block :is(img, source)')].map((el) => el.getAttribute('sizes'));
+    expect(sizes()).toEqual([SIZES.card, SIZES.card]);
+    view.rerender(card({ ...base, variants: [], picture }, { sizes: SIZES.categoryCard }));
+    expect(sizes()).toEqual([SIZES.categoryCard, SIZES.categoryCard]);
   });
 
   it('badges a shared photo with the size word in the name when there is no sell unit, and calls it representative (AW-136)', () => {
