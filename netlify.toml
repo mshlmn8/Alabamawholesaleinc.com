@@ -17,8 +17,7 @@
 # kept for a year (the "/assets/*" and "/img/*" Cache-Control below) and fail
 # as a script. Netlify serves a file that exists before any redirect rule
 # (rules don't force unless `force = true`), so these only answer for
-# missing files. They must stay above the "/*" rule, which answers every
-# other path.
+# missing files. They must stay above the page rewrites and the "/*" rule.
 [[redirects]]
   from = "/assets/*"
   to = "/404.html"
@@ -29,10 +28,105 @@
   to = "/404.html"
   status = 404
 
+# The app's page paths (src/lib/routes.js, PATH_SECTIONS) are answered with
+# index.html and status 200; the app then shows the page. Any other path
+# gets index.html too, so the app can show its "Page not found" with a
+# search box and the departments, but with status 404 (NEW-088): crawlers,
+# link checkers and Search Console see a mistyped or retired link as broken
+# instead of as a page. Netlify compares paths with or without a trailing
+# slash alike. A new route needs its rule here, above "/*", or it is a 404:
+# scripts/netlify-redirects.test.mjs checks every page path against these
+# rules, and `vite preview` answers with the same statuses.
+[[redirects]]
+  from = "/"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/index.html"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/catalog"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/category/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/product/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/search"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/quote"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/account"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/contact"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/delivery"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/shipping"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/privacy"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/terms"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/apply"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/reset-password"
+  to = "/index.html"
+  status = 200
+
+# Last: every other path is not a page.
 [[redirects]]
   from = "/*"
   to = "/index.html"
-  status = 200
+  status = 404
 
 # Response headers (AW-205, AW-182). NETLIFY-DEPLOY.md, "Headers and caching",
 # explains each one. scripts/netlify-headers.mjs reads these rules, so keep

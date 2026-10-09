@@ -18,6 +18,12 @@
 // ('DRINKS & BAGS' -> drinks-and-bags). Any spelling that slugs the same way
 // (/category/TOBACCO, /category/DRINKS%20%26%20BAGS) resolves and is
 // redirected to the canonical slug.
+//
+// Adding a route touches: PATH_SECTIONS and parseUrl, pathFor, meta.js
+// pageText, App's renderRoute switch, NOINDEX_PAGES, scripts/build-sitemap.mjs
+// and netlify.toml, whose rewrites answer each page path with index.html and
+// every other path with a 404 (NEW-088). scripts/netlify-redirects.test.mjs
+// fails until a new path has its rewrite.
 
 // The admin sections' URLs are in ./adminRoutes.js.
 import { adminHref, adminPath, parseAdminPath } from './adminRoutes.js';
@@ -45,6 +51,10 @@ export function siteUrl(value) {
 export const SUPPORT_PAGES = ['catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply', 'reset-password'];
 // Pages that take no parameters.
 const SIMPLE_PAGES = ['quote', 'account', 'admin', ...SUPPORT_PAGES];
+// Every first path segment parseUrl answers ('/' and '/index.html' are the
+// home page). Any other is not found, here and on Netlify (NEW-088), so a new
+// section goes in this list or it never resolves.
+export const PATH_SECTIONS = ['product', 'category', 'search', ...SIMPLE_PAGES];
 
 // Kept out of search engines (robots noindex) and out of the sitemap.
 export const NOINDEX_PAGES = ['quote', 'account', 'admin', 'reset-password', 'search', 'not-found'];
@@ -134,6 +144,7 @@ export function parseUrl({ pathname = '/', search = '' } = {}) {
   if (!first) return { page: 'home' };
   const section = first.toLowerCase();
   if (section === 'index.html' && rest.length === 0) return { page: 'home' };
+  if (!PATH_SECTIONS.includes(section)) return { page: 'not-found' };
   if (section === 'product') return rest.length === 1 ? { page: 'product', id: rest[0] } : { page: 'not-found', kind: rest.length ? 'page' : 'product' };
   if (section === 'category') {
     if (rest.length === 1 || rest.length === 2) {

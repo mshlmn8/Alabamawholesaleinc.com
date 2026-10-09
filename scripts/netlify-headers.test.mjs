@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { cspProblems, inlineScriptHashes, parseCsp, pathHeaders, previewHeaders, readNetlifyHeaders } from './netlify-headers.mjs';
+import { cspProblems, inlineScriptHashes, parseCsp, pathHeaders, previewHeaders, readNetlifyHeaders, readNetlifyRedirects } from './netlify-headers.mjs';
 
 // Vitest runs from the repository root.
 const ROOT = process.cwd();
@@ -96,7 +96,7 @@ describe('pathHeaders (NEW-006)', () => {
     // No CORS middleware, so no 'Vary: Origin' keeps a fetched-ahead file
     // from serving its import().
     expect(config.preview.cors).toBe(false);
-    expect(config.plugins.map((p) => p?.name)).toEqual(expect.arrayContaining(['aw-chunk-urls', 'aw-preview-path-headers']));
+    expect(config.plugins.map((p) => p?.name)).toEqual(expect.arrayContaining(['aw-chunk-urls', 'aw-preview-path-headers', 'aw-preview-redirects']));
   });
 });
 
@@ -210,22 +210,17 @@ describe('caching (AW-182)', () => {
 });
 
 describe('missing code and photo files (AW-179)', () => {
-  // The [[redirects]] rules of netlify.toml, in file order.
-  const redirects = toml.split(/^\[\[redirects\]\]\s*$/m).slice(1).map((block) => {
-    const body = block.split(/^\[/m)[0];
-    const value = (key) => new RegExp(`^\\s*${key}\\s*=\\s*"?([^"\\n]*)"?\\s*$`, 'm').exec(body)?.[1] ?? null;
-    return { from: value('from'), to: value('to'), status: Number(value('status')), force: value('force') };
-  });
+  // The [[redirects]] rules of netlify.toml, in file order
+  // (scripts/netlify-redirects.test.mjs checks the page rewrites).
+  const redirects = readNetlifyRedirects(toml);
   const at = (from) => redirects.findIndex((r) => r.from === from);
 
-  it('answers a missing /assets or /img file with a real 404, above the "/*" page rewrite', () => {
-    const spa = at('/*');
-    expect(redirects[spa]).toMatchObject({ to: '/index.html', status: 200, force: null });
-    for (const from of ['/assets/*', '/img/*']) {
+  it('answers a missing /assets or /img file with a real 404, above every other rule', () => {
+    for (const [i, from] of ['/assets/*', '/img/*'].entries()) {
       // Not forced: Netlify serves a file that exists before any rule, so
       // only a missing (old) file reaches this one.
-      expect(redirects[at(from)]).toEqual({ from, to: '/404.html', status: 404, force: null });
-      expect([from, at(from) < spa]).toEqual([from, true]);
+      expect(redirects[at(from)]).toEqual({ from, to: '/404.html', status: 404, force: false });
+      expect([from, at(from)]).toEqual([from, i]);
     }
   });
 

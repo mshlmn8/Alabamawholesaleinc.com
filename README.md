@@ -6,7 +6,7 @@ Every page uses the 2A editorial system: Barlow Condensed and DM Sans (bundled i
 
 ## Pages
 
-Every page has a real path URL (History API router, `src/lib/router.js` and `src/lib/routes.js`). Netlify serves `index.html` for every path (`netlify.toml`), and old `#/…` links redirect to their path.
+Every page has a real path URL (History API router, `src/lib/router.js` and `src/lib/routes.js`). Netlify serves `index.html` for every page path (`netlify.toml`), and any other path with status 404 (NETLIFY-DEPLOY.md, "Page paths and 404s"); old `#/…` links redirect to their path.
 
 | Route | Page |
 | ----- | ---- |
@@ -20,7 +20,7 @@ Every page has a real path URL (History API router, `src/lib/router.js` and `src
 | `/admin`, `/admin/orders`, `/admin/accounts`, `/admin/products`, `/admin/pricing` | Admin back office: orders (`/admin/orders/<id>/print` for the pick list or packing slip), accounts (`/admin/accounts/<id>`), products (`/admin/products/<id>`, `/admin/products/new`) and pricing tiers. Filters that name no person live in the query string (`src/lib/adminRoutes.js`) |
 | `/contact`, `/delivery`, `/shipping`, `/privacy`, `/terms`, `/apply`, `/reset-password` | Support pages |
 
-Any other address shows a not-found page with a catalog search and the departments (marked `noindex`). Department and line segments are slugs of the catalog names; other spellings (`/category/TOBACCO`) redirect to the canonical one. `npm run build` also writes `dist/sitemap.xml` from the catalog (`scripts/build-sitemap.mjs`).
+Any other address shows a not-found page with a catalog search and the departments (marked `noindex`), served with status 404 when no page has that path (NEW-088). Department and line segments are slugs of the catalog names; other spellings (`/category/TOBACCO`) redirect to the canonical one. `npm run build` also writes `dist/sitemap.xml` from the catalog (`scripts/build-sitemap.mjs`).
 
 Also on the storefront:
 

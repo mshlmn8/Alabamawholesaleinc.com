@@ -4,7 +4,7 @@ import { PRODUCTS } from '../data/products.js';
 import { departmentsFor } from './departments.js';
 import {
   categoryQueryString, hrefFor, legacyHashTarget, pageKeyFor, parseCategoryQuery, parseUrl, pathFor,
-  resolveRoute, routeKey, siteUrl, slugify, DEFAULT_SITE_URL, EMPTY_CATEGORY_QUERY, SORTS,
+  resolveRoute, routeKey, siteUrl, slugify, DEFAULT_SITE_URL, EMPTY_CATEGORY_QUERY, PATH_SECTIONS, SORTS,
 } from './routes.js';
 
 const departments = departmentsFor(PRODUCTS);
@@ -58,6 +58,13 @@ describe('parseUrl', () => {
     expect(parseUrl({ pathname: '/product/%E0%A4%A' })).toEqual({ page: 'not-found' });
     expect(parseUrl({ pathname: '/category/DRINKS%20%26%20BAGS/Bags%20%2' })).toEqual({ page: 'not-found' });
     expect(() => parseUrl({ pathname: '/category/x', search: '?q=%E0%A4%A' })).not.toThrow();
+  });
+
+  it('answers only the first segments in PATH_SECTIONS, the paths netlify.toml rewrites (NEW-088)', () => {
+    expect(PATH_SECTIONS).toEqual(['product', 'category', 'search', 'quote', 'account', 'admin', 'catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply', 'reset-password']);
+    for (const section of ['products', 'categories', 'home', 'index', 'cart', '404', 'sitemap.xml']) {
+      expect([section, parseUrl({ pathname: `/${section}` })]).toEqual([section, { page: 'not-found' }]);
+    }
   });
 
   it('sends unknown or incomplete addresses to not-found', () => {

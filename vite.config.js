@@ -5,7 +5,7 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { backendEnvError } from './scripts/build-env.mjs';
 import { chunkUrlsPlugin } from './scripts/chunk-urls.mjs';
-import { pathHeaders, previewHeaders, readNetlifyHeaders } from './scripts/netlify-headers.mjs';
+import { netlifyResponse, pathHeaders, previewHeaders, readNetlifyHeaders, readNetlifyRedirects } from './scripts/netlify-headers.mjs';
 
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
 
@@ -35,6 +35,40 @@ function previewPathHeaders() {
   };
 }
 
+// `vite preview` answers with the statuses of netlify.toml's [[redirects]]
+// (NEW-088): a path that is neither a file in dist nor one of the app's page
+// paths gets index.html (or a missing /assets or /img file, 404.html) with
+// status 404, as on Netlify, instead of Vite's index.html with 200. Files and
+// the page paths are left to Vite, which serves them as Netlify does
+// (/product/61 -> product/61.html, any page path -> index.html).
+function previewRedirects() {
+  return {
+    name: 'aw-preview-redirects',
+    configurePreviewServer(server) {
+      const redirects = readNetlifyRedirects(readFileSync(path.join(ROOT, 'netlify.toml'), 'utf8'));
+      const dist = path.resolve(ROOT, server.config.build.outDir);
+      const inDist = (p) => {
+        const file = path.join(dist, p);
+        return file.startsWith(dist + path.sep) && existsSync(file) && statSync(file).isFile() ? file : null;
+      };
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+        let pathname = '/';
+        try { pathname = decodeURIComponent(new URL(req.url, 'http://preview.local').pathname); } catch { return next(); }
+        const answer = netlifyResponse(pathname, { redirects, hasFile: (p) => !!inDist(p) });
+        if (answer.status !== 404) return next();
+        const file = answer.to && inDist(answer.to);
+        if (!file) return next();
+        res.statusCode = 404;
+        for (const [name, value] of Object.entries(server.config.preview.headers || {})) res.setHeader(name, value);
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.end(req.method === 'HEAD' ? undefined : readFileSync(file));
+      });
+    }
+  };
+}
+
 export default defineConfig(({ command, mode }) => {
   // Production builds must carry the Supabase settings (AW-053). Dev servers,
   // tests and non-production modes still run without them.
@@ -46,7 +80,7 @@ export default defineConfig(({ command, mode }) => {
   return {
     // chunkUrlsPlugin (build only): the files src/lib/chunks.js fetches
     // ahead, written into the built code (NEW-006).
-    plugins: [react(), chunkUrlsPlugin(), previewPathHeaders()],
+    plugins: [react(), chunkUrlsPlugin(), previewPathHeaders(), previewRedirects()],
     server: {
       port: 3000,
       // CI and Playwright runs must not try to open a browser (preview.open

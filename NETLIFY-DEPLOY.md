@@ -21,16 +21,43 @@ deploy → Continuous deployment**):
   version fails instead of warning.
 
 `netlify.toml` also sets `NPM_FLAGS = "--no-fund"` (npm audit stays on) and the
-`/* → /index.html` fallback the single-page app needs: every page has a path
-URL (`/product/12`, `/category/tobacco`), and loading or reloading one must
-serve `index.html`. Keep that rule, below the two rules that answer a missing
-`/assets` or `/img` file with a 404 ("Headers and caching"). `npm run build`
-also writes `dist/sitemap.xml` from the catalog; `public/robots.txt` points at
-it.
+rewrites the single-page app needs ("Page paths and 404s" below). `npm run
+build` also writes `dist/sitemap.xml` from the catalog; `public/robots.txt`
+points at it.
 
 Optional: `VITE_SITE_URL` sets the public origin used for canonical links,
 share tags and the sitemap. It defaults to `https://alabamawholesaleinc.com`;
 set it only if the site moves to another domain.
+
+## Page paths and 404s
+
+Every page has a path URL (`/product/12`, `/category/tobacco`, `/contact`),
+and loading or reloading one must serve `index.html`, which starts the app.
+`netlify.toml`'s `[[redirects]]` do this in three groups, in this order
+(NEW-088):
+
+1. A missing file under `/assets` or `/img` gets `public/404.html` with
+   status 404 ("Headers and caching").
+2. Each page path of the app gets `index.html` with status 200: `/`,
+   `/index.html`, `/catalog`, `/category/*`, `/product/*`, `/search`,
+   `/quote`, `/account`, `/admin`, `/admin/*`, `/contact`, `/delivery`,
+   `/shipping`, `/privacy`, `/terms`, `/apply` and `/reset-password`.
+3. Last, `/*` gets `index.html` with status **404**. The visitor still sees
+   the app's "Page not found" page, with a search box and the departments,
+   but a mistyped or retired link is a real 404 for search engines, link
+   checkers and Search Console instead of a page that only says so.
+
+Netlify serves a file that exists in the deploy before any of these rules
+(none is forced), and matches a path with or without a trailing slash alike.
+Its documentation calls rule paths case-sensitive, so `/CONTACT` is a 404
+that still shows the contact page (the app reads page names in any case);
+nothing links to such a spelling, as the old `#/` links all load `/`.
+
+A new page path needs its rule in group 2. Without it the page still works
+for visitors but is a 404 for crawlers: `scripts/netlify-redirects.test.mjs`
+fails until the rule is there (it walks `PATH_SECTIONS` in
+`src/lib/routes.js`). `npm run preview` and the Playwright smoke tests answer
+with the same statuses (`aw-preview-redirects` in `vite.config.js`).
 
 ## Build cache for photos
 
@@ -93,7 +120,7 @@ Caching:
   Netlify default.
 - A file under `/assets/*` or `/img/*` that isn't in the deploy gets a real
   404 (`public/404.html`, a static page with no script) instead of
-  `index.html`. Two `[[redirects]]` rules above the `/*` page rewrite do this.
+  `index.html`. Two `[[redirects]]` rules above the page rewrites do this.
   They aren't forced, and Netlify serves a file that exists before any rule,
   so they only answer for missing files. This matters after a deploy: the
   account, admin, quote and support pages and the sign-in dialog are separate
@@ -101,7 +128,7 @@ Caching:
   last version asks for their old names. With a 404 the page says it didn't
   load and offers Reload; `index.html` sent under that name would fail as a
   script and, under the `/assets/*` rule above, be kept for a year. Keep both
-  rules above `/*`: `scripts/netlify-headers.test.mjs` checks the order.
+  rules first: `scripts/netlify-headers.test.mjs` checks the order.
 
 When you change something:
 

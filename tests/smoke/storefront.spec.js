@@ -179,15 +179,21 @@ test.describe('after age confirmation', () => {
     expect(errors).toEqual([]);
   });
 
-  test('unknown and malformed addresses show a helpful not-found page', async ({ page }) => {
+  // `vite preview` answers with netlify.toml's statuses (NEW-088): a path
+  // that is not one of the app's pages is a real 404, and still shows the
+  // app's not-found page.
+  test('unknown and malformed addresses show a helpful not-found page, as a 404 when no page has that path', async ({ page }) => {
     const errors = trackErrors(page);
-    for (const [path, heading] of [
-      ['/no-such-page', 'Page not found'],
-      ['/product/99999', 'Product not found'],
-      ['/category/nope', 'Department not found'],
-      ['/category/tobacco/no-such-line', 'Product line not found'],
+    const missing = new Set();
+    for (const [path, heading, status] of [
+      ['/no-such-page', 'Page not found', 404],
+      ['/product/99999', 'Product not found', 200],
+      ['/category/nope', 'Department not found', 200],
+      ['/category/tobacco/no-such-line', 'Product line not found', 200],
     ]) {
-      await page.goto(path);
+      const response = await page.goto(path);
+      expect([path, response.status()]).toEqual([path, status]);
+      if (status === 404) missing.add(`HTTP 404 ${response.url()}`);
       await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
       await expect(page.getByRole('searchbox', { name: 'Product, brand or SKU' })).toBeVisible();
@@ -199,7 +205,9 @@ test.describe('after age confirmation', () => {
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
     await expect(page.getByRole('heading', { level: 1, name: 'Page not found' })).toBeVisible();
-    expect(errors).toEqual([]);
+    // The browser reports each 404 page it loads; those are the point here.
+    expect(errors.filter((e) => !missing.has(e) && !/^console: Failed to load resource: the server responded with a status of 404/.test(e))).toEqual([]);
+    expect(errors.filter((e) => missing.has(e))).toHaveLength(missing.size);
   });
 
   test('links open pages in the app: focus on the h1, announced, top of the page', async ({ page }) => {

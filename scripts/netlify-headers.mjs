@@ -9,7 +9,12 @@
 //   adds for files that exist, so the browser caches the built files as it
 //   does from Netlify (NEW-006);
 // - cspProblems(csp, hashes): what scripts/check-headers.mjs and the unit
-//   tests refuse in the policy.
+//   tests refuse in the policy;
+// - readNetlifyRedirects(toml): the [[redirects]] rules, in file order;
+// - netlifyResponse(pathname, { redirects, hasFile }): what Netlify answers
+//   for a path, a file or the first matching rule (NEW-088). `vite preview`
+//   uses it to send the same 404s, and scripts/netlify-redirects.test.mjs to
+//   check that every page path of the app is answered with index.html.
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -185,4 +190,98 @@ export function pathHeaders(rules, pathname) {
     if (matches) Object.assign(out, rule.values);
   }
   return out;
+}
+
+// The value of a [[redirects]] key: a "double-quoted" string, an integer
+// status or a true/false force.
+const REDIRECT_KEYS = {
+  from: (raw, lineNo) => unquote(raw, lineNo),
+  to: (raw, lineNo) => unquote(raw, lineNo),
+  status: (raw, lineNo) => {
+    const m = /^(\d{3})\s*(?:#.*)?$/.exec(raw);
+    if (!m) throw new Error(`netlify.toml line ${lineNo}: status must be a number such as 200 or 404`);
+    return Number(m[1]);
+  },
+  force: (raw, lineNo) => {
+    const m = /^(true|false)\s*(?:#.*)?$/.exec(raw);
+    if (!m) throw new Error(`netlify.toml line ${lineNo}: force must be true or false`);
+    return m[1] === 'true';
+  },
+};
+
+/**
+ * The [[redirects]] rules of a netlify.toml, in file order. Only the keys
+ * the site uses (from, to, status, force) are read; any other key inside a
+ * rule throws, so netlifyResponse() never answers for a rule it half read.
+ * @param {string} tomlText
+ * @returns {{ from: string, to: string, status: number, force: boolean }[]}
+ */
+export function readNetlifyRedirects(tomlText) {
+  const rules = [];
+  let rule = null;
+  const close = (lineNo) => {
+    if (rule && (!rule.from || !rule.to)) throw new Error(`netlify.toml line ${lineNo}: a [[redirects]] rule needs from = "…" and to = "…"`);
+    rule = null;
+  };
+  const lines = String(tomlText).split(/\r?\n/);
+  lines.forEach((text, i) => {
+    const lineNo = i + 1;
+    const line = text.trim();
+    if (!line || line.startsWith('#')) return;
+    if (line.startsWith('[')) {
+      close(lineNo);
+      const table = line.replace(/\s*#.*$/, '');
+      if (table === '[[redirects]]') {
+        rule = { from: null, to: null, status: 301, force: false };
+        rules.push(rule);
+      } else if (/^\[\[?redirects[.\]]/.test(table)) {
+        throw new Error(`netlify.toml line ${lineNo}: unsupported redirects table ${table}`);
+      }
+      return;
+    }
+    if (!rule) return;
+    const m = /^([A-Za-z]+)\s*=\s*(.*)$/.exec(line);
+    if (!m || !REDIRECT_KEYS[m[1]]) throw new Error(`netlify.toml line ${lineNo}: a [[redirects]] rule takes only from, to, status and force`);
+    rule[m[1]] = REDIRECT_KEYS[m[1]](m[2], lineNo);
+  });
+  close(lines.length);
+  return rules;
+}
+
+// Whether a rule's `from` matches a path: '/*' matches every path, '/x/*'
+// matches /x and anything under it, any other `from` only itself. Netlify
+// matches paths with or without a trailing slash alike.
+function ruleMatches(from, path) {
+  if (from === '/*') return true;
+  if (from.endsWith('/*')) {
+    const prefix = from.slice(0, -2);
+    return path === prefix || path.startsWith(`${prefix}/`);
+  }
+  return path === (from.length > 1 ? from.replace(/\/+$/, '') : from);
+}
+
+/**
+ * What Netlify answers for `pathname` (NEW-088): the deploy's own file, or
+ * the first [[redirects]] rule that matches. A file at the path, at the path
+ * plus .html (/product/61 -> product/61.html) or at its index.html is served
+ * before any rule that isn't forced (Netlify's "shadowing"); a path no file
+ * or rule answers gets the deploy's 404.html with status 404.
+ * Paths are compared as written: Netlify's docs call rule paths
+ * case-sensitive.
+ * @param {string} pathname a decoded URL path
+ * @param {{ redirects: ReturnType<typeof readNetlifyRedirects>, hasFile?: (path: string) => boolean }} options
+ * @returns {{ status: number, file?: string, to?: string }}
+ */
+export function netlifyResponse(pathname, { redirects, hasFile = () => false }) {
+  const raw = String(pathname || '/');
+  const path = raw.length > 1 ? raw.replace(/\/+$/, '') || '/' : raw;
+  const candidates = path === '/' ? ['/index.html'] : [path, `${path}.html`, `${path}/index.html`];
+  const file = candidates.find((p) => hasFile(p)) || null;
+  for (const rule of redirects) {
+    if (!ruleMatches(rule.from, path)) continue;
+    if (file && !rule.force) break;
+    return { status: rule.status, to: rule.to };
+  }
+  if (file) return { status: 200, file };
+  return { status: 404, to: '/404.html' };
 }
