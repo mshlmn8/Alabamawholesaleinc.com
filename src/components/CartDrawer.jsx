@@ -9,6 +9,11 @@
 // the last one, never to <body>. Closing hands focus back to the control
 // that opened the drawer (ModalLayer); when that control has gone (the card
 // stepper of a product just removed here), the page's heading takes it.
+//
+// Above the total, the cart's summary (CartSummary, AW-238): lines and units,
+// and an approved buyer's progress to the order minimum and free delivery.
+// On a short screen (a phone in landscape) it follows the lines instead, so
+// the fixed foot takes no more height from the list than before.
 
 import { useEffect, useRef } from 'react';
 import { FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../data/content.js';
@@ -18,11 +23,16 @@ import { LINE_CONTROL, focusLineSoon, keepFocusNear, neighbourKey } from '../lib
 import { formatMoney, formatMoneyShort } from '../lib/format.js';
 import { totalLabel } from '../lib/pricing.js';
 import { Link, focusPageHeading } from '../lib/router.js';
+import { useMediaQuery } from '../lib/useMediaQuery.js';
 import { CallOrEmail } from './ContactLinks.jsx';
 import { ModalLayer } from './ModalLayer.jsx';
 import { CartLine } from './CartLine.jsx';
+import { CartSummary } from './CartSummary.jsx';
 import { Icon } from './Icon.jsx';
 import { SavedLinesNotice, UnavailableNotice } from './CartNotices.jsx';
+
+// A screen too short to give the summary room in the fixed foot.
+export const SHORT_DRAWER_QUERY = '(max-height: 31.25em)';
 
 export function CartDrawer({
   open, onClose, items, total, setLine, chooseVariant, removeLine, removeLines, legacy = [], onDismissLegacy,
@@ -30,6 +40,7 @@ export function CartDrawer({
 }) {
   const listRef = useRef(null);
   const wasOpen = useRef(open);
+  const short = useMediaQuery(SHORT_DRAWER_QUERY);
   useEffect(() => {
     const closed = wasOpen.current && !open;
     wasOpen.current = open;
@@ -57,6 +68,9 @@ export function CartDrawer({
   let note = 'Prices show for approved trade accounts';
   if (isSuspended) note = 'Account on hold';
   else if (pendingBuyer) note = 'Pricing unlocks when your account is approved';
+  const summary = items.length > 0 && (
+    <CartSummary items={items} total={total} isApprovedBuyer={isApprovedBuyer} isSuspended={isSuspended} pricesStatus={pricesStatus} />
+  );
   return (
     <ModalLayer onClose={onClose}>
       <div className="overlay overlay-soft" aria-hidden="true" onClick={onClose} />
@@ -78,8 +92,10 @@ export function CartDrawer({
               ))}
             </ul>
           )}
+          {short && summary}
         </div>
         <div className="drawer-foot">
+          {!short && summary}
           <div className="drawer-total">
             <span>Estimated total</span>
             {isApprovedBuyer

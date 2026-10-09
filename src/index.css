@@ -763,7 +763,10 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
    and the × sit 16px inside the border. */
 .drawer-line.checkout-line { border: 1px solid var(--line); padding: 12px 16px; }
 .checkout-line .line-total { grid-area: total; justify-self: end; color: var(--purple); font-size: var(--text-sm); }
-.checkout-clear { margin-top: 14px; }
+/* Under the list (AW-082, AW-238): the lines and units on the left, "Clear
+   all items" on the right, a block away from the last line's steppers. */
+.checkout-list-foot { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 16px; margin-top: var(--block-gap); }
+.checkout-clear { margin-left: auto; }
 .checkout-form-title { font-size: var(--h3); margin: 0 0 4px; }
 .checkout-form-grid { margin-top: 12px; }
 .checkout-total { margin-top: 18px; }
@@ -1242,6 +1245,22 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
 .drawer-total-note { flex: 1 1 auto; text-align: right; font-size: var(--text-sm); font-weight: 600; color: var(--muted); }
 .drawer-signin { display: flex; margin: 8px auto 0; }
 .drawer-fine { border-top: 0; margin-top: 12px; padding-top: 0; }
+/* The cart's summary (AW-238): lines and units, then the approved buyer's
+   progress to the order minimum and free delivery, or a note. Above the
+   drawer's total (after the lines when the screen is short) and under
+   checkout's. */
+.cart-summary { display: grid; gap: 6px; margin: 0 0 12px; }
+.drawer-body .cart-summary { margin: 12px 0 0; }
+.cart-counts { margin: 0; font-size: var(--text-sm); font-weight: 700; color: var(--purple); }
+.cart-meter-text, .cart-summary-note { margin: 0; font-size: var(--text-sm); line-height: 1.5; color: var(--ink); }
+.cart-summary-note { color: var(--muted); }
+.cart-meter { display: block; width: 100%; height: 8px; margin: 0; border: 0; border-radius: 0; background: var(--line); color: var(--purple); appearance: none; }
+.cart-meter::-webkit-progress-bar { background: var(--line); }
+.cart-meter::-webkit-progress-value { background: var(--purple); }
+.cart-meter::-moz-progress-bar { background: var(--purple); }
+.cart-meter.is-reached { color: var(--success); }
+.cart-meter.is-reached::-webkit-progress-value { background: var(--success); }
+.cart-meter.is-reached::-moz-progress-bar { background: var(--success); }
 .empty-note { text-align: center; color: var(--muted); font-size: var(--text-base); line-height: 1.7; padding: var(--empty-pad) 0; }
 
 /* mobile menu drawer */

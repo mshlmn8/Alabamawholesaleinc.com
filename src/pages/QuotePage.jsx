@@ -15,6 +15,11 @@
 // and focus moves to the next line (else the one before), or to the empty
 // page's heading, never to <body> (AW-042).
 //
+// Under the list (AW-238): the lines and units, and "Clear all items" at the
+// other end of the row, away from the steppers. Under the total, an approved
+// buyer sees how far the order is from the minimum and from free delivery
+// (CartSummary).
+//
 // The catalog may have changed since the page was opened (AW-191, AW-204):
 // Submit first loads it again (checkCart, from App) and stops, naming the
 // lines, when one can no longer be ordered, needs a variant or has a new
@@ -47,6 +52,7 @@ import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../data/content
 import { APPLY_INSTEAD, SIGN_IN_INSTEAD, basketTerms } from '../data/terms.js';
 import { QUOTE_ERROR_GENERIC, quoteErrorField, quoteErrorMessage, submitOrder, todayInBirmingham } from '../lib/orders.js';
 import { cartChanges, describeCartChanges } from '../lib/cart.js';
+import { cartCounts, countsLabel } from '../lib/cartSummary.js';
 import { QTY_RANGE_TEXT, isOrderableQty } from '../lib/quantity.js';
 import { formatMoney, formatMoneyShort } from '../lib/format.js';
 import { totalLabel } from '../lib/pricing.js';
@@ -58,6 +64,7 @@ import { LINE_CONTROL, focusLineSoon, neighbourKey } from '../lib/focus.js';
 import { CallOrEmail } from '../components/ContactLinks.jsx';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 import { CartLine } from '../components/CartLine.jsx';
+import { CartSummary } from '../components/CartSummary.jsx';
 import { SavedLinesNotice, UnavailableNotice } from '../components/CartNotices.jsx';
 import { AccountLoading } from '../components/AccountStatus.jsx';
 import { initialQuoteForm, quoteFormForAccount } from '../lib/quoteForm.js';
@@ -329,7 +336,10 @@ export function QuotePage({
                         onRemove={() => removeItem(it)} />
             ))}
           </ul>
-          <button className="text-link checkout-clear" type="button" onClick={clearAll}>Clear all items</button>
+          <div className="checkout-list-foot">
+            <p className="cart-counts">{countsLabel(cartCounts(items))}</p>
+            <button className="text-link checkout-clear" type="button" onClick={clearAll}>Clear all items</button>
+          </div>
         </div>
         <form onSubmit={handleQuoteSubmit} aria-labelledby="quote-form-title">
           <h2 id="quote-form-title" className="checkout-form-title">Your details</h2>
@@ -390,6 +400,10 @@ export function QuotePage({
             <span>{`${totalUnits} ${totalUnits === 1 ? 'unit' : 'units'}`}</span>
             <span>{isApprovedBuyer ? totalLabel(items, total, pricesStatus) : (isSuspended ? 'Ordering paused' : (signedIn ? 'Pricing after approval' : 'Pricing confirmed by the trade desk'))}</span>
           </div>
+          {/* The approved buyer's way to the minimum and free delivery (AW-238).
+              Guests and pending accounts already read who confirms pricing in
+              the row above; the counts are under the list. */}
+          {isApprovedBuyer && <CartSummary items={items} total={total} isApprovedBuyer isSuspended={isSuspended} pricesStatus={pricesStatus} showCounts={false} />}
           {pricedBelowMinimum && !submitBlocked && <p className="notice" role="status">{`The order minimum is ${formatMoney(ORDER_MINIMUM)}. You can still submit this order.`}</p>}
           {!isBackendConfigured && <p className="form-error" role="status"><CallOrEmail before="Quote requests can’t be saved right now. Call" after=" and the trade desk will write it up with you." /></p>}
           {needsVariant && <p className="form-error" role="alert">Choose a variant for every product that has more than one.</p>}
