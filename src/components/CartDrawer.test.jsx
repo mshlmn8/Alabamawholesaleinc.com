@@ -1,6 +1,7 @@
 // The cart drawer's total note and actions per account state, including a
-// suspended account (AW-201), and what a removal says and where focus goes
-// (AW-042).
+// suspended account (AW-201), what a removal says and where focus goes
+// (AW-042), the empty cart (AW-299) and the fine print that scrolls with the
+// lines (AW-152).
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -46,6 +47,41 @@ describe('CartDrawer', () => {
     expect(paused.querySelector(`a[href="tel:${COMPANY.phoneRaw}"]`)).toBeTruthy();
   });
 
+  it('puts the minimum-order fine print after the lines, where it scrolls with them, not in the foot (AW-152)', () => {
+    render(drawer({ profile: null, isApprovedBuyer: false }));
+    const fine = document.querySelector('.drawer-fine');
+    expect(fine.parentElement.className).toBe('drawer-body');
+    expect(fine.previousElementSibling.matches('ul.drawer-lines')).toBe(true);
+    expect(fine.textContent).toMatch(/^The minimum order is \$500\.00\. Free delivery over \$1,500 applies/);
+    expect(document.querySelector('.drawer-foot .drawer-fine')).toBeNull();
+  });
+
+  it('shows an empty cart as the shared empty state, with a way to the catalog and no total or fine print (AW-299)', () => {
+    const onClose = vi.fn();
+    render(drawer({ items: [], onClose, profile: null, isApprovedBuyer: false }));
+    const empty = document.querySelector('.drawer-body > .empty-state');
+    expect(screen.getByRole('heading', { level: 3, name: 'Your cart is empty' }).closest('.empty-state')).toBe(empty);
+    expect(empty.textContent).toContain('Browse the catalog and add items to build an order.');
+    const browse = screen.getByRole('link', { name: 'Browse the catalog' });
+    expect(browse.getAttribute('href')).toBe('/catalog');
+    expect(browse.className).toBe('button');
+    // No total, quote button, sign-in or fine print for an empty cart: the foot is empty (and hidden by CSS).
+    expect(screen.queryByText('Estimated total')).toBeNull();
+    expect(document.querySelector('.drawer-total, .drawer-fine')).toBeNull();
+    expect(screen.queryByRole('link', { name: /Request quote|Checkout/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Sign in for account pricing' })).toBeNull();
+    expect(document.querySelector('.drawer-foot').childNodes).toHaveLength(0);
+    // Following the link closes the drawer.
+    fireEvent.click(browse);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the empty state for an approved buyer: no "Estimated total $0.00"', () => {
+    render(drawer({ items: [], profile: { id: 'a', status: 'approved' }, isApprovedBuyer: true }));
+    expect(screen.getByRole('heading', { level: 3, name: 'Your cart is empty' })).toBeTruthy();
+    expect(screen.queryByText('Estimated total')).toBeNull();
+  });
+
   it('sets a line’s quantity by its key (AW-013)', () => {
     const setLine = vi.fn();
     render(drawer({ profile: null, isApprovedBuyer: false, setLine }));
@@ -60,7 +96,7 @@ describe('CartDrawer removals', () => {
   const LINES = [
     { lineKey: '14', productId: 14, variant: null, name: 'Kite cigarette tobacco', sku: 'AW-KITE', cat: 'TOBACCO', qty: 2, price: null },
     { lineKey: '1::red', productId: 1, variant: 'Red', name: 'Swisher Sweets cigarillos — Red', sku: 'AW-SS-RED', cat: 'TOBACCO', qty: 1, price: null },
-    // Can no longer be ordered: no quantity box, only ×.
+    // Can no longer be ordered: no quantity box, only Remove.
     { lineKey: '999', productId: 999, variant: null, name: 'Retired item', sku: 'AW-OLD', cat: 'CANDIES', qty: 1, price: null, unavailable: 'product' },
   ];
   function Drawer() {
@@ -79,14 +115,14 @@ describe('CartDrawer removals', () => {
     expect(announced()).toEqual(['Removed Kite cigarette tobacco.']);
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Quantity of Swisher Sweets cigarillos — Red' })));
 
-    // The last line has no quantity box: its × takes focus, from the line before.
+    // The last line has no quantity box: its Remove takes focus, from the line before.
     fireEvent.click(removeButton('Swisher Sweets cigarillos — Red'));
     await waitFor(() => expect(document.activeElement).toBe(removeButton('Retired item')));
 
     fireEvent.click(removeButton('Retired item'));
     expect(announced().at(-1)).toBe('Removed Retired item.');
     expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Your order' }));
-    expect(screen.getByText(/Your cart is empty/)).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 3, name: 'Your cart is empty' })).toBeTruthy();
     expect(document.activeElement).not.toBe(document.body);
   });
 

@@ -17,6 +17,7 @@ import { Link, navigate } from '../lib/router.js';
 import { EMPTY_CATEGORY_QUERY } from '../lib/routes.js';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 import { ModalLayer } from '../components/ModalLayer.jsx';
+import { EmptyState } from '../components/EmptyState.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
 import { Icon } from '../components/Icon.jsx';
 
@@ -147,6 +148,23 @@ export function CategoryPage({
     else if (chip.key === 'variants') setFilters({ variants: false });
     else if (chip.key === 'query') clearSearch();
   };
+
+  // No matches (AW-299): clear the filters, search every department for the
+  // same words, or go to another department.
+  const otherDepartments = departments.filter(d => d.key !== category && d.count > 0);
+  const noResultActions = (
+    <>
+      {needle && <Link className="button" to={{ page: 'search', q: query.q }}>{`Search all departments for “${query.q.trim()}”`}</Link>}
+      <button className="button ghost" type="button" onClick={clearFilters}>Clear filters</button>
+      {otherDepartments.length > 0 && (
+        <ul className="sub-pills" aria-label="Other departments">
+          {otherDepartments.map(d => (
+            <li key={d.key}><Link className="sub-pill" to={{ page: 'category', category: d.key }}>{`${d.label} (${d.count})`}</Link></li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
 
   // With a product line picked, the count compares against that line (AW-232).
   // Phones show the note without the line's name (AW-158, .result-scope).
@@ -282,11 +300,9 @@ export function CategoryPage({
               ))}
             </div>
           ) : (
-            <div className="empty-results">
-              <h2>No products match</h2>
-              <p>Try another search or clear the current filters.</p>
-              <button className="button ghost" type="button" onClick={clearFilters}>Clear filters</button>
-            </div>
+            <EmptyState title="No products match" className="is-boxed" actions={noResultActions}>
+              Try another search, clear the filters or browse another department.
+            </EmptyState>
           )}
         </div>
       </div>

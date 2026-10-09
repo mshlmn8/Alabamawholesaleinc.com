@@ -3,6 +3,9 @@
 // older cart that still need a variant (AW-354) and lines that can no longer
 // be ordered (AW-083). A suspended account sees that ordering is paused, with
 // the trade desk's phone and email, instead of the quote button (AW-201).
+// The minimum-order fine print scrolls with the lines, so a landscape phone
+// keeps room for them (AW-152). An empty cart shows the shared EmptyState
+// with a way to the catalog, and no total or fine print (AW-299).
 //
 // Removing a line (AW-042) is read out, and focus moves to the next line's
 // quantity (else the line before), or to the drawer's heading when it was
@@ -20,6 +23,7 @@ import { Link, focusPageHeading } from '../lib/router.js';
 import { CallOrEmail } from './ContactLinks.jsx';
 import { ModalLayer } from './ModalLayer.jsx';
 import { CartLine } from './CartLine.jsx';
+import { EmptyState } from './EmptyState.jsx';
 import { Icon } from './Icon.jsx';
 import { SavedLinesNotice, UnavailableNotice } from './CartNotices.jsx';
 
@@ -35,7 +39,7 @@ export function CartDrawer({
     if (closed && (!document.activeElement || document.activeElement === document.body)) focusPageHeading();
   }, [open]);
   if (!open) return null;
-  // × on a line. The button goes with its line, so focus moves first (to the
+  // Remove on a line. The button goes with its line, so focus moves first (to the
   // heading) when no line is left, or after the redraw to a neighbour.
   const remove = (it, event) => {
     const next = neighbourKey(items.map(x => x.lineKey), it.lineKey);
@@ -64,7 +68,11 @@ export function CartDrawer({
         <div className="drawer-body">
           <SavedLinesNotice items={legacy} onDismiss={onDismissLegacy} onChoose={onClose} />
           <UnavailableNotice items={unavailable} onRemoveAll={removeLines} />
-          {items.length === 0 && <p className="empty-note">Your cart is empty.<br />Browse the catalog and add items to build an order.</p>}
+          {items.length === 0 && (
+            <EmptyState level={3} title="Your cart is empty" actions={<Link className="button" to="/catalog" onClick={onClose}>Browse the catalog</Link>}>
+              Browse the catalog and add items to build an order.
+            </EmptyState>
+          )}
           {items.length > 0 && (
             <ul className="drawer-lines" aria-label="Items in your order" ref={listRef}>
               {items.map(it => (
@@ -74,14 +82,15 @@ export function CartDrawer({
               ))}
             </ul>
           )}
+          {items.length > 0 && <p className="fine drawer-fine">{`The minimum order is ${formatMoney(ORDER_MINIMUM)}. Free delivery over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} applies on a delivery route in AL, MS & GA. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>}
         </div>
         <div className="drawer-foot">
-          <div className="drawer-total">
+          {items.length > 0 && <div className="drawer-total">
             <span>Estimated total</span>
             {isApprovedBuyer
               ? <span>{totalLabel(items, total, pricesStatus)}</span>
               : <span className="drawer-total-note">{note}</span>}
-          </div>
+          </div>}
           {items.length > 0 && isSuspended && (
             <p className="notice drawer-paused">Ordering is paused on this account. <CallOrEmail after=" and a trade rep will help you sort it out." /></p>
           )}
@@ -93,7 +102,6 @@ export function CartDrawer({
                   {!pendingBuyer && <button className="drawer-signin text-link" type="button" onClick={onLoginClick}>Sign in for account pricing</button>}
                 </>
           )}
-          <p className="fine drawer-fine">{`The minimum order is ${formatMoney(ORDER_MINIMUM)}. Free delivery over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} applies on a delivery route in AL, MS & GA. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
         </div>
       </div>
     </ModalLayer>

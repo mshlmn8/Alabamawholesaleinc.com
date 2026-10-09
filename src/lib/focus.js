@@ -1,6 +1,6 @@
 // Focus that follows a cart line after React redraws the list. A line that
 // is re-keyed (a bare line moved to its variant, AW-011) is a new element,
-// and a removed line takes its focused × with it (AW-042), so focus would
+// and a removed line takes its focused Remove with it (AW-042), so focus would
 // otherwise drop to <body>. Each line is an element with
 // data-line-key="<line key>" inside listEl (CartLine's <li>).
 

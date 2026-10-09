@@ -26,7 +26,7 @@ describe('CartLine', () => {
     expect(h.onRemove).toHaveBeenCalledTimes(1);
   });
 
-  it('takes a typed quantity, stops − at 1 and leaves removing to the × (AW-013)', () => {
+  it('takes a typed quantity, stops − at 1 and leaves removing to Remove (AW-013)', () => {
     const h = handlers();
     const view = renderLine({ item, layout: 'checkout', showPrice: false, ...h });
     const input = screen.getByRole('textbox', { name: 'Quantity of Kite' });
@@ -39,15 +39,17 @@ describe('CartLine', () => {
     expect(screen.queryByRole('button', { name: 'Remove Kite' })).toBeTruthy();
   });
 
-  it('uses the shared stepper and a round icon button to remove, with drawn icons (AW-143, AW-293)', () => {
+  it('uses the shared stepper with drawn icons, and a worded Remove that can’t pass for a close × (AW-143, AW-293, AW-306)', () => {
     renderLine({ item, layout: 'drawer', showPrice: false, ...handlers() });
     const group = screen.getByRole('group', { name: 'Kite quantity' });
     expect(group.className).toBe('stepper qty');
     expect(group.querySelectorAll('button > svg.icon')).toHaveLength(2);
+    // A text button: its name starts with the word on screen, then says which line.
     const remove = screen.getByRole('button', { name: 'Remove Kite' });
-    expect(remove.className).toBe('icon-btn drawer-remove');
-    expect(remove.querySelector('svg.icon')).toBeTruthy();
-    expect(remove.textContent).toBe('');
+    expect(remove.className).toBe('text-link drawer-remove');
+    expect(remove.getAttribute('type')).toBe('button');
+    expect(remove.textContent).toBe('Remove');
+    expect(remove.querySelector('svg')).toBeNull();
   });
 
   it('checkout layout: "each" price and a line total', () => {

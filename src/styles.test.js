@@ -110,7 +110,7 @@ describe('no Tailwind (AW-125)', () => {
 
   it('gives every empty state the same vertical padding', () => {
     expect(root['--empty-pad']).toBeTruthy();
-    for (const cls of ['.empty-results', '.empty-note']) {
+    for (const cls of ['.empty-results', '.empty-state']) {
       const rule = rules(css).find((r) => r.selectors.includes(cls));
       expect(declarations(rule.body).padding, cls).toMatch(/^var\(--empty-pad\)/);
     }
@@ -878,6 +878,55 @@ describe('field messages, optional markers and the checkout column (AW-173, AW-3
 
   it('keeps the checkout form at least 420px wide beside the lines (AW-159)', () => {
     expect(rule('.checkout-grid')['grid-template-columns']).toBe('minmax(0,1.4fr) minmax(min(26.25rem, 100%), 1fr)');
+  });
+});
+
+// One empty state (src/components/EmptyState.jsx), and a cart drawer whose
+// lines keep room on a short screen and whose Remove can't pass for its close.
+describe('one empty state, and a cart drawer that keeps room for its lines (AW-299, AW-152, AW-306)', () => {
+  const rule = (selector) => declarations(rules(css).find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+  const short = () => mediaBlocks(css).filter((b) => b.prelude === '(max-height: 31.25em)').flatMap((b) => rules(b.body));
+  const inShort = (selector) => declarations(short().find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+
+  it('spaces an empty state 8px under its heading and 16px above its centred actions', () => {
+    expect(rule('.empty-state')).toEqual({ padding: 'var(--empty-pad) 24px', 'text-align': 'center' });
+    expect(rule('.empty-state > .empty-state-title')).toMatchObject({ margin: '0 0 8px' });
+    expect(rule('.empty-state-text')).toMatchObject({ margin: '0 auto' });
+    expect(rule('.empty-state-actions')).toMatchObject({ display: 'flex', 'flex-wrap': 'wrap', 'justify-content': 'center', 'margin-top': '16px' });
+    // Inside the empty checkout's centred page head, the head's padding is the only padding.
+    expect(rule('.is-centered > .empty-state')).toEqual({ padding: '0' });
+    // The empty drawer's foot (no total, actions or fine print) takes no room.
+    expect(rule('.drawer-foot:empty')).toEqual({ display: 'none' });
+    expect(css).not.toMatch(/\.empty-note\b/);
+  });
+
+  it('puts Remove, a worded text button, at the end of the quantity row, and the checkout line total beside the name (AW-306)', () => {
+    expect(rule('.drawer-line')['grid-template-areas']).toBe('"thumb info info" "thumb qty remove"');
+    // Two classes: it outranks .drawer-line, which comes later in the file.
+    expect(rule('.drawer-line.checkout-line')).toEqual({ 'grid-template-areas': '"thumb info total" "thumb qty remove"' });
+    expect(rule('.drawer-remove')).toEqual({ 'grid-area': 'remove', 'justify-self': 'end' });
+    expect(code(read('src/components/CartLine.jsx'))).toMatch(/<button className="text-link drawer-remove" type="button" onClick=\{onRemove\} aria-label=\{`Remove \$\{it\.name\}`\}>Remove<\/button>/);
+    // On a narrow list (a small phone, large text) Remove drops under the quantity, so the stepper keeps its size.
+    expect(rule('.drawer-lines, .checkout-lines')).toEqual({ 'container-type': 'inline-size' });
+    const narrow = /@container \(max-width: ([\d.]+rem)\) \{([^{}]*\{[^{}]*\})*[^{}]*\}/.exec(css);
+    expect(narrow[1]).toBe('19.5rem');
+    expect(rules(narrow[0].slice(narrow[0].indexOf('{') + 1)).map((r) => [r.selectors.join(), declarations(r.body)['grid-template-areas']])).toEqual([
+      ['.drawer-line', '"thumb info" "thumb qty" "thumb remove"'],
+      ['.drawer-line.checkout-line', '"thumb info" "thumb total" "thumb qty" "thumb remove"'],
+    ]);
+  });
+
+  it('tightens the drawers’ head and foot on a short screen, and keeps the foot’s controls full size (AW-152)', () => {
+    expect(inShort('.drawer-head')).toEqual({ 'padding-block': '6px' });
+    expect(inShort('.drawer-head h2')).toEqual({ 'font-size': '1.375rem' });
+    expect(inShort('.drawer-foot')).toEqual({ 'padding-block': '8px' });
+    for (const { selectors, body } of short()) expect(declarations(body), selectors.join()).not.toHaveProperty('min-height');
+    // After the 68.75em block, whose .drawer-head padding it narrows.
+    expect(css.indexOf('@media (max-height: 31.25em)')).toBeGreaterThan(css.indexOf('@media (max-width: 68.75em)'));
+    // The minimum-order fine print scrolls with the lines, not in the foot.
+    const drawer = code(read('src/components/CartDrawer.jsx'));
+    expect(drawer.indexOf('className="fine drawer-fine"')).toBeGreaterThan(drawer.indexOf('className="drawer-body"'));
+    expect(drawer.indexOf('className="fine drawer-fine"')).toBeLessThan(drawer.indexOf('className="drawer-foot"'));
   });
 });
 

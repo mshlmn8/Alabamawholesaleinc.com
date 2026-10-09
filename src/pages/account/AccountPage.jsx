@@ -15,6 +15,7 @@ import { Link } from '../../lib/router.js';
 import { lineTotal } from '../../lib/pricing.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
+import { EmptyState } from '../../components/EmptyState.jsx';
 import { QuickReorder } from './QuickReorder.jsx';
 
 const STATUS_CLASS = {
@@ -159,10 +160,9 @@ export function AccountPage({
         {error && <p className="form-error">{`Couldn't load orders: ${error}`}</p>}
         {orders === null && !error && <p className="result-note">Loading…</p>}
         {orders && orders.length === 0 && (
-          <div className="empty-results">
-            <h2>No orders yet</h2>
-            <p>Orders you place will show up here, each with a one-click Reorder.</p>
-          </div>
+          <EmptyState level={3} title="No orders yet" className="is-boxed" actions={<Link className="button" to="/catalog">Browse the catalog</Link>}>
+            Orders you place will show up here, each with a one-click Reorder.
+          </EmptyState>
         )}
         {orders && orders.length > 0 && (
           <div className="order-list">

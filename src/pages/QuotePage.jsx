@@ -57,6 +57,7 @@ import { LINE_CONTROL, focusLineSoon, neighbourKey } from '../lib/focus.js';
 import { CallOrEmail } from '../components/ContactLinks.jsx';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 import { CartLine } from '../components/CartLine.jsx';
+import { EmptyState } from '../components/EmptyState.jsx';
 import { SavedLinesNotice, UnavailableNotice } from '../components/CartNotices.jsx';
 import { AccountLoading } from '../components/AccountStatus.jsx';
 import { Field, ValidatedForm } from '../components/Field.jsx';
@@ -281,9 +282,10 @@ export function QuotePage({
   if (items.length === 0) {
     return (
       <section className="page-head is-centered">
-        <h1>Your cart is empty</h1>
-        <p>Add products, then come back to checkout.</p>
-        <Link className="button" to="/catalog">Browse catalog</Link>
+        {/* The shared empty state (AW-299); its h1 takes focus when the last line goes. */}
+        <EmptyState level={1} title="Your cart is empty" actions={<Link className="button" to="/catalog">Browse catalog</Link>}>
+          Add products, then come back to checkout.
+        </EmptyState>
         {legacy.length > 0 && (
           <div className="quote-saved-lines">
             <SavedLinesNotice items={legacy} onDismiss={onDismissLegacy} />

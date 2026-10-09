@@ -4,7 +4,10 @@
 // "each" to the unit price and the line total.
 //
 // The quantity is the shared QuantityInput (AW-013): typed or stepped, 1 to
-// 100,000; onSetQty(n) gets the new quantity. − stops at 1; the × removes.
+// 100,000; onSetQty(n) gets the new quantity. − stops at 1; Remove removes.
+// Remove is a worded text button at the end of the quantity row, so it
+// doesn't look like the drawer's close × just above it (AW-306); its name
+// says which line ("Remove Kite").
 //
 // A bare line (a reorder that lost its variant) keeps its quantity and is
 // given its variant right here (AW-011): a select of the product's variants
@@ -35,7 +38,6 @@ import { focusLineSoon } from '../lib/focus.js';
 import { formatMoney } from '../lib/format.js';
 import { lineTotal, priceLabel } from '../lib/pricing.js';
 import { Link } from '../lib/router.js';
-import { Icon } from './Icon.jsx';
 import { Thumb } from './Thumb.jsx';
 import { QuantityInput } from './QuantityInput.jsx';
 import { TextParts } from './TextParts.jsx';
@@ -104,7 +106,7 @@ export function CartLine({ item: it, layout = 'drawer', showPrice, pricesStatus 
         <QuantityInput className="qty" value={it.qty} onChange={(n) => onSetQty?.(n)} label={`Quantity of ${it.name}`} groupLabel={`${it.name} quantity`} />
       )}
       {checkout && priced && <b className="line-total">{formatMoney(lineTotal(it.price, it.qty))}</b>}
-      <button className="icon-btn drawer-remove" type="button" onClick={onRemove} aria-label={`Remove ${it.name}`}><Icon name="close" /></button>
+      <button className="text-link drawer-remove" type="button" onClick={onRemove} aria-label={`Remove ${it.name}`}>Remove</button>
     </li>
   );
 }
