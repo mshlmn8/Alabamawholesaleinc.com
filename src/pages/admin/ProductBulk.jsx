@@ -116,11 +116,13 @@ export function BulkBar({ rows, adjustMissing = false, onAdjustMissing, onApplie
         title: `Make ${products} price on request?`,
         body: `Each selected product becomes price on request (its list price is removed). ${PRICES_NOTE}`,
         label: `Make ${products} price on request`,
+        done: (n) => `Made ${n} price on request`,
       } : {
         action, patch: { price },
         title: `Set the price of ${products}?`,
         body: `Each selected product gets the list price ${formatMoney(price)}. ${PRICES_NOTE}`,
         label: `Set ${plural(count, 'price')}`,
+        done: (n) => `Set the price of ${n} to ${formatMoney(price)}`,
       });
     } else if (action === 'adjust') {
       if (!adjust.ok) { setFieldError(adjust.error); return; }
@@ -142,6 +144,7 @@ export function BulkBar({ rows, adjustMissing = false, onAdjustMissing, onApplie
         title: `Set the tag of ${products}?`,
         body: tag ? `Each selected product is tagged ${tag}.` : 'Each selected product loses its tag.',
         label: tag ? `Tag ${products}` : `Clear ${plural(count, 'tag')}`,
+        done: (n) => (tag ? `Set the tag of ${n} to ${tag}` : `Cleared the tag of ${n}`),
       });
     } else {
       const on = action === 'activate';
@@ -152,6 +155,7 @@ export function BulkBar({ rows, adjustMissing = false, onAdjustMissing, onApplie
           ? 'They show on the storefront again and can be ordered.'
           : 'They leave the storefront and can’t be ordered until they are activated again. Their order history is kept.',
         label: `${on ? 'Activate' : 'Deactivate'} ${products}`,
+        done: (n) => `${on ? 'Activated' : 'Deactivated'} ${n}`,
       });
     }
   };
@@ -186,7 +190,7 @@ export function BulkBar({ rows, adjustMissing = false, onAdjustMissing, onApplie
       const skipped = Number(data?.skipped ?? 0);
       reset();
       doneFocus.current = returnFocus?.current ?? null;
-      onApplied?.(patches, `Updated ${plural(updated, 'product')}${skipped ? `; ${skipped} on request skipped` : ''}`);
+      onApplied?.(patches, `Adjusted the list price of ${plural(updated, 'product')}${skipped ? `; ${skipped} on request skipped` : ''}.`);
       return;
     }
     const { data, error: failed } = await bulkUpdate(supabase, ids, plan.patch);
@@ -199,9 +203,10 @@ export function BulkBar({ rows, adjustMissing = false, onAdjustMissing, onApplie
     const changed = new Map(data.map((row) => [row.id, { ...plan.patch, updated_at: row.updated_at || now }]));
     reset();
     doneFocus.current = returnFocus?.current ?? null;
+    // The status line names the change (NEW-037): 'Deactivated 58 products.'
     onApplied?.(changed, changed.size < ids.length
-      ? `Updated ${changed.size} of ${products}; the others weren’t changed (reload the list to see them)`
-      : `Updated ${products}`);
+      ? `${plan.done(`${changed.size} of ${products}`)}; the others weren’t changed (reload the list to see them).`
+      : `${plan.done(products)}.`);
   };
 
   const errorId = `${id}-error`;

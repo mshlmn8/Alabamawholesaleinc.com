@@ -31,6 +31,7 @@ import { isNewSince, ordersActivity } from './ordersSeen.js';
 import { useLiveOrders } from './liveOrders.js';
 import { realtimeFor } from './realtime.js';
 import { printHref } from './printSheet.js';
+import { adminDate, adminDateTime } from './dates.js';
 import { OrderStaff } from './OrderStaff.jsx';
 
 // The order statuses (and the owner question about them, AW-024) are in
@@ -166,9 +167,7 @@ export function orderMethod(o) {
 }
 // The date the buyer asked for, e.g. 'Oct 1, 2026', read as a calendar day.
 export function requestedDate(value) {
-  if (!value) return '—';
-  const date = new Date(`${String(value).slice(0, 10)}T00:00`);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return value ? adminDate(`${String(value).slice(0, 10)}T00:00`) : '—';
 }
 export function orderTotal(o, quote = isQuote(o)) {
   if (o.subtotal == null) return quote ? 'Unpriced quote' : 'Not priced yet';
@@ -182,10 +181,8 @@ export function orderAccount(o) {
   const tier = o.profiles?.pricing_tier ? `${tierLabel(o.profiles.pricing_tier)} tier` : null;
   return [business, tier].filter(Boolean).join(' · ') || '—';
 }
-export function placedAt(value) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
-}
+// 'Oct 6, 2026, 10:00 AM' (dates.js, NEW-038).
+export const placedAt = (value) => adminDateTime(value);
 
 // A status change: admin_set_order_status() (20261010122000; it logs the
 // change, with a note) and, on a database without it, the checked plain
@@ -917,8 +914,12 @@ function OrderCard({
               {o.phone && <a href={`tel:${String(o.phone).replace(/[^\d+]/g, '')}`}>{o.phone}</a>}
             </dd>
           </div>
-          {/* The account's page (AW-113), when the order came from one. */}
-          <div><dt>Account</dt><dd>{o.user_id ? <Link className="order-account-link" to={adminHref({ section: 'accounts', id: o.user_id })}>{orderAccount(o)}</Link> : orderAccount(o)}</dd></div>
+          {/* The account's page (AW-113), when the order came from one; a
+              guest's quote has no account, only the business it typed
+              (NEW-079). */}
+          {o.user_id
+            ? <div><dt>Account</dt><dd><Link className="order-account-link" to={adminHref({ section: 'accounts', id: o.user_id })}>{orderAccount(o)}</Link></dd></div>
+            : <div><dt>Business</dt><dd>{o.business || 'None (guest)'}</dd></div>}
           {o.assigned_to && (
             <div><dt>Assigned to</dt><dd>{staffName((admins || []).find((a) => a.id === o.assigned_to)) || 'A former admin'}</dd></div>
           )}

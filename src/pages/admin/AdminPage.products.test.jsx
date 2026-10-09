@@ -140,7 +140,7 @@ describe('the product editor: focus, Enter and Escape (AW-117)', () => {
     fireEvent.change(field('Name'), { target: { value: 'Kite pipe tobacco' } });
     fireEvent.keyDown(field('Name'), { key: 'Escape' });
     const dialog = screen.getByRole('alertdialog', { name: 'Discard your changes?' });
-    expect(within(dialog).getByText('Your changes to Kite pipe tobacco aren’t saved.')).toBeTruthy();
+    expect(within(dialog).getByText('Your changes to Kite aren’t saved.')).toBeTruthy();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Keep editing' }));
     expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(field('Name').value).toBe('Kite pipe tobacco');

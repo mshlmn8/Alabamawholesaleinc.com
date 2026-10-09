@@ -162,7 +162,7 @@ describe('the Accounts status filter (AW-268)', () => {
     const select = within(row('Charlie Corner Store')).getByRole('combobox', { name: 'Status for Charlie Corner Store' });
     expect(select.value).toBe('approved');
     expect(document.activeElement).toBe(select);
-    expect(within(row('Charlie Corner Store')).getByText('Moved to approved')).toBeTruthy();
+    expect(within(row('Charlie Corner Store')).getByText('Moved to Approved')).toBeTruthy();
     expect(listed()).toEqual(['Bravo Tobacco Outlet', 'Charlie Corner Store', 'Echo Market']);
     expect(count()).toBe('2 pending accounts · 1 moved');
     // The counts are the accounts' statuses now.
@@ -171,7 +171,7 @@ describe('the Accounts status filter (AW-268)', () => {
     // Another filter starts afresh: it is listed as approved, and gone from pending.
     await act(async () => { fireEvent.click(pill('Approved (4)')); });
     expect(listed()).toContain('Charlie Corner Store');
-    expect(screen.queryByText('Moved to approved')).toBeNull();
+    expect(screen.queryByText('Moved to Approved')).toBeNull();
     await act(async () => { fireEvent.click(pill('Pending (2)')); });
     expect(listed()).toEqual(['Bravo Tobacco Outlet', 'Echo Market']);
   });
@@ -202,7 +202,7 @@ describe('the Accounts status filter (AW-268)', () => {
     expect(back).toHaveBeenCalledTimes(1);
     await act(async () => {});
     expect(listed()).toEqual(['Bravo Tobacco Outlet', 'Charlie Corner Store', 'Echo Market']);
-    expect(within(row('Echo Market')).getByText('Moved to approved')).toBeTruthy();
+    expect(within(row('Echo Market')).getByText('Moved to Approved')).toBeTruthy();
     expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Echo Market' }));
   });
 });

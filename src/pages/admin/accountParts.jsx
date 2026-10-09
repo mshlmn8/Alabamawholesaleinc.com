@@ -1,22 +1,22 @@
 // What Admin -> Accounts' list and the account page (AccountDetail.jsx,
 // AW-113) share: the approval line, the change and error sentences, the
 // application answers (AccountFacts, the details row of AW-017), an email
-// that wraps after its @, and View on a licence document (signed when it
+// that wraps after its @, and View on a license document (signed when it
 // is clicked, AW-208).
 
 import { useEffect, useState } from 'react';
 import { DOCUMENT_VIEW_SECONDS, openDocument } from '../../lib/documents.js';
 import { Icon } from '../../components/Icon.jsx';
 import { adminErrorMessage, isMissingSchema, isRefused, refusalFor } from './adminData.js';
+import { adminDate, adminDateTime } from './dates.js';
+import { adminStatusLabel, tierLabel } from '../../lib/accountLabels.js';
 
 // Who approved an account, and when (AW-197): the approver's name from the
 // accounts already loaded. Accounts approved before 20261008193000, or on a
 // database without it, have no approved_at, and show nothing.
 export function approvalLine(p, profiles) {
-  if (!p.approved_at) return null;
-  const at = new Date(p.approved_at);
-  if (Number.isNaN(at.getTime())) return null;
-  const when = at.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const when = adminDate(p.approved_at, null);
+  if (!when) return null;
   const approver = p.approved_by ? profiles.find(x => x.id === p.approved_by) : null;
   const by = approver ? (approver.name || approver.email) : null;
   return by ? `Approved ${when} by ${by}` : `Approved ${when}`;
@@ -26,8 +26,9 @@ export function approvalLine(p, profiles) {
 export function profileChangeText(who, patch) {
   if (patch.role === 'admin') return `${who} is now an admin.`;
   if (patch.role === 'customer') return `${who} is now a customer account.`;
-  if ('status' in patch) return `${who} is now ${patch.status}.`;
-  if ('pricing_tier' in patch) return `${who} is now on the ${patch.pricing_tier} tier.`;
+  // Labels, as the selects show them (NEW-037).
+  if ('status' in patch) return `${who} is now ${adminStatusLabel(patch.status)}.`;
+  if ('pricing_tier' in patch) return `${who} is now on the ${tierLabel(patch.pricing_tier)} tier.`;
   if ('verification_note' in patch) return `Saved the verification note for ${who}.`;
   return `Saved the change to ${who}.`;
 }
@@ -51,7 +52,9 @@ export function Email({ address }) {
   return <><span>{text.slice(0, at + 1)}</span><wbr /><span>{text.slice(at + 1)}</span></>;
 }
 
-const dateTime = (value) => (value ? new Date(value).toLocaleString() : '');
+// 'Sep 30, 2026, 10:00 AM' in every browser, as the rest of admin writes
+// it (NEW-038); '' (shown as '—') for none.
+const dateTime = (value) => adminDateTime(value, '');
 // The application answers staff verify (AW-017), in the details row's order.
 // `contact`: the phone, state, store address and business type, which the
 // account page edits in its own form instead.
@@ -94,7 +97,7 @@ function Fact({ label, value }) {
   );
 }
 
-// View on a licence document signs its URL when it is clicked, for a
+// View on a license document signs its URL when it is clicked, for a
 // minute, and opens it in a new tab (AW-208). Nothing is signed when the
 // page loads. When the browser blocks the tab, the signed URL is offered as
 // a link until it expires. Returns { view(row, who, label), viewError,

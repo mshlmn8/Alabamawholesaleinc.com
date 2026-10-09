@@ -7,7 +7,7 @@
 //     the email is read only (it follows the sign-in email)
 //   - Verification: the application answers (AccountFacts) and the
 //     verification note
-//   - Licence documents, signed when View is clicked (AW-208)
+//   - License documents, signed when View is clicked (AW-208)
 //   - Internal notes (profile_admin_notes, 20261009140000), staff only
 //   - Orders: the newest 50, the last order's date and the total of the
 //     priced ones, with links to Admin -> Orders for the account
@@ -279,7 +279,7 @@ function VerificationNote({ profile, draft, setDraft, changes }) {
   );
 }
 
-// The account's licence documents (listProfileDocuments), loaded once.
+// The account's license documents (listProfileDocuments), loaded once.
 function Documents({ id, who }) {
   const [state, setState] = useState({ rows: null, error: null });
   const [attempt, setAttempt] = useState(0);
@@ -289,13 +289,13 @@ function Documents({ id, who }) {
     let cancelled = false;
     listProfileDocuments(id).then(
       (rows) => { if (!cancelled) { setState({ rows, error: null }); setRetrying(false); } },
-      (error) => { if (!cancelled) { setState({ rows: null, error: adminErrorMessage(error, 'The licence documents didn’t load') }); setRetrying(false); } },
+      (error) => { if (!cancelled) { setState({ rows: null, error: adminErrorMessage(error, 'The license documents didn’t load') }); setRetrying(false); } },
     );
     return () => { cancelled = true; };
   }, [id, attempt]);
   return (
     <section className="account-section" aria-labelledby="account-documents-title">
-      <h3 id="account-documents-title">Licence documents</h3>
+      <h3 id="account-documents-title">License documents</h3>
       {state.error && <LoadProblem message={state.error} onRetry={() => { setRetrying(true); setAttempt((n) => n + 1); }} retrying={retrying} />}
       {viewer.viewError && <p className="form-error" role="alert">{viewer.viewError}</p>}
       <ul className="doc-admin account-documents">

@@ -444,7 +444,9 @@ describe('the order card head (AW-020)', () => {
     ]);
     await openOrders();
     // Will-call: no address, even when the request carried one.
-    expect(facts('ALW-Q-5E4F3A2B1C')).toMatchObject({ Method: 'Will-call pickup', Requested: 'Oct 1, 2026', Total: 'Unpriced quote', Account: 'Guest Mart' });
+    // A guest's quote has no account: the business it typed (NEW-079).
+    expect(facts('ALW-Q-5E4F3A2B1C')).toMatchObject({ Method: 'Will-call pickup', Requested: 'Oct 1, 2026', Total: 'Unpriced quote', Business: 'Guest Mart' });
+    expect(facts('ALW-Q-5E4F3A2B1C')).not.toHaveProperty('Account');
     expect(facts('ALW-O-BBBB222233')).toMatchObject({
       Method: 'Delivery to 2 Test Way, Hoover, AL 35244', Requested: 'Oct 9, 2026', Total: '2 units · $21.70', Account: 'Test Market LLC · Silver tier',
     });
@@ -454,6 +456,13 @@ describe('the order card head (AW-020)', () => {
     const title = card('ALW-O-BBBB222233').querySelector('.order-title');
     expect(within(title).getByRole('combobox', { name: 'Status for ALW-O-BBBB222233' })).toBeTruthy();
     expect(card('ALW-O-BBBB222233').querySelector('.order-head small')).toBeNull();
+    expect(within(card('ALW-O-BBBB222233')).getByRole('link', { name: 'Test Market LLC · Silver tier' }).getAttribute('href')).toBe('/admin/accounts/buyer-1');
+  });
+
+  it('says a guest’s quote typed no business (NEW-079)', async () => {
+    setOrders([guestQuote({ business: '' })]);
+    await openOrders();
+    expect(facts('ALW-Q-5E4F3A2B1C').Business).toBe('None (guest)');
   });
 
   it('formats each fact', () => {

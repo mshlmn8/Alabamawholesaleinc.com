@@ -2,7 +2,7 @@
 // Accounts list and from the account page (AW-112, AW-113):
 //
 // - The change shows at once (the row is patched where it is, no reload, so
-//   the licence documents are never fetched again), and goes back, with the
+//   the license documents are never fetched again), and goes back, with the
 //   reason, if the database refuses it.
 // - One request per account at a time: while one is on its way, the account's
 //   selects ignore changes (aria-disabled: a disabled select would drop the
@@ -204,7 +204,7 @@ export const CONFIRMED_CHANGES = {
   'make-admin': {
     kind: 'role',
     title: (who) => `Make ${who} an admin?`,
-    body: (row) => `Admins can see every order, application, EIN and licence document, and change prices and accounts.${row.status === 'approved' ? '' : ' This also approves the account.'}`,
+    body: (row) => `Admins can see every order, application, EIN and license document, and change prices and accounts.${row.status === 'approved' ? '' : ' This also approves the account.'}`,
     confirm: 'Make an admin',
     cancel: 'Cancel',
     reason: 'Reason',

@@ -191,7 +191,7 @@ describe('Admin -> Homepage (AW-119)', () => {
       rows: { img: address, alt: 'Counter display of lighters', go_cat: 'MERCHANDISE', nicotine_warning: true, active: true, sort: 40 },
       returning: 'id,img,alt,go_cat,nicotine_warning,sort,active,updated_at',
     });
-    expect(statusText()).toBe('Added “Counter display of lighters” to the hero photos');
+    expect(statusText()).toBe('Added “Counter display of lighters” to the hero photos.');
     expect(alts().at(-1)).toBe('Counter display of lighters');
     expect(document.querySelector('form.slide-form')).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Edit Counter display of lighters' }));
@@ -232,7 +232,7 @@ describe('Admin -> Homepage (AW-119)', () => {
     await click(screen.getByRole('button', { name: 'Save photo' }));
     expect(calls('update')).toHaveLength(1);
     expect(calls('update')[0]).toMatchObject({ patch: { go_cat: null }, filters: [['eq', 'id', 1]], returning: 'id' });
-    expect(statusText()).toBe('Saved “Geek Bar Pulse X disposable vape advertisement”');
+    expect(statusText()).toBe('Saved “Geek Bar Pulse X disposable vape advertisement”.');
   });
 
   it('moves a photo up by swapping two sorts, says where it went and keeps focus on the photo', async () => {
@@ -243,7 +243,7 @@ describe('Admin -> Homepage (AW-119)', () => {
       [{ sort: 20 }, [['eq', 'id', 2]]],
     ]);
     expect(alts()).toEqual(['Geek Bar Pulse X disposable vape advertisement', 'Display box of Turtles Bites chocolates', 'Counter display']);
-    expect(statusText()).toBe('Moved “Geek Bar Pulse X disposable vape advertisement” to place 1 of 3');
+    expect(statusText()).toBe('Moved “Geek Bar Pulse X disposable vape advertisement” to place 1 of 3.');
     // At the top Move up is off, so Move down has focus.
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Move down Geek Bar Pulse X disposable vape advertisement' }));
   });
@@ -263,14 +263,14 @@ describe('Admin -> Homepage (AW-119)', () => {
     focus.mockClear();
     await click(box);
     expect(calls('update')[0]).toMatchObject({ patch: { active: false }, filters: [['eq', 'id', 2]] });
-    expect(statusText()).toBe('“Display box of Turtles Bites chocolates” is off the home page');
+    expect(statusText()).toBe('“Display box of Turtles Bites chocolates” is off the home page.');
     expect(item('Display box of Turtles Bites chocolates').className).toBe('admin-slide inactive');
     expect(focus).toHaveBeenCalled();
     expect(document.activeElement).toBe(box);
     expect(box.disabled).toBe(false);
     await click(within(item('Display box of Turtles Bites chocolates')).getByRole('checkbox', { name }));
     expect(calls('update')[1]).toMatchObject({ patch: { active: true } });
-    expect(statusText()).toBe('“Display box of Turtles Bites chocolates” is shown on the home page');
+    expect(statusText()).toBe('“Display box of Turtles Bites chocolates” is shown on the home page.');
   });
 
   it('deletes a photo only after a confirmation', async () => {
@@ -285,7 +285,7 @@ describe('Admin -> Homepage (AW-119)', () => {
     await click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete photo' }));
     expect(calls('delete')[0]).toMatchObject({ filters: [['eq', 'id', 3]], returning: 'id' });
     expect(alts()).toEqual(['Display box of Turtles Bites chocolates', 'Geek Bar Pulse X disposable vape advertisement']);
-    expect(statusText()).toBe('Deleted “Counter display” from the hero photos');
+    expect(statusText()).toBe('Deleted “Counter display” from the hero photos.');
   });
 
   it('says when a change is refused, and keeps the photo as it was', async () => {

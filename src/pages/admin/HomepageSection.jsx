@@ -248,7 +248,7 @@ export function HomepageTab({ notify, onOpenProduct, returnFocusId = null, onRet
       return;
     }
     const addedId = isNew ? result.data?.[0]?.id : form.original.id;
-    notify?.(isNew ? `Added ${quoted(draft)} to the hero photos` : `Saved ${quoted(draft)}`);
+    notify?.(isNew ? `Added ${quoted(draft)} to the hero photos.` : `Saved ${quoted(draft)}.`);
     closeForm(addedId != null ? `${id}-slide-${addedId}-edit` : `${id}-add`);
     await reload();
   };
@@ -275,7 +275,7 @@ export function HomepageTab({ notify, onOpenProduct, returnFocusId = null, onRet
       return;
     }
     setRows((list) => list.map((r) => (r.id === row.id ? { ...r, active: next } : r)));
-    notify?.(next ? `${quoted(row)} is shown on the home page` : `${quoted(row)} is off the home page`);
+    notify?.(next ? `${quoted(row)} is shown on the home page.` : `${quoted(row)} is off the home page.`);
     await refreshHomeSlides();
   };
 
@@ -303,7 +303,7 @@ export function HomepageTab({ notify, onOpenProduct, returnFocusId = null, onRet
       const update = updates.find((u) => u.id === r.id);
       return update ? { ...r, sort: update.sort } : r;
     }));
-    notify?.(`Moved ${quoted(row)} to place ${place} of ${rows.length}`);
+    notify?.(`Moved ${quoted(row)} to place ${place} of ${rows.length}.`);
     setFocusId(`${id}-slide-${row.id}-${delta < 0 ? 'up' : 'down'}`);
     await refreshHomeSlides();
   };
@@ -318,7 +318,7 @@ export function HomepageTab({ notify, onOpenProduct, returnFocusId = null, onRet
     }
     const rest = ordered.filter((r) => r.id !== row.id);
     setRows(rest);
-    notify?.(`Deleted ${quoted(row)} from the hero photos`);
+    notify?.(`Deleted ${quoted(row)} from the hero photos.`);
     setFocusId(rest.length ? `${id}-slide-${rest[Math.min(ordered.findIndex((r) => r.id === row.id), rest.length - 1)].id}-edit` : `${id}-add`);
     await refreshHomeSlides();
   };

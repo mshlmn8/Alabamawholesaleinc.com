@@ -134,7 +134,7 @@ describe('bulk updates (AW-114)', () => {
     expect(request.patch).toEqual({ tag: 'DEAL' });
     expect(request.filters).toEqual([['in', 'id', ROWS.slice(0, 40).map((r) => r.id)]]);
     expect(request.returning).toBe('id,updated_at');
-    expect(statusText()).toBe('Updated 40 products');
+    expect(statusText()).toBe('Set the tag of 40 products to DEAL.');
     expect(onCatalogChange).toHaveBeenCalledTimes(1);
     // No reload: the rows are patched where they are.
     expect(fake.find({ table: 'products', op: 'select' })).toHaveLength(1);
@@ -151,7 +151,7 @@ describe('bulk updates (AW-114)', () => {
     expect(within(confirmDialog()).getByRole('heading').textContent).toBe('Deactivate 2 products?');
     await confirmButton();
     expect(updates()[0].patch).toEqual({ active: false });
-    expect(statusText()).toBe('Updated 1 of 2 products; the others weren’t changed (reload the list to see them)');
+    expect(statusText()).toBe('Deactivated 1 of 2 products; the others weren’t changed (reload the list to see them).');
     expect(rowOf(1).className).toBe('inactive');
     expect(rowOf(4).className).toBe('');
     updateIds = null;
@@ -294,7 +294,7 @@ describe('adjusting prices (AW-114)', () => {
     const calls = fake.find({ kind: 'rpc', name: 'admin_bulk_adjust_prices' });
     expect(calls).toHaveLength(1);
     expect(calls[0].args).toEqual({ p_ids: ROWS.slice(0, 40).map((r) => r.id), p_pct: 5, p_amount: 0, p_variants: true });
-    expect(statusText()).toBe('Updated 39 products; 1 on request skipped');
+    expect(statusText()).toBe('Adjusted the list price of 39 products; 1 on request skipped.');
     expect(rowOf(1).cells[8].textContent).toBe('$10.61');
     expect(rowOf(2).cells[8].textContent).toBe('On request');
     expect(updates()).toHaveLength(0);
@@ -380,7 +380,7 @@ describe('export and import (AW-114)', () => {
     expect(calls).toHaveLength(1);
     expect(calls[0].args).toEqual({ p_rows: [{ sku: 'AW-B1', tag: 'NEW' }, { sku: 'AW-B5', name: 'Swisher five', price: null }] });
     expect(fake.find({ kind: 'rpc', name: 'admin_import_products' })).toHaveLength(0);
-    expect(statusText()).toBe('Updated 2 products from products-edit.csv');
+    expect(statusText()).toBe('Updated 2 products from products-edit.csv.');
     expect(rowOf(5).cells[3].textContent).toBe('Swisher five');
     expect(screen.queryByRole('region', { name: /^Import / })).toBeNull();
     expect(onCatalogChange).toHaveBeenCalledTimes(1);
@@ -459,7 +459,7 @@ describe('export and import (AW-114)', () => {
       { sku: 'AW-NEW-1', name: 'New gum', brand: 'Wrigley', cat: 'CANDIES', sub: 'Gum', price: 1.5 },
     ] });
     expect(v1Calls()).toHaveLength(0);
-    expect(statusText()).toBe('Updated 1 product and added 1 new product (inactive) from products-edit.csv');
+    expect(statusText()).toBe('Updated 1 product and added 1 new product (inactive) from products-edit.csv.');
     // The new product's id is the database's: the list is loaded again.
     expect(fake.find({ table: 'products', op: 'select' })).toHaveLength(2);
     expect(onCatalogChange).toHaveBeenCalledTimes(1);
@@ -487,7 +487,7 @@ describe('export and import (AW-114)', () => {
     expect(v2Calls()).toHaveLength(1);
     expect(v1Calls()).toHaveLength(1);
     expect(v1Calls()[0].args).toEqual({ p_rows: [{ sku: 'AW-B6', name: 'Swisher six' }] });
-    expect(statusText()).toBe('Updated 1 product from products-edit.csv');
+    expect(statusText()).toBe('Updated 1 product from products-edit.csv.');
     expect(rowOf(6).cells[3].textContent).toBe('Swisher six');
     // A file of updates only goes straight to v1 from now on.
     await chooseFile('sku,tag\nAW-B1,NEW\n');

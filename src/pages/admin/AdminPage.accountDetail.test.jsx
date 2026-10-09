@@ -136,9 +136,15 @@ describe('an account’s page (AW-113)', () => {
     for (const text of ['12-3456789', 'TL-1', 'RC-1', '$5K — $15K', 'Desk Admin']) expect(within(verify).getByText(text)).toBeTruthy();
     expect(within(verify).queryByText('1 Alpha Way')).toBeNull();
     expect(within(verify).getByLabelText('Verification note').value).toBe('Checked');
+    // Dates as the rest of admin writes them, whatever the browser's
+    // language, without seconds (NEW-038).
+    const fact = (label) => within(verify).getByText(label, { selector: '.fact-label' }).nextElementSibling.textContent;
+    expect(fact('Signed up')).toMatch(/^Sep 28, 2026, \d{1,2}:00 [AP]M$/);
+    expect(fact('Approved')).toMatch(/^Oct 1, 2026, \d{1,2}:00 [AP]M$/);
+    expect(fact('Terms accepted')).toBe('—');
     // Documents: this account's only, signed when View is clicked.
     expect(fake.find({ table: 'profile_documents' })[0].filters).toEqual([['eq', 'profile_id', ALPHA_ID]]);
-    const docs = section('Licence documents');
+    const docs = section('License documents');
     expect(within(docs).getByText('Uploaded on September 29, 2026')).toBeTruthy();
     expect(within(docs).getByRole('button', { name: /^View ?State retail tobacco license for Alpha Food Mart/ })).toBeTruthy();
     expect(within(docs).getByText('Not on file')).toBeTruthy();

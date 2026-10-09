@@ -149,7 +149,7 @@ export function ImportPreview({
       created ? `${updated ? 'added' : 'Added'} ${plural(created, 'new product')}${activeColumn ? '' : ' (inactive)'}` : null,
     ].filter(Boolean).join(' and ');
     doneFocus.current = returnFocus?.current ?? null;
-    onApplied?.(patches, `${done} from ${fileName}`, { created });
+    onApplied?.(patches, `${done} from ${fileName}.`, { created });
   };
 
   const ready = !plan.error && plan.invalid.length === 0 && changes.length + creates.length > 0 && !missing;

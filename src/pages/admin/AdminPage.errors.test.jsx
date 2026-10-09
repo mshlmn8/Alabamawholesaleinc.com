@@ -87,7 +87,7 @@ describe('failed loads (AW-202)', () => {
   it('Accounts: a failed documents load says so, not "Not on file"', async () => {
     failing.add('profile_documents');
     await open('accounts');
-    expect(screen.getByRole('alert').textContent).toMatch(/^The licence documents didn’t load/);
+    expect(screen.getByRole('alert').textContent).toMatch(/^The license documents didn’t load/);
     const row = screen.getByRole('cell', { name: 'Test Market LLC' }).closest('tr');
     expect(within(row).queryByText('Not on file')).toBeNull();
     expect(within(row).getAllByText('Couldn’t check')).toHaveLength(2);
@@ -141,7 +141,7 @@ describe('checked writes (AW-202)', () => {
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^Approve ?Test Market LLC$/ })); });
     // The whole row comes back, with the approval stamp.
     expect(fake.find({ op: 'update' })[0]).toMatchObject({ table: 'profiles', patch: { status: 'approved' }, returning: '*' });
-    expect(statusText()).toBe('Test Market LLC is now approved.');
+    expect(statusText()).toBe('Test Market LLC is now Approved.');
   });
 
   it('a refused product save keeps the editor and what was typed (AW-023)', async () => {

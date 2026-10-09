@@ -94,13 +94,13 @@ describe('Admin -> Pricing (AW-114)', () => {
     await save();
     const dialog = screen.getByRole('alertdialog');
     expect(within(dialog).getByRole('heading').textContent).toBe('Save the silver tier?');
-    expect(within(dialog).getByText(/^silver: discount 5% to 7\.5%\. Approved buyers/)).toBeTruthy();
+    expect(within(dialog).getByText(/^Discount of the silver tier: 5% to 7\.5%\. Approved buyers/)).toBeTruthy();
     await confirm();
     expect(updates()).toHaveLength(1);
     // Only the discount is written; the label column is left as it is.
     expect(updates()[0]).toMatchObject({ patch: { discount_pct: 7.5 }, filters: [['eq', 'tier', 'silver']], returning: 'tier' });
     expect(updates()[0].patch).not.toHaveProperty('label');
-    expect(statusText()).toBe('Saved the silver tier');
+    expect(statusText()).toBe('Saved the silver tier.');
     expect(pct('silver').value).toBe('7.5');
     // The hint follows the saved discount.
     expect(screen.getByText(/for example “Prices shown are your Silver tier prices, 7\.5% off list\.”$/)).toBeTruthy();

@@ -229,7 +229,10 @@ export function ProductEditor({ id, fromId = null, rows, columns, loadError, onR
   const dirty = draftChanged(draft, original);
   const shownName = String(draft?.name || '').trim() || String(original?.name || '').trim() || (isNew ? 'the new product' : `product ${id}`);
   const savedName = String(original?.name || '').trim() || shownName;
-  useLeaveGuard(dirty && !leaving, `Your changes to ${shownName} aren’t saved. Leave without saving them?`);
+  // The name as saved, not as typed ('Your changes to changed' read oddly,
+  // NEW-037); a new product has none yet.
+  const editedName = isNew ? 'the new product' : savedName;
+  useLeaveGuard(dirty && !leaving, `Your changes to ${editedName} aren’t saved. Leave without saving them?`);
 
   // Leaving happens after the render that drops the leave guard.
   const left = useRef(false);
@@ -706,7 +709,7 @@ export function ProductEditor({ id, fromId = null, rows, columns, loadError, onR
       {confirm?.kind === 'discard' && (
         <ConfirmDialog
           title="Discard your changes?"
-          body={`Your changes to ${shownName} aren’t saved.`}
+          body={`Your changes to ${editedName} aren’t saved.`}
           confirmLabel="Discard changes" cancelLabel="Keep editing" historyEntry={false}
           onConfirm={() => { setConfirm(null); leave(backTo); }}
           onCancel={() => setConfirm(null)}

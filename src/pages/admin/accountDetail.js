@@ -12,6 +12,7 @@ import { fromCents, toCents } from '../../lib/pricing.js';
 import { accountStatus } from '../../lib/accountStatus.js';
 import { adminHref } from '../../lib/adminRoutes.js';
 import { statusLabel } from './orderStaff.js';
+import { adminDate } from './dates.js';
 
 export const MAX_ACCOUNT_SEARCH = 100;
 
@@ -174,10 +175,7 @@ export function ordersSummary(orders = []) {
 }
 
 // 'Oct 8, 2026'.
-export function dayText(value) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
+export const dayText = (value) => adminDate(value);
 
 // The account's status history, newest first (profile_status_log,
 // 20261008193000), with the role changes 20261011111000 adds (AW-203). A

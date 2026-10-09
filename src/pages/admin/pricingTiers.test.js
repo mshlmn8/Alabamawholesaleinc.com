@@ -1,7 +1,7 @@
 // Admin -> Pricing's form (AW-114): the discount box, the checks, and which
 // tiers changed.
 import { describe, expect, it } from 'vitest';
-import { changeText, draftOf, parsePct, pctText, tierChanges, validateTier } from './pricingTiers.js';
+import { changeText, changesText, draftOf, parsePct, pctText, tierChanges, validateTier } from './pricingTiers.js';
 
 const TIERS = [
   { tier: 'standard', label: 'Standard', discount_pct: 0 },
@@ -41,7 +41,10 @@ describe('tierChanges', () => {
       { tier: 'standard', discount_pct: 1, before: { discount_pct: 0 } },
       { tier: 'silver', discount_pct: 7.5, before: { discount_pct: 5 } },
     ]);
-    expect(changes.map(changeText)).toEqual(['standard: discount 0% to 1%', 'silver: discount 5% to 7.5%']);
+    expect(changes.map(changeText)).toEqual(['discount of the standard tier: 0% to 1%', 'discount of the silver tier: 5% to 7.5%']);
+    // One sentence, with a capital (NEW-037).
+    expect(changesText(changes)).toBe('Discount of the standard tier: 0% to 1%; discount of the silver tier: 5% to 7.5%.');
+    expect(changesText([])).toBe('');
   });
 
   it('counts a discount box that isn’t a number yet as a change', () => {

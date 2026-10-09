@@ -8,6 +8,7 @@
 //   draftOf(tier)                  { pct } as the box shows it
 //   validateTier(draft)            { pct? } messages
 //   tierChanges(tiers, drafts)     the tiers whose discount changed
+//   changesText(changes)           the confirmation's sentence about them
 
 // 0 to 99.99, at most two decimals (pricing_tiers_discount_range,
 // 20261010121000: 0 <= discount < 100; the column is numeric(5,2)).
@@ -54,5 +55,13 @@ export function tierChanges(tiers = [], drafts = {}) {
   return changes;
 }
 
-// One change as the confirmation lists it.
-export const changeText = (change) => `${change.tier}: discount ${pctText(change.before.discount_pct)}% to ${pctText(change.discount_pct)}%`;
+// One change as the confirmation lists it: 'discount of the silver tier: 5%
+// to 7.5%'.
+export const changeText = (change) => `discount of the ${change.tier} tier: ${pctText(change.before.discount_pct)}% to ${pctText(change.discount_pct)}%`;
+// The changes as one sentence, which starts with a capital rather than the
+// lower-case key the table shows (NEW-037): 'Discount of the silver tier:
+// 5% to 7.5%; discount of the gold tier: 10% to 12%.'
+export function changesText(changes = []) {
+  const text = changes.map(changeText).join('; ');
+  return text ? `${text[0].toUpperCase()}${text.slice(1)}.` : '';
+}

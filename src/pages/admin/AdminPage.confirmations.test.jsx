@@ -100,7 +100,7 @@ describe('cancelling an order', () => {
     expect(within(dialog).getByLabelText('Reason for cancelling').required).toBe(true);
     await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel the order' })); });
     expect(statusCalls()).toEqual([]);
-    expect(within(dialog).getByText('Enter reason for cancelling to continue.')).toBeTruthy();
+    expect(within(dialog).getByText('Enter a reason to continue.')).toBeTruthy();
     fireEvent.change(within(dialog).getByLabelText('Reason for cancelling'), { target: { value: '  Store closed  ' } });
     await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel the order' })); });
     expect(statusCalls()).toEqual([{ p_order_id: ORDER_ID, p_status: 'cancelled', p_note: 'Store closed' }]);
@@ -218,7 +218,7 @@ describe('account changes', () => {
     expect(select.value).toBe('approved');
     expect(fake.find({ op: 'update' })).toHaveLength(0);
     await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Suspend the account' })); });
-    expect(within(dialog).getByText('Enter reason for suspending to continue.')).toBeTruthy();
+    expect(within(dialog).getByText('Enter a reason to continue.')).toBeTruthy();
     fireEvent.change(within(dialog).getByLabelText('Reason for suspending'), { target: { value: 'Licence expired' } });
     await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Suspend the account' })); });
     expect(fake.find({ op: 'update' }).map((c) => c.patch)).toEqual([{ status: 'suspended' }]);
@@ -273,7 +273,7 @@ describe('account changes', () => {
     await release({ data: [{ ...BRAVO, status: 'approved', approved_at: '2026-10-08T16:00:00Z', approved_by: 'a1' }], error: null });
     expect(within(row('Bravo Tobacco Outlet')).queryByRole('button', { name: /^Approve/ })).toBeNull();
     expect(document.activeElement).toBe(select);
-    expect(statusText()).toBe('Bravo Tobacco Outlet is now approved.');
+    expect(statusText()).toBe('Bravo Tobacco Outlet is now Approved.');
     // The approval stamp the database set shows at once.
     expect(within(row('Bravo Tobacco Outlet')).getByText(/^Approved Oct 8, 2026 by Desk Admin$/)).toBeTruthy();
     db.hold = {};
@@ -294,7 +294,7 @@ describe('account changes', () => {
     await act(async () => { fireEvent.change(tier(), { target: { value: 'standard' } }); });
     expect(tier().value).toBe('standard');
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(statusText()).toBe('Alpha Food Mart is now on the standard tier.');
+    expect(statusText()).toBe('Alpha Food Mart is now on the Standard tier.');
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Undo' })); });
     expect(fake.find({ op: 'update' }).at(-1).patch).toEqual({ pricing_tier: 'silver' });
     expect(tier().value).toBe('silver');
@@ -315,7 +315,7 @@ describe('role changes (AW-203)', () => {
     select.focus();
     await act(async () => { fireEvent.change(select, { target: { value: 'admin' } }); });
     const dialog = screen.getByRole('alertdialog', { name: 'Make Alpha Food Mart an admin?' });
-    expect(within(dialog).getByText('Admins can see every order, application, EIN and licence document, and change prices and accounts.')).toBeTruthy();
+    expect(within(dialog).getByText('Admins can see every order, application, EIN and license document, and change prices and accounts.')).toBeTruthy();
     // Until it is confirmed, the select keeps the saved role.
     expect(select.value).toBe('customer');
     expect(fake.find({ op: 'update' })).toHaveLength(0);
@@ -333,7 +333,7 @@ describe('role changes (AW-203)', () => {
     await act(async () => { fireEvent.change(roleSelect('Alpha Food Mart'), { target: { value: 'admin' } }); });
     const dialog = screen.getByRole('alertdialog');
     await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Make an admin' })); });
-    expect(within(dialog).getByText('Enter reason to continue.')).toBeTruthy();
+    expect(within(dialog).getByText('Enter a reason to continue.')).toBeTruthy();
     expect(fake.find({ op: 'update' })).toHaveLength(0);
     fireEvent.change(within(dialog).getByLabelText('Reason'), { target: { value: '  Runs the Hoover store  ' } });
     await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Make an admin' })); });

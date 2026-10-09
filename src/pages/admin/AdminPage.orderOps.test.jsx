@@ -149,7 +149,7 @@ describe('status changes', () => {
     const dialog = screen.getByRole('alertdialog', { name: 'Cancel ALW-O-BBBB222233 for Test Market LLC?' });
     expect(fake.find({ kind: 'rpc', name: 'admin_set_order_status' })).toHaveLength(0);
     await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel the order' })); });
-    expect(within(dialog).getByText('Enter reason for cancelling to continue.')).toBeTruthy();
+    expect(within(dialog).getByText('Enter a reason to continue.')).toBeTruthy();
     fireEvent.change(within(dialog).getByLabelText('Reason for cancelling'), { target: { value: 'Duplicate order' } });
     await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel the order' })); });
     expect(fake.find({ kind: 'rpc', name: 'admin_set_order_status' }).map((c) => c.args)).toEqual([{ p_order_id: ORDER_ID, p_status: 'cancelled', p_note: 'Duplicate order' }]);

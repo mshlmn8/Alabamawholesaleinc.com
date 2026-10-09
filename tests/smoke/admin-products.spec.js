@@ -115,5 +115,5 @@ test('an import’s Update n products focuses the count line, never the top of t
   await expect.poll(async () => (await focusState(page)).count).toBe(true);
   expect((await focusState(page)).y).toBeGreaterThan(0);
   await expect(page.locator('.admin-count')).toBeInViewport();
-  await expect(page.locator('.admin-status-text')).toHaveText('Updated 2 products from products-import2.csv');
+  await expect(page.locator('.admin-status-text')).toHaveText('Updated 2 products from products-import2.csv.');
 });

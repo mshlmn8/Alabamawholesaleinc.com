@@ -35,7 +35,7 @@ export function ConfirmDialog({
     }
     const text = reason.trim();
     const problem = !text && !reasonOptional
-      ? `Enter ${reasonLabel.toLowerCase()} to continue.`
+      ? 'Enter a reason to continue.'
       : reasonMax && text.length > reasonMax
         ? `Keep it to ${reasonMax.toLocaleString('en-US')} characters or fewer (it has ${text.length.toLocaleString('en-US')}).`
         : '';

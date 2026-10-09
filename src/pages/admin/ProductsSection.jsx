@@ -41,6 +41,7 @@ import { PRODUCT_TAGS, STOCK_LABELS, STOCK_STATUSES } from './productForm.js';
 import { ariaSort, countText, departmentOptions, filterSignature, filterSortPage, hasFilters, isInactive, nextSort } from './productList.js';
 import { csvFileName, importPlan, productCsvRecords } from './productBulk.js';
 import { CsvError, downloadCsv, parseCsv, toCsv } from './csv.js';
+import { adminDate } from './dates.js';
 
 // The product columns Admin -> Products reads. Never price: admins read list
 // prices through admin_product_prices() (AW-003).
@@ -220,13 +221,12 @@ const COLUMNS = [
 ];
 const TAG_OPTIONS = [['', 'Any tag'], ['none', 'No tag'], ...PRODUCT_TAGS.map((tag) => [tag.toLowerCase(), tag])];
 const productsHref = (query) => adminHref({ section: 'products', query });
-const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
 // When a product was last changed: 'Oct 1, 2026'.
 function Updated({ value }) {
   const time = value ? Date.parse(value) : NaN;
   if (Number.isNaN(time)) return <span>—</span>;
-  return <time dateTime={value}>{dateFormat.format(time)}</time>;
+  return <time dateTime={value}>{adminDate(time)}</time>;
 }
 
 // A column header: a button that sorts by the column, with aria-sort on the
@@ -399,7 +399,7 @@ function ProductsList({
     const list = [...chosen, ...extra];
     const name = csvFileName();
     downloadCsv(name, toCsv(productCsvRecords(list, columns)));
-    notify?.(`Exported ${plural(list.length, 'product')} to ${name}`);
+    notify?.(`Exported ${plural(list.length, 'product')} to ${name}.`);
   };
 
   // After a bulk change or an import, the selection goes, and with it the

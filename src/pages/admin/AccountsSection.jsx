@@ -1,4 +1,4 @@
-// Admin -> Accounts: every account with its status, tier, role and licence
+// Admin -> Accounts: every account with its status, tier, role and license
 // documents, the details row with the application answers (AW-017), Approve
 // and Email applicant; status pills with counts (?status=, pending by
 // default, AW-268), a search box, and each business's own page
@@ -13,7 +13,7 @@ import { accountStatus } from '../../lib/accountStatus.js';
 import { ACCOUNT_STATUS_FILTERS, DEFAULT_ACCOUNT_STATUS } from '../../lib/adminRoutes.js';
 import { DOCUMENT_TYPES, listAllProfileDocuments } from '../../lib/documents.js';
 import { fetchAllRows } from '../../lib/paging.js';
-import { ADMIN_STATUS_LABELS, ROLE_LABELS, tierLabel } from '../../lib/accountLabels.js';
+import { ADMIN_STATUS_LABELS, ROLE_LABELS, adminStatusLabel, tierLabel } from '../../lib/accountLabels.js';
 import { useLeaveGuard } from './useLeaveGuard.js';
 import { adminErrorMessage, withStatus } from './adminData.js';
 import { LoadProblem } from './AdminStatus.jsx';
@@ -133,7 +133,7 @@ function AccountsList({
   profiles, profilesError, onRetry, retrying, tiers, currentAdminId, changes, search, onSearch, onOpen, returnFocusId, onReturnFocus,
   filter = DEFAULT_ACCOUNT_STATUS, listedStatus = accountStatus, onFilter,
 }) {
-  // The licence documents: null while loading. They load once when the list
+  // The license documents: null while loading. They load once when the list
   // first shows (and on Try again), never after a change to an account.
   const [documents, setDocuments] = useState(null);
   const [documentsError, setDocumentsError] = useState(null);
@@ -160,7 +160,7 @@ function AccountsList({
   };
   const loadDocuments = () => listAllProfileDocuments().then(
     (rows) => { setDocuments(rows); setDocumentsError(null); },
-    (error) => setDocumentsError(adminErrorMessage(error, 'The licence documents didn’t load')),
+    (error) => setDocumentsError(adminErrorMessage(error, 'The license documents didn’t load')),
   );
   useEffect(() => { loadDocuments(); }, []);
   const retryDocuments = async () => {
@@ -280,7 +280,7 @@ function AccountsList({
                         <option value="suspended">{ADMIN_STATUS_LABELS.suspended}</option>
                       </select>
                       {filter !== 'all' && accountStatus(p) !== filter && (
-                        <span className="account-moved">{`Moved to ${accountStatus(p)}`}</span>
+                        <span className="account-moved">{`Moved to ${adminStatusLabel(accountStatus(p))}`}</span>
                       )}
                       {p.id === currentAdminId && <small className="field-hint" id="admin-own-row">Your own status and role can’t be changed here.</small>}
                       {p.approved_at && <small className="field-hint">{approvalLine(p, profiles)}</small>}

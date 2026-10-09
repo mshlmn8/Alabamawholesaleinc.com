@@ -52,7 +52,7 @@ describe('ConfirmDialog', () => {
     expect(onConfirm).not.toHaveBeenCalled();
     expect(box.getAttribute('aria-invalid')).toBe('true');
     const described = box.getAttribute('aria-describedby').split(' ').map((id) => document.getElementById(id).textContent);
-    expect(described).toEqual(['Staff see this in the order history.', 'Enter reason to continue.']);
+    expect(described).toEqual(['Staff see this in the order history.', 'Enter a reason to continue.']);
     expect(document.activeElement).toBe(box);
     fireEvent.change(box, { target: { value: '  Duplicate order  ' } });
     expect(box.getAttribute('aria-invalid')).toBeNull();

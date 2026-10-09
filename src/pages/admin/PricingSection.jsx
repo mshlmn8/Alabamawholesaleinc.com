@@ -15,7 +15,7 @@ import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { LoadProblem } from './AdminStatus.jsx';
 import { useLeaveGuard } from './useLeaveGuard.js';
 import { NO_ROWS, adminErrorMessage, checkedWrite, withStatus } from './adminData.js';
-import { changeText, draftOf, tierChanges, validateTier } from './pricingTiers.js';
+import { changesText, draftOf, tierChanges, validateTier } from './pricingTiers.js';
 
 export const PRICES_NOTE = 'Approved buyers see the new prices on their next page load; orders already saved keep their prices.';
 
@@ -117,7 +117,7 @@ export function PricingTab({ notify }) {
         for (const change of saved) next[change.tier] = draftOf({ discount_pct: change.discount_pct });
         return next;
       });
-      notify?.(saved.length === 1 ? `Saved the ${saved[0].tier} tier` : `Saved ${saved.length} tiers`);
+      notify?.(saved.length === 1 ? `Saved the ${saved[0].tier} tier.` : `Saved ${saved.length} tiers.`);
     }
     if (failure) setSaveError(failure);
   };
@@ -180,7 +180,7 @@ export function PricingTab({ notify }) {
       {confirm && (
         <ConfirmDialog
           title={confirm.length === 1 ? `Save the ${confirm[0].tier} tier?` : `Save ${confirm.length} tiers?`}
-          body={`${confirm.map(changeText).join('; ')}. ${PRICES_NOTE}`}
+          body={`${changesText(confirm)} ${PRICES_NOTE}`}
           confirmLabel={busy ? 'Saving…' : 'Save'} busy={busy}
           onConfirm={apply} onCancel={() => { if (!busy) setConfirm(null); }}
         />
