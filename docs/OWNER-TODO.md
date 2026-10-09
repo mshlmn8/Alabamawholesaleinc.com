@@ -63,6 +63,7 @@ Do not apply the new SQL files in `supabase/migrations/` against production unti
 | AW-206 | Create a Cloudflare Turnstile site and enable CAPTCHA in Supabase. | The sign-up text in `src/components/AuthModal.jsx` | Waiting on the site key. |
 | AW-052 | Register the production domain and connect it in Netlify. | `DEFAULT_SITE_URL` in `src/lib/routes.js` (`VITE_SITE_URL` overrides it) | Waiting. The domain strings are unchanged. |
 | AW-210 | Which cookieless analytics, error reporting and uptime monitor should the site use? | `NETLIFY-DEPLOY.md` | Waiting. No tracker was added. |
+| AW-205 | Do all subdomains of the domain (www and any others) serve HTTPS, and should the domain go on the browsers' HSTS preload list? Until then HSTS covers only the main host, for one year. | `Strict-Transport-Security` in `netlify.toml` | Waiting. |
 | AW-213 | Will production be on Supabase Pro, and will deploy previews use a separate project? | BACKEND.md, top | Waiting. |
 | AW-246 | How long does approval actually take? | The sign-up text in `src/components/AuthModal.jsx` | The existing "one business day" sentences are unchanged. |
 | AW-272 | What approval time should the application promise, and is Net-30 offered? | The sign-up text in `src/components/AuthModal.jsx` | Waiting. Net-30 copy is unchanged. |

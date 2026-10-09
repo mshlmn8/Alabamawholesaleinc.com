@@ -13,7 +13,7 @@
     "predev": "npm run images",
     "dev": "vite",
     "prebuild": "npm run images",
-    "build": "vite build && node scripts/build-sitemap.mjs",
+    "build": "vite build && node scripts/build-sitemap.mjs && node scripts/check-headers.mjs",
     "preview": "vite preview",
     "lint": "eslint . --max-warnings=0",
     "test": "vitest run",

@@ -72,7 +72,7 @@ Translated pages replace React's text nodes, so a string that can change, appear
 npm run build
 ```
 
-Output goes to `dist/`; `npm run preview` serves it locally. The build fails without `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (see [BACKEND.md](BACKEND.md)). The site deploys from Git through Netlify; see [NETLIFY-DEPLOY.md](NETLIFY-DEPLOY.md). Do not drag and drop `dist/` onto Netlify.
+Output goes to `dist/`; `npm run preview` serves it locally, with the security headers and Content-Security-Policy from `netlify.toml` (NETLIFY-DEPLOY.md, "Headers and caching"). The build also fails when that policy would block an inline script in `dist/index.html` (`scripts/check-headers.mjs`), and without `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (see [BACKEND.md](BACKEND.md)). The site deploys from Git through Netlify; see [NETLIFY-DEPLOY.md](NETLIFY-DEPLOY.md). Do not drag and drop `dist/` onto Netlify.
 
 ## Customize
 

@@ -10,3 +10,90 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Response headers (AW-205, AW-182). NETLIFY-DEPLOY.md, "Headers and caching",
+# explains each one. scripts/netlify-headers.mjs reads these rules, so keep
+# every value a "double-quoted" string on one line. `vite preview` sends the
+# "/*" values too; `npm run build` (scripts/check-headers.mjs) and
+# scripts/netlify-headers.test.mjs check them.
+
+# Security headers on every response.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Content-Security-Policy, directive by directive:
+    # - default-src 'self': anything not named below comes from this site only.
+    # - script-src: the bundled /assets scripts, plus the one inline script in
+    #   index.html (age-gate colours and slow-load help) by its sha256 hash.
+    #   Editing that script changes the hash; the build check prints the new
+    #   value. Never 'unsafe-inline' or 'unsafe-eval' here.
+    # - style-src 'unsafe-inline': for the two <style> blocks in index.html
+    #   (the boot shell and its noscript rule). React style props go through
+    #   the CSSOM and need nothing.
+    # - img-src, connect-src *.supabase.co: the Supabase project (its URL
+    #   differs per environment) and Storage photo URLs set in Admin; wss:// is
+    #   Supabase Realtime. No data: or blob: (assetsInlineLimit: 0 in
+    #   vite.config.js, and nothing calls createObjectURL).
+    # - font-src, manifest-src 'self': the bundled fonts and site.webmanifest.
+    # - object-src 'none': no plugins. base-uri 'self': no <base> hijack.
+    #   form-action 'self': forms submit only to this site.
+    # - frame-ancestors 'none': no other site may frame these pages (admin
+    #   included). With no frame-src, the site frames nothing but itself.
+    # - No upgrade-insecure-requests: every resource is already same-origin or
+    #   https, and it would rewrite a local http://127.0.0.1 preview's requests.
+    # A third-party host is added here and to the privacy policy's processor
+    # list in the same change (AW-210).
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-4Y+Hx5808wn7skDAKyyRQwAiAHe0DySei0rvG5SBkfI='; style-src 'self' 'unsafe-inline'; img-src 'self' https://*.supabase.co; font-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    # The older form of frame-ancestors 'none'.
+    X-Frame-Options = "DENY"
+    # Browsers use each file only as the type the server sends (no sniffing).
+    X-Content-Type-Options = "nosniff"
+    # Other sites see only this site's origin, never the page path or query.
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # The site uses none of these device features, and nothing may ask for them.
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+    # TODO(owner): Do all subdomains (www and any others) serve HTTPS, and should the domain go on the browsers' HSTS preload list? Until then HSTS covers only the main host, for one year. (AW-205)
+    # After one visit, browsers reach this host only over HTTPS for a year.
+    Strict-Transport-Security = "max-age=31536000"
+    # No Cache-Control here: index.html (served for every page path) keeps
+    # Netlify's default, max-age=0, must-revalidate, so a deploy shows at once.
+
+# Vite's content-hashed build files (JS, CSS, fonts, the logo and the product
+# photo renditions). A changed file always gets a new name, so browsers keep
+# these for a year without asking again.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Brand files at fixed names, rendered from src/assets/logo.jpg by
+# scripts/build-images.mjs: kept for a week, so a new logo still arrives.
+[[headers]]
+  for = "/favicon.ico"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/favicon-32.png"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/apple-touch-icon.png"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/icon-192.png"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/icon-512.png"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/og.jpg"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
