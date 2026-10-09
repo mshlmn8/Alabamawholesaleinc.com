@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { Link } from '../../lib/router.js';
 import { formatMoney } from '../../lib/format.js';
+import { MAX_QTY } from '../../lib/quantity.js';
 import { MISSING_FUNCTION_CODES, lineTotal, tierUnitPrice, toCents, fromCents } from '../../lib/pricing.js';
 import { DEFAULT_ORDER_STATUS, LEGACY_ORDER_STATES, ORDER_STATES, adminHref } from '../../lib/adminRoutes.js';
 import { Icon } from '../../components/Icon.jsx';
@@ -96,7 +97,7 @@ export function parseOrderLines(lines) {
   for (const line of lines) {
     const qtyText = String(line.qty).trim();
     const priceText = String(line.unit_price ?? '').trim();
-    if (!/^\d+$/.test(qtyText) || Number(qtyText) > 100000) return { ok: false, error: `Enter a whole quantity for ${line.product_name}.` };
+    if (!/^\d+$/.test(qtyText) || Number(qtyText) > MAX_QTY) return { ok: false, error: `Enter a whole quantity for ${line.product_name}.` };
     if (priceText !== '' && !/^\d+(\.\d{1,2})?$/.test(priceText)) return { ok: false, error: `Enter the price for ${line.product_name} as an amount such as 12.50, or leave it blank.` };
     out.push({ item_id: line.id, qty: Number(qtyText), unit_price: priceText === '' ? null : Number(priceText) });
   }

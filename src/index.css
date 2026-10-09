@@ -359,7 +359,7 @@ h2 { font-size: var(--h2); margin-bottom: 0; }
   .stepper button { width: var(--tap); height: var(--tap); }
   .admin-sections .sub-pill { min-height: var(--tap); }
   .sort-button { min-height: var(--tap); }
-  .account-link, .account-contact a, .account-detail-contact a, .order-account-link { display: inline-flex; align-items: center; min-height: var(--tap); }
+  .account-link, .account-contact a, .account-detail-contact a, .order-account-link, .order-contact a { display: inline-flex; align-items: center; min-height: var(--tap); }
 }
 /* Pressed. */
 .button:not(:disabled):active, .icon-btn:not(:disabled):active, .stepper button:not(:disabled):active { transform: translateY(1px); filter: brightness(.95); }
@@ -967,7 +967,8 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .print-lines { width: 100%; border-collapse: collapse; font-size: var(--text-base); }
 .print-lines th, .print-lines td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
 .print-lines thead th { font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted); }
-.print-lines .num { text-align: right; font-variant-numeric: tabular-nums; }
+/* Not .num: that is the ordered-step marker (AW-296). */
+.print-lines .print-num { text-align: right; font-variant-numeric: tabular-nums; }
 .print-group th { padding-top: 14px; font-size: var(--text-sm); font-weight: 700; color: var(--purple); background: var(--paper); }
 .print-lines .print-tick-cell { width: 4.5rem; text-align: center; }
 .print-tick { display: inline-block; width: 1.125rem; height: 1.125rem; border: 2px solid var(--ink); vertical-align: middle; }

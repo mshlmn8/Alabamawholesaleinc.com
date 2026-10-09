@@ -83,7 +83,7 @@ export function PrintSheet({ orderId, doc: requested, listHref, onBack }) {
               <tr>
                 <th scope="col" className="print-tick-cell">{sheet.tick}</th>
                 <th scope="col">SKU</th>
-                <th scope="col" className="num">Qty</th>
+                <th scope="col" className="print-num">Qty</th>
                 <th scope="col">Unit</th>
                 <th scope="col" className="print-product">Product</th>
               </tr>
@@ -95,7 +95,7 @@ export function PrintSheet({ orderId, doc: requested, listHref, onBack }) {
                   <tr key={line.id}>
                     <td className="print-tick-cell"><span className="print-tick" aria-hidden="true" /></td>
                     <td className="print-sku">{line.sku}</td>
-                    <td className="num">{line.qty}</td>
+                    <td className="print-num">{line.qty}</td>
                     <td>{line.unit || '—'}</td>
                     <td>
                       <span className="print-name">{line.name}</span>

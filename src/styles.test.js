@@ -907,6 +907,11 @@ describe('one number marker for ordered steps (AW-296)', () => {
     }
   });
 
+  it('keeps .num for the step marker: no other rule restyles the class (the admin print sheet uses .print-num)', () => {
+    const others = all.filter((r) => !r.selectors.includes('.apply-steps li::before') && r.selectors.some((x) => /\.num(?![\w-])/.test(x)));
+    expect(others.map((r) => r.selectors.join(', '))).toEqual([]);
+  });
+
   it('colours the menu indices in the same text orange', () => {
     for (const selector of ['.aw-department h3 > span:first-child', '.menu-index']) expect(ruleFor(selector).color, selector).toBe('var(--orange-dark)');
   });
