@@ -1,7 +1,7 @@
 // Money and label formatting (AW-184, AW-330). Amounts are test numbers, not
 // catalog prices.
 import { describe, expect, it } from 'vitest';
-import { SHARED_PHOTO_NOTE, formatMoney, formatMoneyShort, catLabel, brandLabel, photoAlt, photoSizeWord, sharedPhotoBadge } from './format.js';
+import { SHARED_PHOTO_NOTE, formatMoney, formatMoneyShort, catLabel, brandLabel, photoAlt, photoSizeWord, sharedPhotoBadge, sharesDepartmentName } from './format.js';
 import { PRODUCTS } from '../data/products.js';
 
 describe('formatMoney', () => {
@@ -39,6 +39,14 @@ describe('catLabel', () => {
 
   it('shows an unknown key as it is', () => {
     expect(catLabel('SEASONAL')).toBe('SEASONAL');
+  });
+
+  it('knows a line named like its department, in any case (NEW-029)', () => {
+    expect(sharesDepartmentName('MOTOR OIL', 'Motor Oil')).toBe(true);
+    expect(sharesDepartmentName('MOTOR OIL', ' MOTOR OIL ')).toBe(true);
+    expect(sharesDepartmentName('MOTOR OIL', 'Additives')).toBe(false);
+    expect(sharesDepartmentName('NOVELTIES', 'Novelties')).toBe(false);
+    expect(sharesDepartmentName('MOTOR OIL', null)).toBe(false);
   });
 });
 

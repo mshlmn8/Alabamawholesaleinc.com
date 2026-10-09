@@ -16,7 +16,7 @@ import { APPLY_LABEL, basketTerms } from '../data/terms.js';
 import { POLICY_TITLES, POLICY_INTROS } from '../pages/support/policyText.js';
 import { resetTitle } from '../pages/support/resetView.js';
 import { topLines } from './departments.js';
-import { brandLabel, catLabel, formatMoney } from './format.js';
+import { brandLabel, catLabel, formatMoney, sharesDepartmentName } from './format.js';
 import { underLegalReview } from './merchandising.js';
 import { NOINDEX_PAGES, pathFor, siteUrl } from './routes.js';
 import { MIN_QUERY_LENGTH, normalizeSearchText } from './search.js';
@@ -295,8 +295,8 @@ function categoryText(route, products, departments, site) {
       return `Wholesale ${lineInSentence(route.sub)} from our ${label} department: ${productCount(rows.length)}${from}.`;
     });
     return {
-      // 'Motor Oil · Motor Oil' names the department once.
-      title: fitTitle([route.sub, route.sub.toLowerCase() === label.toLowerCase() ? '' : label, site]),
+      // 'Motor Oil · Motor Oil' names the department once (NEW-029).
+      title: fitTitle([route.sub, sharesDepartmentName(route.category, route.sub) ? '' : label, site]),
       description: fitSentences([first, SIGN_IN]),
       image: imageOf(preview, scope),
     };

@@ -71,6 +71,14 @@ describe('CategoryPage', () => {
     expect(window.history.length).toBe(length);
   });
 
+  it('names the line it searches on a line page (NEW-051)', () => {
+    act(() => navigate('/category/tobacco/cigars', { replace: true }));
+    render(<Harness />);
+    expect(screen.getByRole('searchbox', { name: 'Search in Cigars' })).toBeTruthy();
+    act(() => navigate('/category/tobacco', { replace: true }));
+    expect(screen.getByRole('searchbox', { name: 'Search in Tobacco' })).toBeTruthy();
+  });
+
   it('updates the URL from the search box after a pause', () => {
     vi.useFakeTimers();
     render(<Harness />);
@@ -443,6 +451,25 @@ describe('CategoryPage line pages (AW-226)', () => {
     render(<Branded />);
     expect(head()).toEqual({ eyebrow: 'DEPARTMENT · 14 SKUs', h1: 'Tobacco', intro: 'Wholesale tobacco for licensed retail accounts: 14 products in 2 product lines.' });
     expect(crumbs().map((c) => `${c.tag}:${c.text}`)).toEqual(['A:Home', 'A:All products', 'SPAN:Tobacco']);
+  });
+
+  it('names the department once on a line named like it: the trail says which is the department, the eyebrow just counts (NEW-029)', () => {
+    const oil = [
+      { id: 57, name: 'Pure Guard motor oil', brand: 'Pure Guard', cat: 'MOTOR OIL', sub: 'Motor Oil', sku: 'AW-PG', variants: [], tag: null },
+      { id: 58, name: 'Fuel additive', brand: 'X', cat: 'MOTOR OIL', sub: 'Additives', sku: 'AW-FA', variants: [], tag: null },
+    ];
+    const depts = [{ key: 'MOTOR OIL', label: 'Motor Oil', subs: ['Additives', 'Motor Oil'], count: 2 }];
+    act(() => navigate('/category/motor-oil/motor-oil', { replace: true }));
+    const view = render(<CategoryPage category="MOTOR OIL" sub="Motor Oil" products={oil} departments={depts} profile={null} isApprovedBuyer={false}
+                                      cart={{}} addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} />);
+    expect(head()).toEqual({ eyebrow: '1 product', h1: 'Motor Oil', intro: 'Wholesale motor oil for licensed retail accounts: 1 product in Motor Oil.' });
+    expect(crumbs().map((c) => `${c.tag}:${c.text}`)).toEqual(['A:Home', 'A:All products', 'A:Motor Oil department', 'SPAN:Motor Oil']);
+    view.unmount();
+    // Another line of the department keeps the department's name in both.
+    render(<CategoryPage category="MOTOR OIL" sub="Additives" products={oil} departments={depts} profile={null} isApprovedBuyer={false}
+                         cart={{}} addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} />);
+    expect(head().eyebrow).toBe('Motor Oil · 1 product');
+    expect(crumbs().map((c) => c.text)).toEqual(['Home', 'All products', 'Motor Oil', 'Additives']);
   });
 
   it('says "1 product" for a line of one', () => {

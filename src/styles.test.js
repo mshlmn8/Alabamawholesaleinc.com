@@ -482,7 +482,7 @@ describe('one button system and drawn icons (AW-143, AW-298, AW-293, AW-218)', (
     // (AW-295); on paper an outside link or an email button prints where it
     // goes (AW-148).
     const glyphs = declared('content').filter(({ value }) => !/^(''|counter\([\w-]+, decimal-leading-zero\))$/.test(value));
-    expect(glyphs.map(({ selector }) => selector)).toEqual(['.crumbs li + li::before', '.form-error:not(:empty)::before',
+    expect(glyphs.map(({ selector }) => selector)).toEqual(['.crumbs li:not(:last-child)::after', '.form-error:not(:empty)::before',
       'a[href^="http"]::after, a.button[href^="mailto:"]::after']);
     expect(glyphs[2].value).toBe('" (" attr(href) ")"');
     expect(css).not.toMatch(/[↗→⊞⌄×✓−]/);
@@ -1773,6 +1773,20 @@ describe('department page controls (AW-223, AW-225, AW-325)', () => {
     // The global reset that once turned "Home" title case hits buttons only, and
     // the trail renders links and spans.
     expect(code(read('src/components/Breadcrumbs.jsx'))).not.toMatch(/<button/);
+  });
+
+  it('draws the trail’s slash after every crumb but the last, so a wrapped row never starts with one (NEW-041)', () => {
+    expect(ruleFor('.crumbs li:not(:last-child)::after')).toEqual({ content: "'/' / ''", color: 'var(--purple)' });
+    expect(css).not.toMatch(/\.crumbs li \+ li/);
+    expect(read('src/components/Breadcrumbs.jsx')).toMatch(/\.crumbs li:not\(:last-child\)::after/);
+  });
+
+  it('keeps a filter chip inside the row: a long search term ends in an ellipsis and the remove icon stays (NEW-053)', () => {
+    expect(ruleFor('.active-filters > li')).toEqual({ 'max-width': '100%', 'min-width': '0' });
+    expect(ruleFor('.active-filters > li > button')).toMatchObject({ display: 'inline-flex', 'max-width': '100%' });
+    expect(ruleFor('.active-filters > li > button > span')).toEqual({ 'min-width': '0', overflow: 'hidden', 'text-overflow': 'ellipsis', 'white-space': 'nowrap' });
+    // The icon never shrinks (.icon is flex: none).
+    expect(ruleFor('.icon').flex).toBe('none');
   });
 
   it('mutes a product line the filters leave empty, but never the current one, and not as a selected state (AW-225)', () => {

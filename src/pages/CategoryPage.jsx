@@ -23,7 +23,7 @@ import { useMediaQuery, MOBILE_QUERY } from '../lib/useMediaQuery.js';
 import { matchesQuery } from '../lib/search.js';
 import { variantCount } from '../lib/lines.js';
 import { featuredOrder } from '../lib/merchandising.js';
-import { brandLabel, catLabel } from '../lib/format.js';
+import { brandLabel, catLabel, sharesDepartmentName } from '../lib/format.js';
 import { tierPriceNote } from '../lib/pricing.js';
 import { Link, navigate } from '../lib/router.js';
 import { firstControlIn, focusInPlace, focusLost, neighbourKey } from '../lib/focus.js';
@@ -175,6 +175,7 @@ export function CategoryPage({
   useLayoutEffect(() => { latest.current = { sub, query }; });
 
   const cat = departments.find(c => c.key === category);
+  const deptLabel = catLabel(category);
   const inCategory = products.filter(p => p.cat === category);
   const activeSub = sub || null;
   const inScope = activeSub ? inCategory.filter(p => p.sub === activeSub) : inCategory;
@@ -283,11 +284,19 @@ export function CategoryPage({
   };
 
   // No matches (AW-299): clear the filters, search every department for the
-  // same words, or go to another department.
+  // same words, or go to another department. On a product line whose
+  // department has matches, first the way to them (NEW-051): the department
+  // with the same search and filters, unlike Clear filters, which drops them.
   const otherDepartments = departments.filter(d => d.key !== category && d.count > 0);
+  const inDepartment = activeSub && filtered.length > 0;
   const noResultActions = (
     <>
-      {needle && <Link className="button" to={{ page: 'search', q: query.q }}>{`Search all departments for “${query.q.trim()}”`}</Link>}
+      {inDepartment && (
+        <Link className="button" to={here({ sub: null })} scroll={false} onClick={() => { focusAfter.current = {}; }}>
+          {`See ${filtered.length} in all of ${deptLabel}`}
+        </Link>
+      )}
+      {needle && <Link className={inDepartment ? 'button ghost' : 'button'} to={{ page: 'search', q: query.q }}>{`Search all departments for “${query.q.trim()}”`}</Link>}
       <button className="button ghost" type="button" onClick={() => clearFilters()}>Clear filters</button>
       {otherDepartments.length > 0 && (
         <ul className="sub-pills" aria-label="Other departments">
@@ -321,7 +330,7 @@ export function CategoryPage({
   );
   const filterPanel = (
     <div className="filter-panel">
-      <label className="filter-search" htmlFor="category-search"><span>{`Search in ${catLabel(category)}`}</span>
+      <label className="filter-search" htmlFor="category-search"><span>{`Search in ${activeSub || catLabel(category)}`}</span>
         <input id="category-search" type="search" value={draft} onChange={(e) => onSearchInput(e.target.value)} placeholder="Name, brand or SKU" autoComplete="off" />
       </label>
       {featured.length > 0 && (
@@ -367,7 +376,6 @@ export function CategoryPage({
     </div>
   );
   const closeFilters = () => setFiltersOpen(false);
-  const deptLabel = catLabel(category);
 
   // On phones the product lines are one scrolling row, and the current one is
   // centred in it on arrival and after each pick (AW-157): the row's own
@@ -414,9 +422,10 @@ export function CategoryPage({
     <section>
       <div className="page-head category-head">
         <Breadcrumbs items={catalogCrumbs({ category, sub: activeSub, query })} />
-        {/* A line page names the line, its department and its own count (AW-226). */}
+        {/* A line page names the line, its department and its own count
+            (AW-226); a line named like its department, just the count (NEW-029). */}
         <p className="eyebrow">{activeSub
-          ? `${deptLabel} · ${plural(inScope.length, 'product')}`
+          ? `${sharesDepartmentName(category, activeSub) ? '' : `${deptLabel} · `}${plural(inScope.length, 'product')}`
           : <SkuCount lead="DEPARTMENT · " count={String(cat?.count ?? inCategory.length).padStart(2, '0')} />}</p>
         <h1>{activeSub || deptLabel}</h1>
         {/* An approved buyer is also told whose prices the cards show, from my_prices() (AW-107). */}

@@ -1,4 +1,4 @@
-// Breadcrumbs (AW-043) and the catalog trail (AW-226, AW-325).
+// Breadcrumbs (AW-043) and the catalog trail (AW-226, AW-325, NEW-029).
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { hrefFor } from '../lib/routes.js';
@@ -42,6 +42,24 @@ describe('catalogCrumbs (AW-226)', () => {
   it('carries a department page’s filters onto its parent links', () => {
     const query = { q: '', sort: 'brand', tags: [], brands: ['game'], variants: false };
     expect(hrefs(catalogCrumbs({ category: 'TOBACCO', sub: 'Wraps & Leafs', query }))[2]).toEqual({ label: 'Tobacco', href: '/category/tobacco?sort=brand&brand=game' });
+  });
+
+  it('says which crumb is the department when the line has its name, keeping both levels (NEW-029)', () => {
+    expect(hrefs(catalogCrumbs({ category: 'MOTOR OIL', sub: 'Motor Oil' }))).toEqual([
+      { label: 'Home', href: '/' },
+      { label: 'All products', href: '/catalog' },
+      { label: 'Motor Oil department', href: '/category/motor-oil' },
+      { label: 'Motor Oil', href: null },
+    ]);
+    // A product page under it, and any case.
+    expect(hrefs(catalogCrumbs({ category: 'MOTOR OIL', sub: 'motor oil', product: { id: 57, name: 'Pure Guard motor oil' } })).slice(2)).toEqual([
+      { label: 'Motor Oil department', href: '/category/motor-oil' },
+      { label: 'motor oil', href: '/category/motor-oil/motor-oil' },
+      { label: 'Pure Guard motor oil', href: null },
+    ]);
+    // The department page itself, and a line with a name of its own, are unchanged.
+    expect(catalogCrumbs({ category: 'MOTOR OIL' }).map((c) => c.label)).toEqual(['Home', 'All products', 'Motor Oil']);
+    expect(catalogCrumbs({ category: 'TOBACCO', sub: 'Cigarettes' })[2].label).toBe('Tobacco');
   });
 
   it('never changes the shared Home and All products crumbs', () => {

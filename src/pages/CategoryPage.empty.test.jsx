@@ -67,6 +67,37 @@ describe('CategoryPage with no matches (AW-299)', () => {
     expect(url()).toBe('/search?q=snickers');
   });
 
+  // NEW-051: a line page whose search finds nothing in the line, but some
+  // in the rest of the department.
+  it('on a product line, first offers the department’s matches, keeping the search and filters', () => {
+    act(() => navigate('/category/tobacco/cigarettes?q=swisher', { replace: true }));
+    render(<Harness />);
+    expect(screen.getByRole('searchbox', { name: 'Search in Cigarettes' }).value).toBe('swisher');
+    expect(screen.getByRole('heading', { level: 2, name: 'No products match' })).toBeTruthy();
+    const actions = box().querySelector('.empty-state-actions');
+    const dept = screen.getByRole('link', { name: 'See 1 in all of Tobacco' });
+    expect(actions.firstElementChild).toBe(dept);
+    expect(dept.className).toBe('button');
+    expect(dept.getAttribute('href')).toBe('/category/tobacco?q=swisher');
+    // One main action: the other two are ghost buttons now.
+    expect(screen.getByRole('link', { name: 'Search all departments for “swisher”' }).className).toBe('button ghost');
+    expect(screen.getByRole('button', { name: 'Clear filters' }).className).toBe('button ghost');
+    // It keeps the search, and focus lands on the result note, not <body>.
+    act(() => dept.focus());
+    fireEvent.click(dept);
+    expect(url()).toBe('/category/tobacco?q=swisher');
+    expect(box()).toBeNull();
+    expect(document.activeElement).toBe(document.querySelector('.result-note'));
+    expect(document.querySelector('.result-note').textContent).toBe('Showing 1 of 2 items');
+  });
+
+  it('offers no department link where the department has no matches either', () => {
+    act(() => navigate('/category/tobacco/cigarettes?q=snickers', { replace: true }));
+    render(<Harness />);
+    expect(screen.queryByRole('link', { name: /in all of/ })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Search all departments for “snickers”' }).className).toBe('button');
+  });
+
   it('offers no search link when only filters (no words) leave nothing to show', () => {
     act(() => navigate('/category/tobacco/cigars?tags=new', { replace: true }));
     render(<Harness />);

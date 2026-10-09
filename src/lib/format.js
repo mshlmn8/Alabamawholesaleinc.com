@@ -21,6 +21,11 @@ const CAT_LABEL = {
 };
 export const catLabel = (c) => CAT_LABEL[c] || c;
 
+// A product line named like its department (Motor Oil's 'Motor Oil' line,
+// NEW-029), ignoring case: its title, trail and eyebrow name the department
+// once. Renaming the line is the owner's call (AW-134).
+export const sharesDepartmentName = (category, sub) => !!sub && String(sub).trim().toLowerCase() === catLabel(category).trim().toLowerCase();
+
 // The brand as printed on cards and product pages: '' for the catalog's
 // placeholder brand "Assorted", which names no brand (AW-286). Search still
 // matches the stored brand.
