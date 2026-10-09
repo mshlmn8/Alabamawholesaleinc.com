@@ -26,6 +26,7 @@ import { supabase } from '../../lib/supabase.js';
 import { Link } from '../../lib/router.js';
 import { formatMoney } from '../../lib/format.js';
 import { DOCUMENT_TYPES, formatUploadedOn, listProfileDocuments } from '../../lib/documents.js';
+import { ADMIN_STATUS_LABELS, ROLE_LABELS, adminStatusLabel, tierLabel } from '../../lib/accountLabels.js';
 import { useLeaveGuard } from './useLeaveGuard.js';
 import { adminErrorMessage, checkedWrite, withStatus } from './adminData.js';
 import { LoadProblem } from './AdminStatus.jsx';
@@ -78,7 +79,7 @@ export function AccountDetail({
       <p className="account-detail-back"><Link className="text-link" to="/admin/accounts" onClick={onBack}>Back to accounts</Link></p>
       <div className="account-detail-head">
         <h2 id="account-detail-title" ref={headingRef} tabIndex={-1}>{profile ? who : profiles ? 'Account not found' : 'Account details'}</h2>
-        {profile && <span className={`admin-pill account-pill is-${profile.status}`}>{profile.status}</span>}
+        {profile && <span className={`admin-pill account-pill is-${profile.status}`}>{adminStatusLabel(profile.status)}</span>}
       </div>
       {!profiles && (loadError ? <LoadProblem message={loadError} onRetry={onRetry} retrying={retrying} /> : <p className="result-note">Loading…</p>)}
       {profiles && !profile && (
@@ -138,16 +139,16 @@ function AccountControls({ profile: p, profiles, tiers, currentAdminId, changes,
             onChange={(e) => {
               if (!busy) changes.setStatus(p, e.target.value, { focusId: ids.status, onNote });
             }}>
-            <option value="pending">pending</option>
-            <option value="approved">approved</option>
-            <option value="suspended">suspended</option>
+            <option value="pending">{ADMIN_STATUS_LABELS.pending}</option>
+            <option value="approved">{ADMIN_STATUS_LABELS.approved}</option>
+            <option value="suspended">{ADMIN_STATUS_LABELS.suspended}</option>
           </select>
         </div>
         <div>
           <label htmlFor={ids.tier}>Tier</label>
           <select id={ids.tier} value={p.pricing_tier} aria-disabled={busy || undefined}
             onChange={(e) => { if (!busy) changes.change(p, { pricing_tier: e.target.value }, { kind: 'tier', focusId: ids.tier }); }}>
-            {(tiers.includes(p.pricing_tier) ? tiers : [...tiers, p.pricing_tier]).map((t) => <option key={t} value={t}>{t}</option>)}
+            {(tiers.includes(p.pricing_tier) ? tiers : [...tiers, p.pricing_tier]).map((t) => <option key={t} value={t}>{tierLabel(t)}</option>)}
           </select>
         </div>
         <div>
@@ -156,8 +157,8 @@ function AccountControls({ profile: p, profiles, tiers, currentAdminId, changes,
               pending or suspended account an admin approves it. */}
           <select id={ids.role} value={p.role} disabled={own} aria-disabled={busy || undefined} aria-describedby={describedBy}
             onChange={(e) => { if (!busy) changes.setRole(p, e.target.value, { onNote }); }}>
-            <option value="customer">customer</option>
-            <option value="admin">admin</option>
+            <option value="customer">{ROLE_LABELS.customer}</option>
+            <option value="admin">{ROLE_LABELS.admin}</option>
           </select>
         </div>
       </div>

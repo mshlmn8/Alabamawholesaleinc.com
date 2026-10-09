@@ -253,7 +253,7 @@ describe('account changes', () => {
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Suspend the account' })); });
     const notes = screen.getByRole('heading', { level: 3, name: 'Internal notes' }).closest('section');
     expect(within(notes).getByText('Suspended: Licence expired')).toBeTruthy();
-    expect(document.querySelector('.account-pill').textContent).toBe('suspended');
+    expect(document.querySelector('.account-pill').textContent).toBe('Suspended');
     expect(document.activeElement).toBe(select);
   });
 

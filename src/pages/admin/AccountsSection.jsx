@@ -10,6 +10,7 @@ import { supabase } from '../../lib/supabase.js';
 import { Link } from '../../lib/router.js';
 import { DOCUMENT_TYPES, listAllProfileDocuments } from '../../lib/documents.js';
 import { fetchAllRows } from '../../lib/paging.js';
+import { ADMIN_STATUS_LABELS, ROLE_LABELS, tierLabel } from '../../lib/accountLabels.js';
 import { useLeaveGuard } from './useLeaveGuard.js';
 import { adminErrorMessage, withStatus } from './adminData.js';
 import { LoadProblem } from './AdminStatus.jsx';
@@ -221,9 +222,9 @@ function AccountsList({
                       <select id={accountControlId(p.id, 'status')} aria-label={`Status for ${p.business || p.name}`} value={p.status}
                         disabled={p.id === currentAdminId} aria-disabled={busy(p) || undefined}
                         aria-describedby={p.id === currentAdminId ? 'admin-own-row' : undefined} onChange={chooseStatus(p)}>
-                        <option value="pending">pending</option>
-                        <option value="approved">approved</option>
-                        <option value="suspended">suspended</option>
+                        <option value="pending">{ADMIN_STATUS_LABELS.pending}</option>
+                        <option value="approved">{ADMIN_STATUS_LABELS.approved}</option>
+                        <option value="suspended">{ADMIN_STATUS_LABELS.suspended}</option>
                       </select>
                       {p.id === currentAdminId && <small className="field-hint" id="admin-own-row">Your own status and role can’t be changed here.</small>}
                       {p.approved_at && <small className="field-hint">{approvalLine(p, profiles)}</small>}
@@ -231,7 +232,7 @@ function AccountsList({
                     <td>
                       <select id={accountControlId(p.id, 'tier')} aria-label={`Tier for ${p.business || p.name}`} value={p.pricing_tier} aria-disabled={busy(p) || undefined}
                         onChange={e => { if (!busy(p)) changes.change(p, { pricing_tier: e.target.value }, { kind: 'tier', focusId: accountControlId(p.id, 'tier') }); }}>
-                        {(tiers.includes(p.pricing_tier) ? tiers : [...tiers, p.pricing_tier]).map(t => <option key={t} value={t}>{t}</option>)}
+                        {(tiers.includes(p.pricing_tier) ? tiers : [...tiers, p.pricing_tier]).map(t => <option key={t} value={t}>{tierLabel(t)}</option>)}
                       </select>
                     </td>
                     <td>
@@ -241,8 +242,8 @@ function AccountsList({
                         disabled={p.id === currentAdminId} aria-disabled={busy(p) || undefined}
                         aria-describedby={p.id === currentAdminId ? 'admin-own-row' : undefined}
                         onChange={e => { if (!busy(p)) changes.setRole(p, e.target.value); }}>
-                        <option value="customer">customer</option>
-                        <option value="admin">admin</option>
+                        <option value="customer">{ROLE_LABELS.customer}</option>
+                        <option value="admin">{ROLE_LABELS.admin}</option>
                       </select>
                     </td>
                     <td>

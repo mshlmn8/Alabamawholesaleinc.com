@@ -759,10 +759,10 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .checkout-total { margin-top: 18px; }
 
 /* ============================ account / admin ============================ */
-.account-stats { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 18px; margin: 8px 0 8px; }
+.account-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr)); gap: 18px; margin: 8px 0 8px; }
 .stat-card { background: var(--paper); border: 1px solid var(--line); padding: 18px 20px; }
 .stat-card span { display: block; font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
-.stat-card b { font: 700 1.75rem/1 var(--display); color: var(--purple); text-transform: capitalize; }
+.stat-card b { font: 700 1.75rem/1 var(--display); color: var(--purple); }
 .stat-card.ok b { color: var(--success); }
 .stat-card.warn b { color: var(--orange-dark); }
 .notice { margin-top: 22px; }

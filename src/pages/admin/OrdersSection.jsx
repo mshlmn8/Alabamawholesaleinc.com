@@ -12,6 +12,7 @@ import { MAX_QTY } from '../../lib/quantity.js';
 import { MISSING_FUNCTION_CODES, lineTotal, tierUnitPrice, toCents, fromCents } from '../../lib/pricing.js';
 import { DEFAULT_ORDER_STATUS, LEGACY_ORDER_STATES, ORDER_STATES, adminHref } from '../../lib/adminRoutes.js';
 import { Icon } from '../../components/Icon.jsx';
+import { tierLabel } from '../../lib/accountLabels.js';
 import { useLeaveGuard } from './useLeaveGuard.js';
 import { adminErrorMessage, checkedWrite, withStatus } from './adminData.js';
 import { LoadProblem } from './AdminStatus.jsx';
@@ -152,10 +153,12 @@ export function orderTotal(o, quote = isQuote(o)) {
   const units = o.total_units ?? (o.order_items || []).reduce((sum, it) => sum + (Number(it.qty) || 0), 0);
   return `${units} ${units === 1 ? 'unit' : 'units'} · ${formatMoney(o.subtotal)}`;
 }
-// The business, and the account's tier when the order came from an account.
+// The business, and the account's tier when the order came from an account
+// ('Test Market LLC · Silver tier', AW-149).
 export function orderAccount(o) {
   const business = o.profiles?.business || o.business;
-  return [business, o.profiles?.pricing_tier].filter(Boolean).join(' · ') || '—';
+  const tier = o.profiles?.pricing_tier ? `${tierLabel(o.profiles.pricing_tier)} tier` : null;
+  return [business, tier].filter(Boolean).join(' · ') || '—';
 }
 export function placedAt(value) {
   const date = new Date(value);
@@ -750,7 +753,7 @@ function OrderCard({
           <span className="order-kind">{kindLabel}</span>
           <b className="order-ref">{o.ref_num}</b>
           <select id={orderStatusId(o.id)} aria-label={`Status for ${o.ref_num}`} value={o.status} aria-disabled={saving || undefined} onChange={chooseStatus}>
-            {options.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+            {options.map(s => <option key={s} value={s}>{statusLabel(s)}</option>)}
           </select>
           {movedTo && <span className="order-moved">{`Moved to ${statusLabel(movedTo)}`}</span>}
           {/* The status as text, for a printed list (the select doesn't print). */}

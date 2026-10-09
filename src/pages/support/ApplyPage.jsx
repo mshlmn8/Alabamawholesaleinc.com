@@ -8,6 +8,7 @@ import { ApplicationDocuments } from '../../components/DocumentUploads.jsx';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
 import { AccountLoading } from '../../components/AccountStatus.jsx';
 import { Link } from '../../lib/router.js';
+import { accountStatusLabel } from '../../lib/accountLabels.js';
 import { PageHead, SupportLayout, ContactStrip } from './SupportShell.jsx';
 
 export function ApplyPage({ profile, account = profile ? 'ready' : 'signed-out', isBackendConfigured, onApplyClick, onLoginClick, onResetClick }) {
@@ -76,7 +77,7 @@ export function ApplyPage({ profile, account = profile ? 'ready' : 'signed-out',
 
 function StatusPanel({ profile }) {
   const status = profile.status || 'pending';
-  const label = { pending: 'Pending approval', approved: 'Approved', suspended: 'On hold' }[status] || status;
+  const label = accountStatusLabel(status);
   return (
     <section className={`status-panel status-${status}`} aria-labelledby="status-title">
       <div>

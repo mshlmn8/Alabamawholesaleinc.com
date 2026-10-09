@@ -19,6 +19,7 @@ import { lineTotal } from '../../lib/pricing.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
+import { accountStatusLabel, roleLabel, tierLabel } from '../../lib/accountLabels.js';
 import { QuickReorder } from './QuickReorder.jsx';
 import { useOrderHistory } from './useOrderHistory.js';
 
@@ -113,10 +114,11 @@ export function AccountPage({
         <p>{profile.email}</p>
       </div>
 
+      {/* Labels, not database values (AW-149); the role only for staff. */}
       <div className="account-stats">
-        <Stat label="Account status" value={profile.status} tone={statusTone} />
-        <Stat label="Pricing tier" value={profile.pricing_tier} />
-        <Stat label="Role" value={profile.role} />
+        <Stat label="Account status" value={accountStatusLabel(profile.status)} tone={statusTone} />
+        <Stat label="Pricing tier" value={tierLabel(profile.pricing_tier)} />
+        {profile.role === 'admin' && <Stat label="Role" value={roleLabel(profile.role)} />}
       </div>
 
       {/* Licence proof stays reachable after approval (AW-254). */}

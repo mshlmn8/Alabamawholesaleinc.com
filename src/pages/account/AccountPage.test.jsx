@@ -38,6 +38,17 @@ describe('AccountPage', () => {
     expect(heading.textContent).toBe('Test Market LLC');
   });
 
+  it('shows the account’s status and tier as labels, and no Role to a customer (AW-149)', () => {
+    const view = render(<AccountPage profile={{ ...PROFILE, status: 'pending', pricing_tier: 'standard' }} account="ready" products={[]} />);
+    const stats = () => [...document.querySelectorAll('.stat-card')].map((card) => [card.querySelector('span').textContent, card.querySelector('b').textContent]);
+    expect(stats()).toEqual([['Account status', 'Pending approval'], ['Pricing tier', 'Standard']]);
+    view.rerender(<AccountPage profile={{ ...PROFILE, status: 'suspended' }} account="ready" products={[]} />);
+    expect(stats()).toEqual([['Account status', 'On hold'], ['Pricing tier', 'Silver']]);
+    // Staff see their role.
+    view.rerender(<AccountPage profile={{ ...PROFILE, role: 'admin' }} account="ready" products={[]} />);
+    expect(stats()).toEqual([['Account status', 'Approved'], ['Pricing tier', 'Silver'], ['Role', 'Admin']]);
+  });
+
   it('signs out of all devices on request', () => {
     const onSignOutEverywhere = vi.fn();
     const view = render(<AccountPage profile={PROFILE} account="ready" products={[]} onSignOutEverywhere={onSignOutEverywhere} />);
