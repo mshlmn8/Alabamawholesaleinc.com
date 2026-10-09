@@ -16,8 +16,8 @@ vi.mock('./supabase.js', () => {
     return q;
   };
   const bucket = {
-    upload: async (path, _file, options) => {
-      mock.calls.push(['upload', path, options]);
+    upload: async (path, body, options) => {
+      mock.calls.push(['upload', path, options, body]);
       const type = path.split('/')[1];
       return { error: mock.uploadErrors[type] || mock.uploadError };
     },
@@ -78,6 +78,24 @@ describe('the bucket’s file types (AW-251)', () => {
       await uploadProfileDocument(SESSION, 'tobacco_license', { name, type, size: 1000 });
       expect(mock.calls[0][2], type).toMatchObject({ contentType: stored });
     }
+  });
+
+  // supabase-js sends a File as a multipart part of the file's own type and
+  // ignores contentType then, so the body itself carries the stored type.
+  it('sends a file whose own type the bucket would refuse as a slice of the stored type', async () => {
+    for (const [type, name, stored] of [['image/heic-sequence', 'IMG_0001.HEIC', 'image/heic'], ['', 'IMG_0002.heic', 'image/heic'], ['', 'license.pdf', 'application/pdf']]) {
+      mock.calls = [];
+      const picked = new File(['test only'], name, { type });
+      await uploadProfileDocument(SESSION, 'tobacco_license', picked);
+      const body = mock.calls[0][3];
+      expect(body, name).toBeInstanceOf(Blob);
+      expect(body.type, name).toBe(stored);
+      expect(body.size, name).toBe(picked.size);
+    }
+    mock.calls = [];
+    const pdf = new File(['%PDF test only'], 'license.pdf', { type: 'application/pdf' });
+    await uploadProfileDocument(SESSION, 'tobacco_license', pdf);
+    expect(mock.calls[0][3]).toBe(pdf);
   });
 });
 

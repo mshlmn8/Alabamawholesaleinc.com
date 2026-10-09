@@ -140,6 +140,16 @@ function contentTypeFor(file) {
   return MIME_FOR_EXT[ext] || 'application/octet-stream';
 }
 
+// What goes up for `file` as `type`. supabase-js sends a File or Blob as
+// multipart form data, and Storage takes the type of that part, which is the
+// file's own: the contentType option only travels with a raw body. A file
+// whose own type isn't the one to store (a HEIC sequence, or none at all)
+// goes up as a slice of itself with that type; slice copies nothing.
+function uploadBody(file, type) {
+  if ((file.type || '').toLowerCase() === type || typeof file.slice !== 'function') return file;
+  return file.slice(0, file.size, type);
+}
+
 export async function listProfileDocuments(userId) {
   if (!supabase || !userId) return [];
   const { data, error } = await supabase
@@ -181,9 +191,10 @@ export async function uploadProfileDocument(session, documentType, file) {
     .maybeSingle();
   if (existingError) throw existingError;
 
+  const contentType = contentTypeFor(file);
   const { error: uploadError } = await supabase.storage
     .from(DOCUMENT_BUCKET)
-    .upload(path, file, { upsert: true, contentType: contentTypeFor(file) });
+    .upload(path, uploadBody(file, contentType), { upsert: true, contentType });
   if (uploadError) throw uploadError;
 
   const uploaded_at = new Date().toISOString();
