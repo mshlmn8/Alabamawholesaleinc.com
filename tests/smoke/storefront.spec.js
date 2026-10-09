@@ -735,3 +735,50 @@ test.describe('part 2 catalog', () => {
     expect(errors).toEqual([]);
   });
 });
+
+// The product photo is drawn whole and centred in its frame (AW-009; the CSS
+// is from f225188): a tall photo reaches the frame's top and bottom padding, a
+// wide one its left and right padding, with equal space on the other sides,
+// and object-fit: contain keeps its proportions inside the img box.
+test.describe('product photo frame', () => {
+  test.beforeEach(async ({ context }) => {
+    await context.addInitScript(([key, value]) => {
+      try { localStorage.setItem(key, value); } catch { /* storage blocked */ }
+    }, [AGE_KEY, ageRecord(Date.now())]);
+  });
+
+  test('tall and wide photos are whole, centred and not cropped (AW-009)', async ({ page }) => {
+    const errors = trackErrors(page);
+    // 88 Tropical Fantasy, 57 Pure Guard and 70 Shroom Puff are much taller
+    // than wide; 31 BIC and 290 Powerade much wider.
+    for (const [id, shape] of [[88, 'tall'], [57, 'tall'], [70, 'tall'], [31, 'wide'], [290, 'wide']]) {
+      await page.goto(`/product/${id}`);
+      const img = page.locator('.pd-media img');
+      await expect.poll(() => img.evaluate((el) => el.complete && el.naturalWidth > 0)).toBe(true);
+      const m = await img.evaluate((el) => {
+        const frame = el.closest('.pd-media').getBoundingClientRect();
+        const box = el.getBoundingClientRect();
+        const ratio = el.naturalWidth / el.naturalHeight;
+        // The drawn photo inside the img box (object-fit: contain, centred).
+        const w = Math.min(box.width, box.height * ratio);
+        const h = w / ratio;
+        const x = box.left + (box.width - w) / 2;
+        const y = box.top + (box.height - h) / 2;
+        return {
+          fit: getComputedStyle(el).objectFit,
+          boxInside: box.left >= frame.left - 1 && box.top >= frame.top - 1 && box.right <= frame.right + 1 && box.bottom <= frame.bottom + 1,
+          top: y - frame.top, bottom: frame.bottom - (y + h), left: x - frame.left, right: frame.right - (x + w),
+        };
+      });
+      expect(m.fit, `#${id}`).toBe('contain');
+      expect(m.boxInside, `#${id}`).toBe(true);
+      // Inside the frame with its padding on every side (20px on phones).
+      expect(Math.min(m.top, m.bottom, m.left, m.right), `#${id}`).toBeGreaterThanOrEqual(20);
+      expect(Math.abs(m.top - m.bottom), `#${id}`).toBeLessThanOrEqual(2);
+      expect(Math.abs(m.left - m.right), `#${id}`).toBeLessThanOrEqual(2);
+      // Scaled to fit along its long side, not shrunk further.
+      expect(shape === 'tall' ? m.top : m.left, `#${id}`).toBeLessThanOrEqual(36);
+    }
+    expect(errors).toEqual([]);
+  });
+});
