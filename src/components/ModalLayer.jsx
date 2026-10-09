@@ -34,6 +34,10 @@ function getPortalRoot() {
 const isVisible = (el) => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
 const focusables = (container) => Array.from(container.querySelectorAll(FOCUSABLE)).filter(isVisible);
 
+// The body's own inline padding-right while layers hold the page still, to
+// put back when the last one closes; null while none is open.
+let bodyLock = null;
+
 function syncBackground() {
   const root = document.getElementById('root');
   const open = stack.length > 0;
@@ -46,7 +50,23 @@ function syncBackground() {
       root.removeAttribute('aria-hidden');
     }
   }
-  document.body.style.overflow = open ? 'hidden' : '';
+  const body = document.body;
+  if (open && !bodyLock) {
+    // Hiding the page's overflow removes a classic scrollbar (Windows, Linux,
+    // macOS set to always show them), and the page slid sideways by its
+    // width. The body is padded by that width instead (AW-333): measured
+    // once, before the overflow changes, since a layer stacked on another
+    // would read 0. scrollbar-gutter doesn't do it: the page still moved, or
+    // the wheel scrolled the page behind the layer. jsdom's clientWidth is 0.
+    const html = document.documentElement;
+    const scrollbar = window.innerWidth - html.clientWidth;
+    bodyLock = { paddingRight: body.style.paddingRight };
+    if (html.clientWidth > 0 && scrollbar > 0 && scrollbar < 50) body.style.paddingRight = `${scrollbar}px`;
+  } else if (!open && bodyLock) {
+    body.style.paddingRight = bodyLock.paddingRight;
+    bodyLock = null;
+  }
+  body.style.overflow = open ? 'hidden' : '';
 }
 
 function onDocumentKeyDown(e) {

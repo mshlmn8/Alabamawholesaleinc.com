@@ -21,13 +21,16 @@
 //   refreshing  a load is running
 //   refresh()   loads them again; resolves to { ok, prices, error }. Calls made
 //               while a load runs share it. With no approved account it
-//               resolves at once to { ok: true, prices: null }.
+//               resolves at once to { ok: true, prices: null }. A load gives
+//               up after REQUEST_TIMEOUT_MS (AW-194), so checkout's re-check
+//               never waits on a stalled network for good.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase as defaultClient } from './supabase.js';
 import { useAuth } from './auth.jsx';
 import { useCatalog } from './catalog.jsx';
 import { loadPrices } from './pricing.js';
+import { REQUEST_TIMEOUT_MS, timeoutSignal } from './network.js';
 
 const EMPTY = Object.freeze({ for: null, prices: null, status: 'off', error: null, source: null, refreshing: false });
 const NONE = Object.freeze({ ok: true, prices: null, error: null });
@@ -69,7 +72,9 @@ export function PricesProvider({ client = defaultClient, children }) {
     setState((prev) => (prev.for === forKey
       ? { ...prev, refreshing: true }
       : { for: forKey, prices: null, status: 'loading', error: null, source: null, refreshing: true }));
-    const promise = loadPrices(client, { profile: profileRef.current }).then((result) => {
+    const t = timeoutSignal(REQUEST_TIMEOUT_MS);
+    const promise = loadPrices(client, { profile: profileRef.current, signal: t.signal }).then((result) => {
+      t.clear();
       if (inflightRef.current?.promise === promise) inflightRef.current = null;
       // Another account (or tier) by now: these prices are not its prices.
       if (keyRef.current !== forKey) return ACCOUNT_CHANGED;

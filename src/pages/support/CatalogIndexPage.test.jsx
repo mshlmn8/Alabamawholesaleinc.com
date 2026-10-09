@@ -1,7 +1,7 @@
 // The catalog index counts a product's variants by their axis, only when
 // there is a choice (AW-233, AW-332, AW-128).
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { departmentsFor } from '../../lib/departments.js';
 import { CatalogIndexPage } from './CatalogIndexPage.jsx';
 
@@ -22,5 +22,47 @@ describe('CatalogIndexPage', () => {
     expect(row('Gatorade')).toBe('Gatorade · Sports · AW-GATORADE');
     expect(row('Kite')).toBe('Kite · Cigarettes · AW-KITE');
     expect(screen.queryByText(/1 variants/)).toBeNull();
+  });
+});
+
+// A guest's pricing prompt sits at the top, right under the page head, with
+// both ways in (AW-274). It follows the session, so a signed-in buyer whose
+// profile is still loading never sees it.
+describe('CatalogIndexPage pricing prompt', () => {
+  const page = (props) => render(<CatalogIndexPage products={products} departments={departmentsFor(products)} profile={null} isApprovedBuyer={false}
+    onLoginClick={() => {}} onApplyClick={() => {}} {...props} />);
+
+  it('shows a guest the banner directly after the page head, before the department links', () => {
+    page({ signedIn: false });
+    const banner = document.querySelector('.catalog-pricing');
+    expect(banner.className).toBe('callout catalog-pricing');
+    expect(banner.previousElementSibling.classList.contains('page-head')).toBe(true);
+    expect(banner.nextElementSibling.matches('nav.dept-jump')).toBe(true);
+    expect(banner.querySelector('p').textContent).toBe('Wholesale pricing is locked. Sign in to see your account pricing on every product, or apply for a trade account.');
+    // The old prompt at the bottom of the page is gone.
+    expect(document.querySelectorAll('.filter-signin, .catalog-signin')).toHaveLength(0);
+    expect(screen.getAllByText(/Wholesale pricing is locked/)).toHaveLength(1);
+  });
+
+  it('calls the sign-in and apply handlers from its two buttons', () => {
+    const onLoginClick = vi.fn();
+    const onApplyClick = vi.fn();
+    page({ signedIn: false, onLoginClick, onApplyClick });
+    const banner = document.querySelector('.catalog-pricing');
+    const signIn = within(banner).getByRole('button', { name: 'Sign in' });
+    const apply = within(banner).getByRole('button', { name: 'Apply for an account' });
+    expect(signIn.className).toBe('button sm');
+    expect(apply.className).toBe('button ghost sm');
+    fireEvent.click(signIn);
+    expect(onLoginClick).toHaveBeenCalledTimes(1);
+    expect(onApplyClick).not.toHaveBeenCalled();
+    fireEvent.click(apply);
+    expect(onApplyClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides it once signed in, also while the profile is still loading', () => {
+    page({ signedIn: true, profile: null });
+    expect(document.querySelector('.catalog-pricing')).toBeNull();
+    expect(screen.queryByText(/Wholesale pricing is locked/)).toBeNull();
   });
 });

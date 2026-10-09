@@ -1,12 +1,16 @@
 // Contact & visit: click-to-call, email, warehouse address with directions,
 // hours, and will-call pickup. Facts come from COMPANY and HOURS in
 // data/content.js.
+//
+// TODO(owner): Do you want an on-site contact form? Messages would be stored in Supabase and read in Admin, and the privacy policy would list them. (AW-280)
 
 import { useEffect, useState } from 'react';
 import { COMPANY, HOURS, TIME_ZONE_LABEL, TIME_ZONE_NAME, hoursRange, openStatusNow } from '../../data/content.js';
 import { Link } from '../../lib/router.js';
 import { Icon } from '../../components/Icon.jsx';
-import { PageHead, DIRECTIONS_URL } from './SupportShell.jsx';
+import { EmailText } from '../../components/ContactLinks.jsx';
+import { showToast } from '../../lib/toast.js';
+import { PageHead, SupportLayout, DIRECTIONS_URL } from './SupportShell.jsx';
 
 // 'Open now · closes 6:00 PM CT' or 'Closed · opens 8:00 AM CT' (AW-275),
 // filled in after mount and kept current each minute. Until then the line
@@ -23,28 +27,65 @@ function OpenStatus() {
   return <p className="support-note">{label || '\u00A0'}</p>;
 }
 
+// Copies the email address for webmail users, whom a mailto: link sends to a
+// mail app they may not use (AW-280). Shown only where the browser can write
+// to the clipboard. The toast speaks the result once through the shared live
+// region; the label says 'Copied' for a moment.
+export const COPIED_MS = 2000;
+export const EMAIL_COPIED = 'Email address copied.';
+export const EMAIL_COPY_FAILED = 'Couldn’t copy. Select the address and copy it.';
+function CopyEmailButton() {
+  const [canCopy] = useState(() => typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function');
+  // Counts copies, so a second copy restarts the 'Copied' time.
+  const [copies, setCopies] = useState(0);
+  useEffect(() => {
+    if (!copies) return undefined;
+    const timer = window.setTimeout(() => setCopies(0), COPIED_MS);
+    return () => window.clearTimeout(timer);
+  }, [copies]);
+  if (!canCopy) return null;
+  const copy = () => {
+    Promise.resolve()
+      .then(() => navigator.clipboard.writeText(COMPANY.email))
+      .then(() => {
+        setCopies((n) => n + 1);
+        showToast({ text: EMAIL_COPIED });
+      }, () => {
+        setCopies(0);
+        showToast({ text: EMAIL_COPY_FAILED });
+      });
+  };
+  return (
+    <button type="button" className="text-link info-copy" onClick={copy}>
+      <span>{copies ? 'Copied' : 'Copy email address'}</span>
+    </button>
+  );
+}
+
 export function ContactPage({ onApplyClick }) {
   return (
     <section className="support-page">
       <PageHead crumb="Contact & visit" eyebrow="TALK TO THE WAREHOUSE" title="Contact & visit">
         <p>Real people, same building as the inventory. Call the trade desk, email us, or come by the Birmingham warehouse for will-call pickup.</p>
       </PageHead>
+      <SupportLayout current="contact">
 
       <div className="info-grid">
         <article className="info-card">
-          <p className="eyebrow">CALL</p>
+          <h2 className="eyebrow">Call</h2>
           <a className="info-lead" href={`tel:${COMPANY.phoneRaw}`}>{COMPANY.phone}</a>
           <p>Trade desk, orders, will-call and account questions. Tap the number to call from your phone.</p>
           <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Call now</a>
         </article>
         <article className="info-card">
-          <p className="eyebrow">EMAIL</p>
-          <a className="info-lead info-lead-small" href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>
+          <h2 className="eyebrow">Email</h2>
+          <a className="info-lead info-lead-small" href={`mailto:${COMPANY.email}`}><EmailText /></a>
+          <CopyEmailButton />
           <p>Applications, quotes, invoices and anything you would rather put in writing. Include your business name and phone number.</p>
           <a className="button ghost" href={`mailto:${COMPANY.email}`}>Email the trade desk</a>
         </article>
         <article className="info-card">
-          <p className="eyebrow">VISIT</p>
+          <h2 className="eyebrow">Visit</h2>
           <address className="info-lead info-lead-small">{COMPANY.addressLine1}<br />{COMPANY.addressLine2}</address>
           <p>Warehouse and will-call counter in Birmingham. Open the directions in your maps app for turn-by-turn navigation.</p>
           <a className="button ghost" href={DIRECTIONS_URL} target="_blank" rel="noopener noreferrer">Get directions<Icon name="external" /><span className="sr-only"> (opens in a new tab)</span></a>
@@ -85,10 +126,12 @@ export function ContactPage({ onApplyClick }) {
           <p>Licensed retail businesses only. See what you’ll need before you start.</p>
         </div>
         <div className="contact-strip-actions">
-          <Link className="button" to="/apply">Application checklist</Link>
-          <button className="button ghost" type="button" onClick={onApplyClick}>Start application</button>
+          {/* The form itself, as on /apply; the checklist is the secondary step (AW-271). */}
+          <button className="button" type="button" onClick={onApplyClick}>Start application</button>
+          <Link className="button ghost" to="/apply">Application checklist</Link>
         </div>
       </section>
+      </SupportLayout>
     </section>
   );
 }

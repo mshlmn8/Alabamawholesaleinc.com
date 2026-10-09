@@ -312,11 +312,13 @@ test.describe('after age confirmation', () => {
       await page.goto('/privacy');
       await expect(page.getByRole('heading', { level: 1, name: 'Privacy' })).toBeVisible();
       await translate(page);
-      const nav = page.getByRole('navigation', { name: 'Customer policies' }).first();
-      await nav.getByRole('link', { name: 'Delivery', exact: true }).click();
+      const nav = page.getByRole('navigation', { name: 'Help and policies' });
+      await nav.getByRole('link', { name: 'Delivery policy', exact: true }).click();
       await expect(page.getByRole('heading', { level: 1, name: 'Delivery' })).toBeVisible();
       await nav.getByRole('link', { name: 'Privacy', exact: true }).click();
-      await expect(page.locator('.support-note').last()).toHaveText(/Last updated .+\. Questions about this policy\?/);
+      // The contact strip right below carries the phone and email (AW-276).
+      await expect(page.locator('.support-note').last()).toHaveText(/Last updated .+\./);
+      await expect(page.locator('main')).not.toContainText('Questions about this policy?');
       expect(errors).toEqual([]);
     });
   });

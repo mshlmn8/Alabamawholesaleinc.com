@@ -12,13 +12,15 @@ import { MAX_QTY } from '../../lib/quantity.js';
 import { MISSING_FUNCTION_CODES, lineTotal, tierUnitPrice, toCents, fromCents } from '../../lib/pricing.js';
 import { DEFAULT_ORDER_STATUS, LEGACY_ORDER_STATES, ORDER_STATES, adminHref } from '../../lib/adminRoutes.js';
 import { Icon } from '../../components/Icon.jsx';
+import { tierLabel } from '../../lib/accountLabels.js';
 import { useLeaveGuard } from './useLeaveGuard.js';
 import { adminErrorMessage, checkedWrite, withStatus } from './adminData.js';
 import { LoadProblem } from './AdminStatus.jsx';
 import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { downloadCsv, toCsv } from './csv.js';
 import {
-  ADMIN_ORDER_SELECT, MAX_ORDER_SEARCH, ORDER_LIMIT, hasOrderFilters, isQuote, orderCsvRecords, orderFilters, ordersCsvFileName, ordersQuery,
+  ADMIN_ORDER_SELECT, MAX_ORDER_SEARCH, hasOrderFilters, isQuote, orderCsvRecords, orderFilters, orderPageCount, orderStatusCounts, ordersCsvFileName,
+  ordersForExport, ordersQuery, probeQuoteWorkflow, rangeTotal,
 } from './orderQueries.js';
 import { MAX_NOTE, hasAssignment, staffName, statusLabel } from './orderStaff.js';
 import { isNewSince, ordersActivity } from './ordersSeen.js';
@@ -151,10 +153,12 @@ export function orderTotal(o, quote = isQuote(o)) {
   const units = o.total_units ?? (o.order_items || []).reduce((sum, it) => sum + (Number(it.qty) || 0), 0);
   return `${units} ${units === 1 ? 'unit' : 'units'} · ${formatMoney(o.subtotal)}`;
 }
-// The business, and the account's tier when the order came from an account.
+// The business, and the account's tier when the order came from an account
+// ('Test Market LLC · Silver tier', AW-149).
 export function orderAccount(o) {
   const business = o.profiles?.business || o.business;
-  return [business, o.profiles?.pricing_tier].filter(Boolean).join(' · ') || '—';
+  const tier = o.profiles?.pricing_tier ? `${tierLabel(o.profiles.pricing_tier)} tier` : null;
+  return [business, tier].filter(Boolean).join(' · ') || '—';
 }
 export function placedAt(value) {
   const date = new Date(value);
@@ -226,13 +230,17 @@ function OrderFilters({ query, onFilter, search, onSearch, clearHref, filtered }
   );
 }
 
-// query: the URL's filters (status, from, to, on, method, account; AW-118);
-// onQuery writes them. search/onSearch: the free-text search, kept by
-// AdminPage (never in the URL). notify: shows what a change did
-// (useAdminStatus). since: the previous visit (ordersSeen.js); orders placed
-// after it are marked New. onOpenPrint(href, linkId): a print link was
-// followed. returnFocusId/onReturnFocus: the print link to focus when the
-// list shows again.
+// query: the URL's filters (status, from, to, on, method, account, page;
+// AW-118, AW-199); onQuery writes them. search/onSearch: the free-text
+// search, kept by AdminPage (never in the URL). notify: shows what a change
+// did (useAdminStatus). since: the previous visit (ordersSeen.js); orders
+// placed after it are marked New. onOpenPrint(href, linkId): a print link
+// was followed. returnFocusId/onReturnFocus: the print link to focus when
+// the list shows again.
+//
+// The list is a page of ORDER_PAGE_SIZE from the server (AW-199): the status
+// and the toolbar's filters go into the query, the pills count each status
+// on the server (HEAD requests), and Previous / Next move through the pages.
 export function OrdersTab({
   query = {}, onQuery, notify, search = '', onSearch, since = null, onOpenPrint, returnFocusId = null, onReturnFocus,
 }) {
@@ -244,26 +252,48 @@ export function OrdersTab({
   const [updatedAt, setUpdatedAt] = useState(null);
   const [admins, setAdmins] = useState(null);
   const filter = query.status || DEFAULT_ORDER_STATUS;
+  const page = query.page || 1;
   const [tiers, setTiers] = useState({});
+  // The page on screen: { key, page, total }, total being every order the
+  // filters and the status match.
+  const [loaded, setLoaded] = useState(null);
+  // The pills' counts for the toolbar's filters: { key, values: { new: 12, …, all: 312 } }.
+  const [counts, setCounts] = useState({ key: null, values: {} });
+  // Whether the database has the quote workflow: true, false, or null
+  // until a row (or the one-off probe) has told.
+  const [workflowKnown, setWorkflowKnown] = useState(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState(null);
+  const queryRef = useRef(query);
+  const onQueryRef = useRef(onQuery);
+  const countRef = useRef(null);
 
-  // The search goes to the database a moment after typing stops.
+  // The search goes to the database a moment after typing stops, and starts
+  // again at page 1.
   const typed = orderFilters({}, search).search;
   const [sentSearch, setSentSearch] = useState(typed);
   useEffect(() => {
     if (typed === sentSearch) return undefined;
-    const timer = setTimeout(() => setSentSearch(typed), ORDER_SEARCH_DEBOUNCE_MS);
+    const timer = setTimeout(() => {
+      setSentSearch(typed);
+      const current = queryRef.current;
+      if (current.page) onQueryRef.current?.({ ...current, page: undefined });
+    }, ORDER_SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [typed, sentSearch]);
   const filters = useMemo(() => orderFilters(query, sentSearch), [query, sentSearch]);
   const filtersKey = JSON.stringify(filters);
+  // What the list shows: the filters, the status and the page.
+  const viewKey = JSON.stringify({ filters, status: filter, page });
 
   // Status changes on their way (id -> the status shown meanwhile, AW-112):
   // a reload keeps showing it, and the card's select takes no other change.
   const savingRef = useRef(new Map());
   const [saving, setSaving] = useState(NO_IDS);
   // Orders moved out of the status on screen: they stay, tagged "Moved to
-  // …", until Refresh or another filter; the live reloads keep them.
-  const movedKey = `${filter}|${filtersKey}`;
+  // …", until Refresh, another filter or another page; the live reloads keep
+  // them (the server no longer sends them for this status).
+  const movedKey = viewKey;
   const [moved, setMoved] = useState({ key: null, ids: NO_IDS });
   // Another filter forgets them (so coming back to this one doesn't bring
   // them back).
@@ -273,36 +303,66 @@ export function OrdersTab({
   // A failed load says so, with Try again, instead of "No orders" (AW-202);
   // orders already on screen stay, and so do the filters, the focus and any
   // card's open editor (cards are keyed by order id). Only the newest
-  // request's answer is used. ordersQuery keeps the newest 200: paging and
-  // per-status counts from the server are AW-199, not built yet.
-  const filtersRef = useRef(filters);
+  // request's answer is used.
+  const viewRef = useRef({ filters, status: filter, page });
   const notifyRef = useRef(notify);
+  const movedRef = useRef(movedIds);
   useEffect(() => {
-    filtersRef.current = filters;
+    viewRef.current = { filters, status: filter, page };
     notifyRef.current = notify;
+    queryRef.current = query;
+    onQueryRef.current = onQuery;
+    movedRef.current = movedIds;
   });
+  const workflowRef = useRef(null);
+  // The pills' counts (only the newest request's answer is used; a count
+  // that failed shows as …).
+  const countsRequest = useRef(0);
+  const loadCounts = useCallback(async (view) => {
+    const key = JSON.stringify(view.filters);
+    const request = ++countsRequest.current;
+    const { counts: values } = await orderStatusCounts(supabase, view.filters, workflowRef.current === false ? LEGACY_ORDER_STATES : ORDER_STATES);
+    if (request !== countsRequest.current) return;
+    setCounts((current) => ({ key, values: current.key === key ? { ...current.values, ...values } : values }));
+  }, []);
   const requestRef = useRef(0);
   const lastLoad = useRef({ key: null, newest: null });
   const reload = useCallback(async () => {
-    const current = filtersRef.current;
-    const key = JSON.stringify(current);
+    const view = viewRef.current;
+    const key = JSON.stringify(view);
     const request = ++requestRef.current;
     let result;
     try {
-      result = await ordersQuery(supabase, current);
+      [result] = await Promise.all([ordersQuery(supabase, view.filters, { status: view.status, page: view.page }), loadCounts(view)]);
     } catch (error) {
       result = { error };
     }
     if (request !== requestRef.current) return false;
-    const error = withStatus(result || {});
+    let error = withStatus(result || {});
+    // A page past the end (a bookmark from a longer list): no rows, and the
+    // total, so the list can move to the last page.
+    const pastEnd = rangeTotal(error);
+    if (pastEnd != null) error = null;
     setLoadError(error ? adminErrorMessage(error, 'The orders didn’t load') : null);
     if (error) return false;
-    const rows = result.data || [];
-    // Orders placed since the last load of the same filters: say so, and
-    // let the header count them.
+    const rows = pastEnd != null ? [] : result.data || [];
+    const total = pastEnd ?? (Number.isFinite(result.count) ? result.count : rows.length);
+    // The quote workflow, from the rows; a page without rows keeps what is
+    // known, or asks once.
+    let workflow = workflowRef.current;
+    if (rows.length) workflow = hasQuoteWorkflow(rows);
+    else if (workflow == null) {
+      workflow = await probeQuoteWorkflow(supabase);
+      if (request !== requestRef.current) return false;
+    }
+    workflowRef.current = workflow;
+    setWorkflowKnown(workflow);
+    // Orders placed since the last load of the same page 1: say so, and let
+    // the header count them. (On a later page, orders pushed down from page
+    // 1 aren't new.)
     const newest = rows.reduce((max, row) => Math.max(max, Date.parse(row.created_at) || 0), 0);
     const last = lastLoad.current;
-    if (last.key === key && last.newest != null) {
+    if (view.page === 1 && last.key === key && last.newest != null) {
       const fresh = rows.filter((row) => (Date.parse(row.created_at) || 0) > last.newest).length;
       if (fresh) {
         notifyRef.current?.(`${plural(fresh, 'new order')} came in.`);
@@ -311,11 +371,14 @@ export function OrdersTab({
     }
     lastLoad.current = { key, newest: Math.max(newest, last.key === key ? last.newest ?? 0 : 0) };
     const pending = savingRef.current;
-    setOrders(pending.size ? rows.map((row) => (pending.has(row.id) ? { ...row, status: pending.get(row.id) } : row)) : rows);
+    const keep = movedRef.current;
+    const fetched = pending.size ? rows.map((row) => (pending.has(row.id) ? { ...row, status: pending.get(row.id) } : row)) : rows;
+    setOrders((previous) => keepMoved(fetched, previous, keep));
+    setLoaded({ key, page: view.page, total });
     setUpdatedAt(new Date());
     return true;
-  }, []);
-  useEffect(() => { reload(); }, [filtersKey, reload]);
+  }, [loadCounts]);
+  useEffect(() => { reload(); }, [viewKey, reload]);
   // Realtime, plus a reload every minute while the tab is visible (AW-111).
   useLiveOrders(reload, { client: supabase });
   const retry = async () => {
@@ -365,7 +428,8 @@ export function OrdersTab({
   // offers Undo, which puts the previous status back the same way (not into
   // or out of cancelled: cancelling asks for a reason). A cancellation
   // carries its reason (ConfirmDialog); without the October 2026 update the
-  // reason has nowhere to go, and the status line says so.
+  // reason has nowhere to go, and the status line says so. The pills count
+  // again once it is saved.
   const updateStatus = async (order, status, note = null, { undoable = true } = {}) => {
     if (savingRef.current.has(order.id)) return false;
     const previous = order.status;
@@ -386,6 +450,7 @@ export function OrdersTab({
     }
     // The new updated_at: an open "Staff notes and history" loads the change.
     if (row?.updated_at) patchStatus(status, { updated_at: row.updated_at });
+    loadCounts(viewRef.current);
     const lost = note && via === 'update' ? ' The reason wasn’t saved: notes and history need the October 2026 database update (see BACKEND.md).' : '';
     const canUndo = undoable && status !== 'cancelled' && previous !== 'cancelled';
     notify?.(`${order.ref_num} marked ${statusLabel(status)}.${lost}`, canUndo ? {
@@ -407,7 +472,37 @@ export function OrdersTab({
     target.scrollIntoView?.({ block: 'nearest' });
   }, [returnFocusId, orders, onReturnFocus]);
 
-  const setFilter = (change) => onQuery?.({ ...query, ...change });
+  // Previous / Next move to the top of the new page once it is in: the
+  // count line takes focus (the link that was clicked may be gone, on the
+  // first or last page). At once, not with the page's smooth scrolling: 50
+  // cards are many screens, and the content under the animation is new.
+  const paged = useRef(false);
+  const onPage = () => { paged.current = true; };
+  const current = loaded?.key === viewKey;
+  useEffect(() => {
+    const line = countRef.current;
+    if (!paged.current || !current || !line) return;
+    paged.current = false;
+    line.focus({ preventScroll: true });
+    try {
+      line.scrollIntoView?.({ block: 'start', behavior: 'instant' });
+    } catch {
+      line.scrollIntoView?.(true);
+    }
+  }, [current, loaded]);
+  // A page past the end (a bookmark from a longer list, or the last page
+  // emptied meanwhile) shows the last page, and the address bar says so. A
+  // moment later: AdminPage's own address-bar effect runs after this one.
+  const lastPage = loaded ? orderPageCount(loaded.total) : 1;
+  const clamping = current && page > lastPage;
+  useEffect(() => {
+    if (!clamping || !onQuery) return undefined;
+    const timer = setTimeout(() => onQuery({ ...query, page: lastPage > 1 ? lastPage : undefined }, { force: true }), 0);
+    return () => clearTimeout(timer);
+  }, [clamping, lastPage, query, onQuery]);
+
+  // A filter or status change starts again at page 1.
+  const setFilter = (change) => onQuery?.({ ...query, ...change, page: undefined });
   const filtered = hasOrderFilters(filters) || !!typed;
   const clearHref = adminHref({ section: 'orders', query: { status: query.status } });
   const toolbar = (
@@ -424,18 +519,41 @@ export function OrdersTab({
       </div>
     );
   }
-  const workflow = hasQuoteWorkflow(orders);
+  const workflow = workflowKnown ?? hasQuoteWorkflow(orders);
   const states = workflow ? ORDER_STATES : LEGACY_ORDER_STATES;
   const shown = filter === 'all' ? orders : orders.filter(o => o.status === filter || movedIds.has(o.id));
   const pills = [...states, 'all'];
+  const countOf = (s) => (counts.key === filtersKey ? counts.values[s] : undefined);
   const accountName = query.account ? (orders.find((o) => o.profiles?.business)?.profiles.business || 'one account') : null;
+  const total = loaded?.total ?? 0;
+  const shownPage = loaded?.page ?? page;
+  const pageHref = (n) => adminHref({ section: 'orders', query: { ...query, page: n } });
+  const countText = !loaded ? '' : lastPage > 1 ? `Page ${shownPage} of ${lastPage} · ${plural(total, 'order')}` : plural(total, 'order');
 
-  // Export CSV: the orders the filters and the status pill show, one row
-  // per line, built in the browser.
-  const exportCsv = () => {
+  // Export CSV: every order the filters and the status pill match (not just
+  // this page), one row per line, built in the browser.
+  const exportCsv = async () => {
+    if (exporting) return;
+    setExporting(true);
+    setExportError(null);
+    const view = viewRef.current;
+    let result;
+    try {
+      result = await ordersForExport(supabase, view.filters, view.status);
+    } catch (error) {
+      result = { error };
+    }
+    setExporting(false);
+    const error = withStatus(result || {});
+    if (error) {
+      setExportError(adminErrorMessage(error, 'The export didn’t finish'));
+      return;
+    }
+    const rows = result.data || [];
     const name = ordersCsvFileName();
-    downloadCsv(name, toCsv(orderCsvRecords(shown)));
-    notify?.(`Exported ${plural(shown.length, 'order')} to ${name}.`);
+    downloadCsv(name, toCsv(orderCsvRecords(rows)));
+    const cut = result.truncated ? ` That is as many as one export holds: narrow the filters for the rest.` : '';
+    notify?.(`Exported ${plural(rows.length, 'order')} to ${name}.${cut}`);
   };
 
   return (
@@ -443,7 +561,7 @@ export function OrdersTab({
       {toolbar}
       {accountName && (
         <p className="result-note admin-account-filter">
-          <span>{`Orders of ${accountName}.`}</span> <Link className="text-link" to={adminHref({ section: 'orders', query: { ...query, account: undefined } })} replace scroll={false}>Show every account</Link>
+          <span>{`Orders of ${accountName}.`}</span> <Link className="text-link" to={adminHref({ section: 'orders', query: { ...query, account: undefined, page: undefined } })} replace scroll={false}>Show every account</Link>
         </p>
       )}
       {loadError && <LoadProblem message={loadError} onRetry={retry} retrying={retrying} />}
@@ -454,21 +572,24 @@ export function OrdersTab({
             type="button"
             aria-pressed={filter === s}
             className={`sub-pill ${filter === s ? 'active' : ''}`}
-            onClick={() => onQuery?.({ ...query, status: s })}
+            onClick={() => onQuery?.({ ...query, status: s, page: undefined })}
           >
-            {`${s.replace(/_/g, ' ')} (${orders.filter(o => s === 'all' || o.status === s).length})`}
+            {`${s === 'all' ? 'All' : statusLabel(s)} (${countOf(s) ?? '…'})`}
           </button>
         ))}
       </div>
       <div className="admin-orders-bar">
-        <p className="result-note admin-count">{orders.length >= ORDER_LIMIT ? `Showing the newest ${ORDER_LIMIT} matching orders.` : ''}</p>
+        <p className="result-note admin-count" ref={countRef} tabIndex={-1}>{countText}</p>
         <div className="admin-orders-actions">
-          <button className="button xs ghost" type="button" disabled={shown.length === 0} onClick={exportCsv}>Export CSV</button>
+          <button className="button xs ghost" type="button" disabled={exporting || total === 0} onClick={exportCsv}>
+            <span>{exporting ? 'Exporting…' : 'Export CSV'}</span> <span className="sr-only">{`of ${plural(total, 'order')}`}</span>
+          </button>
           <button className="button xs ghost" type="button" disabled={refreshing} onClick={refresh}>{refreshing ? 'Refreshing…' : 'Refresh'}</button>
           {updatedText}
         </div>
       </div>
       {statusError && <p className="form-error" role="alert">{statusError}</p>}
+      {exportError && <p className="form-error" role="alert">{exportError}</p>}
       {orders.length > 0 && !workflow && (
         <p className="result-note">The quote workflow (more statuses, saving prices, converting quotes) needs the October 2026 database update (see BACKEND.md). Emailing a quote works now.</p>
       )}
@@ -481,17 +602,41 @@ export function OrdersTab({
         ))}
       </div>
       {shown.length === 0 && !loadError && (
-        filtered
-          ? (
-            <div className="empty-results">
-              <p>No orders match these filters.</p>
-              <Link className="text-link" to={clearHref} replace scroll={false} onClick={() => onSearch?.('')}>Clear filters</Link>
-            </div>
-          )
-          : <p className="result-note">No orders in this state.</p>
+        !current || clamping
+          ? <p className="result-note">Loading…</p>
+          : filtered
+            ? (
+              <div className="empty-results">
+                <p>No orders match these filters.</p>
+                <Link className="text-link" to={clearHref} replace scroll={false} onClick={() => onSearch?.('')}>Clear filters</Link>
+              </div>
+            )
+            : <p className="result-note">No orders in this state.</p>
+      )}
+      {lastPage > 1 && (
+        <nav className="admin-pager" aria-label="Order pages">
+          {shownPage > 1 && (
+            <Link className="button xs ghost" to={pageHref(Math.min(shownPage, lastPage) - 1)} scroll={false} onClick={onPage}>Previous page</Link>
+          )}
+          <p className="admin-pager-text">{`Page ${shownPage} of ${lastPage}`}</p>
+          {shownPage < lastPage && (
+            <Link className="button xs ghost" to={pageHref(shownPage + 1)} scroll={false} onClick={onPage}>Next page</Link>
+          )}
+        </nav>
       )}
     </div>
   );
+}
+
+// The rows of a reload, with the orders moved out of the status on screen
+// still in (AW-112): the server no longer sends them for it. Newest first.
+function keepMoved(rows, previous, ids) {
+  if (!ids.size || !previous) return rows;
+  const have = new Set(rows.map((row) => row.id));
+  const kept = previous.filter((o) => ids.has(o.id) && !have.has(o.id));
+  if (!kept.length) return rows;
+  const time = (o) => Date.parse(o.created_at) || 0;
+  return [...rows, ...kept].sort((a, b) => time(b) - time(a));
 }
 
 // One order or quote (AW-024, Cursor's PR #13): staff edit quantities and unit
@@ -608,7 +753,7 @@ function OrderCard({
           <span className="order-kind">{kindLabel}</span>
           <b className="order-ref">{o.ref_num}</b>
           <select id={orderStatusId(o.id)} aria-label={`Status for ${o.ref_num}`} value={o.status} aria-disabled={saving || undefined} onChange={chooseStatus}>
-            {options.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+            {options.map(s => <option key={s} value={s}>{statusLabel(s)}</option>)}
           </select>
           {movedTo && <span className="order-moved">{`Moved to ${statusLabel(movedTo)}`}</span>}
           {/* The status as text, for a printed list (the select doesn't print). */}

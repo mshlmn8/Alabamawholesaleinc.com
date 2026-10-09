@@ -79,7 +79,7 @@ const updates = () => fake.find({ op: 'update' }).map(({ table, filters, patch }
 
 async function openOrders() {
   await act(async () => { render(<RoutedAdmin profile={ADMIN} account="ready" />); });
-  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^all \(/ })); });
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^All \(/ })); });
 }
 const card = (ref) => screen.getByText(ref, { selector: '.order-ref' }).closest('article');
 
@@ -147,6 +147,8 @@ describe('Admin orders with the quote workflow', () => {
     expect(within(card('ALW-O-BBBB222233')).getByText('Trade order')).toBeTruthy();
     const options = within(guest).getByRole('combobox', { name: 'Status for ALW-Q-5E4F3A2B1C' }).querySelectorAll('option');
     expect([...options].map(o => o.value)).toEqual(['new', 'contacted', 'quoted', 'confirmed', 'picking', 'ready', 'out_for_delivery', 'fulfilled', 'cancelled']);
+    // Labels, not database values (AW-149).
+    expect([...options].map(o => o.textContent)).toEqual(['New', 'Contacted', 'Quoted', 'Confirmed', 'Picking', 'Ready', 'Out for delivery', 'Fulfilled', 'Cancelled']);
     // An unpriced quote can't be converted yet.
     expect(within(guest).getByRole('button', { name: /^Convert to order/ }).disabled).toBe(true);
     // Orders aren't converted.
@@ -244,7 +246,7 @@ describe('the order card head (AW-020)', () => {
     // Will-call: no address, even when the request carried one.
     expect(facts('ALW-Q-5E4F3A2B1C')).toMatchObject({ Method: 'Will-call pickup', Requested: 'Oct 1, 2026', Total: 'Unpriced quote', Account: 'Guest Mart' });
     expect(facts('ALW-O-BBBB222233')).toMatchObject({
-      Method: 'Delivery to 2 Test Way, Hoover, AL 35244', Requested: 'Oct 9, 2026', Total: '2 units · $21.70', Account: 'Test Market LLC · silver',
+      Method: 'Delivery to 2 Test Way, Hoover, AL 35244', Requested: 'Oct 9, 2026', Total: '2 units · $21.70', Account: 'Test Market LLC · Silver tier',
     });
     expect(facts('ALW-O-BBBB222233').Placed).toMatch(/^Oct 6, 2026, \d{1,2}:\d{2} [AP]M$/);
     expect(facts('ALW-Q-5E4F3A2B1C').Contact).toBe('Gusgus@example.test(205) 000-0002');
@@ -266,7 +268,7 @@ describe('the order card head (AW-020)', () => {
     expect(orderTotal({ subtotal: 12.5, order_items: [{ qty: 2 }, { qty: 3 }], kind: 'order' })).toBe('5 units · $12.50');
     expect(orderTotal({ subtotal: null, kind: 'quote' })).toBe('Unpriced quote');
     expect(orderAccount({ business: 'Guest Mart', profiles: null })).toBe('Guest Mart');
-    expect(orderAccount({ business: 'Typed Name', profiles: { business: 'Account Name', pricing_tier: 'gold' } })).toBe('Account Name · gold');
+    expect(orderAccount({ business: 'Typed Name', profiles: { business: 'Account Name', pricing_tier: 'gold' } })).toBe('Account Name · Gold tier');
   });
 });
 

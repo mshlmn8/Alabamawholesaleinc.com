@@ -11,7 +11,8 @@
 //   - Internal notes (profile_admin_notes, 20261009140000), staff only
 //   - Orders: the newest 50, the last order's date and the total of the
 //     priced ones, with links to Admin -> Orders for the account
-//   - Status history (profile_status_log, 20261008193000)
+//   - Status history (profile_status_log, 20261008193000; role changes too
+//     since 20261011111000, AW-203)
 // Profile changes patch the loaded accounts (onPatch, changes); nothing here
 // loads the documents again after the first time.
 //
@@ -25,6 +26,7 @@ import { supabase } from '../../lib/supabase.js';
 import { Link } from '../../lib/router.js';
 import { formatMoney } from '../../lib/format.js';
 import { DOCUMENT_TYPES, formatUploadedOn, listProfileDocuments } from '../../lib/documents.js';
+import { ADMIN_STATUS_LABELS, ROLE_LABELS, adminStatusLabel, tierLabel } from '../../lib/accountLabels.js';
 import { useLeaveGuard } from './useLeaveGuard.js';
 import { adminErrorMessage, checkedWrite, withStatus } from './adminData.js';
 import { LoadProblem } from './AdminStatus.jsx';
@@ -32,11 +34,10 @@ import { AccountFacts, DocumentView, Email, approvalLine, profileSaveError, useD
 import { ACCOUNT_NOTE_SELECT, NOTES_NEED_UPDATE, accountControlId } from './AccountChanges.jsx';
 import { checkNote, entryLine, isMissingTable, staffName, statusLabel } from './orderStaff.js';
 import {
-  ACCOUNT_ORDER_LIMIT, CONTACT_FIELDS, accountName, accountOrdersHref, businessTypes, contactChanges, contactDraft, dayText, loadAccountOrders,
-  ordersSummary, validateContact,
+  ACCOUNT_ORDER_LIMIT, CONTACT_FIELDS, accountName, accountOrdersHref, businessTypes, contactChanges, contactDraft, dayText, historyText, loadAccountOrders,
+  loadStatusHistory, ordersSummary, validateContact,
 } from './accountDetail.js';
 
-const HISTORY_LIMIT = 20;
 const telHref = (phone) => `tel:${String(phone ?? '').replace(/[^\d+]/g, '')}`;
 
 // id: the account. profiles: every account (null while loading), with
@@ -65,8 +66,8 @@ export function AccountDetail({
   if (profile && draft === null) setDraft(contactDraft(profile));
   if (profile && noteDraft === null) setNoteDraft(profile.verification_note || '');
   const [internalDraft, setInternalDraft] = useState('');
-  // Notes written by a suspension on this page (its reason), shown with the
-  // loaded ones.
+  // Notes written by a suspension or a role change on this page (its
+  // reason), shown with the loaded ones.
   const [addedNotes, setAddedNotes] = useState([]);
   const contactDirty = !!(profile && draft && Object.keys(contactChanges(draft, profile)).length);
   const noteDirty = !!(profile && noteDraft !== null && noteDraft.trim() !== (profile.verification_note || '').trim());
@@ -78,7 +79,7 @@ export function AccountDetail({
       <p className="account-detail-back"><Link className="text-link" to="/admin/accounts" onClick={onBack}>Back to accounts</Link></p>
       <div className="account-detail-head">
         <h2 id="account-detail-title" ref={headingRef} tabIndex={-1}>{profile ? who : profiles ? 'Account not found' : 'Account details'}</h2>
-        {profile && <span className={`admin-pill account-pill is-${profile.status}`}>{profile.status}</span>}
+        {profile && <span className={`admin-pill account-pill is-${profile.status}`}>{adminStatusLabel(profile.status)}</span>}
       </div>
       {!profiles && (loadError ? <LoadProblem message={loadError} onRetry={onRetry} retrying={retrying} /> : <p className="result-note">Loading…</p>)}
       {profiles && !profile && (
@@ -119,8 +120,9 @@ export function AccountDetail({
   );
 }
 
-// Status, tier and role: the list's selects, with labels. Suspending asks
-// for a reason; onNote(note) gets the reason's internal note once saved.
+// Status, tier and role: the list's selects, with labels. Suspending and
+// role changes ask for a reason; onNote(note) gets the reason's internal
+// note once saved.
 function AccountControls({ profile: p, profiles, tiers, currentAdminId, changes, onNote }) {
   const own = p.id === currentAdminId;
   const busy = !!changes.saving(p.id);
@@ -137,30 +139,26 @@ function AccountControls({ profile: p, profiles, tiers, currentAdminId, changes,
             onChange={(e) => {
               if (!busy) changes.setStatus(p, e.target.value, { focusId: ids.status, onNote });
             }}>
-            <option value="pending">pending</option>
-            <option value="approved">approved</option>
-            <option value="suspended">suspended</option>
+            <option value="pending">{ADMIN_STATUS_LABELS.pending}</option>
+            <option value="approved">{ADMIN_STATUS_LABELS.approved}</option>
+            <option value="suspended">{ADMIN_STATUS_LABELS.suspended}</option>
           </select>
         </div>
         <div>
           <label htmlFor={ids.tier}>Tier</label>
           <select id={ids.tier} value={p.pricing_tier} aria-disabled={busy || undefined}
             onChange={(e) => { if (!busy) changes.change(p, { pricing_tier: e.target.value }, { kind: 'tier', focusId: ids.tier }); }}>
-            {(tiers.includes(p.pricing_tier) ? tiers : [...tiers, p.pricing_tier]).map((t) => <option key={t} value={t}>{t}</option>)}
+            {(tiers.includes(p.pricing_tier) ? tiers : [...tiers, p.pricing_tier]).map((t) => <option key={t} value={t}>{tierLabel(t)}</option>)}
           </select>
         </div>
         <div>
           <label htmlFor={ids.role}>Role</label>
-          {/* An admin must be an approved account (is_admin()), so making a
+          {/* A role change asks first, with a reason (AW-203); making a
               pending or suspended account an admin approves it. */}
           <select id={ids.role} value={p.role} disabled={own} aria-disabled={busy || undefined} aria-describedby={describedBy}
-            onChange={(e) => {
-              if (busy) return;
-              changes.change(p, e.target.value === 'admin' && p.status !== 'approved' ? { role: 'admin', status: 'approved' } : { role: e.target.value },
-                { kind: 'role', focusId: ids.role });
-            }}>
-            <option value="customer">customer</option>
-            <option value="admin">admin</option>
+            onChange={(e) => { if (!busy) changes.setRole(p, e.target.value, { onNote }); }}>
+            <option value="customer">{ROLE_LABELS.customer}</option>
+            <option value="admin">{ROLE_LABELS.admin}</option>
           </select>
         </div>
       </div>
@@ -478,14 +476,14 @@ function AccountOrders({ id }) {
   );
 }
 
-// Every status change of the account (profile_status_log, written by the
-// database), newest first. Not shown on a database without it.
+// Every status and role change of the account (profile_status_log, written
+// by the database; role changes since 20261011111000, AW-203), newest
+// first. Not shown on a database without it.
 function StatusHistory({ id, profiles }) {
   const [state, setState] = useState({ rows: null, error: null, missing: false });
   useEffect(() => {
     let cancelled = false;
-    Promise.resolve(supabase.from('profile_status_log').select('id, old_status, new_status, changed_by, changed_at')
-      .eq('profile_id', id).order('changed_at', { ascending: false }).limit(HISTORY_LIMIT))
+    Promise.resolve(loadStatusHistory(supabase, id))
       .then((result) => {
         if (cancelled) return;
         const error = withStatus(result || {});
@@ -508,7 +506,7 @@ function StatusHistory({ id, profiles }) {
         <ol className="order-timeline account-history">
           {state.rows.map((row) => (
             <li key={row.id}>
-              <p className="order-timeline-line">{entryLine({ text: statusLabel(row.new_status), by: nameOf(row.changed_by), at: row.changed_at })}</p>
+              <p className="order-timeline-line">{entryLine({ text: historyText(row), by: nameOf(row.changed_by), at: row.changed_at })}</p>
             </li>
           ))}
         </ol>

@@ -46,14 +46,16 @@ supabase/migrations/20261010121000_admin_bulk_products.sql
 supabase/migrations/20261010122000_order_operations.sql
 supabase/migrations/20261010130000_catalog_apostrophes.sql
 supabase/migrations/20261010131000_photo_filenames.sql
+supabase/migrations/20261011110000_order_item_hints.sql
+supabase/migrations/20261011111000_profile_role_audit.sql
 supabase/seed/products.sql
 ```
 
 On a project that is already running, apply only the migrations it doesn't
 have yet, in that order, then the seed, then deploy the frontend (see the
 release checklist at the end of this file). The live project has the files
-up to `20260927180000`; the eighteen `20261008…`/`20261009…`/`20261010…` files
-are new.
+up to `20260927180000`; the twenty `20261008…`/`20261009…`/`20261010…`/`20261011…`
+files are new.
 Review them before applying them; the site keeps working without them (see
 `docs/OWNER-TODO.md` and "Before and after" in the release checklist).
 
@@ -132,7 +134,9 @@ The first migration creates four tables — `profiles`, `products`, `orders`,
 application columns and `profile_documents`. RLS is enabled on all of them.
 
 `20260927180000_application_documents.sql` also creates a **private** Storage
-bucket named `application-documents` (PDF, JPG, PNG, and HEIC, 10 MB maximum).
+bucket named `application-documents` (PDF, JPG or PNG, 10 MB maximum; the
+bucket still allows HEIC/HEIF, so files sent before the site stopped offering
+them still open, AW-347).
 Confirm in **Storage** that the bucket is not public. No extra environment
 variables. Applicants may upload a state retail tobacco license and a resale
 certificate from the application form once they have a session, or later from
@@ -145,6 +149,17 @@ in the bucket and in `profile_document_history`
 can delete proof. Since `20261009140000_profile_and_document_boundaries.sql`
 files and rows must use that layout, and an account can upload at most 10
 files in 24 hours.
+
+The site checks what a file is before it uploads it (AW-347): its first bytes
+must be a PDF, JPEG or PNG that matches its extension, so a program or web page
+renamed `license.pdf` is refused in the browser. That check runs only in the
+browser. Storage checks only the type the upload declares, and SQL can't read
+an object's bytes, so a request made outside the site can still store a
+disguised file under the applicant's own folder. Staff open these files from
+untrusted applicants: open them in the browser's viewer (the View link), not
+in a desktop program. Closing the gap needs an Edge Function that reads each
+new object's first bytes on upload and removes the ones that don't match; it
+isn't built.
 
 A trigger on `auth.users` auto-creates a `profiles` row on signup. **Every
 signup starts as `customer` / `pending`.** Public signup never creates an
@@ -580,6 +595,16 @@ The storefront saves a quote (or an approved buyer's order) with one call,
   honeypot field that simple bots fill in.
 - **Suspended accounts can't submit** (AW-201, hint `account_suspended`);
   the cart and checkout tell them ordering is paused.
+- **Line refusals name the product** (AW-200, `20261011110000`): the
+  order-line trigger's refusals carry a hint (`product_unavailable`,
+  `invalid_quantity`, `variant_required`, `unknown_variant`,
+  `variant_unavailable`) and the line's product id as the error's detail,
+  so the checkout says which item to fix. On a database without it the
+  checkout reads the same refusals from their message text.
+- **A send that takes too long** (AW-194): the checkout gives up on
+  `submit_quote` after 25 seconds and says the request may have been saved,
+  so the buyer calls before sending it again; it never re-sends it with an
+  older signature.
 - **Tobacco license answers** (AW-014, PR #12's rule, unchanged): a quote
   with a tobacco line (department Tobacco) or a vape line (Disposable Vapes
   or Vape Pods) from a guest or an account that isn't approved must name a
@@ -662,16 +687,21 @@ Admin → Orders (AW-110, AW-111) has a filter row above the status pills:
   was placed, on the admin's computer), **Deliver on** (the requested date) and
   **Method** (delivery or will-call) go into the address
   (`/admin/orders?status=…&from=…&to=…&on=…&method=…`), and so does
-  `?account=<profile id>` (the orders of one account). The list still loads the
-  newest 200 that match and counts the status pills within those (it says so
-  when 200 come back); server paging and per-status counts are AW-199.
+  `?account=<profile id>` (the orders of one account).
+- **Pages and counts** (AW-199): the status and the filters go to the
+  server, which sends 50 orders a page, newest first ("Page 2 of 7 · 312
+  orders", Previous / Next, `&page=` in the address; a page past the end
+  shows the last one). Each status pill counts every matching order on the
+  server ("Picking (120)"; "…" while a count is out), and counts again after
+  a status change. A filter or status change starts at page 1.
 - **Print pick list** and **Print packing slip** open
   `/admin/orders/<id>/print?doc=pick|slip`: the order's facts and its lines
   by department, sub-line and name, with an empty box to tick, the SKU, the
   quantity and the sell unit. Neither shows prices. The packing slip adds the
   store's name and address; both show the customer's notes, never staff notes.
   Printing hides the site around the sheet.
-- **Export CSV** downloads the orders on screen, one row per order line (ref,
+- **Export CSV** downloads every order the filters and the status pill
+  match (not just the page; up to 20,000), one row per order line (ref,
   dates, kind, status, business, contact, email, phone, delivery, SKU,
   product, variant, quantity, unit price, line total, subtotal). Cells that
   would run as a spreadsheet formula are defused. The file holds customers'
@@ -711,7 +741,10 @@ needs the site's Content-Security-Policy to allow
 
 ### Accounts and their pages (Admin → Accounts)
 
-Admin → Accounts (AW-113, AW-112) has a **Search accounts** box that looks in
+Admin → Accounts (AW-113, AW-112) loads every account, and every account's
+licence document rows, 1000 at a time (AW-199: one request used to stop at
+PostgREST's 1000-row limit without a word; Admin → Products loads its rows
+the same way). It has a **Search accounts** box that looks in
 the business, name, email and phone of the loaded accounts; what is typed
 stays on the page and never goes into the address bar. Each business links
 to its own page, `/admin/accounts/<profile id>`, and each order card's
@@ -731,22 +764,32 @@ account line links there too. The page shows:
 - **Orders**: the newest 50 with the last order's date and the total of the
   priced orders that weren't cancelled; every link opens Admin → Orders for
   the account (`?account=<profile id>`).
-- **Status history** (`profile_status_log`).
+- **Status history** (`profile_status_log`): status changes, and role
+  changes once `20261011111000` is applied.
 
-Status, tier and role changes (on the list and the page) show at once, with
+Status and tier changes (on the list and the page) show at once, with
 Undo for 8 seconds, and go back with the reason if the database refuses
 them; one request per account at a time. **Suspending** asks for a reason,
-which is saved as an internal note ("Suspended: …"). **Cancelling an order**
+which is saved as an internal note ("Suspended: …"). **Making an account an
+admin** or **removing admin access** (AW-203) asks too ("Make … an admin?",
+"Remove admin access from …?"), with a required reason saved as an internal
+note ("Made an admin: …", "Admin access removed: …"); making a pending or
+suspended account an admin approves it, which the question says. The select
+keeps the saved role until it is confirmed, and none of these three has Undo.
+Since `20261011111000`, the **Status history** lists role changes too ("Made
+an admin by …", "Approved and made an admin by …"). **Cancelling an order**
 asks for a reason that goes in its history (`admin_set_order_status`); other
 order status changes keep the card where it is, tagged "Moved to …", until
 Refresh or another filter, with Undo.
 
-No migration is needed: the page uses `20261008191000` (store address),
-`20261008193000` (approval stamp, status history) and `20261009140000`
-(internal notes). Before those are applied, saving a column the database
-doesn't have says it needs the October 2026 update, the notes say so too
-(and a suspension says its reason wasn't saved), the status history is left
-out, and a cancellation's reason is optional because it can't be stored.
+The page uses `20261008191000` (store address), `20261008193000` (approval
+stamp, status history), `20261009140000` (internal notes) and
+`20261011111000` (role changes in the history). Before those are applied,
+saving a column the database doesn't have says it needs the October 2026
+update, the notes say so too (and a suspension or role change says its
+reason wasn't saved), the status history is left out (or, before
+`20261011111000` alone, shows status changes only), and a cancellation's
+reason is optional because it can't be stored.
 
 Staff can't create or invite an account from Admin yet: that needs a
 Supabase Edge Function with the service-role key and an email provider (see
@@ -855,10 +898,11 @@ For each release:
 5. Then apply the migrations the table below marks "Apply AFTER deploying
    the new frontend" (`20261010131000_photo_filenames.sql`).
 
-The live project needs all eighteen, in this order (Cursor's seven
+The live project needs all twenty, in this order (Cursor's seven
 `20261008…` files, then the six `20261009…` ones, which build on them, then
 the five `20261010…` ones: three for the admin back office and two data-only
-catalog fixes). Apply
+catalog fixes, then `20261011110000` and `20261011111000`, which can go in
+any time). Apply
 `20261008200000` and `20261009100000`–`20261009150000` in one session: the
 price boundary hides `products.variant_prices` and `20261009110000` moves it.
 Each `20261009…` migration ends with a commented reverse-SQL block for
@@ -886,6 +930,11 @@ rolling it back.
 17. `20261010130000_catalog_apostrophes.sql` (data only; any time)
 18. `20261010131000_photo_filenames.sql` (data only; **after the new
     frontend is deployed**, step 5 above)
+19. `20261011110000_order_item_hints.sql` (the checkout names the item a
+    refused line is about; any time, after 9)
+20. `20261011111000_profile_role_audit.sql` (role changes in an account's
+    history; any time, after 12; before it, role changes aren't in the
+    history, only their reasons in the internal notes)
 
 Then `supabase/seed/products.sql`, then the frontend, then 18.
 
@@ -909,6 +958,8 @@ Then `supabase/seed/products.sql`, then the frontend, then 18.
 | `20261010122000_order_operations.sql` | Admin → Orders' operations (see "Finding, printing and following orders"): `order_events` (status and assignment history, written by the `orders_log_change` trigger, admin read only), `order_admin_notes` (internal notes, admins only, 1–2000 characters, in their own name), `orders.assigned_to` (a profile id; the third foreign key from `orders` to `profiles`) with an index, an index on `orders.preferred_date`, `admin_set_order_status(p_order_id, p_status, p_note)` (admins only; a cancellation needs a reason; hints `reason_required`, `invalid_status`, `note_too_long`, `order_not_found`, `admin_only`), `admin_order_views` and `admin_mark_orders_seen()` (each admin's last visit to Orders), and `public.orders` in the `supabase_realtime` publication (skipped where it doesn't exist). Every new table and function is revoked from guests. A commented Reverse block is at the end. | Apply after `20261009150000` (in order after `20261010121000`). No seed change. The frontend deployed before it keeps working: its plain status updates are logged without a note. The new frontend works before and after: without it, status changes use the plain update, "Staff notes and history" says it needs the update, "Assigned to" is hidden, the New marker counts from the first visit in the tab, the header shows no count, and Orders reloads every minute. Realtime also needs `wss://<project-ref>.supabase.co` in the CSP's `connect-src`. |
 | `20261010130000_catalog_apostrophes.sql` | Data only (AW-064): #163 and #166 get a straight apostrophe in their name and brand ("M&M's", "Reese's"), like every other possessive name in the catalog. Each row changes only while it still has the curly value the seed wrote, so admin edits are kept and a re-run changes nothing. | Apply any time, before or after the frontend: the storefront search treats ’ and ' alike, so both spellings are found before and after. Ids, SKUs and variant labels don't change. |
 | `20261010131000_photo_filenames.sql` | Data only (AW-290): six products' `img` move to the renamed photo files (#21 `p21-speed-stick-mens-deodorant.jpg`, #110 `p110-brillo-basics-dish-liquid.png`, #128 `p128-fabuloso.avif`, #225 `p225-lady-speed-stick-deodorant.webp`, #280 `p280-coastal-motor-oil.jpg`, #292 `p292-electrolit.webp`). Each row changes only while it still names the old file the seed wrote, so a photo an admin has set is kept and a re-run changes nothing. | **Apply AFTER deploying the new frontend.** The frontend deployed before it ships only the old file names, so after this migration it would show "Photo coming soon" for these six products; the new frontend ships only the new files and reads both names (`IMAGE_FILE_ALIASES` in `src/data/catalogAliases.js`). Ids, SKUs and variant labels don't change. |
+| `20261011110000_order_item_hints.sql` | AW-200: recreates the order-line trigger function `enforce_order_item_price()` from `20261009110000`, changing only its refusals: each keeps its message word for word and gets a typed hint (`order_missing`, `product_unavailable`, `invalid_quantity`, `variant_required`, `unknown_variant`; `variant_unavailable` had one) and, as its detail, the line's product id. Still SECURITY DEFINER, revoked from guests and signed-in accounts; Cursor's `order_items_price` trigger is unchanged. A commented Reverse block is at the end. | Apply any time after `20261009110000`. No seed change. The frontend deployed before it shows its generic "couldn't save" message for these refusals either way. The new frontend works before and after: before it, the checkout words these errors from the message text (and names the product only for "Choose a variant for …" and "Unknown variant for …"); after it, it names the product of the refused line from the detail. |
+| `20261011111000_profile_role_audit.sql` | AW-203: `profile_status_log.old_role` and `new_role`; recreates the log trigger function `log_profile_status()` from `20261008193000` so it writes a row when the status or the role changes (`old_status`/`new_status` always, `old_role`/`new_role` only when the role changed, `changed_by` and the note as before). Still SECURITY DEFINER with `search_path = public`, revoked from guests and signed-in accounts; the `profile_status_log_write` trigger, the admin-only read policy and the own-role/status guard (`own_role_status`) are unchanged. A commented Reverse block is at the end. | Apply any time after `20261009140000`. No seed change. The frontend deployed before it doesn't read the new columns. The new frontend works before and after: the account page's Status history asks for the role columns and, without them (42703/PGRST204), shows status changes only; before it, role changes aren't in the history (each one's reason is in the account's internal notes either way). |
 
 ### Later steps
 

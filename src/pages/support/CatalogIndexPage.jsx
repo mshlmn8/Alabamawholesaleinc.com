@@ -10,7 +10,23 @@ import { PageHead } from './SupportShell.jsx';
 
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
-export function CatalogIndexPage({ products, departments, isApprovedBuyer, profile, onLoginClick }) {
+// The guest's pricing prompt, at the top of the page with both ways in
+// (AW-274): sign in, or apply for a trade account.
+function PricingLockedBanner({ onLoginClick, onApplyClick }) {
+  return (
+    <div className="callout catalog-pricing">
+      <p><b>Wholesale pricing is locked.</b> <span>Sign in to see your account pricing on every product, or apply for a trade account.</span></p>
+      <div className="catalog-pricing-actions">
+        <button className="button sm" type="button" onClick={onLoginClick}>Sign in</button>
+        <button className="button ghost sm" type="button" onClick={onApplyClick}>Apply for an account</button>
+      </div>
+    </div>
+  );
+}
+
+// signedIn follows the session, not the profile, so a buyer whose profile is
+// still loading never sees the prompt flash.
+export function CatalogIndexPage({ products, departments, isApprovedBuyer, profile, signedIn, onLoginClick, onApplyClick }) {
   const lines = departments.reduce((n, d) => n + d.subs.length, 0);
 
   return (
@@ -18,6 +34,7 @@ export function CatalogIndexPage({ products, departments, isApprovedBuyer, profi
       <PageHead crumb="All products" eyebrow={`FULL ASSORTMENT · ${departments.length} DEPARTMENTS · ${products.length} SKUs`} title="All products">
         <p>{`Every department and product line we stock, in one place. Jump to a department, open a line, or expand the full SKU list. ${isApprovedBuyer ? 'Your account pricing shows on every product.' : profile ? 'Pricing unlocks after your account is approved.' : 'Sign in to see wholesale pricing.'}`}</p>
       </PageHead>
+      {!signedIn && <PricingLockedBanner onLoginClick={onLoginClick} onApplyClick={onApplyClick} />}
 
       <nav className="dept-jump" aria-label="Jump to department">
         {departments.map((d, i) => (
@@ -61,12 +78,6 @@ export function CatalogIndexPage({ products, departments, isApprovedBuyer, profi
           );
         })}
       </div>
-
-      {!profile && (
-        <button className="filter-signin catalog-signin" type="button" onClick={onLoginClick}>
-          <b>Wholesale pricing is locked</b><span>Sign in to see your account pricing on every product.</span>
-        </button>
-      )}
     </section>
   );
 }

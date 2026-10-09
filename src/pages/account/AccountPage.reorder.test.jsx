@@ -28,6 +28,7 @@ vi.mock('../../lib/supabase.js', () => {
     select: () => query,
     eq: () => query,
     order: () => query,
+    abortSignal: () => query,
     then: (resolve) => Promise.resolve({ data: [ORDER], error: null }).then(resolve),
   };
   return { supabase: { from: () => query }, isBackendConfigured: true, AUTH_STORAGE_KEY: 'aw-auth' };

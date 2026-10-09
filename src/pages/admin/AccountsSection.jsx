@@ -9,6 +9,8 @@ import { Fragment, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { Link } from '../../lib/router.js';
 import { DOCUMENT_TYPES, listAllProfileDocuments } from '../../lib/documents.js';
+import { fetchAllRows } from '../../lib/paging.js';
+import { ADMIN_STATUS_LABELS, ROLE_LABELS, tierLabel } from '../../lib/accountLabels.js';
 import { useLeaveGuard } from './useLeaveGuard.js';
 import { adminErrorMessage, withStatus } from './adminData.js';
 import { LoadProblem } from './AdminStatus.jsx';
@@ -51,7 +53,9 @@ export function AccountsTab({
   // A failed load says so, with Try again, instead of an empty table or
   // "Not on file" for every account (AW-202). Changes patch the rows where
   // they are (AccountChanges.jsx), so this runs once, and on Try again.
-  const reload = () => supabase.from('profiles').select('*').order('created_at', { ascending: false }).then((result) => {
+  // Every account, a page of 1000 at a time (AW-199): one request stopped at
+  // PostgREST's max-rows without a word.
+  const reload = () => fetchAllRows(() => supabase.from('profiles').select('*').order('created_at', { ascending: false }).order('id')).then((result) => {
     const error = withStatus(result);
     setProfilesError(error ? adminErrorMessage(error, 'The accounts didn’t load') : null);
     if (!error) setProfiles(result.data || []);
@@ -218,9 +222,9 @@ function AccountsList({
                       <select id={accountControlId(p.id, 'status')} aria-label={`Status for ${p.business || p.name}`} value={p.status}
                         disabled={p.id === currentAdminId} aria-disabled={busy(p) || undefined}
                         aria-describedby={p.id === currentAdminId ? 'admin-own-row' : undefined} onChange={chooseStatus(p)}>
-                        <option value="pending">pending</option>
-                        <option value="approved">approved</option>
-                        <option value="suspended">suspended</option>
+                        <option value="pending">{ADMIN_STATUS_LABELS.pending}</option>
+                        <option value="approved">{ADMIN_STATUS_LABELS.approved}</option>
+                        <option value="suspended">{ADMIN_STATUS_LABELS.suspended}</option>
                       </select>
                       {p.id === currentAdminId && <small className="field-hint" id="admin-own-row">Your own status and role can’t be changed here.</small>}
                       {p.approved_at && <small className="field-hint">{approvalLine(p, profiles)}</small>}
@@ -228,22 +232,18 @@ function AccountsList({
                     <td>
                       <select id={accountControlId(p.id, 'tier')} aria-label={`Tier for ${p.business || p.name}`} value={p.pricing_tier} aria-disabled={busy(p) || undefined}
                         onChange={e => { if (!busy(p)) changes.change(p, { pricing_tier: e.target.value }, { kind: 'tier', focusId: accountControlId(p.id, 'tier') }); }}>
-                        {(tiers.includes(p.pricing_tier) ? tiers : [...tiers, p.pricing_tier]).map(t => <option key={t} value={t}>{t}</option>)}
+                        {(tiers.includes(p.pricing_tier) ? tiers : [...tiers, p.pricing_tier]).map(t => <option key={t} value={t}>{tierLabel(t)}</option>)}
                       </select>
                     </td>
                     <td>
-                      {/* An admin must be an approved account (is_admin()), so
+                      {/* A role change asks first, with a reason (AW-203);
                           making a pending or suspended account an admin approves it. */}
                       <select id={accountControlId(p.id, 'role')} aria-label={`Role for ${p.business || p.name}`} value={p.role}
                         disabled={p.id === currentAdminId} aria-disabled={busy(p) || undefined}
                         aria-describedby={p.id === currentAdminId ? 'admin-own-row' : undefined}
-                        onChange={e => {
-                          if (busy(p)) return;
-                          changes.change(p, e.target.value === 'admin' && p.status !== 'approved' ? { role: 'admin', status: 'approved' } : { role: e.target.value },
-                            { kind: 'role', focusId: accountControlId(p.id, 'role') });
-                        }}>
-                        <option value="customer">customer</option>
-                        <option value="admin">admin</option>
+                        onChange={e => { if (!busy(p)) changes.setRole(p, e.target.value); }}>
+                        <option value="customer">{ROLE_LABELS.customer}</option>
+                        <option value="admin">{ROLE_LABELS.admin}</option>
                       </select>
                     </td>
                     <td>

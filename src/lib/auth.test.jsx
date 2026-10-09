@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AUTH_STORAGE_KEY } from './supabase.js';
 import { accountState, AuthProvider, clearStoredSession, PENDING_PROFILE_POLL_MS, PROFILE_REFRESH_MIN_MS, useAuth } from './auth.jsx';
 import { TERMS_VERSION } from '../data/content.js';
+import { AUTH_REQUEST_TIMEOUT_MS } from './network.js';
 
 const retryable = () => Object.assign(new Error('Failed to fetch'), { name: 'AuthRetryableFetchError', status: 0 });
 
@@ -341,6 +342,56 @@ describe('signUp', () => {
     });
     // Form-only state does not leave the browser.
     expect(options.data).not.toHaveProperty('agreeTerms');
+  });
+});
+
+// Sign-in and the auth emails give up after AUTH_REQUEST_TIMEOUT_MS (AW-194).
+describe('auth time limits', () => {
+  it('rejects a stalled sign-in with code "timeout", and a late answer still signs the buyer in', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const client = fakeClient({ profiles: { u1: { id: 'u1', status: 'pending' } } });
+    let answer;
+    client.auth.signInWithPassword.mockImplementation(() => new Promise((resolve) => { answer = resolve; }));
+    renderWith(client);
+    await waitFor(() => expect(seen.auth?.account).toBe('signed-out'));
+    let caught;
+    await act(async () => {
+      const pending = seen.auth.signIn({ email: 'buyer@example.test', password: 'test-password-1' }).catch((e) => e);
+      await vi.advanceTimersByTimeAsync(AUTH_REQUEST_TIMEOUT_MS);
+      caught = await pending;
+    });
+    expect(caught).toMatchObject({ name: 'TimeoutError', code: 'timeout' });
+    // Supabase answers after all: the session arrives like one from another tab.
+    await act(async () => {
+      answer({ data: { session: makeSession() }, error: null });
+      client.emit('SIGNED_IN', makeSession());
+    });
+    await waitFor(() => expect(seen.auth.account).toBe('ready'));
+    expect(seen.auth.session.user.id).toBe('u1');
+  });
+
+  it('gives the application, the reset email and the confirmation email the same limit', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const client = fakeClient();
+    const stall = () => new Promise(() => {});
+    client.auth.signUp.mockImplementation(stall);
+    client.auth.resetPasswordForEmail.mockImplementation(stall);
+    client.auth.resend.mockImplementation(stall);
+    renderWith(client);
+    await waitFor(() => expect(seen.auth?.account).toBe('signed-out'));
+    for (const run of [
+      () => seen.auth.signUp({ email: 'new@example.test', password: 'test-password-1' }),
+      () => seen.auth.resetPassword('buyer@example.test'),
+      () => seen.auth.resendConfirmation('buyer@example.test'),
+    ]) {
+      let caught;
+      await act(async () => {
+        const pending = run().catch((e) => e);
+        await vi.advanceTimersByTimeAsync(AUTH_REQUEST_TIMEOUT_MS);
+        caught = await pending;
+      });
+      expect(caught?.code).toBe('timeout');
+    }
   });
 });
 

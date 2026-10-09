@@ -11,6 +11,15 @@ export function EmailLink({ className }) {
   return <a className={className} href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>;
 }
 
+// An email address that wraps after the '@' rather than mid-word (AW-120).
+// One root span, so a flex parent sees a single item and the line break
+// still happens inside it; each part in its own span (AW-039).
+export function EmailText({ address = COMPANY.email }) {
+  const at = address.indexOf('@');
+  if (at < 0) return <span>{address}</span>;
+  return <span><span>{address.slice(0, at + 1)}</span><wbr /><span>{address.slice(at + 1)}</span></span>;
+}
+
 // One root element, and before/after in their own spans, because callers
 // swap this sentence in and out and pass text that changes (AW-039).
 export function CallOrEmail({ before = 'Call', after = '.' }) {

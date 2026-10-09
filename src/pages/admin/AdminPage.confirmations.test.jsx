@@ -188,16 +188,18 @@ describe('other order status changes', () => {
     vi.useFakeTimers();
     await open();
     await act(async () => { fireEvent.change(statusSelect(), { target: { value: 'contacted' } }); });
-    const loads = fake.find({ table: 'orders', op: 'select' }).length;
+    // (The pills' HEAD count requests aside.)
+    const pageLoads = () => fake.find({ table: 'orders', op: 'select' }).filter((c) => !c.options?.head).length;
+    const loads = pageLoads();
     await act(async () => { vi.advanceTimersByTime(POLL_MS); });
-    expect(fake.find({ table: 'orders', op: 'select' }).length).toBe(loads + 1);
+    expect(pageLoads()).toBe(loads + 1);
     expect(within(card()).getByText('Moved to Contacted')).toBeTruthy();
     // Another filter and back: it is in "contacted" now.
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^contacted \(/ })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^Contacted \(/ })); });
     expect(within(card()).queryByText(/^Moved to/)).toBeNull();
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^new \(/ })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^New \(/ })); });
     expect(screen.queryByText(REF, { selector: '.order-ref' })).toBeNull();
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^contacted \(/ })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^Contacted \(/ })); });
     await act(async () => { fireEvent.change(statusSelect(), { target: { value: 'quoted' } }); });
     expect(within(card()).getByText('Moved to Quoted')).toBeTruthy();
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Refresh' })); });
@@ -251,7 +253,7 @@ describe('account changes', () => {
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Suspend the account' })); });
     const notes = screen.getByRole('heading', { level: 3, name: 'Internal notes' }).closest('section');
     expect(within(notes).getByText('Suspended: Licence expired')).toBeTruthy();
-    expect(document.querySelector('.account-pill').textContent).toBe('suspended');
+    expect(document.querySelector('.account-pill').textContent).toBe('Suspended');
     expect(document.activeElement).toBe(select);
   });
 
@@ -299,5 +301,120 @@ describe('account changes', () => {
     // No account change reloaded the accounts or the documents.
     expect(fake.find({ table: 'profiles', op: 'select' })).toHaveLength(1);
     expect(fake.find({ table: 'profile_documents' })).toHaveLength(1);
+  });
+});
+
+describe('role changes (AW-203)', () => {
+  const row = (business) => screen.getByRole('link', { name: business }).closest('tr');
+  const roleSelect = (business) => within(row(business)).getByRole('combobox', { name: `Role for ${business}` });
+
+  it('making an account an admin asks first; Cancel leaves the role and gives the select its focus back', async () => {
+    await open('/admin/accounts');
+    const select = roleSelect('Alpha Food Mart');
+    select.focus();
+    await act(async () => { fireEvent.change(select, { target: { value: 'admin' } }); });
+    const dialog = screen.getByRole('alertdialog', { name: 'Make Alpha Food Mart an admin?' });
+    expect(within(dialog).getByText('Admins can see every order, application, EIN and licence document, and change prices and accounts.')).toBeTruthy();
+    // Until it is confirmed, the select keeps the saved role.
+    expect(select.value).toBe('customer');
+    expect(fake.find({ op: 'update' })).toHaveLength(0);
+    expect(within(dialog).getByLabelText('Reason').required).toBe(true);
+    await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' })); });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(roleSelect('Alpha Food Mart').value).toBe('customer');
+    expect(document.activeElement).toBe(roleSelect('Alpha Food Mart'));
+    expect(fake.find({ op: 'update' })).toHaveLength(0);
+    expect(fake.find({ table: 'profile_admin_notes', op: 'insert' })).toHaveLength(0);
+  });
+
+  it('needs a reason, then saves the role and the reason as an internal note, without Undo', async () => {
+    await open('/admin/accounts');
+    await act(async () => { fireEvent.change(roleSelect('Alpha Food Mart'), { target: { value: 'admin' } }); });
+    const dialog = screen.getByRole('alertdialog');
+    await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Make an admin' })); });
+    expect(within(dialog).getByText('Enter reason to continue.')).toBeTruthy();
+    expect(fake.find({ op: 'update' })).toHaveLength(0);
+    fireEvent.change(within(dialog).getByLabelText('Reason'), { target: { value: '  Runs the Hoover store  ' } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Make an admin' })); });
+    expect(fake.find({ op: 'update' }).map((c) => [c.filters[0][2], c.patch])).toEqual([[ALPHA_ID, { role: 'admin' }]]);
+    expect(fake.find({ table: 'profile_admin_notes', op: 'insert' }).map((c) => c.rows)).toEqual([{ profile_id: ALPHA_ID, body: 'Made an admin: Runs the Hoover store' }]);
+    expect(roleSelect('Alpha Food Mart').value).toBe('admin');
+    expect(statusText()).toBe('Alpha Food Mart is now an admin. The reason is in its internal notes.');
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+  });
+
+  it('making a pending account an admin says it approves it, and does', async () => {
+    await open('/admin/accounts');
+    await act(async () => { fireEvent.change(roleSelect('Bravo Tobacco Outlet'), { target: { value: 'admin' } }); });
+    const dialog = screen.getByRole('alertdialog', { name: 'Make Bravo Tobacco Outlet an admin?' });
+    expect(within(dialog).getByText(/This also approves the account\.$/)).toBeTruthy();
+    fireEvent.change(within(dialog).getByLabelText('Reason'), { target: { value: 'New manager' } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Make an admin' })); });
+    expect(fake.find({ op: 'update' }).map((c) => c.patch)).toEqual([{ role: 'admin', status: 'approved' }]);
+    expect(within(row('Bravo Tobacco Outlet')).getByRole('combobox', { name: 'Status for Bravo Tobacco Outlet' }).value).toBe('approved');
+  });
+
+  it('removing admin access asks too, and notes the reason', async () => {
+    fake.tables.profiles = [ADMIN, { ...ALPHA, role: 'admin' }, BRAVO];
+    await open('/admin/accounts');
+    await act(async () => { fireEvent.change(roleSelect('Alpha Food Mart'), { target: { value: 'customer' } }); });
+    const dialog = screen.getByRole('alertdialog', { name: 'Remove admin access from Alpha Food Mart?' });
+    expect(within(dialog).getByText('They keep their customer account and lose Admin.')).toBeTruthy();
+    fireEvent.change(within(dialog).getByLabelText('Reason'), { target: { value: 'Left the company' } });
+    await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Remove admin access' })); });
+    expect(fake.find({ op: 'update' }).map((c) => c.patch)).toEqual([{ role: 'customer' }]);
+    expect(fake.find({ table: 'profile_admin_notes', op: 'insert' }).map((c) => c.rows[0] ?? c.rows)).toEqual([{ profile_id: ALPHA_ID, body: 'Admin access removed: Left the company' }]);
+    expect(statusText()).toBe('Alpha Food Mart no longer has admin access. The reason is in its internal notes.');
+  });
+
+  it('says the role changed but the reason wasn’t saved when the notes table is missing', async () => {
+    db.tableError.profile_admin_notes = MISSING_TABLE;
+    await open('/admin/accounts');
+    await act(async () => { fireEvent.change(roleSelect('Alpha Food Mart'), { target: { value: 'admin' } }); });
+    fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'Runs the store' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Make an admin' })); });
+    expect(screen.getByRole('alert').textContent)
+      .toBe('Alpha Food Mart is now an admin, but the reason wasn’t saved: internal notes need the October 2026 database update (see BACKEND.md).');
+    expect(roleSelect('Alpha Food Mart').value).toBe('admin');
+  });
+
+  it('a refused role change goes back, with the reason, and saves no note', async () => {
+    db.updateResult = { data: null, error: { code: '42501', message: 'permission denied', hint: 'admin_only' }, status: 403 };
+    await open('/admin/accounts');
+    await act(async () => { fireEvent.change(roleSelect('Alpha Food Mart'), { target: { value: 'admin' } }); });
+    fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'Runs the store' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Make an admin' })); });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(roleSelect('Alpha Food Mart').value).toBe('customer');
+    expect(screen.getByRole('alert').textContent).toBe('Only an approved admin can change this.');
+    expect(fake.find({ table: 'profile_admin_notes', op: 'insert' })).toHaveLength(0);
+  });
+
+  it('the admin’s own role can’t be changed: the select is locked and nothing is asked or sent', async () => {
+    await open('/admin/accounts');
+    const own = screen.getByRole('combobox', { name: 'Role for Alabama Wholesale' });
+    expect(own.disabled).toBe(true);
+    await act(async () => { fireEvent.change(own, { target: { value: 'customer' } }); });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(fake.find({ op: 'update' })).toHaveLength(0);
+    // Should a change get through anyway, it is refused before asking.
+    const alert = screen.queryByRole('alert');
+    if (alert) expect(alert.textContent).toBe('You can’t change your own status or role.');
+  });
+
+  it('on the account page, the reason shows under Internal notes and Cancel gives the select back', async () => {
+    await open(`/admin/accounts/${ALPHA_ID}`);
+    const select = screen.getByLabelText('Role');
+    select.focus();
+    await act(async () => { fireEvent.change(select, { target: { value: 'admin' } }); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Cancel' })); });
+    expect(select.value).toBe('customer');
+    expect(document.activeElement).toBe(select);
+    await act(async () => { fireEvent.change(select, { target: { value: 'admin' } }); });
+    fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'Runs the store' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Make an admin' })); });
+    const notes = screen.getByRole('heading', { level: 3, name: 'Internal notes' }).closest('section');
+    expect(within(notes).getByText('Made an admin: Runs the store')).toBeTruthy();
+    expect(select.value).toBe('admin');
   });
 });

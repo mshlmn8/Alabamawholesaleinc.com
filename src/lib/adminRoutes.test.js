@@ -46,6 +46,10 @@ describe('parseAdminPath', () => {
       .toEqual({ status: 'picking', from: '2026-10-01', method: 'willcall', account: UUID });
     expect(parseAdminQuery('orders', '?status=new')).toEqual({});
     expect(parseAdminQuery('orders', '?status=lost')).toEqual({});
+    // The Orders page (AW-199): a positive whole number; page 1 is the default.
+    expect(parseAdminQuery('orders', '?status=all&page=7')).toEqual({ status: 'all', page: 7 });
+    expect(parseAdminQuery('orders', '?page=1')).toEqual({});
+    for (const page of ['0', '-2', '2.5', 'two', '1e3']) expect(parseAdminQuery('orders', `?page=${page}`), page).toEqual({});
     // Accounts take nothing from the URL: their search names people.
     expect(parseAdminQuery('accounts', '?q=alice@example.test&status=pending')).toEqual({});
     expect(parseAdminQuery('products', `?q=+swisher+&status=inactive&dept=drinks-and-bags&sub=Energy-Drinks&tag=NEW&photo=None&unit=none&stock=low_stock&sort=price&dir=desc&page=3&from=12&x=1`))
@@ -66,6 +70,8 @@ describe('adminPath and adminQueryString', () => {
   it('writes the keys in a fixed order and leaves defaults and unknown keys out', () => {
     expect(adminQueryString('orders', { method: 'delivery', status: 'all', junk: 1, account: 'not-a-uuid' })).toBe('?status=all&method=delivery');
     expect(adminQueryString('orders', { status: 'new' })).toBe('');
+    expect(adminQueryString('orders', { page: 3, status: 'picking', method: 'willcall' })).toBe('?status=picking&method=willcall&page=3');
+    expect(adminQueryString('orders', { page: 1 })).toBe('');
     expect(adminQueryString('products', { page: 1, q: '  swisher sweets ', sort: 'name' })).toBe('?q=swisher+sweets&sort=name');
     expect(adminQueryString('accounts', { q: 'alice' })).toBe('');
   });

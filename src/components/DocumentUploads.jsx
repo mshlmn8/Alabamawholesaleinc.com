@@ -10,10 +10,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { COMPANY } from '../data/content.js';
 import { useAuth } from '../lib/auth.jsx';
+import { useOnlineStatus } from '../lib/useOnlineStatus.js';
 import { Icon } from './Icon.jsx';
 import {
   DOCUMENT_ACCEPT,
   DOCUMENT_TYPES,
+  checkDocumentFile,
   createDocumentViewUrl,
   documentErrorMessage,
   formatUploadedOn,
@@ -28,11 +30,15 @@ function DocumentFields({
   files,
   errors,
   records,
+  loadError = false,
   busy,
   showStatus,
   onPick,
 }) {
   const [viewError, setViewError] = useState(null);
+  // The latest pick per input: a slower content check of an earlier file
+  // never overrides it.
+  const picks = useRef({});
   // The tab opens inside the click (a popup blocker would stop a window opened
   // after the signed address arrives), then goes to the file.
   const openFile = async (doc, record) => {
@@ -49,14 +55,20 @@ function DocumentFields({
       setViewError(`Couldn’t open your ${doc.label.toLowerCase()}. Try again.`);
     }
   };
-  const onChange = (type) => (event) => {
-    const file = event.target.files?.[0] || null;
+  // The name and size at once, then what the file's first bytes say it is
+  // (AW-347): a renamed program or web page is refused like a wrong type.
+  const onChange = (type) => async (event) => {
+    const input = event.target;
+    const file = input.files?.[0] || null;
+    const pick = (picks.current[type] || 0) + 1;
+    picks.current[type] = pick;
     if (!file) {
       onPick(type, null, null);
       return;
     }
-    const problem = validateDocumentFile(file);
-    if (problem) event.target.value = '';
+    const problem = validateDocumentFile(file) || await checkDocumentFile(file);
+    if (picks.current[type] !== pick) return;
+    if (problem) input.value = '';
     onPick(type, problem ? null : file, problem);
   };
 
@@ -78,8 +90,11 @@ function DocumentFields({
         const record = (records || []).find(row => row.document_type === doc.id);
         const describedBy = [hintId, showStatus ? statusId : null, error ? errorId : null].filter(Boolean).join(' ');
         const isBusy = !!busy?.[doc.id];
+        // A list that didn't load says nothing about the file (AW-195).
+        const state = record ? 'uploaded' : loadError ? 'unknown' : 'missing';
         let status = 'Not uploaded';
-        if (records == null) status = 'Checking…';
+        if (state === 'unknown') status = 'Couldn’t check this document right now';
+        else if (records == null) status = 'Checking…';
         else if (isBusy) status = 'Uploading…';
         else if (record) status = `${formatUploadedOn(record.uploaded_at)}${record.original_filename ? ` · ${record.original_filename}` : ''}`;
         return (
@@ -99,9 +114,9 @@ function DocumentFields({
               aria-describedby={describedBy}
               onChange={onChange(doc.id)}
             />
-            <small className="field-hint" id={hintId}>PDF, JPG, PNG, or HEIC. 10 MB maximum. One file; choosing another replaces it.</small>
+            <small className="field-hint" id={hintId}>PDF, JPG or PNG. 10 MB maximum. One file; choosing another replaces it.</small>
             {showStatus && (
-              <p className={`doc-status${record ? '' : ' is-missing'}`} id={statusId} data-document-status={record ? 'uploaded' : 'missing'} aria-live="polite">
+              <p className={`doc-status${state === 'missing' ? ' is-missing' : ''}`} id={statusId} data-document-status={state} aria-live="polite">
                 {record && <Icon name="check" />}
                 <span>{status}</span>
                 {record && !isBusy && (
@@ -164,6 +179,10 @@ export function documentsSummary(records, status = 'pending') {
 export function ApplicationDocuments({ disabled = false, status = 'pending' }) {
   const { session, loading, isBackendConfigured } = useAuth();
   const [records, setRecords] = useState(null);
+  // A failed load leaves records null (AW-195): it never reads as "Not
+  // uploaded". loadKey is bumped to load again.
+  const [loadError, setLoadError] = useState(false);
+  const [loadKey, setLoadKey] = useState(0);
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState({});
   const tokens = useRef({});
@@ -180,11 +199,26 @@ export function ApplicationDocuments({ disabled = false, status = 'pending' }) {
     listProfileDocuments(userId)
       .then(rows => {
         if (cancelled || touched.current) return;
+        setLoadError(false);
         setRecords(rows);
       })
-      .catch(() => { if (!cancelled && !touched.current) setRecords([]); });
+      .catch(() => { if (!cancelled && !touched.current) setLoadError(true); });
     return () => { cancelled = true; };
-  }, [isBackendConfigured, userId]);
+  }, [isBackendConfigured, userId, loadKey]);
+
+  // Try again: 'Checking…' until the list answers.
+  const retryLoad = () => {
+    setLoadError(false);
+    setRecords(null);
+    setLoadKey(key => key + 1);
+  };
+  // Back online after a failed load: try again by itself.
+  const online = useOnlineStatus();
+  const [wasOnline, setWasOnline] = useState(online);
+  if (wasOnline !== online) {
+    setWasOnline(online);
+    if (online && loadError) retryLoad();
+  }
 
   const onPick = async (type, file, problem) => {
     touched.current = true;
@@ -203,8 +237,10 @@ export function ApplicationDocuments({ disabled = false, status = 'pending' }) {
         next.push(saved);
         return next;
       });
-      const rows = await listProfileDocuments(session.user.id);
-      if (tokens.current[type] !== token) return;
+      // The file is in: a list that doesn't load now (or takes too long)
+      // keeps the saved row instead of calling the upload failed (AW-195).
+      const rows = await listProfileDocuments(session.user.id).catch(() => null);
+      if (tokens.current[type] !== token || !rows) return;
       setRecords(current => {
         const latest = new Map((current || []).map(row => [row.document_type, row]));
         for (const row of rows) {
@@ -229,12 +265,19 @@ export function ApplicationDocuments({ disabled = false, status = 'pending' }) {
       <h2 id="proof-title">License documents</h2>
       {/* Always rendered, so the count is announced when it changes. */}
       <p className="doc-summary" role="status">{summary}</p>
+      {loadError && (
+        <p className="form-error" role="alert">
+          <span>We couldn’t load your document status.</span>{' '}
+          <button className="text-link" type="button" onClick={retryLoad}>Try again</button>
+        </p>
+      )}
       <DocumentFields
         idPrefix="apply-doc"
         disabled={controlsDisabled}
         files={{}}
         errors={errors}
         records={records}
+        loadError={loadError}
         busy={busy}
         showStatus
         onPick={onPick}

@@ -13,7 +13,7 @@ import { DELIVERY_STATES, OTHER_STATES } from '../../data/onboarding.js';
 import { formatMoney, formatMoneyShort } from '../../lib/format.js';
 import { Link } from '../../lib/router.js';
 import { PhoneLink } from '../../components/ContactLinks.jsx';
-import { PageHead, ContactStrip } from './SupportShell.jsx';
+import { PageHead, SupportLayout, ContactStrip } from './SupportShell.jsx';
 
 const ROUTE_STATE_NAMES = DELIVERY_STATES.map(s => s.name);
 const routeStates = `${ROUTE_STATE_NAMES.slice(0, -1).join(', ')} and ${ROUTE_STATE_NAMES[ROUTE_STATE_NAMES.length - 1]}`;
@@ -31,11 +31,13 @@ export function DeliveryPage() {
       <PageHead crumb="Delivery & service area" eyebrow="OUR OWN TRUCKS" title="Delivery & service area">
         <p>{`We run our own delivery routes across ${routeStates} from the Birmingham warehouse. When your store is on a route, your order rides on our truck and arrives the next day.`}</p>
       </PageHead>
+      <SupportLayout current="delivery">
 
       <div className="info-grid">
         <article className="info-card">
           <p className="eyebrow">ROUTE DELIVERY</p>
           <h2>Next day, on our trucks</h2>
+          {/* TODO(owner): Approve shorter wording for the route-delivery card ('on a delivery route' is said twice), e.g. 'Next-day delivery on our own trucks when your stop is on a delivery route, and free delivery on orders over FREE_DELIVERY_THRESHOLD.' (AW-276) */}
           <p>{`Next-day delivery on our own trucks when your stop is on a delivery route. Free delivery on orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} when the stop is on a route.`}</p>
         </article>
         <article className="info-card">
@@ -47,8 +49,8 @@ export function DeliveryPage() {
         </article>
         <article className="info-card">
           <p className="eyebrow">MINIMUM ORDER</p>
+          {/* The heading is the whole fact; no sentence repeats it (AW-276). */}
           <h2>{`${formatMoney(ORDER_MINIMUM)} minimum`}</h2>
-          <p>{`The minimum order is ${formatMoney(ORDER_MINIMUM)}.`}</p>
         </article>
       </div>
 
@@ -78,10 +80,13 @@ export function DeliveryPage() {
                 <span>Routes don’t reach every address. Call <PhoneLink /> to confirm <span>{zipEntered ? `whether ${zip} is on a route` : 'your stop'}</span> and delivery day before you count on next-day delivery.</span>
               </>
             )}
+            {/* Outside the route states: says so, then the next steps (AW-270). */}
             {otherState && (
               <>
-                <b>{`Delivery is currently on routes in ${routeStates}.`}</b>
-                <span>Call <PhoneLink /> about will-call pickup in Birmingham.</span>
+                <b>{otherState.code === 'XX' ? 'Your state isn’t on our delivery routes.' : `${otherState.name} isn’t on our delivery routes.`}</b>
+                <span>{`Delivery is currently on routes in ${routeStates}.`}</span>
+                <span>You can pick up orders at will-call in Birmingham, or call <PhoneLink /> to ask about your area.</span>
+                <Link className="text-link" to="/contact">Contact &amp; visit</Link>
               </>
             )}
             {!stateCode && zipEntered && (
@@ -113,6 +118,7 @@ export function DeliveryPage() {
           </div>
         </section>
       </div>
+      </SupportLayout>
 
       <ContactStrip eyebrow="CONFIRM YOUR STOP" title="Ask about your route" />
     </section>

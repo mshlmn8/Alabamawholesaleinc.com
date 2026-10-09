@@ -119,7 +119,7 @@ describe('an account’s page (AW-113)', () => {
     await open(`/admin/accounts/${ALPHA_ID}`);
     const heading = screen.getByRole('heading', { level: 2, name: 'Alpha Food Mart' });
     expect(document.activeElement).toBe(heading);
-    expect(document.querySelector('.account-pill').textContent).toBe('approved');
+    expect(document.querySelector('.account-pill').textContent).toBe('Approved');
     expect(screen.queryByRole('table', { name: /accounts/i })).toBeNull();
     // Contact and store, with the email read only.
     const contact = section('Contact and store');
@@ -261,7 +261,7 @@ describe('an account’s page (AW-113)', () => {
     expect(updates().map((u) => u.patch)).toEqual([{ pricing_tier: 'gold' }, { status: 'pending' }, { verification_note: 'Called the store' }]);
     expect(fake.find({ table: 'profile_documents' })).toHaveLength(1);
     expect(fake.find({ table: 'profiles', op: 'select' })).toHaveLength(1);
-    expect(document.querySelector('.account-pill').textContent).toBe('pending');
+    expect(document.querySelector('.account-pill').textContent).toBe('Pending');
   });
 
   it('locks the admin’s own status and role, with the reason', async () => {
@@ -297,12 +297,61 @@ describe('an account’s page (AW-113)', () => {
     fake.tables.orders = [{ ...ORDERS[2], business: 'Alpha Food Mart', contact: 'Alice', email: 'alpha@example.test', profiles: { business: 'Alpha Food Mart', pricing_tier: 'silver' }, order_items: [] },
       { id: 'g1', user_id: null, ref_num: 'ALW-Q-GUEST00001', status: 'new', kind: 'quote', subtotal: null, created_at: '2026-10-03T15:00:00Z', business: 'Guest Mart', profiles: null, order_items: [] }];
     await open('/admin/orders');
-    const account = screen.getByRole('link', { name: 'Alpha Food Mart · silver' });
+    const account = screen.getByRole('link', { name: 'Alpha Food Mart · Silver tier' });
     expect(account.getAttribute('href')).toBe(`/admin/accounts/${ALPHA_ID}`);
     // A guest's quote has no account to open.
     const guest = screen.getByText('ALW-Q-GUEST00001', { selector: '.order-ref' }).closest('article');
     expect(within(guest).queryByRole('link', { name: /Guest Mart/ })).toBeNull();
     await act(async () => { fireEvent.click(account); });
     expect(screen.getByRole('heading', { level: 2, name: 'Alpha Food Mart' })).toBeTruthy();
+  });
+});
+
+describe('the status history’s role changes (AW-203)', () => {
+  const lines = () => [...section('Status history').querySelectorAll('.order-timeline-line')].map((p) => p.textContent.replace(/ · .*$/, ''));
+
+  it('reads the role columns, and says who made an account an admin or removed it', async () => {
+    fake.tables.profile_status_log = [
+      { id: 6, profile_id: ALPHA_ID, old_status: 'approved', new_status: 'approved', old_role: 'admin', new_role: 'customer', changed_by: ADMIN_ID, changed_at: '2026-10-04T15:00:00Z' },
+      { id: 5, profile_id: ALPHA_ID, old_status: 'approved', new_status: 'approved', old_role: 'customer', new_role: 'admin', changed_by: ADMIN_ID, changed_at: '2026-10-03T15:00:00Z' },
+      { id: 4, profile_id: ALPHA_ID, old_status: 'pending', new_status: 'approved', old_role: 'customer', new_role: 'admin', changed_by: null, changed_at: '2026-10-02T15:00:00Z' },
+      { id: 3, profile_id: ALPHA_ID, old_status: 'pending', new_status: 'approved', old_role: null, new_role: null, changed_by: ADMIN_ID, changed_at: '2026-10-01T15:00:00Z' },
+    ];
+    await open(`/admin/accounts/${ALPHA_ID}`);
+    expect(fake.find({ table: 'profile_status_log' }).map((c) => c.columns)).toEqual(['id, old_status, new_status, old_role, new_role, changed_by, changed_at']);
+    expect(lines()).toEqual(['Admin access removed by Desk Admin', 'Made an admin by Desk Admin', 'Approved and made an admin', 'Approved by Desk Admin']);
+  });
+
+  it('reads the history without them on a database before 20261011111000', async () => {
+    fake.respond = (request) => (request.table === 'profile_status_log' && String(request.columns).includes('old_role')
+      ? { data: null, error: { code: '42703', message: 'column profile_status_log.old_role does not exist' } } : undefined);
+    await open(`/admin/accounts/${ALPHA_ID}`);
+    expect(fake.find({ table: 'profile_status_log' }).map((c) => c.columns))
+      .toEqual(['id, old_status, new_status, old_role, new_role, changed_by, changed_at', 'id, old_status, new_status, changed_by, changed_at']);
+    expect(lines()).toEqual(['Approved by Desk Admin']);
+    expect(within(section('Status history')).queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('readable labels in the account selects (AW-149)', () => {
+  const texts = (select) => [...select.querySelectorAll('option')].map((o) => [o.value, o.textContent]);
+
+  it('labels the list’s status, tier and role options, values unchanged', async () => {
+    await open();
+    const row = screen.getByRole('link', { name: 'Alpha Food Mart' }).closest('tr');
+    expect(texts(within(row).getByRole('combobox', { name: 'Status for Alpha Food Mart' })))
+      .toEqual([['pending', 'Pending'], ['approved', 'Approved'], ['suspended', 'Suspended']]);
+    expect(texts(within(row).getByRole('combobox', { name: 'Tier for Alpha Food Mart' })))
+      .toEqual([['standard', 'Standard'], ['silver', 'Silver'], ['gold', 'Gold']]);
+    expect(texts(within(row).getByRole('combobox', { name: 'Role for Alpha Food Mart' }))).toEqual([['customer', 'Customer'], ['admin', 'Admin']]);
+  });
+
+  it('labels the account page’s selects and its status pill', async () => {
+    await open(`/admin/accounts/${BRAVO_ID}`);
+    const controls = section('Status, tier and role');
+    expect(texts(within(controls).getByLabelText('Status')).map(([, text]) => text)).toEqual(['Pending', 'Approved', 'Suspended']);
+    expect(texts(within(controls).getByLabelText('Tier')).map(([, text]) => text)).toEqual(['Standard', 'Silver', 'Gold']);
+    expect(texts(within(controls).getByLabelText('Role')).map(([, text]) => text)).toEqual(['Customer', 'Admin']);
+    expect(document.querySelector('.account-pill').textContent).toBe('Pending');
   });
 });

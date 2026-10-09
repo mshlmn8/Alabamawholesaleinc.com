@@ -3,8 +3,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createFakeSupabase } from './fakeSupabase.js';
 import {
-  ADMIN_ORDER_SELECT, ORDER_CSV_COLUMNS, ORDER_LIMIT, cleanOrderSearch, containsPattern, dayStart, hasOrderFilters, isQuote, orderCsvRecords,
-  orderFilters, orderSearchFilter, ordersCsvFileName, ordersQuery, postgrestQuote,
+  ADMIN_ORDER_SELECT, ORDER_CSV_COLUMNS, ORDER_PAGE_SIZE, applyOrderFilters, cleanOrderSearch, containsPattern, dayStart, hasOrderFilters, isQuote,
+  orderCsvRecords, orderFilters, orderPageCount, orderPageRange, orderSearchFilter, orderStatusCounts, ordersCsvFileName, ordersForExport, ordersQuery,
+  postgrestQuote, probeQuoteWorkflow, rangeTotal,
 } from './orderQueries.js';
 import { parseCsv, toCsv } from './csv.js';
 
@@ -48,14 +49,45 @@ describe('ordersQuery', () => {
     return fake;
   };
 
-  it('asks for the newest 200 orders, with the account embed named by its foreign key', async () => {
+  it('asks for the first page of 50, newest first, with the count of every match and the account embed named by its foreign key', async () => {
     const fake = createFakeSupabase();
     await ordersQuery(fake.client, {});
     const [request] = fake.calls;
-    expect(request).toMatchObject({ table: 'orders', op: 'select', columns: ADMIN_ORDER_SELECT, filters: [] });
+    expect(request).toMatchObject({ table: 'orders', op: 'select', columns: ADMIN_ORDER_SELECT, options: { count: 'exact' }, filters: [] });
     expect(request.columns).toContain('profiles!orders_user_id_fkey(');
-    expect(request.modifiers).toEqual([['order', 'created_at', { ascending: false }], ['limit', ORDER_LIMIT]]);
-    expect(ORDER_LIMIT).toBe(200);
+    // Orders of the same instant by id, so no page repeats or skips one.
+    expect(request.modifiers).toEqual([['order', 'created_at', { ascending: false }], ['order', 'id', { ascending: false }], ['range', 0, 49]]);
+    expect(ORDER_PAGE_SIZE).toBe(50);
+  });
+
+  it('filters by the status unless it is all, and asks for the page’s range', async () => {
+    const fake = createFakeSupabase();
+    await ordersQuery(fake.client, {}, { status: 'picking', page: 3 });
+    await ordersQuery(fake.client, {}, { status: 'all', page: 2, pageSize: 10, select: 'id' });
+    expect(fake.calls[0].filters).toEqual([['eq', 'status', 'picking']]);
+    expect(fake.calls[0].modifiers.at(-1)).toEqual(['range', 100, 149]);
+    expect(fake.calls[1]).toMatchObject({ columns: 'id', filters: [] });
+    expect(fake.calls[1].modifiers.at(-1)).toEqual(['range', 10, 19]);
+  });
+
+  it('works out the range and the number of pages', () => {
+    expect(orderPageRange(1)).toEqual([0, 49]);
+    expect(orderPageRange(7)).toEqual([300, 349]);
+    expect(orderPageRange(2, 20)).toEqual([20, 39]);
+    // Nonsense is page 1.
+    for (const page of [0, -3, 'x', undefined, null]) expect(orderPageRange(page), String(page)).toEqual([0, 49]);
+    expect(orderPageCount(0)).toBe(1);
+    expect(orderPageCount(50)).toBe(1);
+    expect(orderPageCount(51)).toBe(2);
+    expect(orderPageCount(312)).toBe(7);
+  });
+
+  it('reads the total from PostgREST’s range-past-the-end refusal', () => {
+    expect(rangeTotal({ code: 'PGRST103', details: 'An offset of 300 was requested, but there are only 12 rows.' })).toBe(12);
+    expect(rangeTotal({ code: 'PGRST103', details: 'An offset of 50 was requested, but there are only 1 row.' })).toBe(1);
+    expect(rangeTotal({ code: 'PGRST103', details: null })).toBe(0);
+    expect(rangeTotal({ code: '42501' })).toBeNull();
+    expect(rangeTotal(null)).toBeNull();
   });
 
   it('adds one filter per toolbar field', async () => {
@@ -89,6 +121,84 @@ describe('ordersQuery', () => {
     });
     expect(hasOrderFilters(orderFilters({ status: 'picking' }, ''))).toBe(false);
     expect(hasOrderFilters(orderFilters({}, 'x'))).toBe(true);
+  });
+});
+
+describe('one set of filters for the page, the counts and the export (AW-199)', () => {
+  const filters = {
+    search: 'Gus', from: '2026-10-01', to: '2026-10-07', on: '2026-10-09', method: 'willcall', account: '11111111-2222-4333-8444-555555555555',
+  };
+  const toolbar = [
+    ['or', orderSearchFilter('Gus')],
+    ['gte', 'created_at', dayStart('2026-10-01')],
+    ['lt', 'created_at', dayStart('2026-10-08')],
+    ['eq', 'preferred_date', '2026-10-09'],
+    ['eq', 'delivery', 'willcall'],
+    ['eq', 'user_id', '11111111-2222-4333-8444-555555555555'],
+  ];
+
+  it('applyOrderFilters adds the toolbar’s filters to any query', async () => {
+    const fake = createFakeSupabase();
+    await applyOrderFilters(fake.client.from('orders').select('id'), filters);
+    expect(fake.calls[0].filters).toEqual(toolbar);
+    await applyOrderFilters(fake.client.from('orders').select('id'), {});
+    expect(fake.calls[1].filters).toEqual([]);
+  });
+
+  it('counts each status and all with HEAD requests and the same filters', async () => {
+    const fake = createFakeSupabase();
+    fake.tables.orders = [
+      { id: 1, status: 'new' }, { id: 2, status: 'new' }, { id: 3, status: 'picking' }, { id: 4, status: 'cancelled' },
+    ];
+    const { counts, error } = await orderStatusCounts(fake.client, {}, ['new', 'picking', 'fulfilled', 'all']);
+    expect(error).toBeNull();
+    expect(counts).toEqual({ new: 2, picking: 1, fulfilled: 0, all: 4 });
+    expect(fake.calls.map((c) => [c.columns, c.options, c.filters])).toEqual([
+      ['id', { count: 'exact', head: true }, [['eq', 'status', 'new']]],
+      ['id', { count: 'exact', head: true }, [['eq', 'status', 'picking']]],
+      ['id', { count: 'exact', head: true }, [['eq', 'status', 'fulfilled']]],
+      ['id', { count: 'exact', head: true }, []],
+    ]);
+    fake.calls.length = 0;
+    await orderStatusCounts(fake.client, filters, ['new']);
+    expect(fake.calls.map((c) => c.filters)).toEqual([[...toolbar, ['eq', 'status', 'new']], toolbar]);
+  });
+
+  it('leaves out a count that failed, and returns its error', async () => {
+    const fake = createFakeSupabase();
+    fake.tables.orders = [{ id: 1, status: 'new' }];
+    fake.respond = (request) => (request.filters.some(([, column, value]) => column === 'status' && value === 'quoted')
+      ? { data: null, error: { code: '', message: 'TypeError: Failed to fetch' }, count: null } : undefined);
+    const { counts, error } = await orderStatusCounts(fake.client, {}, ['new', 'quoted']);
+    expect(counts).toEqual({ new: 1, all: 1 });
+    expect(error.message).toBe('TypeError: Failed to fetch');
+  });
+
+  it('exports every match, a page of 1000 at a time, with the page’s filters and status', async () => {
+    const fake = createFakeSupabase();
+    fake.tables.orders = Array.from({ length: 2300 }, (_, i) => ({ id: i, status: i % 2 ? 'new' : 'picking' }));
+    const all = await ordersForExport(fake.client, {}, 'all');
+    expect(all.data).toHaveLength(2300);
+    expect(all.truncated).toBe(false);
+    expect(fake.calls.map((c) => c.modifiers.at(-1))).toEqual([['range', 0, 999], ['range', 1000, 1999], ['range', 2000, 2999]]);
+    expect(fake.calls[0]).toMatchObject({ columns: ADMIN_ORDER_SELECT, filters: [] });
+    expect(fake.calls[0].modifiers.slice(0, 2)).toEqual([['order', 'created_at', { ascending: false }], ['order', 'id', { ascending: false }]]);
+    fake.calls.length = 0;
+    const picking = await ordersForExport(fake.client, filters, 'picking');
+    expect(fake.calls[0].filters).toEqual([...toolbar, ['eq', 'status', 'picking']]);
+    // (The fake applies only eq: the status here.)
+    expect(picking.data).toHaveLength(1150);
+    expect(picking.data.every((o) => o.status === 'picking')).toBe(true);
+  });
+
+  it('asks once whether orders have kind when a page has no row to tell by', async () => {
+    const fake = createFakeSupabase();
+    expect(await probeQuoteWorkflow(fake.client)).toBe(true);
+    expect(fake.calls[0]).toMatchObject({ table: 'orders', columns: 'kind', modifiers: [['limit', 1]] });
+    fake.respond = () => ({ data: null, error: { code: '42703', message: 'column orders.kind does not exist' } });
+    expect(await probeQuoteWorkflow(fake.client)).toBe(false);
+    fake.respond = () => ({ data: null, error: { code: '', message: 'TypeError: Failed to fetch' } });
+    expect(await probeQuoteWorkflow(fake.client)).toBeNull();
   });
 });
 

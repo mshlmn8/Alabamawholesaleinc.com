@@ -9,16 +9,21 @@
 //   keyboard focus) and Approve is disabled, so a double click sends one.
 // - The status line says what changed, with Undo for 8 seconds; Undo puts the
 //   previous values back the same way.
-// - Suspending asks first, with a required reason (ConfirmDialog), and the
+// - Suspending, making an account an admin and removing admin access ask
+//   first, with a required reason (ConfirmDialog, AW-112, AW-203), and the
 //   reason goes in the account's internal notes (profile_admin_notes,
-//   20261009140000). Without that table, or if the note isn't saved, the
-//   page says the account is suspended but the reason wasn't saved.
+//   20261009140000): "Suspended: …", "Made an admin: …", "Admin access
+//   removed: …". Without that table, or if the note isn't saved, the page
+//   says the change was made but the reason wasn't saved. These have no Undo
+//   (it would skip the question). The database logs role changes too
+//   (profile_status_log, 20261011111000).
 // - The admin's own status and role can't be changed (the database refuses
 //   it too, hint own_role_status).
 //
 //   const changes = useAccountChanges({ setProfiles, currentAdminId, notify });
 //   changes.change(row, { pricing_tier: 'gold' }, { focusId });
 //   changes.setStatus(row, 'suspended', { focusId, onNote });
+//   changes.setRole(row, 'admin', { focusId, onNote });
 //   changes.saving(row.id)   'approve' | 'status' | … while a request is out
 //   {changes.error && …}  <AccountChangeDialog changes={changes} />
 
@@ -52,8 +57,9 @@ export function useAccountChanges({ setProfiles, currentAdminId, notify }) {
   const savingRef = useRef(new Map());
   const [saving, setSaving] = useState(() => new Map());
   const [error, setError] = useState(null);
-  const [suspending, setSuspending] = useState(null); // { row, focusId, onNote }
-  const [suspendBusy, setSuspendBusy] = useState(false);
+  // The change waiting for its reason: { action, row, patch, onNote }.
+  const [confirming, setConfirming] = useState(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
 
   const patchRow = (id, patch) => setProfiles((list) => list?.map((p) => (p.id === id ? { ...p, ...patch } : p)) ?? list);
   const begin = (id, kind) => {
@@ -102,67 +108,124 @@ export function useAccountChanges({ setProfiles, currentAdminId, notify }) {
     return true;
   };
 
-  // A status from a select: suspending asks for a reason first; the select
-  // keeps the saved status until then. onNote(note): the reason's note, once
-  // it is saved.
+  // Asks for the reason of a change (CONFIRMED_CHANGES); the select keeps
+  // the saved value until it is confirmed, and Cancel gives it the focus
+  // back (ModalLayer).
+  const ask = (action, row, patch, onNote) => {
+    if (row.id === currentAdminId) {
+      setError(OWN_ROW_MESSAGE);
+      return;
+    }
+    setError(null);
+    setConfirming({ action, row, patch, onNote });
+  };
+
+  // A status from a select: suspending asks for a reason first. onNote(note):
+  // the reason's note, once it is saved.
   const setStatus = (row, status, { focusId = null, onNote = null } = {}) => {
     if (savingRef.current.has(row.id) || status === row.status) return;
     if (status === 'suspended') {
-      if (row.id === currentAdminId) {
-        setError(OWN_ROW_MESSAGE);
-        return;
-      }
-      setError(null);
-      setSuspending({ row, focusId, onNote });
+      ask('suspend', row, { status: 'suspended' }, onNote);
       return;
     }
     change(row, { status }, { kind: 'status', focusId });
   };
 
-  const confirmSuspend = async (reason) => {
-    const { row, onNote } = suspending;
+  // A role from a select (AW-203): both ways ask for a reason first. An
+  // admin must be an approved account (is_admin()), so making a pending or
+  // suspended account an admin approves it too.
+  const setRole = (row, role, { onNote = null } = {}) => {
+    if (savingRef.current.has(row.id) || role === row.role) return;
+    if (role === 'admin') ask('make-admin', row, row.status === 'approved' ? { role: 'admin' } : { role: 'admin', status: 'approved' }, onNote);
+    else ask('remove-admin', row, { role }, onNote);
+  };
+
+  const confirmChange = async (reason) => {
+    const { action, row, patch, onNote } = confirming;
+    const text = CONFIRMED_CHANGES[action];
     const who = accountName(row);
-    setSuspendBusy(true);
-    const ok = await change(row, { status: 'suspended' }, { kind: 'status', undoable: false, quiet: true });
+    setConfirmBusy(true);
+    const ok = await change(row, patch, { kind: text.kind, undoable: false, quiet: true });
     if (!ok) {
-      setSuspendBusy(false);
-      setSuspending(null);
+      setConfirmBusy(false);
+      setConfirming(null);
       return;
     }
     let result;
     try {
-      result = await supabase.from('profile_admin_notes').insert({ profile_id: row.id, body: `Suspended: ${reason}` }).select(ACCOUNT_NOTE_SELECT).single();
+      result = await supabase.from('profile_admin_notes').insert({ profile_id: row.id, body: `${text.note}${reason}` }).select(ACCOUNT_NOTE_SELECT).single();
     } catch (insertError) {
       result = { error: insertError };
     }
-    setSuspendBusy(false);
-    setSuspending(null);
+    setConfirmBusy(false);
+    setConfirming(null);
     const noteError = withStatus(result || {});
     if (noteError) {
-      const lost = `${who} is suspended, but the reason wasn’t saved`;
+      const lost = `${text.done(who)}, but the reason wasn’t saved`;
       setError(isMissingTable(noteError) ? `${lost}: internal notes need the October 2026 database update (see BACKEND.md).` : adminErrorMessage(noteError, lost));
       return;
     }
     if (result.data) onNote?.(result.data);
-    notify?.(`${who} is suspended. The reason is in its internal notes.`);
+    notify?.(`${text.done(who)}. The reason is in its internal notes.`);
   };
 
-  const dialog = suspending ? (
+  const asked = confirming ? CONFIRMED_CHANGES[confirming.action] : null;
+  const dialog = confirming ? (
     <ConfirmDialog
-      title={`Suspend ${accountName(suspending.row)}?`}
-      body="A suspended account sees no prices and can’t send orders or quotes until it is approved again. Say why: the reason goes in the account’s internal notes, which only staff see."
-      confirmLabel="Suspend the account" cancelLabel="Keep it" reasonLabel="Reason for suspending" reasonMax={MAX_NOTE - 'Suspended: '.length}
-      busy={suspendBusy} onConfirm={confirmSuspend} onCancel={() => { if (!suspendBusy) setSuspending(null); }}
+      title={asked.title(accountName(confirming.row))}
+      body={asked.body(confirming.row)}
+      confirmLabel={asked.confirm} cancelLabel={asked.cancel} reasonLabel={asked.reason} reasonHint={asked.hint}
+      reasonMax={MAX_NOTE - asked.note.length}
+      busy={confirmBusy} onConfirm={confirmChange} onCancel={() => { if (!confirmBusy) setConfirming(null); }}
     />
   ) : null;
 
   return {
-    change, setStatus, dialog, error, clearError: () => setError(null),
+    change, setStatus, setRole, dialog, error, clearError: () => setError(null),
     saving: (id) => saving.get(id) || null,
   };
 }
 
-// The suspend confirmation, where the page renders it.
+// The changes that ask for a reason first: the dialog's words, the note's
+// prefix and what the status line says once it is done.
+const NOTE_HINT = 'It goes in the account’s internal notes, which only staff see.';
+export const CONFIRMED_CHANGES = {
+  suspend: {
+    kind: 'status',
+    title: (who) => `Suspend ${who}?`,
+    body: () => 'A suspended account sees no prices and can’t send orders or quotes until it is approved again. Say why: the reason goes in the account’s internal notes, which only staff see.',
+    confirm: 'Suspend the account',
+    cancel: 'Keep it',
+    reason: 'Reason for suspending',
+    hint: null,
+    note: 'Suspended: ',
+    done: (who) => `${who} is suspended`,
+  },
+  'make-admin': {
+    kind: 'role',
+    title: (who) => `Make ${who} an admin?`,
+    body: (row) => `Admins can see every order, application, EIN and licence document, and change prices and accounts.${row.status === 'approved' ? '' : ' This also approves the account.'}`,
+    confirm: 'Make an admin',
+    cancel: 'Cancel',
+    reason: 'Reason',
+    hint: NOTE_HINT,
+    note: 'Made an admin: ',
+    done: (who) => `${who} is now an admin`,
+  },
+  'remove-admin': {
+    kind: 'role',
+    title: (who) => `Remove admin access from ${who}?`,
+    body: () => 'They keep their customer account and lose Admin.',
+    confirm: 'Remove admin access',
+    cancel: 'Cancel',
+    reason: 'Reason',
+    hint: NOTE_HINT,
+    note: 'Admin access removed: ',
+    done: (who) => `${who} no longer has admin access`,
+  },
+};
+
+// The suspend and role confirmations, where the page renders them.
 export function AccountChangeDialog({ changes }) {
   return changes.dialog;
 }
