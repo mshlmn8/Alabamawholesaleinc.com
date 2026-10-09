@@ -191,7 +191,7 @@ input[type="search"]:focus-visible { outline-offset: -3px; }
 .ticker { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; }
 .ticker span { display: inline-block; padding-right: 60px; animation: tick 36s linear infinite; }
 @keyframes tick { to { transform: translateX(-50%); } }
-.trade-only { background: var(--cream); color: var(--purple); font-size: var(--text-xs); letter-spacing: var(--track-label); font-weight: 700; text-align: center; padding: 6px 14px; border-bottom: 1px solid var(--line); }
+.trade-only { background: var(--cream); color: var(--purple); font-size: var(--text-xs); letter-spacing: var(--track-label); font-weight: 700; text-align: center; padding: 6px 14px; border-bottom: 1px solid var(--line); text-transform: uppercase; }
 
 /* ============================ header ============================ */
 .aw-header { position: relative; z-index: 20; background: #fff; }

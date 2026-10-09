@@ -133,6 +133,11 @@ export const FREE_DELIVERY_THRESHOLD = 1500;
 // TODO(owner): Is the $500 minimum order a hard rule that blocks submission, or only a guideline that orders below it may still be submitted? It is not enforced; checkout only notes it. (AW-076)
 export const ORDER_MINIMUM = 500;
 
+// The licensed-only statement, in one wording wherever the site prints it:
+// the trade-only strip above the header (upper-cased there by CSS) and the
+// footer's legal bar (AW-285). The policy pages keep their own legal text.
+export const LICENSED_ONLY = 'Wholesale to licensed retail businesses only · No consumer sales · 21+';
+
 // TODO(owner): Who gets Net-30, and what is the real volume discount behind "up to 18%"? Kept exactly as published until you say (decision 2). (AW-025)
 export const ANNOUNCEMENTS = [
   `★ FREE DELIVERY on orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} on our delivery routes in Alabama, Mississippi & Georgia`,

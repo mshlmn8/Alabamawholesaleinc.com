@@ -1,7 +1,7 @@
 // The purple announcement bar (scrolling ticker, call link, apply button) and
 // the trade-only strip above the header.
 
-import { COMPANY, ANNOUNCEMENTS } from '../data/content.js';
+import { COMPANY, ANNOUNCEMENTS, LICENSED_ONLY } from '../data/content.js';
 import { APPLY_LABEL } from '../data/terms.js';
 
 const TICKER_TEXT = ANNOUNCEMENTS.join('  ·  ') + '  ·  ';
@@ -16,7 +16,7 @@ export function TradeBar({ onApplyClick }) {
           <button type="button" onClick={onApplyClick}>{APPLY_LABEL}</button>
         </div>
       </div>
-      <div className="trade-only">WHOLESALE TO LICENSED RETAIL BUSINESSES ONLY · NO CONSUMER SALES · 21+</div>
+      <div className="trade-only">{LICENSED_ONLY}</div>
     </>
   );
 }

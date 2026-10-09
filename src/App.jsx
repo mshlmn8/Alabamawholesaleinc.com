@@ -380,7 +380,7 @@ export default function App() {
         </ErrorBoundary>
       </main>
 
-      <Footer departments={departments} onLoginClick={openSignin} onApplyClick={openSignup} />
+      <Footer departments={departments} onLoginClick={openSignin} onApplyClick={openSignup} onHelp={() => setHelpOpen(true)} />
 
       {/* Confirms an add (AW-072); its action opens the cart. */}
       <Toast onAction={(id) => { if (id === 'open-cart') setCartOpen(true); }} />
