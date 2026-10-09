@@ -100,3 +100,16 @@ describe('contact cards (AW-278, AW-120)', () => {
     expect(rule(outside, '.info-lead-small')).toMatchObject({ 'overflow-wrap': 'anywhere' });
   });
 });
+
+const coarse = blocks.filter((b) => b.prelude === '(pointer: coarse)').map((b) => b.body).join('\n');
+
+describe('copy email address (AW-280)', () => {
+  it('keeps the copy-email button a text link: 44px on touch, right under the address', () => {
+    // .text-link's touch rule sets the size; nothing more specific undoes it.
+    expect(rule(coarse, '.text-link')).toMatchObject({ 'min-height': 'var(--tap)' });
+    const own = rule(outside, '.info-card .info-copy');
+    expect(own).toBeTruthy();
+    expect(own).not.toHaveProperty('min-height');
+    expect(own['margin-top']).not.toBe('auto');
+  });
+});

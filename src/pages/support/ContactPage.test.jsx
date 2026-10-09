@@ -1,9 +1,10 @@
 // The contact page prints the shared hours from content.js, in Central Time
 // (AW-283, AW-275).
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { COMPANY, HOURS, hoursRange } from '../../data/content.js';
-import { ContactPage } from './ContactPage.jsx';
+import { dismissToast, getToast } from '../../lib/toast.js';
+import { COPIED_MS, ContactPage, EMAIL_COPIED, EMAIL_COPY_FAILED } from './ContactPage.jsx';
 
 describe('ContactPage hours', () => {
   it('lists one row per HOURS entry, with the spelled-out days and an unbreakable range', () => {
@@ -66,5 +67,74 @@ describe('ContactPage cards', () => {
     expect(local.textContent).toBe(COMPANY.email.slice(0, COMPANY.email.indexOf('@') + 1));
     expect(domain.textContent).toBe(COMPANY.email.slice(COMPANY.email.indexOf('@') + 1));
     expect(screen.getByRole('link', { name: COMPANY.email })).toBe(link);
+  });
+});
+
+// 'Start application' opens the form, as on /apply, and is the primary
+// action; the checklist is the secondary one (AW-271).
+describe('ContactPage account call to action', () => {
+  it('makes Start application the primary button, calling onApplyClick', () => {
+    const onApplyClick = vi.fn();
+    render(<ContactPage onApplyClick={onApplyClick} />);
+    const cta = document.querySelector('.support-cta .contact-strip-actions');
+    const [first, second] = cta.children;
+    expect(first).toBe(within(cta).getByRole('button', { name: 'Start application' }));
+    expect(first.className).toBe('button');
+    fireEvent.click(first);
+    expect(onApplyClick).toHaveBeenCalledTimes(1);
+    expect(second).toBe(within(cta).getByRole('link', { name: 'Application checklist' }));
+    expect(second.className).toBe('button ghost');
+    expect(second.getAttribute('href')).toBe('/apply');
+  });
+});
+
+// Webmail users can copy the address instead of following mailto: (AW-280).
+describe('ContactPage copy email address', () => {
+  const card = () => screen.getByRole('heading', { name: 'Email' }).closest('.info-card');
+  const withClipboard = (writeText) => Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+  afterEach(() => {
+    delete navigator.clipboard;
+    dismissToast();
+    vi.useRealTimers();
+  });
+
+  it('copies COMPANY.email, toasts once, and says Copied for a moment', async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn(() => Promise.resolve());
+    withClipboard(writeText);
+    render(<ContactPage onApplyClick={() => {}} />);
+    const button = within(card()).getByRole('button', { name: 'Copy email address' });
+    expect(button.className).toBe('text-link info-copy');
+    // Right under the address it copies.
+    expect(button.previousElementSibling).toBe(card().querySelector('a.info-lead'));
+    await act(async () => { fireEvent.click(button); });
+    expect(writeText).toHaveBeenCalledWith(COMPANY.email);
+    expect(getToast()).toMatchObject({ text: EMAIL_COPIED, action: null });
+    expect(EMAIL_COPIED).toBe('Email address copied.');
+    // The label is its own span inside the same button.
+    expect(button.isConnected).toBe(true);
+    expect(button.children).toHaveLength(1);
+    expect(button.firstElementChild.textContent).toBe('Copied');
+    // No second live region next to the shared one.
+    expect(card().querySelector('[aria-live]')).toBeNull();
+    act(() => { vi.advanceTimersByTime(COPIED_MS); });
+    expect(button.textContent).toBe('Copy email address');
+  });
+
+  it('says how to copy by hand when the clipboard refuses', async () => {
+    withClipboard(vi.fn(() => Promise.reject(new Error('NotAllowedError'))));
+    render(<ContactPage onApplyClick={() => {}} />);
+    const button = within(card()).getByRole('button', { name: 'Copy email address' });
+    await act(async () => { fireEvent.click(button); });
+    expect(getToast()).toMatchObject({ text: EMAIL_COPY_FAILED });
+    expect(EMAIL_COPY_FAILED).toBe('Couldn’t copy. Select the address and copy it.');
+    expect(button.textContent).toBe('Copy email address');
+  });
+
+  it('leaves the button out where the browser has no clipboard API', () => {
+    expect('clipboard' in navigator).toBe(false);
+    render(<ContactPage onApplyClick={() => {}} />);
+    expect(within(card()).queryByRole('button')).toBeNull();
+    expect(document.querySelector('.info-copy')).toBeNull();
   });
 });

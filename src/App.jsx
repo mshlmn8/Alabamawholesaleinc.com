@@ -341,7 +341,7 @@ export default function App() {
                             onLoginClick={openSignin} />
         );
       case 'contact':
-        return <ContactPage onApplyClick={openSignup} />;
+        return <ContactPage onApplyClick={openApplication} />;
       case 'delivery':
         return <DeliveryPage />;
       case 'shipping':

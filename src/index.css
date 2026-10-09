@@ -1447,6 +1447,9 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
    text size they may still break rather than widen the card past the screen. */
 .info-card > p:not([class]) { color: var(--muted); font-size: var(--text-base); line-height: 1.7; margin: 0; overflow-wrap: anywhere; }
 .info-card .button, .info-card .text-link { margin-top: auto; }
+/* Copy email address (AW-280): right under the address, not pushed down with
+   the card's button. A .text-link, so a 44px target on touch. */
+.info-card .info-copy { margin-top: -.25rem; }
 .info-lead { font: 700 var(--h2-sm)/1 var(--display); letter-spacing: -.0375rem; color: var(--purple); text-decoration: none; }
 /* Only the phone and email are links; the address is text. */
 @media (hover: hover) {

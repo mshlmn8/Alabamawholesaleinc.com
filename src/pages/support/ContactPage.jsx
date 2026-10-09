@@ -1,12 +1,15 @@
 // Contact & visit: click-to-call, email, warehouse address with directions,
 // hours, and will-call pickup. Facts come from COMPANY and HOURS in
 // data/content.js.
+//
+// TODO(owner): Do you want an on-site contact form? Messages would be stored in Supabase and read in Admin, and the privacy policy would list them. (AW-280)
 
 import { useEffect, useState } from 'react';
 import { COMPANY, HOURS, TIME_ZONE_LABEL, TIME_ZONE_NAME, hoursRange, openStatusNow } from '../../data/content.js';
 import { Link } from '../../lib/router.js';
 import { Icon } from '../../components/Icon.jsx';
 import { EmailText } from '../../components/ContactLinks.jsx';
+import { showToast } from '../../lib/toast.js';
 import { PageHead, SupportLayout, DIRECTIONS_URL } from './SupportShell.jsx';
 
 // 'Open now · closes 6:00 PM CT' or 'Closed · opens 8:00 AM CT' (AW-275),
@@ -22,6 +25,41 @@ function OpenStatus() {
     return () => { window.clearTimeout(first); window.clearInterval(timer); };
   }, []);
   return <p className="support-note">{label || '\u00A0'}</p>;
+}
+
+// Copies the email address for webmail users, whom a mailto: link sends to a
+// mail app they may not use (AW-280). Shown only where the browser can write
+// to the clipboard. The toast speaks the result once through the shared live
+// region; the label says 'Copied' for a moment.
+export const COPIED_MS = 2000;
+export const EMAIL_COPIED = 'Email address copied.';
+export const EMAIL_COPY_FAILED = 'Couldn’t copy. Select the address and copy it.';
+function CopyEmailButton() {
+  const [canCopy] = useState(() => typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function');
+  // Counts copies, so a second copy restarts the 'Copied' time.
+  const [copies, setCopies] = useState(0);
+  useEffect(() => {
+    if (!copies) return undefined;
+    const timer = window.setTimeout(() => setCopies(0), COPIED_MS);
+    return () => window.clearTimeout(timer);
+  }, [copies]);
+  if (!canCopy) return null;
+  const copy = () => {
+    Promise.resolve()
+      .then(() => navigator.clipboard.writeText(COMPANY.email))
+      .then(() => {
+        setCopies((n) => n + 1);
+        showToast({ text: EMAIL_COPIED });
+      }, () => {
+        setCopies(0);
+        showToast({ text: EMAIL_COPY_FAILED });
+      });
+  };
+  return (
+    <button type="button" className="text-link info-copy" onClick={copy}>
+      <span>{copies ? 'Copied' : 'Copy email address'}</span>
+    </button>
+  );
 }
 
 export function ContactPage({ onApplyClick }) {
@@ -42,6 +80,7 @@ export function ContactPage({ onApplyClick }) {
         <article className="info-card">
           <h2 className="eyebrow">Email</h2>
           <a className="info-lead info-lead-small" href={`mailto:${COMPANY.email}`}><EmailText /></a>
+          <CopyEmailButton />
           <p>Applications, quotes, invoices and anything you would rather put in writing. Include your business name and phone number.</p>
           <a className="button ghost" href={`mailto:${COMPANY.email}`}>Email the trade desk</a>
         </article>
@@ -87,8 +126,9 @@ export function ContactPage({ onApplyClick }) {
           <p>Licensed retail businesses only. See what you’ll need before you start.</p>
         </div>
         <div className="contact-strip-actions">
-          <Link className="button" to="/apply">Application checklist</Link>
-          <button className="button ghost" type="button" onClick={onApplyClick}>Start application</button>
+          {/* The form itself, as on /apply; the checklist is the secondary step (AW-271). */}
+          <button className="button" type="button" onClick={onApplyClick}>Start application</button>
+          <Link className="button ghost" to="/apply">Application checklist</Link>
         </div>
       </section>
       </SupportLayout>
