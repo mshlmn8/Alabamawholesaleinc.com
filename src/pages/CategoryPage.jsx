@@ -28,6 +28,7 @@ import { EMPTY_CATEGORY_QUERY, slugify } from '../lib/routes.js';
 import { Breadcrumbs, catalogCrumbs } from '../components/Breadcrumbs.jsx';
 import { BackToTop } from '../components/BackToTop.jsx';
 import { ModalLayer } from '../components/ModalLayer.jsx';
+import { EmptyState } from '../components/EmptyState.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
 import { PricingNotice } from '../components/PricingNotice.jsx';
 import { Icon } from '../components/Icon.jsx';
@@ -85,6 +86,14 @@ function byBrand(a, b) {
   const bb = brandLabel(b.brand);
   if (!ba !== !bb) return ba ? -1 : 1;
   return ba.localeCompare(bb) || a.name.localeCompare(b.name);
+}
+
+// The row scroll that centres a product-line pill in the phone pill row
+// (AW-157). The row is positioned in the compact layout, so the pill's
+// offsetLeft is measured from it; scrollLeft keeps itself in range.
+export function centredScrollLeft(pill, row) {
+  const left = pill.offsetParent === row ? pill.offsetLeft : pill.offsetLeft - row.offsetLeft;
+  return Math.max(0, Math.round(left + pill.offsetWidth / 2 - row.clientWidth / 2));
 }
 
 // Typing in the department search updates the URL once the typing pauses.
@@ -212,10 +221,28 @@ export function CategoryPage({
     else if (chip.key === 'query') clearSearch();
   };
 
+  // No matches (AW-299): clear the filters, search every department for the
+  // same words, or go to another department.
+  const otherDepartments = departments.filter(d => d.key !== category && d.count > 0);
+  const noResultActions = (
+    <>
+      {needle && <Link className="button" to={{ page: 'search', q: query.q }}>{`Search all departments for “${query.q.trim()}”`}</Link>}
+      <button className="button ghost" type="button" onClick={clearFilters}>Clear filters</button>
+      {otherDepartments.length > 0 && (
+        <ul className="sub-pills" aria-label="Other departments">
+          {otherDepartments.map(d => (
+            <li key={d.key}><Link className="sub-pill" to={{ page: 'category', category: d.key }}>{`${d.label} (${d.count})`}</Link></li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+
   // With a product line picked, the count compares against that line (AW-232).
+  // Phones show the note without the line's name (AW-158, .result-scope).
   const resultNote = (
     <p className="result-note" role="status">
-      Showing <strong>{items.length}</strong> <span>{`of ${inScope.length} item${inScope.length === 1 ? '' : 's'}${activeSub ? ` in ${activeSub}` : ''}`}</span>
+      Showing <strong>{items.length}</strong> <span>{`of ${inScope.length} item${inScope.length === 1 ? '' : 's'}${activeSub ? ' ' : ''}`}</span><span className="result-scope">{activeSub ? `in ${activeSub}` : ''}</span>
     </p>
   );
   const sortControl = (
@@ -234,7 +261,7 @@ export function CategoryPage({
   const filterPanel = (
     <div className="filter-panel">
       <label className="filter-search" htmlFor="category-search"><span>{`Search in ${catLabel(category)}`}</span>
-        <input id="category-search" type="search" value={draft} onChange={(e) => onSearchInput(e.target.value)} placeholder="Item, brand, SKU, variant…" autoComplete="off" />
+        <input id="category-search" type="search" value={draft} onChange={(e) => onSearchInput(e.target.value)} placeholder="Name, brand or SKU" autoComplete="off" />
       </label>
       {featured.length > 0 && (
         <fieldset>
@@ -281,9 +308,21 @@ export function CategoryPage({
   const closeFilters = () => setFiltersOpen(false);
   const deptLabel = catLabel(category);
 
+  // On phones the product lines are one scrolling row, and the current one is
+  // centred in it on arrival and after each pick (AW-157): the row's own
+  // scrollLeft, not scrollIntoView, which can also scroll the page and undo
+  // the position Back restores.
+  const pillsRef = useRef(null);
+  useLayoutEffect(() => {
+    const row = pillsRef.current;
+    const pill = row?.querySelector('[aria-current="page"]');
+    if (!isMobile || !pill) return;
+    row.scrollLeft = centredScrollLeft(pill, row);
+  }, [activeSub, isMobile]);
+
   return (
     <section>
-      <div className="page-head">
+      <div className="page-head category-head">
         <Breadcrumbs items={catalogCrumbs({ category, sub: activeSub, query })} />
         {/* A line page names the line, its department and its own count (AW-226). */}
         <p className="eyebrow">{activeSub
@@ -294,7 +333,7 @@ export function CategoryPage({
         <p>{`${activeSub
           ? `Wholesale ${deptLabel.toLowerCase()} for licensed retail accounts: ${plural(inScope.length, 'product')} in ${activeSub}.`
           : `Wholesale ${deptLabel.toLowerCase()} for licensed retail accounts: ${plural(inCategory.length, 'product')}${lines.length ? ` in ${plural(lines.length, 'product line')}` : ''}.`}${isApprovedBuyer ? ` ${tierPriceNote(priceTier)}` : ''}`}</p>
-        <nav className="sub-pills" aria-label={`${deptLabel} product lines`}>
+        <nav className="sub-pills" ref={pillsRef} aria-label={`${deptLabel} product lines`}>
           <Link className={`sub-pill${!activeSub ? ' active' : ''}${filtered.length ? '' : ' is-empty'}`} to={here({ sub: null })} scroll={false} aria-current={!activeSub ? 'page' : undefined}>{`All (${filtered.length})`}</Link>
           {lines.map(({ sub: s, count }) => (
             <Link key={s} className={`sub-pill${activeSub === s ? ' active' : ''}${count ? '' : ' is-empty'}`} to={here({ sub: s })} scroll={false} aria-current={activeSub === s ? 'page' : undefined}>{`${s} (${count})`}</Link>
@@ -314,20 +353,20 @@ export function CategoryPage({
           {resultNote}
           {!isMobile && sortControl}
         </div>
-        {chips.length > 0 && (
-          <ul className="active-filters" aria-label="Active filters">
-            {chips.map(c => (
-              <li key={c.key}><button type="button" onClick={() => removeChip(c)} aria-label={`Remove filter ${c.label}`}><span>{c.label}</span><Icon name="close" /></button></li>
-            ))}
-            <li><button className="text-link" type="button" onClick={clearFilters}>Clear all</button></li>
-          </ul>
-        )}
       </div>
+      {chips.length > 0 && (
+        <ul className="active-filters" aria-label="Active filters">
+          {chips.map(c => (
+            <li key={c.key}><button type="button" onClick={() => removeChip(c)} aria-label={`Remove filter ${c.label}`}><span>{c.label}</span><Icon name="close" /></button></li>
+          ))}
+          <li><button className="text-link" type="button" onClick={clearFilters}>Clear all</button></li>
+        </ul>
+      )}
 
       {isMobile && filtersOpen && (
         <ModalLayer onClose={closeFilters} className="aw-filter-layer">
           <div className="overlay" aria-hidden="true" onClick={closeFilters} />
-          <aside className="drawer filter-drawer" role="dialog" aria-modal="true" aria-labelledby="aw-filter-title" id="aw-filter-drawer">
+          <div className="drawer filter-drawer" role="dialog" aria-modal="true" aria-labelledby="aw-filter-title" id="aw-filter-drawer">
             <div className="drawer-head">
               <h2 id="aw-filter-title">Filter &amp; Sort</h2>
               <button className="icon-btn" type="button" onClick={closeFilters} aria-label="Close filters"><Icon name="close" /></button>
@@ -343,7 +382,7 @@ export function CategoryPage({
                 <button className="button" type="button" onClick={closeFilters}><span>{`Show ${items.length} item${items.length === 1 ? '' : 's'}`}</span></button>
               </div>
             </div>
-          </aside>
+          </div>
         </ModalLayer>
       )}
 
@@ -359,6 +398,9 @@ export function CategoryPage({
         )}
 
         <div>
+          {/* The cards' h3 names sit under an h2 in both layouts (AW-313):
+              the compact layout has no Filters heading. */}
+          <h2 className="sr-only">Products</h2>
           <PricingNotice profile={profile} isApprovedBuyer={isApprovedBuyer} onLoginClick={onLoginClick} onApplyClick={onApplyClick} />
           {items.length > 0 ? (
             <div className="card-grid category-card-grid">
@@ -370,11 +412,9 @@ export function CategoryPage({
               ))}
             </div>
           ) : (
-            <div className="empty-results">
-              <h2>No products match</h2>
-              <p>Try another search or clear the current filters.</p>
-              <button className="button ghost" type="button" onClick={clearFilters}>Clear filters</button>
-            </div>
+            <EmptyState title="No products match" className="is-boxed" actions={noResultActions}>
+              Try another search, clear the filters or browse another department.
+            </EmptyState>
           )}
         </div>
       </div>

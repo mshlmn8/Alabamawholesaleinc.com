@@ -4,6 +4,8 @@
 // older cart that still need a variant (AW-354) and lines that can no longer
 // be ordered (AW-083). A suspended account sees that ordering is paused, with
 // the trade desk's phone and email, instead of the quote button (AW-201).
+// An empty cart shows the shared EmptyState with a way to the catalog, and
+// no total or summary (AW-299).
 //
 // Removing a line (AW-042) is read out, and focus moves to the next line's
 // quantity (else the line before), or to the drawer's heading when it was
@@ -18,11 +20,9 @@
 // lines, a note says the cart is kept on this device only (AW-334).
 
 import { useEffect, useRef } from 'react';
-import { FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../data/content.js';
 import { basketTerms, cartDeviceNote } from '../data/terms.js';
 import { announce } from '../lib/announce.js';
 import { LINE_CONTROL, focusLineSoon, keepFocusNear, neighbourKey } from '../lib/focus.js';
-import { formatMoney, formatMoneyShort } from '../lib/format.js';
 import { totalLabel } from '../lib/pricing.js';
 import { variantExcludedText } from '../lib/cart.js';
 import { Link, focusPageHeading } from '../lib/router.js';
@@ -31,6 +31,7 @@ import { CallOrEmail } from './ContactLinks.jsx';
 import { ModalLayer } from './ModalLayer.jsx';
 import { CartLine } from './CartLine.jsx';
 import { CartSummary } from './CartSummary.jsx';
+import { EmptyState } from './EmptyState.jsx';
 import { Icon } from './Icon.jsx';
 import { SavedLinesNotice, UnavailableNotice } from './CartNotices.jsx';
 
@@ -50,7 +51,7 @@ export function CartDrawer({
     if (closed && (!document.activeElement || document.activeElement === document.body)) focusPageHeading();
   }, [open]);
   if (!open) return null;
-  // × on a line. The button goes with its line, so focus moves first (to the
+  // Remove on a line. The button goes with its line, so focus moves first (to the
   // heading) when no line is left, or after the redraw to a neighbour.
   const remove = (it, event) => {
     const next = neighbourKey(items.map(x => x.lineKey), it.lineKey);
@@ -78,7 +79,7 @@ export function CartDrawer({
   return (
     <ModalLayer onClose={onClose}>
       <div className="overlay overlay-soft" aria-hidden="true" onClick={onClose} />
-      <aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title">
+      <div className="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title">
         <div className="drawer-head">
           <h2 id="cart-title">{basket.title}</h2>
           <button className="icon-btn" type="button" onClick={onClose} aria-label="Close"><Icon name="close" /></button>
@@ -86,7 +87,11 @@ export function CartDrawer({
         <div className="drawer-body">
           <SavedLinesNotice items={legacy} onDismiss={onDismissLegacy} onChoose={onClose} />
           <UnavailableNotice items={unavailable} onRemoveAll={removeLines} noun={basket.noun} />
-          {items.length === 0 && <p className="empty-note"><span>{`${basket.empty}.`}</span><br /><span>{`Browse the catalog and add items to build ${basket.noun === 'order' ? 'an order' : 'a quote'}.`}</span></p>}
+          {items.length === 0 && (
+            <EmptyState level={3} title={basket.empty} actions={<Link className="button" to="/catalog" onClick={onClose}>Browse the catalog</Link>}>
+              {`Browse the catalog and add items to build ${basket.noun === 'order' ? 'an order' : 'a quote'}.`}
+            </EmptyState>
+          )}
           {items.length > 0 && (
             <ul className="drawer-lines" aria-label={basket.items} ref={listRef}>
               {items.map(it => (
@@ -101,12 +106,12 @@ export function CartDrawer({
         </div>
         <div className="drawer-foot">
           {!short && summary}
-          <div className="drawer-total">
+          {items.length > 0 && <div className="drawer-total">
             <span>Estimated total</span>
             {isApprovedBuyer
               ? <span>{totalLabel(items, total, pricesStatus)}</span>
               : <span className="drawer-total-note">{note}</span>}
-          </div>
+          </div>}
           {excluded && <p className="total-note">{excluded}</p>}
           {items.length > 0 && isSuspended && (
             <p className="notice drawer-paused">Ordering is paused on this account. <CallOrEmail after=" and a trade rep will help you sort it out." /></p>
@@ -119,9 +124,8 @@ export function CartDrawer({
                   {!pendingBuyer && <button className="drawer-signin text-link" type="button" onClick={onLoginClick}>Sign in for account pricing</button>}
                 </>
           )}
-          <p className="fine drawer-fine">{`The minimum order is ${formatMoney(ORDER_MINIMUM)}. Free delivery over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} applies on a delivery route in AL, MS & GA. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
         </div>
-      </aside>
+      </div>
     </ModalLayer>
   );
 }

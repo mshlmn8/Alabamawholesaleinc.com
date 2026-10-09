@@ -6,9 +6,14 @@
 // its own (one field system). Its name says what it will do, 'Show password'
 // or 'Hide password', so it needs no aria-pressed. The password is hidden
 // again when its form is submitted, so it is not left on screen.
+//
+// In a ValidatedForm (./Field.jsx, AW-173) it shows its own message the way
+// a Field does: p#<id>-error under the box, aria-invalid, and the error's id
+// in aria-describedby.
 
 import { useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Icon } from './Icon.jsx';
+import { useFieldError } from './Field.jsx';
 
 // TODO(owner): Does the Supabase Auth password policy require more than 8 characters (character classes, leaked-password protection)? The forms check the length only; stricter server rules come back as a friendly weak-password message. (AW-248)
 export const PASSWORD_MIN_LENGTH = 8;
@@ -34,8 +39,10 @@ export function PasswordField({
   }, []);
 
   const met = String(value ?? '').length >= PASSWORD_MIN_LENGTH;
-  // The hint and rule, then anything the caller adds (an error's id).
-  const describedBy = [hint && `${id}-hint`, showRule && `${id}-rule`, describedByMore].filter(Boolean).join(' ') || undefined;
+  const error = useFieldError(id);
+  // The hint and rule, then anything the caller adds (an error's id), then
+  // the form's own message.
+  const describedBy = [hint && `${id}-hint`, showRule && `${id}-rule`, describedByMore, error && `${id}-error`].filter(Boolean).join(' ') || undefined;
 
   return (
     <div className={className}>
@@ -55,6 +62,7 @@ export function PasswordField({
           autoCorrect="off"
           spellCheck={false}
           aria-describedby={describedBy}
+          aria-invalid={error ? true : inputProps['aria-invalid']}
         />
         <button className="button ghost sm pw-toggle" type="button" aria-controls={id} onClick={() => setShown((s) => !s)}>
           <span>{shown ? 'Hide' : 'Show'}</span>{' '}<span className="sr-only">password</span>
@@ -67,6 +75,7 @@ export function PasswordField({
           <span>{met ? RULE_MET : RULE}</span>
         </p>
       )}
+      <p className="form-error field-error" id={`${id}-error`}>{error}</p>
     </div>
   );
 }

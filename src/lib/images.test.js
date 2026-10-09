@@ -78,7 +78,11 @@ describe('SIZES follow the card and product-page geometry (AW-322)', () => {
     if (!m) throw new Error(`index.css no longer has ${re}`);
     return Number(m[1]);
   };
+  // A phone on its side: the photo's share of the two columns (AW-150).
+  const sideways = /@media \(orientation: landscape\) \{\s*\.pd-grid \{ grid-template-columns: minmax\(0, (\d+)fr\) minmax\(0, (\d+)fr\)/.exec(css);
+  if (!sideways) throw new Error('index.css no longer has the sideways product page columns');
   const g = {
+    pdSideways: Number(sideways[1]) / (Number(sideways[1]) + Number(sideways[2])),
     margin: px(/\.container \{ width: calc\(100% - (\d+)px\)/),
     compactMargin: px(/@media \(max-width: 53\.125em\), \(hover: none\) and \(pointer: coarse\) and \(max-height: 31\.25em\) \{[\s\S]*?\.container \{ width: calc\(100% - (\d+)px\)/),
     max: px(/\.container \{[^}]*max-width: (\d+)px/),
@@ -86,28 +90,36 @@ describe('SIZES follow the card and product-page geometry (AW-322)', () => {
     phoneColumnGap: px(/\.card-grid \{ grid-template-columns: repeat\(2,minmax\(0,1fr\)\); gap: \d+px (\d+)px/),
     sidebar: px(/\.catalog-layout \{[^}]*grid-template-columns: (\d+)px/),
     sidebarGap: px(/\.catalog-layout \{[^}]*gap: (\d+)px/),
-    columns: px(/\.category-card-grid \{ grid-template-columns: repeat\((\d+),/),
+    // Rows of four become two at this width (AW-154).
+    rowsOfTwo: 16 * px(/@media \(max-width: ([\d.]+)em\) \{\s*\.card-grid \{ grid-template-columns: repeat\(2, minmax\(0,1fr\)\); \}/),
+    // The category grid: columns no narrower than this, at most three.
+    minCard: 16 * px(/\.category-card-grid \{ grid-template-columns: repeat\(auto-fill, minmax\(max\(([\d.]+)rem, \(100% - 2 \* var\(--grid-gap\)\) \/ 3\), 1fr\)\); \}/),
     cardBorder: px(/\.card-block \{[^}]*border: (\d+)px solid/),
     cardInset: px(/\.card-block img \{[^}]*inset: (\d+)px/),
     pdBorder: px(/\.pd-media \{[^}]*border: (\d+)px solid/),
     pdInset: px(/\.pd-media img \{[^}]*inset: (\d+)px/),
-    pdPhoneInset: px(/\.pd-media img \{ inset: (\d+)px; max-width: calc\(100% - \d+px\)/),
+    pdCompactInset: px(/@media \(max-width: 53\.125em\), \(hover: none\) and \(pointer: coarse\) and \(max-height: 31\.25em\) \{[\s\S]*?\.pd-media img \{ inset: (\d+)px; max-width: calc\(100% - \d+px\)/),
     pdGap: px(/\.pd-grid \{[^}]*gap: (\d+)px/),
     pdNarrowGap: px(/@media \(max-width: 68\.75em\) \{[\s\S]*?\.pd-grid \{ gap: (\d+)px/),
   };
 
-  // The photo's widest shown size at a viewport width, from those numbers.
+  // The photo's widest shown size at a viewport width, from those numbers:
+  // the wider of a card in a row of four (or two) and one in the category
+  // grid (three, or two where three would be narrower than minCard).
   const card = (vw, compact) => {
     const chrome = 2 * (g.cardBorder + g.cardInset);
     if (vw <= 600) return (vw - g.compactMargin - g.phoneColumnGap) / 2 - chrome;
-    if (compact || vw <= 850) return (vw - g.compactMargin - (g.columns - 1) * g.gap) / g.columns - chrome;
-    const grid = Math.min(vw - g.margin, g.max) - g.sidebar - g.sidebarGap;
-    return (grid - (g.columns - 1) * g.gap) / g.columns - chrome;
+    const width = (space, columns) => (space - (columns - 1) * g.gap) / columns - chrome;
+    const container = compact || vw <= 850 ? vw - g.compactMargin : Math.min(vw - g.margin, g.max);
+    const category = compact || vw <= 850 ? container : container - g.sidebar - g.sidebarGap;
+    const row = width(container, vw <= g.rowsOfTwo ? 2 : 4);
+    return Math.max(row, width(category, category >= 3 * g.minCard + 2 * g.gap ? 3 : 2));
   };
   const detail = (vw, compact) => {
-    if (vw <= 600) return vw - g.compactMargin - 2 * (g.pdBorder + g.pdPhoneInset);
+    const compactChrome = 2 * (g.pdBorder + g.pdCompactInset);
+    if (compact) return (vw - g.compactMargin - g.pdNarrowGap) * g.pdSideways - compactChrome;
+    if (vw <= 850) return vw - g.compactMargin - compactChrome;
     const chrome = 2 * (g.pdBorder + g.pdInset);
-    if (compact || vw <= 850) return vw - g.compactMargin - chrome;
     const gap = vw <= 1100 ? g.pdNarrowGap : g.pdGap;
     return (Math.min(vw - g.margin, g.max) - gap) / 2 - chrome;
   };
@@ -135,7 +147,7 @@ describe('SIZES follow the card and product-page geometry (AW-322)', () => {
     expect(SIZES.detail).toContain(shortLandscape);
   });
 
-  it.each([320, 360, 390, 412, 430, 600, 601, 768, 820, 850, 851, 1024, 1100, 1101, 1280, 1344, 1345, 1440, 1920])('matches the CSS at %ipx', (vw) => {
+  it.each([320, 360, 390, 412, 430, 600, 601, 679, 680, 768, 820, 850, 851, 900, 936, 937, 965, 966, 1000, 1024, 1056, 1057, 1100, 1101, 1280, 1344, 1345, 1440, 1920])('matches the CSS at %ipx', (vw) => {
     expect(evaluate(SIZES.card, vw, false)).toBeCloseTo(card(vw, false), 5);
     expect(evaluate(SIZES.detail, vw, false)).toBeCloseTo(detail(vw, false), 5);
   });

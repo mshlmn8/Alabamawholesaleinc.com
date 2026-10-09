@@ -69,17 +69,18 @@ describe('QuotePage fields (AW-078)', () => {
     expect(['hello', '555-0123', '205/555/0123'].some((v) => re.test(v))).toBe(false);
   });
 
-  it('stops a phone number without 10 digits before checking the catalog, and marks the field', async () => {
+  it('stops a phone number without 10 digits before checking the catalog, and says so under the field', async () => {
     const checkCart = vi.fn(async () => ({ ok: true, items: ITEMS }));
     vi.mocked(submitOrder).mockClear();
     render(page({ checkCart }));
     fill({ ...CONTACT, 'quote-phone': '205-555-01234', ...ADDRESS });
     await act(async () => { submitForm(); });
-    const alert = screen.getByRole('alert');
-    expect(alert.textContent).toBe('Enter a 10-digit phone number.');
+    // The form's own check (AW-173): the message is the field's, not the page's.
+    expect(el('quote-phone-error').textContent).toBe('Enter a 10-digit phone number.');
+    expect(screen.queryByRole('alert')).toBeNull();
     const phone = el('quote-phone');
     expect(phone.getAttribute('aria-invalid')).toBe('true');
-    expect(phone.getAttribute('aria-describedby')).toBe('quote-phone-hint quote-submit-error');
+    expect(phone.getAttribute('aria-describedby')).toBe('quote-phone-hint quote-phone-error');
     expect(document.activeElement).toBe(phone);
     expect(checkCart).not.toHaveBeenCalled();
     expect(submitOrder).not.toHaveBeenCalled();
@@ -100,7 +101,7 @@ describe('QuotePage fields (AW-078)', () => {
 
   it('takes notes in a box of several lines, up to 2,000 characters', () => {
     render(page());
-    const notes = screen.getByLabelText('Notes');
+    const notes = screen.getByLabelText('Notes (optional)');
     expect(notes.tagName).toBe('TEXTAREA');
     expect(notes.getAttribute('rows')).toBe('4');
     expect(notes.getAttribute('maxlength')).toBe('2000');

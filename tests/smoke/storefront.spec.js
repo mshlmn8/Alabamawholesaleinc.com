@@ -233,13 +233,18 @@ test.describe('after age confirmation', () => {
     const note = await page.locator('.result-note').textContent();
     await page.evaluate(() => window.scrollTo(0, 500));
     await page.waitForFunction(() => window.scrollY === 500);
-    await page.locator('main a.card-link').first().click();
+    // Followed from where the card is in full view, below the sticky header (AW-153).
+    const card = page.locator('main a.card-link').first();
+    await card.scrollIntoViewIfNeeded();
+    const y = await page.evaluate(() => window.scrollY);
+    expect(y).toBeGreaterThan(0);
+    await card.click();
     await expect(page).toHaveURL(/\/product\/\d+$/);
     await page.goBack();
     await expect(page).toHaveURL(/\/category\/candies\?sort=name-desc&tags=bestseller$/);
     await expect(page.locator('.result-note')).toHaveText(note);
     await expect(page.getByRole('button', { name: 'Remove filter Bestsellers' })).toBeVisible();
-    await page.waitForFunction(() => window.scrollY === 500);
+    await page.waitForFunction((at) => window.scrollY === at, y);
     await page.goForward();
     await expect(page).toHaveURL(/\/product\/\d+$/);
     expect(errors).toEqual([]);
@@ -694,13 +699,13 @@ test.describe('part 2 catalog', () => {
     const errors = trackErrors(page);
     await page.goto('/category/tobacco/cigarettes');
     const kite = page.locator('.content-card', { hasText: 'Kite cigarette tobacco' });
-    await kite.getByRole('button', { name: 'Add to quote' }).click();
+    await kite.getByRole('button', { name: /^Add to quote\b/ }).click();
     await expect(kite.locator('.added-note')).toHaveText('Added');
     await expect(kite.getByRole('group', { name: 'Kite cigarette tobacco quantity' })).toBeVisible();
     await expect(page.locator('#aw-announcer')).toHaveText('Added Kite cigarette tobacco to your quote.');
     await expect(kite.locator('.added-note')).toHaveText('', { timeout: 4000 });
     await page.goto('/category/tobacco/cigars-and-cigarillos');
-    await expect(page.locator('.content-card', { hasText: 'Royal Blunts EZ Roll' }).getByRole('link', { name: 'Select options' })).toBeVisible();
+    await expect(page.locator('.content-card', { hasText: 'Royal Blunts EZ Roll' }).getByRole('link', { name: /^Select options\b/ })).toBeVisible();
     expect(errors).toEqual([]);
   });
 

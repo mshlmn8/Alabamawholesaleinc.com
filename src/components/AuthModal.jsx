@@ -27,6 +27,11 @@
 // here once the applicant confirms the email in this browser, which signs
 // in another tab and reaches this one (AW-335). A session for any other
 // email never gets them.
+//
+// The sign-in, application and reset forms check themselves before sending
+// (AW-173): what is missing or mistyped shows under its field, and the first
+// one takes focus (Field and ValidatedForm, ./Field.jsx). The application's
+// phone must have ten digits (AW-247), checked the same way.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth.jsx';
@@ -34,7 +39,6 @@ import { COMPANY, TERMS_VERSION } from '../data/content.js';
 import { APPLICATION_TIMEOUT_MESSAGE, isRateLimitError } from '../lib/errors.js';
 import { isTimeoutError } from '../lib/network.js';
 import { friendlyAuthError } from '../lib/authErrors.js';
-import { announce } from '../lib/announce.js';
 import { PHONE_ERROR, PHONE_EXAMPLE, PHONE_PATTERN, PHONE_TITLE, usPhone } from '../lib/phone.js';
 import { Link, restoreOverlayEntry } from '../lib/router.js';
 import { APPLICATION_CHECKLIST } from '../data/onboarding.js';
@@ -45,6 +49,7 @@ import { DOCUMENT_TYPES, documentErrorMessage, shortFileName, uploadSelectedProo
 import { ServiceUnavailable } from './ServiceUnavailable.jsx';
 import { CallOrEmail } from './ContactLinks.jsx';
 import { DocumentUploads } from './DocumentUploads.jsx';
+import { Field, ValidatedForm } from './Field.jsx';
 import { Icon } from './Icon.jsx';
 import { ModalLayer } from './ModalLayer.jsx';
 import { PASSWORD_MIN_LENGTH, PasswordField } from './PasswordField.jsx';
@@ -106,21 +111,6 @@ function useCooldown() {
   return [round > 0, () => setRound((r) => r + 1)];
 }
 
-// A labelled control in the form grid. The control names its hint
-// (`${id}-hint`) and, while there is one, its error (`${id}-error`) in
-// aria-describedby. A field that can have an error passes `error` ('' when
-// there is none), so the element is always there and only its text changes.
-function Field({ id, label, hint, error, full = false, children }) {
-  return (
-    <div className={full ? 'full' : undefined}>
-      <label htmlFor={id}>{label}</label>
-      {children}
-      {hint && <small className="field-hint" id={`${id}-hint`}>{hint}</small>}
-      {error !== undefined && <p className="form-error" id={`${id}-error`}>{error}</p>}
-    </div>
-  );
-}
-
 // A select's first, unpickable option, shown until the applicant chooses (AW-091).
 const choose = <option value="" disabled>Select…</option>;
 
@@ -156,8 +146,6 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
   const [signin, setSignin] = useState({ email: '', password: '' });
   const [resetEmail, setResetEmail] = useState('');
   const [signup, setSignup] = useState(EMPTY_SIGNUP);
-  // The phone number's own error, under the field (AW-247).
-  const [phoneError, setPhoneError] = useState('');
   const [proof, setProof] = useState({});
   const [proofErrors, setProofErrors] = useState({});
   // Files chosen on an application that returned no session, held until
@@ -182,7 +170,6 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
   const dialogRef = useRef(null);
   const keepEditingRef = useRef(null);
   const resendRef = useRef(null);
-  const phoneRef = useRef(null);
   // Where focus was when the discard bar opened, for Keep editing.
   const focusBeforeConfirm = useRef(null);
   // A resend is running; see the focus effect below.
@@ -347,22 +334,18 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
     setProof(prev => ({ ...prev, [type]: file }));
   };
 
+  // The form's own check (ValidatedForm): the browser's pattern lets through
+  // text with the right characters only; the phone needs ten digits (AW-247).
+  // An empty phone gets the field's own 'Enter phone'.
+  const validateSignup = () => (signup.phone.trim() && !usPhone(signup.phone) ? { 'aw-su-phone': PHONE_ERROR } : {});
+
   const handleSignup = async (e) => {
     e.preventDefault();
     setError(null);
     // A number staff can call (AW-247): ten digits, sent as (205) 555-0123.
-    // The browser's pattern lets through text with the right characters
-    // only; this is the real check.
+    // validateSignup has said so under the field; this is only a guard.
     const phone = usPhone(signup.phone);
-    if (!phone) {
-      setPhoneError(PHONE_ERROR);
-      const field = phoneRef.current;
-      // Focus reads the error out with the field; a field that already has
-      // focus (Enter pressed in it) is not read again, so say it.
-      if (field && document.activeElement === field) announce(PHONE_ERROR);
-      else field?.focus();
-      return;
-    }
+    if (!phone) return;
     setSubmitting(true);
     try {
       const data = await signUp({
@@ -566,7 +549,7 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
         {unavailableWhat && !isBackendConfigured && <ServiceUnavailable what={unavailableWhat} />}
 
         {mode === 'signin' && (
-          <form onSubmit={handleSignin}>
+          <ValidatedForm onSubmit={handleSignin}>
             <div className="form-grid">
               <Field id="aw-email" label="Business email" full>
                 <input id="aw-email" type="email" name="email" value={signin.email} onChange={setS('email')} required autoComplete="email" inputMode="email" data-autofocus />
@@ -579,7 +562,7 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
               <button className="text-link" type="button" onClick={() => { setResetEmail(signin.email || resetEmail); switchMode('reset'); }}>Forgot password?</button>
               <button className="text-link" type="button" onClick={() => switchMode('checklist')}>{APPLY_INSTEAD}</button>
             </div>
-          </form>
+          </ValidatedForm>
         )}
 
         {mode === 'checking' && (
@@ -631,7 +614,8 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
         )}
 
         {mode === 'signup' && (
-          <form onSubmit={handleSignup}>
+          <ValidatedForm onSubmit={handleSignup} validate={validateSignup}>
+            <p className="form-note">All fields are required unless marked optional.</p>
             {/* Three groups, each under its legend, then the optional
                 documents (AW-243). */}
             <fieldset className="form-grid form-section">
@@ -642,12 +626,10 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
               <Field id="aw-su-email" label="Business email">
                 <input id="aw-su-email" type="email" name="email" value={signup.email} onChange={setU('email')} required autoComplete="email" inputMode="email" />
               </Field>
-              <Field id="aw-su-phone" label="Phone" hint="Ten digits, the number we should call about this account." error={phoneError}>
+              <Field id="aw-su-phone" label="Phone" hint="Ten digits, the number we should call about this account.">
                 <input
-                  id="aw-su-phone" ref={phoneRef} type="tel" name="tel" value={signup.phone}
-                  onChange={(e) => { setPhoneError(''); setU('phone')(e); }}
+                  id="aw-su-phone" type="tel" name="tel" value={signup.phone} onChange={setU('phone')}
                   required autoComplete="tel" inputMode="tel" placeholder={PHONE_EXAMPLE} pattern={PHONE_PATTERN} title={PHONE_TITLE}
-                  aria-invalid={phoneError ? true : undefined} aria-describedby={phoneError ? 'aw-su-phone-hint aw-su-phone-error' : 'aw-su-phone-hint'}
                 />
               </Field>
               <PasswordField id="aw-su-pass" className="full" label="Password" name="new-password" value={signup.password} onChange={setU('password')} required minLength={PASSWORD_MIN_LENGTH} autoComplete="new-password" showRule />
@@ -698,17 +680,15 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
             {/* Consent and 21+ (AW-019). The policies open in a new tab so the
                 answers typed here stay put. */}
             <div className="consent-block">
-              <div className="consent">
-                <input id="aw-su-terms" name="agreeTerms" type="checkbox" checked={signup.agreeTerms} onChange={e => setSignup({ ...signup, agreeTerms: e.target.checked })} required />
-                <label htmlFor="aw-su-terms">
+              <Field id="aw-su-terms" inline label={<>
                   I agree to the <Link to={{ page: 'terms' }} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>Trade terms<span className="sr-only"> (opens in a new tab)</span></Link>
                   {' '}and <Link to={{ page: 'privacy' }} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>Privacy policy<span className="sr-only"> (opens in a new tab)</span></Link>
-                </label>
-              </div>
-              <div className="consent">
+                </>}>
+                <input id="aw-su-terms" name="agreeTerms" type="checkbox" checked={signup.agreeTerms} onChange={e => setSignup({ ...signup, agreeTerms: e.target.checked })} required />
+              </Field>
+              <Field id="aw-su-age" label="I am 21 or older" inline>
                 <input id="aw-su-age" name="ageConfirmed" type="checkbox" checked={signup.ageConfirmed} onChange={e => setSignup({ ...signup, ageConfirmed: e.target.checked })} required />
-                <label htmlFor="aw-su-age">I am 21 or older</label>
-              </div>
+              </Field>
             </div>
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
@@ -716,7 +696,7 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
               <button className="text-link" type="button" onClick={() => switchMode('checklist')}>Back to the checklist</button>
               <button className="text-link" type="button" onClick={() => switchMode('signin')}>{SIGN_IN_INSTEAD}</button>
             </div>
-          </form>
+          </ValidatedForm>
         )}
 
         {mode === 'sent' && (
@@ -784,7 +764,7 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
         )}
 
         {mode === 'reset' && (
-          <form onSubmit={handleReset}>
+          <ValidatedForm onSubmit={handleReset}>
             <div className="form-grid">
               <Field id="aw-reset-email" label="Business email" full>
                 <input id="aw-reset-email" type="email" name="email" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} required autoComplete="email" inputMode="email" data-autofocus />
@@ -795,7 +775,7 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
               <button className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Sending…' : 'Send reset link'}</span></button>
               <button className="text-link" type="button" onClick={backToSignin}>Back to sign in</button>
             </div>
-          </form>
+          </ValidatedForm>
         )}
 
         {mode === 'reset-sent' && (

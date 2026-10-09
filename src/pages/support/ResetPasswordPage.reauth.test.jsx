@@ -49,10 +49,11 @@ describe('ResetPasswordPage, signed in without a reset link (AW-349)', () => {
 
   it('checks the new password locally before it checks the current one', async () => {
     const { auth } = page();
+    // Said under the field it is about (AW-173), before anything is sent.
     fill({ password: 'short' });
-    expect(screen.getByRole('alert').textContent).toBe('Choose a password with at least 8 characters.');
+    expect(document.getElementById('reset-password-error').textContent).toBe('Choose a password with at least 8 characters.');
     fill({ password: 'new-pass-123', confirm: 'new-pass-124' });
-    expect(screen.getByRole('alert').textContent).toBe('The two passwords don’t match.');
+    expect(document.getElementById('reset-confirm-error').textContent).toBe('The two passwords don’t match.');
     expect(auth.verifyPassword).not.toHaveBeenCalled();
     expect(auth.updatePassword).not.toHaveBeenCalled();
   });

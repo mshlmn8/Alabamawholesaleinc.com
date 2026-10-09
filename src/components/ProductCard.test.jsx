@@ -1,15 +1,16 @@
 // The product card's detail line counts variants by their axis only when
 // there is a choice (AW-233, AW-332, AW-128) and says what quantity 1 means
 // (AW-031); its price follows the variants (AW-030). Prices are test values.
-// The add control (AW-143): one button style, sentence-case labels, and the
-// card title as the button's description. Feedback and focus (AW-042,
-// AW-072) at the end.
-import { act, fireEvent, render, screen } from '@testing-library/react';
+// The add control (AW-143): one button style, sentence-case labels, and a
+// name that starts with the label and ends with the product (AW-170). The
+// card itself (AW-170): an article named by its title, a real link to the
+// product. Feedback and focus (AW-042, AW-072) at the end.
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { announce } from '../lib/announce.js';
 import { dismissToast, getToast } from '../lib/toast.js';
-import { ProductCard } from './ProductCard.jsx';
+import { ProductCard, cardDetail, cardDetailParts } from './ProductCard.jsx';
 
 vi.mock('../lib/announce.js', async (importOriginal) => ({ ...(await importOriginal()), announce: vi.fn() }));
 
@@ -59,12 +60,12 @@ describe('ProductCard', () => {
   it('can’t add a product whose only variant is marked not available (AW-030)', () => {
     const addLine = vi.fn();
     const view = render(card({ ...base, variants: ['Green'], unavailableVariants: ['Green'] }, { addLine }));
-    const button = screen.getByRole('button', { name: 'Not available' });
+    const button = screen.getByRole('button', { name: 'Not available, Swisher Sweets cigarillos' });
     expect(button.disabled).toBe(true);
     fireEvent.click(button);
     expect(addLine).not.toHaveBeenCalled();
     view.rerender(card({ ...base, variants: ['Green'] }, { addLine }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add to quote' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to quote, Swisher Sweets cigarillos' }));
     expect(addLine).toHaveBeenCalledWith(1, 'Green');
   });
 
@@ -73,19 +74,19 @@ describe('ProductCard', () => {
     vi.useFakeTimers();
     const addLine = vi.fn(() => ({ key: '1', qty: 1, capped: false }));
     const view = render(card({ ...base, variants: ['Red', 'Grape'] }, { addLine }));
-    expect(screen.getByRole('link', { name: 'Select options' }).getAttribute('href')).toBe('/product/1');
+    expect(screen.getByRole('link', { name: 'Select options, Swisher Sweets cigarillos' }).getAttribute('href')).toBe('/product/1');
     view.rerender(card({ ...base, variants: ['Red', 'Grape'] }, { addLine, cart: { '1::red': 2 } }));
-    expect(screen.getByRole('link', { name: 'Select options · 2' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Select options · 2, Swisher Sweets cigarillos' })).toBeTruthy();
     view.rerender(card({ ...base, variants: [] }, { addLine }));
     const note = () => document.querySelector('.added-note').textContent;
     expect(note()).toBe('');
-    fireEvent.click(screen.getByRole('button', { name: 'Add to quote' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to quote, Swisher Sweets cigarillos' }));
     expect(addLine).toHaveBeenCalledWith(1, null);
     expect(note()).toBe('Added');
     act(() => vi.advanceTimersByTime(2100));
     expect(note()).toBe('');
     view.rerender(card({ ...base, variants: [] }, { addLine, ...APPROVED }));
-    expect(screen.getByRole('button', { name: 'Add to order' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Add to order, Swisher Sweets cigarillos' })).toBeTruthy();
     vi.useRealTimers();
   });
 
@@ -148,48 +149,52 @@ const PENDING = { status: 'pending', pricing_tier: 'standard' };
 const addCard = (props) => render(
   <ProductCard p={KITE} profile={null} isApprovedBuyer={false} cart={{}} addLine={vi.fn()} decLine={vi.fn()} onLoginClick={vi.fn()} {...props} />,
 );
-const describedBy = (el) => document.getElementById(el.getAttribute('aria-describedby'));
 
 describe('ProductCard add control', () => {
   it('says "Add to quote" to guests and pending accounts, and adds one', () => {
     const addLine = vi.fn();
     addCard({ addLine });
-    const add = screen.getByRole('button', { name: 'Add to quote' });
+    const add = screen.getByRole('button', { name: 'Add to quote, Kite cigarette tobacco' });
     expect(add.className).toBe('button ghost sm card-add');
     fireEvent.click(add);
     expect(addLine).toHaveBeenCalledWith(14, null);
 
     addCard({ profile: PENDING });
-    expect(screen.getAllByRole('button', { name: 'Add to quote' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Add to quote, Kite cigarette tobacco' })).toHaveLength(2);
   });
 
   it('says "Add to order" to approved buyers', () => {
     addCard({ profile: APPROVED_PROFILE, isApprovedBuyer: true });
-    expect(screen.getByRole('button', { name: 'Add to order' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Add to order, Kite cigarette tobacco' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /quote/i })).toBeNull();
   });
 
   it('asks for a variant (Cursor\'s "Select options", AW-057) with a link to the product, counting what is already in the cart', () => {
     const view = addCard({ p: SWISHER });
-    const choose = screen.getByRole('link', { name: 'Select options' });
+    const choose = screen.getByRole('link', { name: 'Select options, Swisher Sweets cigarillos' });
     expect(choose.getAttribute('href')).toBe('/product/1');
     expect(choose.className).toBe('button ghost sm card-add');
 
     view.rerender(<ProductCard p={SWISHER} profile={null} isApprovedBuyer={false} cart={{ '1::red': 2, '1::diamond': 1, 14: 5 }} addLine={vi.fn()} decLine={vi.fn()} onLoginClick={vi.fn()} />);
-    expect(screen.getByRole('link', { name: 'Select options · 3' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Select options · 3, Swisher Sweets cigarillos' })).toBeTruthy();
   });
 
-  it('is described by the card title, so the button says which product without changing its name', () => {
+  it('names each control by its visible label, then the product, for a list of buttons (AW-170, WCAG 2.5.3)', () => {
+    // The product is screen-reader text after the label; the label shows.
+    const visible = (el) => [...el.childNodes].filter((n) => !n.classList?.contains('sr-only')).map((n) => n.textContent).join('');
     addCard();
-    const add = screen.getByRole('button', { name: 'Add to quote' });
-    expect(describedBy(add).tagName).toBe('H3');
-    expect(describedBy(add).textContent).toBe('Kite cigarette tobacco');
+    const add = screen.getByRole('button', { name: 'Add to quote, Kite cigarette tobacco' });
+    expect(visible(add)).toBe('Add to quote');
+    expect(add.querySelector('.sr-only').textContent).toBe(', Kite cigarette tobacco');
 
-    addCard({ p: SWISHER });
-    const choose = screen.getByRole('link', { name: 'Select options' });
-    expect(describedBy(choose).textContent).toBe('Swisher Sweets cigarillos');
-    // Each card has its own title id.
-    expect(choose.getAttribute('aria-describedby')).not.toBe(add.getAttribute('aria-describedby'));
+    addCard({ p: SWISHER, cart: { '1::red': 2 } });
+    const choose = screen.getByRole('link', { name: 'Select options · 2, Swisher Sweets cigarillos' });
+    expect(visible(choose)).toBe('Select options · 2');
+
+    addCard({ p: { ...KITE, id: 15, variants: ['Green'], unavailableVariants: ['Green'] } });
+    expect(visible(screen.getByRole('button', { name: 'Not available, Kite cigarette tobacco' }))).toBe('Not available');
+    // Nothing is described by the title any more: the name says it.
+    expect(document.querySelectorAll('[aria-describedby]')).toHaveLength(0);
   });
 
   it('turns into a stepper once the product is in the cart', () => {
@@ -236,7 +241,8 @@ describe('ProductCard add control', () => {
     expect(lock.className).toBe('lock');
     expect(screen.queryByRole('button', { name: /Sign in/ })).toBeNull();
     // The add button is the card's only control after its link.
-    expect([...document.querySelectorAll('.card-meta button, .card-meta a')].map((el) => el.textContent)).toEqual(['Add to quote']);
+    // (Its visible label; the product's name follows for screen readers, AW-170.)
+    expect([...document.querySelectorAll('.card-meta button, .card-meta a')].map((el) => el.firstElementChild.textContent)).toEqual(['Add to quote']);
     expect(onLoginClick).not.toHaveBeenCalled();
   });
 
@@ -285,7 +291,7 @@ describe('ProductCard feedback', () => {
 
   it('confirms an add with the toast, spoken once, and focuses the stepper’s quantity', () => {
     render(<Shelf />);
-    const add = screen.getByRole('button', { name: 'Add to quote' });
+    const add = screen.getByRole('button', { name: 'Add to quote, Kite cigarette tobacco' });
     add.focus();
     fireEvent.click(add);
     expect(getToast()).toMatchObject({ text: 'Added Kite cigarette tobacco to your quote.', action: { id: 'open-cart', label: 'View quote' } });
@@ -297,13 +303,13 @@ describe('ProductCard feedback', () => {
 
   it('says "order" to an approved buyer', () => {
     render(<Shelf approved />);
-    fireEvent.click(screen.getByRole('button', { name: 'Add to order' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to order, Kite cigarette tobacco' }));
     expect(getToast()).toMatchObject({ text: 'Added Kite cigarette tobacco to your order.', action: { label: 'View order' } });
   });
 
   it('focuses + instead of the number box after a tap, so a phone’s keyboard stays shut', () => {
     render(<Shelf />);
-    const add = screen.getByRole('button', { name: 'Add to quote' });
+    const add = screen.getByRole('button', { name: 'Add to quote, Kite cigarette tobacco' });
     fireEvent.pointerDown(add, { pointerType: 'touch' });
     fireEvent.click(add);
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Increase quantity' }));
@@ -311,20 +317,56 @@ describe('ProductCard feedback', () => {
 
   it('announces a removal with − at 1 and puts focus back on the add button', () => {
     render(<Shelf />);
-    fireEvent.click(screen.getByRole('button', { name: 'Add to quote' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to quote, Kite cigarette tobacco' }));
     vi.mocked(announce).mockClear();
     const remove = screen.getByRole('button', { name: 'Remove Kite cigarette tobacco' });
     remove.focus();
     fireEvent.click(remove);
     expect(announced()).toEqual(['Removed Kite cigarette tobacco from your quote.']);
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Add to quote' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Add to quote, Kite cigarette tobacco' }));
   });
 
   it('shows no toast and no "Added" when nothing could be added', () => {
     addCard({ addLine: vi.fn(() => null) });
-    fireEvent.click(screen.getByRole('button', { name: 'Add to quote' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to quote, Kite cigarette tobacco' }));
     expect(getToast()).toBeNull();
     expect(announce).not.toHaveBeenCalled();
     expect(document.querySelector('.added-note').textContent).toBe('');
+  });
+});
+
+// The card (AW-170): an article named by its title; the title is a real link
+// to the product page whose name is the product name, stretched over the
+// card in CSS; the controls follow it in the tab order. The detail line
+// wraps between its values (AW-304).
+describe('ProductCard structure', () => {
+  it('is an article named by its title, whose link opens the product page', () => {
+    addCard();
+    const article = screen.getByRole('article', { name: 'Kite cigarette tobacco' });
+    expect(article.className).toBe('content-card');
+    const heading = within(article).getByRole('heading', { level: 3, name: 'Kite cigarette tobacco' });
+    const link = within(heading).getByRole('link', { name: 'Kite cigarette tobacco' });
+    expect(link.className).toBe('card-link');
+    expect(link.getAttribute('href')).toBe('/product/14');
+    expect(link.hasAttribute('aria-label')).toBe(false);
+    // The photo, kicker and detail line are outside the link: nothing block-level in it.
+    expect(link.children).toHaveLength(0);
+    expect(article.querySelector('.card-block').closest('a')).toBeNull();
+    expect(article.querySelector('.card-detail').closest('a')).toBeNull();
+  });
+
+  // No sign-in prompt on the card (AW-224): the page's PricingNotice has it.
+  it('goes link, then the action in the tab order', () => {
+    addCard();
+    const order = [...document.querySelectorAll('.content-card a[href], .content-card button')].map((el) => el.className);
+    expect(order).toEqual(['card-link', 'button ghost sm card-add']);
+  });
+
+  it('shows the detail line as parts that wrap between them, reading as one line (AW-304)', () => {
+    render(card({ ...base, variants: ['Red', 'Grape'], variantAxis: 'Flavor', sellUnit: '5-pack' }));
+    const parts = [...document.querySelectorAll('.card-detail > .text-parts > span')].map((span) => span.textContent);
+    expect(parts).toEqual(['Swisher Sweets · ', '2 flavors · ', 'Sold by the 5-pack · ', 'AW-SS']);
+    expect(detail()).toBe(cardDetail({ ...base, variants: ['Red', 'Grape'], variantAxis: 'Flavor', sellUnit: '5-pack' }));
+    expect(cardDetailParts({ ...base, variants: [] }, { sku: false })).toEqual(['Swisher Sweets']);
   });
 });

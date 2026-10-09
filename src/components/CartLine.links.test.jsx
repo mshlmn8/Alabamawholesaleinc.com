@@ -67,7 +67,8 @@ describe('cart line styles (AW-081, AW-239)', () => {
   };
 
   it('gives checkout lines 16px inside their border with a rule that outranks .drawer-line', () => {
-    expect(rule('.drawer-line.checkout-line')).toBe('border: 1px solid var(--line); padding: 12px 16px;');
+    // One rule, which also sets the checkout line's grid areas (AW-306).
+    expect(rule('.drawer-line.checkout-line')).toMatch(/border: 1px solid var\(--line\); padding: 12px 16px;$/);
     expect(rule('.checkout-line')).toBeNull();
   });
 

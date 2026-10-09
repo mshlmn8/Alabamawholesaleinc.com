@@ -23,6 +23,8 @@ import { announce } from '../../lib/announce.js';
 import { REQUEST_TIMEOUT_MS, isOffline, isTimeoutError, timeoutSignal } from '../../lib/network.js';
 import { useOnlineStatus } from '../../lib/useOnlineStatus.js';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
+import { EmptyState } from '../../components/EmptyState.jsx';
+import { Link } from '../../lib/router.js';
 import { MAX_ORDER_SEARCH, cleanOrderSearch } from '../admin/orderQueries.js';
 import {
   ITEMS_SHOWN, KIND_LABEL, ORDER_FILTERS, ORDER_PAGE, STATUS_LEGEND, buyerStatus, countText, loadOrders, orderKind,
@@ -255,17 +257,15 @@ export function OrderHistory({ userId, products = [], addLines, onOpenCart, isAp
       )}
       {initial && !problem && <p className="result-note">Loading…</p>}
       {!view.error && !initial && rows.length === 0 && !loading && !filtered && (
-        <div className="empty-results">
-          <h2>{NO_ORDERS}</h2>
-          <p>Orders you place will show up here, each with a one-click Reorder.</p>
-        </div>
+        // The shared empty state (AW-299), under the section's h2.
+        <EmptyState level={3} title={NO_ORDERS} className="is-boxed" actions={<Link className="button" to="/catalog">Browse the catalog</Link>}>
+          Orders you place will show up here, each with a one-click Reorder.
+        </EmptyState>
       )}
       {!view.error && !initial && rows.length === 0 && !loading && filtered && (
-        <div className="empty-results">
-          <h3>{NO_MATCH}</h3>
-          <p>Try another status or order number.</p>
-          <button className="text-link" type="button" onClick={clearFilters}>Clear filters</button>
-        </div>
+        <EmptyState level={3} title={NO_MATCH} className="is-boxed" actions={<button className="text-link" type="button" onClick={clearFilters}>Clear filters</button>}>
+          Try another status or order number.
+        </EmptyState>
       )}
 
       {!view.error && !initial && (rows.length > 0 || loading) && (

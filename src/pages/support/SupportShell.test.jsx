@@ -38,8 +38,9 @@ describe('PolicyNav', () => {
     expect(current()).toEqual([]);
   });
 
-  it('keeps the short crumb labels for the policy pages', () => {
-    expect(POLICY_LINKS.find((l) => l.page === 'shipping').label).toBe('Delivery');
+  // 'Delivery policy', apart from 'Delivery & service area' (AW-316).
+  it('keeps the crumb labels for the policy pages', () => {
+    expect(POLICY_LINKS.find((l) => l.page === 'shipping').label).toBe('Delivery policy');
   });
 });
 

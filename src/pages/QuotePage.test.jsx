@@ -40,6 +40,16 @@ function page(props) {
   return <QuotePage {...base} {...props} />;
 }
 const field = (id) => document.getElementById(id).value;
+// A guest or unapproved account with a tobacco line (ITEMS) also gives the
+// license answers: the form checks its required fields before it sends
+// anything (AW-173).
+const answerLicense = () => {
+  const box = document.getElementById('quote-age');
+  if (!box) return;
+  fireEvent.change(document.getElementById('quote-license'), { target: { value: 'TL-1' } });
+  fireEvent.change(document.getElementById('quote-resale'), { target: { value: 'RS-1' } });
+  if (!box.checked) fireEvent.click(box);
+};
 const submit = () => screen.getByRole('button', { name: /Submit/ });
 
 describe('QuotePage and the account', () => {
@@ -147,6 +157,7 @@ describe('QuotePage and a catalog that changed', () => {
       ['quote-phone', '205-000-0000'], ['ship-street', '1 Test Way'], ['ship-city', 'Birmingham'], ['ship-state', 'AL'], ['ship-zip', '35203']]) {
       fireEvent.change(document.getElementById(id), { target: { value } });
     }
+    answerLicense();
   };
   const submitForm = () => fireEvent.submit(document.querySelector('form[aria-labelledby="quote-form-title"]'));
 
@@ -370,6 +381,7 @@ describe('QuotePage and submit_quote', () => {
     expect(document.body.textContent).not.toMatch(/ALW-/);
     fillContact();
     fillAddress();
+    answerLicense();
     await act(async () => { submitForm(); });
     await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Thank you/));
     expect(screen.getByText('ALW-Q-TEST000001')).toBeTruthy();
@@ -381,6 +393,7 @@ describe('QuotePage and submit_quote', () => {
     render(page({ ...GUEST, checkCart: checkCart() }));
     fillContact();
     fillAddress();
+    answerLicense();
     await act(async () => { submitForm(); });
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toBe('Enter a 5-digit ZIP code (or ZIP+4).');
@@ -405,6 +418,7 @@ describe('QuotePage and submit_quote', () => {
     expect(labels.indexOf('quote-delivery')).toBeLessThan(labels.indexOf('ship-street'));
     fillContact();
     fillAddress();
+    answerLicense();
     const delivery = screen.getByLabelText('Delivery method');
     fireEvent.change(delivery, { target: { value: 'willcall' } });
     for (const id of ['ship-street', 'ship-city', 'ship-state', 'ship-zip']) expect(document.getElementById(id)).toBeNull();
@@ -442,6 +456,7 @@ describe('QuotePage and submit_quote', () => {
     expect(trap.closest('[aria-hidden="true"]').classList.contains('sr-only')).toBe(true);
     fillContact();
     fillAddress();
+    answerLicense();
     fireEvent.change(trap, { target: { value: 'https://spam.example' } });
     await act(async () => { submitForm(); });
     expect(screen.getByRole('alert').textContent).toMatch(/^We couldn’t save this quote\. Please call the trade desk at/);
@@ -598,6 +613,13 @@ describe('QuotePage receipt', () => {
     fireEvent.change(document.getElementById('quote-resale'), { target: { value: 'RS-1' } });
     fireEvent.click(document.getElementById('quote-age'));
   };
+  // An approved account's contact details come from its profile; the ship-to
+  // address is typed (the form checks every required field, AW-173).
+  const fillShipTo = () => {
+    for (const [id, value] of [['ship-street', '1 Alpha Way'], ['ship-city', 'Hoover'], ['ship-state', 'AL'], ['ship-zip', '35216']]) {
+      fireEvent.change(document.getElementById(id), { target: { value } });
+    }
+  };
   const submitForm = () => fireEvent.submit(document.querySelector('form[aria-labelledby="quote-form-title"]'));
   const heading = () => screen.getByRole('heading', { level: 1 });
   const receiptText = () => document.querySelector('.receipt-head').textContent;
@@ -699,7 +721,7 @@ describe('QuotePage receipt', () => {
 
   it('moves focus to the receipt’s heading', async () => {
     render(<main id="main">{page({ ...APPROVED, checkCart: vi.fn(async () => ({ ok: true, items: ITEMS })) })}</main>);
-    fireEvent.change(document.getElementById('ship-street'), { target: { value: '1 Alpha Way' } });
+    fillShipTo();
     submit().focus();
     await act(async () => { submitForm(); });
     await waitFor(() => expect(document.activeElement).toBe(heading()));
@@ -712,7 +734,7 @@ describe('QuotePage receipt', () => {
     let finish;
     const checkCart = vi.fn(() => new Promise((resolve) => { finish = resolve; }));
     render(page({ ...APPROVED, checkCart }));
-    fireEvent.change(document.getElementById('ship-street'), { target: { value: '1 Alpha Way' } });
+    fillShipTo();
     fireEvent.change(document.getElementById('ship-city'), { target: { value: 'Hoover' } });
     act(() => {
       submitForm();
@@ -729,7 +751,7 @@ describe('QuotePage receipt', () => {
     const before = sentCount();
     submitOrder.mockImplementationOnce(async () => { throw new Error('boom'); });
     render(page({ ...APPROVED, checkCart: vi.fn(async () => ({ ok: true, items: ITEMS })) }));
-    fireEvent.change(document.getElementById('ship-street'), { target: { value: '1 Alpha Way' } });
+    fillShipTo();
     await act(async () => { submitForm(); });
     expect(screen.getByRole('alert').textContent).toMatch(/^We couldn’t save this/);
     await act(async () => { submitForm(); });
@@ -740,7 +762,7 @@ describe('QuotePage receipt', () => {
   it('picks ORDER or QUOTE by account when the database doesn’t say (older signatures)', async () => {
     // The default answer has no kind, priced_lines or unpriced_lines.
     const view = render(page({ ...APPROVED, checkCart: vi.fn(async () => ({ ok: true, items: ITEMS })) }));
-    fireEvent.change(document.getElementById('ship-street'), { target: { value: '1 Alpha Way' } });
+    fillShipTo();
     await act(async () => { submitForm(); });
     await waitFor(() => expect(screen.getByText('ORDER RECEIVED')).toBeTruthy());
     expect(screen.getByText('Items in this order')).toBeTruthy();
@@ -753,7 +775,7 @@ describe('QuotePage receipt', () => {
     // The server's kind wins over the account.
     submitOrder.mockImplementationOnce(async () => ({ ok: true, order: { id: 'o3', ref_num: 'ALW-Q-TEST000003', kind: 'quote', total_units: 2, subtotal: null } }));
     cleanupAndRender(page({ ...APPROVED, checkCart: vi.fn(async () => ({ ok: true, items: ITEMS })) }));
-    fireEvent.change(document.getElementById('ship-street'), { target: { value: '1 Alpha Way' } });
+    fillShipTo();
     await act(async () => { submitForm(); });
     await waitFor(() => expect(screen.getByText('QUOTE RECEIVED')).toBeTruthy());
   });
@@ -761,7 +783,7 @@ describe('QuotePage receipt', () => {
   it('says how many lines the trade desk prices beside a partial total', async () => {
     submitOrder.mockImplementationOnce(async () => ({ ok: true, order: { id: 'o4', ref_num: 'ALW-O-TEST000004', kind: 'order', total_units: 5, subtotal: 30, priced_lines: 1, unpriced_lines: 1 } }));
     render(page({ ...APPROVED, items: LINES, checkCart: vi.fn(async () => ({ ok: true, items: LINES })) }));
-    fireEvent.change(document.getElementById('ship-street'), { target: { value: '1 Alpha Way' } });
+    fillShipTo();
     await act(async () => { submitForm(); });
     await waitFor(() => expect(screen.getByText('Saved total: $30.00 · 5 units')).toBeTruthy());
     expect(screen.getByText('1 line is priced by the trade desk.')).toBeTruthy();
@@ -781,7 +803,7 @@ describe('QuotePage receipt', () => {
   it('forgets a receipt it showed when the history entry changes', async () => {
     const props = { ...APPROVED, checkCart: vi.fn(async () => ({ ok: true, items: ITEMS })), entryKey: 'k1' };
     const view = render(page(props));
-    fireEvent.change(document.getElementById('ship-street'), { target: { value: '1 Alpha Way' } });
+    fillShipTo();
     await act(async () => { submitForm(); });
     await waitFor(() => expect(heading().textContent).toMatch(/Thank you/));
     view.rerender(page({ ...props, items: [], entryKey: 'k2' }));

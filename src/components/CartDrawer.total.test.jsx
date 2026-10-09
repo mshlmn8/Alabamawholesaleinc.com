@@ -25,7 +25,8 @@ const note = () => document.querySelector('.total-note');
 describe('CartDrawer totals (AW-103)', () => {
   it('shows "each" and a line total, and a total of the lines that can be ordered', () => {
     render(drawer([KITE]));
-    expect(screen.getByText('AW-KITE · $13.40 each')).toBeTruthy();
+    // The detail line wraps between its values (AW-304): one span each.
+    expect(screen.getByText((_, el) => el.matches('.info > small') && el.textContent === 'AW-KITE · $13.40 each')).toBeTruthy();
     expect(document.querySelector('.drawer-line .line-total').textContent).toBe('$40.20');
     expect(totalRow()).toBe('Estimated total$40.20');
     expect(note()).toBeNull();

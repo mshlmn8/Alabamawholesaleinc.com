@@ -88,7 +88,8 @@ describe('footer links (AW-285)', () => {
 
   it('names the delivery policy link as the policy it is', () => {
     render(footer());
-    const policies = screen.getByRole('navigation', { name: 'Customer policies' });
+    // 'Policies', apart from the support pages' 'Help and policies' (AW-316).
+    const policies = screen.getByRole('navigation', { name: 'Policies' });
     expect(within(policies).getByRole('link', { name: 'Delivery policy' }).getAttribute('href')).toBe('/shipping');
     expect(within(policies).queryByRole('link', { name: 'Delivery' })).toBeNull();
   });
@@ -116,15 +117,12 @@ describe('footer copy (AW-285)', () => {
     expect(readFileSync(resolve(process.cwd(), 'src/components/Footer.jsx'), 'utf8')).not.toMatch(/©\s*20\d\d/);
   });
 
-  it('says licensed-only in one wording, in the footer and the trade-only strip', () => {
+  // The trade-only strip is the trade bar's first message now (AW-153).
+  it('says licensed-only in one wording, in the footer and the trade bar', () => {
     render(<><TradeBar onApplyClick={vi.fn()} /><Footer departments={departments} onLoginClick={vi.fn()} onApplyClick={vi.fn()} onHelp={vi.fn()} /></>);
     expect(LICENSED_ONLY).toBe('Wholesale to licensed retail businesses only · No consumer sales · 21+');
-    expect(document.querySelector('.trade-only').textContent).toBe(LICENSED_ONLY);
+    expect(document.querySelector('.announcement-list li').textContent).toBe(LICENSED_ONLY.toUpperCase());
     expect([...document.querySelectorAll('.footer-legal p')].map((p) => p.textContent)).toContain(LICENSED_ONLY);
-    // The strip still reads in capitals: the stylesheet sets them now.
-    const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8');
-    const strip = css.match(/(?:^|\n)\.trade-only \{([^}]*)\}/);
-    expect(strip?.[1]).toMatch(/text-transform: uppercase;/);
     // No other wording of the statement is left in the components.
     for (const file of ['src/components/Footer.jsx', 'src/components/TradeBar.jsx']) {
       const source = readFileSync(resolve(process.cwd(), file), 'utf8');

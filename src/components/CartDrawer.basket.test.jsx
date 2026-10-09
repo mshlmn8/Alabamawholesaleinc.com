@@ -34,10 +34,13 @@ describe('CartDrawer basket names (AW-132)', () => {
   }
 
   it('says an empty quote or order is empty', () => {
+    // The shared empty state (AW-299), in the basket's words.
     const view = render(drawer({ items: [] }));
-    expect(document.querySelector('.empty-note').textContent).toBe('Your quote is empty.Browse the catalog and add items to build a quote.');
+    expect(screen.getByRole('heading', { level: 3, name: 'Your quote is empty' })).toBeTruthy();
+    expect(document.querySelector('.empty-state-text').textContent).toBe('Browse the catalog and add items to build a quote.');
     view.rerender(drawer({ ...STATES.approved, items: [] }));
-    expect(document.querySelector('.empty-note').textContent).toBe('Your order is empty.Browse the catalog and add items to build an order.');
+    expect(screen.getByRole('heading', { level: 3, name: 'Your order is empty' })).toBeTruthy();
+    expect(document.querySelector('.empty-state-text').textContent).toBe('Browse the catalog and add items to build an order.');
     expect(screen.queryByRole('link', { name: /^Review/ })).toBeNull();
   });
 

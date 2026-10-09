@@ -38,7 +38,7 @@ describe('TradeBar (AW-066)', () => {
     const account = screen.getByRole('link', { name: 'My account' });
     expect(account.getAttribute('href')).toBe('/account');
     expect([...container.querySelector('.trade-bar .container').children].map((el) => el.className || el.tagName))
-      .toEqual(['ticker', 'trade-call', 'A']);
+      .toEqual(['announcements', 'A', 'trade-call']);
   });
 });
 
@@ -114,7 +114,7 @@ describe('MobileMenu current page (AW-221)', () => {
   it('marks the department and Exotics on the Novelties pages', () => {
     go('/category/novelties');
     renderMenu();
-    expect(current()).toEqual([[`02Novelties & Vapes${departments[1].count}`, 'page'], ['Exotics', 'page']]);
+    expect(current()).toEqual([[`02Novelties & Vapes${departments[1].count} products`, 'page'], ['Exotics', 'page']]);
     go('/category/novelties/disposable-vapes');
     expect(current().map(([, value]) => value)).toEqual(['true', 'true']);
   });

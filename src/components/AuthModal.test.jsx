@@ -66,6 +66,23 @@ const signInWith = async () => {
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^Sign in/ })); });
 };
 
+// Every answer the application requires: it checks them before it sends
+// (AW-173). `answers` replaces any of them, by label.
+const APPLICATION = {
+  'Your name': 'New Buyer', 'Business name': 'New Store', 'Business email': 'new@example.test', Phone: '205-555-0199',
+  Password: 'test-password-1', 'Federal EIN': '12-3456789', 'State retail tobacco license #': 'TL-TEST', 'Resale certificate #': 'RS-TEST',
+  'Store street address': '1 Test Way', City: 'Testville', ZIP: '35203',
+  // The three selects start empty (AW-091).
+  'Business type': 'Smoke Shop', 'Store state': 'AL', 'Expected monthly volume': '$15K — $50K',
+};
+const fillApplication = (answers = {}) => {
+  for (const [label, value] of Object.entries({ ...APPLICATION, ...answers })) fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  for (const name of [/I agree to the Trade terms/, 'I am 21 or older']) {
+    const box = screen.getByRole('checkbox', { name });
+    if (!box.checked) fireEvent.click(box);
+  }
+};
+
 afterEach(() => vi.useRealTimers());
 
 describe('AuthModal after sign-in', () => {
@@ -181,6 +198,7 @@ describe('AuthModal application form', () => {
     chooseSelects();
     fireEvent.click(terms);
     fireEvent.click(age);
+    fillApplication({ 'Store street address': '1 Test St', City: 'Birmingham' });
     await act(async () => { fireEvent.submit(street.closest('form')); });
     expect(signUp).toHaveBeenCalledWith(expect.objectContaining({
       store_street: '1 Test St', store_city: 'Birmingham', store_zip: '35203',
@@ -329,8 +347,7 @@ describe('AuthModal guards a half-typed application (AW-018)', () => {
   it('closes without asking once the application is sent', async () => {
     const signUp = vi.fn(async () => ({ session: null }));
     const t = setup({ signUp }, { initialMode: 'application' });
-    fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'New Buyer' } });
-    typePhone();
+    fillApplication();
     await act(async () => { fireEvent.submit(screen.getByLabelText('Your name').closest('form')); });
     expect(screen.getByRole('heading', { name: 'Check your inbox' })).toBeTruthy();
     fireEvent.click(closeButton());
@@ -356,8 +373,7 @@ describe('AuthModal guards a half-typed application (AW-018)', () => {
 describe('AuthModal resends the confirmation email (AW-016)', () => {
   const sendApplication = async (overrides = {}) => {
     const t = setup({ signUp: vi.fn(async () => ({ session: null })), ...overrides }, { initialMode: 'application' });
-    fireEvent.change(screen.getByLabelText('Business email'), { target: { value: 'new@example.test' } });
-    typePhone();
+    fillApplication();
     await act(async () => { fireEvent.submit(screen.getByLabelText('Business email').closest('form')); });
     expect(screen.getByRole('heading', { name: 'Check your inbox' })).toBeTruthy();
     return t;
@@ -454,7 +470,7 @@ describe('AuthModal error messages (AW-084)', () => {
 
   it('tells an applicant whose email is taken to sign in or reset, never “User already registered”', async () => {
     setup({ signUp: vi.fn(async () => { throw apiError('User already registered', 'user_already_exists', 422); }) }, { initialMode: 'application' });
-    typePhone();
+    fillApplication();
     await act(async () => { fireEvent.submit(screen.getByLabelText('Business email').closest('form')); });
     expect(alert().textContent).toBe('An account already uses this email. Sign in or reset your password.');
     expect(screen.queryByText(/User already registered/)).toBeNull();
@@ -463,7 +479,7 @@ describe('AuthModal error messages (AW-084)', () => {
   it('says what a weak password needs', async () => {
     const weak = Object.assign(new Error('Password should be at least 8 characters.'), { name: 'AuthWeakPasswordError', code: 'weak_password', status: 422, reasons: ['length'] });
     setup({ signUp: vi.fn(async () => { throw weak; }) }, { initialMode: 'application' });
-    typePhone();
+    fillApplication();
     await act(async () => { fireEvent.submit(screen.getByLabelText('Business email').closest('form')); });
     expect(alert().textContent).toBe('Choose a stronger password: at least 8 characters.');
   });
@@ -576,7 +592,7 @@ describe('AuthModal step changes (AW-090, AW-096, AW-245)', () => {
     setup({ signUp: vi.fn(async () => ({ session: null })) }, { initialMode: 'application' });
     const dialog = screen.getByRole('dialog');
     dialog.scrollTop = 905;
-    typePhone();
+    fillApplication();
     await act(async () => { fireEvent.submit(screen.getByLabelText('Your name').closest('form')); });
     expect(screen.getByRole('heading', { name: 'Check your inbox' })).toBeTruthy();
     expect(dialog.scrollTop).toBe(0);
@@ -706,8 +722,7 @@ describe('AuthModal password reset (AW-259)', () => {
 describe('AuthModal after the application is sent (AW-260)', () => {
   const sendApplication = async ({ phone = '205-555-0199' } = {}) => {
     const t = setup({ signUp: vi.fn(async () => ({ session: null })) }, { initialMode: 'application' });
-    fireEvent.change(screen.getByLabelText('Business email'), { target: { value: 'new@example.test' } });
-    fireEvent.change(screen.getByLabelText('Phone'), { target: { value: phone } });
+    fillApplication({ Phone: phone });
     await act(async () => { fireEvent.submit(screen.getByLabelText('Business email').closest('form')); });
     expect(screen.getByRole('heading', { name: 'Check your inbox' })).toBeTruthy();
     return t;
@@ -817,9 +832,11 @@ describe('AuthModal application phone number (AW-247)', () => {
     expect([html.test('(205) 555-0123'), html.test('abc')]).toEqual([true, false]);
   });
 
+  // The rest of the application is filled in: the form's own check (AW-173)
+  // names every field that stops it.
   it('refuses a number that is not ten digits: no signUp, the field marked, described and focused', async () => {
     const t = setup({ signUp: vi.fn(async () => ({ session: null })) }, { initialMode: 'application' });
-    typePhone('205-555-012');
+    fillApplication({ Phone: '205-555-012' });
     screen.getByLabelText('Your name').focus();
     await submit();
     expect(t.value.signUp).not.toHaveBeenCalled();
@@ -839,7 +856,7 @@ describe('AuthModal application phone number (AW-247)', () => {
   it('reads the error out when the phone field already had focus', async () => {
     vi.useFakeTimers();
     setup({}, { initialMode: 'application' });
-    typePhone('abc');
+    fillApplication({ Phone: 'abc' });
     phone().focus();
     await submit();
     act(() => { vi.advanceTimersByTime(200); });
@@ -848,7 +865,7 @@ describe('AuthModal application phone number (AW-247)', () => {
 
   it('sends the number formatted', async () => {
     const t = setup({ signUp: vi.fn(async () => ({ session: null })) }, { initialMode: 'application' });
-    typePhone('1 205 555 0123');
+    fillApplication({ Phone: '1 205 555 0123' });
     await submit();
     expect(t.value.signUp).toHaveBeenCalledWith(expect.objectContaining({ phone: '(205) 555-0123' }));
   });
@@ -898,8 +915,7 @@ describe('AuthModal application documents (AW-085)', () => {
   };
   const apply = async (signUp) => {
     const t = setup({ signUp }, { initialMode: 'application' });
-    fireEvent.change(screen.getByLabelText('Business email'), { target: { value: 'New@Example.test' } });
-    typePhone();
+    fillApplication({ 'Business email': 'New@Example.test' });
     await choose('aw-doc-tobacco_license', license);
     await choose('aw-doc-resale_certificate', resale);
     await act(async () => { fireEvent.submit(screen.getByLabelText('Business email').closest('form')); });

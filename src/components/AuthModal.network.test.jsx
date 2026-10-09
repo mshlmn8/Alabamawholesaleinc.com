@@ -10,6 +10,22 @@ import { APPLICATION_TIMEOUT_MESSAGE, OFFLINE_MESSAGE, slowMessage } from '../li
 import { timeoutError } from '../lib/network.js';
 import { AuthModal } from './AuthModal.jsx';
 
+// Every answer the application requires (AW-173 checks them before it
+// sends; AW-091's selects start empty). `answers` replaces any, by label.
+const APPLICATION = {
+  'Your name': 'New Buyer', 'Business name': 'New Store', 'Business email': 'new@example.test', Phone: '205-555-0199',
+  Password: 'test-password-1', 'Federal EIN': '12-3456789', 'State retail tobacco license #': 'TL-TEST', 'Resale certificate #': 'RS-TEST',
+  'Store street address': '1 Test Way', City: 'Testville', ZIP: '35203',
+  'Business type': 'Smoke Shop', 'Store state': 'AL', 'Expected monthly volume': '$15K — $50K',
+};
+const fillApplication = (answers = {}) => {
+  for (const [label, value] of Object.entries({ ...APPLICATION, ...answers })) fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  for (const name of [/I agree to the Trade terms/, 'I am 21 or older']) {
+    const box = screen.getByRole('checkbox', { name });
+    if (!box.checked) fireEvent.click(box);
+  }
+};
+
 const SESSION = { access_token: 't', user: { id: 'u1', email: 'buyer@example.test' } };
 
 function setup(overrides = {}, props = {}) {
@@ -60,9 +76,7 @@ describe('AuthModal on a slow or missing connection', () => {
 
   it('says a timed-out application may have gone through: check the inbox', async () => {
     setup({ signUp: vi.fn(async () => { throw timeoutError(); }) }, { initialMode: 'application' });
-    fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'New Buyer' } });
-    // A US phone number, which the form checks before sending (AW-091).
-    fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '205-555-0199' } });
+    fillApplication();
     await act(async () => { fireEvent.submit(screen.getByLabelText('Your name').closest('form')); });
     expect(dialogAlert().textContent).toBe(APPLICATION_TIMEOUT_MESSAGE);
     // The answers stay, and the application can be sent again.

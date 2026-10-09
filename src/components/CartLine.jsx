@@ -6,7 +6,10 @@
 // estimated total either.
 //
 // The quantity is the shared QuantityInput (AW-013): typed or stepped, 1 to
-// 100,000; onSetQty(n) gets the new quantity. − stops at 1; the × removes.
+// 100,000; onSetQty(n) gets the new quantity. − stops at 1; Remove removes.
+// Remove is a worded text button at the end of the quantity row, so it
+// doesn't look like the drawer's close × just above it (AW-306); its name
+// says which line ("Remove Kite").
 //
 // A bare line (a reorder that lost its variant) keeps its quantity and is
 // given its variant right here (AW-011): a select of the product's variants
@@ -31,7 +34,8 @@
 // when only its variant went away, and can be removed.
 //
 // A product with a sell unit says what quantity 1 means ("Sold by the
-// 5-pack", AW-031) after the SKU, in both layouts.
+// 5-pack", AW-031) after the SKU, in both layouts. The line wraps between
+// its values, never inside the SKU (TextParts, AW-304).
 //
 // With showPrice (an approved buyer), a line without a price says why:
 // "Loading price…" while the buyer's prices load, "Price on request" for a
@@ -44,9 +48,9 @@ import { focusLineSoon } from '../lib/focus.js';
 import { formatMoney } from '../lib/format.js';
 import { lineTotal, priceLabel } from '../lib/pricing.js';
 import { Link } from '../lib/router.js';
-import { Icon } from './Icon.jsx';
 import { Thumb } from './Thumb.jsx';
 import { QuantityInput } from './QuantityInput.jsx';
+import { TextParts } from './TextParts.jsx';
 
 // "Set flavor": the product's variants, the ones not available disabled.
 function VariantChoice({ item: it, onChooseVariant }) {
@@ -103,7 +107,7 @@ export function CartLine({ item: it, layout = 'drawer', showPrice, pricesStatus 
         : <span className="thumb">{gone && !it.sku && !it.img ? null : <Thumb src={it.img} />}</span>}
       <span className="info">
         {linked ? <Link className="line-name" to={productPage} onClick={onChoose}>{it.name}</Link> : <b>{it.name}</b>}
-        <small>{detail.filter(Boolean).join(' · ')}</small>
+        <small><TextParts parts={detail.filter(Boolean)} /></small>
         {it.needsVariant && <small>{`${it.qty} ${it.qty === 1 ? 'unit' : 'units'} · choose a ${noun}`}</small>}
         {checkout && gone && <small className="line-flag">No longer available. Remove it to continue.</small>}
       </span>
@@ -115,7 +119,7 @@ export function CartLine({ item: it, layout = 'drawer', showPrice, pricesStatus 
         <QuantityInput className="qty" value={it.qty} onChange={(n) => onSetQty?.(n)} label={`Quantity of ${it.name}`} groupLabel={`${it.name} quantity`} />
       )}
       {priced && !it.needsVariant && <b className="line-total">{formatMoney(lineTotal(it.price, it.qty))}</b>}
-      <button className="icon-btn drawer-remove" type="button" onClick={onRemove} aria-label={`Remove ${it.name}`}><Icon name="close" /></button>
+      <button className="text-link drawer-remove" type="button" onClick={onRemove} aria-label={`Remove ${it.name}`}>Remove</button>
     </li>
   );
 }

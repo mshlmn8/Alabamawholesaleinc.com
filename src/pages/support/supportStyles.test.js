@@ -56,7 +56,7 @@ describe('help and policy nav (AW-122, AW-273)', () => {
   });
 
   it('keeps the sticky nav below a sticky header once it publishes its height', () => {
-    expect(rule(outside, '.policy-nav')).toMatchObject({ position: 'sticky', top: 'calc(var(--header-h, 0px) + 1.125rem)' });
+    expect(rule(outside, '.policy-nav')).toMatchObject({ position: 'sticky', top: 'calc(var(--header-h) + 18px)' });
   });
 
   it('lets the content column shrink and its grids fit the narrower column', () => {

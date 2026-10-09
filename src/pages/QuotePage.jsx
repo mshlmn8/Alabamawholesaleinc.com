@@ -93,8 +93,10 @@ import { CallOrEmail } from '../components/ContactLinks.jsx';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 import { CartLine } from '../components/CartLine.jsx';
 import { CartSummary } from '../components/CartSummary.jsx';
+import { EmptyState } from '../components/EmptyState.jsx';
 import { SavedLinesNotice, UnavailableNotice } from '../components/CartNotices.jsx';
 import { AccountLoading } from '../components/AccountStatus.jsx';
+import { Field, ValidatedForm } from '../components/Field.jsx';
 import { accountShipToSource, applyShipTo, clearShipTo, initialQuoteForm, phoneDigitsOk, quoteFormForAccount } from '../lib/quoteForm.js';
 import { readQuoteDraft, useQuoteDraft } from '../lib/quoteDraft.js';
 import { DELIVERY_ROUTE_STATES, DELIVERY_STATE_NOTE } from '../data/quoteRules.js';
@@ -309,6 +311,12 @@ export function QuotePage({
   // A send in progress (AW-012). The button is disabled while one runs, but a
   // fast second Enter or click can arrive before that render.
   const submittingRef = useRef(false);
+  // The form's own check (ValidatedForm, AW-173): the pattern lets through a
+  // number with too few or too many digits (AW-078), so the digits are
+  // counted too, and said under the field before anything is checked or
+  // sent. An empty phone gets the field's own 'Enter phone'.
+  const validateQuote = () => (data.phone.trim() && !phoneDigitsOk(data.phone) ? { 'quote-phone': PHONE_ERROR } : {});
+
   const handleQuoteSubmit = async (e) => {
     e.preventDefault();
     if (submittingRef.current) return;
@@ -333,14 +341,6 @@ export function QuotePage({
     }
     if (invalidQty) {
       setSubmitError(QTY_ERROR);
-      return;
-    }
-    // The pattern lets through a number with too few or too many digits
-    // (AW-078): say so at the field, before anything is checked or sent.
-    if (!phoneDigitsOk(data.phone)) {
-      setSubmitError(PHONE_ERROR);
-      setErrorField('phone');
-      e.currentTarget.elements.namedItem('phone')?.focus();
       return;
     }
     if (isOffline()) {
@@ -415,7 +415,12 @@ export function QuotePage({
   if (items.length === 0) {
     return (
       <section className="page-head is-centered">
-        <h1>{basket.empty}</h1>
+        {/* The shared empty state (AW-299), in the basket's words (AW-132);
+            its h1 takes focus when the last line goes. */}
+        <EmptyState level={1} title={basket.empty} actions={<Link className="button" to="/catalog">Browse the catalog</Link>}>
+          {`Add products, then come back to review your ${basket.noun}.`}
+        </EmptyState>
+        {/* The undo offer after "Clear all items" (AW-082). */}
         {undo && (
           <p className="notice cart-cleared">
             <span id="cart-cleared-text">{`Removed ${undo.n.toLocaleString('en-US')} ${undo.n === 1 ? 'item' : 'items'}.`}</span>
@@ -423,8 +428,6 @@ export function QuotePage({
             <button className="text-link" type="button" onClick={undoClear} aria-describedby="cart-cleared-text">Undo</button>
           </p>
         )}
-        <p>{`Add products, then come back to review your ${basket.noun}.`}</p>
-        <Link className="button" to="/catalog">Browse catalog</Link>
         {/* Why items added on a phone aren't here on a computer (AW-334). */}
         <p className="fine cart-device-note">{cartDeviceNote(signedIn)}</p>
         {legacy.length > 0 && (
@@ -479,7 +482,9 @@ export function QuotePage({
           <p className="fine cart-device-note">{cartDeviceNote(signedIn)}</p>
           </fieldset>
         </div>
-        <form onSubmit={handleQuoteSubmit} aria-labelledby="quote-form-title">
+        {/* Checked before it is sent (AW-173): each problem shows under its
+            field, and the first takes focus (src/components/Field.jsx). */}
+        <ValidatedForm onSubmit={handleQuoteSubmit} validate={validateQuote} aria-labelledby="quote-form-title">
           <h2 id="quote-form-title" className="checkout-form-title">Your details</h2>
           {/* Guests can sign in, or apply, before filling this in (AW-014). */}
           {!signedIn && (
@@ -497,32 +502,46 @@ export function QuotePage({
             <label htmlFor="quote-company-website">Company website</label>
             <input id="quote-company-website" name="company_website" type="text" tabIndex={-1} autoComplete="off" defaultValue="" />
           </div>
+          {/* Locked while a send runs (AW-194). */}
           <fieldset className="checkout-fieldset" disabled={sending}>
+          <p className="form-note">All fields are required unless marked optional.</p>
           <div className="form-grid checkout-form-grid">
-            <div><label htmlFor="quote-business">Business name</label><input id="quote-business" name="business" value={data.business} onChange={set('business')} required maxLength={200} autoComplete="organization" {...fieldProps('business')} /></div>
-            <div><label htmlFor="quote-contact">Contact name</label><input id="quote-contact" name="contact" value={data.contact} onChange={set('contact')} required maxLength={120} autoComplete="name" {...fieldProps('contact')} /></div>
-            <div><label htmlFor="quote-email">Email</label><input id="quote-email" name="email" type="email" value={data.email} onChange={set('email')} required maxLength={254} autoComplete="email" inputMode="email" {...fieldProps('email')} /></div>
-            <div><label htmlFor="quote-phone">Phone</label><input id="quote-phone" name="phone" type="tel" value={data.phone} onChange={set('phone')} required maxLength={40} pattern={String.raw`[0-9\(\)+.\-\s]{10,20}`} title={`Enter a 10-digit phone number, for example ${PHONE_EXAMPLE}`} autoComplete="tel" inputMode="tel" {...fieldProps('phone', 'quote-phone-hint')} />
-              <small className="field-hint" id="quote-phone-hint">{`10 digits, for example ${PHONE_EXAMPLE}`}</small></div>
+            <Field id="quote-business" label="Business name">
+              <input id="quote-business" name="business" value={data.business} onChange={set('business')} required maxLength={200} autoComplete="organization" {...fieldProps('business')} />
+            </Field>
+            <Field id="quote-contact" label="Contact name">
+              <input id="quote-contact" name="contact" value={data.contact} onChange={set('contact')} required maxLength={120} autoComplete="name" {...fieldProps('contact')} />
+            </Field>
+            <Field id="quote-email" label="Email">
+              <input id="quote-email" name="email" type="email" value={data.email} onChange={set('email')} required maxLength={254} autoComplete="email" inputMode="email" {...fieldProps('email')} />
+            </Field>
+            {/* Ten digits (AW-078): the pattern takes the usual characters, and
+                validateQuote counts the digits. */}
+            <Field id="quote-phone" label="Phone" hint={`10 digits, for example ${PHONE_EXAMPLE}`}>
+              <input id="quote-phone" name="phone" type="tel" value={data.phone} onChange={set('phone')} required maxLength={40} pattern={String.raw`[0-9\(\)+.\-\s]{10,20}`} title={`Enter a 10-digit phone number, for example ${PHONE_EXAMPLE}`} autoComplete="tel" inputMode="tel" {...fieldProps('phone')} />
+            </Field>
             {/* TODO(owner): Confirm guest tobacco and vape quotes may collect a license number, resale certificate, and 21+ attestation instead of requiring an approved sign-in. (AW-014) */}
             {needsLicense && (
               <>
                 <p className="full result-note" id="quote-license-note">Your quote has tobacco or vape items. Tobacco products are supplied to licensed retailers only — 21+.</p>
-                <div className="full"><label htmlFor="quote-license">State tobacco/retail license #</label><input id="quote-license" name="licenseNo" value={data.licenseNo} onChange={set('licenseNo')} required maxLength={64} autoComplete="off" {...fieldProps('licenseNo', 'quote-license-note')} /></div>
-                <div className="full"><label htmlFor="quote-resale">Sales-tax / resale certificate #</label><input id="quote-resale" name="resaleCert" value={data.resaleCert} onChange={set('resaleCert')} required maxLength={64} autoComplete="off" {...fieldProps('resaleCert', 'quote-license-note')} /></div>
-                <div className="full consent">
+                <Field id="quote-license" label="State tobacco/retail license #" full>
+                  <input id="quote-license" name="licenseNo" value={data.licenseNo} onChange={set('licenseNo')} required maxLength={64} autoComplete="off" {...fieldProps('licenseNo', 'quote-license-note')} />
+                </Field>
+                <Field id="quote-resale" label="Sales-tax / resale certificate #" full>
+                  <input id="quote-resale" name="resaleCert" value={data.resaleCert} onChange={set('resaleCert')} required maxLength={64} autoComplete="off" {...fieldProps('resaleCert', 'quote-license-note')} />
+                </Field>
+                <Field id="quote-age" label="I confirm this business holds a valid tobacco retail license and all purchasers are 21+" full inline>
                   <input id="quote-age" name="purchasers21" type="checkbox" checked={data.purchasers21} onChange={setChecked('purchasers21')} required />
-                  <label htmlFor="quote-age">I confirm this business holds a valid tobacco retail license and all purchasers are 21+</label>
-                </div>
+                </Field>
               </>
             )}
             {/* Delivery method first: will-call needs no address (AW-079). */}
-            <div className="full"><label htmlFor="quote-delivery">Delivery method</label>
+            <Field id="quote-delivery" label="Delivery method" full>
               <select id="quote-delivery" name="delivery" value={data.delivery} onChange={set('delivery')} aria-describedby={willCall ? 'quote-pickup' : undefined}>
                 <option value="delivery">{DELIVERY_LABELS.delivery}</option>
                 <option value="willcall">{DELIVERY_LABELS.willcall}</option>
               </select>
-            </div>
+            </Field>
             {willCall ? (
               <p className="full result-note" id="quote-pickup">{`Pickup at ${COMPANY.addressShort} during business hours.`}</p>
             ) : (
@@ -533,20 +552,31 @@ export function QuotePage({
                     <button className="text-link" type="button" onClick={chooseOtherAddress}>Use a different address</button>
                   </div>
                 )}
-                <div className="full"><label htmlFor="ship-street">Street</label><input id="ship-street" ref={streetRef} name="shipStreet" value={data.shipStreet} onChange={set('shipStreet')} required maxLength={200} autoComplete="street-address" {...fieldProps('shipStreet')} /></div>
-                <div><label htmlFor="ship-city">City</label><input id="ship-city" name="shipCity" value={data.shipCity} onChange={set('shipCity')} required maxLength={100} autoComplete="address-level2" {...fieldProps('shipCity')} /></div>
-                <div className="half"><label htmlFor="ship-state">State</label>
-                  <select id="ship-state" name="shipState" value={data.shipState} onChange={set('shipState')} required autoComplete="address-level1" {...fieldProps('shipState', 'ship-state-hint')}>
+                <Field id="ship-street" label="Street" full>
+                  <input id="ship-street" ref={streetRef} name="shipStreet" value={data.shipStreet} onChange={set('shipStreet')} required maxLength={200} autoComplete="street-address" {...fieldProps('shipStreet')} />
+                </Field>
+                <Field id="ship-city" label="City">
+                  <input id="ship-city" name="shipCity" value={data.shipCity} onChange={set('shipCity')} required maxLength={100} autoComplete="address-level2" {...fieldProps('shipCity')} />
+                </Field>
+                {/* State and ZIP share a row on phones (AW-241). */}
+                <Field id="ship-state" label="State" hint={DELIVERY_STATE_NOTE} className="half">
+                  <select id="ship-state" name="shipState" value={data.shipState} onChange={set('shipState')} required autoComplete="address-level1" {...fieldProps('shipState')}>
                     <option value="" disabled>Choose a state…</option>
                     {ROUTE_STATE_OPTIONS.map(({ code, name }) => <option key={code} value={code}>{name}</option>)}
                   </select>
-                  <small className="field-hint" id="ship-state-hint">{DELIVERY_STATE_NOTE}</small></div>
-                <div className="half"><label htmlFor="ship-zip">ZIP</label><input id="ship-zip" name="shipZip" value={data.shipZip} onChange={set('shipZip')} required maxLength={10} pattern="[0-9]{5}(-[0-9]{4})?" title="A 5-digit ZIP code, or ZIP+4" autoComplete="postal-code" inputMode="numeric" {...fieldProps('shipZip')} /></div>
+                </Field>
+                <Field id="ship-zip" label="ZIP" className="half">
+                  <input id="ship-zip" name="shipZip" value={data.shipZip} onChange={set('shipZip')} required maxLength={10} pattern="[0-9]{5}(-[0-9]{4})?" title="A 5-digit ZIP code, or ZIP+4" autoComplete="postal-code" inputMode="numeric" {...fieldProps('shipZip')} />
+                </Field>
               </>
             )}
             {/* TODO(owner): Which days do the routes run, and what is the cutoff for next-day delivery, so the date picker can rule out other days? (AW-078, see AW-130) */}
-            <div><label htmlFor="quote-date">Preferred date</label><input id="quote-date" name="preferredDate" type="date" value={data.preferredDate} onChange={set('preferredDate')} min={minDate} autoComplete="off" {...fieldProps('preferredDate')} /></div>
-            <div className="full"><label htmlFor="quote-notes">Notes</label><textarea id="quote-notes" name="notes" rows={4} value={data.notes} onChange={set('notes')} maxLength={2000} placeholder="Dock hours, pallet needs, substitutions…" autoComplete="off" /></div>
+            <Field id="quote-date" label="Preferred date" optional hint="Optional. Leave it blank if any day works.">
+              <input id="quote-date" name="preferredDate" type="date" className={data.preferredDate ? undefined : 'is-empty'} value={data.preferredDate} onChange={set('preferredDate')} min={minDate} autoComplete="off" {...fieldProps('preferredDate')} />
+            </Field>
+            <Field id="quote-notes" label="Notes" full optional>
+              <textarea id="quote-notes" name="notes" rows={4} value={data.notes} onChange={set('notes')} maxLength={2000} placeholder="Dock hours, pallet needs, substitutions…" autoComplete="off" />
+            </Field>
           </div>
           </fieldset>
           {/* Lines still waiting for a variant are not in the estimate (AW-103). */}
@@ -586,7 +616,7 @@ export function QuotePage({
           {/* The site notice reads "You’re offline" out; this says why the button is off. */}
           {!online && <p className="result-note quote-offline">You’re offline. Reconnect to submit.</p>}
           <p className="fine">{`Orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} qualify for free delivery on a delivery route in AL, MS & GA. Will-call is pickup at the Birmingham warehouse during business hours. Tobacco products supplied to licensed retailers only — 21+.`}</p>
-        </form>
+        </ValidatedForm>
       </div>
     </section>
   );

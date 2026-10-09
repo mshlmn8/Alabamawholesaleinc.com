@@ -8,6 +8,9 @@
 //
 // What it shows is one state, resetView() (AW-255): the page head, the body
 // and, through onViewChange, the tab title all follow it.
+//
+// A short or mismatched password is named under the field it is about, which
+// takes focus (AW-173, ValidatedForm's validate).
 
 import { useEffect, useRef, useState } from 'react';
 import { AUTH_ERROR_TEXT, friendlyAuthError } from '../../lib/authErrors.js';
@@ -15,6 +18,7 @@ import { isRateLimitError } from '../../lib/errors.js';
 import { ServiceUnavailable } from '../../components/ServiceUnavailable.jsx';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
 import { PASSWORD_MIN_LENGTH, PasswordField } from '../../components/PasswordField.jsx';
+import { ValidatedForm } from '../../components/Field.jsx';
 import { Link, useLocation } from '../../lib/router.js';
 import { PageHead } from './SupportShell.jsx';
 import { resetHead, resetView } from './resetView.js';
@@ -58,14 +62,20 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick, onSignOu
   const [othersSignedOut, setOthersSignedOut] = useState(false);
   const currentRef = useRef(null);
 
+  // A short or mismatched new password is named under its field (AW-173);
+  // an empty current password gets the field's own 'Enter current password'.
+  const validate = () => ({
+    'reset-password': password.length < PASSWORD_MIN_LENGTH ? `Choose a password with at least ${PASSWORD_MIN_LENGTH} characters.` : '',
+    'reset-confirm': (!confirm && 'Enter the new password again.') || (password !== confirm && 'The two passwords don’t match.') || '',
+  });
   // Without a reset link, the signed-in account's current password is checked
   // first (AW-349). Either way the account's other devices are signed out.
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setCurrentWrong(false);
-    if (password.length < 8) { setError('Choose a password with at least 8 characters.'); return; }
-    if (password !== confirm) { setError('The two passwords don’t match.'); return; }
+    // validate() has checked these already; a guard only.
+    if (password.length < PASSWORD_MIN_LENGTH || password !== confirm) return;
     setSaving(true);
     try {
       if (!recovery) {
@@ -171,7 +181,7 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick, onSignOu
     // link signed the account in on this device: the form says so, and
     // offers to sign out again (AW-253).
     body = (
-      <form className="reset-form" onSubmit={handleSubmit} aria-labelledby="reset-form-title" aria-describedby={recovery ? 'reset-link-hint' : undefined}>
+      <ValidatedForm className="reset-form" onSubmit={handleSubmit} validate={validate} aria-labelledby="reset-form-title" aria-describedby={recovery ? 'reset-link-hint' : undefined}>
         <p className="eyebrow">{recovery ? 'RESET LINK CONFIRMED' : 'YOUR ACCOUNT'}</p>
         <h2 id="reset-form-title">Set a new password</h2>
         <p className="reset-account">For <strong>{session.user?.email}</strong></p>
@@ -202,7 +212,7 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick, onSignOu
             </button>
           )}
         </div>
-      </form>
+      </ValidatedForm>
     );
   } else if (view === 'link-invalid') {
     const problem = linkProblem(linkError);

@@ -107,21 +107,22 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, pric
           <Link to="/catalog">Browse the catalog</Link>
         </div>
         {/* One tile per department (AW-060, AW-061): a chosen photo, then the
-            name, counts and biggest lines on a solid band, never on the photo. */}
+            name, counts and biggest lines on a solid band, never on the photo.
+            The name is the link, stretched over the tile (AW-170). */}
         <div className="dept-grid">
           {departments.map(c => {
             const photo = departmentPhoto(products, c.key);
             return (
-              <Link className="dept-tile" key={c.key} to={dept(c.key)}>
+              <div className="dept-tile" key={c.key}>
                 <div className="dept-tile-media">
                   {photo && <Picture picture={photo.picture ?? { src: photo.img }} alt="" sizes={DEPT_SIZES} />}
                 </div>
                 <div className="dept-tile-body">
-                  <h3>{c.label}</h3>
+                  <h3><Link className="dept-tile-link" to={dept(c.key)}>{c.label}</Link></h3>
                   <p className="dept-tile-count">{parts([count(c.count, 'product', 'products'), count(c.subs.length, 'product line', 'product lines')])}</p>
                   <p className="dept-tile-lines">{parts(topLines(products, c.key))}</p>
                 </div>
-              </Link>
+              </div>
             );
           })}
         </div>
@@ -149,14 +150,14 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, pric
 
       <section className="editorials" aria-label="Collections">
         {/* TODO(owner): Licensed photos for the novelties collection card and the tobacco collection card. (AW-058) */}
-        <Link className="editorial-card cream" to={dept('NOVELTIES')}>
+        <div className="editorial-card cream">
           <Picture className="bg" picture={EDITORIAL_BG.picture} alt="" aria-hidden="true" sizes={SIZES.editorial} />
           {/* TODO(owner): After legal review, which of Kratom & Kava, Mushroom Products, Detox, Wellness Pills, and Honey & Energy enhancement items should be delisted, de-featured, or kept, and may this card advertise detox and kratom? Headline kept as published. (AW-001) */}
-          <div><p className="eyebrow">EXOTICS &amp; NOVELTIES</p><h2>Disposables, detox,<br />kratom &amp; more.</h2><span className="text-link">Browse novelties</span></div>
-        </Link>
-        <Link className="editorial-card purple" to={dept('TOBACCO')}>
-          <div><p className="eyebrow">THE CORE BUSINESS</p><h2>Tobacco, wraps<br />&amp; accessories.</h2><span className="text-link">Browse tobacco</span></div>
-        </Link>
+          <div><p className="eyebrow">EXOTICS &amp; NOVELTIES</p><h2>Disposables, detox,<br />kratom &amp; more.</h2><Link className="text-link" to={dept('NOVELTIES')}>Browse novelties</Link></div>
+        </div>
+        <div className="editorial-card purple">
+          <div><p className="eyebrow">THE CORE BUSINESS</p><h2>Tobacco, wraps<br />&amp; accessories.</h2><Link className="text-link" to={dept('TOBACCO')}>Browse tobacco</Link></div>
+        </div>
       </section>
 
       <section className="section" id="apply">

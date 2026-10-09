@@ -225,11 +225,8 @@ export function ProductPage({
           {/* The tag is a chip beside the brand line, not over the photo (AW-055). */}
           <p className="pd-brand"><span>{brand ? `${brand} · ${p.sub}` : p.sub}</span>{p.tag && <span className={`card-tag${p.tag === 'NEW' ? ' new' : ''}`}>{p.tag}</span>}</p>
           <h1>{p.name}</h1>
-          <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()}${brand ? ` from ${brand}` : ''}.`}</p>
-          {p.sellUnit && <p className="pd-unit">{`Sold by the ${p.sellUnit} — quantity 1 is one ${p.sellUnit}.`}</p>}
           {/* The SKU for everyone, and the chosen variant's once there is one (AW-234). */}
           <p className="pd-sku">SKU <span>{variantSku(p.sku, selected)}</span></p>
-          <p className="pd-desc pd-fine">{`Supplied to licensed retail businesses for lawful resale. Next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
           {choiceRequired && <p id="pd-variant-label" className="pd-variant-label">{`Choose a ${axis.noun}`}</p>}
           {choiceRequired && (
             // eslint-disable-next-line jsx-a11y/interactive-supports-focus -- the radios inside take focus (roving tabindex); the group only hears their keys
@@ -262,6 +259,7 @@ export function ProductPage({
               ? <><p>Pricing unlocks when your account is approved.</p><Link className="text-link" to="/account">View approval status</Link></>
               : <><p>Wholesale prices show here for approved trade accounts.</p><button className="button ghost" type="button" onClick={onLoginClick}>Sign in to see wholesale prices</button><button className="text-link" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button></>}
           </div>
+          {p.sellUnit && <p className="pd-unit">{`Sold by the ${p.sellUnit} — quantity 1 is one ${p.sellUnit}.`}</p>}
           <div className="qty-row">
             {/* Typed or stepped, 1 to 100,000 (AW-013). */}
             <QuantityInput value={desiredQty} onChange={setDesiredQty} min={1} label={`Quantity of ${p.name} to add`} groupLabel="Quantity to add" />
@@ -269,6 +267,11 @@ export function ProductPage({
           </div>
           {qtyTotal && <p className="in-cart-note pd-line-total">{qtyTotal}</p>}
           {qty > 0 && <p className="in-cart-note"><span>{`Already in ${isApprovedBuyer ? 'order' : 'quote'}: `}</span><strong>{qty}</strong><span>{selected ? ` · ${selected}` : ''}</span></p>}
+          {/* The description and fine print after the price and the add row, so
+              those are in the first screen on a phone (AW-163); the SKU is the
+              .pd-sku line above (AW-234). */}
+          <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()}${brand ? ` from ${brand}` : ''}.`}</p>
+          <p className="pd-desc pd-fine">{`Supplied to licensed retail businesses for lawful resale. Next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
         </div>
       </div>
       {related.length > 0 && (

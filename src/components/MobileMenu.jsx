@@ -19,7 +19,7 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
   return (
     <ModalLayer onClose={onClose} className="aw-menu-layer">
       <div className="overlay" aria-hidden="true" onClick={onClose} />
-      <aside className="drawer drawer-left" role="dialog" aria-modal="true" aria-labelledby="aw-mobile-menu-title" id="aw-mobile-menu">
+      <div className="drawer drawer-left" role="dialog" aria-modal="true" aria-labelledby="aw-mobile-menu-title" id="aw-mobile-menu">
         <div className="drawer-head">
           <h2 id="aw-mobile-menu-title">Menu</h2>
           <button className="icon-btn" type="button" onClick={onClose} aria-label="Close menu"><Icon name="close" /></button>
@@ -30,7 +30,7 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
             {departments.map((c, i) => (
               <Link key={c.key} to={{ page: 'category', category: c.key }} onClick={onFollowLink} aria-current={currentFor(raw, { page: 'category', category: c.key })}>
                 <span><span className="menu-index" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span><span>{c.label}</span></span>
-                <span className="menu-count">{c.count}</span>
+                <span className="menu-count"><span>{c.count}</span><span className="sr-only"> products</span></span>
               </Link>
             ))}
             <Link className="menu-highlight" to="/catalog" onClick={onFollowLink} aria-current={currentFor(raw, '/catalog')}>View full catalog</Link>
@@ -69,7 +69,7 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
             {!user && <button className="button" type="button" onClick={go.signup}>{APPLY_LABEL}</button>}
           </div>
         </div>
-      </aside>
+      </div>
     </ModalLayer>
   );
 }

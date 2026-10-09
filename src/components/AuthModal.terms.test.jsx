@@ -22,8 +22,21 @@ function setup(initialMode = 'signin', overrides = {}) {
   return value;
 }
 const title = () => document.getElementById('auth-title').textContent;
-// A US phone number, which the application checks before sending (AW-091).
-const typePhone = () => fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '205-555-0199' } });
+// Every answer the application requires (AW-173 checks them before it
+// sends; AW-091's selects start empty). `answers` replaces any, by label.
+const APPLICATION = {
+  'Your name': 'New Buyer', 'Business name': 'New Store', 'Business email': 'new@example.test', Phone: '205-555-0199',
+  Password: 'test-password-1', 'Federal EIN': '12-3456789', 'State retail tobacco license #': 'TL-TEST', 'Resale certificate #': 'RS-TEST',
+  'Store street address': '1 Test Way', City: 'Testville', ZIP: '35203',
+  'Business type': 'Smoke Shop', 'Store state': 'AL', 'Expected monthly volume': '$15K — $50K',
+};
+const fillApplication = (answers = {}) => {
+  for (const [label, value] of Object.entries({ ...APPLICATION, ...answers })) fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  for (const name of [/I agree to the Trade terms/, 'I am 21 or older']) {
+    const box = screen.getByRole('checkbox', { name });
+    if (!box.checked) fireEvent.click(box);
+  }
+};
 const fine = () => screen.queryByText(/^21\+ licensed businesses only\./);
 
 describe('AuthModal labels (AW-131, AW-282)', () => {
@@ -56,7 +69,7 @@ describe('AuthModal labels (AW-131, AW-282)', () => {
   it('says Submitting… while the application is sent', async () => {
     let finish;
     setup('application', { signUp: vi.fn(() => new Promise((resolve) => { finish = resolve; })) });
-    typePhone();
+    fillApplication();
     act(() => { fireEvent.submit(screen.getByLabelText('Your name').closest('form')); });
     expect(screen.getByRole('button', { name: 'Submitting…' }).disabled).toBe(true);
     expect(screen.queryByText('Creating…')).toBeNull();
@@ -104,15 +117,15 @@ describe('AuthModal store state and volume (AW-282)', () => {
 
   it('sends the chosen code, and the volume as it was stored before', async () => {
     const value = setup('application');
-    fireEvent.change(state(), { target: { value: 'TX' } });
     const volume = screen.getByLabelText('Expected monthly volume');
     const options = [...volume.options].slice(1);
     expect(options.map((o) => o.textContent)).toEqual(['Under $5K', '$5K–$15K', '$15K–$50K', '$50K–$100K', '$100K+']);
     expect(options.map((o) => o.value)).toEqual(['Under $5K', '$5K — $15K', '$15K — $50K', '$50K — $100K', '$100K+']);
     // Empty until chosen (AW-091).
     expect(volume.value).toBe('');
+    fillApplication();
+    fireEvent.change(state(), { target: { value: 'TX' } });
     fireEvent.change(volume, { target: { value: '$50K — $100K' } });
-    typePhone();
     await act(async () => { fireEvent.submit(screen.getByLabelText('Your name').closest('form')); });
     expect(value.signUp).toHaveBeenCalledWith(expect.objectContaining({ state: 'TX', expected_volume: '$50K — $100K' }));
   });

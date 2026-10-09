@@ -1,6 +1,8 @@
-// Site header: utility line, masthead (menu, logo, search, account, cart),
-// the Categories mega menu and the discovery/service navigation. Below the
-// mobile breakpoint the navigation rows move into MobileMenu.
+// Site header: masthead (menu, logo, search, account, cart), the Categories
+// mega menu and the discovery/service navigation. Below the mobile
+// breakpoint the navigation rows move into MobileMenu. There is no utility
+// row (AW-153): the logo names the business, the trade bar has the Call link,
+// and the address is in the footer, Help, Contact and the phone menu.
 //
 // Every destination is a real link (AW-043); buttons are kept for actions
 // (open a dialog, sign in or out, toggle a menu).
@@ -14,10 +16,12 @@
 // new one needs the department's one name and a photo (AW-056, AW-217).
 //
 // Links to the page on screen carry aria-current (AW-221, navCurrent.js).
+//
+// Its root is a <div>: App puts it in the page's one <header> landmark, with
+// the skip link and the trade bar (AW-314).
 
 import { useState, useEffect, useRef } from 'react';
 import { IMG } from '../data/theme.js';
-import { COMPANY } from '../data/content.js';
 import { APPLY_LABEL, SIGN_IN_LABEL, basketBadge, basketButtonLabel, basketTerms } from '../data/terms.js';
 import { useMediaQuery, MOBILE_QUERY } from '../lib/useMediaQuery.js';
 import { Link, navigate, useRoute } from '../lib/router.js';
@@ -127,11 +131,7 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
   const accountName = user ? (user.business || user.name || '') : '';
 
   return (
-    <header className="aw-header container">
-      <div className="aw-utility">
-        <span>ALABAMA WHOLESALE INC.</span>
-        <span>{COMPANY.addressShort} · <a href={`tel:${COMPANY.phoneRaw}`}>{COMPANY.phone}</a></span>
-      </div>
+    <div className="aw-header container">
       <div className="aw-masthead">
         <button className="aw-menu-toggle" type="button" aria-label="Menu" aria-expanded={menuOpen} aria-controls={menuOpen ? 'aw-mobile-menu' : undefined}
                 onClick={() => setMenuOpen(true)}>
@@ -195,7 +195,7 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
           <Icon name="grid" />Categories<Icon name="chevron-down" className="aw-chevron" />
         </button>
         {megaOpen && (
-          <section className="aw-mega-menu" id="aw-mega-menu" aria-labelledby="aw-menu-heading" ref={megaMenuRef} onBlur={onMegaBlur}>
+          <div className="aw-mega-menu" id="aw-mega-menu" ref={megaMenuRef} onBlur={onMegaBlur}>
             <div className="aw-menu-heading">
               <div><p className="eyebrow">WHOLESALE CATALOG</p><h2 id="aw-menu-heading">Browse by department.</h2></div>
               <button className="icon-btn" type="button" aria-label="Close categories" onClick={closeMega}><Icon name="close" /></button>
@@ -217,7 +217,7 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
               <Link to="/catalog" onClick={closeMenus} aria-current={currentFor(raw, '/catalog')}>View full catalog</Link>
               <span>{`${departments.length} departments · ${products.length} products`}</span>
             </div>
-          </section>
+          </div>
         )}
         <nav className="aw-discovery-nav" aria-label="Main navigation">
           <Link to="/#new-arrivals" onClick={closeMenus}><span className="aw-new-dot" aria-hidden="true"></span>New arrivals</Link>
@@ -230,6 +230,6 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
           <button type="button" onClick={() => runNav(onHelp)}>Help <Icon name="help" /></button>
         </div>
       </div>
-    </header>
+    </div>
   );
 }

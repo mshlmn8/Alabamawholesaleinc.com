@@ -40,10 +40,12 @@ import { catalogNotices } from './lib/catalogNotices.js';
 import { offlineNotices } from './lib/offlineNotice.js';
 import { useOnlineStatus } from './lib/useOnlineStatus.js';
 import { announce } from './lib/announce.js';
+import { useStickyHeader } from './lib/stickyHeader.js';
 import { AgeGate } from './components/AgeGate.jsx';
 import { TradeBar } from './components/TradeBar.jsx';
 import { Header } from './components/Header.jsx';
 import { Footer } from './components/Footer.jsx';
+import { PrintLetterhead } from './components/PrintLetterhead.jsx';
 import { CartDrawer } from './components/CartDrawer.jsx';
 import { HelpDialog } from './components/HelpDialog.jsx';
 import { ModalLayer } from './components/ModalLayer.jsx';
@@ -82,6 +84,17 @@ const CATALOG_KINDS = ['product', 'department', 'line'];
 // Sign Out leads home, and its notice shows there.
 const SIGNED_OUT_PAGE = '/';
 const SIGNED_OUT_PAGE_KEY = pageKeyFor({ pathname: SIGNED_OUT_PAGE });
+
+// The skip link (AW-166) focuses <main> and brings it into view, as following
+// '#main' would, but leaves the address alone: the router reads a hash as an
+// anchor on the page.
+const skipToMain = (event) => {
+  event.preventDefault();
+  const main = document.getElementById('main');
+  if (!main) return;
+  main.focus({ preventScroll: true });
+  main.scrollIntoView?.({ block: 'start' });
+};
 
 export default function App() {
   const age = useAgeGate();
@@ -209,6 +222,10 @@ export default function App() {
   useEffect(() => {
     applyPageMeta(pageMeta(metaRoute, products, departments));
   }, [metaRoute, products, departments]);
+  // The sticky header's height (AW-153), measured before paint and before the
+  // page-change scroll, which lands anchors below it (scroll-margin-top).
+  const siteHeaderRef = useRef(null);
+  useStickyHeader(siteHeaderRef);
   // Scroll, focus and announcement on page changes (after the title is set).
   useNavigationEffects();
 
@@ -423,15 +440,23 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <TradeBar signedIn={!!session} onApplyClick={openSignup} />
+      {/* On paper only, above the page, in place of the header (AW-148). */}
+      <PrintLetterhead />
+      {/* The page's one banner landmark (AW-314): the skip link, first in the
+          tab order (AW-166), the trade bar and the header. On tall wide
+          windows it sticks, its trade bar scrolled away (AW-153). */}
+      <header className="site-header" ref={siteHeaderRef}>
+        <a className="skip-link" href="#main" onClick={skipToMain}>Skip to main content</a>
+        <TradeBar signedIn={!!session} onApplyClick={openSignup} />
 
-      <Header
-        cartCount={cart.count} onCart={() => setCartOpen(true)}
-        products={products} departments={departments}
-        user={user} isAdmin={isAdmin} isApprovedBuyer={isApprovedBuyer} adminUnseen={adminUnseen}
-        onLoginClick={openSignin} onSignupClick={openSignup} onLogout={signOutHere} signingOut={signingOut}
-        onHelp={() => setHelpOpen(true)}
-      />
+        <Header
+          cartCount={cart.count} onCart={() => setCartOpen(true)}
+          products={products} departments={departments}
+          user={user} isAdmin={isAdmin} isApprovedBuyer={isApprovedBuyer} adminUnseen={adminUnseen}
+          onLoginClick={openSignin} onSignupClick={openSignup} onLogout={signOutHere} signingOut={signingOut}
+          onHelp={() => setHelpOpen(true)}
+        />
+      </header>
 
       {/* tabIndex -1: the fallback focus target after a page change (AW-041). */}
       <main className="container" id="main" tabIndex={-1}>
