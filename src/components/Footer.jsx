@@ -13,12 +13,28 @@
 // on the owner), so Help stands in for one. The blurb names every
 // department, from the catalog. The licensed-only statement is LICENSED_ONLY,
 // the same words as the trade-only strip, and the year is the current one.
+//
+// AW-305, LEFT-4: on phones (FOOTER_FOLD_QUERY, the CSS's phone block) the
+// Departments list folds behind its heading, a <details> whose summary is the
+// h2, so the footer is about two-thirds of a screen rather than one and a
+// half. Every link is still there, one tap or Enter away. Wider screens get
+// the plain heading and the open list. The columns carry classes so the CSS
+// can put the contact details beside the longer list (index.css).
 
-import { COMPANY, LICENSED_ONLY } from '../data/content.js';
+import { COMPANY, HOURS, LICENSED_ONLY, TIME_ZONE_LABEL, hoursRange } from '../data/content.js';
 import { APPLY_LABEL, SIGN_IN_LABEL, TRADE_ACCOUNT_LABEL } from '../data/terms.js';
 import { Link, useRoute } from '../lib/router.js';
 import { currentFor } from '../lib/navCurrent.js';
+import { useMediaQuery } from '../lib/useMediaQuery.js';
+import { EmailText } from './ContactLinks.jsx';
+import { Icon } from './Icon.jsx';
 import { NicotineWarning } from './NicotineWarning.jsx';
+
+// The phone layout, where Departments folds: the same condition as the
+// footer's phone block in src/index.css (styles.test.js checks they match).
+export const FOOTER_FOLD_QUERY = '(max-width: 37.5em)';
+
+const NBSP = '\u00A0';
 
 // The copyright year, read once when the module loads: render may not read
 // the clock (react-hooks/purity).
@@ -51,6 +67,15 @@ export function footerBlurb(departments) {
 export function Footer({ departments, signedIn = false, onLoginClick, onApplyClick, onHelp }) {
   const { raw } = useRoute();
   const current = (to) => currentFor(raw, to);
+  const fold = useMediaQuery(FOOTER_FOLD_QUERY);
+  const shopLinks = (
+    <>
+      <Link className="footer-link" to="/catalog" aria-current={current('/catalog')}>All products</Link>
+      {departments.map(c => <Link key={c.key} className="footer-link" to={{ page: 'category', category: c.key }} aria-current={current({ page: 'category', category: c.key })}>{`${c.label} (${c.count})`}</Link>)}
+      <Link className="footer-link" to="/#new-arrivals">New arrivals</Link>
+      <Link className="footer-link" to="/#bestsellers">Bestsellers</Link>
+    </>
+  );
   return (
     <footer className="footer-main">
       <div className="container">
@@ -59,14 +84,15 @@ export function Footer({ departments, signedIn = false, onLoginClick, onApplyCli
             <span>Alabama</span><small>WHOLESALE INC.</small>
             <p>{footerBlurb(departments)}</p>
           </div>
-          <div>
-            <h2>Departments</h2>
-            <Link className="footer-link" to="/catalog" aria-current={current('/catalog')}>All products</Link>
-            {departments.map(c => <Link key={c.key} className="footer-link" to={{ page: 'category', category: c.key }} aria-current={current({ page: 'category', category: c.key })}>{`${c.label} (${c.count})`}</Link>)}
-            <Link className="footer-link" to="/#new-arrivals">New arrivals</Link>
-            <Link className="footer-link" to="/#bestsellers">Bestsellers</Link>
-          </div>
-          <div>
+          {fold
+            ? (
+              <details className="footer-departments footer-fold">
+                <summary><h2>Departments</h2><Icon name="plus" className="fold-plus" /><Icon name="minus" className="fold-minus" /></summary>
+                {shopLinks}
+              </details>
+            )
+            : <div className="footer-departments"><h2>Departments</h2>{shopLinks}</div>}
+          <div className="footer-account">
             <h2>Account &amp; help</h2>
             {signedIn
               ? <Link className="footer-link" to="/account" aria-current={current('/account')}>My account</Link>
@@ -83,8 +109,10 @@ export function Footer({ departments, signedIn = false, onLoginClick, onApplyCli
           <div className="footer-contact">
             <h2>Contact</h2>
             <p>{COMPANY.addressLine1}<br />{COMPANY.addressLine2}</p>
-            <p><a href={`tel:${COMPANY.phoneRaw}`}>{COMPANY.phone}</a><br /><a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a></p>
-            <p>{COMPANY.hoursLine1}<br />{COMPANY.hoursLine2}</p>
+            <p><a href={`tel:${COMPANY.phoneRaw}`}>{COMPANY.phone}</a><br /><a href={`mailto:${COMPANY.email}`}><EmailText /></a></p>
+            {/* In the narrow phone column the email breaks after the '@' and
+                each line of hours after its days, never inside the times. */}
+            <p>{HOURS.map((row) => <span className="footer-hours" key={row.days}><span>{row.days}</span> <span>{`${hoursRange(row)}${NBSP}${TIME_ZONE_LABEL}`}</span></span>)}</p>
           </div>
         </div>
         <div className="footer-legal">

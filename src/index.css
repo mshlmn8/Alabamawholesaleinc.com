@@ -1598,6 +1598,18 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .footer-brand > span { font: 700 1.625rem/1 var(--body); letter-spacing: -.075rem; color: var(--orange); display: block; }
 .footer-brand > small { font: 700 var(--text-xs)/1.4 var(--body); letter-spacing: var(--track-eyebrow); color: var(--on-dark-muted); display: block; margin-top: 6px; }
 .footer-brand p { margin-top: 1rem; }
+/* A line of opening hours each (AW-305). */
+.footer-hours { display: block; }
+/* Phones (AW-305, LEFT-4): Departments folds behind its heading, a <details>
+   that Footer.jsx renders only at its FOOTER_FOLD_QUERY. The summary is the
+   h2 plus the +/- box the SKU lists use: a 44px target whose label sits on
+   the line of the Account & help heading beside it (the negative margin
+   takes the extra height out of the gap above). */
+.footer-fold > summary { display: flex; align-items: center; gap: 10px; min-height: var(--tap); margin-top: calc((var(--text-xs) - var(--tap)) / 2); color: var(--on-dark-muted); cursor: pointer; list-style: none; }
+.footer-fold > summary::-webkit-details-marker { display: none; }
+.footer-grid .footer-fold > summary h2 { margin: 0; }
+.footer-fold > summary .icon { width: 1.25rem; height: 1.25rem; padding: 1px; border: 1px solid var(--on-dark-line); }
+.footer-fold[open] > summary .fold-plus, .footer-fold:not([open]) > summary .fold-minus { display: none; }
 .footer-legal { border-top: 1px solid var(--purple-hover); margin-top: 30px; padding: 18px 0 24px; display: flex; justify-content: space-between; align-items: center; gap: 20px; font-size: var(--text-xs); color: var(--on-dark-subtle); flex-wrap: wrap; }
 .footer-legal p { margin: 0; }
 /* The FDA nicotine warning band (PR #12): white, full size. */
@@ -2017,8 +2029,12 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .qr-row > .button { grid-column: 3; grid-row: 1; }
   .qr-status { grid-column: 1 / -1; min-height: 0; }
   .qr-status:empty { display: none; }
-  /* Two link columns under the brand row (AW-219). */
+  /* Two link columns under the brand row (AW-219), and the contact details
+     under Account & help, beside the longer Departments list, where they
+     used to leave half a row empty (AW-305). */
   .footer-grid { grid-template-columns: 1fr 1fr; }
+  .footer-departments { grid-row: span 2; }
+  .footer-contact { grid-column: 2; }
 }
 @media (max-width: 37.5em) {
   .home-hero-copy { padding: 24px; }
@@ -2062,11 +2078,11 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .dept-tile h3 { font-size: 1.25rem; }
   .editorials { grid-template-columns: 1fr; gap: 16px; }
   .editorial-card { padding: 24px; }
-  /* Two columns of links between the brand and the contact details, which
-     span both: about 350px shorter at 390 (AW-305), the links still 44px
-     rows. Never three (34%), and one where a column would be narrower than
-     8.25rem, so large text on a small phone gets the single column. */
-  .footer-grid { grid-template-columns: repeat(auto-fit, minmax(max(8.25rem, 34%), 1fr)); gap: 24px 16px; }
+  /* One column under 21.25em (a small phone, or large text); two from
+     there, in the block after this one (AW-305). Departments is folded here
+     (Footer.jsx). */
+  .footer-grid { grid-template-columns: minmax(0, 1fr); gap: 24px 16px; }
+  .footer-departments { grid-row: auto; }
   .footer-brand, .footer-contact { grid-column: 1 / -1; }
   .footer-main { padding: 32px 0 0; }
   .footer-legal { flex-direction: column; align-items: flex-start; gap: 8px; padding-bottom: 20px; }
@@ -2088,6 +2104,19 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
      line (in the breadcrumb and the pills) to screen readers (AW-158). The
      row is sticky, so this stays inside it. */
   .result-scope { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+}
+/* The phone footer in two columns (AW-305, LEFT-4), from 21.25em, where a
+   column (about 9rem) holds the email's first part and a line of hours
+   unbroken: the folded Departments heading with the contact details under
+   it, beside Account & help. The last row takes the rest of Account & help's
+   height, so the contact details sit right under the heading; opened, the
+   department links push them down. About 840px tall at 360 and 390, the
+   links still 44px rows on touch. */
+@media (min-width: 21.25em) and (max-width: 37.5em) {
+  .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto auto 1fr; }
+  .footer-departments { grid-area: 2 / 1; }
+  .footer-account { grid-area: 2 / 2 / span 2; }
+  .footer-contact { grid-area: 3 / 1; }
 }
 /* Short screens, such as a phone in landscape (AW-245): less padding, a
    smaller title and the backdrop's full height, so the sign-in form's fields

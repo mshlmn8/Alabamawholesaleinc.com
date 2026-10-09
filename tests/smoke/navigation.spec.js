@@ -25,6 +25,15 @@ function trackErrors(page) {
   return errors;
 }
 
+// On phones the footer's Departments list is folded behind its heading
+// (AW-305, LEFT-4): open it before using one of its links.
+async function openFooterDepartments(page) {
+  const fold = page.locator('footer details.footer-fold');
+  if (!(await fold.count())) return;
+  if (!(await fold.evaluate((d) => d.open))) await fold.locator('summary').click();
+  await expect(fold).toHaveJSProperty('open', true);
+}
+
 test.beforeEach(async ({ context }) => {
   await context.route('**/*', (route) => (isLocal(route.request().url()) ? route.continue() : route.abort()));
   await serveCatalog(context);
@@ -77,9 +86,11 @@ test('the header and footer mark the page on screen (AW-221)', async ({ page }, 
   const phone = testInfo.project.name === 'phone';
   const footerDept = page.locator('footer').getByRole('link', { name: /^Novelties & Vapes \(\d+\)$/ });
   await page.goto('/category/novelties');
+  await openFooterDepartments(page);
   await expect(footerDept).toHaveAttribute('aria-current', 'page');
   if (!phone) await expect(page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Exotics' })).toHaveAttribute('aria-current', 'page');
   await page.goto('/category/novelties/disposable-vapes');
+  await openFooterDepartments(page);
   await expect(footerDept).toHaveAttribute('aria-current', 'true');
   if (phone) {
     await page.getByRole('button', { name: 'Menu' }).click();
@@ -92,6 +103,46 @@ test('the header and footer mark the page on screen (AW-221)', async ({ page }, 
   await page.goto('/terms');
   await expect(page.locator('footer').getByRole('link', { name: 'Trade terms' })).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('footer [aria-current]')).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
+
+// The footer (AW-305, LEFT-4): on a phone at most 900px tall, Departments
+// folded behind its heading and every one of its links there once it is
+// opened; at tablet width the contact details sit beside the longer
+// Departments list instead of leaving half a row empty. The FDA statement
+// stays the last band.
+test('the phone footer is under 900px with Departments folded, and the tablet footer leaves no empty half-row (AW-305)', async ({ page }, testInfo) => {
+  const errors = trackErrors(page);
+  const footer = page.locator('footer');
+  const height = () => footer.evaluate((f) => f.getBoundingClientRect().height);
+  if (testInfo.project.name === 'phone') {
+    for (const size of [{ width: 360, height: 740 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(size);
+      await page.goto('/');
+      const fold = footer.locator('details.footer-fold');
+      await expect(fold.locator('summary h2')).toHaveText('Departments');
+      await expect(fold).toHaveJSProperty('open', false);
+      expect(await height(), `${size.width}`).toBeLessThanOrEqual(900);
+      await expect(footer.getByRole('link', { name: 'All products' })).toBeHidden();
+      // Every link is one tap away.
+      await fold.locator('summary').click();
+      await expect(fold.getByRole('link')).toHaveCount(await fold.locator('a').count());
+      await expect(fold.getByRole('link', { name: 'All products' })).toBeVisible();
+      await expect(fold.getByRole('link', { name: /^Tobacco \(\d+\)$/ })).toBeVisible();
+      await expect(fold.getByRole('link', { name: 'Bestsellers' })).toBeVisible();
+      expect(await footer.evaluate((f) => f.lastElementChild.className)).toBe('fda-note');
+    }
+  } else {
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await page.goto('/');
+    await expect(footer.locator('details')).toHaveCount(0);
+    const box = (selector) => footer.locator(selector).evaluate((el) => el.getBoundingClientRect().toJSON());
+    const [lastShopLink, account, contact] = [await box('.footer-departments a:last-child'), await box('.footer-account'), await box('.footer-contact')];
+    // Under Account & help, beside the Departments links.
+    expect(contact.left).toBe(account.left);
+    expect(contact.top).toBeGreaterThan(account.bottom);
+    expect(contact.top).toBeLessThan(lastShopLink.bottom);
+  }
   expect(errors).toEqual([]);
 });
 
@@ -153,6 +204,7 @@ test('Forward onto a dialog Back closed leaves no dead stop: the next Back leave
   const errors = trackErrors(page);
   await page.goto('/category/tobacco');
   await expect(page.getByRole('heading', { level: 1, name: 'Tobacco' })).toBeVisible();
+  await openFooterDepartments(page);
   await page.locator('footer').getByRole('link', { name: /^Candies \(\d+\)$/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Candies' })).toBeVisible();
   await page.getByRole('button', { name: 'Sign in', exact: true }).first().click();

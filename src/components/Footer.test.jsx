@@ -1,12 +1,14 @@
 // The footer's column headings follow the page's h1 and h2 in order (AW-313),
-// the contact column is marked for the phone layout that spans it (AW-305),
+// the columns are marked for the phone layout that places them (AW-305), on
+// phones Departments folds behind its heading (AW-305, LEFT-4),
 // and the /shipping link is the delivery policy, not a second "Delivery"
 // beside "Delivery & service area" (AW-316).
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { COMPANY, HOURS } from '../data/content.js';
 import { PRODUCTS } from '../data/products.js';
 import { departmentsFor } from '../lib/departments.js';
-import { Footer, footerBlurb } from './Footer.jsx';
+import { FOOTER_FOLD_QUERY, Footer, footerBlurb } from './Footer.jsx';
 
 const noop = () => {};
 const renderFooter = () => render(<Footer departments={departmentsFor(PRODUCTS)} onLoginClick={noop} onApplyClick={noop} />);
@@ -36,6 +38,66 @@ describe('Footer', () => {
     ]);
     expect(screen.getByRole('link', { name: 'Delivery & service area' }).getAttribute('href')).toBe('/delivery');
     expect(screen.queryByRole('link', { name: 'Delivery' })).toBeNull();
+  });
+});
+
+// Phones (AW-305, LEFT-4): Departments is a <details> whose summary is the
+// h2, closed until it is opened, with every link inside; wider screens get the
+// plain heading. The email breaks after the '@', and each line of hours after
+// its days, in the narrow phone column.
+describe('Footer on phones (AW-305, LEFT-4)', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const phone = (matches) => vi.stubGlobal('matchMedia', (query) => ({
+    matches: matches && query === FOOTER_FOLD_QUERY, media: query, addEventListener: () => {}, removeEventListener: () => {},
+  }));
+  const shopLinks = (root) => [...root.querySelectorAll('a')].map((a) => a.textContent);
+
+  it('folds Departments behind its heading, closed, with the same links inside', () => {
+    phone(false);
+    const { unmount } = renderFooter();
+    const open = shopLinks(screen.getByRole('heading', { name: 'Departments' }).parentElement);
+    expect(document.querySelector('footer details')).toBeNull();
+    unmount();
+
+    phone(true);
+    renderFooter();
+    const heading = screen.getByRole('heading', { level: 2, name: 'Departments' });
+    const summary = heading.parentElement;
+    const details = summary.parentElement;
+    expect(summary.tagName).toBe('SUMMARY');
+    expect(summary.firstElementChild).toBe(heading);
+    expect(details.tagName).toBe('DETAILS');
+    expect(details.className).toBe('footer-departments footer-fold');
+    expect(details.open).toBe(false);
+    expect(shopLinks(details)).toEqual(open);
+    expect(open).toHaveLength(departmentsFor(PRODUCTS).length + 3);
+    // The same headings, in the same order.
+    expect(within(screen.getByRole('contentinfo')).getAllByRole('heading').map((h) => h.textContent)).toEqual(['Departments', 'Account & help', 'Contact']);
+    fireEvent.click(summary);
+    expect(details.open).toBe(true);
+  });
+
+  it('marks Account & help by class too, so the phone grid can place it', () => {
+    renderFooter();
+    expect(screen.getByRole('heading', { name: 'Account & help' }).parentElement.className).toBe('footer-account');
+    expect(screen.getByRole('heading', { name: 'Departments' }).parentElement.className).toBe('footer-departments');
+  });
+
+  it('breaks the email after the @ and each line of hours after its days, never inside the times', () => {
+    renderFooter();
+    const contact = screen.getByRole('heading', { name: 'Contact' }).parentElement;
+    const email = within(contact).getByRole('link', { name: COMPANY.email });
+    expect(email.getAttribute('href')).toBe(`mailto:${COMPANY.email}`);
+    expect(email.querySelector('wbr')).toBeTruthy();
+    const lines = [...contact.querySelectorAll('.footer-hours')];
+    expect(lines.map((l) => l.textContent.replace(/[\u00A0\u2060]/g, (c) => (c === '\u2060' ? '' : ' ')))).toEqual(HOURS.map((row) => COMPANY[`hoursLine${HOURS.indexOf(row) + 1}`].replace(/[\u00A0\u2060]/g, (c) => (c === '\u2060' ? '' : ' '))));
+    for (const line of lines) {
+      const [days, times] = line.children;
+      expect(days.textContent).not.toMatch(/ /);
+      // The only ordinary space is the one between the days and the times.
+      expect(times.textContent).not.toMatch(/ /);
+      expect(line.textContent.split(' ')).toHaveLength(2);
+    }
   });
 });
 

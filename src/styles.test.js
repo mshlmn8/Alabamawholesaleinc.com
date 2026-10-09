@@ -1166,13 +1166,18 @@ describe('one empty state, and a cart drawer that keeps room for its lines (AW-2
   });
 });
 
-// The footer (AW-305, AW-313): h2 column labels in the footer's own small
-// capitals, and on phones two columns of links between the brand and the
-// contact details.
+// The footer (AW-305, AW-313, LEFT-4): h2 column labels in the footer's own
+// small capitals; on phones Departments folds behind its heading and sits
+// with the contact details beside Account & help, one column for a small
+// phone or large text; between phones and 1100px the contact details sit
+// under Account & help, beside the longer Departments list.
 describe('the footer columns and their headings (AW-305, AW-313)', () => {
   const rule = (selector) => declarations(rules(css).find((r) => r.selectors.join(', ') === selector)?.body ?? '');
   const phone = () => mediaBlocks(css).filter((b) => b.prelude === '(max-width: 37.5em)').flatMap((b) => rules(b.body));
   const onPhone = (selector) => phone().filter((r) => r.selectors.join(', ') === selector).map((r) => declarations(r.body));
+  const TWO_ON_PHONE = '(min-width: 21.25em) and (max-width: 37.5em)';
+  const inBlocks = (prelude, selector) => mediaBlocks(css).filter((b) => b.prelude === prelude)
+    .flatMap((b) => rules(b.body)).filter((r) => r.selectors.join(', ') === selector).map((r) => declarations(r.body));
 
   it('styles the column labels as h2s, with their own font over the page heading size', () => {
     expect(rule('.footer-grid h2')).toMatchObject({ font: '700 var(--text-xs)/1 var(--body)', 'letter-spacing': 'var(--track-eyebrow)', 'text-transform': 'uppercase', margin: '0 0 12px' });
@@ -1181,13 +1186,41 @@ describe('the footer columns and their headings (AW-305, AW-313)', () => {
     expect(code(read('src/components/Footer.jsx'))).not.toMatch(/<h[3-6]\b/);
   });
 
-  it('puts the links in two columns on phones, the brand and the contact details across both, one with large text', () => {
-    // At most two (34%), and one where a column would be under 8.25rem: large text.
-    expect(onPhone('.footer-grid')).toEqual([{ 'grid-template-columns': 'repeat(auto-fit, minmax(max(8.25rem, 34%), 1fr))', gap: '24px 16px' }]);
+  it('puts the phone footer in one column, and in two from 21.25em: the folded Departments over the contact details, beside Account & help', () => {
+    // One column: a small phone, or large text (the em follows the text size).
+    expect(onPhone('.footer-grid')).toEqual([{ 'grid-template-columns': 'minmax(0, 1fr)', gap: '24px 16px' }]);
     expect(onPhone('.footer-brand, .footer-contact')).toEqual([{ 'grid-column': '1 / -1' }]);
-    // The contact column is found by its class, not by its place among the columns.
-    expect(code(read('src/components/Footer.jsx'))).toMatch(/<div className="footer-contact">\s*<h2>Contact<\/h2>/);
+    // The compact layout's span is undone, or it would leave an empty row.
+    expect(onPhone('.footer-departments')).toEqual([{ 'grid-row': 'auto' }]);
+    // Two: the last row takes the rest of Account & help's height, so the
+    // contact details stay right under the Departments heading.
+    expect(inBlocks(TWO_ON_PHONE, '.footer-grid')).toEqual([{ 'grid-template-columns': 'repeat(2, minmax(0, 1fr))', 'grid-template-rows': 'auto auto 1fr' }]);
+    expect(inBlocks(TWO_ON_PHONE, '.footer-departments')).toEqual([{ 'grid-area': '2 / 1' }]);
+    expect(inBlocks(TWO_ON_PHONE, '.footer-account')).toEqual([{ 'grid-area': '2 / 2 / span 2' }]);
+    expect(inBlocks(TWO_ON_PHONE, '.footer-contact')).toEqual([{ 'grid-area': '3 / 1' }]);
+    const blocks = mediaBlocks(css);
+    const at = (prelude, text) => blocks.find((b) => b.prelude === prelude && b.body.includes(text)).start;
+    expect(at(TWO_ON_PHONE, '.footer-grid')).toBeGreaterThan(at('(max-width: 37.5em)', '.footer-grid'));
+    // The columns are found by their classes, not by their place in the grid.
+    const footer = code(read('src/components/Footer.jsx'));
+    expect(footer).toMatch(/<div className="footer-contact">\s*<h2>Contact<\/h2>/);
+    expect(footer).toMatch(/<div className="footer-account">\s*<h2>Account &amp; help<\/h2>/);
     expect(css).not.toMatch(/\.footer-grid > div:last-child/);
+  });
+
+  it('places the contact details under Account & help in the two-column compact layout, beside the longer Departments list', () => {
+    expect(inBlocks(MOBILE_QUERY, '.footer-departments')).toEqual([{ 'grid-row': 'span 2' }]);
+    expect(inBlocks(MOBILE_QUERY, '.footer-contact')).toEqual([{ 'grid-column': '2' }]);
+  });
+
+  it('folds Departments on phones only, under the same condition as the phone block, behind a 44px summary that is its h2', () => {
+    const footer = code(read('src/components/Footer.jsx'));
+    expect(footer).toMatch(/export const FOOTER_FOLD_QUERY = '\(max-width: 37\.5em\)';/);
+    expect(footer).toMatch(/<details className="footer-departments footer-fold">\s*<summary><h2>Departments<\/h2>/);
+    expect(rule('.footer-fold > summary')).toMatchObject({ display: 'flex', 'min-height': 'var(--tap)', 'margin-top': 'calc((var(--text-xs) - var(--tap)) / 2)', 'list-style': 'none' });
+    expect(rule('.footer-fold > summary::-webkit-details-marker')).toEqual({ display: 'none' });
+    expect(rule('.footer-grid .footer-fold > summary h2')).toEqual({ margin: '0' });
+    expect(rule('.footer-fold[open] > summary .fold-plus, .footer-fold:not([open]) > summary .fold-minus')).toEqual({ display: 'none' });
   });
 });
 
@@ -1734,9 +1767,10 @@ describe('footer columns and Help (AW-219, AW-220)', () => {
     expect(own(narrow, '.footer-brand')).toEqual({ 'grid-column': '1 / -1' });
     expect(own(narrow, '.footer-brand p')).toEqual({ 'max-width': '68ch' });
     expect(own(inBlock(MOBILE_QUERY), '.footer-grid')).toEqual({ 'grid-template-columns': '1fr 1fr' });
-    // AW-305: a shorter phone footer, with an em-based floor so large text
-    // falls back to one column.
-    expect(own(inBlock('(max-width: 37.5em)'), '.footer-grid')).toMatchObject({ 'grid-template-columns': 'repeat(auto-fit, minmax(max(8.25rem, 34%), 1fr))' });
+    // AW-305: a shorter phone footer: one column, and two from an em-based
+    // width, so large text falls back to one (the block after).
+    expect(own(inBlock('(max-width: 37.5em)'), '.footer-grid')).toMatchObject({ 'grid-template-columns': 'minmax(0, 1fr)' });
+    expect(own(inBlock('(min-width: 21.25em) and (max-width: 37.5em)'), '.footer-grid')).toMatchObject({ 'grid-template-columns': 'repeat(2, minmax(0, 1fr))' });
     // The compact rule comes after the 1100px one, and the phone rule after both.
     const at = (prelude, text) => blocks.find((b) => b.prelude === prelude && b.body.includes(text)).start;
     expect(at(MOBILE_QUERY, '.footer-grid')).toBeGreaterThan(at('(max-width: 68.75em)', '.footer-grid'));
