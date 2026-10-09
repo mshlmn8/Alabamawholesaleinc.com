@@ -825,6 +825,8 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .admin-search { max-width: 420px; margin-bottom: 8px; }
 .doc-summary { margin: 0 0 12px; font-size: var(--text-base); font-weight: 600; color: var(--purple); }
 .doc-summary:empty { margin: 0; }
+/* A list that didn't load (AW-195): the alert takes the summary's place. */
+.doc-summary + .form-error { margin: 0 0 12px; }
 .doc-status .doc-view { margin-left: 8px; }
 .doc-status[data-document-status="uploaded"] { font-weight: 600; color: var(--purple); }
 /* An uploaded document's status starts with the check icon (drawn, AW-293). */

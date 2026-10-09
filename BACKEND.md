@@ -133,7 +133,9 @@ The first migration creates four tables — `profiles`, `products`, `orders`,
 application columns and `profile_documents`. RLS is enabled on all of them.
 
 `20260927180000_application_documents.sql` also creates a **private** Storage
-bucket named `application-documents` (PDF, JPG, PNG, and HEIC, 10 MB maximum).
+bucket named `application-documents` (PDF, JPG or PNG, 10 MB maximum; the
+bucket still allows HEIC/HEIF, so files sent before the site stopped offering
+them still open, AW-347).
 Confirm in **Storage** that the bucket is not public. No extra environment
 variables. Applicants may upload a state retail tobacco license and a resale
 certificate from the application form once they have a session, or later from
@@ -146,6 +148,17 @@ in the bucket and in `profile_document_history`
 can delete proof. Since `20261009140000_profile_and_document_boundaries.sql`
 files and rows must use that layout, and an account can upload at most 10
 files in 24 hours.
+
+The site checks what a file is before it uploads it (AW-347): its first bytes
+must be a PDF, JPEG or PNG that matches its extension, so a program or web page
+renamed `license.pdf` is refused in the browser. That check runs only in the
+browser. Storage checks only the type the upload declares, and SQL can't read
+an object's bytes, so a request made outside the site can still store a
+disguised file under the applicant's own folder. Staff open these files from
+untrusted applicants: open them in the browser's viewer (the View link), not
+in a desktop program. Closing the gap needs an Edge Function that reads each
+new object's first bytes on upload and removes the ones that don't match; it
+isn't built.
 
 A trigger on `auth.users` auto-creates a `profiles` row on signup. **Every
 signup starts as `customer` / `pending`.** Public signup never creates an

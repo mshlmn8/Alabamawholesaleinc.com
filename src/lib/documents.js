@@ -15,32 +15,36 @@ import { REQUEST_TIMEOUT_MS, timeoutSignal } from './network.js';
 export const DOCUMENT_BUCKET = 'application-documents';
 export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 
-export const DOCUMENT_ACCEPT = '.pdf,.jpg,.jpeg,.png,.heic,.heif,application/pdf,image/jpeg,image/png,image/heic,image/heif';
+// PDF, JPG or PNG only (AW-347). HEIC/HEIF is no longer offered: Chrome and
+// Firefox can't show it to staff (the admin's View link downloaded an
+// unreadable file), and iPhone Safari converts a photo to JPEG when the
+// picker doesn't list HEIC. The bucket's allowed_mime_types still has
+// image/heic and image/heif (20260927180000, no migration), so files sent
+// before this still open. With no HEIC there is no HEIC-sequence content
+// type to map either, which makes AW-251 moot.
+export const DOCUMENT_ACCEPT = '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png';
 
 export const DOCUMENT_TYPES = [
   { id: 'tobacco_license', label: 'State retail tobacco license' },
   { id: 'resale_certificate', label: 'Resale certificate' },
 ];
 
-const ALLOWED_EXT = new Set(['pdf', 'jpg', 'jpeg', 'png', 'heic', 'heif']);
+const ALLOWED_EXT = new Set(['pdf', 'jpg', 'jpeg', 'png']);
 const ALLOWED_MIME = new Set([
   'application/pdf',
   'image/jpeg',
   'image/jpg',
   'image/png',
-  'image/heic',
-  'image/heif',
-  'image/heic-sequence',
-  'image/heif-sequence',
 ]);
 const MIME_FOR_EXT = {
   pdf: 'application/pdf',
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
   png: 'image/png',
-  heic: 'image/heic',
-  heif: 'image/heif',
 };
+// What sniffDocumentType() must find in a file with each extension.
+const TYPE_FOR_EXT = { pdf: 'pdf', jpg: 'jpeg', jpeg: 'jpeg', png: 'png' };
+const MIME_FOR_TYPE = { pdf: 'application/pdf', jpeg: 'image/jpeg', png: 'image/png' };
 
 // What an applicant sees when the database refuses a document upload: with
 // the client's own path, that is the upload limit (AW-207).
@@ -60,15 +64,84 @@ export function documentErrorMessage(err) {
   return describeError(err, 'Document upload', 'That file did not upload. You can try again, or send proof later.');
 }
 
+const extensionOf = (file) => (file?.name || '').split('.').pop()?.toLowerCase();
+
+// The quick check, by name, declared type and size: synchronous, so a pick
+// can be refused at once. checkDocumentFile() adds the content check.
 export function validateDocumentFile(file) {
-  if (!file) return 'Choose a PDF, JPG, PNG, or HEIC file.';
-  const ext = (file.name || '').split('.').pop()?.toLowerCase();
+  if (!file) return 'Choose a PDF, JPG or PNG file.';
+  const ext = extensionOf(file);
   const mime = (file.type || '').toLowerCase();
   const extOk = ALLOWED_EXT.has(ext);
   const mimeOk = !mime || mime === 'application/octet-stream' || ALLOWED_MIME.has(mime);
-  if (!extOk || !mimeOk) return 'Use a PDF, JPG, PNG, or HEIC file.';
+  if (!extOk || !mimeOk) return 'Use a PDF, JPG or PNG file.';
   if (file.size > MAX_DOCUMENT_BYTES) return 'That file is over the 10 MB limit.';
   return null;
+}
+
+// How many bytes from the start of a file sniffDocumentType() reads. A PDF
+// reader accepts '%PDF-' anywhere in the first 1024.
+const SNIFF_BYTES = 1024;
+const PDF_MARKER = [0x25, 0x50, 0x44, 0x46, 0x2d]; // %PDF-
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+async function readHead(file) {
+  const head = file.slice(0, SNIFF_BYTES);
+  if (typeof head.arrayBuffer === 'function') return new Uint8Array(await head.arrayBuffer());
+  // Browsers without Blob.arrayBuffer() (Safari before 14).
+  return new Uint8Array(await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(head);
+  }));
+}
+
+const matchesAt = (bytes, signature, at = 0) => signature.every((byte, i) => bytes[at + i] === byte);
+function contains(bytes, marker) {
+  for (let at = 0; at + marker.length <= bytes.length; at++) {
+    if (matchesAt(bytes, marker, at)) return true;
+  }
+  return false;
+}
+
+// What a file's first bytes say it is (AW-347): 'pdf', 'jpeg', 'png', or
+// null for anything else, or a file that can't be read. Its name and the
+// type the browser declares (often empty or application/octet-stream) say
+// nothing about what is inside.
+export async function sniffDocumentType(file) {
+  if (!file || typeof file.slice !== 'function') return null;
+  let bytes;
+  try {
+    bytes = await readHead(file);
+  } catch {
+    return null;
+  }
+  if (matchesAt(bytes, [0xff, 0xd8, 0xff])) return 'jpeg';
+  if (matchesAt(bytes, PNG_SIGNATURE)) return 'png';
+  if (contains(bytes, PDF_MARKER)) return 'pdf';
+  return null;
+}
+
+export const DOCUMENT_CONTENT_MESSAGE = 'That file doesn’t look like a PDF, JPG or PNG. Choose the original file, or email it to the trade desk.';
+
+// validateDocumentFile(), then the content must be a PDF, JPEG or PNG that
+// matches the extension (.jpg and .jpeg are both JPEG). Returns
+// { problem, type }: problem is null for a good file, type its sniffed type.
+async function inspectDocumentFile(file) {
+  const problem = validateDocumentFile(file);
+  if (problem) return { problem, type: null };
+  const type = await sniffDocumentType(file);
+  if (!type || type !== TYPE_FOR_EXT[extensionOf(file)]) return { problem: DOCUMENT_CONTENT_MESSAGE, type };
+  return { problem: null, type };
+}
+
+// The full check before a file is accepted (AW-347): a message, or null.
+// Only the browser looks at the bytes: storage checks the declared type
+// and nothing reads the file on the server (BACKEND.md, documents).
+// TODO(owner): Should uploaded licence documents also be checked on the server, by a Supabase Edge Function that reads each new file's first bytes and removes one that isn't a real PDF, JPEG or PNG? Not built: today only the site checks, so an upload made outside the site can still store a disguised file. (AW-347)
+export async function checkDocumentFile(file) {
+  return (await inspectDocumentFile(file)).problem;
 }
 
 export function formatUploadedOn(value) {
@@ -84,7 +157,9 @@ function safeFilename(name) {
   return (cleaned || 'document').slice(0, 180);
 }
 
-function contentTypeFor(file) {
+// The sniffed type when it is known (AW-347), else what the file declares.
+function contentTypeFor(file, type = null) {
+  if (MIME_FOR_TYPE[type]) return MIME_FOR_TYPE[type];
   const mime = (file.type || '').toLowerCase();
   if (mime === 'image/jpg') return 'image/jpeg';
   if (ALLOWED_MIME.has(mime)) return mime;
@@ -126,7 +201,8 @@ export async function uploadProfileDocument(session, documentType, file) {
   if (!DOCUMENT_TYPES.some(doc => doc.id === documentType)) {
     throw new Error('Unknown document.');
   }
-  const problem = validateDocumentFile(file);
+  // A disguised file is refused here, before anything reaches storage.
+  const { problem, type } = await inspectDocumentFile(file);
   if (problem) throw new Error(problem);
 
   const userId = session.user.id;
@@ -143,7 +219,7 @@ export async function uploadProfileDocument(session, documentType, file) {
 
   const { error: uploadError } = await supabase.storage
     .from(DOCUMENT_BUCKET)
-    .upload(path, file, { upsert: true, contentType: contentTypeFor(file) });
+    .upload(path, file, { upsert: true, contentType: contentTypeFor(file, type) });
   if (uploadError) throw uploadError;
 
   const uploaded_at = new Date().toISOString();
