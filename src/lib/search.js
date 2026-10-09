@@ -144,17 +144,17 @@ function recordsFor(products) {
 
 // The words a query is matched by. A run that splits off single letters or
 // digits is one word ("m&m" -> 'mm', which starts the 'mms' of M&M's, not
-// every word starting with m); single letters typed apart are one word too
-// ("m & m"); "and" is dropped when there are other words.
+// every word starting with m); "and" is dropped when there are other words;
+// single letters typed apart are then one word too ("m & m", "b and m").
 function queryWords(text) {
   const words = [];
   for (const parts of chunksOf(text)) {
     if (joinsSingles(parts)) words.push(parts.join(''));
     else words.push(...parts);
   }
-  if (words.length > 1 && words.every((word) => word.length === 1)) return [words.join('')];
   const kept = words.filter((word) => word !== 'and');
-  return kept.length ? kept : words;
+  const out = kept.length ? kept : words;
+  return out.length > 1 && out.every((word) => word.length === 1) ? [out.join('')] : out;
 }
 
 let lastQuery = null;

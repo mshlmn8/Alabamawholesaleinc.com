@@ -103,6 +103,7 @@ describe('searchProducts on the catalog', () => {
     // starting with m (179 of them).
     for (const query of ['m&m', 'm & m', 'mms', "m&m's"]) expect(ids(query), query).toEqual([163]);
     expect(ids('b&m').sort((a, b) => a - b)).toEqual([17, 78]);
+    expect(ids('b and m').sort((a, b) => a - b)).toEqual([17, 78]);
     expect(ids('24/7')).toEqual([209]);
     expect(ids('chick-o-stick')).toEqual([175]);
     expect(ids('5-pack')).toEqual(ids('5 pack'));
