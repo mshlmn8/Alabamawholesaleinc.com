@@ -152,17 +152,61 @@ export const SHOP_CATS = [
   { name: 'DRINKS & BAGS', count: 44, color: ['#1F2A4A', '#0EA5E9'], icon: 'drink' }
 ];
 
+// The home page's pitch: the h1's supporting line (HomeHero) and the meta
+// description (src/lib/meta.js HOME_DESCRIPTION), so the page says what the
+// search result says (AW-004). It is the meta description as published, word
+// for word; nothing new is claimed.
+// The delivery wording (next-day, the three states, the Birmingham
+// warehouse) should come from the business-facts module once the commerce
+// lane's AW-283 lands.
+export const HOME_PITCH = 'Wholesale tobacco, vapes, candy, drinks, grocery and motor oil for licensed retailers. Next-day delivery on our routes in Alabama, Mississippi and Georgia from our Birmingham warehouse.';
+
+// The home page's split hero (src/components/HomeHero.jsx, AW-004): the
+// eyebrow and the h1 come from the site's title and meta description.
+// TODO(owner): Approve the home headline "Wholesale for licensed retailers." and its supporting line, and say whether the hero beside it keeps the four rotating photos or shows one fixed photo. (AW-004)
+export const HOME_HERO = {
+  eyebrow: 'WHOLESALE DISTRIBUTOR · BIRMINGHAM, AL',
+  title: 'Wholesale for licensed retailers.',
+  text: HOME_PITCH,
+};
+
+// The photos beside the home hero (src/components/HeroCarousel.jsx). Each
+// slide links to its department (goCat) and describes its photo in `alt`.
+// heroImage() supplies img (plain URL) and picture (the responsive WebP/JPEG
+// set) from the photo in src/assets. Photos only: no slide ever used a video,
+// so the carousel's video support was dropped.
 // TODO(owner): Wide licensed photos of the warehouse or a multi-department assortment for the hero; the current hero photos are unchanged until then. (AW-006)
+// eyebrow, title, sub, cta1 and cta2 are kept as published (decision 2) but
+// no longer shown anywhere, not even as alt text (AW-169).
+// TODO(owner): The unshown slide copy makes claims the catalog doesn't support: "over 368 SKUs", "Geekbar 25K" (the photo and catalog say Geek Bar Pulse X), "World's first 3D curved screen", Monster and Red Bull (only Gatorade and G2 are pictured) and Eagle torches. May eyebrow, title, sub, cta1 and cta2 be deleted? (AW-169)
 export const HERO_SLIDES = [
-  // To use video: set videoUrl to a public MP4 URL (or leave null for image)
-  // For demo, all use images. Replace with your real product videos.
-  // heroImage() supplies img (plain URL, used as the video poster) and picture
-  // (responsive WebP/JPEG set) from the photo in src/assets.
-  { eyebrow: 'NEW THIS WEEK', title: 'The brands your customers ask for.', sub: 'Tobacco, novelties, candy, beverages, motor oil, household and more — over 368 SKUs at our Birmingham warehouse.', cta1: 'Shop Catalog', cta2: 'Apply for Account', ...heroImage('hero_candy.jpg'), videoUrl: null, accent: 'orange', goCat: 'NOVELTIES' },
-  { eyebrow: 'BESTSELLING NOVELTIES', title: 'Geekbar 25K — now in stock.', sub: 'World\'s first 3D curved screen disposable. Flavors and availability change often. The trade desk confirms what is in stock.', cta1: 'Shop Novelties', cta2: 'See All Vape', ...heroImage('hero_vape.jpg'), videoUrl: null, accent: 'navy', goCat: 'NOVELTIES', nicotineWarning: true },
-  { eyebrow: 'COUNTER ESSENTIALS', title: 'BIC lighters & merchandise.', sub: 'Stock up the counter for less. Volume pricing on Bic, Eagle torches, Lattafa air freshener and more.', cta1: 'Shop Merchandise', cta2: 'View Displays', ...heroImage('hero_lighters.jpg'), videoUrl: null, accent: 'orange', goCat: 'MERCHANDISE' },
-  { eyebrow: 'DRINKS & BEVERAGES', title: 'Gatorade, Monster, Red Bull — by the case.', sub: 'Free delivery on orders over $1,500 when the stop is on a delivery route in Alabama, Mississippi or Georgia. Net-30 terms for approved accounts.', cta1: 'Shop Drinks', cta2: 'Get a Quote', ...heroImage('hero_gatorade.jpg'), videoUrl: null, accent: 'navy', goCat: 'DRINKS & BAGS' }
+  { eyebrow: 'NEW THIS WEEK', title: 'The brands your customers ask for.', sub: 'Tobacco, novelties, candy, beverages, motor oil, household and more — over 368 SKUs at our Birmingham warehouse.', cta1: 'Shop Catalog', cta2: 'Apply for Account', ...heroImage('hero_candy.jpg'), alt: 'Display box of Turtles Bites chocolates', accent: 'orange', goCat: 'CANDIES' },
+  { eyebrow: 'BESTSELLING NOVELTIES', title: 'Geekbar 25K — now in stock.', sub: 'World\'s first 3D curved screen disposable. Flavors and availability change often. The trade desk confirms what is in stock.', cta1: 'Shop Novelties', cta2: 'See All Vape', ...heroImage('hero_vape.jpg'), alt: 'Geek Bar Pulse X disposable vape advertisement', accent: 'navy', goCat: 'NOVELTIES', nicotineWarning: true },
+  { eyebrow: 'COUNTER ESSENTIALS', title: 'BIC lighters & merchandise.', sub: 'Stock up the counter for less. Volume pricing on Bic, Eagle torches, Lattafa air freshener and more.', cta1: 'Shop Merchandise', cta2: 'View Displays', ...heroImage('hero_lighters.jpg'), alt: 'BIC lighters in a counter display tray', accent: 'orange', goCat: 'MERCHANDISE' },
+  { eyebrow: 'DRINKS & BEVERAGES', title: 'Gatorade, Monster, Red Bull — by the case.', sub: 'Free delivery on orders over $1,500 when the stop is on a delivery route in Alabama, Mississippi or Georgia. Net-30 terms for approved accounts.', cta1: 'Shop Drinks', cta2: 'Get a Quote', ...heroImage('hero_gatorade.jpg'), alt: 'Gatorade and G2 bottles', accent: 'navy', goCat: 'DRINKS & BAGS' }
 ];
+
+// The product whose photo stands for each department on the home page's
+// "Shop by department" tiles (AW-061), by catalog id: a clean packshot from
+// one of the department's bigger product lines that the New arrivals and
+// Bestsellers rails don't already show. None is a nicotine product, because
+// the tiles carry no FDA statement, and none is from a line waiting on the
+// legal review (AW-001). Novelties' two biggest lines are exactly those
+// (Mushroom Products, Disposable Vapes), so its photo comes from Hookah &
+// Shisha. A product missing from the live catalog, or without a photo, gives
+// way to the first suitable one in the department's biggest line that has
+// one (departmentPhoto in src/pages/HomePage.jsx).
+// TODO(owner): Approve these eight department photos, or supply a photo for each department. (AW-061, see AW-056)
+export const DEPARTMENT_PHOTOS = {
+  TOBACCO: 347, // Zig-Zag hemp wraps (Wraps & Leafs)
+  NOVELTIES: 314, // Coco Nara hookah charcoal (Hookah & Shisha)
+  MERCHANDISE: 196, // Advil (OTC & Health)
+  CANDIES: 163, // M&M's (Chocolate Bars)
+  'FOOD STUFF': 48, // Ritz crackers (Chips & Crackers)
+  GROCERY: 20, // Vaseline healing jelly (Personal Care)
+  'MOTOR OIL': 102, // Havoline motor oil (Motor Oil)
+  'DRINKS & BAGS': 249, // Sprite (Sodas)
+};
 
 export const BRANDS = ["HERSHEY'S", 'GATORADE', 'BIC', 'WD-40', 'GEEK BAR', 'GAIN', 'STP', 'WHITE OWL', 'TWANGERZ', 'POM POM', 'NEON', 'JOB'];
 

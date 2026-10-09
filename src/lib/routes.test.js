@@ -164,6 +164,13 @@ describe('canonical addresses', () => {
     expect(pageKeyFor({ pathname: '/product/1' })).not.toBe(pageKeyFor({ pathname: '/product/2' }));
     expect(pageKeyFor({ pathname: '/' })).toBe('home');
   });
+
+  it('pageKeyFor makes each search query a page of its own (AW-007)', () => {
+    expect(pageKeyFor({ pathname: '/search', search: '?q=cigar' })).toBe('search:cigar');
+    expect(pageKeyFor({ pathname: '/search', search: '?q=+Cigar+' })).toBe(pageKeyFor({ pathname: '/search', search: '?q=cigar' }));
+    expect(pageKeyFor({ pathname: '/search', search: '?q=cigar' })).not.toBe(pageKeyFor({ pathname: '/search', search: '?q=candy' }));
+    expect(pageKeyFor({ pathname: '/search' })).toBe('search:');
+  });
 });
 
 describe('legacy hash links', () => {

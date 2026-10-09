@@ -180,13 +180,9 @@ const LITERALS = [...new Set([
 
 // Lines allowed to keep a literal for now: { file, text, reason }. `text` is
 // part of the line, so the entry stops matching once the line changes.
-const ALLOWLIST = [
-  {
-    file: 'src/pages/HomePage.jsx',
-    text: 'Free delivery on orders over $1,500 when the stop is on a delivery route.',
-    reason: 'Storefront lane (AW-059) owns the home services copy; the merge removes this entry once HomePage prints formatMoneyShort(FREE_DELIVERY_THRESHOLD).',
-  },
-];
+// Lines allowed to type a fact, as { file, text, reason }. Empty since the
+// home services copy prints formatMoneyShort(FREE_DELIVERY_THRESHOLD).
+const ALLOWLIST = [];
 
 // content.js defines the facts (its HERO_SLIDES copy is never rendered and
 // belongs to the storefront lane, AW-004); products.js is catalog data.

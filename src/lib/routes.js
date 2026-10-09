@@ -9,7 +9,7 @@
 //   /catalog                            all products
 //   /category/:dept[/:line]?q=&sort=&tags=&variants=1
 //   /product/:id
-//   /search?q=                          reserved for the search page (AW-007)
+//   /search?q=                          search results (AW-007; q clipped to 200 characters)
 //   /quote /account /admin
 //   /contact /delivery /shipping /privacy /terms /apply /reset-password
 //
@@ -208,11 +208,14 @@ export function routeKey(route) {
 
 // Identifies the page a URL shows, ignoring the product line and filters of a
 // department page. Moving between two URLs with the same page key keeps the
-// scroll position and focus; anything else is a new page.
+// scroll position and focus; anything else is a new page. Each search query
+// is a page of its own (its h1 takes focus and is announced), whatever its
+// case or outer spaces.
 export function pageKeyFor({ pathname = '/', search = '' } = {}) {
   const raw = parseUrl({ pathname, search });
   if (raw.page === 'category') return `category:${slugify(raw.dept)}`;
   if (raw.page === 'product') return `product:${productIdOf(raw.id) ?? raw.id}`;
+  if (raw.page === 'search') return `search:${raw.q.trim().toLowerCase()}`;
   return raw.page;
 }
 

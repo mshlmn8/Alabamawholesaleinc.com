@@ -97,6 +97,21 @@ describe('pageMeta', () => {
     expect(contact).not.toMatch(/[\u00A0\u2060]/);
   });
 
+  it('titles the search page by its query, clipped, and keeps it out of search results (AW-007)', () => {
+    expect(pageMeta({ page: 'search', q: 'cigar' }, products, departments)).toMatchObject({
+      title: 'Results for “cigar” · Alabama Wholesale Inc',
+      description: 'Search results for “cigar” in the Alabama Wholesale Inc wholesale catalog.',
+      path: null,
+      noindex: true,
+    });
+    const long = pageMeta({ page: 'search', q: 'swisher sweets cigarillos white grape diamond silver red' }, products, departments);
+    expect(long.title).toBe('Results for “swisher sweets cigarillos white grape…” · Alabama Wholesale Inc');
+    expect(pageMeta({ page: 'search', q: 'x'.repeat(200) }, products, departments).description.length).toBeLessThanOrEqual(155);
+    for (const q of ['', ' ', 'a']) {
+      expect(pageMeta({ page: 'search', q }, products, departments)).toMatchObject({ title: 'Search · Alabama Wholesale Inc', noindex: true, path: null });
+    }
+  });
+
   it('depends on the route only, never on the header search (AW-338)', () => {
     expect(pageMeta({ page: 'quote' }, products, departments, 'kite').title).toBe('Checkout · Alabama Wholesale Inc');
   });

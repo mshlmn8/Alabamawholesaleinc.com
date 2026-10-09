@@ -321,15 +321,134 @@ test.describe('after age confirmation', () => {
     });
   });
 
-  test('header search lists matching products as links', async ({ page }) => {
+  test('header search lists matching products as options that are links (AW-171)', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/');
     const title = await page.title();
-    await page.getByRole('searchbox', { name: 'Search products' }).fill('wraps');
-    await expect(page.getByRole('status').filter({ hasText: /result/ })).toBeVisible();
-    await expect(page.locator('.aw-search-list a[href^="/product/"]').first()).toBeVisible();
+    const box = page.getByRole('combobox', { name: 'Search products' });
+    await box.fill('wraps');
+    await expect(box).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('.aw-search-heading p')).toHaveText(/result/);
+    // The count is announced by the one status element, once typing pauses.
+    await expect(page.locator('.aw-search [role="status"]')).toHaveText(/result/);
+    const option = page.getByRole('listbox', { name: 'Products' }).getByRole('option').first();
+    await expect(option).toBeVisible();
+    await expect(option).toHaveAttribute('href', /^\/product\/\d+$/);
     // The dropdown is not a page: the tab title stays (AW-338).
     await expect(page).toHaveTitle(title);
+    expect(errors).toEqual([]);
+  });
+
+  test('ArrowDown and Enter in the header search open the highlighted product (AW-171)', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/');
+    const box = page.getByRole('combobox', { name: 'Search products' });
+    await box.fill('geek bar');
+    await expect(page.getByRole('listbox', { name: 'Products' })).toBeVisible();
+    await box.press('ArrowDown');
+    const first = page.getByRole('option').first();
+    await expect(first).toHaveAttribute('aria-selected', 'true');
+    await expect(box).toHaveAttribute('aria-activedescendant', (await first.getAttribute('id')) ?? 'missing');
+    await expect(box).toBeFocused();
+    await box.press('Enter');
+    await expect(page).toHaveURL(/\/product\/\d+$/);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^Geek Bar/);
+    await expect(box).toHaveValue('');
+    await expect(box).toHaveAttribute('aria-expanded', 'false');
+    expect(errors).toEqual([]);
+  });
+
+  test('Tab past the header search closes its list, so it hides no focused control (AW-165)', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'phone', 'the navigation row is desktop only');
+    const errors = trackErrors(page);
+    await page.goto('/');
+    const box = page.getByRole('combobox', { name: 'Search products' });
+    await box.fill('bic');
+    const list = page.getByRole('listbox', { name: 'Products' });
+    await expect(list).toBeVisible();
+    // The options are not Tab stops: Tab goes to the Search button, then on.
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'Search', exact: true })).toBeFocused();
+    await expect(list).toBeVisible();
+    await page.keyboard.press('Tab');
+    await expect(list).toHaveCount(0);
+    const newArrivals = page.getByRole('link', { name: 'New Arrivals', exact: true });
+    for (let i = 0; i < 8 && !(await newArrivals.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('Tab');
+    await expect(newArrivals).toBeFocused();
+    const uncovered = await newArrivals.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return [[0.5, 0.5], [0.1, 0.2], [0.9, 0.8]].every(([x, y]) => el.contains(document.elementFromPoint(r.left + r.width * x, r.top + r.height * y)));
+    });
+    expect(uncovered).toBe(true);
+    expect(errors).toEqual([]);
+  });
+
+  test('Tab out of the Categories menu closes it (AW-165)', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'phone', 'the Categories menu is desktop only');
+    const errors = trackErrors(page);
+    await page.goto('/');
+    const toggle = page.getByRole('button', { name: 'Categories', exact: true });
+    await expect(toggle).not.toHaveAttribute('aria-controls');
+    await toggle.click();
+    const menu = page.locator('#aw-mega-menu');
+    await expect(menu).toBeVisible();
+    await expect(toggle).toHaveAttribute('aria-controls', 'aw-mega-menu');
+    // Departments are groups, not eight more navigation landmarks.
+    await expect(menu.getByRole('group', { name: 'Tobacco' })).toBeVisible();
+    await expect(menu.getByRole('navigation')).toHaveCount(0);
+    await page.keyboard.press('Tab');
+    await expect(menu).toBeVisible();
+    await menu.getByRole('link', { name: 'View full catalog' }).focus();
+    await page.keyboard.press('Tab');
+    await expect(menu).toHaveCount(0);
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.getByRole('link', { name: 'New Arrivals', exact: true })).toBeFocused();
+    expect(errors).toEqual([]);
+  });
+
+  test.describe('on a phone in landscape', () => {
+    test.use({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
+
+    test('the header search list ends on screen once focus has moved the bar to the top (AW-307)', async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name === 'phone', 'the same landscape screen in both projects');
+      const errors = trackErrors(page);
+      await page.goto('/');
+      const box = page.getByRole('combobox', { name: 'Search products' });
+      await box.tap();
+      await expect.poll(() => box.evaluate((el) => Math.round(el.closest('form').getBoundingClientRect().top))).toBeLessThanOrEqual(40);
+      await box.fill('gum');
+      const panel = page.locator('.aw-search-results');
+      await expect(panel).toBeVisible();
+      const { bottom, height } = await panel.evaluate((el) => ({ bottom: el.getBoundingClientRect().bottom, height: window.innerHeight }));
+      expect(bottom).toBeLessThanOrEqual(height);
+      expect(errors).toEqual([]);
+    });
+  });
+
+  test('/search?q= lists every match as product cards, noindex, also after a reload (AW-007)', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/search?q=cigar');
+    for (let pass = 0; pass < 2; pass++) {
+      await expect(page.getByRole('heading', { level: 1, name: 'Results for “cigar”' })).toBeVisible();
+      expect(await page.locator('main .card-grid .content-card').count()).toBeGreaterThanOrEqual(30);
+      await expect(page).toHaveTitle(/Results for/);
+      await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
+      await expect(page.locator('link[rel="canonical"]')).toHaveCount(0);
+      if (!pass) await page.reload();
+    }
+    expect(errors).toEqual([]);
+  });
+
+  test('Enter in the header search opens the results page and keeps the text (AW-007)', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/');
+    // exact: the results page has its own 'Search products, brands or SKUs' box.
+    const box = page.getByRole('combobox', { name: 'Search products', exact: true });
+    await box.fill('cigar');
+    await box.press('Enter');
+    await expect(page).toHaveURL((url) => url.pathname === '/search' && url.searchParams.get('q') === 'cigar');
+    await expect(page.getByRole('heading', { level: 1, name: 'Results for “cigar”' })).toBeFocused();
+    await expect(box).toHaveValue('cigar');
     expect(errors).toEqual([]);
   });
 
@@ -436,21 +555,27 @@ test.describe('tobacco and vapor', () => {
     expect(errors).toEqual([]);
   });
 
-  test('the vape hero slide shows the statement below its controls, not under the photo', async ({ page }) => {
+  test('the vape hero slide shows the statement under the photo, uncovered, and keeps its space on the others', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/');
     const carousel = page.locator('.home-carousel');
-    await carousel.getByRole('button', { name: 'Pause' }).click();
-    await carousel.getByRole('button', { name: 'Next slide' }).click();
     const warning = carousel.locator('.nicotine-warning');
+    await expect(warning).toBeHidden();
+    const spaceBefore = await page.locator('.home-carousel-warning').boundingBox();
+    await carousel.getByRole('button', { name: 'Next slide' }).click();
+    await expect(warning).toBeVisible();
     await expect(warning).toHaveText(FDA);
     // Every photo stays inside the stage; one that grew past it covered the
-    // controls and this statement on phones and tablets.
-    const overflow = await carousel.locator('.home-carousel-slide').evaluateAll((slides) => slides.map((slide) => {
-      const img = slide.querySelector('img');
-      return img ? Math.round(img.getBoundingClientRect().bottom - slide.getBoundingClientRect().bottom) : 0;
-    }));
-    expect(Math.max(...overflow)).toBeLessThanOrEqual(0);
+    // controls and this statement on phones and tablets (AW-036).
+    const overflow = await carousel.locator('.home-carousel-stage').evaluate((stage) => {
+      const s = stage.getBoundingClientRect();
+      return [...stage.querySelectorAll('.home-carousel-slide img')].map((img) => {
+        const r = img.getBoundingClientRect();
+        return Math.max(s.top - r.top, r.bottom - s.bottom, s.left - r.left, r.right - s.right);
+      });
+    });
+    expect(overflow.length).toBeGreaterThan(0);
+    expect(Math.max(...overflow)).toBeLessThanOrEqual(0.5);
     await warning.scrollIntoViewIfNeeded();
     const covered = await warning.evaluate((el) => {
       const r = el.getBoundingClientRect();
@@ -458,8 +583,11 @@ test.describe('tobacco and vapor', () => {
       return !el.contains(hit);
     });
     expect(covered).toBe(false);
+    // The statement takes the same space whichever slide shows, so nothing moves.
+    const spaceAfter = await page.locator('.home-carousel-warning').boundingBox();
+    expect(Math.round(spaceAfter.height)).toBe(Math.round(spaceBefore.height));
     await carousel.getByRole('button', { name: 'Next slide' }).click();
-    await expect(warning).toHaveCount(0);
+    await expect(warning).toBeHidden();
     expect(errors).toEqual([]);
   });
 
@@ -474,6 +602,77 @@ test.describe('tobacco and vapor', () => {
     await expect(page.getByRole('button', { name: 'Have an account? Sign in' })).toBeVisible();
     await page.getByRole('button', { name: 'New? Apply for a trade account' }).click();
     await expect(page.getByRole('dialog', { name: /Apply for an account/ })).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+});
+
+// The home page opens with its h1, the pitch and both calls to action on the
+// first screen (AW-004), on desktop and on a phone.
+test.describe('home hero', () => {
+  test.beforeEach(async ({ context }) => {
+    await context.addInitScript(([key, value]) => {
+      try { localStorage.setItem(key, value); } catch { /* storage blocked */ }
+    }, [AGE_KEY, ageRecord(Date.now())]);
+  });
+
+  test('shows the page\'s only h1 and both calls to action without scrolling', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/');
+    const hero = page.locator('.home-hero');
+    await expect(page.locator('h1')).toHaveCount(1);
+    await expect(hero.getByRole('heading', { level: 1, name: 'Wholesale for licensed retailers.' })).toBeInViewport({ ratio: 1 });
+    await expect(hero.getByRole('button', { name: 'Apply for a trade account' })).toBeInViewport({ ratio: 1 });
+    await expect(hero.getByRole('link', { name: 'Browse the catalog' })).toBeInViewport({ ratio: 1 });
+    await expect(page.locator('.home-carousel-slide.is-active')).toHaveAttribute('aria-label', '1 of 4: Candies');
+    await hero.getByRole('button', { name: 'Apply for a trade account' }).click();
+    await expect(page.getByRole('dialog', { name: /Apply for an account/ })).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+});
+
+// Under the hero: the services with their links (AW-059), the department
+// tiles with a photo in the frame and the text on the band below it (AW-060,
+// AW-061), and one row each of new arrivals and bestsellers without SKUs.
+test.describe('home sections', () => {
+  test.beforeEach(async ({ context }) => {
+    await context.addInitScript(([key, value]) => {
+      try { localStorage.setItem(key, value); } catch { /* storage blocked */ }
+    }, [AGE_KEY, ageRecord(Date.now())]);
+  });
+
+  test('services follow the hero, and the department tiles lead to their departments', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/');
+    await expect(page.locator('.home-hero + .services .service')).toHaveCount(3);
+    const services = page.locator('.services');
+    await expect(services.getByRole('link', { name: 'Delivery and service area' })).toHaveAttribute('href', '/delivery');
+    await expect(services.getByRole('link', { name: 'Trade terms' })).toHaveAttribute('href', '/terms');
+    await expect(services.getByRole('link', { name: 'How to apply' })).toHaveAttribute('href', '/apply');
+    for (const id of ['new-arrivals', 'bestsellers']) {
+      await expect(page.locator(`#${id} .content-card`)).toHaveCount(4);
+      for (const detail of await page.locator(`#${id} .card-detail`).allTextContents()) expect(detail).not.toMatch(/\bAW-/);
+    }
+    const tiles = page.locator('#catalog .dept-tile');
+    await expect(tiles).toHaveCount(8);
+    await tiles.last().scrollIntoViewIfNeeded();
+    // The photos load lazily: wait for all eight.
+    const frames = () => tiles.evaluateAll((all) => all.map((tile) => {
+      const media = tile.querySelector('.dept-tile-media').getBoundingClientRect();
+      const body = tile.querySelector('.dept-tile-body').getBoundingClientRect();
+      const img = tile.querySelector('.dept-tile-media img');
+      const r = img.getBoundingClientRect();
+      return {
+        loaded: img.complete && img.naturalWidth > 0,
+        inside: r.left >= media.left - 0.5 && r.right <= media.right + 0.5 && r.top >= media.top - 0.5 && r.bottom <= media.bottom + 0.5,
+        bandBelow: body.top >= media.bottom - 0.5,
+      };
+    }));
+    await expect.poll(frames).toEqual(Array(8).fill({ loaded: true, inside: true, bandBelow: true }));
+    await tiles.filter({ hasText: 'Candies' }).click();
+    await expect(page).toHaveURL(/\/category\/candies$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Candies' })).toBeVisible();
+    // Department pages keep the SKU on the card.
+    await expect(page.locator('.card-detail').first()).toContainText('AW-');
     expect(errors).toEqual([]);
   });
 });
@@ -533,6 +732,53 @@ test.describe('part 2 catalog', () => {
     await expect(img).toBeVisible();
     const { attr, shown } = await img.evaluate((el) => ({ attr: Number(el.getAttribute('width')), shown: el.getBoundingClientRect().width }));
     expect(shown).toBeLessThanOrEqual(attr + 0.5);
+    expect(errors).toEqual([]);
+  });
+});
+
+// The product photo is drawn whole and centred in its frame (AW-009; the CSS
+// is from f225188): a tall photo reaches the frame's top and bottom padding, a
+// wide one its left and right padding, with equal space on the other sides,
+// and object-fit: contain keeps its proportions inside the img box.
+test.describe('product photo frame', () => {
+  test.beforeEach(async ({ context }) => {
+    await context.addInitScript(([key, value]) => {
+      try { localStorage.setItem(key, value); } catch { /* storage blocked */ }
+    }, [AGE_KEY, ageRecord(Date.now())]);
+  });
+
+  test('tall and wide photos are whole, centred and not cropped (AW-009)', async ({ page }) => {
+    const errors = trackErrors(page);
+    // 88 Tropical Fantasy, 57 Pure Guard and 70 Shroom Puff are much taller
+    // than wide; 31 BIC and 290 Powerade much wider.
+    for (const [id, shape] of [[88, 'tall'], [57, 'tall'], [70, 'tall'], [31, 'wide'], [290, 'wide']]) {
+      await page.goto(`/product/${id}`);
+      const img = page.locator('.pd-media img');
+      await expect.poll(() => img.evaluate((el) => el.complete && el.naturalWidth > 0)).toBe(true);
+      const m = await img.evaluate((el) => {
+        const frame = el.closest('.pd-media').getBoundingClientRect();
+        const box = el.getBoundingClientRect();
+        const ratio = el.naturalWidth / el.naturalHeight;
+        // The drawn photo inside the img box (object-fit: contain, centred).
+        const w = Math.min(box.width, box.height * ratio);
+        const h = w / ratio;
+        const x = box.left + (box.width - w) / 2;
+        const y = box.top + (box.height - h) / 2;
+        return {
+          fit: getComputedStyle(el).objectFit,
+          boxInside: box.left >= frame.left - 1 && box.top >= frame.top - 1 && box.right <= frame.right + 1 && box.bottom <= frame.bottom + 1,
+          top: y - frame.top, bottom: frame.bottom - (y + h), left: x - frame.left, right: frame.right - (x + w),
+        };
+      });
+      expect(m.fit, `#${id}`).toBe('contain');
+      expect(m.boxInside, `#${id}`).toBe(true);
+      // Inside the frame with its padding on every side (20px on phones).
+      expect(Math.min(m.top, m.bottom, m.left, m.right), `#${id}`).toBeGreaterThanOrEqual(20);
+      expect(Math.abs(m.top - m.bottom), `#${id}`).toBeLessThanOrEqual(2);
+      expect(Math.abs(m.left - m.right), `#${id}`).toBeLessThanOrEqual(2);
+      // Scaled to fit along its long side, not shrunk further.
+      expect(shape === 'tall' ? m.top : m.left, `#${id}`).toBeLessThanOrEqual(36);
+    }
     expect(errors).toEqual([]);
   });
 });

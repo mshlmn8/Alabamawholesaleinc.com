@@ -17,3 +17,17 @@ export function departmentsFor(products) {
     return { key: name, label: catLabel(name), subs, count: rows.length };
   });
 }
+
+// A department's biggest product lines: the `n` with the most products, ties
+// in name order (AW-061). The home page's department tiles list these;
+// `subs` above stays alphabetical for the menus, routes and meta.
+export function topLines(products, deptKey, n = 3) {
+  const counts = new Map();
+  for (const p of products) {
+    if (p.cat === deptKey && p.sub) counts.set(p.sub, (counts.get(p.sub) || 0) + 1);
+  }
+  return [...counts]
+    .sort(([a, x], [b, y]) => y - x || a.localeCompare(b))
+    .slice(0, n)
+    .map(([sub]) => sub);
+}

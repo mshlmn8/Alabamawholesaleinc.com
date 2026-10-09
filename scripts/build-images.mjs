@@ -46,7 +46,8 @@ const LOGO = path.join(ASSETS, 'logo.jpg');
 // Bump BRAND_VERSION when brand rendering changes (buildBrandAssets() below:
 // sizes, crops, colours, a new output), so the next run rebuilds the brand
 // files. A new logo.jpg rebuilds them on its own: its bytes are hashed too.
-const BRAND_VERSION = 1;
+// 2: the larger favicon mark (1.05 tile) and the maskable icon (AW-289).
+const BRAND_VERSION = 2;
 const CONCURRENCY = Math.max(2, Math.min(8, os.cpus().length));
 
 const SOURCE_RE = /\.(webp|jpe?g|png|avif)$/i;
@@ -233,7 +234,7 @@ async function averageColor(file, region) {
 
 async function buildBrandAssets() {
   const logoHash = await brandHash();
-  const outputs = ['favicon.ico', 'favicon-32.png', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'og.jpg'].map((f) => path.join(PUBLIC_DIR, f));
+  const outputs = ['favicon.ico', 'favicon-32.png', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'og.jpg'].map((f) => path.join(PUBLIC_DIR, f));
   const fresh = await Promise.all(outputs.map(async (f) => logoHash === previous?.brand && (await exists(f))));
   if (fresh.every(Boolean)) return { written: 0 };
 
@@ -245,8 +246,10 @@ async function buildBrandAssets() {
   const orange = await averageColor(LOGO, { left: inset, top: inset, width: 12, height: 12 });
 
   // Small sizes use the swoosh mark alone; the wordmark is unreadable below 48px.
+  // The tile is only a little larger than the mark (AW-289), so the mark fills
+  // the square at 16px instead of a 7x11px loop.
   const mark = { left: Math.round(meta.width * 0.1), top: Math.round(meta.height * 0.325), width: Math.round(meta.width * 0.194), height: Math.round(meta.height * 0.2875) };
-  const markSide = Math.round(Math.max(mark.width, mark.height) * 1.22);
+  const markSide = Math.round(Math.max(mark.width, mark.height) * 1.05);
   const markBuf = await sharp(LOGO).extract(mark).png().toBuffer();
   const markTile = await sharp({ create: { width: markSide, height: markSide, channels: 3, background: orange } })
     .composite([{ input: markBuf, left: Math.floor((markSide - mark.width) / 2), top: Math.floor((markSide - mark.height) / 2) }])
@@ -261,6 +264,16 @@ async function buildBrandAssets() {
   await sharp(tileBuf).resize(180, 180).png().toFile(path.join(PUBLIC_DIR, 'apple-touch-icon.png'));
   await sharp(tileBuf).resize(192, 192).png().toFile(path.join(PUBLIC_DIR, 'icon-192.png'));
   await sharp(tileBuf).resize(512, 512).png().toFile(path.join(PUBLIC_DIR, 'icon-512.png'));
+  // Maskable icon for Android home screens (AW-289): the logo tile at 360px,
+  // centred on the logo's orange, so the logo stays inside the 80% safe zone
+  // whatever shape the launcher cuts. This tile is cut 3% in, past the JPG's
+  // light bottom edge, which would otherwise draw a line across the icon.
+  const maskableLogo = 360;
+  const clean = Math.round(meta.width * 0.03);
+  const cleanTile = sharp(LOGO).extract({ left: clean, top: clean, width: meta.width - clean * 2, height: meta.height - clean * 2 });
+  await sharp({ create: { width: 512, height: 512, channels: 3, background: orange } })
+    .composite([{ input: await cleanTile.resize(maskableLogo, maskableLogo).png().toBuffer(), left: (512 - maskableLogo) / 2, top: (512 - maskableLogo) / 2 }])
+    .png().toFile(path.join(PUBLIC_DIR, 'icon-maskable-512.png'));
 
   // 1200x630 share image: the logo tile centred on the site's purple.
   const logoSize = 400;

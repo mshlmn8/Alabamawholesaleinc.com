@@ -10,7 +10,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useMediaQuery, MOBILE_QUERY } from '../lib/useMediaQuery.js';
-import { productText } from '../lib/search.js';
+import { matchesQuery } from '../lib/search.js';
 import { variantCount } from '../lib/lines.js';
 import { catLabel } from '../lib/format.js';
 import { Link, navigate } from '../lib/router.js';
@@ -92,7 +92,7 @@ export function CategoryPage({
     if (tags.length && !tags.includes(p.tag)) return false;
     // A single variant is not a choice (AW-233).
     if (hasVariants && variantCount(p) <= 1) return false;
-    if (needle && !productText(p).includes(needle)) return false;
+    if (needle && !matchesQuery(p, query.q)) return false;
     return true;
   });
   if (sort === 'name-asc') items = [...items].sort((a, b) => a.name.localeCompare(b.name));
