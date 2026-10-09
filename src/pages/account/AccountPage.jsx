@@ -3,9 +3,10 @@
 //
 // While the session and profile load it says so instead of showing the
 // signed-out view (AW-186); a profile that fails to load gets Try again and
-// Sign out (AW-089). App keys this page by account (AW-190). "Sign out of all
-// devices" ends the buyer's sessions everywhere (AW-337); the header's Sign
-// Out only ends this browser's.
+// Sign out (AW-089). App keys this page by account (AW-190). Under the email,
+// Change password and Sign out (AW-252); Sign out, like the header's, only
+// ends this browser's session, and "Sign out of all devices" ends the
+// buyer's sessions everywhere (AW-337).
 //
 // A pending applicant uploads license documents right here (AW-085): the
 // application dialog's 'View account status' and its failed-upload notes
@@ -157,6 +158,12 @@ export function AccountPage({
         <p className="eyebrow">TRADE ACCOUNT</p>
         <h1>{profile.business || profile.name}</h1>
         <p>{profile.email}</p>
+        {/* The password and this browser's sign-out, also on phones, where
+            the header's Sign Out is in the menu (AW-252). */}
+        <div className="dialog-actions compact-actions account-links">
+          <Link className="text-link" to="/reset-password">Change password</Link>
+          {onSignOut && <button className="text-link" type="button" onClick={onSignOut} disabled={signingOut}>Sign out</button>}
+        </div>
       </div>
 
       <div className="account-stats">
@@ -187,7 +194,7 @@ export function AccountPage({
           <button className="button ghost" type="button" onClick={onSignOutEverywhere} disabled={signingOut}>
             <span>{signingOut ? 'Signing out…' : 'Sign out of all devices'}</span>
           </button>
-          <p className="result-note">Ends your sessions on every computer and phone, including this one. Sign Out in the header only signs out this browser.</p>
+          <p className="result-note">Ends your sessions on every computer and phone, including this one. Sign out, at the top of this page, only signs out this browser.</p>
         </div>
       )}
 

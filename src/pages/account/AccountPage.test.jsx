@@ -68,6 +68,20 @@ describe('AccountPage', () => {
     expect(heading.textContent).toBe('Test Market LLC');
   });
 
+  it('offers Change password and Sign out under the email (AW-252)', () => {
+    const onSignOut = vi.fn();
+    const view = render(<AccountPage profile={PROFILE} account="ready" products={[]} onSignOut={onSignOut} />);
+    const email = screen.getByText(PROFILE.email);
+    const links = email.nextElementSibling;
+    expect(links.className).toBe('dialog-actions compact-actions account-links');
+    expect(screen.getByRole('link', { name: 'Change password' }).getAttribute('href')).toBe('/reset-password');
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    expect(onSignOut).toHaveBeenCalledTimes(1);
+    expect([...links.children].map((el) => el.textContent)).toEqual(['Change password', 'Sign out']);
+    view.rerender(<AccountPage profile={PROFILE} account="ready" products={[]} onSignOut={onSignOut} signingOut />);
+    expect(screen.getByRole('button', { name: 'Sign out' }).disabled).toBe(true);
+  });
+
   it('signs out of all devices on request', () => {
     const onSignOutEverywhere = vi.fn();
     const view = render(<AccountPage profile={PROFILE} account="ready" products={[]} onSignOutEverywhere={onSignOutEverywhere} />);
