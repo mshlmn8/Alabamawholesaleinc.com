@@ -96,10 +96,12 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick, onViewCh
       </div>
     );
   } else if (view === 'form') {
+    // The email on a line of its own that wraps anywhere (AW-262).
     body = (
       <form className="reset-form" onSubmit={handleSubmit} aria-labelledby="reset-form-title">
-        <p className="eyebrow">{recovery ? 'RESET LINK CONFIRMED' : 'SIGNED IN'}</p>
-        <h2 id="reset-form-title">{`New password for ${session.user?.email}`}</h2>
+        <p className="eyebrow">{recovery ? 'RESET LINK CONFIRMED' : 'YOUR ACCOUNT'}</p>
+        <h2 id="reset-form-title">Set a new password</h2>
+        <p className="reset-account">For <strong>{session.user?.email}</strong></p>
         <div className="form-grid">
           {/* Show/Hide and the length rule as it is typed (AW-248). */}
           <PasswordField id="reset-password" className="full" label="New password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={PASSWORD_MIN_LENGTH} autoComplete="new-password" showRule data-autofocus />

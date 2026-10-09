@@ -1491,6 +1491,8 @@ address.info-lead-small { font-style: normal; }
    expired link. */
 .status-panel.status-approved { border-left-color: var(--success); }
 .status-panel.status-suspended { border-left-color: var(--danger); }
+/* A phone number in a panel's text never breaks across lines (AW-261). */
+.status-panel p a[href^="tel:"] { white-space: nowrap; }
 
 .eligibility { background: var(--cream); border: 1px solid var(--line); align-items: start; }
 .eligibility .eyebrow { color: var(--orange-dark); margin-bottom: 8px; }
@@ -1566,10 +1568,14 @@ address.info-lead-small { font-style: normal; }
 
 /* password reset */
 .reset-layout { max-width: 720px; margin-top: 14px; }
-.reset-layout .status-panel { margin-top: 0; }
+/* Stacked at every width (AW-261): the text gets the panel's full width and
+   the buttons sit under it, instead of a narrow column beside them. */
+.reset-layout .status-panel { flex-direction: column; align-items: stretch; gap: 20px; margin-top: 0; }
 .reset-form { padding: 28px; background: var(--paper); border: 1px solid var(--line); border-top: 4px solid var(--orange); }
 .reset-form .eyebrow { color: var(--orange-dark); margin-bottom: 8px; }
-.reset-form h2 { font-size: var(--h2-sm); margin-bottom: 6px; word-break: break-word; }
+.reset-form h2 { font-size: var(--h2-sm); margin-bottom: 6px; }
+/* The account's email, on its own line under the heading (AW-262). */
+.reset-account { margin: 0 0 1rem; font-size: var(--text-base); color: var(--muted); overflow-wrap: anywhere; }
 
 /* policies */
 .policy-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 40px; align-items: start; margin-top: 10px; }

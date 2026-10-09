@@ -1,6 +1,7 @@
 // /reset-password follows one state (AW-255): the head, the body and the
 // view App titles the page by. The checking view waits before it shows
-// (AW-263). The page takes `auth` as a prop, so no provider is needed.
+// (AW-263); the form names the account on its own line (AW-262). The page
+// takes `auth` as a prop, so no provider is needed.
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PASSWORD_MIN_LENGTH } from '../../components/PasswordField.jsx';
@@ -112,6 +113,16 @@ describe('ResetPasswordPage checking (AW-263)', () => {
     rerender('recovery');
     act(() => { vi.advanceTimersByTime(CHECKING_DELAY_MS); });
     expect(screen.queryByRole('status')).toBeNull();
-    expect(screen.getByRole('form')).toBeTruthy();
+    expect(screen.getByRole('form', { name: 'Set a new password' })).toBeTruthy();
+  });
+});
+
+describe('ResetPasswordPage form (AW-262)', () => {
+  it('names the account under the heading, not in it', () => {
+    page('signedIn');
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Set a new password');
+    const account = document.querySelector('.reset-account');
+    expect(account.textContent).toBe('For buyer@example.test');
+    expect(account.querySelector('strong').textContent).toBe('buyer@example.test');
   });
 });

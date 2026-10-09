@@ -104,7 +104,8 @@ test('a recovery link opens /reset-password once, and the site stays usable (AW-
   const exp = Math.floor(Date.now() / 1000) + 3600;
   await page.goto(`/#access_token=${jwt(exp)}&expires_at=${exp}&expires_in=3600&refresh_token=smoke-rt&token_type=bearer&type=recovery`);
   await expect(page).toHaveURL(/\/reset-password$/);
-  await expect(page.getByRole('heading', { name: `New password for ${PROFILE.email}` })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Choose a new password' })).toBeVisible();
+  await expect(page.getByRole('form', { name: 'Set a new password' })).toContainText(`For ${PROFILE.email}`);
   await expect(page.getByText('RESET LINK CONFIRMED')).toBeVisible();
   await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('link', { name: 'Home' }).click();
   await expect(page).toHaveURL(/\/$/);
