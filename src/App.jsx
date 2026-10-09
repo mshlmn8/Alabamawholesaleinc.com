@@ -338,7 +338,7 @@ export default function App() {
       case 'catalog':
         return (
           <CatalogIndexPage products={products} departments={departments} profile={profile} isApprovedBuyer={isApprovedBuyer}
-                            onLoginClick={openSignin} />
+                            onLoginClick={openSignin} signedIn={!!session} onApplyClick={openSignup} />
         );
       case 'contact':
         return <ContactPage onApplyClick={openApplication} />;

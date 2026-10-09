@@ -113,3 +113,16 @@ describe('copy email address (AW-280)', () => {
     expect(own['margin-top']).not.toBe('auto');
   });
 });
+
+describe('catalog pricing banner (AW-274)', () => {
+  it('lays the catalog pricing banner out full width, its actions wrapping under the text', () => {
+    expect(rule(outside, '.catalog-pricing')).toMatchObject({ display: 'flex', 'flex-wrap': 'wrap' });
+    expect(rule(outside, '.catalog-pricing')).not.toHaveProperty('max-width');
+    expect(rule(outside, '.catalog-pricing-actions')).toMatchObject({ display: 'flex', 'flex-wrap': 'wrap' });
+    // Its buttons are .button.sm: 40px with a mouse, 44px on touch.
+    expect(coarse).toMatch(/--tap-sm:\s*var\(--tap\)/);
+    // The old bottom prompt's rule is gone; CategoryPage keeps .filter-signin.
+    expect(css).not.toMatch(/\.catalog-signin/);
+    expect(rule(outside, '.filter-signin')).toBeTruthy();
+  });
+});
