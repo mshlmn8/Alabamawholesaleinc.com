@@ -85,7 +85,7 @@ import { CallOrEmail } from '../components/ContactLinks.jsx';
 import { ProductPhoto } from '../components/ProductPhoto.jsx';
 import { Picture } from '../components/Picture.jsx';
 import { ModalLayer } from '../components/ModalLayer.jsx';
-import { photoCredit, photoCreditSource } from '../data/photoCredits.js';
+import { photoCredit } from '../data/photoCredits.js';
 import { ProductCard } from '../components/ProductCard.jsx';
 import { NicotineWarning } from '../components/NicotineWarning.jsx';
 import { showsNicotineWarning } from '../lib/regulated.js';
@@ -99,23 +99,27 @@ const NO_PRICES = () => null;
 // What the add row says while the live catalog is checked (AW-232).
 export const CHECKING_AVAILABILITY_TEXT = 'Checking availability…';
 
-// The photo credit, under the photo and in the enlarged view.
-function PhotoCreditText({ credit, creditSource }) {
+// The photo credit, under the photo and in the enlarged view (AW-033): the
+// author, the licence linked to its deed, the change the build made
+// ("resized"), and the file page. Both links leave the site in a new tab.
+function PhotoCreditText({ credit }) {
   return (
     <>
-      <span>{credit}</span>
-      {creditSource && <> <a href={creditSource} target="_blank" rel="noopener noreferrer">Wikimedia Commons<Icon name="external" /><span className="sr-only"> (opens in a new tab)</span></a></>}
+      <span>{`Photo: ${credit.author}, `}</span>
+      <a href={credit.licenceUrl} target="_blank" rel="noopener noreferrer"><span>{credit.licence}</span><Icon name="external" /><span className="sr-only"> (opens in a new tab)</span></a>
+      <span>, resized.</span>
+      {credit.source && <> <a href={credit.source} target="_blank" rel="noopener noreferrer">Wikimedia Commons<Icon name="external" /><span className="sr-only"> (opens in a new tab)</span></a></>}
     </>
   );
 }
 
 // The line under the photo, and under the enlarged one: a shared photo's note
 // (AW-136), then the credit (AW-033).
-function PhotoCaption({ note, credit, creditSource }) {
+function PhotoCaption({ note, credit }) {
   return (
     <>
       {note && <span className="photo-note">{credit ? `${note} ` : note}</span>}
-      {credit && <PhotoCreditText credit={credit} creditSource={creditSource} />}
+      {credit && <PhotoCreditText credit={credit} />}
     </>
   );
 }
@@ -159,8 +163,7 @@ export function ProductPage({
   const related = relatedProducts(products, p);
   const sameLine = related.every(x => x.sub === p.sub);
   const brand = brandLabel(p.brand);
-  const credit = p.picture ? photoCredit(p) : '';
-  const creditSource = photoCreditSource(p);
+  const credit = p.picture ? photoCredit(p) : null;
   // A photo other rows share shows a sibling (AW-136): its badge says which
   // row this is, from the sell unit or the name; with neither, the caption
   // says the photo shows a related pack or size.
@@ -280,7 +283,7 @@ export function ProductPage({
           </div>
           {(photoNote || credit) && (
             <figcaption className="photo-credit">
-              <PhotoCaption note={photoNote} credit={credit} creditSource={creditSource} />
+              <PhotoCaption note={photoNote} credit={credit} />
             </figcaption>
           )}
         </figure>
@@ -361,7 +364,7 @@ export function ProductPage({
               <button className="icon-btn" type="button" onClick={closeZoom} aria-label="Close"><Icon name="close" /></button>
               {/* Sized to the largest rendition, so the browser loads it (AW-236). */}
               <Picture picture={p.picture} alt={photoAlt(p)} sizes={p.picture.width ? `${p.picture.width}px` : undefined} loading="eager" />
-              {(photoNote || credit) && <p className="photo-credit"><PhotoCaption note={photoNote} credit={credit} creditSource={creditSource} /></p>}
+              {(photoNote || credit) && <p className="photo-credit"><PhotoCaption note={photoNote} credit={credit} /></p>}
             </div>
           </div>
         </ModalLayer>

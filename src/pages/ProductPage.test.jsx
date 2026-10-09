@@ -354,7 +354,25 @@ describe('ProductPage photo zoom (AW-236)', () => {
     expect(img.getAttribute('alt')).toBe('Rolling dice');
     expect(img.getAttribute('width')).toBe('1024');
     expect(dialog.querySelector('source').getAttribute('sizes')).toBe('1024px');
-    expect(dialog.querySelector('.photo-credit').textContent).toBe('Photo: Dietmar Rabich, CC BY-SA 4.0. Wikimedia Commons (opens in a new tab)');
+    expect(dialog.querySelector('.photo-credit').textContent).toBe('Photo: Dietmar Rabich, CC BY-SA 4.0 (opens in a new tab), resized. Wikimedia Commons (opens in a new tab)');
+  });
+
+  it('credits the photo under it: the author, the licence linked to its deed, "resized", and the file page (AW-033)', () => {
+    render(zoomPage({}));
+    const caption = document.querySelector('figure.pd-figure > figcaption.photo-credit');
+    expect(caption.textContent).toBe('Photo: Dietmar Rabich, CC BY-SA 4.0 (opens in a new tab), resized. Wikimedia Commons (opens in a new tab)');
+    const licence = screen.getByRole('link', { name: /^CC BY-SA 4\.0\s*\(opens in a new tab\)$/ });
+    expect(licence.getAttribute('href')).toBe('https://creativecommons.org/licenses/by-sa/4.0/');
+    const file = screen.getByRole('link', { name: /^Wikimedia Commons\s*\(opens in a new tab\)$/ });
+    expect(file.getAttribute('href')).toBe('https://commons.wikimedia.org/wiki/File:W%C3%BCrfel_--_2021_--_4266.jpg');
+    for (const link of [licence, file]) {
+      expect(link.getAttribute('target')).toBe('_blank');
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+      expect(link.querySelector('svg')).not.toBeNull();
+    }
+    // Its own photo: no "(representative photo)" and no note.
+    expect(document.querySelector('.pd-media img').getAttribute('alt')).toBe('Rolling dice');
+    expect(caption.querySelector('.photo-note')).toBeNull();
   });
 
   it('closes with Escape, the close button and the backdrop, and gives focus back to the photo', () => {

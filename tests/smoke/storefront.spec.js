@@ -732,8 +732,11 @@ test.describe('part 2 catalog', () => {
   test('the Wikimedia photo is credited, and a small photo isn’t enlarged', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/product/149');
-    await expect(page.locator('.photo-credit')).toContainText('Photo: Dietmar Rabich, CC BY-SA 4.0.');
-    await expect(page.locator('.photo-credit a')).toHaveAttribute('href', /^https:\/\/commons\.wikimedia\.org\/wiki\/File:/);
+    const credit = page.locator('figure.pd-figure .photo-credit');
+    await expect(credit).toContainText('Photo: Dietmar Rabich, CC BY-SA 4.0 (opens in a new tab), resized.');
+    // The licence links to its deed, the credit to the file page (AW-033).
+    await expect(credit.getByRole('link', { name: /^CC BY-SA 4\.0\s*\(opens in a new tab\)$/ })).toHaveAttribute('href', 'https://creativecommons.org/licenses/by-sa/4.0/');
+    await expect(credit.getByRole('link', { name: /^Wikimedia Commons\s*\(opens in a new tab\)$/ })).toHaveAttribute('href', /^https:\/\/commons\.wikimedia\.org\/wiki\/File:/);
     await page.goto('/product/263');
     const img = page.locator('.pd-media img');
     await expect(img).toBeVisible();

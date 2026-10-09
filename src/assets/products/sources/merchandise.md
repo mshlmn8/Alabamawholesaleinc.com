@@ -9,9 +9,9 @@ Photos added to `src/assets/products/` for Merchandise rows that had none. Each 
 | 25 | Claritin 24 Hour tablets, 100 ct | `p25-claritin.jpg` | https://www.kroger.com/p/claritin-24-hour-allergy-relief-loratadine-tablets-10mg/0004110057567 | retailer | 2026-09-27 |
 | 26 | Benadryl Allergy Ultratabs, 24 ct | `p26-benadryl.jpg` | https://www.kroger.com/p/benadryl-ultratabs-allergy-cold-relief-tablets-diphenhydramine-hcl/0031254717031 | retailer | 2026-09-27 |
 | 30 | Visine Original redness relief, 0.5 fl oz | `p30-visine.jpg` | https://www.kroger.com/product/images/xlarge/front/0007430000803 | retailer | 2026-09-27 |
-| 149 | Rolling dice (colored, no brand) | `p149-rolling-dice.jpg` | https://commons.wikimedia.org/wiki/File:W%C3%BCrfel_--_2021_--_4266.jpg | Wikimedia Commons | 2026-09-27 |
-| 150 | Phone cable (plain micro-USB, no brand) | `p150-phone-cables.jpg` | https://commons.wikimedia.org/wiki/File:USB_cable.jpg | Wikimedia Commons | 2026-09-27 |
-| 151 | White V-neck shirt (no brand) | `p151-white-v-neck.jpg` | https://commons.wikimedia.org/wiki/File:Camiseta_Blanca_con_cuello_en_V.jpg | Wikimedia Commons | 2026-09-27 |
+| 149 | Rolling dice (colored, no brand) | `p149-rolling-dice.jpg` | https://commons.wikimedia.org/wiki/File:W%C3%BCrfel_--_2021_--_4266.jpg | Wikimedia Commons: Dietmar Rabich, CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/) | 2026-09-27 |
+| 150 | Phone cable (plain micro-USB, no brand) | `p150-phone-cables.jpg` | https://commons.wikimedia.org/wiki/File:USB_cable.jpg | Wikimedia Commons: J.Dncsn, CC BY-SA 3.0 (https://creativecommons.org/licenses/by-sa/3.0/) | 2026-09-27 |
+| 151 | White V-neck shirt (no brand) | `p151-white-v-neck.jpg` | https://commons.wikimedia.org/wiki/File:Camiseta_Blanca_con_cuello_en_V.jpg | Wikimedia Commons: Rafasshop, CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/) | 2026-09-27 |
 | 159 | Little Trees Black Ice tree | `p159-little-trees.jpg` | https://www.littletrees.com/sites/default/files/2025-08/LT_T_WEB_BLACK-ICE_COA_400X600.jpg | manufacturer | 2026-09-27 |
 | 193 | Pure Eyes redness relief, 0.5 fl oz bottle | `p193-pure-eyes.avif` | https://4aceswholesale.com/product/pure-eyes-sterile-maximum-redness-relief-eye-drops-12pk/ | retailer | 2026-09-27 |
 | 195 | 5-hour ENERGY Regular Strength Berry, 24 pack | `p195-5-hour-energy-regular.jpg` | https://5hourenergy.com/products/col-berry-flavor-regular-strength-5-hour-energy-shots | manufacturer | 2026-09-27 |
@@ -27,7 +27,9 @@ Photos added to `src/assets/products/` for Merchandise rows that had none. Each 
 | 231 | Rolaids Extra Strength mint, 96 ct | `p231-rolaids.jpg` | https://www.kroger.com/p/rolaids-extra-strength-antacid-96-chewable-tablets-mint-flavor-extra-strength-heartburn-relief/0004116710011 | retailer | 2026-09-27 |
 | 261 | Lighter Leash mini, original clip | `p261-lighter-leash.jpg` | https://barproducts.com/collections/lighter-leash%C2%AE | manufacturer | 2026-09-27 |
 | 264 | Vicks NyQuil SEVERE Berry liquid | `p264-nyquil.png` | https://vicks.com/en-us/shop-products/nyquil/nyquil-severe-berry-cold-flu-relief-liquid | manufacturer | 2026-09-27 |
-| 334 | Adhesive bandage (no brand) | `p334-bandaids.jpg` | https://commons.wikimedia.org/wiki/File:Adhesive_bandage.jpg | Wikimedia Commons | 2026-09-27 |
+| 334 | Adhesive bandage (no brand) | `p334-bandaids.jpg` | https://commons.wikimedia.org/wiki/File:Adhesive_bandage.jpg | Wikimedia Commons: Beendy234, CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/) | 2026-09-27 |
 | 365 | Orajel 2X medicated toothache liquid, 0.45 fl oz | `p365-orajel.jpg` | https://www.kroger.com/product/images/xlarge/front/0031031032945 | retailer | 2026-09-27 |
 
 Identification for id 193: the row is Pure Eyes redness-relief eye drops (0.24 fl oz / 7 mL counter bottles, also sold as a 0.5 fl oz bottle). Sources: https://sessionsusa.com/product/pure-eyes-red-relief-drops/ and https://4aceswholesale.com/product/pure-eyes-sterile-maximum-redness-relief-eye-drops-12pk/. Name set to "Pure Eyes redness relief", brand "Pure Eyes".
+
+Licences (AW-033): the four Wikimedia Commons files are used under the licence each file page states, recorded in the Source type column above (checked 2026-10-08). Each licence asks for the author, the licence with a link to it, and a note of changes. The build adds a white margin to the tile's shape, makes smaller sizes and re-encodes them (`scripts/build-images.mjs`), so the product page credits each one as "Photo: <author>, <licence>, resized.", with links to the licence deed and the file page (`src/data/photoCredits.js`). The CC BY-SA files stay under CC BY-SA in their changed form. Replacing or keeping them is the owner's call (`docs/OWNER-TODO.md`, AW-033).
