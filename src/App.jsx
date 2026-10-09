@@ -10,7 +10,7 @@
 // approved buyer's prices from the PricesProvider (src/lib/prices.jsx,
 // AW-003), both also mounted in main.jsx.
 
-import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 
 import { savedSessionUserId, useAuth } from './lib/auth.jsx';
 import { useCatalog } from './lib/catalog.jsx';
@@ -70,6 +70,8 @@ export default function App() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutNotice, setSignOutNotice] = useState(null); // { text, pageKey }
+  // What /reset-password shows, for its title (AW-255): { view, pageKey }.
+  const [resetShown, setResetShown] = useState(null);
   const [catalogNoticeHidden, setCatalogNoticeHidden] = useState(false);
 
   const auth = useAuth();
@@ -140,15 +142,22 @@ export default function App() {
   }, [canonicalPath, location]);
 
   // The title names a saved receipt ('Quote received', AW-022) on /quote, the
-  // count of orders new since the last visit on /admin (AW-111), and the
-  // account's state on /apply ('Application Under Review', AW-098).
+  // count of orders new since the last visit on /admin (AW-111), the
+  // account's state on /apply ('Application Under Review', AW-098) and what
+  // /reset-password shows ('Password Updated', AW-255).
   const applyAs = account === 'loading' ? 'loading' : accountStatus(profile);
+  // The reset page's view belongs to the page that reported it.
+  if (resetShown && resetShown.pageKey !== location.pageKey) setResetShown(null);
+  const resetAs = resetShown?.view || null;
   const metaRoute = useMemo(() => {
     if (receivedKind) return { ...route, received: receivedKind };
     if (route.page === 'admin' && adminUnseen > 0) return { ...route, unseen: adminUnseen };
     if (route.page === 'apply') return { ...route, applyAs };
+    if (route.page === 'reset-password' && resetAs) return { ...route, view: resetAs };
     return route;
-  }, [route, receivedKind, adminUnseen, applyAs]);
+  }, [route, receivedKind, adminUnseen, applyAs, resetAs]);
+  const currentPageKey = location.pageKey;
+  const onResetView = useCallback((view) => setResetShown({ view, pageKey: currentPageKey }), [currentPageKey]);
   useEffect(() => {
     applyPageMeta(pageMeta(metaRoute, products, departments));
   }, [metaRoute, products, departments]);
@@ -347,7 +356,7 @@ export default function App() {
         );
       case 'reset-password':
         // Keyed by account: signing out ends a finished or half-done reset (AW-015).
-        return <ResetPasswordPage key={session?.user?.id || 'guest'} auth={auth} onRequestReset={openReset} onLoginClick={openSignin} />;
+        return <ResetPasswordPage key={session?.user?.id || 'guest'} auth={auth} onRequestReset={openReset} onLoginClick={openSignin} onViewChange={onResetView} />;
       default:
         return (
           <NotFoundPage key={routeKey(route)} kind={route.kind} category={route.category} products={products} departments={departments}

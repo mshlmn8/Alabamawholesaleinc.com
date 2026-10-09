@@ -5,14 +5,22 @@
 //
 // App keys it by account, so signing out ends a half-done or finished reset
 // and shows the signed-out view, not "link expired".
+//
+// What it shows is one state, resetView() (AW-255): the page head, the body
+// and, through onViewChange, the tab title all follow it.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { friendlyAuthError } from '../../lib/authErrors.js';
 import { ServiceUnavailable } from '../../components/ServiceUnavailable.jsx';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
 import { PASSWORD_MIN_LENGTH, PasswordField } from '../../components/PasswordField.jsx';
 import { Link } from '../../lib/router.js';
 import { PageHead } from './SupportShell.jsx';
+import { resetHead, resetView } from './resetView.js';
+
+// The checking view shows only after this long, so a quick check, or a
+// session that is already there, never flashes it (AW-263).
+export const CHECKING_DELAY_MS = 300;
 
 // What a reset link that did not work says. Supabase's own description is
 // never shown: anyone can write text into a link.
@@ -29,7 +37,8 @@ function linkProblem(linkError) {
   };
 }
 
-export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
+// onViewChange(view) lets App title the page.
+export function ResetPasswordPage({ auth, onRequestReset, onLoginClick, onViewChange }) {
   const { session, loading, recovery, linkError, linkChecking, updatePassword, isBackendConfigured } = auth;
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -49,15 +58,27 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
     finally { setSaving(false); }
   };
 
-  let body;
-  if (!isBackendConfigured) {
+  const view = resetView({ isBackendConfigured, done, session, loading, linkChecking, linkError });
+  const head = resetHead(view, { linkChecking });
+  useEffect(() => { onViewChange?.(view); }, [view, onViewChange]);
+
+  const [checkingShown, setCheckingShown] = useState(false);
+  if (view !== 'checking' && checkingShown) setCheckingShown(false);
+  useEffect(() => {
+    if (view !== 'checking') return undefined;
+    const timer = window.setTimeout(() => setCheckingShown(true), CHECKING_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [view]);
+
+  let body = null;
+  if (view === 'unavailable') {
     body = <ServiceUnavailable what="Password reset" className="form-error support-alert" />;
-  } else if (done && session) {
+  } else if (view === 'done') {
     body = (
       <div className="status-panel status-approved">
         <div>
           <p className="eyebrow">ALL SET</p>
-          <h2>Password updated</h2>
+          <h2>New password saved</h2>
           <p>You are signed in with your new password. Use it the next time you sign in.</p>
         </div>
         <div className="contact-strip-actions">
@@ -66,9 +87,15 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
         </div>
       </div>
     );
-  } else if (linkChecking || (loading && !session)) {
-    body = <p className="support-note" role="status">{linkChecking ? 'Checking your reset link…' : 'Loading your account…'}</p>;
-  } else if (session) {
+  } else if (view === 'checking') {
+    // In the form's frame, after a short wait (AW-263).
+    body = checkingShown && (
+      <div className="reset-form" role="status" aria-busy="true">
+        <p className="eyebrow">{linkChecking ? 'CHECKING YOUR LINK' : 'LOADING'}</p>
+        <p className="support-note">{linkChecking ? 'Checking your reset link…' : 'Loading your account…'}</p>
+      </div>
+    );
+  } else if (view === 'form') {
     body = (
       <form className="reset-form" onSubmit={handleSubmit} aria-labelledby="reset-form-title">
         <p className="eyebrow">{recovery ? 'RESET LINK CONFIRMED' : 'SIGNED IN'}</p>
@@ -85,12 +112,12 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
         </div>
       </form>
     );
-  } else if (linkError?.forReset) {
+  } else if (view === 'link-invalid') {
     const problem = linkProblem(linkError);
     body = (
       <div className="status-panel status-suspended">
         <div>
-          <p className="eyebrow">LINK NOT VALID</p>
+          <p className="eyebrow">RESET LINK</p>
           <h2>{problem.title}</h2>
           <p><span>{problem.text}</span> Or <CallOrEmail before="call" after=" and a trade rep will help you get back in." /></p>
         </div>
@@ -118,8 +145,8 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
 
   return (
     <section className="support-page">
-      <PageHead crumb="Password reset" eyebrow="PASSWORD HELP" title="Choose a new password">
-        <p>Pick a password of at least 8 characters that you don’t use anywhere else. Your trade account stays signed in once it is saved.</p>
+      <PageHead crumb="Password reset" eyebrow={head.eyebrow} title={head.h1}>
+        {head.intro && <p>{head.intro}</p>}
       </PageHead>
       <div className="reset-layout">{body}</div>
     </section>

@@ -9,6 +9,7 @@
 
 import { COMPANY, HOME_PITCH, HOURS, ORDER_MINIMUM, hoursLine } from '../data/content.js';
 import { POLICY_TITLES, POLICY_INTROS } from '../pages/support/PolicyPage.jsx';
+import { resetTitle } from '../pages/support/resetView.js';
 import { brandLabel, catLabel, formatMoney } from './format.js';
 import { NOINDEX_PAGES, pathFor, siteUrl } from './routes.js';
 import { MIN_QUERY_LENGTH } from './search.js';
@@ -148,7 +149,9 @@ function pageText(route, products, departments) {
   if (route.page === 'delivery') return { title: `Delivery & Service Area · ${site}`, description: 'Next-day delivery on our own trucks when your stop is on a route in Alabama, Mississippi or Georgia, plus will-call pickup at the Birmingham warehouse.' };
   if (POLICY_TITLES[route.page]) return { title: `${POLICY_TITLES[route.page]} · ${site}`, description: clip(POLICY_INTROS[route.page]) };
   if (route.page === 'apply') return { title: `${APPLY_TITLES[route.applyAs] || APPLY_TITLES.guest} · ${site}`, description: `What licensed retailers need to open a ${site} trade account: EIN, state retail tobacco license, resale certificate and store details.` };
-  if (route.page === 'reset-password') return { title: `Reset Password · ${site}`, description: `Choose a new password for your ${site} trade account.` };
+  // The reset page's title follows what it shows (AW-255): App sets
+  // route.view from the page's resetView().
+  if (route.page === 'reset-password') return { title: `${resetTitle(route.view)} · ${site}`, description: `Choose a new password for your ${site} trade account.` };
   return { title: `${site} · Wholesale Distributor — Birmingham, AL`, description: HOME_DESCRIPTION };
 }
 

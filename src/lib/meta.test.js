@@ -146,6 +146,27 @@ describe('pageMeta for /apply (AW-098)', () => {
   });
 });
 
+describe('pageMeta for /reset-password (AW-255)', () => {
+  it('titles the reset page by what it shows, with one description and no canonical path', () => {
+    const first = pageMeta({ page: 'reset-password' }, products, departments);
+    expect(first).toMatchObject({ title: 'Reset Password · Alabama Wholesale Inc', path: null, noindex: true });
+    const titles = Object.fromEntries(['unavailable', 'request', 'checking', 'form', 'done', 'link-invalid'].map((view) => {
+      const meta = pageMeta({ page: 'reset-password', view }, products, departments);
+      expect(meta).toMatchObject({ description: first.description, path: null, noindex: true });
+      return [view, meta.title];
+    }));
+    expect(titles).toEqual({
+      unavailable: 'Reset Password · Alabama Wholesale Inc',
+      request: 'Reset Password · Alabama Wholesale Inc',
+      checking: 'Reset Password · Alabama Wholesale Inc',
+      form: 'Reset Password · Alabama Wholesale Inc',
+      done: 'Password Updated · Alabama Wholesale Inc',
+      'link-invalid': 'Reset Link Not Valid · Alabama Wholesale Inc',
+    });
+    expect(pageMeta({ page: 'reset-password', view: 'mystery' }, products, departments).title).toBe(first.title);
+  });
+});
+
 describe('applyPageMeta', () => {
   it('writes the title, description, canonical, Open Graph and Twitter tags', () => {
     applyPageMeta({ title: 'T', description: 'D', path: '/product/7', image: { url: '/assets/kite-640.jpg', width: 640, height: 640, alt: 'Kite' } });
