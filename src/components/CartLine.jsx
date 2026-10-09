@@ -1,7 +1,9 @@
 // One cart line, shared by the cart drawer and the checkout page (AW-331):
 // thumbnail, name and SKU, the quantity (or a variant to choose, for a
-// product still missing its variant) and remove. The checkout layout adds
-// "each" to the unit price and the line total.
+// product still missing its variant) and remove. For an approved buyer both
+// layouts give the unit price with "each" and the line total (AW-103); a
+// line still waiting for its variant has no line total, as it isn't in the
+// estimated total either.
 //
 // The quantity is the shared QuantityInput (AW-013): typed or stepped, 1 to
 // 100,000; onSetQty(n) gets the new quantity. − stops at 1; the × removes.
@@ -82,8 +84,7 @@ export function CartLine({ item: it, layout = 'drawer', showPrice, pricesStatus 
   const unit = it.sellUnit ? `Sold by the ${it.sellUnit}` : '';
   let detail;
   if (gone) detail = [it.sku, `Quantity ${it.qty}`, checkout ? '' : 'No longer available'];
-  else if (checkout) detail = [it.sku, unit, priced ? `${formatMoney(it.price)} each` : noPrice];
-  else detail = [it.sku, unit, priced ? formatMoney(it.price) : noPrice];
+  else detail = [it.sku, unit, priced ? `${formatMoney(it.price)} each` : noPrice];
   return (
     <li className={className} data-line-key={it.lineKey}>
       {/* No photo yet: the picture mark (AW-029). A product no catalog knows gets an empty tile. */}
@@ -101,7 +102,7 @@ export function CartLine({ item: it, layout = 'drawer', showPrice, pricesStatus 
       ) : gone ? null : (
         <QuantityInput className="qty" value={it.qty} onChange={(n) => onSetQty?.(n)} label={`Quantity of ${it.name}`} groupLabel={`${it.name} quantity`} />
       )}
-      {checkout && priced && <b className="line-total">{formatMoney(lineTotal(it.price, it.qty))}</b>}
+      {priced && !it.needsVariant && <b className="line-total">{formatMoney(lineTotal(it.price, it.qty))}</b>}
       <button className="icon-btn drawer-remove" type="button" onClick={onRemove} aria-label={`Remove ${it.name}`}><Icon name="close" /></button>
     </li>
   );

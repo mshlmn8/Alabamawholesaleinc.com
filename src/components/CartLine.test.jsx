@@ -11,11 +11,13 @@ const renderLine = (props) => render(<ul><CartLine {...props} /></ul>);
 afterEach(() => vi.useRealTimers());
 
 describe('CartLine', () => {
-  it('drawer layout: unit price after the SKU, no line total', () => {
+  it('drawer layout: "each" price after the SKU and a line total (AW-103)', () => {
     const h = handlers();
     renderLine({ item, layout: 'drawer', showPrice: true, ...h });
-    expect(screen.getByText('AW-KITE · $12.34')).toBeTruthy();
-    expect(screen.queryByText('$493.60')).toBeNull();
+    expect(screen.getByText('AW-KITE · $12.34 each')).toBeTruthy();
+    const total = document.querySelector('.line-total');
+    expect(total.tagName).toBe('B');
+    expect(total.textContent).toBe('$493.60');
     fireEvent.click(screen.getByRole('button', { name: 'Increase quantity' }));
     fireEvent.click(screen.getByRole('button', { name: 'Decrease quantity' }));
     fireEvent.click(screen.getByRole('button', { name: 'Remove Kite' }));
@@ -51,6 +53,15 @@ describe('CartLine', () => {
     renderLine({ item, layout: 'checkout', showPrice: true, ...handlers() });
     expect(screen.getByText('AW-KITE · $12.34 each')).toBeTruthy();
     expect(screen.getByText('$493.60')).toBeTruthy();
+  });
+
+  it('gives a line still waiting for its variant no line total, in either layout (AW-103)', () => {
+    const bare = { ...item, needsVariant: true, qty: 8, variants: [{ label: 'Red', available: true }] };
+    const view = renderLine({ item: bare, layout: 'drawer', showPrice: true, ...handlers() });
+    expect(screen.getByText('AW-KITE · $12.34 each')).toBeTruthy();
+    expect(document.querySelector('.line-total')).toBeNull();
+    view.rerender(<ul><CartLine item={bare} layout="checkout" showPrice {...handlers()} /></ul>);
+    expect(document.querySelector('.line-total')).toBeNull();
   });
 
   it('the line total is each x quantity to the cent (AW-077)', () => {
@@ -101,7 +112,7 @@ describe('CartLine', () => {
   it('says what quantity 1 means in both layouts (AW-031)', () => {
     const boxed = { ...item, sku: 'AW-TUBES', name: 'Tubes', sellUnit: 'box of 200' };
     const view = renderLine({ item: boxed, layout: 'drawer', showPrice: true, ...handlers() });
-    expect(screen.getByText('AW-TUBES · Sold by the box of 200 · $12.34')).toBeTruthy();
+    expect(screen.getByText('AW-TUBES · Sold by the box of 200 · $12.34 each')).toBeTruthy();
     view.rerender(<ul><CartLine item={boxed} layout="checkout" showPrice {...handlers()} /></ul>);
     expect(screen.getByText('AW-TUBES · Sold by the box of 200 · $12.34 each')).toBeTruthy();
     view.rerender(<ul><CartLine item={boxed} layout="checkout" showPrice={false} {...handlers()} /></ul>);

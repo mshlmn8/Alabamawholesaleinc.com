@@ -177,10 +177,11 @@ export function priceLabel(unit, status, { from = false } = {}) {
   return PRICE_ON_REQUEST;
 }
 
-// The estimated total for an approved buyer's lines. When no line that can
-// be ordered has a price yet, it says why instead of showing $0.00.
+// The estimated total for an approved buyer's lines. When no line that
+// counts toward it (one that can be ordered as it stands: not waiting for
+// its variant, AW-103) has a price yet, it says why instead of showing $0.00.
 export function totalLabel(items, total, status) {
-  const orderable = (items || []).filter((it) => !it.unavailable);
+  const orderable = (items || []).filter((it) => !it.unavailable && !it.needsVariant);
   if (!orderable.length || orderable.some((it) => it.price != null)) return formatMoney(total);
   if (status === 'loading') return 'Loading prices…';
   if (status === 'error') return 'Prices didn’t load';

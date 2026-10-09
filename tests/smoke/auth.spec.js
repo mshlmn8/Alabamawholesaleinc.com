@@ -243,7 +243,7 @@ test('after a sign-out, a session another tab saved that cannot be refreshed nev
   expect(errors).toEqual([]);
 });
 
-test('an approved buyer’s prices come from my_prices(), and each × quantity is the line total (AW-003, AW-077)', async ({ page, context }) => {
+test('an approved buyer’s prices come from my_prices(), and each × quantity is the line total (AW-003, AW-077, AW-103)', async ({ page, context }) => {
   const errors = trackErrors(page);
   const selects = [];
   page.on('request', (req) => {
@@ -259,14 +259,15 @@ test('an approved buyer’s prices come from my_prices(), and each × quantity i
   await page.locator('.pd-info').getByRole('button', { name: /^Add to order/ }).click();
   await page.getByRole('button', { name: /^Cart, 3 items$/ }).click();
   const drawer = page.getByRole('dialog', { name: 'Your order' });
-  await expect(drawer.locator('.drawer-line small').first()).toHaveText('AW-KITE · $13.40');
+  await expect(drawer.locator('.drawer-line small').first()).toHaveText('AW-KITE · $13.40 each');
+  await expect(drawer.locator('.drawer-line .line-total')).toHaveText('$40.20');
   await expect(drawer.locator('.drawer-total')).toContainText('$40.20');
   await drawer.getByRole('link', { name: /Checkout/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Place your order' })).toBeVisible();
   const line = page.locator('.checkout-lines .drawer-line').first();
   await expect(line.locator('small').first()).toHaveText('AW-KITE · $13.40 each');
   await expect(line.locator('.line-total')).toHaveText('$40.20');
-  await expect(page.locator('.checkout-total')).toHaveText('3 units$40.20');
+  await expect(page.locator('.checkout-total')).toHaveText('Estimated subtotal · 3 units$40.20');
   // A product without a price (synthetic: ids ending in 7).
   await page.goto('/product/7');
   await expect(page.locator('.pd-price')).toContainText('Price on request');

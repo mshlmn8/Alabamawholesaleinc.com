@@ -250,4 +250,10 @@ describe('priceLabel and totalLabel', () => {
     expect(totalLabel(unpriced, 0, 'ready')).toBe('Price on request');
     expect(totalLabel([], 0, 'loading')).toBe('$0.00');
   });
+
+  it('looks only at the lines in the total: a line waiting for its variant doesn’t count (AW-103)', () => {
+    const waiting = [{ price: 5, qty: 1, needsVariant: true }, { price: null, qty: 2 }];
+    expect(totalLabel(waiting, 0, 'loading')).toBe('Loading prices…');
+    expect(totalLabel([{ price: 5, qty: 1, needsVariant: true }], 0, 'ready')).toBe('$0.00');
+  });
 });

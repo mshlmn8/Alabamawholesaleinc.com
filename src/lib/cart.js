@@ -104,8 +104,23 @@ export const priceCartItems = (cart, products, priceOf = NO_PRICES, options) =>
     price: item.unavailable ? null : (priceOf(item.productId, item.variant) ?? null),
   }));
 
+// A line counts toward the estimated total once it can be ordered as it
+// stands (AW-103): not a bare line still waiting for its variant, which
+// can't be submitted, nor one that can no longer be ordered.
+export const countsInTotal = (item) => !item.needsVariant && !item.unavailable;
+
 // The estimated total, added up in cents like the saved subtotal (AW-077).
-export const cartTotal = (items) => sumLines(items);
+// Lines that don't count yet add nothing (AW-103); the server prices what is
+// sent, so its subtotal is unaffected.
+export const cartTotal = (items) => sumLines(items.filter(countsInTotal));
+
+// Under the estimated total when some lines are left out of it (AW-103):
+// '' when none is.
+export function variantExcludedText(items) {
+  const n = (items || []).filter((it) => it.needsVariant).length;
+  if (!n) return '';
+  return n === 1 ? '1 line needs a variant and isn’t in this total.' : `${n} lines need a variant and aren’t in this total.`;
+}
 
 // What changed for the buyer between the cart lines they reviewed (`before`)
 // and the same cart resolved against a catalog loaded again just now
