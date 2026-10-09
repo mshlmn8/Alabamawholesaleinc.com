@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { friendlyAuthError } from '../../lib/authErrors.js';
 import { ServiceUnavailable } from '../../components/ServiceUnavailable.jsx';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
+import { PASSWORD_MIN_LENGTH, PasswordField } from '../../components/PasswordField.jsx';
 import { Link } from '../../lib/router.js';
 import { PageHead } from './SupportShell.jsx';
 
@@ -73,15 +74,9 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
         <p className="eyebrow">{recovery ? 'RESET LINK CONFIRMED' : 'SIGNED IN'}</p>
         <h2 id="reset-form-title">{`New password for ${session.user?.email}`}</h2>
         <div className="form-grid">
-          <div className="full">
-            <label htmlFor="reset-password">New password</label>
-            <input id="reset-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} autoComplete="new-password" aria-describedby="reset-password-hint" data-autofocus />
-            <small className="field-hint" id="reset-password-hint">At least 8 characters.</small>
-          </div>
-          <div className="full">
-            <label htmlFor="reset-confirm">Confirm new password</label>
-            <input id="reset-confirm" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={8} autoComplete="new-password" />
-          </div>
+          {/* Show/Hide and the length rule as it is typed (AW-248). */}
+          <PasswordField id="reset-password" className="full" label="New password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={PASSWORD_MIN_LENGTH} autoComplete="new-password" showRule data-autofocus />
+          <PasswordField id="reset-confirm" className="full" label="Confirm new password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={PASSWORD_MIN_LENGTH} autoComplete="new-password" />
         </div>
         <p className="form-error" role="alert">{error}</p>
         <div className="dialog-actions">

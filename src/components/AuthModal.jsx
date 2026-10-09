@@ -35,6 +35,7 @@ import { CallOrEmail } from './ContactLinks.jsx';
 import { DocumentUploads } from './DocumentUploads.jsx';
 import { Icon } from './Icon.jsx';
 import { ModalLayer } from './ModalLayer.jsx';
+import { PASSWORD_MIN_LENGTH, PasswordField } from './PasswordField.jsx';
 
 const STATES = ['AL','GA','MS','TN','FL','LA','SC','NC','KY','Other'];
 const BUSINESS_TYPES = ['Convenience Store','Smoke Shop','Vape Shop','Liquor Store','Grocery / Bodega','Auto Parts','Hookah Lounge','Other'];
@@ -445,9 +446,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
               <Field id="aw-email" label="Business email" full>
                 <input id="aw-email" type="email" name="email" value={signin.email} onChange={setS('email')} required autoComplete="email" inputMode="email" data-autofocus />
               </Field>
-              <Field id="aw-pass" label="Password" full>
-                <input id="aw-pass" type="password" name="password" value={signin.password} onChange={setS('password')} required autoComplete="current-password" />
-              </Field>
+              <PasswordField id="aw-pass" className="full" label="Password" name="password" value={signin.password} onChange={setS('password')} required autoComplete="current-password" />
             </div>
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
@@ -526,9 +525,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
                   aria-invalid={phoneError ? true : undefined} aria-describedby={phoneError ? 'aw-su-phone-hint aw-su-phone-error' : 'aw-su-phone-hint'}
                 />
               </Field>
-              <Field id="aw-su-pass" label="Password" hint="At least 8 characters." full>
-                <input id="aw-su-pass" type="password" name="new-password" value={signup.password} onChange={setU('password')} required minLength={8} autoComplete="new-password" aria-describedby="aw-su-pass-hint" />
-              </Field>
+              <PasswordField id="aw-su-pass" className="full" label="Password" name="new-password" value={signup.password} onChange={setU('password')} required minLength={PASSWORD_MIN_LENGTH} autoComplete="new-password" showRule />
             </fieldset>
             <fieldset className="form-grid form-section">
               <legend>Your store</legend>

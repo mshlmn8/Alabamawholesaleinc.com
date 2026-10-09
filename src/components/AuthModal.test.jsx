@@ -833,3 +833,33 @@ describe('AuthModal application phone number (AW-247)', () => {
     expect(t.value.signUp).toHaveBeenCalledWith(expect.objectContaining({ phone: '(205) 555-0123' }));
   });
 });
+
+// AW-248: every password box can be shown, and the new ones say when the
+// length rule is met.
+describe('AuthModal password fields (AW-248)', () => {
+  it('shows and hides the sign-in password, and hides it again on submit', async () => {
+    setup({ signIn: vi.fn(async () => { throw Object.assign(new Error('Invalid login credentials'), { code: 'invalid_credentials', status: 400 }); }) });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const pass = screen.getByLabelText('Password');
+    expect([pass.id, pass.type, pass.getAttribute('autocomplete')]).toEqual(['aw-pass', 'password', 'current-password']);
+    fireEvent.click(screen.getByRole('button', { name: 'Show password' }));
+    expect(pass.type).toBe('text');
+    expect(screen.getByRole('button', { name: 'Hide password' }).getAttribute('aria-controls')).toBe('aw-pass');
+    await signInWith();
+    expect(screen.getByLabelText('Password').type).toBe('password');
+    expect(screen.getByRole('button', { name: 'Show password' })).toBeTruthy();
+    warn.mockRestore();
+  });
+
+  it('gives the application password the live length rule, in place of the hint', () => {
+    setup({}, { initialMode: 'application' });
+    const pass = screen.getByLabelText('Password');
+    expect([pass.id, pass.minLength, pass.getAttribute('autocomplete'), pass.getAttribute('aria-describedby')]).toEqual(['aw-su-pass', 8, 'new-password', 'aw-su-pass-rule']);
+    const rule = document.getElementById('aw-su-pass-rule');
+    expect(rule.textContent).toBe('At least 8 characters');
+    fireEvent.change(pass, { target: { value: 'eight888' } });
+    expect(rule.textContent).toBe('At least 8 characters: done');
+    expect(rule.querySelector('svg.icon')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Show password' }).getAttribute('aria-controls')).toBe('aw-su-pass');
+  });
+});

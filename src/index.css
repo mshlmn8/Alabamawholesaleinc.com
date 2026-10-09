@@ -1131,6 +1131,14 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
    rule above the group's fields. */
 .form-section { margin: 0 0 1.25rem; padding: .75rem 0 0; border: 0; border-top: 1px solid var(--line); min-inline-size: 0; }
 .form-section legend { grid-column: 1 / -1; padding: 0; }
+/* Show/Hide sits beside the password box, not over it: a field takes no
+   padding of its own (AW-248). The button is as tall as the box; --field-h
+   is 44px, so it is a full touch target too. Its width holds either word,
+   so the box does not move when it changes. */
+.pw-wrap { display: flex; gap: .5rem; align-items: center; }
+.pw-wrap input { flex: 1 1 auto; min-width: 0; }
+.button.pw-toggle { flex: none; min-height: var(--field-h); min-width: 4.5rem; }
+.pw-rule .icon { margin-right: .25rem; color: var(--success); }
 /* Consent checkboxes (PR #12): the label beside the box is running text,
    not the small capitals the field labels use. */
 .form-grid .consent { display: flex; align-items: flex-start; gap: 10px; }
