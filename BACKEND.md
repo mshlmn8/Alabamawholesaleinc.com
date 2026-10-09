@@ -719,16 +719,20 @@ product rails hold (AW-119).
   (`https://<project>.supabase.co/storage/v1/object/public/product-images/…`);
   the table's check refuses anything else, as the site's CSP would block it.
   A deleted or replaced photo stays in the bucket.
-- With every photo turned off the home page shows the headline alone, which
-  is how to answer "one fixed photo or rotating photos" (AW-004): leave one
-  photo active for a fixed one. Turn photos off rather than deleting every
+- With every photo turned off the home page shows an empty panel where the
+  photos were, beside the headline (so the page doesn't move when the answer
+  comes, NEW-008). One active photo is how to answer "one fixed photo or
+  rotating photos" (AW-004). Turn photos off rather than deleting every
   row: the migration adds the four bundled photos back to an empty table if
   it is run again.
-- The storefront shows the bundled photos first and swaps in the table's
-  active rows once they load (`src/lib/homeSlides.js`, one request per visit).
-  Without the migration, or when the request fails, it keeps the bundled
-  photos, and Admin → Homepage says editing them needs the October 2026
-  database update.
+- The storefront asks for the table's active rows once per visit
+  (`src/lib/homeSlides.js`) and holds the photos' box empty for up to
+  `HOME_SLIDES_FIRST_PAINT_MS` (300 ms) while it waits, so a quick answer
+  shows staff's photos without the bundled ones flashing first (NEW-008). A
+  slower answer finds the bundled photos showing and replaces them. Without
+  the migration, or when the request fails, it keeps the bundled photos, and
+  Admin → Homepage says editing them needs the October 2026 database
+  update. Nothing about the photos is kept between page loads.
 - **Homepage rails** (read-only here): New arrivals and Bestsellers come from
   the products' tags and homepage rank, set in Admin → Products (see "The
   product editor"), with the legal-review rule described there; each product

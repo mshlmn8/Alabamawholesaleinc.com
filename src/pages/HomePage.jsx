@@ -126,16 +126,19 @@ export function HomePage({
                  addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} showSku={false} />
   );
   // TODO(owner): Which products are really new and which are bestsellers, plus dedicated hero and department images? (AW-056)
-  // Tags and homepage rank (AW-119), RAIL_LENGTH cards each (AW-061).
+  // Tags and homepage rank (AW-119), RAIL_LENGTH cards each (AW-061). Each
+  // rail links to All products (/catalog): it mixes departments, and the site
+  // has no listing of every new or bestselling product (AW-056).
   const { newArrivals, bestsellers } = homeRails(products, { limit: RAIL_LENGTH, hasPhoto });
   // Whose prices the rails show, for an approved buyer (AW-107).
   const priceNote = isApprovedBuyer ? <p className="result-note">{tierPriceNote(priceTier)}</p> : null;
-  // The hero photos staff keep in Admin -> Homepage, or the bundled ones (AW-119).
-  const slides = useHomeSlides();
+  // The hero photos staff keep in Admin -> Homepage, or the bundled ones
+  // (AW-119); while `pending` the hero holds their box empty (NEW-008).
+  const { slides, pending } = useHomeSlides();
 
   return (
     <>
-      <HomeHero signedIn={signedIn} onApplyClick={onApplyClick} slides={slides} />
+      <HomeHero signedIn={signedIn} onApplyClick={onApplyClick} slides={slides} pending={pending} />
 
       {/* What the business offers, straight after the hero (AW-059): an icon,
           the claim as published and a link to the page that explains it. */}
@@ -194,7 +197,7 @@ export function HomePage({
       <section className="section" id="new-arrivals">
         <div className="section-head">
           <div><p className="eyebrow">FRESH INVENTORY</p><h2>New arrivals</h2>{priceNote}</div>
-          <Link to={dept('NOVELTIES')}>Shop novelties</Link>
+          <Link to="/catalog">Browse all products</Link>
         </div>
         <div className="card-grid">
           {newArrivals.map(card)}
@@ -204,7 +207,7 @@ export function HomePage({
       <section className="section" id="bestsellers">
         <div className="section-head">
           <div><p className="eyebrow">PROVEN MOVERS</p><h2>Bestsellers</h2>{priceNote}</div>
-          <Link to={dept('TOBACCO')}>Shop tobacco</Link>
+          <Link to="/catalog">Browse all products</Link>
         </div>
         <div className="card-grid">
           {bestsellers.map(card)}

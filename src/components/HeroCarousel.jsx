@@ -14,12 +14,20 @@
 // - Only slide 1 loads with the page. The next one follows once the page and
 //   slide 1's photo have loaded, or the visitor interacts, and a slide's
 //   neighbours once it has been shown (AW-321).
-// - Previous/next on the photo, one dot per slide and a pause toggle, with no
-//   separate control bar (AW-054); a sideways swipe on the photo changes
-//   slides too (AW-161).
-// - The vape slide shows the FDA statement under the photo (AW-026, PR #12).
-//   The other slides keep its space, hidden, so the page doesn't move when
-//   the slide changes.
+// - Previous/next and a pause toggle on the photo, one dot per slide
+//   (AW-054); a sideways swipe on the carousel changes slides too (AW-161).
+// - A band under the photo (NEW-055) holds the vape slide's FDA statement
+//   (AW-026, PR #12) and, on every other slide, the dots, plus the slide's
+//   "Shop …" link in the compact layout, so they no longer cover the photo.
+//   On the vape slide the statement has the band, and the dots (and the
+//   link) stay on the photo. The band keeps one height on every slide, so the
+//   page doesn't move when the slide changes. Where the statement goes is a
+//   question for counsel (the TODO(owner) at the band, AW-026).
+// - While the first load of staff's photos is pending (NEW-008) the
+//   carousel is an empty box the size of the bundled one, so the bundled
+//   photos never flash before staff's; with no photos at all (staff turned
+//   every one off) it is an empty panel of that size, so the hero's copy
+//   keeps its width and nothing below it moves.
 // - A slide whose photo fails to load leaves the carousel (AW-342), so the
 //   counter, the dots, the controls and autoplay only see slides with
 //   something to show; with none left the carousel renders nothing and the
@@ -27,9 +35,10 @@
 //   connection does (the window 'online' event).
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { HERO_SLIDES } from '../data/content.js';
 import { catLabel } from '../lib/format.js';
 import { Link } from '../lib/router.js';
-import { useMediaQuery } from '../lib/useMediaQuery.js';
+import { MOBILE_QUERY, useMediaQuery } from '../lib/useMediaQuery.js';
 import { Icon } from './Icon.jsx';
 import { NicotineWarning } from './NicotineWarning.jsx';
 import { Picture } from './Picture.jsx';
@@ -71,7 +80,39 @@ const nameOf = (slide) => {
   return name ? `: ${name}` : '';
 };
 
-export function HeroCarousel({ slides }) {
+// The band under the photo (NEW-055): there is one when there are dots to
+// show (more than one slide) or a slide with the FDA statement.
+const bandOf = (slides) => ({ controls: slides.length > 1, warning: slides.some((slide) => slide.nicotineWarning) });
+
+// The carousel's box with nothing in it (NEW-008): the stage at its aspect
+// ratio and the band as the bundled slides have it, its statement there but
+// hidden. `kind` 'pending' is plain (the photos are on their way); 'empty'
+// (no photos) is a decorative panel. Hidden from assistive technology.
+function HeroReserve({ slides, kind }) {
+  const band = bandOf(slides);
+  return (
+    <div className={`home-carousel is-${kind}`} aria-hidden="true">
+      <div className="home-carousel-stage" />
+      {(band.controls || band.warning) && (
+        <div className="home-carousel-band">
+          {band.controls && <div className="home-carousel-controls" />}
+          {band.warning && <div className="home-carousel-warning" aria-hidden="true"><NicotineWarning /></div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// `pending`: the slides may still change (useHomeSlides), so only their box
+// shows. No slides: the empty panel, sized as the bundled carousel the page
+// first painted. Otherwise the carousel.
+export function HeroCarousel({ slides, pending = false }) {
+  if (pending) return <HeroReserve slides={slides} kind="pending" />;
+  if (!slides.length) return <HeroReserve slides={HERO_SLIDES} kind="empty" />;
+  return <Carousel slides={slides} />;
+}
+
+function Carousel({ slides }) {
   // The photos that failed to load (AW-342), by photoKey.
   const [failed, setFailed] = useState(() => new Set());
   const markFailed = (key) => setFailed((prev) => (prev.has(key) ? prev : new Set(prev).add(key)));
@@ -93,6 +134,7 @@ export function HeroCarousel({ slides }) {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const reducedMotion = useMediaQuery(REDUCED_MOTION);
+  const compact = useMediaQuery(MOBILE_QUERY);
   const visible = usePageVisible();
   const swipeStart = useRef(null);
   const swiped = useRef(false);
@@ -124,6 +166,15 @@ export function HeroCarousel({ slides }) {
   }, [rotating, count]);
 
   if (!active) return null;
+  const band = bandOf(media.map(({ slide }) => slide));
+  // The shown slide's link: on the photo, or in the band under it in the
+  // compact layout, where on the photo it covered the packshot's logo
+  // (NEW-055). The vape slide's band is its statement's, so its link stays
+  // on the photo.
+  const captionInBand = compact && band.controls && !active.nicotineWarning;
+  const caption = active.goCat
+    ? <Link className="home-carousel-caption" to={{ page: 'category', category: active.goCat }} draggable={false}>{`Shop ${catLabel(active.goCat)}`}</Link>
+    : null;
 
   // Slide 1 always; the next one once the page and slide 1's photo have
   // loaded (the app often mounts after the page's load event), or once the
@@ -176,13 +227,15 @@ export function HeroCarousel({ slides }) {
     if (!e.currentTarget.contains(e.relatedTarget)) setFocused(false);
   };
 
+  // The swipe handlers are on the whole carousel: in the band, the link's
+  // stretched area still covers the photo (index.css).
   return (
-    <section className="home-carousel" aria-roledescription="carousel" aria-label="Featured departments"
-             onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} onFocus={onFocus} onBlur={onBlur}>
+    <section className={`home-carousel${active.nicotineWarning ? ' is-warning' : ''}`} aria-roledescription="carousel" aria-label="Featured departments"
+             onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} onFocus={onFocus} onBlur={onBlur}
+             onPointerDown={onPointerDown} onPointerUp={onPointerUp} onPointerCancel={onPointerCancel} onClickCapture={onClickCapture}>
       {/* Read out when the visitor changes slides, not on every automatic turn. */}
       <p className="sr-only" aria-live={rotating ? 'off' : 'polite'} aria-atomic="true">{`Slide ${safeIndex + 1} of ${count}`}</p>
-      <div className="home-carousel-stage" onPointerDown={onPointerDown} onPointerUp={onPointerUp}
-           onPointerCancel={onPointerCancel} onClickCapture={onClickCapture}>
+      <div className="home-carousel-stage">
         {/* The rotation control comes first in the tab order (AW-168). */}
         {count > 1 && !reducedMotion && (
           <button className="icon-btn home-carousel-toggle" type="button" aria-label="Pause slideshow" aria-pressed={paused}
@@ -194,7 +247,6 @@ export function HeroCarousel({ slides }) {
             page's largest image, so it loads eagerly at high priority. */}
         {media.map(({ slide, index }, i) => {
           const isActive = i === safeIndex;
-          const label = catLabel(slide.goCat);
           const warm = isWarm(i);
           return (
             <div key={`hero-${index}`} className={`home-carousel-slide${isActive ? ' is-active' : ''}`}
@@ -213,9 +265,7 @@ export function HeroCarousel({ slides }) {
               )}
               {/* Only the shown slide holds a link, so hidden slides have
                   nothing to focus. */}
-              {isActive && slide.goCat && (
-                <Link className="home-carousel-caption" to={{ page: 'category', category: slide.goCat }} draggable={false}>{`Shop ${label}`}</Link>
-              )}
+              {isActive && !captionInBand && caption}
             </div>
           );
         })}
@@ -227,20 +277,34 @@ export function HeroCarousel({ slides }) {
             <button className="icon-btn home-carousel-next" type="button" aria-label="Next slide" onClick={() => go(1)}>
               <Icon name="chevron-right" />
             </button>
-            <div className="home-carousel-dots">
-              {media.map(({ slide, index }, i) => (
-                <button key={`dot-${index}`} type="button" aria-label={`Show slide ${i + 1}${nameOf(slide)}`}
-                        aria-current={i === safeIndex ? 'true' : undefined} onClick={() => show(i)}>
-                  <span />
-                </button>
-              ))}
-            </div>
           </>
         )}
       </div>
-      {media.some(({ slide }) => slide.nicotineWarning) && (
-        <div className="home-carousel-warning" aria-hidden={active.nicotineWarning ? undefined : 'true'}>
-          <NicotineWarning />
+      {/* The band (NEW-055): the controls and the statement share one cell,
+          so it is as tall as the taller of the two on every slide. The
+          statement comes last, so on the vape slide it is on top; hidden on
+          the others, it lets clicks through to the controls. */}
+      {(band.controls || band.warning) && (
+        <div className="home-carousel-band">
+          {band.controls && (
+            <div className="home-carousel-controls">
+              {captionInBand && caption}
+              <div className="home-carousel-dots">
+                {media.map(({ slide, index }, i) => (
+                  <button key={`dot-${index}`} type="button" aria-label={`Show slide ${i + 1}${nameOf(slide)}`}
+                          aria-current={i === safeIndex ? 'true' : undefined} onClick={() => show(i)}>
+                    <span />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {/* TODO(owner): Do the hero slides and product photos count as advertisements under 21 CFR 1143.3 (warning in the upper portion of the ad, at least 20% of its area)? The vape slide shows the verbatim warning under the photo until counsel answers. (AW-026) */}
+          {band.warning && (
+            <div className="home-carousel-warning" aria-hidden={active.nicotineWarning ? undefined : 'true'}>
+              <NicotineWarning />
+            </div>
+          )}
         </div>
       )}
     </section>

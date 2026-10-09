@@ -334,7 +334,7 @@ export function HomepageTab({ notify, onOpenProduct, returnFocusId = null, onRet
     <div className="homepage-admin">
       <section aria-labelledby={`${id}-slides-title`}>
         <h2 className="bulk-title" id={`${id}-slides-title`}>Hero photos</h2>
-        <p className="pricing-note">The photos beside the home page’s headline, in this order. A photo that is off stays here for later; with every photo off, the headline has the hero to itself. Visitors see changes the next time they open the site.</p>
+        <p className="pricing-note">The photos beside the home page’s headline, in this order. A photo that is off stays here for later; with every photo off, an empty panel takes the photos’ place beside the headline. Visitors see changes the next time they open the site.</p>
         {rows == null && (loadError
           ? <LoadProblem message={loadError} onRetry={retry} retrying={retrying} />
           : <p className="result-note">Loading…</p>)}
@@ -358,7 +358,7 @@ export function HomepageTab({ notify, onOpenProduct, returnFocusId = null, onRet
           <>
             {listError && <p className="form-error" role="alert">{listError}</p>}
             {ordered.length === 0
-              ? <p className="result-note">No hero photos: the home page shows the headline alone.</p>
+              ? <p className="result-note">No hero photos: the home page shows an empty panel beside the headline.</p>
               : (
                 <ol className="admin-slides" aria-label="Hero photos, in order">
                   {ordered.map((row, i) => {

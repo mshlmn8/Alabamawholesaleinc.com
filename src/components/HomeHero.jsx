@@ -7,7 +7,10 @@
 // The photos are `slides`: the home page passes the ones staff keep in
 // Admin -> Homepage (useHomeSlides, src/lib/homeSlides.js), the bundled
 // HERO_SLIDES otherwise. The carousel is keyed by its photos, so a different
-// set starts again at slide 1, and the same photos keep their place.
+// set starts again at slide 1, and the same photos keep their place. While
+// `pending` (the first load of staff's photos, NEW-008) the carousel holds
+// the photos' box empty; with no photos at all it is an empty panel, so the
+// copy keeps its width either way.
 
 import { HERO_SLIDES, HOME_HERO } from '../data/content.js';
 import { APPLY_LABEL } from '../data/terms.js';
@@ -16,7 +19,7 @@ import { HeroCarousel } from './HeroCarousel.jsx';
 
 const slidesKey = (slides) => slides.map((s) => s.key || s.img || s.picture?.src || '').join('\n');
 
-export function HomeHero({ signedIn = false, onApplyClick, slides = HERO_SLIDES }) {
+export function HomeHero({ signedIn = false, onApplyClick, slides = HERO_SLIDES, pending = false }) {
   return (
     <section className="home-hero" aria-labelledby="home-hero-title">
       <div className="home-hero-copy">
@@ -40,7 +43,7 @@ export function HomeHero({ signedIn = false, onApplyClick, slides = HERO_SLIDES 
         </div>
       </div>
       <div className="home-hero-media">
-        <HeroCarousel key={slidesKey(slides)} slides={slides} />
+        <HeroCarousel key={slidesKey(slides)} slides={slides} pending={pending} />
       </div>
     </section>
   );

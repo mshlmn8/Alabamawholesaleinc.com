@@ -1,13 +1,16 @@
 // The home page's hero photos from Admin -> Homepage (AW-119): the photos
 // staff keep in public.home_slides replace the bundled ones once loaded, a
-// photo with the nicotine flag carries the FDA statement, no photos leave the
-// headline alone, and a database without the table (the live project until
-// 20261011131000 is applied) keeps the bundled photos without a page error.
+// photo with the nicotine flag carries the FDA statement, and a database
+// without the table (the live project until 20261011131000 is applied) keeps
+// the bundled photos without a page error. While the first load is pending
+// the photos' box is held empty, so a quick answer never shows the bundled
+// photos first, and no photos leave an empty panel beside the headline, so
+// nothing moves however late the answer comes (NEW-008).
 // The catalog and home_slides come from ./catalog.js; every other request
 // that leaves the preview server is aborted.
 import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
-import { serveCatalog } from './catalog.js';
+import { fulfillHomeSlides, serveCatalog } from './catalog.js';
 
 const AGE_KEY = 'aw-age-verified'; // STORAGE.age in src/data/content.js
 const ageRecord = (at) => JSON.stringify({ ok: true, at });
@@ -35,7 +38,8 @@ function trackErrors(page) {
 const STORAGE = 'https://abcdefgh.supabase.co/storage/v1/object/public/product-images/home/1760000000000-display.jpg';
 const slide = (id, img, alt, goCat, extra = {}) => ({ id, img, alt, go_cat: goCat, nicotine_warning: false, sort: id * 10, active: true, ...extra });
 
-async function open(context, page, homeSlides, { photos = {} } = {}) {
+// `delay` holds the home_slides answer that many milliseconds.
+async function open(context, page, homeSlides, { photos = {}, delay = 0 } = {}) {
   await context.route('**/*', (route) => (isLocal(route.request().url()) ? route.continue() : route.abort()));
   // Uploaded photos, served from a bundled file (registered after the abort, so they win).
   for (const [url, file] of Object.entries(photos)) {
@@ -43,13 +47,38 @@ async function open(context, page, homeSlides, { photos = {} } = {}) {
   }
   const slidesCalls = [];
   await serveCatalog(context, { homeSlides: () => homeSlides });
+  if (delay) {
+    await context.route(/\/rest\/v1\/home_slides/, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return fulfillHomeSlides(route, homeSlides);
+    });
+  }
   context.on('request', (r) => { if (/\/rest\/v1\/home_slides/.test(r.url())) slidesCalls.push(r.url()); });
   await context.addInitScript(([key, value]) => {
     try { localStorage.setItem(key, value); } catch { /* storage blocked */ }
+    // Layout shifts not caused by the visitor (CLS).
+    window.__cls = 0;
+    try {
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) if (!entry.hadRecentInput) window.__cls += entry.value;
+      }).observe({ type: 'layout-shift', buffered: true });
+    } catch { /* no layout-shift entries in this browser */ }
+    // Every photo the hero has drawn, frame by frame (the collection card
+    // further down uses a hero file too, so requests can't tell).
+    window.__heroPhotos = [];
+    const look = () => {
+      for (const img of document.querySelectorAll('.home-hero img')) {
+        const name = (/\/(hero_[a-z]+)--/.exec(img.currentSrc || img.src) || [])[1];
+        if (name && !window.__heroPhotos.includes(name)) window.__heroPhotos.push(name);
+      }
+      requestAnimationFrame(look);
+    };
+    requestAnimationFrame(look);
   }, [AGE_KEY, ageRecord(Date.now())]);
   const errors = trackErrors(page);
   await page.goto('/');
-  return { errors, slidesCalls };
+  const heroPhotos = () => page.evaluate(() => window.__heroPhotos);
+  return { errors, slidesCalls, heroPhotos };
 }
 
 const labels = (page) => page.locator('.home-carousel-slide').evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')));
@@ -94,14 +123,30 @@ test('a photo without a department is named by its alt text, and an uploaded pho
   expect(errors).toEqual([]);
 });
 
-test('with every photo turned off the headline has the hero to itself', async ({ context, page }) => {
-  const { errors } = await open(context, page, [slide(1, 'hero_candy.jpg', 'Display box of Turtles Bites chocolates', 'CANDIES', { active: false })]);
-  await expect(page.locator('.home-carousel')).toHaveCount(0);
-  await expect(page.locator('.home-hero-media')).toBeHidden();
-  const hero = page.locator('.home-hero');
-  await expect(hero.getByRole('heading', { level: 1, name: 'Wholesale for licensed retailers.' })).toBeVisible();
-  const [copy, box] = await Promise.all([hero.locator('.home-hero-copy').boundingBox(), hero.boundingBox()]);
-  expect(copy.width).toBeGreaterThan(box.width * 0.9);
+test('with every photo turned off an empty panel keeps the photos\' place, so nothing moves even when the answer is late', async ({ context, page }) => {
+  const { errors, heroPhotos } = await open(context, page, [slide(1, 'hero_candy.jpg', 'Display box of Turtles Bites chocolates', 'CANDIES', { active: false })], { delay: 1200 });
+  // Past the first-paint budget the bundled photos show, then the answer comes.
+  await expect(page.locator('.home-carousel-slide.is-active img')).toHaveAttribute('alt', 'Display box of Turtles Bites chocolates');
+  const before = await page.locator('.home-hero-copy').boundingBox();
+  const panel = page.locator('.home-hero-media > .home-carousel.is-empty');
+  await expect(panel).toBeVisible();
+  await expect(panel).toHaveAttribute('aria-hidden', 'true');
+  await expect(page.locator('section.home-carousel')).toHaveCount(0);
+  await expect(page.locator('.home-hero').getByRole('heading', { level: 1, name: 'Wholesale for licensed retailers.' })).toBeVisible();
+  // The copy kept its place and size, and the page didn't move.
+  expect(await page.locator('.home-hero-copy').boundingBox()).toEqual(before);
+  expect(await page.evaluate(() => window.__cls)).toBeLessThan(0.1);
+  expect(await heroPhotos()).toContain('hero_candy');
+  expect(errors).toEqual([]);
+});
+
+test('a quick answer replaces the bundled photos before any of them shows', async ({ context, page }) => {
+  const { errors, heroPhotos } = await open(context, page, [slide(1, 'hero_lighters.jpg', 'BIC lighters in a counter display tray', 'MERCHANDISE')], { delay: 50 });
+  await expect(page.locator('.home-carousel-slide.is-active img')).toHaveAttribute('alt', 'BIC lighters in a counter display tray');
+  await expect(page.locator('.home-carousel-slide')).toHaveCount(1);
+  // Only staff's photo was ever in the hero: the bundled first slide never showed.
+  expect(await heroPhotos()).toEqual(['hero_lighters']);
+  expect(await page.evaluate(() => window.__cls)).toBeLessThan(0.1);
   expect(errors).toEqual([]);
 });
 

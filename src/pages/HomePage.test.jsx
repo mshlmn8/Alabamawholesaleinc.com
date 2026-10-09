@@ -78,9 +78,17 @@ describe('HomePage rails', () => {
         expect(detail).toBe(cardDetail(product, { sku: false }));
       }
     }
-    // The section links stay.
-    expect(within(document.querySelector('#new-arrivals')).getByRole('link', { name: 'Shop novelties' })).toBeTruthy();
-    expect(within(document.querySelector('#bestsellers')).getByRole('link', { name: 'Shop tobacco' })).toBeTruthy();
+  });
+
+  it('links each rail to All products, which spans every department, not to one department (AW-056)', () => {
+    renderHome();
+    for (const id of ['new-arrivals', 'bestsellers']) {
+      const head = document.querySelector(`#${id} .section-head`);
+      const links = within(head).getAllByRole('link');
+      expect(links.map((a) => [a.textContent, a.getAttribute('href')]), id).toEqual([['Browse all products', '/catalog']]);
+    }
+    expect(screen.queryByRole('link', { name: 'Shop novelties' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Shop tobacco' })).toBeNull();
   });
 
   it('keeps the SKU on cards everywhere else', () => {
@@ -315,10 +323,28 @@ describe('HomePage hero photos', () => {
     expect(screen.getByRole('button', { name: 'Show slide 2: Counter display of candy' })).toBeTruthy();
   });
 
-  it('shows the headline alone when every photo is turned off', async () => {
+  it('holds the photos\' box empty until staff\'s photos load, never showing the bundled ones first (NEW-008)', async () => {
+    let release;
+    const client = slidesClient(() => new Promise((resolve) => { release = resolve; }));
+    resetHomeSlidesForTests({ client });
+    renderHome();
+    // The request is out (supabase-js's builder is a thenable, read a tick later).
+    await act(async () => { await Promise.resolve(); });
+    expect(client.calls).toBe(1);
+    expect(document.querySelector('.home-hero-media > .home-carousel.is-pending')).toBeTruthy();
+    expect(document.querySelector('.home-hero img')).toBeNull();
+    await act(async () => { release({ data: [{ id: 3, img: 'hero_lighters.jpg', alt: 'BIC lighters in a counter display tray', go_cat: 'MERCHANDISE', nicotine_warning: false, sort: 1 }], error: null }); });
+    expect(slideLabels()).toEqual(['1 of 1: Merchandise']);
+    expect(document.querySelector('.home-carousel-slide.is-active img').getAttribute('alt')).toBe('BIC lighters in a counter display tray');
+  });
+
+  it('keeps an empty panel beside the headline when every photo is turned off, so nothing moves (NEW-008)', async () => {
     await renderLoaded(() => ({ data: [], error: null }));
-    expect(document.querySelector('.home-carousel')).toBeNull();
-    expect(document.querySelector('.home-hero-media').children).toHaveLength(0);
+    expect(document.querySelector('section.home-carousel')).toBeNull();
+    const media = document.querySelector('.home-hero-media');
+    expect([...media.children].map((el) => el.className)).toEqual(['home-carousel is-empty']);
+    expect(media.firstElementChild.getAttribute('aria-hidden')).toBe('true');
+    expect(media.querySelector('img, a, button')).toBeNull();
     expect(screen.getByRole('heading', { level: 1, name: 'Wholesale for licensed retailers.' })).toBeTruthy();
   });
 

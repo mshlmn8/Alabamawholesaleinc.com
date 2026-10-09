@@ -523,16 +523,20 @@ p > .text-link { min-height: 0; min-width: 0; }
 .home-hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
 .home-hero-media { grid-area: media; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
 /* Every hero photo failed (AW-342): the carousel renders nothing and the copy
-   takes the whole hero. */
+   takes the whole hero. Staff turning every photo off doesn't: that leaves an
+   empty panel (.home-carousel.is-empty, NEW-008), so the copy, which the page
+   first painted at half the hero, never reflows. */
 .home-hero-media:empty { display: none; }
 .home-hero:has(> .home-hero-media:empty) { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'copy'; }
 
 /* ============================ homepage carousel ============================
-   One stage of a fixed aspect ratio that clips (AW-036). The controls sit on
-   the photo (AW-054): previous/next at its middle, the dots at the bottom
-   centre and the pause toggle at the bottom right. */
-.home-carousel { position: relative; background: var(--tile); }
-.home-carousel-stage { position: relative; aspect-ratio: 16 / 10; overflow: hidden; background: var(--tile); touch-action: pan-y; -webkit-user-select: none; user-select: none; }
+   One stage of a fixed aspect ratio that clips (AW-036), and the band under
+   it. Previous/next sit at the photo's middle and the pause toggle at its
+   bottom right (AW-054); the dots are in the band (NEW-055). A sideways
+   swipe anywhere on the carousel changes slides, so the page only scrolls up
+   and down there (AW-161). */
+.home-carousel { position: relative; background: var(--tile); touch-action: pan-y; }
+.home-carousel-stage { position: relative; aspect-ratio: 16 / 10; overflow: hidden; background: var(--tile); -webkit-user-select: none; user-select: none; }
 /* Each slide is a stacking context, so its photo (z-index -1) sits under
    the department link that follows it in the page. */
 .home-carousel-slide { position: absolute; inset: 0; z-index: 0; display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity .3s; }
@@ -544,8 +548,8 @@ p > .text-link { min-height: 0; min-width: 0; }
    own size: no width: 100%. */
 .home-carousel-slide img { position: absolute; inset: 0; z-index: -1; margin: auto; max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; display: block; }
 /* The shown slide's department link, a solid label at the photo's foot (at
-   its top on narrower screens). Its ::after covers the whole photo, so a tap
-   anywhere on it follows the link. */
+   its top on narrower screens, in the band in the compact layout). Its
+   ::after covers the whole photo, so a tap anywhere on it follows the link. */
 .home-carousel-caption { display: inline-flex; align-items: center; min-height: var(--tap); max-width: calc(100% - 28px); margin: 0 0 14px 14px; padding: 6px 16px; background: var(--purple); color: #fff; font-size: var(--text-sm); font-weight: 700; line-height: 1.25; }
 .home-carousel-caption::after { content: ''; position: absolute; inset: 0; }
 .home-carousel-toggle, .home-carousel-prev, .home-carousel-next { position: absolute; z-index: 2; width: var(--tap); height: var(--tap); border-color: transparent; box-shadow: 0 2px 10px var(--shadow-popover); }
@@ -553,7 +557,7 @@ p > .text-link { min-height: 0; min-width: 0; }
 .home-carousel-prev { left: 14px; }
 .home-carousel-next { right: 14px; }
 .home-carousel-toggle { right: 14px; bottom: 14px; font-size: 1.125rem; }
-.home-carousel-dots { position: absolute; z-index: 2; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: center; min-height: var(--tap); padding: 0 6px; border-radius: 999px; background: #fff; box-shadow: 0 2px 10px var(--shadow-popover); }
+.home-carousel-dots { display: flex; align-items: center; min-height: var(--tap); padding: 0 6px; border-radius: 999px; background: #fff; box-shadow: 0 2px 10px var(--shadow-popover); }
 .home-carousel-dots button { display: grid; place-items: center; width: 1.5rem; height: 1.5rem; padding: 0; border: 0; border-radius: 50%; background: none; }
 .home-carousel-dots button:focus-visible { outline-offset: -3px; }
 .home-carousel-dots span { width: .625rem; height: .625rem; border: 2px solid var(--purple); border-radius: 50%; background: #fff; }
@@ -563,8 +567,33 @@ p > .text-link { min-height: 0; min-width: 0; }
 @media (pointer: coarse) {
   .home-carousel-dots button { width: var(--tap); height: var(--tap); }
 }
-/* The vape slide's FDA statement; on the other slides it keeps its space. */
+/* The band under the photo (NEW-055). The vape slide's FDA statement and
+   the controls share its one cell, so the band is as tall as the taller of
+   the two on every slide and the page doesn't move when the slide changes.
+   The statement fills the band (AW-026); on the other slides it keeps its
+   space, hidden. */
+.home-carousel-band { display: grid; }
+.home-carousel-band > * { grid-area: 1 / 1; min-width: 0; }
+.home-carousel-warning { display: grid; }
 .home-carousel-warning[aria-hidden="true"] { visibility: hidden; }
+/* The controls: in the compact layout the slide's link at the left, and the
+   dots in the middle, in a row as tall as a touch target. */
+.home-carousel-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-content: center; align-items: center; column-gap: 12px; min-height: calc(var(--tap) + 20px); padding: 10px 14px; -webkit-user-select: none; user-select: none; }
+.home-carousel-controls .home-carousel-caption { grid-column: 1; justify-self: start; margin: 0; max-width: 100%; }
+/* The band isn't positioned, so the link's ::after reaches over the whole
+   carousel, photo included; the dots sit above it. */
+.home-carousel-controls .home-carousel-dots { grid-column: 2; position: relative; z-index: 2; }
+/* The vape slide: the statement has the band, and the dots go back on the
+   photo, at the middle of its foot. With the band (a grid) as their
+   containing block, they take no grid area of the controls, or their offsets
+   would resolve against that area instead of the band. */
+.home-carousel.is-warning .home-carousel-band { position: relative; }
+.home-carousel.is-warning .home-carousel-dots { grid-area: auto; position: absolute; left: 50%; bottom: calc(100% + 14px); transform: translateX(-50%); }
+/* The carousel's box while staff's photos may still arrive, held empty
+   (NEW-008). With no photos at all it is a decorative panel of that size
+   that fills the media column, so the copy beside it keeps its width. */
+.home-carousel.is-empty { flex: 1 0 auto; background: var(--purple); }
+.home-carousel.is-empty .home-carousel-stage { background: none; }
 
 /* Responsive <picture> wrappers take no box of their own, so the existing
    img rules (absolute fill, object-fit) keep applying to the photo. */
@@ -1578,8 +1607,9 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .nicotine-warning { margin: 0 0 14px; padding: 12px 14px; background: var(--purple-deep); color: #fff; font-size: var(--text-base); font-weight: 700; line-height: 1.45; text-align: center; }
 /* On a card, between the title and the price row, with room above and below. */
 .nicotine-warning.is-compact { margin: 8px 0; padding: 8px 10px; font-size: var(--text-sm); }
-/* The vape hero slide's warning is the carousel's last band, under the photo. */
-.home-carousel .nicotine-warning { margin: 0; }
+/* The vape hero slide's warning fills the band under the photo, its text
+   centred (NEW-055). */
+.home-carousel .nicotine-warning { display: grid; place-content: center; margin: 0; }
 
 /* ============================ overlays: drawer / modal / gate ============================ */
 .aw-layer { position: relative; z-index: 60; }
@@ -1925,10 +1955,10 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   }
   .home-hero { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'copy' 'media'; }
   .home-hero-copy { padding: 32px; }
-  /* A phone on its side: the whole stage, with its dots and pause toggle,
-     fits on the screen (the photo is contained, so it only gets smaller).
-     The width is set, or the cap would narrow the stage through its
-     aspect ratio. */
+  /* A phone on its side: the whole stage, with its pause toggle, and the
+     band with the dots under it fit on the screen (the photo is contained,
+     so it only gets smaller). The width is set, or the cap would narrow the
+     stage through its aspect ratio. */
   .home-carousel-stage { width: 100%; max-height: 75vh; }
   .apply-panel { grid-template-columns: 1fr; gap: 18px; }
   .editorial-card h2 { font-size: var(--h2-sm); }
@@ -1998,7 +2028,14 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .home-carousel-caption { margin: 12px 0 0 12px; max-width: calc(100% - 24px); }
   .home-carousel-prev { left: 12px; }
   .home-carousel-next, .home-carousel-toggle { right: 12px; }
-  .home-carousel-toggle, .home-carousel-dots { bottom: 12px; }
+  .home-carousel-toggle { bottom: 12px; }
+  .home-carousel.is-warning .home-carousel-dots { bottom: calc(100% + 12px); }
+  /* Too narrow for the link and the dots side by side: two rows, the link
+     over the dots. Always two, so the dots don't move when a slide has no
+     link (or is the vape slide, whose link is on the photo). */
+  .home-carousel-controls { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(var(--tap), auto) minmax(var(--tap), auto); justify-items: center; row-gap: 8px; min-height: calc(2 * var(--tap) + 24px); padding: 8px 12px; }
+  .home-carousel-controls .home-carousel-caption { grid-row: 1; justify-self: center; }
+  .home-carousel-controls .home-carousel-dots { grid-column: 1; grid-row: 2; }
   .button { padding: 12px 18px; }
   h1 { font-size: 2.625rem; }
   /* The link sits beside the heading on one line, the heading wrapping
@@ -2070,8 +2107,8 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .aw-logo img { height: 42px; }
   .aw-logo-text { min-height: 42px; }
   .aw-menu-toggle span:last-child { display: none; }
-  /* The dots move left, clear of the pause toggle. */
-  .home-carousel-dots { left: 12px; transform: none; }
+  /* On the vape slide the dots move left, clear of the pause toggle. */
+  .home-carousel.is-warning .home-carousel-dots { left: 12px; transform: none; }
   /* Too narrow (or the text too large) for State and ZIP side by side: the
      state names and "Choose a state…" would be cut off (AW-241). */
   .checkout-form-grid { grid-template-columns: minmax(0, 1fr); }

@@ -1,9 +1,13 @@
 // The home hero's photo carousel (AW-036, AW-054, AW-161, AW-168, AW-177,
-// AW-321, AW-342), with fake timers and the real router.
-import { act, fireEvent, render, screen } from '@testing-library/react';
+// AW-321, AW-342), the band under it (NEW-055) and its box while staff's
+// photos load or when there are none (NEW-008), with fake timers and the
+// real router.
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { HERO_SLIDES } from '../data/content.js';
 import { NICOTINE_WARNING_TEXT } from './NicotineWarning.jsx';
 import { navigate } from '../lib/router.js';
+import { MOBILE_QUERY } from '../lib/useMediaQuery.js';
 import { AUTOPLAY_MS, HeroCarousel, SWIPE_MIN_PX } from './HeroCarousel.jsx';
 
 const photo = (name) => ({ img: `/${name}.jpg`, picture: { src: `/${name}.jpg`, width: 700, height: 440 } });
@@ -26,10 +30,13 @@ const swipe = (fromX, toX, { dy = 0 } = {}) => {
   fireEvent.pointerUp(stage(), { isPrimary: true, pointerId: 7, button: 0, clientX: toX, clientY: 100 + dy });
 };
 
-// A window.matchMedia for jsdom (which has none) that reports reduced motion.
-const reduceMotion = () => vi.stubGlobal('matchMedia', vi.fn((media) => ({
-  media, matches: media === '(prefers-reduced-motion: reduce)', addEventListener() {}, removeEventListener() {},
+// A window.matchMedia for jsdom (which has none) that reports reduced motion,
+// or the compact layout.
+const matching = (...queries) => vi.stubGlobal('matchMedia', vi.fn((media) => ({
+  media, matches: queries.includes(media), addEventListener() {}, removeEventListener() {},
 })));
+const reduceMotion = () => matching('(prefers-reduced-motion: reduce)');
+const compactLayout = () => matching(MOBILE_QUERY);
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -289,6 +296,130 @@ describe('controls (AW-054, AW-168)', () => {
     unmount();
     const { container } = render(<HeroCarousel slides={[{ goCat: 'CANDIES', img: null, picture: null }]} />);
     expect(container.innerHTML).toBe('');
+  });
+});
+
+describe('the band under the photo (NEW-055)', () => {
+  const band = () => document.querySelector('.home-carousel-band');
+  const caption = () => document.querySelector('.home-carousel-caption');
+
+  it('holds the dots under the photo, and the hidden statement in the same cell', () => {
+    render(<HeroCarousel slides={SLIDES} />);
+    expect(stage().querySelector('.home-carousel-dots')).toBeNull();
+    const controls = band().querySelector('.home-carousel-controls');
+    expect(controls.querySelectorAll('.home-carousel-dots button')).toHaveLength(4);
+    // The controls first, the statement last (on top on the vape slide).
+    expect([...band().children].map((el) => el.className)).toEqual(['home-carousel-controls', 'home-carousel-warning']);
+    expect(carousel().classList.contains('is-warning')).toBe(false);
+    // The previous/next and pause controls stay on the photo.
+    for (const name of ['Previous slide', 'Next slide', 'Pause slideshow']) expect(stage().contains(screen.getByRole('button', { name }))).toBe(true);
+  });
+
+  it('marks the vape slide, whose statement has the band and whose dots go back on the photo (index.css)', () => {
+    render(<HeroCarousel slides={SLIDES} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Next slide' }));
+    expect(carousel().classList.contains('is-warning')).toBe(true);
+    expect(band().querySelector('.home-carousel-warning').hasAttribute('aria-hidden')).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Next slide' }));
+    expect(carousel().classList.contains('is-warning')).toBe(false);
+  });
+
+  it('keeps the slide\'s link on the photo outside the compact layout', () => {
+    render(<HeroCarousel slides={SLIDES} />);
+    expect(document.querySelector('.home-carousel-slide.is-active').contains(caption())).toBe(true);
+    expect(band().contains(caption())).toBe(false);
+  });
+
+  it('moves the link into the band in the compact layout, except on the vape slide', () => {
+    compactLayout();
+    render(<HeroCarousel slides={SLIDES} />);
+    const controls = band().querySelector('.home-carousel-controls');
+    expect(within(controls).getByRole('link', { name: 'Shop Candies' }).getAttribute('href')).toBe('/category/candies');
+    expect(document.querySelector('.home-carousel-slide.is-active a')).toBeNull();
+    // Before the dots, so the tab order follows the page: toggle, previous, next, link, dots.
+    expect([...controls.children].map((el) => el.className)).toEqual(['home-carousel-caption', 'home-carousel-dots']);
+    expect([...carousel().querySelectorAll('a, button')].slice(0, 4).map((el) => el.getAttribute('aria-label') || el.textContent))
+      .toEqual(['Pause slideshow', 'Previous slide', 'Next slide', 'Shop Candies']);
+    fireEvent.click(screen.getByRole('button', { name: 'Next slide' }));
+    const vape = document.querySelector('.home-carousel-slide.is-active');
+    expect(within(vape).getByRole('link', { name: 'Shop Novelties & Vapes' })).toBeTruthy();
+    expect(controls.querySelector('a')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Next slide' }));
+    expect(within(controls).getByRole('link', { name: 'Shop Merchandise' })).toBeTruthy();
+    expect(screen.getAllByRole('link')).toHaveLength(1);
+  });
+
+  it('follows the band\'s link on a tap, but not with the click that ends a swipe started on it', () => {
+    compactLayout();
+    render(<HeroCarousel slides={SLIDES} />);
+    const link = () => screen.getByRole('link', { name: /^Shop / });
+    fireEvent.pointerDown(link(), { isPrimary: true, pointerId: 5, button: 0, clientX: 300, clientY: 100 });
+    fireEvent.pointerUp(link(), { isPrimary: true, pointerId: 5, button: 0, clientX: 150, clientY: 100 });
+    expect(activeSlide()).toBe('2 of 4: Novelties & Vapes');
+    fireEvent.click(link());
+    expect(window.location.pathname).toBe('/');
+    fireEvent.click(screen.getByRole('button', { name: 'Next slide' }));
+    fireEvent.pointerDown(link(), { isPrimary: true, pointerId: 6, button: 0, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(link(), { isPrimary: true, pointerId: 6, button: 0, clientX: 50, clientY: 50 });
+    fireEvent.click(link());
+    expect(window.location.pathname).toBe('/category/merchandise');
+  });
+
+  it('has a band for the dots without any statement, none for one plain photo, and only the statement for one vape photo', () => {
+    const plain = SLIDES.map((slide) => ({ ...slide, nicotineWarning: false }));
+    const { unmount } = render(<HeroCarousel slides={plain} />);
+    expect(band().querySelector('.home-carousel-warning')).toBeNull();
+    expect(band().querySelectorAll('.home-carousel-dots button')).toHaveLength(4);
+    unmount();
+    const one = render(<HeroCarousel slides={plain.slice(0, 1)} />);
+    expect(band()).toBeNull();
+    one.unmount();
+    compactLayout();
+    render(<HeroCarousel slides={SLIDES.slice(1, 2)} />);
+    expect([...band().children].map((el) => el.className)).toEqual(['home-carousel-warning']);
+    expect(carousel().classList.contains('is-warning')).toBe(true);
+    expect(document.querySelector('.home-carousel-slide.is-active a').textContent).toBe('Shop Novelties & Vapes');
+  });
+});
+
+describe('while staff\'s photos load, and with none (NEW-008)', () => {
+  it('holds the carousel\'s box empty while pending: no photo, nothing to focus, hidden from assistive technology', () => {
+    const { container } = render(<HeroCarousel slides={SLIDES} pending />);
+    const box = container.firstElementChild;
+    expect(box.className).toBe('home-carousel is-pending');
+    expect(box.getAttribute('aria-hidden')).toBe('true');
+    expect(box.querySelector('img, a, button, [tabindex]')).toBeNull();
+    // The stage and the band as the carousel has them, the statement hidden.
+    expect([...box.children].map((el) => el.className)).toEqual(['home-carousel-stage', 'home-carousel-band']);
+    expect([...box.querySelector('.home-carousel-band').children].map((el) => [el.className, el.getAttribute('aria-hidden')]))
+      .toEqual([['home-carousel-controls', null], ['home-carousel-warning', 'true']]);
+    expect(box.querySelector('.home-carousel-warning').textContent).toBe(NICOTINE_WARNING_TEXT);
+    expect(screen.queryByRole('note')).toBeNull();
+  });
+
+  it('sizes the pending box as the slides it waits on', () => {
+    const { container } = render(<HeroCarousel slides={SLIDES.slice(0, 1)} pending />);
+    expect(container.querySelector('.home-carousel-band')).toBeNull();
+    expect(container.querySelector('.home-carousel-stage')).toBeTruthy();
+  });
+
+  it('shows the carousel once no longer pending, at slide 1 with its photo', () => {
+    const { rerender } = render(<HeroCarousel slides={SLIDES} pending />);
+    rerender(<HeroCarousel slides={SLIDES} />);
+    expect(activeSlide()).toBe('1 of 4: Candies');
+    expect(document.querySelector('.home-carousel-slide.is-active img').getAttribute('alt')).toBe('Display box of chocolates');
+  });
+
+  it('is an empty decorative panel, the bundled carousel\'s size, when there are no photos', () => {
+    const { container } = render(<HeroCarousel slides={[]} />);
+    const panel = container.firstElementChild;
+    expect(panel.className).toBe('home-carousel is-empty');
+    expect(panel.getAttribute('aria-hidden')).toBe('true');
+    expect(panel.querySelector('img, a, button, [tabindex]')).toBeNull();
+    // Reserved as the bundled slides need: dots and the vape slide's statement.
+    expect(HERO_SLIDES.length).toBeGreaterThan(1);
+    expect(HERO_SLIDES.some((slide) => slide.nicotineWarning)).toBe(true);
+    expect([...panel.querySelector('.home-carousel-band').children].map((el) => el.className)).toEqual(['home-carousel-controls', 'home-carousel-warning']);
   });
 });
 

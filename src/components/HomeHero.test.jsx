@@ -1,6 +1,7 @@
 // The home page's split hero (AW-004, AW-169): its h1, the pitch, the calls
 // to action for guests and signed-in visitors, and the photos beside it
-// (the bundled ones, or those the home page passes, AW-119).
+// (the bundled ones, or those the home page passes, AW-119; their box while
+// pending and an empty panel with none, NEW-008).
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HERO_SLIDES, HOME_HERO, HOME_PITCH } from '../data/content.js';
@@ -103,9 +104,20 @@ describe('HomeHero photos (AW-119)', () => {
     expect(active()).toBe('1 of 2: Grocery');
   });
 
-  it('gives the copy the whole hero when there are no photos', () => {
+  it('keeps the photos\' column as an empty panel when there are no photos, so the copy keeps its width (NEW-008)', () => {
     render(<HomeHero onApplyClick={() => {}} slides={[]} />);
-    expect(document.querySelector('.home-hero-media').children).toHaveLength(0);
+    const media = document.querySelector('.home-hero-media');
+    expect([...media.children].map((el) => [el.className, el.getAttribute('aria-hidden')])).toEqual([['home-carousel is-empty', 'true']]);
+    expect(media.querySelector('img, a, button')).toBeNull();
     expect(document.querySelectorAll('h1')).toHaveLength(1);
+  });
+
+  it('holds the photos\' box empty while they are pending, then shows them in the same carousel (NEW-008)', () => {
+    const { rerender } = render(<HomeHero onApplyClick={() => {}} slides={SLIDES} pending />);
+    expect(document.querySelector('.home-hero-media > .home-carousel.is-pending')).toBeTruthy();
+    expect(document.querySelector('.home-hero-media img')).toBeNull();
+    rerender(<HomeHero onApplyClick={() => {}} slides={SLIDES} />);
+    expect(document.querySelector('.home-carousel.is-pending')).toBeNull();
+    expect(active()).toBe('1 of 3: Candies');
   });
 });
