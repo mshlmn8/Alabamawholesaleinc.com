@@ -1018,6 +1018,40 @@ describe('the page on screen in the navigation (AW-221)', () => {
   });
 });
 
+// The footer from 1100px down (AW-219): the brand blurb is a full-width row
+// above the link columns, three of them, then two in the compact layout and
+// one on phones, so the blurb's cell is never stretched beside a long column.
+// Help (AW-220): the hour ranges on lines of their own, links in a row.
+describe('footer columns and Help (AW-219, AW-220)', () => {
+  const blocks = mediaBlocks(css);
+  const inBlock = (prelude) => blocks.filter((b) => b.prelude === prelude).flatMap((b) => rules(b.body));
+  const own = (list, selector) => declarations(list.find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+
+  it('puts the brand above three link columns at 1100px, two in the compact layout and one on phones', () => {
+    const narrow = inBlock('(max-width: 68.75em)');
+    expect(own(narrow, '.footer-grid')).toEqual({ 'grid-template-columns': 'repeat(3, minmax(0, 1fr))' });
+    expect(own(narrow, '.footer-brand')).toEqual({ 'grid-column': '1 / -1' });
+    expect(own(narrow, '.footer-brand p')).toEqual({ 'max-width': '68ch' });
+    expect(own(inBlock(MOBILE_QUERY), '.footer-grid')).toEqual({ 'grid-template-columns': '1fr 1fr' });
+    expect(own(inBlock('(max-width: 37.5em)'), '.footer-grid')).toMatchObject({ 'grid-template-columns': 'minmax(0, 1fr)' });
+    // The compact rule comes after the 1100px one, and the phone rule after both.
+    const at = (prelude, text) => blocks.find((b) => b.prelude === prelude && b.body.includes(text)).start;
+    expect(at(MOBILE_QUERY, '.footer-grid')).toBeGreaterThan(at('(max-width: 68.75em)', '.footer-grid'));
+    expect(at('(max-width: 37.5em)', '.footer-grid')).toBeGreaterThan(at(MOBILE_QUERY, '.footer-grid'));
+  });
+
+  it('sets each Help hour range on a line of its own and the help links in a wrapping row', () => {
+    expect(ruleFor('.hours-line')).toEqual({ display: 'block' });
+    expect(ruleFor('.help-links')).toMatchObject({ display: 'flex', 'flex-wrap': 'wrap' });
+    expect(code(read('src/components/HelpDialog.jsx'))).not.toMatch(/className="kicker"/);
+  });
+
+  it('draws no rule over the first link of a policy nav without its eyebrow', () => {
+    expect(ruleFor('.policy-nav > a:first-child')).toEqual({ 'border-top': '0' });
+    expect(code(read('src/pages/support/PolicyPage.jsx'))).toMatch(/<PolicyNav current=\{kind\} label=\{null\} \/>/);
+  });
+});
+
 describe('department page controls (AW-223, AW-225, AW-325)', () => {
   const all = rules(css);
   const blocks = mediaBlocks(css);

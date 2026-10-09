@@ -1263,6 +1263,10 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
 .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0 6px; }
 .contact-grid > div { min-width: 0; }
 .contact-grid dd { margin: 0; font-size: var(--text-base); line-height: 1.5; overflow-wrap: anywhere; }
+/* Help (AW-220): each hour range on a line of its own (each is unbreakable,
+   AW-275), and the links to the help pages in a row under the fine print. */
+.hours-line { display: block; }
+.help-links { display: flex; flex-wrap: wrap; gap: 0 22px; margin-top: 10px; }
 /* Errors in the danger red (AW-295), marked with a ringed '!' drawn here, not
    in the markup, so the message stays the only child of its element
    (translate-safe). The empty alt text keeps screen readers from reading the
@@ -1343,7 +1347,11 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
      moves to the top. */
   .home-carousel-slide { align-items: flex-start; }
   .home-carousel-caption { margin: 14px 0 0 14px; }
-  .footer-grid { grid-template-columns: 1fr 1fr; }
+  /* The brand blurb is a full-width row above the three link columns, so no
+     empty block sits under it beside the longer columns (AW-219). */
+  .footer-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .footer-brand { grid-column: 1 / -1; }
+  .footer-brand p { max-width: 68ch; }
   .aw-masthead { gap: 28px; }
   .aw-logo img { height: 64px; }
   .aw-logo-text { min-height: 64px; }
@@ -1410,6 +1418,8 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .qr-row > .button { grid-column: 3; grid-row: 1; }
   .qr-status { grid-column: 1 / -1; min-height: 0; }
   .qr-status:empty { display: none; }
+  /* Two link columns under the brand row (AW-219). */
+  .footer-grid { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 37.5em) {
   /* Large text wraps the two links instead of scrolling the page sideways
@@ -1612,6 +1622,8 @@ address.info-lead-small { font-style: normal; }
 .policy-nav .eyebrow { color: var(--orange-dark); margin-bottom: 10px; }
 .policy-nav a { display: block; width: 100%; text-align: left; padding: 8px 0; border: 0; border-top: 1px solid var(--line); background: none; color: var(--ink); font-size: var(--text-sm); font-weight: 600; }
 .policy-nav a[aria-current="page"] { color: var(--orange-dark); }
+/* Without its eyebrow (the policy pages, AW-220) no rule tops the first link. */
+.policy-nav > a:first-child { border-top: 0; }
 @media (hover: hover) {
   .policy-nav a:hover { color: var(--orange-dark); }
 }

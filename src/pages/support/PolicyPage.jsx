@@ -116,7 +116,8 @@ export function PolicyPage({ kind }) {
         <p>{policy.intro}</p>
       </PageHead>
       <div className="policy-layout">
-        <PolicyNav current={kind} />
+        {/* The page head's eyebrow already says CUSTOMER POLICIES (AW-220). */}
+        <PolicyNav current={kind} label={null} />
         <article className="policy-body">
           {policy.sections.map((section, i) => (
             <section key={section.heading} aria-labelledby={`policy-${kind}-${i}`}>

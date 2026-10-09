@@ -48,10 +48,12 @@ const POLICY_NAV = [
   { page: 'contact', label: 'Contact & visit' },
 ];
 
-export function PolicyNav({ current }) {
+// `label` is the eyebrow over the links; null leaves it off where the page
+// head already says it (AW-220). The nav keeps its accessible name.
+export function PolicyNav({ current, label = 'CUSTOMER POLICIES' }) {
   return (
     <nav className="policy-nav" aria-label="Customer policies">
-      <p className="eyebrow">CUSTOMER POLICIES</p>
+      {label && <p className="eyebrow">{label}</p>}
       {POLICY_NAV.map(link => (
         <Link key={link.page} to={`/${link.page}`} aria-current={current === link.page ? 'page' : undefined}>{link.label}</Link>
       ))}

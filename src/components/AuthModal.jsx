@@ -324,7 +324,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
       <div className="dialog scale-in" role="dialog" aria-modal="true" aria-labelledby="auth-title" ref={dialogRef} onClick={(e) => e.stopPropagation()}>
         <div className="dialog-top">
-          <p className="eyebrow">TRADE ACCOUNT</p>
+          <p className="eyebrow">{kicker}</p>
           <button className="icon-btn" type="button" onClick={requestClose} aria-label="Close"><Icon name="close" /></button>
         </div>
         {confirming && (
@@ -336,7 +336,6 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             </div>
           </div>
         )}
-        <p className="kicker">{kicker}</p>
         <h2 id="auth-title" ref={titleRef} tabIndex={-1}>{title}</h2>
 
         {mode === 'signin' && <p className="desc">Sign in to view wholesale pricing, build orders and see your order history.</p>}
