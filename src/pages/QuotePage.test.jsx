@@ -1,7 +1,8 @@
 // Checkout while the account changes underneath it (AW-186, AW-190, AW-048),
-// against submit_quote v3 (AW-049, AW-079, AW-198, AW-201, AW-014), and
-// removing lines (AW-042).
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+// against submit_quote v3 (AW-049, AW-079, AW-198, AW-201, AW-014),
+// removing lines (AW-042), and the receipt after a save (AW-012, AW-022,
+// AW-108).
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { announce } from '../lib/announce.js';
@@ -33,7 +34,7 @@ const B = { id: 'b', business: 'Bravo Tobacco Outlet', name: 'Bea Bravo', email:
 
 function page(props) {
   const base = {
-    items: ITEMS, total: 20, setLine: vi.fn(), chooseVariant: vi.fn(), removeLine: vi.fn(), clearCart: vi.fn(),
+    items: ITEMS, total: 20, setLine: vi.fn(), chooseVariant: vi.fn(), removeLine: vi.fn(), removeLines: vi.fn(), clearCart: vi.fn(),
     isBackendConfigured: true, onSignIn: vi.fn(),
   };
   return <QuotePage {...base} {...props} />;
@@ -552,3 +553,238 @@ describe('QuotePage removals', () => {
     expect(announced()).toEqual(['Removed all items from your order.']);
   });
 });
+
+// After the save (AW-012, AW-022, AW-108): one send at a time, only the lines
+// that were sent leave the cart, and the receipt shows what was sent. App
+// keeps the receipt for the history entry and passes it back as savedReceipt.
+describe('QuotePage receipt', () => {
+  const GUEST = { profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false };
+  const APPROVED = { profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true };
+  const CORN = { lineKey: '45', productId: 45, variant: null, name: 'Argo corn starch', sku: 'AW-ARGO-CORN-STARCH', cat: 'FOOD STUFF', qty: 3, price: 10, sellUnit: 'case of 24' };
+  const LINES = [ITEMS[0], CORN];
+  const fillAll = () => {
+    for (const [id, value] of [['quote-business', 'Test Market'], ['quote-contact', 'Test Buyer'], ['quote-email', 'buyer@example.test'],
+      ['quote-phone', '205-000-0000'], ['ship-street', '1 Test Way'], ['ship-city', 'Birmingham'], ['ship-state', 'al'], ['ship-zip', '35203'],
+      ['quote-date', '2030-01-15'], ['quote-notes', 'Back door, before 10']]) {
+      fireEvent.change(document.getElementById(id), { target: { value } });
+    }
+  };
+  // Product 14 is tobacco: a guest gives the license answers.
+  const fillLicense = () => {
+    fireEvent.change(document.getElementById('quote-license'), { target: { value: 'TL-1' } });
+    fireEvent.change(document.getElementById('quote-resale'), { target: { value: 'RS-1' } });
+    fireEvent.click(document.getElementById('quote-age'));
+  };
+  const submitForm = () => fireEvent.submit(document.querySelector('form[aria-labelledby="quote-form-title"]'));
+  const heading = () => screen.getByRole('heading', { level: 1 });
+  const receiptText = () => document.querySelector('.receipt-head').textContent;
+  const sentCount = () => vi.mocked(submitOrder).mock.calls.length;
+  const SAVED = {
+    ref: 'ALW-Q-SAVED00001', kind: 'quote', totalUnits: 2, subtotal: null, pricedLines: null, unpricedLines: null,
+    lines: [{ lineKey: '14', name: 'Kite cigarette tobacco', sku: 'AW-KITE', qty: 2, sellUnit: '' }],
+    delivery: 'willcall', ship: null, preferredDate: '', notes: '', contact: 'Saved Buyer', business: 'Saved Market', reachAt: '205-000-0009', savedAt: 1,
+  };
+
+  it('removes exactly the lines that were sent and hands App the receipt, even when a line was added meanwhile (AW-012, AW-046)', async () => {
+    const removeLines = vi.fn();
+    const clearCart = vi.fn();
+    const onSubmitted = vi.fn();
+    let answer;
+    submitOrder.mockImplementationOnce(() => new Promise((resolve) => { answer = resolve; }));
+    const checkCart = vi.fn(async () => ({ ok: true, items: LINES }));
+    const props = { ...GUEST, items: LINES, removeLines, clearCart, onSubmitted, checkCart, entryKey: 'k1' };
+    const view = render(page(props));
+    fillAll();
+    fillLicense();
+    await act(async () => { submitForm(); });
+    expect(answer).toBeTypeOf('function');
+    // Another tab adds a line while the quote is on its way, and the buyer edits a field.
+    const added = { lineKey: '200', productId: 200, variant: null, name: 'Chocolate bar', sku: 'AW-CHOC', cat: 'CANDIES', qty: 1, price: null };
+    view.rerender(page({ ...props, items: [...LINES, added] }));
+    fireEvent.change(document.getElementById('quote-contact'), { target: { value: 'Edited While Sending' } });
+    await act(async () => { answer({ ok: true, order: { id: 'o9', ref_num: 'ALW-Q-TEST000009', kind: 'quote', total_units: 5, subtotal: null, priced_lines: 0, unpriced_lines: 2 } }); });
+    await waitFor(() => expect(heading().textContent).toBe('Thank you, Test Buyer.'));
+    expect(removeLines).toHaveBeenCalledTimes(1);
+    expect(removeLines).toHaveBeenCalledWith(['14', '45']);
+    expect(clearCart).not.toHaveBeenCalled();
+    expect(onSubmitted).toHaveBeenCalledTimes(1);
+    const receipt = onSubmitted.mock.calls[0][0];
+    expect(receipt).toMatchObject({
+      ref: 'ALW-Q-TEST000009', kind: 'quote', totalUnits: 5, subtotal: null, pricedLines: 0, unpricedLines: 2,
+      lines: [
+        { lineKey: '14', name: 'Kite cigarette tobacco', sku: 'AW-KITE', qty: 2, sellUnit: '' },
+        { lineKey: '45', name: 'Argo corn starch', sku: 'AW-ARGO-CORN-STARCH', qty: 3, sellUnit: 'case of 24' },
+      ],
+      delivery: 'delivery', ship: { street: '1 Test Way', city: 'Birmingham', state: 'AL', zip: '35203' },
+      preferredDate: '2030-01-15', notes: 'Back door, before 10', contact: 'Test Buyer', business: 'Test Market', reachAt: '205-000-0000',
+    });
+    expect(receipt.savedAt).toBeTypeOf('number');
+    // No license answers in the receipt.
+    expect(JSON.stringify(receipt)).not.toMatch(/TL-1|RS-1/);
+  });
+
+  it('lists the lines, the delivery method, the ship-to address, the date and the notes, with no inline styles (AW-022, AW-108)', async () => {
+    render(page({ ...GUEST, items: LINES, checkCart: vi.fn(async () => ({ ok: true, items: LINES })) }));
+    fillAll();
+    fillLicense();
+    await act(async () => { submitForm(); });
+    await waitFor(() => expect(heading().textContent).toMatch(/^Thank you/));
+    expect(screen.getByText('QUOTE RECEIVED')).toBeTruthy();
+    expect(screen.getByText('ALW-Q-TEST000001')).toBeTruthy();
+    expect([...document.querySelectorAll('.receipt-items li')].map((li) => li.textContent)).toEqual([
+      '2 × Kite cigarette tobacco (AW-KITE)',
+      '3 × Argo corn starch (AW-ARGO-CORN-STARCH · sold by the case of 24)',
+    ]);
+    const details = Object.fromEntries([...document.querySelectorAll('.receipt-details > div')].map((row) => [row.querySelector('dt').textContent, row.querySelector('dd').textContent]));
+    expect(details).toEqual({
+      Business: 'Test Market',
+      'Delivery method': 'Next-day delivery (on route)',
+      'Ship to': '1 Test WayBirmingham, AL 35203',
+      'Preferred date': 'Tuesday, January 15, 2030',
+      Notes: 'Back door, before 10',
+    });
+    expect(receiptText()).toMatch(/A trade desk rep will reach out within one business day at 205-000-0000 to confirm details\./);
+    // AW-108: centred by class, never by inline style.
+    const section = document.querySelector('section.page-head.receipt-head');
+    expect(section.hasAttribute('style')).toBe(false);
+    expect(section.querySelectorAll('[style]')).toHaveLength(0);
+    // Nothing on the receipt sends again; guests get no order-history link.
+    expect(document.querySelector('form')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Submit/ })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'View order history' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Continue shopping' }).getAttribute('href')).toBe('/catalog');
+    expect(screen.getByRole('button', { name: 'Print' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Call to discuss' }).getAttribute('href')).toBe(`tel:${COMPANY.phoneRaw}`);
+    // The old "Back to home" (which emptied the cart) is gone.
+    expect(screen.queryByRole('link', { name: 'Back to home' })).toBeNull();
+  });
+
+  it('says will-call and where to pick up, with no ship-to', async () => {
+    render(page({ ...APPROVED, items: [CORN], checkCart: vi.fn(async () => ({ ok: true, items: [CORN] })) }));
+    fireEvent.change(screen.getByLabelText('Delivery method'), { target: { value: 'willcall' } });
+    await act(async () => { submitForm(); });
+    await waitFor(() => expect(heading().textContent).toBe('Thank you, Alice Alpha.'));
+    const details = Object.fromEntries([...document.querySelectorAll('.receipt-details > div')].map((row) => [row.querySelector('dt').textContent, row.querySelector('dd').textContent]));
+    expect(details).toEqual({
+      Business: 'Alpha Food Mart',
+      'Delivery method': 'Will-call pickup',
+      'Pickup at': `${COMPANY.addressShort}, during business hours`,
+    });
+    // A signed-in buyer can find it again in the order history.
+    expect(screen.getByRole('link', { name: 'View order history' }).getAttribute('href')).toBe('/account');
+  });
+
+  it('moves focus to the receipt’s heading', async () => {
+    render(<main id="main">{page({ ...APPROVED, checkCart: vi.fn(async () => ({ ok: true, items: ITEMS })) })}</main>);
+    fireEvent.change(document.getElementById('ship-street'), { target: { value: '1 Alpha Way' } });
+    submit().focus();
+    await act(async () => { submitForm(); });
+    await waitFor(() => expect(document.activeElement).toBe(heading()));
+    expect(heading().getAttribute('tabindex')).toBe('-1');
+    expect(heading().textContent).toMatch(/Thank you/);
+  });
+
+  it('sends once when submit fires twice in a row (AW-012)', async () => {
+    const before = sentCount();
+    let finish;
+    const checkCart = vi.fn(() => new Promise((resolve) => { finish = resolve; }));
+    render(page({ ...APPROVED, checkCart }));
+    fireEvent.change(document.getElementById('ship-street'), { target: { value: '1 Alpha Way' } });
+    fireEvent.change(document.getElementById('ship-city'), { target: { value: 'Hoover' } });
+    act(() => {
+      submitForm();
+      submitForm();
+    });
+    submitForm();
+    await act(async () => { finish({ ok: true, items: ITEMS }); });
+    await waitFor(() => expect(heading().textContent).toMatch(/Thank you/));
+    expect(checkCart).toHaveBeenCalledTimes(1);
+    expect(sentCount() - before).toBe(1);
+  });
+
+  it('allows another send after a failed one', async () => {
+    const before = sentCount();
+    submitOrder.mockImplementationOnce(async () => { throw new Error('boom'); });
+    render(page({ ...APPROVED, checkCart: vi.fn(async () => ({ ok: true, items: ITEMS })) }));
+    fireEvent.change(document.getElementById('ship-street'), { target: { value: '1 Alpha Way' } });
+    await act(async () => { submitForm(); });
+    expect(screen.getByRole('alert').textContent).toMatch(/^We couldn’t save this/);
+    await act(async () => { submitForm(); });
+    await waitFor(() => expect(heading().textContent).toMatch(/Thank you/));
+    expect(sentCount() - before).toBe(2);
+  });
+
+  it('picks ORDER or QUOTE by account when the database doesn’t say (older signatures)', async () => {
+    // The default answer has no kind, priced_lines or unpriced_lines.
+    const view = render(page({ ...APPROVED, checkCart: vi.fn(async () => ({ ok: true, items: ITEMS })) }));
+    fireEvent.change(document.getElementById('ship-street'), { target: { value: '1 Alpha Way' } });
+    await act(async () => { submitForm(); });
+    await waitFor(() => expect(screen.getByText('ORDER RECEIVED')).toBeTruthy());
+    expect(screen.getByText('Items in this order')).toBeTruthy();
+    view.unmount();
+    render(page({ ...GUEST, items: [CORN], checkCart: vi.fn(async () => ({ ok: true, items: [CORN] })) }));
+    fillAll();
+    await act(async () => { submitForm(); });
+    await waitFor(() => expect(screen.getByText('QUOTE RECEIVED')).toBeTruthy());
+    expect(screen.queryByText(/Saved total/)).toBeNull();
+    // The server's kind wins over the account.
+    submitOrder.mockImplementationOnce(async () => ({ ok: true, order: { id: 'o3', ref_num: 'ALW-Q-TEST000003', kind: 'quote', total_units: 2, subtotal: null } }));
+    cleanupAndRender(page({ ...APPROVED, checkCart: vi.fn(async () => ({ ok: true, items: ITEMS })) }));
+    fireEvent.change(document.getElementById('ship-street'), { target: { value: '1 Alpha Way' } });
+    await act(async () => { submitForm(); });
+    await waitFor(() => expect(screen.getByText('QUOTE RECEIVED')).toBeTruthy());
+  });
+
+  it('says how many lines the trade desk prices beside a partial total', async () => {
+    submitOrder.mockImplementationOnce(async () => ({ ok: true, order: { id: 'o4', ref_num: 'ALW-O-TEST000004', kind: 'order', total_units: 5, subtotal: 30, priced_lines: 1, unpriced_lines: 1 } }));
+    render(page({ ...APPROVED, items: LINES, checkCart: vi.fn(async () => ({ ok: true, items: LINES })) }));
+    fireEvent.change(document.getElementById('ship-street'), { target: { value: '1 Alpha Way' } });
+    await act(async () => { submitForm(); });
+    await waitFor(() => expect(screen.getByText('Saved total: $30.00 · 5 units')).toBeTruthy());
+    expect(screen.getByText('1 line is priced by the trade desk.')).toBeTruthy();
+  });
+
+  it('shows the receipt App kept for this history entry, before the empty cart, and checkout on another entry', () => {
+    const view = render(page({ ...GUEST, items: [], savedReceipt: SAVED, entryKey: 'k1' }));
+    expect(heading().textContent).toBe('Thank you, Saved Buyer.');
+    expect(screen.getByText('ALW-Q-SAVED00001')).toBeTruthy();
+    expect(screen.queryByText('Your cart is empty')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Submit/ })).toBeNull();
+    // A fresh visit to /quote (another entry): no saved receipt, so the empty cart.
+    view.rerender(page({ ...GUEST, items: [], savedReceipt: null, entryKey: 'k2' }));
+    expect(heading().textContent).toBe('Your cart is empty');
+  });
+
+  it('forgets a receipt it showed when the history entry changes', async () => {
+    const props = { ...APPROVED, checkCart: vi.fn(async () => ({ ok: true, items: ITEMS })), entryKey: 'k1' };
+    const view = render(page(props));
+    fireEvent.change(document.getElementById('ship-street'), { target: { value: '1 Alpha Way' } });
+    await act(async () => { submitForm(); });
+    await waitFor(() => expect(heading().textContent).toMatch(/Thank you/));
+    view.rerender(page({ ...props, items: [], entryKey: 'k2' }));
+    expect(heading().textContent).toBe('Your cart is empty');
+  });
+
+  it('copies the reference where the browser allows it, and says so once', async () => {
+    const view = render(page({ ...GUEST, items: [], savedReceipt: SAVED, entryKey: 'k1' }));
+    // jsdom has no clipboard: no button.
+    expect(screen.queryByRole('button', { name: 'Copy reference number' })).toBeNull();
+    view.unmount();
+    const writeText = vi.fn(async () => {});
+    Object.defineProperty(window.navigator, 'clipboard', { value: { writeText }, configurable: true });
+    try {
+      render(page({ ...GUEST, items: [], savedReceipt: SAVED, entryKey: 'k1' }));
+      vi.mocked(announce).mockClear();
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Copy reference number' })); });
+      expect(writeText).toHaveBeenCalledWith('ALW-Q-SAVED00001');
+      expect(vi.mocked(announce).mock.calls).toEqual([['Reference number copied.']]);
+    } finally {
+      delete window.navigator.clipboard;
+    }
+  });
+});
+
+function cleanupAndRender(ui) {
+  cleanup();
+  return render(ui);
+}

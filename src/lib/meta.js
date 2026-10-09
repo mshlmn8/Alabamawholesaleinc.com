@@ -97,7 +97,8 @@ function pageText(route, products, departments) {
       image: imageOf(p, p.name),
     };
   }
-  if (route.page === 'quote') return { title: `Checkout · ${site}`, description: `Review your items and submit a wholesale quote or order to ${site}. Minimum order ${formatMoney(ORDER_MINIMUM)}.` };
+  // After a save, /quote shows the receipt (App sets route.received, AW-022).
+  if (route.page === 'quote') return { title: route.received ? `${route.received === 'order' ? 'Order' : 'Quote'} received · ${site}` : `Checkout · ${site}`, description: `Review your items and submit a wholesale quote or order to ${site}. Minimum order ${formatMoney(ORDER_MINIMUM)}.` };
   if (route.page === 'account') return { title: `My Account · ${site}`, description: `Your ${site} trade account: order history, reorders and quick entry by SKU.` };
   if (route.page === 'admin') return { title: `Admin · ${site}`, description: `Catalog and account administration for ${site}.` };
   // Support pages (src/pages/support/).

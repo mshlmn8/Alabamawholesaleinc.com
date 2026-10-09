@@ -80,6 +80,14 @@ describe('pageMeta', () => {
   it('depends on the route only, never on the header search (AW-338)', () => {
     expect(pageMeta({ page: 'quote' }, products, departments, 'kite').title).toBe('Checkout · Alabama Wholesale Inc');
   });
+
+  it('names the receipt /quote shows after a save, and keeps it out of search results (AW-022)', () => {
+    const checkout = pageMeta({ page: 'quote' }, products, departments);
+    const quote = pageMeta({ page: 'quote', received: 'quote' }, products, departments);
+    const order = pageMeta({ page: 'quote', received: 'order' }, products, departments);
+    expect(quote).toMatchObject({ title: 'Quote received · Alabama Wholesale Inc', description: checkout.description, noindex: true, path: null });
+    expect(order).toMatchObject({ title: 'Order received · Alabama Wholesale Inc', description: checkout.description, noindex: true, path: null });
+  });
 });
 
 describe('applyPageMeta', () => {

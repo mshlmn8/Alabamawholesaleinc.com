@@ -18,6 +18,7 @@ import { useCart } from './lib/cart.js';
 import { usePrices } from './lib/prices.jsx';
 import { priceFor } from './lib/pricing.js';
 import { cartOwner, clearGuestCart } from './lib/cartStorage.js';
+import { clearReceipt, saveReceipt, useLastReceipt } from './lib/receipt.js';
 import { focusPageHeading, navigate, pathFor, resolveRoute, routeKey, useNavigationEffects, useRoute } from './lib/router.js';
 import { pageKeyFor } from './lib/routes.js';
 import { confirmAge, declineAge, endAgeConfirmationOnSignOut, reconsiderAge, useAgeGate } from './lib/ageGate.js';
@@ -102,8 +103,9 @@ export default function App() {
   // mount: after a sign-out here, a session another tab saved later must not
   // bring back the cart of the account that signed out.
   const savedUserId = auth.loading || auth.connectionProblem ? savedSessionUserId() : null;
+  const owner = cartOwner(auth, savedUserId);
   // Lines are only re-keyed or flagged against the live catalog (AW-083).
-  const cart = useCart({ products, priceOf, owner: cartOwner(auth, savedUserId), catalogSettled: catalog.settled });
+  const cart = useCart({ products, priceOf, owner, catalogSettled: catalog.settled });
 
   // The URL is checked against the catalog (AW-188): unknown pages,
   // departments, lines and products render NotFound, and other spellings of
@@ -121,6 +123,14 @@ export default function App() {
   const catalogPending = found.page === 'not-found' && CATALOG_KINDS.includes(found.kind) && !found.malformed && !catalog.settled;
   const pendingAs = catalogPending ? (catalog.status === 'loading' ? 'loading' : 'error') : null;
   const route = useMemo(() => (pendingAs ? { ...found, catalog: pendingAs } : found), [found, pendingAs]);
+  // The receipt of the quote or order saved on this history entry, by this
+  // cart's owner (AW-022): a reload or Back shows it again; a new visit to
+  // /quote shows checkout. The title then names it ("Quote received").
+  const lastReceipt = useLastReceipt();
+  const receiptHere = route.page === 'quote' && location.key && lastReceipt?.owner === owner && lastReceipt?.entryKey === location.key
+    ? lastReceipt.receipt : null;
+  const receivedKind = receiptHere?.kind || null;
+  const metaRoute = useMemo(() => (receivedKind ? { ...route, received: receivedKind } : route), [route, receivedKind]);
   useLayoutEffect(() => {
     if (canonicalPath && canonicalPath !== location.pathname) {
       navigate(canonicalPath + location.search + location.hash, { replace: true, scroll: false });
@@ -128,8 +138,8 @@ export default function App() {
   }, [canonicalPath, location]);
 
   useEffect(() => {
-    applyPageMeta(pageMeta(route, products, departments));
-  }, [route, products, departments]);
+    applyPageMeta(pageMeta(metaRoute, products, departments));
+  }, [metaRoute, products, departments]);
   // Scroll, focus and announcement on page changes (after the title is set).
   useNavigationEffects();
 
@@ -193,6 +203,8 @@ export default function App() {
       setSigningOut(false);
     }
     clearGuestCart();
+    // The last receipt holds the buyer's contact details (AW-022).
+    clearReceipt();
     navigate(SIGNED_OUT_PAGE);
     setLoginOpen(false);
     setSignOutNotice({ text: signOutMessage(result, { cartSaved }), pageKey: SIGNED_OUT_PAGE_KEY });
@@ -282,7 +294,8 @@ export default function App() {
           <QuotePage items={cart.items} total={cart.total} setLine={cart.setLine} chooseVariant={cart.chooseVariant} removeLine={cart.removeLine}
                      removeLines={cart.removeLines} clearCart={cart.clearCart} legacy={cart.legacy} onDismissLegacy={cart.dismissLegacy}
                      profile={profile} account={account} signedIn={!!session} onSignIn={openSignin} onApplyClick={openSignup}
-                     isApprovedBuyer={isApprovedBuyer} isSuspended={isSuspended} pricesStatus={prices.status} isBackendConfigured={isBackendConfigured} checkCart={checkCart} />
+                     isApprovedBuyer={isApprovedBuyer} isSuspended={isSuspended} pricesStatus={prices.status} isBackendConfigured={isBackendConfigured} checkCart={checkCart}
+                     savedReceipt={receiptHere} entryKey={location.key} onSubmitted={(receipt) => saveReceipt({ owner, entryKey: location.key, receipt })} />
         );
       case 'account':
         // Keyed by account: another buyer never sees the last one's orders (AW-190).

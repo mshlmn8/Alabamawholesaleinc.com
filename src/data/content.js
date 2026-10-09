@@ -234,7 +234,12 @@ export const STORAGE = {
   // src/lib/cartStorage.js (AW-189, AW-354). The first builds' 'aw-cart',
   // 'aw-trade-user' and 'aw-welcome-seen' are moved or removed there.
   cart: 'aw-cart-v2',
-  cartLegacy: 'aw-cart-legacy'
+  cartLegacy: 'aw-cart-legacy',
+  // sessionStorage only, never localStorage: this tab's last quote or order
+  // receipt, one record { owner, entryKey, receipt }, so a reload or Back
+  // keeps the confirmation. It holds the buyer's contact details and is
+  // cleared on sign-out. See src/lib/receipt.js (AW-012, AW-022).
+  receipt: 'aw-last-receipt'
 };
 
 // The date the Trade terms and Privacy policy last changed, as the policy
