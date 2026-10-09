@@ -2,7 +2,7 @@
 // application, password reset). Same editorial system as the storefront.
 
 import { COMPANY } from '../../data/content.js';
-import { APPLY_LABEL } from '../../data/terms.js';
+import { APPLY_LABEL, TRADE_ACCOUNT_LABEL } from '../../data/terms.js';
 import { Link } from '../../lib/router.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 
@@ -50,20 +50,28 @@ export const SUPPORT_NAV = [
   { page: 'contact', label: 'Contact & visit' },
   { page: 'delivery', label: 'Delivery & service area' },
   { page: 'shipping', label: 'Delivery policy' },
-  // The one apply label (AW-132).
+  // The one apply label (AW-132), for a guest; see supportApplyLabel.
   { page: 'apply', label: APPLY_LABEL },
   { page: 'terms', label: 'Trade terms' },
   { page: 'privacy', label: 'Privacy' },
 ];
 
+// What the nav calls /apply: the apply label for a guest, and 'Trade
+// account', /apply's crumb, once there is an account, for which /apply shows
+// the application's or the account's status instead (AW-066, NEW-047).
+export const supportApplyLabel = (hasAccount) => (hasAccount ? TRADE_ACCOUNT_LABEL : APPLY_LABEL);
+
 // `label` is the eyebrow over the links; null leaves it off where the page
 // head already says it (AW-220). The nav keeps its accessible name.
-export function PolicyNav({ current, label = 'HELP & POLICIES' }) {
+// `applyLabel` names the /apply entry (supportApplyLabel).
+export function PolicyNav({ current, label = 'HELP & POLICIES', applyLabel = APPLY_LABEL }) {
   return (
     <nav className="policy-nav" aria-label="Help and policies">
       {label && <p className="eyebrow">{label}</p>}
       {SUPPORT_NAV.map(link => (
-        <Link key={link.page} to={`/${link.page}`} aria-current={current === link.page ? 'page' : undefined}>{link.label}</Link>
+        <Link key={link.page} to={`/${link.page}`} aria-current={current === link.page ? 'page' : undefined}>
+          {link.page === 'apply' ? applyLabel : link.label}
+        </Link>
       ))}
     </nav>
   );
@@ -71,11 +79,12 @@ export function PolicyNav({ current, label = 'HELP & POLICIES' }) {
 
 // The side nav beside a support page's content, below its PageHead (AW-122).
 // Full-width bands such as the ContactStrip go after it. navLabel is the
-// nav's eyebrow (null leaves it off, as on the policy pages, AW-220).
-export function SupportLayout({ current, navLabel, children }) {
+// nav's eyebrow (null leaves it off, as on the policy pages, AW-220);
+// applyLabel names its /apply entry (signed in: 'Trade account', NEW-047).
+export function SupportLayout({ current, navLabel, applyLabel, children }) {
   return (
     <div className="policy-layout support-layout">
-      <PolicyNav current={current} label={navLabel} />
+      <PolicyNav current={current} label={navLabel} applyLabel={applyLabel} />
       <div className="support-layout-main">{children}</div>
     </div>
   );

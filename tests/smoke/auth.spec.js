@@ -297,6 +297,44 @@ test('guests never ask for prices and see the lock (AW-003)', async ({ page }) =
   expect(errors).toEqual([]);
 });
 
+// Signed in, nothing offers a second application (AW-066, NEW-014): the home
+// page's account section and /contact show the account's own panel, the
+// footer and the support nav call /apply 'Trade account', and /apply's
+// status panel is the application's only while it is under review (NEW-047).
+for (const [profile, eyebrow, link, panel] of [
+  [PENDING_PROFILE, 'APPLICATION UNDER REVIEW', ['Application status', '/apply'], 'APPLICATION STATUS'],
+  [PROFILE, 'ACCOUNT ACTIVE', ['My account', '/account'], 'ACCOUNT STATUS'],
+]) {
+  test(`a signed-in ${profile.status} account sees its trade account where a guest is asked to apply (AW-066, NEW-014, NEW-047)`, async ({ page, context }) => {
+    const errors = trackErrors(page);
+    await seedSession(context);
+    await mockSupabase(page, { profile });
+    await page.goto('/');
+    const home = page.locator('#apply');
+    await expect(home.locator('.eyebrow')).toHaveText(eyebrow);
+    await expect(home.getByRole('heading', { level: 2 })).toHaveText('Your trade account');
+    await expect(home.getByRole('link', { name: link[0] })).toHaveAttribute('href', link[1]);
+    await expect(home.getByRole('button')).toHaveCount(0);
+    const footer = page.locator('footer');
+    await expect(footer.getByRole('link', { name: 'Trade account' })).toHaveAttribute('href', '/apply');
+    await expect(footer.getByRole('link', { name: 'Application checklist' })).toHaveCount(0);
+
+    await page.goto('/contact');
+    const band = page.locator('.support-cta');
+    await expect(band.locator('.eyebrow')).toHaveText(eyebrow);
+    await expect(band.getByRole('link', { name: link[0] })).toHaveAttribute('href', link[1]);
+    await expect(page.getByRole('button', { name: 'Apply for a trade account' })).toHaveCount(0);
+    const nav = page.getByRole('navigation', { name: 'Help and policies' });
+    await expect(nav.getByRole('link', { name: 'Trade account' })).toHaveAttribute('href', '/apply');
+
+    await nav.getByRole('link', { name: 'Trade account' }).click();
+    await expect(page).toHaveURL(/\/apply$/);
+    await expect(nav.getByRole('link', { name: 'Trade account' })).toHaveAttribute('aria-current', 'page');
+    await expect(page.locator('.status-panel .eyebrow')).toHaveText(panel);
+    expect(errors).toEqual([]);
+  });
+}
+
 test('Back on a half-typed application asks first, keeps the answers, and leaves no stray history entry (AW-018)', async ({ page }) => {
   const errors = trackErrors(page);
   await mockSupabase(page);

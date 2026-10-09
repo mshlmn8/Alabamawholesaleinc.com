@@ -36,7 +36,7 @@ import { confirmLeave, focusPageHeading, navigate, pathFor, resolveRoute, routeK
 import { pageKeyFor } from './lib/routes.js';
 import { confirmAge, declineAge, endAgeConfirmationOnSignOut, reconsiderAge, useAgeGate } from './lib/ageGate.js';
 import { pageMeta, applyPageMeta } from './lib/meta.js';
-import { accountStatus } from './lib/accountStatus.js';
+import { accountView } from './lib/accountStatus.js';
 import { basketTerms } from './data/terms.js';
 import { departmentsFor } from './lib/departments.js';
 import { accountNotices, signOutMessage } from './lib/accountNotices.js';
@@ -223,7 +223,7 @@ export default function App() {
   // /apply ('Application Under Review', AW-098) and what /reset-password
   // shows ('Password Updated', AW-255).
   // A signed-in account whose profile didn't load isn't a guest (NEW-002).
-  const applyAs = account === 'loading' || account === 'no-profile' ? account : accountStatus(profile);
+  const applyAs = accountView(profile, account);
   // The reset page's view belongs to the page that reported it.
   if (resetShown && resetShown.pageKey !== location.pageKey) setResetShown(null);
   const resetAs = resetShown?.view || null;
@@ -437,13 +437,16 @@ export default function App() {
                             onLoginClick={openSignin} {...cardProps} />
         );
       case 'contact':
-        return <ContactPage onApplyClick={openApplication} />;
+        // Signed in, the page offers the account's own panel, never a
+        // second application (AW-066, NEW-014); the support pages' side nav
+        // calls /apply 'Trade account' (NEW-047).
+        return <ContactPage onApplyClick={openApplication} signedIn={!!session} profile={profile} account={account} />;
       case 'delivery':
-        return <DeliveryPage />;
+        return <DeliveryPage signedIn={!!session} />;
       case 'shipping':
       case 'privacy':
       case 'terms':
-        return <PolicyPage kind={route.page} />;
+        return <PolicyPage kind={route.page} signedIn={!!session} />;
       case 'apply':
         return (
           <ApplyPage {...accountProps} isBackendConfigured={isBackendConfigured}

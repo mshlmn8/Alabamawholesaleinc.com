@@ -86,6 +86,56 @@ describe('ContactPage account call to action', () => {
     expect(second.className).toBe('button ghost');
     expect(second.getAttribute('href')).toBe('/apply');
   });
+
+  // Signed in, the band never starts a second application (AW-066, NEW-014):
+  // it is the account's own panel, worded as /apply's page head, with My
+  // account once approved and the application status while it waits or is
+  // on hold.
+  const panel = () => {
+    const band = document.querySelector('.support-cta');
+    return {
+      eyebrow: band.querySelector('.eyebrow').textContent,
+      title: band.querySelector('h2').textContent,
+      text: band.querySelector('h2 + p').textContent,
+      actions: [...band.querySelectorAll('.contact-strip-actions > *')].map((el) => [el.tagName, el.textContent, el.getAttribute('href'), el.className]),
+    };
+  };
+  const signedIn = (status, extra = {}) => ({ signedIn: true, profile: status ? { id: 'p', email: 'buyer@example.test', status } : null, account: status ? 'ready' : 'loading', ...extra });
+
+  it.each([
+    ['approved', 'ACCOUNT ACTIVE', ['A', 'My account', '/account', 'button'], /^Your trade account is active\./],
+    ['pending', 'APPLICATION UNDER REVIEW', ['A', 'Application status', '/apply', 'button'], /^Your application is with a trade rep\./],
+    ['suspended', 'ACCOUNT ON HOLD', ['A', 'Application status', '/apply', 'button'], /^Ordering is paused on this account\./],
+  ])('offers a signed-in %s account its own trade account, not Apply', (status, eyebrow, link, text) => {
+    const onApplyClick = vi.fn();
+    render(<ContactPage onApplyClick={onApplyClick} {...signedIn(status)} />);
+    const shown = panel();
+    expect(shown).toMatchObject({ eyebrow, title: 'Your trade account', actions: [link] });
+    expect(shown.text).toMatch(text);
+    expect(screen.queryByRole('button', { name: 'Apply for a trade account' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Application checklist' })).toBeNull();
+    expect(screen.queryByText('NEW TO ALABAMA WHOLESALE?')).toBeNull();
+    expect(onApplyClick).not.toHaveBeenCalled();
+    // The page outline ends with the account's heading.
+    expect(screen.getAllByRole('heading', { level: 2 }).at(-1).textContent).toBe('Your trade account');
+  });
+
+  it('offers My account, never Apply, while a signed-in account loads or when its profile didn’t load', () => {
+    const view = render(<ContactPage onApplyClick={vi.fn()} {...signedIn(null)} />);
+    expect(panel()).toEqual({ eyebrow: 'TRADE ACCOUNT', title: 'Your trade account', text: 'Checking your account…', actions: [['A', 'My account', '/account', 'button']] });
+    view.rerender(<ContactPage onApplyClick={vi.fn()} {...signedIn(null, { account: 'no-profile' })} />);
+    expect(panel()).toMatchObject({ eyebrow: 'TRADE ACCOUNT', text: 'You’re signed in, but your account details didn’t load.', actions: [['A', 'My account', '/account', 'button']] });
+    // The profile arrives: the pending account's panel, as a new block.
+    view.rerender(<ContactPage onApplyClick={vi.fn()} {...signedIn('pending')} />);
+    expect(panel().eyebrow).toBe('APPLICATION UNDER REVIEW');
+    expect(screen.queryByRole('button', { name: 'Apply for a trade account' })).toBeNull();
+  });
+
+  it('keeps the guest’s Apply when nobody is signed in, whatever the profile props say', () => {
+    render(<ContactPage onApplyClick={vi.fn()} signedIn={false} profile={null} account="signed-out" />);
+    expect(panel().eyebrow).toBe('NEW TO ALABAMA WHOLESALE?');
+    expect(screen.getByRole('button', { name: 'Apply for a trade account' })).toBeTruthy();
+  });
 });
 
 // Webmail users can copy the address instead of following mailto: (AW-280).

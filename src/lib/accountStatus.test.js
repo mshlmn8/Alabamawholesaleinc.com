@@ -2,7 +2,9 @@
 // one label per status, and pricing-lock copy that never tells a suspended
 // account to wait for approval.
 import { describe, expect, it } from 'vitest';
-import { ACCOUNT_STATUSES, PRICE_LOCK, STATUS_LABEL, accountStatus } from './accountStatus.js';
+import {
+  ACCOUNT_EYEBROWS, ACCOUNT_STATUSES, PRICE_LOCK, STATUS_LABEL, TRADE_ACCOUNT_PANELS, accountStatus, accountView, tradeAccountPanel,
+} from './accountStatus.js';
 
 describe('accountStatus', () => {
   it('is guest without a profile', () => {
@@ -56,5 +58,43 @@ describe('PRICE_LOCK', () => {
     for (const status of ['guest', 'pending', 'suspended']) {
       expect(Object.keys(PRICE_LOCK[status])).toEqual(['short', 'line', 'detail']);
     }
+  });
+});
+
+describe('accountView', () => {
+  it('waits for the account, says when its profile didn’t load, then follows the status', () => {
+    expect(accountView({ status: 'approved' }, 'loading')).toBe('loading');
+    expect(accountView(null, 'no-profile')).toBe('no-profile');
+    expect(accountView(null, 'signed-out')).toBe('guest');
+    expect(accountView({ status: 'approved' }, 'ready')).toBe('approved');
+    expect(accountView({ status: 'x' }, 'ready')).toBe('pending');
+  });
+});
+
+// The signed-in account's panel where a guest is asked to apply (AW-066,
+// NEW-014): /apply's eyebrows, My account once approved, the application
+// status while it waits or is on hold.
+describe('tradeAccountPanel', () => {
+  it('has a panel for every signed-in view and none for a guest', () => {
+    expect(tradeAccountPanel('guest')).toBeNull();
+    expect(Object.keys(TRADE_ACCOUNT_PANELS)).toEqual(Object.keys(ACCOUNT_EYEBROWS));
+    expect(ACCOUNT_EYEBROWS).toEqual({
+      loading: 'TRADE ACCOUNT', 'no-profile': 'TRADE ACCOUNT', pending: 'APPLICATION UNDER REVIEW', approved: 'ACCOUNT ACTIVE', suspended: 'ACCOUNT ON HOLD',
+    });
+  });
+
+  it('links an approved account to My account, and one under review or on hold to its application status', () => {
+    const links = Object.fromEntries(Object.keys(TRADE_ACCOUNT_PANELS).map((view) => [view, tradeAccountPanel(view).link]));
+    expect(links).toEqual({
+      loading: { to: '/account', label: 'My account' },
+      'no-profile': { to: '/account', label: 'My account' },
+      pending: { to: '/apply', label: 'Application status' },
+      approved: { to: '/account', label: 'My account' },
+      suspended: { to: '/apply', label: 'Application status' },
+    });
+    expect(tradeAccountPanel('approved')).toMatchObject({ eyebrow: 'ACCOUNT ACTIVE', title: 'Your trade account' });
+    // An account on hold is never told to wait for approval (AW-101), and no panel asks anyone to apply.
+    expect(tradeAccountPanel('suspended').text).not.toMatch(/approv/i);
+    for (const view of Object.keys(TRADE_ACCOUNT_PANELS)) expect(tradeAccountPanel(view).text).not.toMatch(/apply for/i);
   });
 });

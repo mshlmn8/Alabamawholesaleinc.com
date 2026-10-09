@@ -45,6 +45,39 @@ describe('ApplyPage', () => {
       view.unmount();
     }
   });
+
+  // The application has a status while it is under review; once a trade rep
+  // has decided, the account does (NEW-047).
+  it('heads the status panel APPLICATION STATUS under review and ACCOUNT STATUS after', () => {
+    const eyebrows = ['pending', 'approved', 'suspended'].map((status) => {
+      const view = page({ profile: { id: 'p', name: 'Test Buyer', email: 'buyer@example.test', status }, account: 'ready' });
+      const panel = view.container.querySelector('.status-panel');
+      const pair = [panel.querySelector('.eyebrow').textContent, panel.querySelector('h2').textContent];
+      view.unmount();
+      return pair;
+    });
+    expect(eyebrows).toEqual([['APPLICATION STATUS', 'Pending approval'], ['ACCOUNT STATUS', 'Approved'], ['ACCOUNT STATUS', 'On hold']]);
+  });
+
+  // The side nav names the page as its crumb does once there is an account
+  // (NEW-047); a guest keeps the apply label.
+  it('names its side-nav entry Trade account for every signed-in view, and the apply label for a guest', () => {
+    const navCurrent = () => screen.getByRole('navigation', { name: 'Help and policies' }).querySelector('a[aria-current="page"]');
+    const guest = page();
+    expect(navCurrent().textContent).toBe('Apply for a trade account');
+    expect(document.querySelector('.crumbs').textContent).toContain('Trade account');
+    guest.unmount();
+    for (const props of [
+      { profile: null, account: 'loading' },
+      { profile: null, account: 'no-profile' },
+      ...['pending', 'approved', 'suspended'].map((status) => ({ profile: { id: 'p', email: 'buyer@example.test', status }, account: 'ready' })),
+    ]) {
+      const view = page(props);
+      expect(navCurrent().textContent, props.account).toBe('Trade account');
+      expect(navCurrent().getAttribute('href')).toBe('/apply');
+      view.unmount();
+    }
+  });
 });
 
 // The page head, intro and contact strip follow the account (AW-098), and a

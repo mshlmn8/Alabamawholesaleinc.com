@@ -2,7 +2,7 @@
 // phone menu, the footer and the Help dialog. Signed-in visitors are never
 // asked to apply and the header separates its account links (AW-066); links
 // to the page on screen carry aria-current (AW-221).
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PRODUCTS } from '../data/products.js';
 import { departmentsFor } from '../lib/departments.js';
@@ -161,14 +161,17 @@ describe('Footer (AW-066, AW-221)', () => {
     expect(help.getAllByRole('link', { name: 'My account' })).toHaveLength(1);
   });
 
-  it('gives a signed-in visitor My account in their place, and keeps the application checklist', () => {
+  // /apply shows a signed-in account its status, not the checklist: the link
+  // is 'Trade account', the page's crumb (NEW-047).
+  it('gives a signed-in visitor My account in their place, and Trade account for the application checklist', () => {
     renderFooter({ signedIn: true });
     const help = within(column('Account & help'));
     // Help stays a button (AW-285); Apply and Sign in are gone.
     expect(help.queryAllByRole('button').map((b) => b.textContent)).toEqual(['Help']);
+    expect(help.queryByRole('link', { name: 'Application checklist' })).toBeNull();
     expect(help.getAllByRole('link').map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
       ['My account', '/account'],
-      ['Application checklist', '/apply'],
+      ['Trade account', '/apply'],
       ['Quick reorder', '/account#quick-reorder'],
       ['Contact & visit', '/contact'],
       ['Delivery & service area', '/delivery'],
@@ -188,6 +191,11 @@ describe('Footer (AW-066, AW-221)', () => {
     }
     go('/');
     expect(current()).toEqual([]);
+    // Signed in, the same link, by its other name.
+    go('/apply');
+    cleanup();
+    renderFooter({ signedIn: true });
+    expect(current()).toEqual([['Trade account', 'page']]);
   });
 });
 

@@ -12,37 +12,36 @@
 
 import { COMPANY } from '../../data/content.js';
 import { APPLICATION_CHECKLIST } from '../../data/onboarding.js';
-import { accountStatus } from '../../lib/accountStatus.js';
-import { APPLY_LABEL, SIGN_IN_INSTEAD } from '../../data/terms.js';
+import { ACCOUNT_EYEBROWS, TRADE_ACCOUNT_TITLE, accountStatus, accountView } from '../../lib/accountStatus.js';
+import { APPLY_LABEL, SIGN_IN_INSTEAD, TRADE_ACCOUNT_LABEL } from '../../data/terms.js';
 import { ServiceUnavailable } from '../../components/ServiceUnavailable.jsx';
 import { ApplicationDocuments } from '../../components/DocumentUploads.jsx';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
 import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
 import { Link } from '../../lib/router.js';
 import { accountStatusLabel } from '../../lib/accountLabels.js';
-import { PageHead, SupportLayout, ContactStrip } from './SupportShell.jsx';
+import { PageHead, SupportLayout, ContactStrip, supportApplyLabel } from './SupportShell.jsx';
 
 const INTRO_21 = 'Alabama Wholesale sells exclusively to licensed retail businesses — 21+, no consumer sales.';
 
 // Per view ('guest', 'loading', 'no-profile' and the three account
 // statuses): the eyebrow, the h1 and the contact strip. A strip left out is
-// the default one.
+// the default one. A signed-in account's eyebrows are accountStatus.js's
+// ACCOUNT_EYEBROWS, which the account panels on the home and contact pages
+// show too (AW-066, NEW-014).
 const VIEWS = {
   guest: { eyebrow: 'OPEN AN ACCOUNT', title: APPLY_LABEL, strip: { eyebrow: 'RATHER TALK IT THROUGH?', title: 'Apply with a trade rep' } },
-  loading: { eyebrow: 'TRADE ACCOUNT', title: 'Trade account' },
-  'no-profile': { eyebrow: 'TRADE ACCOUNT', title: 'Your trade account' },
-  pending: { eyebrow: 'APPLICATION UNDER REVIEW', title: 'Your trade account', strip: { eyebrow: 'QUESTIONS ABOUT YOUR APPLICATION?', title: 'Talk to a trade rep' } },
-  approved: { eyebrow: 'ACCOUNT ACTIVE', title: 'Your trade account' },
-  suspended: { eyebrow: 'ACCOUNT ON HOLD', title: 'Your trade account', strip: { eyebrow: 'ACCOUNT ON HOLD?', title: 'Talk to a trade rep' } },
+  loading: { eyebrow: ACCOUNT_EYEBROWS.loading, title: TRADE_ACCOUNT_LABEL },
+  'no-profile': { eyebrow: ACCOUNT_EYEBROWS['no-profile'], title: TRADE_ACCOUNT_TITLE },
+  pending: { eyebrow: ACCOUNT_EYEBROWS.pending, title: TRADE_ACCOUNT_TITLE, strip: { eyebrow: 'QUESTIONS ABOUT YOUR APPLICATION?', title: 'Talk to a trade rep' } },
+  approved: { eyebrow: ACCOUNT_EYEBROWS.approved, title: TRADE_ACCOUNT_TITLE },
+  suspended: { eyebrow: ACCOUNT_EYEBROWS.suspended, title: TRADE_ACCOUNT_TITLE, strip: { eyebrow: 'ACCOUNT ON HOLD?', title: 'Talk to a trade rep' } },
 };
 
 // The view for an account: 'loading' until the session and profile are
 // known, 'no-profile' when it is signed in but its profile didn't load
-// (NEW-002), then accountStatus().
-export function applyView(profile, account) {
-  if (account === 'loading' || account === 'no-profile') return account;
-  return accountStatus(profile);
-}
+// (NEW-002), then accountStatus(). accountStatus.js's accountView.
+export const applyView = accountView;
 
 function ApplyIntro({ view }) {
   if (view === 'loading' || view === 'no-profile') return <p>{INTRO_21}</p>;
@@ -82,7 +81,7 @@ export function ApplyPage({
 
   return (
     <section className="support-page">
-      <PageHead crumb="Trade account" eyebrow={eyebrow} title={title}>
+      <PageHead crumb={TRADE_ACCOUNT_LABEL} eyebrow={eyebrow} title={title}>
         {/* Keyed: each view's sentence is a new paragraph, never a patch
             of the last one's text nodes (Google Translate, AW-039). */}
         <ApplyIntro key={view} view={view} />
@@ -94,7 +93,9 @@ export function ApplyPage({
           </div>
         )}
       </PageHead>
-      <SupportLayout current="apply">
+      {/* The side nav names this page as the crumb does once there is an
+          account: 'Trade account', not the guest's apply label (NEW-047). */}
+      <SupportLayout current="apply" applyLabel={supportApplyLabel(view !== 'guest')}>
 
       {/* Holds about the room the status and documents take, so they don't
           push the page down when the account arrives (NEW-002). */}
@@ -151,13 +152,17 @@ export function ApplyPage({
   );
 }
 
+// The eyebrow says what the status is of: the application while it is under
+// review, the account once a trade rep has decided (NEW-047).
+export const STATUS_PANEL_EYEBROW = Object.freeze({ pending: 'APPLICATION STATUS', account: 'ACCOUNT STATUS' });
+
 function StatusPanel({ profile }) {
   const status = accountStatus(profile);
   const label = accountStatusLabel(status);
   return (
     <section className={`status-panel status-${status}`} aria-labelledby="status-title">
       <div>
-        <p className="eyebrow">APPLICATION STATUS</p>
+        <p className="eyebrow">{status === 'pending' ? STATUS_PANEL_EYEBROW.pending : STATUS_PANEL_EYEBROW.account}</p>
         <h2 id="status-title">{label}</h2>
         {status === 'pending' && (
           <p>{`Thanks${profile.name ? `, ${profile.name}` : ''}. We have the application${profile.business ? ` for ${profile.business}` : ''}. A trade rep is reviewing your license information and will contact you at ${profile.email} when the account is approved. Wholesale pricing and ordering unlock at that point.`}</p>

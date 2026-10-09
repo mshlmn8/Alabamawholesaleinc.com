@@ -1752,7 +1752,7 @@ describe('footer columns and Help (AW-219, AW-220)', () => {
   it('draws no rule over the first link of a policy nav without its eyebrow', () => {
     expect(ruleFor('.policy-nav > a:first-child')).toEqual({ 'border-top': '0' });
     // The policy pages' side nav (SupportLayout, AW-122) leaves its eyebrow off.
-    expect(code(read('src/pages/support/PolicyPage.jsx'))).toMatch(/<SupportLayout current=\{kind\} navLabel=\{null\}>/);
+    expect(code(read('src/pages/support/PolicyPage.jsx'))).toMatch(/<SupportLayout current=\{kind\} navLabel=\{null\}[ >]/);
   });
 });
 

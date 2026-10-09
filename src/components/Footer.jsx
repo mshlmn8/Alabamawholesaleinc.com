@@ -2,9 +2,10 @@
 // policy links and the nicotine warning. Destinations are links (AW-043);
 // "Apply for a trade account", "Sign in" and "Help" open dialogs and stay
 // buttons. Signed in, a "My account" link takes the place of Apply and Sign
-// in (AW-066); the application checklist stays, for documents an
-// application still needs. Links to the page on screen carry aria-current
-// (AW-221).
+// in (AW-066), and the link to /apply is "Trade account", the page's crumb,
+// where /apply shows the application's or the account's status and its
+// documents; a guest's is "Application checklist" (NEW-047). Links to the
+// page on screen carry aria-current (AW-221).
 //
 // AW-285: the shop links (all products, the departments, new arrivals,
 // bestsellers) are one column and the account and help links another, with
@@ -14,7 +15,7 @@
 // the same words as the trade-only strip, and the year is the current one.
 
 import { COMPANY, LICENSED_ONLY } from '../data/content.js';
-import { APPLY_LABEL, SIGN_IN_LABEL } from '../data/terms.js';
+import { APPLY_LABEL, SIGN_IN_LABEL, TRADE_ACCOUNT_LABEL } from '../data/terms.js';
 import { Link, useRoute } from '../lib/router.js';
 import { currentFor } from '../lib/navCurrent.js';
 import { NicotineWarning } from './NicotineWarning.jsx';
@@ -70,7 +71,7 @@ export function Footer({ departments, signedIn = false, onLoginClick, onApplyCli
             {signedIn
               ? <Link className="footer-link" to="/account" aria-current={current('/account')}>My account</Link>
               : <button type="button" onClick={onApplyClick}>{APPLY_LABEL}</button>}
-            <Link className="footer-link" to="/apply" aria-current={current('/apply')}>Application checklist</Link>
+            <Link className="footer-link" to="/apply" aria-current={current('/apply')}>{signedIn ? TRADE_ACCOUNT_LABEL : 'Application checklist'}</Link>
             {!signedIn && <button type="button" onClick={onLoginClick}>{SIGN_IN_LABEL}</button>}
             {/* A guest's My account says what an account gives (AW-285, AW-086). */}
             {!signedIn && <Link className="footer-link" to="/account" aria-current={current('/account')}>My account</Link>}

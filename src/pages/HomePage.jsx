@@ -2,10 +2,12 @@
 // (h1, pitch, calls to action and the photo carousel), the three services,
 // the departments, one row each of new arrivals and bestsellers, the two
 // collection cards and the account application steps. Only the application
-// steps are numbered, the page's one real sequence (AW-216).
+// steps are numbered, the page's one real sequence (AW-216). A signed-in
+// account sees its own account's panel in place of the steps (AW-066).
 
 import { DEPARTMENT_PHOTOS, FREE_DELIVERY_THRESHOLD } from '../data/content.js';
 import { APPLY_LABEL } from '../data/terms.js';
+import { accountView, tradeAccountPanel } from '../lib/accountStatus.js';
 import { topLines } from '../lib/departments.js';
 import { formatMoneyShort } from '../lib/format.js';
 import { tierPriceNote } from '../lib/pricing.js';
@@ -58,11 +60,69 @@ export function departmentPhoto(products, deptKey) {
   return null;
 }
 
-export function HomePage({ products, departments, profile, isApprovedBuyer, priceOf, pricesStatus, priceTier = null, cart, addLine, decLine, onLoginClick, onApplyClick, signedIn = false }) {
+// The foot of the page. A guest is asked to open a trade account, with the
+// three steps. A signed-in account is never offered a second application
+// (AW-066): its panel says where the account stands, as /apply's page head
+// does (accountStatus.js tradeAccountPanel), and links to My account or the
+// application status. Keyed by view, so each view's words are a new block
+// (Google Translate).
+function AccountSection({ signedIn, view, onApplyClick }) {
+  const panel = signedIn ? tradeAccountPanel(view) : null;
+  if (panel) {
+    return (
+      <section className="section" id="apply">
+        <div key={view} className="apply-panel trade-account-panel">
+          <div className="apply-intro">
+            <p className="eyebrow">{panel.eyebrow}</p>
+            <h2>{panel.title}</h2>
+          </div>
+          <div className="trade-account-body">
+            <p>{panel.text}</p>
+            <Link className="button" to={panel.link.to}>{panel.link.label}</Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
+  return (
+    <section className="section" id="apply">
+      <div className="apply-panel">
+        <div className="apply-intro">
+          <p className="eyebrow">OPEN AN ACCOUNT</p>
+          <h2>Open a trade account</h2>
+          <button className="button" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button>
+        </div>
+        <ol className="apply-steps">
+          <li>
+            <h3>Apply online</h3>
+            <p>Tell us about your store — business name, EIN, state retail tobacco license number and resale certificate. Takes a few minutes.</p>
+          </li>
+          <li>
+            <h3>We verify</h3>
+            {/* TODO(owner): Does approval really take one business day for most accounts, and does the team check each license with the state? Kept as published; the approval time is the AW-246 question. (AW-281, see AW-246) */}
+            <p>Our team checks your license with the state and approves most accounts within one business day. Wholesale pricing and ordering unlock when you sign in.</p>
+          </li>
+          <li>
+            <h3>Order &amp; receive</h3>
+            <p>Order online or by phone for next-day delivery on our trucks when the stop is on a delivery route, or will-call pickup at the Birmingham warehouse during business hours.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+  );
+}
+
+// account is useAuth's ('loading' | 'signed-out' | 'no-profile' | 'ready'),
+// through App's cardProps: the cards and the account panel tell a guest from
+// a signed-in buyer whose profile is still loading (NEW-002, NEW-050).
+export function HomePage({
+  products, departments, profile, account = profile ? 'ready' : 'signed-out', isApprovedBuyer, priceOf, pricesStatus, priceTier = null,
+  cart, addLine, decLine, onLoginClick, onApplyClick, signedIn = false,
+}) {
   // The home rails leave the SKU off the card; category, search and product
   // pages keep it (AW-060).
   const card = (p) => (
-    <ProductCard key={p.id} p={p} profile={profile} isApprovedBuyer={isApprovedBuyer} priceOf={priceOf} pricesStatus={pricesStatus} cart={cart}
+    <ProductCard key={p.id} p={p} profile={profile} account={account} isApprovedBuyer={isApprovedBuyer} priceOf={priceOf} pricesStatus={pricesStatus} cart={cart}
                  addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} showSku={false} />
   );
   // TODO(owner): Which products are really new and which are bestsellers, plus dedicated hero and department images? (AW-056)
@@ -163,30 +223,7 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, pric
         </div>
       </section>
 
-      <section className="section" id="apply">
-        <div className="apply-panel">
-          <div className="apply-intro">
-            <p className="eyebrow">OPEN AN ACCOUNT</p>
-            <h2>Open a trade account</h2>
-            <button className="button" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button>
-          </div>
-          <ol className="apply-steps">
-            <li>
-              <h3>Apply online</h3>
-              <p>Tell us about your store — business name, EIN, state retail tobacco license number and resale certificate. Takes a few minutes.</p>
-            </li>
-            <li>
-              <h3>We verify</h3>
-              {/* TODO(owner): Does approval really take one business day for most accounts, and does the team check each license with the state? Kept as published; the approval time is the AW-246 question. (AW-281, see AW-246) */}
-              <p>Our team checks your license with the state and approves most accounts within one business day. Wholesale pricing and ordering unlock when you sign in.</p>
-            </li>
-            <li>
-              <h3>Order &amp; receive</h3>
-              <p>Order online or by phone for next-day delivery on our trucks when the stop is on a delivery route, or will-call pickup at the Birmingham warehouse during business hours.</p>
-            </li>
-          </ol>
-        </div>
-      </section>
+      <AccountSection signedIn={signedIn} view={accountView(profile, account)} onApplyClick={onApplyClick} />
     </>
   );
 }

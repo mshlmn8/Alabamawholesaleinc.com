@@ -26,3 +26,45 @@ describe('HomePage application panel (AW-281)', () => {
     expect(screen.queryByText(/Become a retail account|Start application/)).toBeNull();
   });
 });
+
+// Signed in, the panel never offers a second application (AW-066): it says
+// where the account stands, as /apply's page head does, and links to My
+// account once approved, or to the application status while it waits or is
+// on hold. App passes signedIn and account in cardProps.
+describe('HomePage account panel for a signed-in account (AW-066)', () => {
+  const home = (props) => render(
+    <HomePage products={PRODUCTS} departments={departmentsFor(PRODUCTS)} isApprovedBuyer={false} cart={{}}
+              addLine={vi.fn()} decLine={vi.fn()} onLoginClick={vi.fn()} onApplyClick={vi.fn()} {...props} />,
+  );
+  const panel = () => {
+    const section = document.getElementById('apply');
+    return {
+      eyebrow: section.querySelector('.eyebrow').textContent,
+      title: section.querySelector('h2').textContent,
+      text: section.querySelector('.trade-account-body p').textContent,
+      links: [...section.querySelectorAll('a, button')].map((el) => [el.tagName, el.textContent, el.getAttribute('href')]),
+    };
+  };
+
+  it.each([
+    ['approved', 'ACCOUNT ACTIVE', ['A', 'My account', '/account']],
+    ['pending', 'APPLICATION UNDER REVIEW', ['A', 'Application status', '/apply']],
+    ['suspended', 'ACCOUNT ON HOLD', ['A', 'Application status', '/apply']],
+  ])('shows a %s account its trade account, with no Apply and no steps', (status, eyebrow, link) => {
+    home({ signedIn: true, account: 'ready', profile: { id: 'p', status }, isApprovedBuyer: status === 'approved' });
+    expect(panel()).toMatchObject({ eyebrow, title: 'Your trade account', links: [link] });
+    expect(panel().text.length).toBeGreaterThan(0);
+    expect(within(document.getElementById('apply')).queryByRole('button')).toBeNull();
+    expect(document.querySelector('.apply-steps')).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Open a trade account' })).toBeNull();
+  });
+
+  it('offers My account while the profile loads, and keeps Apply for a guest', () => {
+    const view = home({ signedIn: true, account: 'loading', profile: null });
+    expect(panel()).toEqual({ eyebrow: 'TRADE ACCOUNT', title: 'Your trade account', text: 'Checking your account…', links: [['A', 'My account', '/account']] });
+    view.unmount();
+    home({ signedIn: false, account: 'signed-out', profile: null });
+    expect(within(document.getElementById('apply')).getByRole('button', { name: 'Apply for a trade account' })).toBeTruthy();
+    expect(document.querySelectorAll('.apply-steps li')).toHaveLength(3);
+  });
+});

@@ -7,11 +7,12 @@
 import { useEffect, useState } from 'react';
 import { COMPANY, HOURS, TIME_ZONE_LABEL, TIME_ZONE_NAME, hoursRange, openStatusNow } from '../../data/content.js';
 import { APPLY_LABEL } from '../../data/terms.js';
+import { accountView, tradeAccountPanel } from '../../lib/accountStatus.js';
 import { Link } from '../../lib/router.js';
 import { Icon } from '../../components/Icon.jsx';
 import { EmailText } from '../../components/ContactLinks.jsx';
 import { showToast } from '../../lib/toast.js';
-import { PageHead, SupportLayout, DIRECTIONS_URL } from './SupportShell.jsx';
+import { PageHead, SupportLayout, DIRECTIONS_URL, supportApplyLabel } from './SupportShell.jsx';
 
 // 'Open now · closes 6:00 PM CT' or 'Closed · opens 8:00 AM CT' (AW-275),
 // filled in after mount and kept current each minute. Until then the line
@@ -63,13 +64,53 @@ function CopyEmailButton() {
   );
 }
 
-export function ContactPage({ onApplyClick }) {
+// The band at the foot of the page: a guest is invited to open a trade
+// account (the form itself, as on /apply; the checklist is the secondary
+// step, AW-271). A signed-in account is never offered a second application
+// (AW-066, NEW-014): it gets its own account's panel instead, worded as
+// /apply's page head (accountStatus.js tradeAccountPanel), with My account
+// or its application status. Keyed by view, so each one's words are a new
+// block, never a patch of the last one's text (Google Translate).
+function AccountCallToAction({ signedIn, view, onApplyClick }) {
+  const panel = signedIn ? tradeAccountPanel(view) : null;
+  if (panel) {
+    return (
+      <section key={view} className="support-cta trade-account-panel">
+        <div>
+          <p className="eyebrow">{panel.eyebrow}</p>
+          <h2>{panel.title}</h2>
+          <p>{panel.text}</p>
+        </div>
+        <div className="contact-strip-actions">
+          <Link className="button" to={panel.link.to}>{panel.link.label}</Link>
+        </div>
+      </section>
+    );
+  }
+  return (
+    <section className="support-cta">
+      <div>
+        <p className="eyebrow">NEW TO ALABAMA WHOLESALE?</p>
+        <h2>Open a trade account</h2>
+        <p>Licensed retail businesses only. See what you’ll need before you start.</p>
+      </div>
+      <div className="contact-strip-actions">
+        <button className="button" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button>
+        <Link className="button ghost" to="/apply">Application checklist</Link>
+      </div>
+    </section>
+  );
+}
+
+// signedIn follows the session, as the header, trade bar and footer do;
+// profile and account (useAuth's, from App) say which account it is.
+export function ContactPage({ onApplyClick, signedIn = false, profile = null, account = profile ? 'ready' : 'signed-out' }) {
   return (
     <section className="support-page">
       <PageHead crumb="Contact & visit" eyebrow="TALK TO THE WAREHOUSE" title="Contact & visit">
         <p>Real people, same building as the inventory. Call the trade desk, email us, or come by the Birmingham warehouse for will-call pickup.</p>
       </PageHead>
-      <SupportLayout current="contact">
+      <SupportLayout current="contact" applyLabel={supportApplyLabel(signedIn)}>
 
       <div className="info-grid">
         <article className="info-card">
@@ -120,18 +161,7 @@ export function ContactPage({ onApplyClick }) {
         </section>
       </div>
 
-      <section className="support-cta">
-        <div>
-          <p className="eyebrow">NEW TO ALABAMA WHOLESALE?</p>
-          <h2>Open a trade account</h2>
-          <p>Licensed retail businesses only. See what you’ll need before you start.</p>
-        </div>
-        <div className="contact-strip-actions">
-          {/* The form itself, as on /apply; the checklist is the secondary step (AW-271). */}
-          <button className="button" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button>
-          <Link className="button ghost" to="/apply">Application checklist</Link>
-        </div>
-      </section>
+      <AccountCallToAction signedIn={signedIn} view={accountView(profile, account)} onApplyClick={onApplyClick} />
       </SupportLayout>
     </section>
   );

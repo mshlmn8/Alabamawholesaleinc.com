@@ -16,6 +16,10 @@
 // TODO(owner): Approve the names: 'Apply for a trade account' on every apply button, and the basket called a quote for guests and accounts waiting for approval and an order for approved accounts. (AW-132)
 
 export const APPLY_LABEL = 'Apply for a trade account';
+// What links to /apply say once there is an account, which /apply then shows
+// the status of: its crumb, the support pages' side nav and the footer
+// (NEW-047). A guest's links keep the apply label or 'Application checklist'.
+export const TRADE_ACCOUNT_LABEL = 'Trade account';
 export const SIGN_IN_LABEL = 'Sign in';
 // The links between the sign-in and application screens. Anyone with an
 // account signs in, also while it waits for approval (AW-131).

@@ -51,3 +51,43 @@ export const PRICE_LOCK = {
 // goes, and the site notice offers Try again.
 export const CHECKING_ACCOUNT_TEXT = 'Checking your account…';
 export const PRICES_NEED_PROFILE = 'Prices need your account details.';
+
+// What /apply shows a visitor (its page head, App's title for it, and the
+// account panels below): 'loading' until the session and profile are known,
+// 'no-profile' when it is signed in but its profile didn't load (NEW-002),
+// then accountStatus().
+export function accountView(profile, account) {
+  if (account === 'loading' || account === 'no-profile') return account;
+  return accountStatus(profile);
+}
+
+// A signed-in account's own panel, where a guest is asked to apply: the home
+// page's account section and /contact (AW-066, NEW-014). Its eyebrow is the
+// one /apply's page head shows for the same view (ApplyPage's VIEWS), under
+// TRADE_ACCOUNT_TITLE. An approved account goes to My account; one waiting
+// for approval or on hold to /apply, which shows where the application
+// stands and who to call. Before the profile is known, or when it didn't
+// load, My account, which says which.
+export const TRADE_ACCOUNT_TITLE = 'Your trade account';
+export const ACCOUNT_EYEBROWS = Object.freeze({
+  loading: 'TRADE ACCOUNT',
+  'no-profile': 'TRADE ACCOUNT',
+  pending: 'APPLICATION UNDER REVIEW',
+  approved: 'ACCOUNT ACTIVE',
+  suspended: 'ACCOUNT ON HOLD',
+});
+const MY_ACCOUNT = Object.freeze({ to: '/account', label: 'My account' });
+const APPLICATION_STATUS = Object.freeze({ to: '/apply', label: 'Application status' });
+export const TRADE_ACCOUNT_PANELS = Object.freeze({
+  loading: { text: CHECKING_ACCOUNT_TEXT, link: MY_ACCOUNT },
+  'no-profile': { text: 'You’re signed in, but your account details didn’t load.', link: MY_ACCOUNT },
+  pending: { text: 'Your application is with a trade rep. See where it stands, and add your license documents while you wait.', link: APPLICATION_STATUS },
+  approved: { text: 'Your trade account is active. See your orders and reorder by SKU in My account.', link: MY_ACCOUNT },
+  suspended: { text: `${PRICE_LOCK.suspended.line} See who to call on your application status page.`, link: APPLICATION_STATUS },
+});
+// The panel for a signed-in visitor's view (accountView), with its eyebrow;
+// null for a guest, who is asked to apply instead.
+export function tradeAccountPanel(view) {
+  const panel = TRADE_ACCOUNT_PANELS[view];
+  return panel ? { eyebrow: ACCOUNT_EYEBROWS[view], title: TRADE_ACCOUNT_TITLE, ...panel } : null;
+}

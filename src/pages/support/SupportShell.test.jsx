@@ -3,7 +3,7 @@
 // beside it with the full-width contact strip after it.
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { PolicyNav, POLICY_LINKS, SUPPORT_NAV } from './SupportShell.jsx';
+import { PolicyNav, POLICY_LINKS, SUPPORT_NAV, supportApplyLabel } from './SupportShell.jsx';
 import { PolicyPage } from './PolicyPage.jsx';
 import { ContactPage } from './ContactPage.jsx';
 import { DeliveryPage } from './DeliveryPage.jsx';
@@ -36,6 +36,15 @@ describe('PolicyNav', () => {
   it('marks nothing when the page is not in the list', () => {
     render(<PolicyNav current="catalog" />);
     expect(current()).toEqual([]);
+  });
+
+  // Signed in, /apply shows the application's or the account's status: the
+  // nav calls it 'Trade account', its crumb (NEW-047).
+  it('names the /apply entry by applyLabel, the apply label by default', () => {
+    expect([supportApplyLabel(false), supportApplyLabel(true)]).toEqual(['Apply for a trade account', 'Trade account']);
+    render(<PolicyNav current="apply" applyLabel={supportApplyLabel(true)} />);
+    expect(links()).toEqual(ORDER.map(([label, href]) => [href === '/apply' ? 'Trade account' : label, href]));
+    expect(current()).toEqual(['Trade account']);
   });
 
   // 'Delivery policy', apart from 'Delivery & service area' (AW-316).
@@ -75,6 +84,22 @@ describe('SupportLayout on every support page', () => {
     expect(container.querySelector('.page-head + .support-layout')).toBeTruthy();
   });
 
+  it('calls /apply Trade account on every support page for a signed-in visitor (NEW-047)', () => {
+    const entry = () => within(nav()).getByRole('link', { name: /^(Trade account|Apply for a trade account)$/ }).textContent;
+    for (const [element, signedIn] of [
+      [<ContactPage key="c" onApplyClick={() => {}} />, false],
+      [<ContactPage key="c1" onApplyClick={() => {}} signedIn profile={{ id: 'p', status: 'approved' }} account="ready" />, true],
+      [<DeliveryPage key="d" />, false],
+      [<DeliveryPage key="d1" signedIn />, true],
+      [<PolicyPage key="p" kind="terms" />, false],
+      [<PolicyPage key="p1" kind="privacy" signedIn />, true],
+    ]) {
+      const view = render(element);
+      expect(entry()).toBe(signedIn ? 'Trade account' : 'Apply for a trade account');
+      view.unmount();
+    }
+  });
+
   it('wraps the delivery cards, the service-area check and the steps, not the contact strip', () => {
     const { container } = render(<DeliveryPage />);
     const { main } = layoutOf(container);
@@ -92,10 +117,11 @@ describe('SupportLayout on every support page', () => {
     expect(guest.container.querySelector('.support-layout + .contact-strip')).toBeTruthy();
     guest.unmount();
 
-    // Signed in, the heading says 'Your trade account'; the nav keeps its label.
+    // Signed in, the heading says 'Your trade account', and the nav calls the
+    // page by its crumb (NEW-047).
     const pending = render(<ApplyPage profile={{ id: 'p', name: 'Test Buyer', email: 'buyer@example.test', status: 'pending' }} account="ready" {...props} />);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Your trade account');
-    expect(current()).toEqual(['Apply for a trade account']);
+    expect(current()).toEqual(['Trade account']);
     expect(layoutOf(pending.container).main.querySelector(':scope > .status-panel')).toBeTruthy();
   });
 });

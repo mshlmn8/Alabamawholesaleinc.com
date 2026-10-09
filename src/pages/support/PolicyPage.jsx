@@ -4,7 +4,7 @@ import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM, POLICIES_UPDATED } fro
 import { formatMoney, formatMoneyShort } from '../../lib/format.js';
 import { Link } from '../../lib/router.js';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
-import { PageHead, SupportLayout, ContactStrip, POLICY_LINKS } from './SupportShell.jsx';
+import { PageHead, SupportLayout, ContactStrip, POLICY_LINKS, supportApplyLabel } from './SupportShell.jsx';
 import { POLICY_TEXT } from './policyText.js';
 
 // The titles and intros are in policyText.js, which the head tags read too.
@@ -109,7 +109,8 @@ const POLICIES = {
   },
 };
 
-export function PolicyPage({ kind }) {
+// signedIn: the side nav calls /apply 'Trade account' (NEW-047).
+export function PolicyPage({ kind, signedIn = false }) {
   const policy = POLICIES[kind];
   if (!policy) return null;
   const crumb = POLICY_LINKS.find(l => l.page === kind)?.label || policy.title;
@@ -121,7 +122,7 @@ export function PolicyPage({ kind }) {
       </PageHead>
       {/* The page head's eyebrow already says CUSTOMER POLICIES (AW-220):
           the side nav leaves its own off. */}
-      <SupportLayout current={kind} navLabel={null}>
+      <SupportLayout current={kind} navLabel={null} applyLabel={supportApplyLabel(signedIn)}>
         <article className="policy-body">
           {policy.sections.map((section, i) => (
             <section key={section.heading} aria-labelledby={`policy-${kind}-${i}`}>
