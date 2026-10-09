@@ -71,7 +71,7 @@ describe('footer links (AW-285)', () => {
       const [open, setOpen] = useState(false);
       return (
         <>
-          {footer({ onHelp: () => setOpen(true) })}
+          <Footer departments={departments} onLoginClick={vi.fn()} onApplyClick={vi.fn()} onHelp={() => setOpen(true)} />
           {open && <HelpDialog onClose={() => setOpen(false)} onApply={() => setOpen(false)} />}
         </>
       );
@@ -117,7 +117,7 @@ describe('footer copy (AW-285)', () => {
   });
 
   it('says licensed-only in one wording, in the footer and the trade-only strip', () => {
-    render(<><TradeBar onApplyClick={vi.fn()} />{footer()}</>);
+    render(<><TradeBar onApplyClick={vi.fn()} /><Footer departments={departments} onLoginClick={vi.fn()} onApplyClick={vi.fn()} onHelp={vi.fn()} /></>);
     expect(LICENSED_ONLY).toBe('Wholesale to licensed retail businesses only · No consumer sales · 21+');
     expect(document.querySelector('.trade-only').textContent).toBe(LICENSED_ONLY);
     expect([...document.querySelectorAll('.footer-legal p')].map((p) => p.textContent)).toContain(LICENSED_ONLY);
