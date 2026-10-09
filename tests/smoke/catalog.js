@@ -53,11 +53,13 @@ export function seedRows() {
 export const REVOKED_COLUMNS = ['price'];
 // Every column of public.products the database has (after
 // 20261009110000_variant_model.sql: variant_axis and unavailable_variants,
-// no flavors). Columns the seed leaves out (unavailable_variants) come back
-// null, which the storefront reads as "every variant is available".
+// no flavors; after 20261010120000_admin_product_editor.sql: stock_status and
+// featured_rank). Columns the seed leaves out (unavailable_variants,
+// featured_rank, stock_status) come back null, which the storefront reads as
+// "every variant is available" and "no homepage rank".
 const TABLE_COLUMNS = [
   'id', 'name', 'brand', 'cat', 'sub', 'sku', 'variants', 'variant_axis', 'unavailable_variants', 'img', 'tag', 'price', 'active',
-  'updated_at', 'description', 'sell_unit',
+  'updated_at', 'description', 'sell_unit', 'stock_status', 'featured_rank',
 ];
 
 const postgrestError = (route, status, code, message) => route.fulfill({

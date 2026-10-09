@@ -2,7 +2,7 @@
 // departments and the account application steps.
 
 import { HERO_SLIDES } from '../data/content.js';
-import { NEW_ARRIVALS_IDS } from '../data/products.js';
+import { homeRails } from '../lib/merchandising.js';
 import { heroImage, SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { Picture } from '../components/Picture.jsx';
@@ -23,8 +23,7 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, pric
                  addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} />
   );
   // TODO(owner): Which products are really new and which are bestsellers, plus dedicated hero and department images? (AW-056)
-  const newArrivals = NEW_ARRIVALS_IDS.map(id => products.find(p => Number(p.id) === id)).filter(hasPhoto).slice(0, 8);
-  const bestsellers = products.filter(p => p.tag === 'BESTSELLER' && hasPhoto(p)).slice(0, 8);
+  const { newArrivals, bestsellers } = homeRails(products, { limit: 8, hasPhoto }); // tags and homepage rank (AW-119)
 
   return (
     <>

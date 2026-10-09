@@ -852,7 +852,10 @@ export const CATALOG = [
 export const SHARED_IMAGES = sharedImageFiles(CATALOG);
 export const PRODUCTS = CATALOG.map((p) => ({ ...p, ...productImage(p.img), sharedPhoto: SHARED_IMAGES.has(p.img) }));
 
-// Subset shown in the rotating "new arrivals" row on home.
+// The old hand-picked New arrivals row on home. The row now follows the NEW
+// tag and the homepage rank (src/lib/merchandising.js, AW-119); this list
+// only breaks ties between unranked products, and tells the AW-001 guard
+// there what the homepage showed before.
 export const NEW_ARRIVALS_IDS = [61, 62, 64, 31, 171, 167, 342, 184, 75, 76];
 
 // Derived nav so the mega-menu, mobile nav, and footer stay in sync with

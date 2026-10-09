@@ -244,8 +244,10 @@ that the session ended.
 
 One `CatalogProvider` (`src/lib/catalog.jsx`) reads the active rows of
 `products`, a page of 1,000 at a time so the catalog is never cut off at the
-API's row limit, and only the columns in `CATALOG_COLUMNS`. Change that list
-when a column the storefront reads is added, renamed or revoked. The copy of
+API's row limit, and only the columns in `CATALOG_COLUMNS` (plus
+`featured_rank`, the homepage rank, first: a database without it answers
+42703 and is read with the next list in `CATALOG_COLUMN_FALLBACKS`). Change
+that list when a column the storefront reads is added, renamed or revoked. The copy of
 the catalog built into the site shows until the live one arrives, and stays
 on screen if it can't be loaded, with a notice and a **Try again** button.
 An open tab loads the catalog again when the buyer comes back to it after

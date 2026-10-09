@@ -4,7 +4,7 @@ import { StrictMode, useEffect } from 'react';
 import { act, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  CATALOG_BASE_COLUMNS, CATALOG_COLUMNS, CATALOG_COLUMN_FALLBACKS, CATALOG_MAX_AGE_MS, CATALOG_RETRY_MS, CATALOG_SLOW_MS, CatalogProvider,
+  CATALOG_BASE_COLUMNS, CATALOG_COLUMNS, CATALOG_COLUMN_FALLBACKS, CATALOG_MAX_AGE_MS, CATALOG_RANKED_COLUMNS, CATALOG_RETRY_MS, CATALOG_SLOW_MS, CatalogProvider,
   catalogIsStale, fetchCatalogRows, hydrateProducts, loadCatalog, useCatalog,
 } from './catalog.jsx';
 import { PRODUCTS as BUNDLED } from '../data/products.js';
@@ -134,7 +134,20 @@ describe('loadCatalog', () => {
     });
     const result = await loadCatalog(client);
     expect(result.ok).toBe(true);
-    expect(client.calls.map((q) => q.columns)).toEqual([CATALOG_COLUMNS, CATALOG_BASE_COLUMNS, '*']);
+    expect(client.calls.map((q) => q.columns)).toEqual([CATALOG_RANKED_COLUMNS, CATALOG_COLUMNS, CATALOG_BASE_COLUMNS, '*']);
+  });
+
+  it('asks for the homepage rank first, and reads a database without it through the variant columns (AW-119)', async () => {
+    expect(CATALOG_COLUMN_FALLBACKS).toEqual([`${CATALOG_COLUMNS},featured_rank`, CATALOG_COLUMNS, CATALOG_BASE_COLUMNS, '*']);
+    expect(CATALOG_RANKED_COLUMNS.split(',')).not.toContain('stock_status');
+    const missing = { data: null, error: { message: 'column products.featured_rank does not exist', code: '42703' } };
+    const before = fakeClient({ respond: (q, n, serve) => (q.columns.split(',').includes('featured_rank') ? missing : serve(q)) });
+    const result = await loadCatalog(before);
+    expect(result.ok).toBe(true);
+    expect(before.calls.map((q) => q.columns)).toEqual([CATALOG_RANKED_COLUMNS, CATALOG_COLUMNS]);
+    const ranked = fakeClient({ rows: [row(1, { featured_rank: 2 }), row(2)] });
+    expect((await loadCatalog(ranked)).rows.map((r) => r.featured_rank)).toEqual([2, undefined]);
+    expect(ranked.calls.map((q) => q.columns)).toEqual([CATALOG_RANKED_COLUMNS]);
   });
 
   it('asks for the variant columns, and reads a database without them through the base list (AW-128, AW-030, AW-332)', async () => {
@@ -142,17 +155,17 @@ describe('loadCatalog', () => {
     expect(list(CATALOG_COLUMNS)).toEqual(expect.arrayContaining(['variants', 'variant_axis', 'unavailable_variants', 'sell_unit']));
     expect(list(CATALOG_BASE_COLUMNS)).toEqual(expect.arrayContaining(['variants', 'sell_unit', 'description']));
     for (const columns of CATALOG_COLUMN_FALLBACKS) expect(list(columns)).not.toContain('flavors');
-    for (const columns of [CATALOG_COLUMNS, CATALOG_BASE_COLUMNS]) expect(list(columns)).not.toContain('price');
-    // The live database before 20261009110000: no variant_axis yet.
+    for (const columns of CATALOG_COLUMN_FALLBACKS.slice(0, -1)) expect(list(columns)).not.toContain('price');
+    // The live database before 20261009110000: no variant_axis (nor featured_rank) yet.
     const missing = { data: null, error: { message: 'column products.variant_axis does not exist', code: '42703' } };
-    const old = fakeClient({ respond: (q, n, serve) => (q.columns === CATALOG_COLUMNS ? missing : serve(q)) });
+    const old = fakeClient({ respond: (q, n, serve) => (list(q.columns).includes('variant_axis') ? missing : serve(q)) });
     const result = await loadCatalog(old);
     expect(result.ok).toBe(true);
-    expect(old.calls.map((q) => q.columns)).toEqual([CATALOG_COLUMNS, CATALOG_BASE_COLUMNS]);
+    expect(old.calls.map((q) => q.columns)).toEqual([CATALOG_RANKED_COLUMNS, CATALOG_COLUMNS, CATALOG_BASE_COLUMNS]);
   });
 
   it('never asks for price, and falls back column list by column list, ending with *', async () => {
-    for (const columns of [CATALOG_COLUMNS, CATALOG_BASE_COLUMNS]) expect(columns.split(',')).not.toContain('price');
+    for (const columns of CATALOG_COLUMN_FALLBACKS.slice(0, -1)) expect(columns.split(',')).not.toContain('price');
     expect(CATALOG_COLUMN_FALLBACKS.at(-1)).toBe('*');
     expect(new Set(CATALOG_COLUMN_FALLBACKS).size).toBe(CATALOG_COLUMN_FALLBACKS.length);
     const fallbacks = ['id,name,new_column', 'id,name', '*'];
@@ -204,6 +217,13 @@ describe('hydrateProducts', () => {
     expect('flavors' in old).toBe(false);
     const [unknown] = hydrateProducts([row(999999)]);
     expect(unknown).toMatchObject({ variantAxis: '', unavailableVariants: [] });
+  });
+
+  it('maps the homepage rank, null without one (AW-119)', () => {
+    const [ranked, unranked, old, odd] = hydrateProducts([
+      row(1, { featured_rank: 3 }), row(2, { featured_rank: null }), row(3), row(4, { featured_rank: '2' }),
+    ]);
+    expect([ranked, unranked, old, odd].map((p) => p.featuredRank)).toEqual([3, null, null, null]);
   });
 
   it('the bundled catalog has no flavors count, and an axis wherever there is a choice (AW-332, AW-128)', () => {
