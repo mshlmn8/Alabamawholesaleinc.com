@@ -98,6 +98,27 @@ describe('searchProducts on the catalog', () => {
     expect(owl.every((p) => p.brand === 'White Owl')).toBe(true);
   });
 
+  it('reads a run split by symbols into single letters as one word, so it pads nothing (AW-063, AW-064)', () => {
+    // Before, 'm&m' was the words m and m: every product with a word
+    // starting with m (179 of them).
+    for (const query of ['m&m', 'm & m', 'mms', "m&m's"]) expect(ids(query), query).toEqual([163]);
+    expect(ids('b&m').sort((a, b) => a - b)).toEqual([17, 78]);
+    expect(ids('24/7')).toEqual([209]);
+    expect(ids('chick-o-stick')).toEqual([175]);
+    expect(ids('5-pack')).toEqual(ids('5 pack'));
+    expect(ids('5-pack').length).toBeGreaterThan(1);
+    expect(ids('v-neck').sort((a, b) => a - b)).toEqual([151, 152]);
+    expect(ids('AW-B-M-5PK')[0]).toBe(78);
+    expect(ids('geek bar pulse x')).toEqual([61]);
+  });
+
+  it('leaves out "and" when the query has other words (names write "&")', () => {
+    expect(ids('black and mild').sort((a, b) => a - b)).toEqual([17, 78]);
+    expect(searchProducts(PRODUCTS, 'black and mild').related).toBe(false);
+    expect(ids('now and later').length).toBeGreaterThan(0);
+    expect(ids('now and later').every((id) => /Now and Later/.test(byId(id).name))).toBe(true);
+  });
+
   it('matches spacing variants of names and SKUs (AW-064)', () => {
     expect(ids('redbull')).toEqual(expect.arrayContaining([143, 144, 145, 146]));
     expect(byId(143).sku).toBe('AW-RED-BULL-12OZ');
@@ -170,6 +191,9 @@ describe('matchesQuery', () => {
     expect(matchesQuery(reeses, 'kite')).toBe(false);
     expect(matchesQuery(byId(162), 'snikers')).toBe(true);
     expect(matchesQuery(byId(14), 'aw-kite')).toBe(true);
+    // The department page's box reads "m&m" the same way (Mentos is #43).
+    expect(matchesQuery(byId(163), 'm&m')).toBe(true);
+    expect(matchesQuery(byId(43), 'm&m')).toBe(false);
   });
 
   it('accepts any length, and a query with no words matches everything', () => {

@@ -6,7 +6,11 @@
 // case, curly and straight apostrophes removed ("Reese’s", "reese's" and
 // "reeses" are one word), every other symbol a word break, simple plurals
 // stemmed ("disposables" finds "Disposable Vapes", "candy" the Candies
-// department). Results come from the first of three tiers that has any:
+// department). A run of text whose symbols split off a single letter or
+// digit is also one word without them, on both sides ("m&m" finds M&M's
+// and nothing else, "5-pack", "24/7"), and "and" is left out of a query
+// that has other words (names write "&": "black and mild").
+// Results come from the first of three tiers that has any:
 //   strict   every query word starts a word of the product (so "ss" no
 //            longer hits "tissue"), or the query without spaces starts the
 //            name or brand or sits inside a SKU ("redbull", "awkite");
@@ -59,20 +63,34 @@ export function stem(word) {
 
 const wordsOf = (text) => normalizeSearchText(text).split(' ').filter(Boolean);
 const compactOf = (normalized) => normalized.replace(/ /g, '');
+// The words of one run of text between spaces; when its symbols split off
+// a single letter or digit ("M&M's", "5-pack", "24/7", "AW-B-M-5PK") the
+// run is one word too, written without them: 'mms', '5pack', '247'.
+const chunksOf = (text) => String(text ?? '').split(/\s+/).map(wordsOf).filter((parts) => parts.length > 0);
+const joinsSingles = (parts) => parts.length > 1 && parts.some((part) => part.length === 1);
+// SKUs carry the house prefix: 'AW-SS' is also found as 'ss'.
+const withoutPrefix = (compact) => (compact.startsWith('aw') ? compact.slice(2) : compact);
 // A product word as written and as stemmed: 'case' still starts 'cases'
-// when the stem is 'cas'.
-const tokensOf = (...texts) => {
+// when the stem is 'cas'. With `sku`, a joined run also without the house
+// prefix ('bm5pk' from AW-B-M-5PK).
+const tokensOf = (texts, { sku = false } = {}) => {
   const out = new Set();
+  const add = (word) => {
+    if (!word) return;
+    out.add(word);
+    out.add(stem(word));
+  };
   for (const text of texts) {
-    for (const word of wordsOf(text)) {
-      out.add(word);
-      out.add(stem(word));
+    for (const parts of chunksOf(text)) {
+      parts.forEach(add);
+      if (!joinsSingles(parts)) continue;
+      const joined = parts.join('');
+      add(joined);
+      if (sku) add(withoutPrefix(joined));
     }
   }
   return [...out];
 };
-// SKUs carry the house prefix: 'AW-SS' is also found as 'ss'.
-const withoutPrefix = (compact) => (compact.startsWith('aw') ? compact.slice(2) : compact);
 
 // Where a query word matched, as bits.
 const NAME = 1;
@@ -91,7 +109,7 @@ function prepare(product) {
   const name = normalizeSearchText(product.name);
   const brand = normalizeSearchText(product.brand);
   const skuCompact = compactOf(normalizeSearchText(product.sku));
-  const nameTokens = tokensOf(product.name);
+  const nameTokens = tokensOf([product.name]);
   const record = {
     product,
     name,
@@ -104,10 +122,10 @@ function prepare(product) {
     fields: [
       [NAME, nameTokens],
       // The stored brand, so the placeholder "Assorted" still matches.
-      [BRAND, tokensOf(product.brand)],
-      [SKU, tokensOf(product.sku)],
-      [DEPT, tokensOf(product.cat, catLabel(product.cat), product.sub)],
-      [VARIANT, tokensOf(...variants)],
+      [BRAND, tokensOf([product.brand])],
+      [SKU, tokensOf([product.sku], { sku: true })],
+      [DEPT, tokensOf([product.cat, catLabel(product.cat), product.sub])],
+      [VARIANT, tokensOf(variants)],
     ],
   };
   byProduct.set(product, record);
@@ -124,13 +142,28 @@ function recordsFor(products) {
   return records;
 }
 
+// The words a query is matched by. A run that splits off single letters or
+// digits is one word ("m&m" -> 'mm', which starts the 'mms' of M&M's, not
+// every word starting with m); single letters typed apart are one word too
+// ("m & m"); "and" is dropped when there are other words.
+function queryWords(text) {
+  const words = [];
+  for (const parts of chunksOf(text)) {
+    if (joinsSingles(parts)) words.push(parts.join(''));
+    else words.push(...parts);
+  }
+  if (words.length > 1 && words.every((word) => word.length === 1)) return [words.join('')];
+  const kept = words.filter((word) => word !== 'and');
+  return kept.length ? kept : words;
+}
+
 let lastQuery = null;
 function parseQuery(query) {
   const raw = String(query ?? '');
   if (lastQuery?.raw === raw) return lastQuery;
   const text = raw.trim();
   const norm = normalizeSearchText(text);
-  const words = norm ? norm.split(' ') : [];
+  const words = queryWords(text);
   lastQuery = {
     raw,
     tooShort: text.length < MIN_QUERY_LENGTH,
