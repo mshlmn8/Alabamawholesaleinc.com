@@ -21,7 +21,8 @@
 // when only its variant went away, and can be removed.
 //
 // A product with a sell unit says what quantity 1 means ("Sold by the
-// 5-pack", AW-031) after the SKU, in both layouts.
+// 5-pack", AW-031) after the SKU, in both layouts. The line wraps between
+// its values, never inside the SKU (TextParts, AW-304).
 //
 // With showPrice (an approved buyer), a line without a price says why:
 // "Loading price…" while the buyer's prices load, "Price on request" for a
@@ -37,6 +38,7 @@ import { Link } from '../lib/router.js';
 import { Icon } from './Icon.jsx';
 import { Thumb } from './Thumb.jsx';
 import { QuantityInput } from './QuantityInput.jsx';
+import { TextParts } from './TextParts.jsx';
 
 // "Set flavor": the product's variants, the ones not available disabled.
 function VariantChoice({ item: it, onChooseVariant }) {
@@ -90,7 +92,7 @@ export function CartLine({ item: it, layout = 'drawer', showPrice, pricesStatus 
       <span className="thumb">{gone && !it.sku && !it.img ? null : <Thumb src={it.img} />}</span>
       <span className="info">
         <b>{it.name}</b>
-        <small>{detail.filter(Boolean).join(' · ')}</small>
+        <small><TextParts parts={detail} /></small>
         {it.needsVariant && <small>{`${it.qty} ${it.qty === 1 ? 'unit' : 'units'} · choose a ${noun}`}</small>}
         {checkout && gone && <small className="line-flag">No longer available. Remove it to continue.</small>}
       </span>

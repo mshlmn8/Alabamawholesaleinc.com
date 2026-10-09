@@ -102,14 +102,20 @@ export function heroImage(file) {
 //
 // card: the photo area is the tile minus its 1px borders and the img's 14px
 // inset on each side (30px). The page container is 100% − 32px (compact) or
-// − 64px, at most 1280px. Phones show 2 cards with a 16px gap; the compact
-// category grid shows 3 with 24px gaps; on desktop the category grid shows 3
-// beside the 220px filter column and its 34px gap. That category grid has the
-// widest card in each range (the home and related-product grids show 4).
-//   phone    (100vw − 32 − 16) / 2 − 30        = (100vw − 108px) / 2
-//   compact  (100vw − 32 − 48) / 3 − 30        = (100vw − 170px) / 3
-//   desktop  (100vw − 64 − 254 − 48) / 3 − 30  = (100vw − 456px) / 3
-//   max      (1280 − 254 − 48) / 3 − 30        = 296px
+// − 64px, at most 1280px, with 24px gaps (16px on phones). No card is
+// narrower than 12.5rem (AW-154): the rows of four (home rails, the product
+// page's "More" row, search) show two up to 58.5em; the category grid shows
+// at most 3, beside the 220px filter column and its 34px gap on desktop, and
+// 2 where 3 would be narrower than 200px. The value is the widest card at
+// each width, whichever grid it is in:
+//   phone        (100vw − 32 − 16) / 2 − 30        = (100vw − 108px) / 2
+//   compact      rows of two: (100vw − 32 − 24) / 2 − 30 = (100vw − 116px) / 2
+//                (a phone held sideways wider than 58.5em gets this too: more than it needs)
+//   to 58.5em    rows of two: (100vw − 64 − 24) / 2 − 30 = (100vw − 148px) / 2
+//   to 965px     category in two: (100vw − 64 − 254 − 24) / 2 − 30 = (100vw − 402px) / 2
+//   to 66em      rows of four: (100vw − 64 − 72) / 4 − 30 = (100vw − 256px) / 4
+//   desktop      category in three: (100vw − 64 − 254 − 48) / 3 − 30 = (100vw − 456px) / 3
+//   max          (1280 − 254 − 48) / 3 − 30        = 296px
 // detail: .pd-media minus its 1px borders and the img's 34px inset (20px on
 // phones). One column in the compact layout; two columns with a 26px gap up
 // to 68.75em and a 40px gap above.
@@ -120,7 +126,7 @@ export function heroImage(file) {
 //   max      (1280 − 40) / 2 − 70              = 550px
 const SHORT_LANDSCAPE = '(hover: none) and (pointer: coarse) and (max-height: 31.25em)';
 export const SIZES = {
-  card: `(max-width: 37.5em) calc((100vw - 108px) / 2), (max-width: 53.125em) calc((100vw - 170px) / 3), ${SHORT_LANDSCAPE} calc((100vw - 170px) / 3), (max-width: 84em) calc((100vw - 456px) / 3), 296px`,
+  card: `(max-width: 37.5em) calc((100vw - 108px) / 2), (max-width: 53.125em) calc((100vw - 116px) / 2), ${SHORT_LANDSCAPE} calc((100vw - 116px) / 2), (max-width: 58.5em) calc((100vw - 148px) / 2), (max-width: 60.3125em) calc((100vw - 402px) / 2), (max-width: 66em) calc((100vw - 256px) / 4), (max-width: 84em) calc((100vw - 456px) / 3), 296px`,
   detail: `(max-width: 37.5em) calc(100vw - 74px), (max-width: 53.125em) calc(100vw - 102px), ${SHORT_LANDSCAPE} calc(100vw - 102px), (max-width: 68.75em) calc((100vw - 230px) / 2), (max-width: 84em) calc((100vw - 244px) / 2), 550px`,
   editorial: '(max-width: 37.5em) 100vw, (max-width: 84em) 50vw, 628px',
 };

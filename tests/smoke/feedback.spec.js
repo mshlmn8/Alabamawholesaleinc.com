@@ -26,7 +26,8 @@ function trackErrors(page) {
 
 const toast = (page) => page.locator('#aw-toasts .toast');
 const addButton = (page) => page.locator('.pd-info').getByRole('button', { name: /^Add to (quote|order)/ });
-const cardAdds = (page) => page.locator('.content-card').getByRole('button', { name: /^Add to quote$/ });
+// A card's add button is named for its product after the label (AW-170).
+const cardAdds = (page) => page.locator('.content-card').getByRole('button', { name: /^Add to quote\b/ });
 const activeIsBody = (page) => page.evaluate(() => document.activeElement === document.body);
 // What the live region (#aw-announcer) said, recorded from the first paint.
 const said = (page) => page.evaluate(() => window.__said);
@@ -124,7 +125,7 @@ test('focus stays on the cart controls after adds and removals (AW-042)', async 
   await expect(page.locator('.card-stepper button:focus')).toHaveAccessibleName(/^Remove /);
   await page.keyboard.press('Enter');
   expect(await activeIsBody(page)).toBe(false);
-  await expect(page.locator('.card-add:focus')).toHaveText('Add to quote');
+  await expect(page.locator('.card-add:focus')).toHaveText(/^Add to quote\b/);
   await expect.poll(async () => (await said(page)).at(-1)).toMatch(/^Removed .+ from your quote\.$/);
 
   // The drawer: × on a line, then on the last one.

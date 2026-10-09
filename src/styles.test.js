@@ -460,21 +460,31 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
   });
 
   it('shows a mouse that cards, tiles, collection cards, the mega-menu feature, nav links, chips and the pricing prompt are clickable', () => {
-    for (const s of ['.card-link:hover .card-block', 'a.content-card:hover .card-block']) expect(inHover(s), s).toEqual({ 'border-color': 'var(--purple)' });
-    for (const s of ['.card-link:hover h3', 'a.content-card:hover h3']) expect(inHover(s), s).toEqual({ 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' });
-    for (const s of ['.card-link:hover .card-block img', 'a.content-card:hover .card-block img']) expect(inHover(s), s).toEqual({ transform: 'scale(1.03)' });
+    // The card link is stretched over the card (AW-170), so hovering anywhere
+    // on it hovers the link.
+    expect(inHover('.content-card:has(.card-link:hover) .card-block')).toEqual({ 'border-color': 'var(--purple)' });
+    expect(inHover('.card-link:hover')).toEqual({ 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' });
+    expect(inHover('.content-card:has(.card-link:hover) .card-block img')).toEqual({ transform: 'scale(1.03)' });
+    expect(inHover('.dept-tile:has(.dept-tile-link:hover)')).toEqual({ background: 'var(--purple-hover)' });
+    expect(inHover('.dept-tile-link:hover')).toMatchObject({ 'text-decoration': 'underline' });
     // One transition list on the card photo (a later fade adds to it); the
     // reduced-motion rule removes it.
     expect(own('.card-block img').transition).toMatch(/(^|, )transform \.2s ease(,|$)/);
-    expect(inHover('.editorial-card:hover .text-link')).toEqual({ 'text-decoration-thickness': '2px' });
-    expect(inHover('.editorial-card:hover img.bg')).toEqual({ opacity: '.36' });
+    // The collection card's link thickens with the shared text-link hover.
+    expect(inHover('.editorial-card:has(.text-link:hover) img.bg')).toEqual({ opacity: '.36' });
     expect(inHover('.aw-menu-feature:hover')).toEqual({ background: 'var(--purple-hover)' });
     for (const s of ['.section-head > a:hover', '.sku-details summary:hover']) expect(inHover(s), s).toEqual({ color: 'var(--orange-dark)' });
     expect(inHover('.variant-chips button:not(:disabled):not([aria-pressed="true"]):hover')).toEqual({ 'border-color': 'var(--purple)' });
     expect(inHover('button.filter-signin:hover')).toEqual({ 'border-left-color': 'var(--purple)' });
     expect(inHover('button.filter-signin:hover span')).toEqual({ 'text-decoration-thickness': '2px' });
-    // Keyboard focus underlines the card title too, outside the hover blocks.
-    for (const s of ['.card-link:focus-visible h3', 'a.content-card:focus-visible h3']) expect(outside(s), s).toMatchObject({ 'text-decoration': 'underline' });
+    // Keyboard focus rings the whole card, tile or collection card (the
+    // stretched area) instead of the name, and underlines the name too,
+    // outside the hover blocks.
+    for (const s of ['.card-link:focus-visible', '.dept-tile-link:focus-visible']) expect(outside(s), s).toMatchObject({ outline: 'none', 'text-decoration': 'underline' });
+    expect(outside('.editorial-card .text-link:focus-visible')).toEqual({ outline: 'none', 'text-decoration-thickness': '2px' });
+    for (const s of ['.card-link:focus-visible::after', '.dept-tile-link:focus-visible::after', '.editorial-card .text-link:focus-visible::after']) {
+      expect(outside(s), s).toEqual({ outline: '3px solid var(--focus-ring)', 'outline-offset': '3px' });
+    }
   });
 
   it('never turns a link orange on a purple surface', () => {
@@ -542,6 +552,62 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
     // is as wide as its buttons need and they keep their size wherever there
     // is room; the percentage lets it give way first in a narrow line.
     expect(own('.stepper input')).toMatchObject({ width: '100%', 'max-width': 'calc(6ch + 1.5rem + 2px)', 'min-width': '0' });
+  });
+});
+
+// Cards, tiles and collection cards (AW-170, AW-154, AW-304, AW-303): a real
+// link stretched over each by its ::after, the controls above it, the action
+// row at the bottom of the card, and no card narrower than 12.5rem.
+describe('cards with a stretched link (AW-170, AW-154, AW-304, AW-303)', () => {
+  const all = rules(css);
+  const own = (selector) => declarations(all.find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+  const inBlock = (prelude, selector) => mediaBlocks(css).filter((b) => b.prelude === prelude)
+    .flatMap((b) => rules(b.body)).filter((r) => r.selectors.join(', ') === selector).map((r) => declarations(r.body));
+
+  it('stretches the product, department and collection links over their card, which holds them', () => {
+    for (const s of ['.card-link::after', '.dept-tile-link::after', '.editorial-card .text-link::after']) {
+      expect(own(s), s).toEqual({ content: "''", position: 'absolute', inset: '0' });
+    }
+    expect(own('.content-card')).toMatchObject({ position: 'relative', display: 'flex', 'flex-direction': 'column' });
+    expect(own('.dept-tile')).toMatchObject({ position: 'relative' });
+    expect(own('.editorial-card')).toMatchObject({ position: 'relative', isolation: 'isolate', 'min-width': '0' });
+    // Nothing between a link and its card is positioned, or the link would
+    // stretch over that instead: the collection text sits over the photo by
+    // the photo going under it, not by positioning the text.
+    expect(own('.editorial-card > div')).not.toHaveProperty('position');
+    expect(own('.editorial-card img.bg')).toMatchObject({ position: 'absolute', 'z-index': '-1' });
+    expect(own('.content-card h3')).not.toHaveProperty('position');
+    expect(own('.editorial-card')).not.toHaveProperty('overflow');
+    // The labels on a card photo stay under the link, so a click on them opens the product.
+    expect(own('.card-block')).toMatchObject({ isolation: 'isolate' });
+    // The price and the controls sit above the link, at the bottom of the card.
+    expect(own('.card-meta')).toMatchObject({ 'margin-top': 'auto', position: 'relative', 'z-index': '1' });
+  });
+
+  it('clamps product names to two lines', () => {
+    expect(own('.content-card h3')).toMatchObject({ display: '-webkit-box', '-webkit-box-orient': 'vertical', '-webkit-line-clamp': '2', overflow: 'hidden' });
+  });
+
+  it('keeps cards at least 12.5rem wide: four in a row only where they fit, at most three beside the filters, two on phones', () => {
+    expect(own('.card-grid')['grid-template-columns']).toBe('repeat(4, minmax(0,1fr))');
+    expect(inBlock('(max-width: 58.5em)', '.card-grid')).toEqual([{ 'grid-template-columns': 'repeat(2, minmax(0,1fr))' }]);
+    expect(own('.category-card-grid')['grid-template-columns']).toBe('repeat(auto-fill, minmax(max(12.5rem, (100% - 2 * var(--grid-gap)) / 3), 1fr))');
+    // The department grid rule follows the 58.5em block, and the phone rule follows both.
+    const at = (text) => css.indexOf(text);
+    expect(at('.category-card-grid {')).toBeGreaterThan(at('@media (max-width: 58.5em)'));
+    expect(inBlock('(max-width: 37.5em)', '.card-grid')[0]).toMatchObject({ 'grid-template-columns': 'repeat(2,minmax(0,1fr))' });
+    expect(css.lastIndexOf('.card-grid { grid-template-columns: repeat(2,minmax(0,1fr))')).toBeGreaterThan(at('.category-card-grid {'));
+  });
+
+  it('wraps a list of values between the values, each whole (TextParts, AW-304)', () => {
+    expect(own('.text-parts')).toEqual({ display: 'flex', 'flex-wrap': 'wrap', 'column-gap': '.25em' });
+    expect(own('.text-parts > span')).toEqual({ 'min-width': '0' });
+  });
+
+  it('keeps a section link on one line on phones, the heading wrapping instead (AW-303)', () => {
+    expect(inBlock('(max-width: 37.5em)', '.section-head > a')).toEqual([{ 'white-space': 'normal', 'max-width': 'none' }]);
+    expect(inBlock('(max-width: 37.5em)', '.section-head > :first-child')).toEqual([{ flex: '1 1 10em', 'min-width': '0' }]);
+    expect(inBlock('(max-width: 37.5em)', '.section-head')[0]).toMatchObject({ 'flex-wrap': 'wrap' });
   });
 });
 

@@ -697,13 +697,13 @@ test.describe('part 2 catalog', () => {
     const errors = trackErrors(page);
     await page.goto('/category/tobacco/cigarettes');
     const kite = page.locator('.content-card', { hasText: 'Kite cigarette tobacco' });
-    await kite.getByRole('button', { name: 'Add to quote' }).click();
+    await kite.getByRole('button', { name: /^Add to quote\b/ }).click();
     await expect(kite.locator('.added-note')).toHaveText('Added');
     await expect(kite.getByRole('group', { name: 'Kite cigarette tobacco quantity' })).toBeVisible();
     await expect(page.locator('#aw-announcer')).toHaveText('Added Kite cigarette tobacco to your quote.');
     await expect(kite.locator('.added-note')).toHaveText('', { timeout: 4000 });
     await page.goto('/category/tobacco/cigars-and-cigarillos');
-    await expect(page.locator('.content-card', { hasText: 'Royal Blunts EZ Roll' }).getByRole('link', { name: 'Select options' })).toBeVisible();
+    await expect(page.locator('.content-card', { hasText: 'Royal Blunts EZ Roll' }).getByRole('link', { name: /^Select options\b/ })).toBeVisible();
     expect(errors).toEqual([]);
   });
 

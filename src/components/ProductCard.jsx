@@ -12,11 +12,23 @@
 // buttons say "Select options", "Add to quote" or "Add to order", and an add
 // shows "Added" for a moment and is announced (AW-057).
 //
-// The add and choose controls are .button.ghost.sm and are described by the
-// card's title, so "Add to quote" says which product (AW-143). Cursor's
-// "Select options" label (AW-057) is kept for products with a choice. Once
-// the product is in the cart the control is the shared QuantityInput
-// (AW-013): typed or stepped, with − removing the line from 1.
+// The card is an <article> named by its title (AW-170). The title is a real
+// link to the product page, stretched over the whole card (.card-link::after
+// in index.css), so the photo opens the product too, and a cmd- or
+// middle-click or "Open in new tab" works; the price and the controls sit
+// above it. The link's name is the product name.
+//
+// The add and choose controls are .button.ghost.sm. Their names start with
+// the visible label and add the product for screen readers, "Add to quote,
+// Kite cigarette tobacco", so a list of buttons says which is which (AW-143,
+// AW-170, WCAG 2.5.3). A comma rather than a colon: browsers put a space
+// before visually hidden text, so a colon would read "Add to quote : Kite…". Cursor's "Select options" label (AW-057) is kept for
+// products with a choice. Once the product is in the cart the control is the
+// shared QuantityInput (AW-013): typed or stepped, with − removing the line
+// from 1.
+//
+// The detail line wraps between its values, never inside a SKU (AW-304,
+// TextParts).
 //
 // Feedback (AW-042, AW-072): an add shows the toast ("Added … to your
 // quote", with "View quote"), which is also what is read out, once
@@ -38,6 +50,7 @@ import { ProductPhoto } from './ProductPhoto.jsx';
 import { NicotineWarning } from './NicotineWarning.jsx';
 import { showsNicotineWarning } from '../lib/regulated.js';
 import { QuantityInput } from './QuantityInput.jsx';
+import { TextParts } from './TextParts.jsx';
 
 const NO_PRICES = () => null;
 
@@ -46,14 +59,20 @@ export const ADDED_NOTE_MS = 2000;
 
 // The card's detail line: brand (not the placeholder), the variant count when
 // there is a choice, the sell unit, the SKU (left off on the home page, AW-060).
-export function cardDetail(p, { sku = true } = {}) {
+// cardDetailParts gives the values, which the card shows as TextParts
+// (AW-304); cardDetail the same line as one string.
+export function cardDetailParts(p, { sku = true } = {}) {
   const count = variantCount(p);
   return [
     brandLabel(p.brand),
     count > 1 ? `${count} ${variantAxis(p).plural}` : '',
     p.sellUnit ? `Sold by the ${p.sellUnit}` : '',
     sku ? p.sku : '',
-  ].filter(Boolean).join(' · ');
+  ].filter(Boolean);
+}
+
+export function cardDetail(p, options) {
+  return cardDetailParts(p, options).join(' · ');
 }
 
 export function ProductCard({ p, profile, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, onLoginClick, showSku = true }) {
@@ -122,19 +141,17 @@ export function ProductCard({ p, profile, isApprovedBuyer, priceOf = NO_PRICES, 
   };
   const titleId = useId();
   return (
-    <article className="content-card">
-      <Link className="card-link" to={productRoute} aria-label={`${p.name} details`}>
-        <div className="card-block">
-          <span className="block-label">{p.cat}</span>
-          {p.tag && <span className={`card-tag ${p.tag === 'NEW' ? 'new' : ''}`}>{p.tag}</span>}
-          <ProductPhoto product={p} sizes={SIZES.card} />
-          {/* TODO(owner): A correct photo for each product that shares a file with a different size or pack. (AW-136) */}
-          {p.picture && p.sharedPhoto && p.sellUnit && <span className="pack-badge">{p.sellUnit}</span>}
-        </div>
-        <p className="card-kicker">{p.sub}</p>
-        <h3 id={titleId}>{p.name}</h3>
-        <p className="card-detail">{cardDetail(p, { sku: showSku })}</p>
-      </Link>
+    <article className="content-card" aria-labelledby={titleId}>
+      <div className="card-block">
+        <span className="block-label">{p.cat}</span>
+        {p.tag && <span className={`card-tag ${p.tag === 'NEW' ? 'new' : ''}`}>{p.tag}</span>}
+        <ProductPhoto product={p} sizes={SIZES.card} />
+        {/* TODO(owner): A correct photo for each product that shares a file with a different size or pack. (AW-136) */}
+        {p.picture && p.sharedPhoto && p.sellUnit && <span className="pack-badge">{p.sellUnit}</span>}
+      </div>
+      <p className="card-kicker">{p.sub}</p>
+      <h3 id={titleId}><Link className="card-link" to={productRoute}>{p.name}</Link></h3>
+      <p className="card-detail"><TextParts parts={cardDetailParts(p, { sku: showSku })} /></p>
       {showsNicotineWarning(p) && <NicotineWarning compact />}
       <span className="card-meta card-actions">
         {isApprovedBuyer ? (
@@ -145,15 +162,16 @@ export function ProductCard({ p, profile, isApprovedBuyer, priceOf = NO_PRICES, 
           <button className="text-link price-login" type="button" onClick={onLoginClick}>Sign in for pricing</button>
         )}
         {choiceRequired ? (
-          <Link className="button ghost sm card-add" to={productRoute} aria-describedby={titleId}>{qty > 0 ? `Select options · ${qty}` : 'Select options'}</Link>
+          <Link className="button ghost sm card-add" to={productRoute}><span>{qty > 0 ? `Select options · ${qty}` : 'Select options'}</span><span className="sr-only">{`, ${p.name}`}</span></Link>
         ) : soldOut ? (
-          <button className="button ghost sm card-add" type="button" disabled aria-describedby={titleId}>Not available</button>
+          <button className="button ghost sm card-add" type="button" disabled>Not available<span className="sr-only">{`, ${p.name}`}</span></button>
         ) : qty > 0 ? (
           <QuantityInput ref={stepperRef} className="card-stepper" value={qty} onChange={setQty} onRemove={remove} removeLabel={`Remove ${p.name}`}
                          label={`Quantity of ${p.name}`} groupLabel={`${p.name} quantity`} />
         ) : (
-          <button ref={addRef} className="button ghost sm card-add" type="button" onClick={add} onPointerDown={(event) => { pressedWith.current = event.pointerType; }}
-                  aria-describedby={titleId}>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</button>
+          <button ref={addRef} className="button ghost sm card-add" type="button" onClick={add} onPointerDown={(event) => { pressedWith.current = event.pointerType; }}>
+            <span>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</span><span className="sr-only">{`, ${p.name}`}</span>
+          </button>
         )}
         <span className="added-note" aria-hidden="true">{adds ? 'Added' : ''}</span>
       </span>

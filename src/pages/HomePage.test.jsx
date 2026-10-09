@@ -150,15 +150,40 @@ describe('HomePage sections', () => {
   });
 });
 
+describe('HomePage collection cards', () => {
+  it('keeps each heading a plain heading, with the call to action as the link (AW-170)', () => {
+    renderHome();
+    const cards = [...document.querySelectorAll('.editorials > .editorial-card')];
+    expect(cards.map((c) => c.tagName)).toEqual(['DIV', 'DIV']);
+    const links = cards.map((c) => {
+      const all = c.querySelectorAll('a');
+      expect(all).toHaveLength(1);
+      expect(c.querySelector('h2').closest('a')).toBeNull();
+      return [all[0].className, all[0].textContent, all[0].getAttribute('href')];
+    });
+    expect(links).toEqual([
+      ['text-link', 'Browse novelties', hrefFor({ page: 'category', category: 'NOVELTIES' })],
+      ['text-link', 'Browse tobacco', hrefFor({ page: 'category', category: 'TOBACCO' })],
+    ]);
+  });
+});
+
 describe('HomePage department tiles', () => {
   it('links each department, with its counts and biggest lines on the band, not the photo', () => {
     renderHome();
-    const tiles = [...document.querySelectorAll('#catalog .dept-grid > a.dept-tile')];
+    const tiles = [...document.querySelectorAll('#catalog .dept-grid > .dept-tile')];
     expect(tiles).toHaveLength(DEPARTMENTS.length);
     expect(document.querySelectorAll('#catalog .card-grid, #catalog .block-label')).toHaveLength(0);
     DEPARTMENTS.forEach((d, i) => {
       const tile = tiles[i];
-      expect(tile.getAttribute('href')).toBe(hrefFor({ page: 'category', category: d.key }));
+      // The name in the heading is the link (stretched over the tile in CSS),
+      // so the heading is a real heading and the link is named by it (AW-170).
+      expect(tile.tagName).toBe('DIV');
+      const links = tile.querySelectorAll('a');
+      expect(links).toHaveLength(1);
+      expect(links[0].className).toBe('dept-tile-link');
+      expect(links[0].parentElement.matches('.dept-tile-body > h3')).toBe(true);
+      expect(within(tile).getByRole('link', { name: d.label }).getAttribute('href')).toBe(hrefFor({ page: 'category', category: d.key }));
       expect(tile.querySelector('.dept-tile-body h3').textContent).toBe(d.label);
       expect(tile.querySelector('.dept-tile-count').textContent).toBe(`${d.count} products · ${d.subs.length} product lines`);
       expect(tile.querySelector('.dept-tile-lines').textContent).toBe(topLines(PRODUCTS, d.key).join(' · '));

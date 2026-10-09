@@ -6,6 +6,7 @@ import { Link } from '../../lib/router.js';
 import { variantAxis, variantCount } from '../../lib/lines.js';
 import { brandLabel } from '../../lib/format.js';
 import { Icon } from '../../components/Icon.jsx';
+import { TextParts } from '../../components/TextParts.jsx';
 import { PageHead } from './SupportShell.jsx';
 
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -15,7 +16,7 @@ export function CatalogIndexPage({ products, departments, isApprovedBuyer, profi
 
   return (
     <section className="support-page catalog-index">
-      <PageHead crumb="All products" eyebrow={`FULL ASSORTMENT · ${departments.length} DEPARTMENTS · ${products.length} SKUs`} title="All products">
+      <PageHead crumb="All products" eyebrow={<TextParts parts={['FULL ASSORTMENT', `${departments.length} DEPARTMENTS`, `${products.length} SKUs`]} />} title="All products">
         <p>{`Every department and product line we stock, in one place. Jump to a department, open a line, or expand the full SKU list. ${isApprovedBuyer ? 'Your account pricing shows on every product.' : profile ? 'Pricing unlocks after your account is approved.' : 'Sign in to see wholesale pricing.'}`}</p>
       </PageHead>
 
