@@ -67,7 +67,7 @@ test.describe('a guest', () => {
     await expect(state).toHaveAccessibleDescription('Delivery routes cover AL, MS and GA. For another state, choose will-call pickup.');
     await expect(field(page, 'Notes (optional)')).toHaveJSProperty('tagName', 'TEXTAREA');
     const phone = field(page, 'Phone');
-    await expect(phone).toHaveAccessibleDescription('10 digits, for example (205) 555-0123');
+    await expect(phone).toHaveAccessibleDescription('10 digits, for example (205) 555-0123.');
     // The browser refuses letters (the pattern compiles with the v flag).
     await phone.fill('hello');
     expect(await phone.evaluate((el) => el.validity.patternMismatch)).toBe(true);

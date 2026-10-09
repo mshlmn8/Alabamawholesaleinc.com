@@ -133,9 +133,14 @@ describe('AuthModal after sign-in', () => {
     const t = setup({ signIn: vi.fn(async () => { throw Object.assign(new Error('Email not confirmed'), { code: 'email_not_confirmed' }); }) });
     await signInWith();
     expect(screen.getByRole('heading', { name: 'Confirm your email first' })).toBeTruthy();
+    const desc = document.querySelector('[role="dialog"] > .desc').textContent;
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Send a new confirmation link/ })); });
     expect(t.value.resendConfirmation).toHaveBeenCalledWith('buyer@example.test');
-    expect(screen.getByText(/We sent a new confirmation link to buyer@example.test/)).toBeTruthy();
+    // Said once, in the status line; the description stays as it was (NEW-069).
+    expect(screen.getByText(/^Sent again to buyer@example.test\. It can take a few minutes/)).toBeTruthy();
+    expect(document.querySelector('[role="dialog"] > .desc').textContent).toBe(desc);
+    expect(desc).toBe('buyer@example.test isn’t confirmed yet. Open the confirmation link we emailed when you applied, or send a new one. Links work once and expire after a while.');
+    expect(screen.queryByText(/We sent a new confirmation link/)).toBeNull();
   });
 });
 
@@ -737,7 +742,7 @@ describe('AuthModal after the application is sent (AW-260)', () => {
     expect(desc.textContent).toBe('We sent a confirmation link to new@example.test. Click it to activate your account — a trade rep will verify your license within one business day.');
     expect(steps().join(' ')).not.toContain('new@example.test');
     expect(steps()).toEqual([
-      'Confirm your email.Open the link in that email. Not there after a few minutes? Check your spam folder. Already have an account with this email? Sign in instead.',
+      'Confirm your email.Open the link in that email. Not there after a few minutes? Check your spam folder. Already have an account with this email? Sign in below.',
       'We review your application.A trade rep checks your EIN, state retail tobacco license and resale certificate.',
       'You hear from us.We’ll email you or call (205) 555-0199 when your account is approved. Wholesale pricing and ordering unlock then.',
     ]);
@@ -748,17 +753,17 @@ describe('AuthModal after the application is sent (AW-260)', () => {
     expect(steps()[2]).toBe('You hear from us.We’ll email you or call (205) 555-0199 when your account is approved. Wholesale pricing and ordering unlock then.');
   });
 
-  for (const [label, find] of [
-    ['Sign in instead, in step 1', () => screen.getByRole('button', { name: 'Sign in instead' })],
-    ['the Sign in link under the steps', () => screen.getByRole('button', { name: 'Sign in' })],
-  ]) {
-    it(`opens Sign in with the application’s email from ${label}`, async () => {
-      await sendApplication();
-      fireEvent.click(find());
-      expect(screen.getByRole('heading', { name: 'Sign in' })).toBeTruthy();
-      expect(document.getElementById('aw-email').value).toBe('new@example.test');
-    });
-  }
+  // One Sign in on the step, under the steps (NEW-069).
+  it('opens Sign in with the application’s email from its one Sign in, under the steps', async () => {
+    await sendApplication();
+    expect(screen.queryByRole('button', { name: 'Sign in instead' })).toBeNull();
+    const signIns = [...document.querySelectorAll('[role="dialog"] button, [role="dialog"] a')].filter((el) => /sign in/i.test(el.textContent));
+    expect(signIns).toHaveLength(1);
+    expect(signIns[0].closest('.dialog-actions')).toBeTruthy();
+    fireEvent.click(signIns[0]);
+    expect(screen.getByRole('heading', { name: 'Sign in' })).toBeTruthy();
+    expect(document.getElementById('aw-email').value).toBe('new@example.test');
+  });
 
   it('lists only real tasks while an application is under review', () => {
     const t = setup();
@@ -825,7 +830,7 @@ describe('AuthModal application phone number (AW-247)', () => {
     setup({}, { initialMode: 'application' });
     expect(phone().getAttribute('placeholder')).toBe('(205) 555-0123');
     expect(phone().getAttribute('inputmode')).toBe('tel');
-    expect(phone().getAttribute('title')).toBe('Enter a 10-digit US phone number');
+    expect(phone().getAttribute('title')).toBe('Enter a 10-digit US phone number.');
     expect(phone().getAttribute('aria-describedby')).toBe('aw-su-phone-hint');
     expect(document.getElementById('aw-su-phone-hint').textContent).toBe('Ten digits, the number we should call about this account.');
     // The browser compiles the pattern with the v flag; an invalid one is ignored.

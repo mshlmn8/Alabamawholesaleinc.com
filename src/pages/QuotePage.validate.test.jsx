@@ -50,18 +50,20 @@ describe('QuotePage checks its form before it sends (AW-173)', () => {
     vi.mocked(submitOrder).mockClear();
     const { checkCart } = renderPage();
     await submitForm();
+    // Sentences with a period; the phone, license and resale fields say
+    // what to enter in their own words (NEW-069).
     const expected = {
-      'quote-business': 'Enter business name',
-      'quote-contact': 'Enter contact name',
-      'quote-email': 'Enter email',
-      'quote-phone': 'Enter phone',
-      'quote-license': 'Enter state tobacco/retail license #',
-      'quote-resale': 'Enter sales-tax / resale certificate #',
-      'quote-age': 'Check this box to continue',
-      'ship-street': 'Enter street',
-      'ship-city': 'Enter city',
-      'ship-state': 'Choose state',
-      'ship-zip': 'Enter ZIP',
+      'quote-business': 'Enter business name.',
+      'quote-contact': 'Enter contact name.',
+      'quote-email': 'Enter email.',
+      'quote-phone': 'Enter a phone number.',
+      'quote-license': 'Enter the state tobacco license number.',
+      'quote-resale': 'Enter the resale certificate number.',
+      'quote-age': 'Check this box to continue.',
+      'ship-street': 'Enter street.',
+      'ship-city': 'Enter city.',
+      'ship-state': 'Choose state.',
+      'ship-zip': 'Enter ZIP.',
     };
     for (const [id, message] of Object.entries(expected)) {
       expect(byId(id).getAttribute('aria-invalid'), id).toBe('true');
@@ -84,9 +86,9 @@ describe('QuotePage checks its form before it sends (AW-173)', () => {
     type('ship-zip', '3520');
     type('quote-date', '2020-01-15');
     await submitForm();
-    expect(byId('quote-email-error').textContent).toBe('Enter an email address, for example name@yourstore.com');
-    expect(byId('ship-zip-error').textContent).toBe('A 5-digit ZIP code, or ZIP+4');
-    expect(byId('quote-date-error').textContent).toBe('Choose today or a later date');
+    expect(byId('quote-email-error').textContent).toBe('Enter an email address, for example name@yourstore.com.');
+    expect(byId('ship-zip-error').textContent).toBe('Enter a 5-digit ZIP code, or ZIP+4.');
+    expect(byId('quote-date-error').textContent).toBe('Choose today or a later date.');
     // Fixing a field clears its message only.
     type('ship-zip', '35203');
     expect(byId('ship-zip-error').textContent).toBe('');

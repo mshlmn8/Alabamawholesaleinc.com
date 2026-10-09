@@ -60,9 +60,14 @@ describe('QuotePage fields (AW-078)', () => {
     expect(phone.getAttribute('type')).toBe('tel');
     expect(phone.getAttribute('inputmode')).toBe('tel');
     expect(phone.getAttribute('pattern')).toBe('[0-9\\(\\)+.\\-\\s]{10,20}');
-    expect(phone.getAttribute('title')).toBe('Enter a 10-digit phone number, for example (205) 555-0123');
+    expect(phone.getAttribute('title')).toBe('Enter a 10-digit phone number, for example (205) 555-0123.');
     expect(phone.getAttribute('aria-describedby')).toBe('quote-phone-hint');
-    expect(el('quote-phone-hint').textContent).toBe('10 digits, for example (205) 555-0123');
+    const hint = el('quote-phone-hint');
+    expect(hint.textContent).toBe('10 digits, for example (205) 555-0123.');
+    // The example number is kept on one line (NEW-040), in its own element.
+    const example = hint.querySelector('span.nowrap');
+    expect(example.textContent).toBe('(205) 555-0123');
+    expect(example.childNodes).toHaveLength(1);
     // Browsers compile the pattern with the v flag: it must be valid there.
     const re = new RegExp(`^(?:${phone.getAttribute('pattern')})$`, 'v');
     expect(['(205) 555-0123', '205.555.0123', '+1 205 555 0123'].every((v) => re.test(v))).toBe(true);

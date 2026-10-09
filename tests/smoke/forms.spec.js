@@ -55,10 +55,10 @@ test('an empty quote names each missing answer under its field, focuses Business
   const business = page.getByLabel('Business name', { exact: true });
   await expect(business).toBeFocused();
   await expect(business).toHaveAttribute('aria-invalid', 'true');
-  await expect(page.locator('#quote-business-error')).toHaveText('Enter business name');
+  await expect(page.locator('#quote-business-error')).toHaveText('Enter business name.');
   await expect(page.locator('#quote-business-error')).toBeVisible();
-  await expect(business).toHaveAccessibleDescription('Enter business name');
-  for (const [label, message] of [['Email', 'Enter email'], ['ZIP', 'Enter ZIP'], ['State tobacco/retail license #', 'Enter state tobacco/retail license #']]) {
+  await expect(business).toHaveAccessibleDescription('Enter business name.');
+  for (const [label, message] of [['Email', 'Enter email.'], ['ZIP', 'Enter ZIP.'], ['State tobacco/retail license #', 'Enter the state tobacco license number.']]) {
     const field = page.getByLabel(label, { exact: true });
     await expect(field, label).toHaveAttribute('aria-invalid', 'true');
     await expect(field, label).toHaveAccessibleDescription(new RegExp(message.replace(/[.*+?^${}()|[\]\\#]/g, '\\$&')));
@@ -102,9 +102,9 @@ test('the application dialog explains a mistyped EIN under the field (AW-173)', 
   // The first problem is the empty name; the EIN says what it expects.
   await expect(dialog.getByLabel('Your name')).toBeFocused();
   await expect(ein).toHaveAttribute('aria-invalid', 'true');
-  await expect(dialog.locator('#aw-su-ein-error')).toHaveText('Enter the 9-digit EIN, for example 12-3456789');
+  await expect(dialog.locator('#aw-su-ein-error')).toHaveText('Enter the 9-digit EIN, for example 12-3456789.');
   await expect(dialog.locator('#aw-su-ein-error')).toBeVisible();
-  await expect(ein).toHaveAccessibleDescription('9 digits, for example 12-3456789. Enter the 9-digit EIN, for example 12-3456789');
+  await expect(ein).toHaveAccessibleDescription('9 digits, for example 12-3456789. Enter the 9-digit EIN, for example 12-3456789.');
   await ein.fill('12-3456789');
   await expect(dialog.locator('#aw-su-ein-error')).toHaveText('');
   expect(errors).toEqual([]);

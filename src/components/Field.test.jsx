@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { Field, ValidatedForm } from './Field.jsx';
 
-function Form({ onSubmit, validate, serverError = null }) {
+function Form({ onSubmit, validate, serverError = null, emailRefusal = '' }) {
   const [values, setValues] = useState({ name: '', email: '', zip: '', notes: '', agree: false });
   const set = (k) => (e) => setValues({ ...values, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
   return (
@@ -15,11 +15,11 @@ function Form({ onSubmit, validate, serverError = null }) {
         <Field id="t-name" label="Business name">
           <input id="t-name" value={values.name} onChange={set('name')} required />
         </Field>
-        <Field id="t-email" label="Email" hint="We reply here.">
+        <Field id="t-email" label="Email" hint="We reply here." error={emailRefusal}>
           <input id="t-email" type="email" value={values.email} onChange={set('email')} required aria-describedby="t-email-hint" />
         </Field>
         <Field id="t-zip" label="ZIP">
-          <input id="t-zip" value={values.zip} onChange={set('zip')} required pattern="[0-9]{5}" title="A 5-digit ZIP code"
+          <input id="t-zip" value={values.zip} onChange={set('zip')} required pattern="[0-9]{5}" title="Enter a 5-digit ZIP code"
                  aria-invalid={serverError ? true : undefined} aria-describedby={serverError ? 't-server' : undefined} />
         </Field>
         <Field id="t-notes" label="Notes" optional full>
@@ -76,10 +76,10 @@ describe('ValidatedForm', () => {
     submit();
     expect(onSubmit).not.toHaveBeenCalled();
     const expected = {
-      't-name': 'Enter business name',
-      't-email': 'Enter email',
-      't-zip': 'Enter ZIP',
-      't-agree': 'Check this box to continue',
+      't-name': 'Enter business name.',
+      't-email': 'Enter email.',
+      't-zip': 'Enter ZIP.',
+      't-agree': 'Check this box to continue.',
     };
     for (const [id, message] of Object.entries(expected)) {
       expect(byId(id).getAttribute('aria-invalid'), id).toBe('true');
@@ -100,15 +100,16 @@ describe('ValidatedForm', () => {
     type('t-zip', '3520');
     submit();
     expect(byId('t-name').hasAttribute('aria-invalid')).toBe(false);
-    expect(byId('t-email-error').textContent).toBe('Enter an email address, for example name@yourstore.com');
-    expect(byId('t-zip-error').textContent).toBe('A 5-digit ZIP code');
+    expect(byId('t-email-error').textContent).toBe('Enter an email address, for example name@yourstore.com.');
+    // The pattern's title, as a sentence (NEW-069).
+    expect(byId('t-zip-error').textContent).toBe('Enter a 5-digit ZIP code.');
     expect(document.activeElement).toBe(byId('t-email'));
     type('t-email', 'buyer@example.test');
     expect(byId('t-email-error').textContent).toBe('');
     expect(byId('t-email').hasAttribute('aria-invalid')).toBe(false);
     expect(byId('t-email').getAttribute('aria-describedby')).toBe('t-email-hint');
     // The others keep theirs until they change.
-    expect(byId('t-zip-error').textContent).toBe('A 5-digit ZIP code');
+    expect(byId('t-zip-error').textContent).toBe('Enter a 5-digit ZIP code.');
     fireEvent.click(byId('t-agree'));
     expect(byId('t-agree-error').textContent).toBe('');
   });
@@ -142,6 +143,21 @@ describe('ValidatedForm', () => {
     expect(byId('t-zip').getAttribute('aria-invalid')).toBe('true');
     expect(byId('t-notes').hasAttribute('aria-invalid')).toBe(false);
     expect(document.activeElement).toBe(byId('t-zip'));
+  });
+
+  it('shows a refusal the page sets with `error` as the field’s own message, until the form’s own check has one (NEW-003)', () => {
+    const { rerender } = render(<Form onSubmit={vi.fn()} emailRefusal="An account already uses this email." />);
+    expect(byId('t-email-error').textContent).toBe('An account already uses this email.');
+    expect(byId('t-email').getAttribute('aria-invalid')).toBe('true');
+    expect(byId('t-email').getAttribute('aria-describedby')).toBe('t-email-hint t-email-error');
+    // An empty email on submit: the form's own message wins.
+    submit();
+    expect(byId('t-email-error').textContent).toBe('Enter email.');
+    type('t-email', 'buyer@example.test');
+    rerender(<Form onSubmit={vi.fn()} emailRefusal="" />);
+    expect(byId('t-email-error').textContent).toBe('');
+    expect(byId('t-email').hasAttribute('aria-invalid')).toBe(false);
+    expect(byId('t-email').getAttribute('aria-describedby')).toBe('t-email-hint');
   });
 
   it('keeps an aria-invalid and description the page set for a server refusal', () => {

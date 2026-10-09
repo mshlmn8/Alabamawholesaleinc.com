@@ -113,6 +113,8 @@ import { EmptyState } from '../components/EmptyState.jsx';
 import { SavedLinesNotice, UnavailableNotice } from '../components/CartNotices.jsx';
 import { AccountLoading } from '../components/AccountStatus.jsx';
 import { Field, ValidatedForm } from '../components/Field.jsx';
+import { LICENSE_REQUIRED, RESALE_REQUIRED } from '../lib/fieldErrors.js';
+import { PHONE_EXAMPLE, PHONE_REQUIRED } from '../lib/phone.js';
 import { accountShipToSource, applyShipTo, clearShipTo, initialQuoteForm, phoneDigitsOk, quoteFormForAccount } from '../lib/quoteForm.js';
 import { readQuoteDraft, useQuoteDraft } from '../lib/quoteDraft.js';
 import { DELIVERY_ROUTE_STATES, DELIVERY_STATE_NOTE } from '../data/quoteRules.js';
@@ -145,8 +147,10 @@ const PRICES_CHECK_FAILED = {
   before: 'Your prices didn’t load, so nothing was sent. Try again, or call the trade desk at',
   after: '.',
 };
-const PHONE_EXAMPLE = '(205) 555-0123';
 const PHONE_ERROR = 'Enter a 10-digit phone number.';
+// The phone hint keeps the example number on one line (NEW-040): a normal
+// hyphen and space would let it break as '(205) 555-' / '0123'.
+const PHONE_HINT = <>10 digits, for example <span className="nowrap">{PHONE_EXAMPLE}</span>.</>;
 
 // Identifies what the buyer is looking at: which lines, how many, whether
 // each can be ordered and at what price.
@@ -408,7 +412,8 @@ export function QuotePage({
   // The form's own check (ValidatedForm, AW-173): the pattern lets through a
   // number with too few or too many digits (AW-078), so the digits are
   // counted too, and said under the field before anything is checked or
-  // sent. An empty phone gets the field's own 'Enter phone'.
+  // sent. An empty phone gets its own 'Enter a phone number.'
+  // (data-required-message, NEW-069).
   const validateQuote = () => (data.phone.trim() && !phoneDigitsOk(data.phone) ? { 'quote-phone': PHONE_ERROR } : {});
 
   const handleQuoteSubmit = async (e) => {
@@ -636,18 +641,18 @@ export function QuotePage({
             </Field>
             {/* Ten digits (AW-078): the pattern takes the usual characters, and
                 validateQuote counts the digits. */}
-            <Field id="quote-phone" label="Phone" hint={`10 digits, for example ${PHONE_EXAMPLE}`}>
-              <input id="quote-phone" name="phone" type="tel" value={data.phone} onChange={set('phone')} required maxLength={40} pattern={String.raw`[0-9\(\)+.\-\s]{10,20}`} title={`Enter a 10-digit phone number, for example ${PHONE_EXAMPLE}`} autoComplete="tel" inputMode="tel" {...fieldProps('phone')} />
+            <Field id="quote-phone" label="Phone" hint={PHONE_HINT}>
+              <input id="quote-phone" name="phone" type="tel" value={data.phone} onChange={set('phone')} required maxLength={40} pattern={String.raw`[0-9\(\)+.\-\s]{10,20}`} title={`Enter a 10-digit phone number, for example ${PHONE_EXAMPLE}.`} data-required-message={PHONE_REQUIRED} autoComplete="tel" inputMode="tel" {...fieldProps('phone')} />
             </Field>
             {/* TODO(owner): Confirm guest tobacco and vape quotes may collect a license number, resale certificate, and 21+ attestation instead of requiring an approved sign-in. (AW-014) */}
             {needsLicense && (
               <>
                 <p className="full result-note" id="quote-license-note">Your quote has tobacco or vape items. Tobacco products are supplied to licensed retailers only — 21+.</p>
                 <Field id="quote-license" label="State tobacco/retail license #" full>
-                  <input id="quote-license" name="licenseNo" value={data.licenseNo} onChange={set('licenseNo')} required maxLength={64} autoComplete="off" {...fieldProps('licenseNo', 'quote-license-note')} />
+                  <input id="quote-license" name="licenseNo" value={data.licenseNo} onChange={set('licenseNo')} required maxLength={64} autoComplete="off" data-required-message={LICENSE_REQUIRED} {...fieldProps('licenseNo', 'quote-license-note')} />
                 </Field>
                 <Field id="quote-resale" label="Sales-tax / resale certificate #" full>
-                  <input id="quote-resale" name="resaleCert" value={data.resaleCert} onChange={set('resaleCert')} required maxLength={64} autoComplete="off" {...fieldProps('resaleCert', 'quote-license-note')} />
+                  <input id="quote-resale" name="resaleCert" value={data.resaleCert} onChange={set('resaleCert')} required maxLength={64} autoComplete="off" data-required-message={RESALE_REQUIRED} {...fieldProps('resaleCert', 'quote-license-note')} />
                 </Field>
                 <Field id="quote-age" label="I confirm this business holds a valid tobacco retail license and all purchasers are 21+" full inline>
                   <input id="quote-age" name="purchasers21" type="checkbox" checked={data.purchasers21} onChange={setChecked('purchasers21')} required />
@@ -685,7 +690,7 @@ export function QuotePage({
                   </select>
                 </Field>
                 <Field id="ship-zip" label="ZIP" className="half">
-                  <input id="ship-zip" name="shipZip" value={data.shipZip} onChange={set('shipZip')} required maxLength={10} pattern="[0-9]{5}(-[0-9]{4})?" title="A 5-digit ZIP code, or ZIP+4" autoComplete="postal-code" inputMode="numeric" {...fieldProps('shipZip')} />
+                  <input id="ship-zip" name="shipZip" value={data.shipZip} onChange={set('shipZip')} required maxLength={10} pattern="[0-9]{5}(-[0-9]{4})?" title="Enter a 5-digit ZIP code, or ZIP+4." autoComplete="postal-code" inputMode="numeric" {...fieldProps('shipZip')} />
                 </Field>
               </>
             )}

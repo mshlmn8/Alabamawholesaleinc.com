@@ -29,8 +29,8 @@ describe('AuthModal forms check themselves (AW-173)', () => {
     const auth = setup('signin');
     await submitFormOf('aw-email');
     expect(auth.signIn).not.toHaveBeenCalled();
-    expect(byId('aw-email-error').textContent).toBe('Enter business email');
-    expect(byId('aw-pass-error').textContent).toBe('Enter password');
+    expect(byId('aw-email-error').textContent).toBe('Enter business email.');
+    expect(byId('aw-pass-error').textContent).toBe('Enter password.');
     expect(byId('aw-email').getAttribute('aria-invalid')).toBe('true');
     expect(byId('aw-email').getAttribute('aria-describedby')).toBe('aw-email-error');
     expect(document.activeElement).toBe(byId('aw-email'));
@@ -40,7 +40,7 @@ describe('AuthModal forms check themselves (AW-173)', () => {
     fireEvent.change(byId('aw-email'), { target: { value: 'buyer.example.test' } });
     fireEvent.change(byId('aw-pass'), { target: { value: 'test-password-1' } });
     await submitFormOf('aw-email');
-    expect(byId('aw-email-error').textContent).toBe('Enter an email address, for example name@yourstore.com');
+    expect(byId('aw-email-error').textContent).toBe('Enter an email address, for example name@yourstore.com.');
     expect(byId('aw-pass-error').textContent).toBe('');
     expect(auth.signIn).not.toHaveBeenCalled();
     fireEvent.change(byId('aw-email'), { target: { value: 'buyer@example.test' } });
@@ -54,20 +54,23 @@ describe('AuthModal forms check themselves (AW-173)', () => {
     expect(note.textContent).toBe('All fields are required unless marked optional.');
     await submitFormOf('aw-su-name');
     expect(auth.signUp).not.toHaveBeenCalled();
+    // Sentences with a period; the phone, license and resale fields say
+    // what to enter in their own words, not from a label like 'Phone' or
+    // 'Resale certificate #' (NEW-069).
     const expected = {
-      'aw-su-name': 'Enter your name',
-      'aw-su-business': 'Enter business name',
-      'aw-su-email': 'Enter business email',
-      'aw-su-phone': 'Enter phone',
-      'aw-su-pass': 'Enter password',
-      'aw-su-ein': 'Enter federal EIN',
-      'aw-su-street': 'Enter store street address',
-      'aw-su-city': 'Enter city',
-      'aw-su-zip': 'Enter ZIP',
-      'aw-su-license': 'Enter state retail tobacco license #',
-      'aw-su-resale': 'Enter resale certificate #',
-      'aw-su-terms': 'Check this box to continue',
-      'aw-su-age': 'Check this box to continue',
+      'aw-su-name': 'Enter your name.',
+      'aw-su-business': 'Enter business name.',
+      'aw-su-email': 'Enter business email.',
+      'aw-su-phone': 'Enter a phone number.',
+      'aw-su-pass': 'Enter password.',
+      'aw-su-ein': 'Enter federal EIN.',
+      'aw-su-street': 'Enter store street address.',
+      'aw-su-city': 'Enter city.',
+      'aw-su-zip': 'Enter ZIP.',
+      'aw-su-license': 'Enter the state tobacco license number.',
+      'aw-su-resale': 'Enter the resale certificate number.',
+      'aw-su-terms': 'Check this box to continue.',
+      'aw-su-age': 'Check this box to continue.',
     };
     for (const [id, message] of Object.entries(expected)) {
       expect(byId(id).getAttribute('aria-invalid'), id).toBe('true');
@@ -85,7 +88,7 @@ describe('AuthModal forms check themselves (AW-173)', () => {
     setup('application');
     fireEvent.change(byId('aw-su-ein'), { target: { value: 'abc' } });
     await submitFormOf('aw-su-ein');
-    expect(byId('aw-su-ein-error').textContent).toBe('Enter the 9-digit EIN, for example 12-3456789');
+    expect(byId('aw-su-ein-error').textContent).toBe('Enter the 9-digit EIN, for example 12-3456789.');
     expect(byId('aw-su-ein').getAttribute('aria-invalid')).toBe('true');
     fireEvent.change(byId('aw-su-ein'), { target: { value: '12-3456789' } });
     expect(byId('aw-su-ein-error').textContent).toBe('');
@@ -96,7 +99,7 @@ describe('AuthModal forms check themselves (AW-173)', () => {
     const auth = setup('reset');
     await submitFormOf('aw-reset-email');
     expect(auth.resetPassword).not.toHaveBeenCalled();
-    expect(byId('aw-reset-email-error').textContent).toBe('Enter business email');
+    expect(byId('aw-reset-email-error').textContent).toBe('Enter business email.');
     expect(document.activeElement).toBe(byId('aw-reset-email'));
     fireEvent.change(byId('aw-reset-email'), { target: { value: 'buyer@example.test' } });
     await submitFormOf('aw-reset-email');

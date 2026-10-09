@@ -112,12 +112,15 @@ function DocumentFields({
     <fieldset className="doc-uploads" disabled={disabled}>
       {/* The panel's heading names the documents (AW-258). */}
       <legend className={showStatus ? 'sr-only' : undefined}>{showStatus ? 'Upload or replace' : 'Optional documents'}</legend>
-      <p className="doc-uploads-note" id={`${idPrefix}-later`}>
-        {showStatus
-          ? 'Uploading a new file replaces the one on file.'
-          : <>Upload your state retail tobacco license and resale certificate now, or send proof later to{' '}
-            <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.</>}
-      </p>
+      {/* Said only when a file is on file to replace (NEW-069). */}
+      {(!showStatus || records?.length > 0) && (
+        <p className="doc-uploads-note" id={`${idPrefix}-later`}>
+          {showStatus
+            ? 'Uploading a new file replaces the one on file.'
+            : <>Upload your state retail tobacco license and resale certificate now, or send proof later to{' '}
+              <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.</>}
+        </p>
+      )}
       {DOCUMENT_TYPES.map(doc => {
         const id = `${idPrefix}-${doc.id}`;
         const hintId = `${id}-hint`;
@@ -165,9 +168,10 @@ function DocumentFields({
         );
         return (
           <div className="doc-upload" key={doc.id}>
+            {/* Field's own '(optional)' marker (NEW-069). */}
             <label htmlFor={id}>
               <span>{doc.label}</span>
-              {!showStatus && <span className="optional"> Optional</span>}
+              {!showStatus && <span className="field-optional"> (optional)</span>}
             </label>
             <input
               id={id}

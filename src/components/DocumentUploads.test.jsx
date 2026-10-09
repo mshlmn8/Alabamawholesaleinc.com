@@ -129,6 +129,8 @@ describe('ApplicationDocuments uploads (AW-095, AW-257, AW-264)', () => {
     docs.rows = [];
     panel();
     await waitFor(() => expect(screen.getByRole('status').textContent).toBe('No documents yet.'));
+    // Nothing on file, so nothing to replace (NEW-069).
+    expect(screen.queryByText('Uploading a new file replaces the one on file.')).toBeNull();
     const input = licenseInput();
     expect(input.className).toBe('doc-file sr-only');
     expect(input.disabled).toBe(false);
@@ -247,9 +249,12 @@ describe('DocumentUploads on the application (AW-244)', () => {
   it('shows a chosen file as a chip with its size and Remove, and Remove puts focus back on the input', async () => {
     render(<Form />);
     const input = document.getElementById('aw-doc-resale_certificate');
-    // ('Resale certificate Optional Choose file' in the browser: jsdom's name
-    // drops the space that starts the Optional span.)
-    expect(computeAccessibleName(input)).toMatch(/^Resale certificate ?Optional Choose file$/);
+    // Field's own '(optional)' marker (NEW-069). ('Resale certificate
+    // (optional) Choose file' in the browser: jsdom's name drops the space
+    // that starts the marker's span.)
+    expect(computeAccessibleName(input)).toMatch(/^Resale certificate ?\(optional\) Choose file$/);
+    const marker = document.querySelector('label[for="aw-doc-resale_certificate"] .field-optional');
+    expect(marker.textContent).toBe(' (optional)');
     expect(await pick(input, pdf('resale.pdf', 3000))).toEqual(['']);
     const chip = document.getElementById('aw-doc-resale_certificate-selected');
     expect(chip.textContent).toBe('resale.pdf · 3 KBRemove Resale certificate');

@@ -3,6 +3,10 @@
 // constraint validation (el.validity) and its label. ValidatedForm in
 // src/components/Field.jsx shows them instead of the browser's bubbles.
 //
+// Every message is a sentence that ends in a period (NEW-069), the same as
+// the forms' own checks ('Enter a 10-digit phone number.'): a pattern's
+// title and a control's data-required-message get one when they lack it.
+//
 // Pure: it reads only the control it is given, so it works on a real
 // element or a plain { type, validity, … } object in a test.
 
@@ -27,6 +31,22 @@ export function labelText(el) {
   return el?.getAttribute?.('aria-label') || '';
 }
 
+// `text` as a sentence: a period added unless it already ends in . ? or !.
+export function asSentence(text) {
+  const s = String(text || '').trim();
+  return !s || /[.?!]$/.test(s) ? s : `${s}.`;
+}
+
+// The license and resale fields' words for an empty answer, on the
+// application and the quote form alike (NEW-069).
+export const LICENSE_REQUIRED = 'Enter the state tobacco license number.';
+export const RESALE_REQUIRED = 'Enter the resale certificate number.';
+
+// A control's own words for an empty answer, from data-required-message:
+// for a label that makes a poor 'Enter …' ('Resale certificate #' →
+// 'Enter the resale certificate number.', NEW-069).
+const requiredMessage = (el) => el?.dataset?.requiredMessage || el?.getAttribute?.('data-required-message') || '';
+
 // What to tell the visitor about `el`, or '' when it is valid.
 export function fieldErrorMessage(el, label = labelText(el)) {
   const v = el?.validity;
@@ -34,27 +54,29 @@ export function fieldErrorMessage(el, label = labelText(el)) {
   const type = el.type || '';
   const what = lowerLabel(label);
   if (v.valueMissing) {
-    if (type === 'checkbox') return 'Check this box to continue';
-    if (type === 'radio') return 'Choose an option';
-    if (type === 'file') return 'Choose a file';
-    if (/^select/.test(type)) return what ? `Choose ${what}` : 'Choose an option';
-    return what ? `Enter ${what}` : 'Fill in this field';
+    const own = requiredMessage(el);
+    if (own) return asSentence(own);
+    if (type === 'checkbox') return 'Check this box to continue.';
+    if (type === 'radio') return 'Choose an option.';
+    if (type === 'file') return 'Choose a file.';
+    if (/^select/.test(type)) return what ? `Choose ${what}.` : 'Choose an option.';
+    return what ? `Enter ${what}.` : 'Fill in this field.';
   }
-  if (v.badInput) return type === 'date' ? 'Enter a whole date, or clear the field' : 'Check this entry';
+  if (v.badInput) return type === 'date' ? 'Enter a whole date, or clear the field.' : 'Check this entry.';
   if (v.typeMismatch) {
-    if (type === 'email') return 'Enter an email address, for example name@yourstore.com';
-    if (type === 'url') return 'Enter a web address, for example https://yourstore.com';
-    return 'Check this entry';
+    if (type === 'email') return 'Enter an email address, for example name@yourstore.com.';
+    if (type === 'url') return 'Enter a web address, for example https://yourstore.com.';
+    return 'Check this entry.';
   }
-  if (v.patternMismatch) return el.title || (what ? `Check the format of ${what}` : 'Check the format of this entry');
-  if (v.tooShort) return `Use at least ${el.minLength} characters`;
-  if (v.tooLong) return `Use ${el.maxLength} characters or fewer`;
+  if (v.patternMismatch) return asSentence(el.title) || (what ? `Check the format of ${what}.` : 'Check the format of this entry.');
+  if (v.tooShort) return `Use at least ${el.minLength} characters.`;
+  if (v.tooLong) return `Use ${el.maxLength} characters or fewer.`;
   // The one date field with a minimum, the quote's preferred date, starts at
   // today (todayInBirmingham in src/lib/orders.js).
-  if (v.rangeUnderflow) return type === 'date' ? 'Choose today or a later date' : `Enter ${el.min} or more`;
-  if (v.rangeOverflow) return type === 'date' ? 'Choose an earlier date' : `Enter ${el.max} or less`;
-  if (v.stepMismatch) return 'Enter a whole number';
-  return 'Check this entry';
+  if (v.rangeUnderflow) return type === 'date' ? 'Choose today or a later date.' : `Enter ${el.min} or more.`;
+  if (v.rangeOverflow) return type === 'date' ? 'Choose an earlier date.' : `Enter ${el.max} or less.`;
+  if (v.stepMismatch) return 'Enter a whole number.';
+  return 'Check this entry.';
 }
 
 // Every control in `form` that would stop it from sending, in page order, as

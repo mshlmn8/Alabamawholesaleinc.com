@@ -9,7 +9,7 @@ export const APPLICATION_CHECKLIST = [
   { title: 'Resale certificate number', detail: 'Your sales tax resale or exemption certificate for the store.' },
   // The form's optional uploads (AW-250).
   { title: 'Photos of your license and resale certificate (optional)', detail: 'A PDF or a clear photo of each. Upload them with the application or later from your account.' },
-  { title: 'Store details', detail: 'Legal business name, store type, and the store\'s street address.' },
+  { title: 'Store details', detail: 'Legal business name, store type, and the store’s street address.' },
   { title: 'Account contact', detail: 'Your name, a phone number, and the business email you will sign in with.' },
 ];
 

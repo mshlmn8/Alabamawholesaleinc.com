@@ -942,6 +942,11 @@ describe('field messages, optional markers and the checkout column (AW-173, AW-3
     expect(declared('content').filter(({ selector }) => /field|required|optional/.test(selector))).toEqual([]);
   });
 
+  it('keeps a hint’s example phone number on one line, and the documents use the fields’ optional marker (NEW-040, NEW-069)', () => {
+    expect(rule('.nowrap')).toEqual({ 'white-space': 'nowrap' });
+    expect(css).not.toMatch(/\.doc-upload \.optional\b/);
+  });
+
   it('gives a refused field the danger border at zero specificity, so its own layout rules still apply', () => {
     const invalid = rules(css).find((r) => r.selectors.some((s) => s.includes('[aria-invalid="true"]') && s.startsWith(':where(.form-grid')));
     expect(invalid.selectors).toEqual([':where(.form-grid :is(input, select, textarea)[aria-invalid="true"]:not([type=checkbox]):not([type=radio]))']);

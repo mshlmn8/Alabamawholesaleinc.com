@@ -8,9 +8,13 @@
 // ')' and '-' must be escaped inside a class, or the whole pattern is
 // invalid and silently ignored. usPhone() is the real check.
 export const PHONE_PATTERN = String.raw`[0-9\(\)+.\-\s]{10,20}`;
-export const PHONE_TITLE = 'Enter a 10-digit US phone number';
+// Field messages are sentences ending in a period (NEW-069); the title is
+// the message for a number in the wrong format.
+export const PHONE_TITLE = 'Enter a 10-digit US phone number.';
 export const PHONE_EXAMPLE = '(205) 555-0123';
 export const PHONE_ERROR = 'Enter a 10-digit phone number, area code first.';
+// An empty phone field, in place of the label-made 'Enter phone.' (NEW-069).
+export const PHONE_REQUIRED = 'Enter a phone number.';
 
 // { digits: '2055550123', formatted: '(205) 555-0123' }, or null when the
 // text is not a ten-digit US number.

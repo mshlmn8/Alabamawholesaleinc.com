@@ -39,7 +39,8 @@ import { COMPANY, TERMS_VERSION } from '../data/content.js';
 import { APPLICATION_TIMEOUT_MESSAGE, isRateLimitError } from '../lib/errors.js';
 import { isTimeoutError } from '../lib/network.js';
 import { friendlyAuthError } from '../lib/authErrors.js';
-import { PHONE_ERROR, PHONE_EXAMPLE, PHONE_PATTERN, PHONE_TITLE, usPhone } from '../lib/phone.js';
+import { PHONE_ERROR, PHONE_EXAMPLE, PHONE_PATTERN, PHONE_REQUIRED, PHONE_TITLE, usPhone } from '../lib/phone.js';
+import { LICENSE_REQUIRED, RESALE_REQUIRED } from '../lib/fieldErrors.js';
 import { Link, restoreOverlayEntry } from '../lib/router.js';
 import { announce } from '../lib/announce.js';
 import { APPLICATION_CHECKLIST } from '../data/onboarding.js';
@@ -180,7 +181,6 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
   const [proofFailed, setProofFailed] = useState({});
   const [proofStatus, setProofStatus] = useState('');
   const [proofBusy, setProofBusy] = useState(false);
-  const [resent, setResent] = useState(false);
   // A confirmation email sent again: to whom, and whether the minute before
   // the next one is still running (AW-016). The reset link has its own
   // minute, and resetAgain says the last one went from Send again (AW-259).
@@ -391,7 +391,7 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
     try { await signIn(signin); setMode('checking'); }
     catch (err) {
       // An account whose confirmation link expired (AW-015) can ask for a new one.
-      if (isUnconfirmedEmail(err)) { setResent(false); setMode('unconfirmed'); }
+      if (isUnconfirmedEmail(err)) setMode('unconfirmed');
       // Supabase's own text is never shown (AW-084).
       else {
         const id = refusedField(err, { email: 'aw-email' });
@@ -408,7 +408,6 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
     setSubmitting(true); setError(null);
     try {
       await resendConfirmation(email);
-      setResent(true);
       setResentTo(email);
       startCooling();
     } catch (err) {
@@ -431,7 +430,7 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
 
   // The form's own check (ValidatedForm): the browser's pattern lets through
   // text with the right characters only; the phone needs ten digits (AW-247).
-  // An empty phone gets the field's own 'Enter phone'.
+  // An empty phone gets its own 'Enter a phone number.' (data-required-message).
   const validateSignup = () => (signup.phone.trim() && !usPhone(signup.phone) ? { 'aw-su-phone': PHONE_ERROR } : {});
 
   const handleSignup = async (e) => {
@@ -644,10 +643,10 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
         {mode === 'sent' && <p className="desc">We sent a confirmation link to <strong>{signup.email}</strong>. Click it to activate your account — a trade rep will verify your license within one business day.</p>}
         {mode === 'checking' && <p className="desc" aria-live="polite">One moment while we load your account.</p>}
         {mode === 'profile-error' && <p className="desc">We signed you in but couldn’t load your account. <CallOrEmail before="Try again, or call" after=" and a trade rep will help you." /></p>}
+        {/* Unchanged after a send: the status line under the button says it
+            went, once (NEW-069). */}
         {mode === 'unconfirmed' && (
-          <p className="desc">{resent
-            ? `We sent a new confirmation link to ${signin.email}. Open it on this device, then sign in.`
-            : `${signin.email} isn’t confirmed yet. Open the confirmation link we emailed when you applied, or send a new one. Links work once and expire after a while.`}</p>
+          <p className="desc">{`${signin.email} isn’t confirmed yet. Open the confirmation link we emailed when you applied, or send a new one. Links work once and expire after a while.`}</p>
         )}
         {mode === 'reset' && <p className="desc">Enter the business email on your account and we’ll send a link to choose a new password.</p>}
         {mode === 'reset-sent' && <p className="desc">If an account exists for <strong>{resetEmail}</strong>, a password reset link is on its way. The link works once. If it doesn’t arrive within a few minutes, check your spam folder. <CallOrEmail before="Still nothing? Call" /></p>}
@@ -741,6 +740,7 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
                 <input
                   id="aw-su-phone" type="tel" name="tel" value={signup.phone} onChange={setU('phone')}
                   required autoComplete="tel" inputMode="tel" placeholder={PHONE_EXAMPLE} pattern={PHONE_PATTERN} title={PHONE_TITLE}
+                  data-required-message={PHONE_REQUIRED}
                 />
               </Field>
               <PasswordField id="aw-su-pass" className="full" label="Password" name="new-password" value={signup.password} onChange={setU('password')} required minLength={PASSWORD_MIN_LENGTH} autoComplete="new-password" showRule error={refusalFor('aw-su-pass')} />
@@ -763,7 +763,7 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
                 <input id="aw-su-city" name="address-level2" value={signup.store_city} onChange={setU('store_city')} required maxLength={100} autoComplete="address-level2" />
               </Field>
               <Field id="aw-su-zip" label="ZIP">
-                <input id="aw-su-zip" name="postal-code" value={signup.store_zip} onChange={setU('store_zip')} required maxLength={5} inputMode="numeric" pattern="[0-9]{5}" autoComplete="postal-code" title="Enter a 5-digit ZIP code" />
+                <input id="aw-su-zip" name="postal-code" value={signup.store_zip} onChange={setU('store_zip')} required maxLength={5} inputMode="numeric" pattern="[0-9]{5}" autoComplete="postal-code" title="Enter a 5-digit ZIP code." />
               </Field>
               <Field id="aw-su-volume" label="Expected monthly volume" full>
                 <select id="aw-su-volume" name="expected_volume" value={signup.expected_volume} onChange={setU('expected_volume')} required autoComplete="off">{choose}{VOLUMES.map(v => <option key={v} value={v}>{volumeLabel(v)}</option>)}</select>
@@ -772,14 +772,14 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
             <fieldset className="form-grid form-section">
               <legend>Licensing</legend>
               <Field id="aw-su-ein" label="Federal EIN" hint="9 digits, for example 12-3456789." full>
-                <input id="aw-su-ein" name="ein" value={signup.ein} onChange={setU('ein')} required inputMode="numeric" pattern="[0-9]{2}-?[0-9]{7}" title="Enter the 9-digit EIN, for example 12-3456789" placeholder="12-3456789" autoComplete="off" aria-describedby="aw-su-ein-hint" />
+                <input id="aw-su-ein" name="ein" value={signup.ein} onChange={setU('ein')} required inputMode="numeric" pattern="[0-9]{2}-?[0-9]{7}" title="Enter the 9-digit EIN, for example 12-3456789." placeholder="12-3456789" autoComplete="off" aria-describedby="aw-su-ein-hint" />
               </Field>
               {/* TODO(owner): Is a tobacco license required for every trade account, or only for tobacco, vapor, and nicotine? This field stays required for every application until you decide. (AW-129) */}
               <Field id="aw-su-license" label="State retail tobacco license #" hint="From the state where the store is licensed.">
-                <input id="aw-su-license" name="license_no" value={signup.license_no} onChange={setU('license_no')} required autoComplete="off" aria-describedby="aw-su-license-hint" />
+                <input id="aw-su-license" name="license_no" value={signup.license_no} onChange={setU('license_no')} required autoComplete="off" aria-describedby="aw-su-license-hint" data-required-message={LICENSE_REQUIRED} />
               </Field>
               <Field id="aw-su-resale" label="Resale certificate #" hint="Sales tax resale or exemption certificate.">
-                <input id="aw-su-resale" name="resale_cert_no" value={signup.resale_cert_no} onChange={setU('resale_cert_no')} required autoComplete="off" aria-describedby="aw-su-resale-hint" />
+                <input id="aw-su-resale" name="resale_cert_no" value={signup.resale_cert_no} onChange={setU('resale_cert_no')} required autoComplete="off" aria-describedby="aw-su-resale-hint" data-required-message={RESALE_REQUIRED} />
               </Field>
             </fieldset>
             <DocumentUploads
@@ -818,7 +818,7 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
               {emailConfirmed ? (
                 <li><b>Email confirmed.</b><span>Thanks. Your account is active.</span></li>
               ) : (
-                <li><b>Confirm your email.</b><span>Open the link in that email. Not there after a few minutes? Check your spam folder. Already have an account with this email? <button className="text-link" type="button" onClick={signInWithApplication}>Sign in instead</button>.</span></li>
+                <li><b>Confirm your email.</b><span>Open the link in that email. Not there after a few minutes? Check your spam folder. Already have an account with this email? Sign in below.</span></li>
               )}
               <li><b>We review your application.</b><span>A trade rep checks your EIN, state retail tobacco license and resale certificate.</span></li>
               {/* The application went with a checked number (AW-247), shown as sent. */}
@@ -843,7 +843,8 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
               <button className="button" type="button" onClick={requestClose} data-autofocus>Done</button>
-              {/* Signed in as the applicant already: nothing to sign in to. */}
+              {/* The step's one Sign in (NEW-069); signed in as the applicant
+                  already, there is nothing to sign in to. */}
               {!applicantSession && <button className="text-link" type="button" onClick={signInWithApplication}>Sign in</button>}
             </div>
           </>
