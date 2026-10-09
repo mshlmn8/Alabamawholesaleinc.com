@@ -14,6 +14,7 @@ import { Link, navigate } from '../lib/router.js';
 import { MIN_QUERY_LENGTH, searchProducts } from '../lib/search.js';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
+import { PricingNotice } from '../components/PricingNotice.jsx';
 
 // Cards shown before "Show all".
 export const SEARCH_PAGE_SIZE = 48;
@@ -61,6 +62,8 @@ export function SearchPage({ q = '', products, departments, ...cardProps }) {
 
       {ready && result.total > 0 && (
         <>
+          {/* Pricing is explained once, above the grid (AW-224). */}
+          <PricingNotice profile={cardProps.profile} isApprovedBuyer={cardProps.isApprovedBuyer} onLoginClick={cardProps.onLoginClick} onApplyClick={cardProps.onApplyClick} />
           {/* The cards' h3 titles sit under an h2, as on department pages. */}
           <h2 className="sr-only">Products</h2>
           <div className="card-grid" ref={grid}>

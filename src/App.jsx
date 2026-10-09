@@ -279,7 +279,7 @@ export default function App() {
   // Product cards need the account, its prices, the cart and the add/step actions.
   const cardProps = {
     profile, isApprovedBuyer, priceOf, pricesStatus: prices.status,
-    cart: cart.cart, addLine: cart.addLine, decLine: cart.decLine, onLoginClick: openSignin,
+    cart: cart.cart, addLine: cart.addLine, decLine: cart.decLine, onLoginClick: openSignin, onApplyClick: openSignup,
   };
   // Account pages wait for the session and profile instead of flashing a
   // signed-out view (AW-186), and offer a retry when the profile fails (AW-089).

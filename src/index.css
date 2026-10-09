@@ -548,7 +548,6 @@ p > .text-link { min-height: 0; min-width: 0; }
    so the action rows of a grid row are the same height and start level
    (AW-215), and it reads on one line down to a 178px card. */
 .card-meta .lock { flex-basis: 100%; color: var(--muted); font-weight: 400; font-size: var(--text-xs); line-height: 1.4; }
-.price-login { min-height: var(--tap-sm); text-align: left; }
 /* Product cards and department tiles (AW-145): with a mouse the frame turns
    purple, the title is underlined and the photo grows a little inside its
    frame; keyboard focus underlines the title too. Section links turn orange. */
@@ -684,6 +683,13 @@ p > .text-link { min-height: 0; min-width: 0; }
 .catalog-layout { display: grid; grid-template-columns: 220px minmax(0,1fr); gap: 34px; align-items: start; }
 .catalog-layout.is-stacked { grid-template-columns: 1fr; }
 .category-card-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+/* One pricing notice above a department's or a search's product grid
+   (AW-224): the text, then Sign in and Apply (or the approval status link),
+   which move under the text when there is no room. Layout only; .callout.info
+   gives the colours. */
+.pricing-notice { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; margin: 0 0 var(--block-gap); }
+.pricing-notice > p { flex: 1 1 16em; margin: 0; }
+.pricing-notice-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
 .category-filters { position: sticky; top: 18px; padding: 18px; border: 1px solid var(--line); background: var(--paper); }
 .filter-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .filter-heading h2 { margin: 0; font-size: var(--h3); }

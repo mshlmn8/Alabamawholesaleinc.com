@@ -117,7 +117,8 @@ describe('CategoryPage', () => {
     render(<Harness />);
     expect(screen.getByLabelText('Sort by').value).toBe('featured');
     expect(screen.queryByRole('option', { name: /Price/ })).toBeNull();
-    expect(cardNames()).toEqual(['Kite tobacco', 'Swisher Sweets', 'Backwoods']);
+    // Featured instead: the bestseller, then the new product (AW-227).
+    expect(cardNames()).toEqual(['Swisher Sweets', 'Kite tobacco', 'Backwoods']);
     expect(screen.queryByText(/\$/)).toBeNull();
   });
 
@@ -128,6 +129,55 @@ describe('CategoryPage', () => {
     const imgs = [...document.querySelectorAll('.category-card-grid .card-block img')];
     expect(imgs.map((img) => img.getAttribute('loading'))).toEqual(['eager', 'eager', 'eager', 'lazy', 'lazy']);
     expect(imgs.map((img) => img.getAttribute('fetchpriority'))).toEqual(['high', null, null, null, null]);
+  });
+
+  it('sorts Featured by homepage rank, then tag, then photo, then id, without lifting restricted lines (AW-227)', () => {
+    const photo = { picture: { src: '/p.jpg', width: 100, height: 100 } };
+    const list = [
+      { id: 21, name: 'Plain cigar', brand: 'X', cat: 'TOBACCO', sub: 'Cigars', sku: 'AW-21', variants: [], tag: null, ...photo },
+      { id: 22, name: 'Placeholder cigar', brand: 'X', cat: 'TOBACCO', sub: 'Cigars', sku: 'AW-22', variants: [], tag: null },
+      { id: 23, name: 'Premium cigar', brand: 'X', cat: 'TOBACCO', sub: 'Cigars', sku: 'AW-23', variants: [], tag: 'PREMIUM', ...photo },
+      { id: 24, name: 'Deal cigar', brand: 'X', cat: 'TOBACCO', sub: 'Cigars', sku: 'AW-24', variants: [], tag: 'DEAL', ...photo },
+      { id: 25, name: 'New cigar', brand: 'X', cat: 'TOBACCO', sub: 'Cigars', sku: 'AW-25', variants: [], tag: 'NEW', ...photo },
+      { id: 26, name: 'Best cigar', brand: 'X', cat: 'TOBACCO', sub: 'Cigars', sku: 'AW-26', variants: [], tag: 'BESTSELLER', ...photo },
+      { id: 27, name: 'Ranked cigar', brand: 'X', cat: 'TOBACCO', sub: 'Cigars', sku: 'AW-27', variants: [], tag: null, featuredRank: 1, ...photo },
+      // A line under legal review (AW-001): its tag doesn't lift it.
+      { id: 28, name: 'Kava shot', brand: 'X', cat: 'TOBACCO', sub: 'Kratom & Kava', sku: 'AW-28', variants: [], tag: 'BESTSELLER', ...photo },
+    ];
+    render(<Harness list={list} />);
+    expect(screen.getByLabelText('Sort by').value).toBe('featured');
+    expect(screen.getByRole('option', { name: 'Featured' })).toBeTruthy();
+    expect(cardNames()).toEqual(['Ranked cigar', 'Best cigar', 'New cigar', 'Deal cigar', 'Premium cigar', 'Plain cigar', 'Kava shot', 'Placeholder cigar']);
+    // The other sorts still work from the same list.
+    act(() => navigate('/category/tobacco?sort=name-asc', { replace: true }));
+    expect(cardNames()[0]).toBe('Best cigar');
+  });
+
+  it('explains pricing once, above the grid; the intro describes the department and the filters hold only filters (AW-224)', () => {
+    const view = render(<Harness />);
+    const intro = () => document.querySelector('.page-head h1 + p').textContent;
+    expect(intro()).toBe('Wholesale tobacco for licensed retail accounts: 3 products in 2 product lines.');
+    const notices = document.querySelectorAll('.pricing-notice');
+    expect(notices).toHaveLength(1);
+    expect(notices[0].nextElementSibling.classList.contains('category-card-grid')).toBe(true);
+    expect(notices[0].textContent).toMatch(/^Trade prices are shown to approved accounts\./);
+    expect(screen.getByRole('button', { name: 'Apply for a trade account' })).toBeTruthy();
+    expect(document.querySelector('.filter-panel .filter-signin')).toBeNull();
+    expect(screen.queryByText(/Wholesale pricing is locked|Sign in for pricing/)).toBeNull();
+    // No card has a sign-in control of its own: its only controls are the add or choose ones.
+    for (const control of document.querySelectorAll('.content-card .card-meta :is(button, a)')) expect(control.classList.contains('card-add')).toBe(true);
+    // An account waiting for approval: the status link.
+    view.unmount();
+    render(<CategoryPage category="TOBACCO" products={products} departments={departments} profile={{ id: 'p', status: 'pending' }} isApprovedBuyer={false}
+                         cart={{}} addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} />);
+    expect(document.querySelector('.pricing-notice').textContent).toMatch(/^Pricing unlocks after your account is approved\./);
+    expect(intro()).toBe('Wholesale tobacco for licensed retail accounts: 3 products in 2 product lines.');
+  });
+
+  it('shows approved buyers no pricing notice', () => {
+    render(<Harness buyer={BUYER} />);
+    expect(document.querySelector('.pricing-notice')).toBeNull();
+    expect(document.querySelector('.page-head h1 + p').textContent).toBe('Wholesale tobacco for licensed retail accounts: 3 products in 2 product lines.');
   });
 
   it('counts variants from the list: one variant is not "Has variants", and "Most variants" sorts by the count (AW-332, AW-233)', () => {

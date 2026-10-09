@@ -45,6 +45,14 @@ describe('SearchPage', () => {
     }
   });
 
+  it('explains pricing once, above the results, with no sign-in control on the cards (AW-224)', () => {
+    show('cigar');
+    const notices = document.querySelectorAll('.pricing-notice');
+    expect(notices).toHaveLength(1);
+    expect(notices[0].textContent).toMatch(/^Trade prices are shown to approved accounts\./);
+    expect(screen.queryAllByRole('button', { name: /Sign in/ })).toHaveLength(1);
+  });
+
   it('finds names with either apostrophe (AW-064)', () => {
     show("reese's");
     expect(cards()[0]).toBe(PRODUCTS.find((p) => p.id === 166).name);

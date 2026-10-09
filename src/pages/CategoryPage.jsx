@@ -7,17 +7,22 @@
 // Forward, reload and shared links all restore the same view. Filter changes
 // replace the history entry and keep the scroll position (AW-327); the
 // product-line pills are links. App keys this page by department (AW-228).
+//
+// Pricing is explained once, by the PricingNotice above the grid (AW-224):
+// the intro describes the department and the filters hold only filters.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useMediaQuery, MOBILE_QUERY } from '../lib/useMediaQuery.js';
 import { matchesQuery } from '../lib/search.js';
 import { variantCount } from '../lib/lines.js';
+import { featuredOrder } from '../lib/merchandising.js';
 import { catLabel } from '../lib/format.js';
 import { Link, navigate } from '../lib/router.js';
 import { EMPTY_CATEGORY_QUERY } from '../lib/routes.js';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 import { ModalLayer } from '../components/ModalLayer.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
+import { PricingNotice } from '../components/PricingNotice.jsx';
 import { Icon } from '../components/Icon.jsx';
 
 // TODO(owner): What do the DEAL and PREMIUM tags mean for buyers (the actual deal terms and premium criteria), or should those tags be removed? (AW-139)
@@ -43,6 +48,8 @@ const SEARCH_DELAY_MS = 250;
 
 const NO_PRICES = () => null;
 
+const plural = (n, noun) => `${n} ${noun}${n === 1 ? '' : 's'}`;
+
 // Price sorts use the signed-in buyer's prices (priceOf, AW-003); products
 // without one (price on request, or not loaded yet) go last, in catalog order.
 function byPrice(priceOf, direction) {
@@ -56,7 +63,7 @@ function byPrice(priceOf, direction) {
 
 export function CategoryPage({
   category, sub, query = EMPTY_CATEGORY_QUERY, products, departments, profile, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off',
-  cart, addLine, decLine, onLoginClick,
+  cart, addLine, decLine, onLoginClick, onApplyClick,
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const isMobile = useMediaQuery(MOBILE_QUERY);
@@ -82,6 +89,7 @@ export function CategoryPage({
 
   const cat = departments.find(c => c.key === category);
   const inCategory = products.filter(p => p.cat === category);
+  const lineCount = cat?.subs?.length || 0;
   const activeSub = sub || null;
   const inScope = activeSub ? inCategory.filter(p => p.sub === activeSub) : inCategory;
   const { tags, variants: hasVariants } = query;
@@ -95,6 +103,9 @@ export function CategoryPage({
     if (needle && !matchesQuery(p, query.q)) return false;
     return true;
   });
+  // Featured (AW-227): homepage rank, then the tag, photos before the
+  // placeholder, then id (src/lib/merchandising.js).
+  if (sort === 'featured') items = featuredOrder(items);
   if (sort === 'name-asc') items = [...items].sort((a, b) => a.name.localeCompare(b.name));
   if (sort === 'name-desc') items = [...items].sort((a, b) => b.name.localeCompare(a.name));
   if (sort === 'variants') items = [...items].sort((a, b) => variantCount(b) - variantCount(a));
@@ -175,8 +186,6 @@ export function CategoryPage({
         <legend>Variants</legend>
         <label><input type="checkbox" checked={hasVariants} onChange={(e) => setFilters({ variants: e.target.checked })} /> <span>Has flavors or variants</span></label>
       </fieldset>
-      {!profile && <button className="filter-signin" type="button" onClick={onLoginClick}><b>Wholesale pricing is locked</b><span>Sign in to see your account pricing.</span></button>}
-      {profile && !isApprovedBuyer && <p className="filter-signin"><b>Pricing after approval</b><span>Your account is not approved for trade pricing yet.</span></p>}
     </div>
   );
   const closeFilters = () => setFiltersOpen(false);
@@ -187,7 +196,7 @@ export function CategoryPage({
         <Breadcrumbs items={[HOME_CRUMB, { label: catLabel(category), to: here({ sub: null }) }, ...(activeSub ? [{ label: activeSub }] : [])]} />
         <p className="eyebrow">{`DEPARTMENT · ${String(cat?.count ?? inCategory.length).padStart(2, '0')} SKUs`}</p>
         <h1>{catLabel(category)}</h1>
-        <p>{`Wholesale ${catLabel(category).toLowerCase()} for licensed retail accounts. ${isApprovedBuyer ? 'Your tier pricing is shown on each card.' : profile ? 'Pricing unlocks after your account is approved.' : 'Sign in to see your wholesale pricing.'}`}</p>
+        <p>{`Wholesale ${catLabel(category).toLowerCase()} for licensed retail accounts: ${plural(inCategory.length, 'product')}${lineCount ? ` in ${plural(lineCount, 'product line')}` : ''}.`}</p>
         <nav className="sub-pills" aria-label={`${catLabel(category)} product lines`}>
           <Link className={`sub-pill ${!activeSub ? 'active' : ''}`} to={here({ sub: null })} scroll={false} aria-current={!activeSub ? 'page' : undefined}>{`All (${inCategory.length})`}</Link>
           {(cat?.subs || []).map(s => {
@@ -253,6 +262,7 @@ export function CategoryPage({
         )}
 
         <div>
+          <PricingNotice profile={profile} isApprovedBuyer={isApprovedBuyer} onLoginClick={onLoginClick} onApplyClick={onApplyClick} />
           {items.length > 0 ? (
             <div className="card-grid category-card-grid">
               {/* The first row (three cards, two on phones) loads at once, and

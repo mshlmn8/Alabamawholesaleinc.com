@@ -228,19 +228,21 @@ describe('ProductCard add control', () => {
     expect(decLine).toHaveBeenCalledWith('14', 1);
   });
 
-  it('asks guests to sign in for pricing with a button styled as a link (AW-297)', () => {
+  it('tells guests "Pricing after approval" in plain text, with no sign-in tab stop of its own (AW-224)', () => {
     const onLoginClick = vi.fn();
     addCard({ onLoginClick });
-    const prompt = screen.getByRole('button', { name: 'Sign in for pricing' });
-    expect(prompt.textContent).toBe('Sign in for pricing');
-    expect(prompt.className).toBe('text-link price-login');
-    fireEvent.click(prompt);
-    expect(onLoginClick).toHaveBeenCalledTimes(1);
+    const lock = screen.getByText('Pricing after approval');
+    expect(lock.tagName).toBe('SPAN');
+    expect(lock.className).toBe('lock');
+    expect(screen.queryByRole('button', { name: /Sign in/ })).toBeNull();
+    // The add button is the card's only control after its link.
+    expect([...document.querySelectorAll('.card-meta button, .card-meta a')].map((el) => el.textContent)).toEqual(['Add to quote']);
+    expect(onLoginClick).not.toHaveBeenCalled();
   });
 
-  it('tells a signed-in account waiting for approval in plain text, with no sign-in prompt', () => {
+  it('tells a signed-in account waiting for approval the same, in plain text', () => {
     addCard({ profile: PENDING });
-    expect(screen.queryByRole('button', { name: /Sign in for pricing/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Sign in/ })).toBeNull();
     expect(screen.getByText('Pricing after approval').className).toBe('lock');
   });
 });

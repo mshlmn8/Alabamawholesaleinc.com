@@ -29,6 +29,11 @@
 // department isn't repeated on the card. Only the sell-unit badge (AW-136)
 // stays on the photo. The photo is lazy unless the page says `eager`; the
 // first card of a department page is also `priority` (AW-323).
+//
+// Without trade pricing (a guest, or an account not approved) the card says
+// "Pricing after approval" as plain text; the page shows one PricingNotice
+// with Sign in and Apply above the grid instead of a sign-in link on every
+// card (AW-224). Callers may still pass profile and onLoginClick.
 
 import { useEffect, useId, useRef, useState } from 'react';
 import {
@@ -63,7 +68,7 @@ export function cardDetail(p, { sku = true } = {}) {
 }
 
 export function ProductCard({
-  p, profile, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, onLoginClick, showSku = true, eager = false, priority = false,
+  p, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, showSku = true, eager = false, priority = false,
 }) {
   // Counts the adds since "Added" last went away; each add restarts its timer.
   const [adds, setAdds] = useState(0);
@@ -145,10 +150,8 @@ export function ProductCard({
       <span className="card-meta card-actions">
         {isApprovedBuyer ? (
           <span>{priceLabel(shown.unit, pricesStatus, { from: shown.from })}</span>
-        ) : profile ? (
-          <span className="lock">Pricing after approval</span>
         ) : (
-          <button className="text-link price-login" type="button" onClick={onLoginClick}>Sign in for pricing</button>
+          <span className="lock">Pricing after approval</span>
         )}
         {choiceRequired ? (
           <Link className="button ghost sm card-add" to={productRoute} aria-describedby={titleId}>{qty > 0 ? `Select options · ${qty}` : 'Select options'}</Link>

@@ -438,7 +438,7 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
   it('makes the small controls 44px targets on touch screens, after their own rules, links in a sentence excepted', () => {
     expect(declarations(coarseRules.find((r) => r.selectors.join() === ':root').body)).toMatchObject({ '--tap-sm': 'var(--tap)' });
     // Everything sized with --tap-sm follows it.
-    for (const s of ['.button.sm', '.icon-btn', '.sub-pill', '.variant-chips button', '.price-login', '.filter-panel fieldset label', '.card-meta']) {
+    for (const s of ['.button.sm', '.icon-btn', '.sub-pill', '.variant-chips button', '.filter-panel fieldset label', '.card-meta']) {
       expect(Object.values(own(s)).join(' '), s).toMatch(/var\(--tap-sm\)/);
     }
     const TOUCH = ['.trade-bar a', '.trade-bar button', '.aw-menu-footer a', '.aw-logo', '.aw-department a', '.text-link', '.crumbs li', '.crumbs a',
@@ -787,11 +787,13 @@ describe('one link style (AW-297)', () => {
         for (const property of Object.keys(LOOK)) expect(declarations(body), `${s} ${property}`).not.toHaveProperty(property);
       }
     }
-    // The text-link keeps its own layout rule; the guest card prompt is one.
+    // The text-link keeps its own layout rule.
     expect(ruleFor('.text-link')).toEqual({ display: 'inline-flex', 'align-items': 'center', 'min-height': '36px', 'font-size': 'var(--text-sm)', background: 'none', border: '0', padding: '0' });
-    expect(ruleFor('.price-login')).toEqual({ 'min-height': 'var(--tap-sm)', 'text-align': 'left' });
-    expect(all.flatMap((r) => r.selectors).filter((s) => s.startsWith('.price-login:'))).toEqual([]);
-    expect(code(read('src/components/ProductCard.jsx'))).toMatch(/<button className="text-link price-login" type="button" onClick=\{onLoginClick\}>Sign in for pricing<\/button>/);
+    // No sign-in prompt on each card any more: the page's PricingNotice has
+    // Sign in and Apply, and the card's lock is plain text (AW-224).
+    expect(all.flatMap((r) => r.selectors).filter((s) => s.includes('.price-login'))).toEqual([]);
+    expect(code(read('src/components/ProductCard.jsx'))).not.toMatch(/price-login|onLoginClick|Sign in for pricing/);
+    expect(code(read('src/components/PricingNotice.jsx'))).toMatch(/<button className="text-link" type="button" onClick=\{onApplyClick\}>Apply for a trade account<\/button>/);
   });
 
   it('leaves the buttons in a status panel alone: only links in its text are text links', () => {
