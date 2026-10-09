@@ -28,8 +28,8 @@ import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import {
-  JPEG, JPEG_MAX_WIDTH, SETTINGS, TILE_BG, VERSION, WEBP,
-  contentHash, entryOutputs, isEntry, renditionSizes, serializeManifest, thumbSize,
+  FRAME, JPEG, JPEG_MAX_WIDTH, SETTINGS, TILE_BG, VERSION, WEBP,
+  contentHash, entryOutputs, frameWindow, isEntry, renditionSizes, serializeManifest, thumbSize, trimBox,
 } from './image-pipeline.mjs';
 
 const require = createRequire(import.meta.url);
@@ -60,32 +60,51 @@ async function readManifest() {
   try { return JSON.parse(await fs.readFile(MANIFEST, 'utf8')); } catch { return null; }
 }
 
-// The upright size of a source (EXIF orientation applied, as .rotate() renders it).
-async function sourceSize(bytes) {
-  const meta = await sharp(bytes, { animated: false }).metadata();
-  const upright = meta.autoOrient || meta;
-  return [upright.width, upright.height];
+const rawInput = ({ info }) => ({ raw: { width: info.width, height: info.height, channels: info.channels } });
+const TRANSPARENT = { r: 255, g: 255, b: 255, alpha: 0 };
+
+// The picture a source's renditions are cut from, as raw pixels: upright
+// (EXIF orientation applied) and, for a product, framed (AW-287, FRAME in
+// image-pipeline.mjs): a window of the card tile's aspect around the
+// product's trimmed box, padded with white (transparent with alpha) where it
+// runs past the source. A photo with a dark or busy edge has nothing to trim
+// and is framed whole; so is a picture that is all background, which sharp
+// refuses to trim. Product pixels are copied 1:1, never scaled.
+async function master(kind, base, bytes, stats) {
+  const upright = await sharp(bytes, { animated: false }).rotate().raw().toBuffer({ resolveWithObject: true });
+  if (kind !== 'product') return upright;
+  const { width, height, channels } = upright.info;
+  let box = { left: 0, top: 0, width, height };
+  try {
+    // Flattened onto white in its own pass: sharp trims before it flattens,
+    // and a transparent margin's hidden colour or faint alpha would otherwise
+    // count as content.
+    const flat = await sharp(upright.data, rawInput(upright)).flatten({ background: TILE_BG }).raw().toBuffer({ resolveWithObject: true });
+    const trimmed = await sharp(flat.data, rawInput(flat))
+      .trim({ background: TILE_BG, threshold: FRAME.trimThreshold }).toBuffer({ resolveWithObject: true });
+    box = trimBox(trimmed.info, width, height);
+  } catch {
+    stats.untrimmable.push(base);
+  }
+  const frame = frameWindow(box, width, height, FRAME);
+  return sharp(upright.data, rawInput(upright)).extract(frame.extract)
+    .extend({ ...frame.extend, background: channels === 4 ? TRANSPARENT : TILE_BG })
+    .raw().toBuffer({ resolveWithObject: true });
 }
 
-// A source's manifest entry: the previous run's when the hash still matches
-// (no need to read the image), else measured again.
-async function entryFor(kind, bytes, hash, previousEntry, stats) {
-  const thumb = kind === 'product';
-  if (previousEntry?.h === hash && isEntry(previousEntry, { thumb })) return previousEntry;
-  stats.measured++;
-  const [width, height] = await sourceSize(bytes);
+// A manifest entry for a picture of width × height.
+function entryOf(kind, hash, width, height) {
   const entry = { h: hash, s: renditionSizes(width, height, SETTINGS[kind].widths) };
-  if (thumb) entry.t = thumbSize(width, height, SETTINGS[kind].thumb);
+  if (kind === 'product') entry.t = thumbSize(width, height, SETTINGS[kind].thumb);
   return entry;
 }
 
 // Writes each output at exactly the size its name gives. A file appears under
 // its final name only once complete, so an interrupted run never leaves a
 // truncated file that a later run would take as done.
-async function render(bytes, outputs, stats) {
-  const upright = sharp(bytes, { animated: false }).rotate();
+async function render(picture, outputs, stats) {
   for (const { file, size: [width, height], ext } of outputs) {
-    let pipeline = upright.clone().resize({ width, height, fit: 'fill' });
+    let pipeline = sharp(picture.data, rawInput(picture)).resize({ width, height, fit: 'fill' });
     if (ext === 'webp') pipeline = pipeline.webp(WEBP);
     else pipeline = pipeline.flatten({ background: TILE_BG }).jpeg(JPEG);
     const out = path.join(IMG_DIR, file);
@@ -121,22 +140,38 @@ async function buildLibrary(previous) {
   }
 
   const present = new Set(await fs.readdir(IMG_DIR));
-  const stats = { expected: new Set(), kept: 0, rendered: 0, measured: 0, written: 0, removed: 0 };
+  const stats = { expected: new Set(), kept: 0, rendered: 0, measured: 0, written: 0, removed: 0, untrimmable: [] };
   const images = {};
   const jobs = [];
+  // Lists a source's files and renders the missing ones; `picture` is its
+  // master when already made.
+  const finish = async (kind, base, bytes, entry, picture) => {
+    images[base] = entry;
+    const outputs = entryOutputs(base, entry, JPEG_MAX_WIDTH);
+    for (const o of outputs) stats.expected.add(o.file);
+    const missing = outputs.filter((o) => !present.has(o.file));
+    if (!missing.length) { stats.kept++; return; }
+    stats.rendered++;
+    await render(picture || await master(kind, base, bytes, stats), missing, stats);
+  };
   const sources = [...products.map((file) => ['product', file]), ...heroes.map((file) => ['hero', file])];
   for (const [kind, file] of sources) {
     const base = baseName(file);
     const bytes = await fs.readFile(file);
     const hash = contentHash(bytes, SETTINGS[kind]);
-    const entry = await entryFor(kind, bytes, hash, previous?.images?.[base], stats);
-    images[base] = entry;
-    const outputs = entryOutputs(base, entry, JPEG_MAX_WIDTH);
-    for (const o of outputs) stats.expected.add(o.file);
-    const missing = outputs.filter((o) => !present.has(o.file));
-    if (!missing.length) { stats.kept++; continue; }
-    stats.rendered++;
-    jobs.push(() => render(bytes, missing, stats));
+    // The previous run's entry when the hash still matches: its sizes are
+    // known without reading the image. Otherwise the master is made once,
+    // measured, and rendered from.
+    const known = previous?.images?.[base];
+    if (known?.h === hash && isEntry(known, { thumb: kind === 'product' })) {
+      jobs.push(() => finish(kind, base, bytes, known, null));
+      continue;
+    }
+    jobs.push(async () => {
+      stats.measured++;
+      const picture = await master(kind, base, bytes, stats);
+      await finish(kind, base, bytes, entryOf(kind, hash, picture.info.width, picture.info.height), picture);
+    });
   }
   await runPool(jobs);
 
@@ -254,3 +289,4 @@ console.log(
   `brand assets ${brand.written ? 'rebuilt' : 'up to date'}; manifest ${manifestChanged ? 'updated' : 'unchanged'}; ` +
   `${((Date.now() - started) / 1000).toFixed(1)}s`
 );
+if (library.untrimmable.length) console.log(`build-images: all background, framed untrimmed: ${library.untrimmable.join(', ')}`);

@@ -13,7 +13,7 @@
 //
 // One manifest, src/assets/generated/manifest.json, records each source:
 //
-//   { "version": 4, "jpegMax": 640,
+//   { "version": 5, "jpegMax": 640,
 //     "images": { "<base>": { "h": "1a2b3c4d", "s": [[320,291], …], "t": [112,102] } },
 //     "brand": "<hash of logo.jpg and BRAND_VERSION>" }
 //
@@ -25,7 +25,8 @@
 import { createHash } from 'node:crypto';
 
 // Bump to re-render every photo (a new hash, so new file names).
-export const VERSION = 4;
+// 5: product photos trimmed and framed at one scale (AW-287).
+export const VERSION = 5;
 // Card and detail widths: 320 for 1x/2x phone cards, 480 for 3x phone cards
 // and 2x tablets (AW-322), 640 and 1024 for the product page.
 export const PRODUCT_WIDTHS = [320, 480, 640, 1024];
@@ -43,10 +44,25 @@ export const JPEG = { quality: 78, progressive: true, mozjpeg: true };
 // colour, white since the tiles are white (AW-141; --tile in src/index.css).
 export const TILE_BG = '#ffffff';
 
+// Product photos are framed at one scale (AW-287). Sources arrive with
+// uneven built-in margins, so a product filled anywhere from about 60% to
+// 100% of its card. For each product source the pipeline finds the product's
+// box: the source less its near-white or transparent margins (pixels within
+// trimThreshold of white; a photo with a dark or busy edge has none, so its
+// box is the whole photo). Around that box it cuts a window of the card
+// tile's aspect (1.1, .card-block in index.css) on which the box's limiting
+// side is `share` of the window, taking the source's own pixels where it
+// covers the window (faint shadows next to the product stay as they are) and
+// adding white, or transparency where the source has alpha, past its edges.
+// The tile's 14px inset comes on top, so on a desktop card the product spans
+// about 80% of the tile. Only margins change: product pixels are copied 1:1,
+// never scaled up (AW-073) or edited. Heroes are not framed.
+export const FRAME = { aspect: 1.1, share: 0.89, trimThreshold: 18 };
+
 // The settings each kind of source is rendered with. All of them go into the
 // hash, so changing any value re-renders that kind.
 export const SETTINGS = {
-  product: { version: VERSION, widths: PRODUCT_WIDTHS, jpegMax: JPEG_MAX_WIDTH, thumb: THUMB_BOX, webp: WEBP, jpeg: JPEG, background: TILE_BG },
+  product: { version: VERSION, widths: PRODUCT_WIDTHS, jpegMax: JPEG_MAX_WIDTH, thumb: THUMB_BOX, webp: WEBP, jpeg: JPEG, background: TILE_BG, frame: FRAME },
   hero: { version: VERSION, widths: HERO_WIDTHS, jpegMax: JPEG_MAX_WIDTH, webp: WEBP, jpeg: JPEG, background: TILE_BG },
 };
 
@@ -86,6 +102,52 @@ export function renditionSizes(width, height, targets) {
 export function thumbSize(width, height, box) {
   const scale = Math.min(1, box / width, box / height);
   return [Math.max(1, Math.round(width * scale)), Math.max(1, Math.round(height * scale))];
+}
+
+// The product's box in the source from sharp's trim info (its offsets are
+// negative). With nothing trimmed it is the whole source.
+export function trimBox(info, sourceWidth, sourceHeight) {
+  const left = Math.abs(info.trimOffsetLeft || 0);
+  const top = Math.abs(info.trimOffsetTop || 0);
+  return { left, top, width: Math.min(info.width, sourceWidth - left), height: Math.min(info.height, sourceHeight - top) };
+}
+
+// The framed canvas for a product of width × height: the card tile's aspect,
+// with the product's limiting side `share` of it, centred. Returns the
+// canvas size and the margin to add on each side (never negative).
+export function frameGeometry(width, height, { aspect, share }) {
+  let w, h;
+  if (width / height >= aspect) {
+    w = Math.round(width / share);
+    h = Math.round(w / aspect);
+  } else {
+    h = Math.round(height / share);
+    w = Math.round(h * aspect);
+  }
+  w = Math.max(w, width);
+  h = Math.max(h, height);
+  const left = Math.floor((w - width) / 2);
+  const top = Math.floor((h - height) / 2);
+  return { width: w, height: h, left, top, right: w - width - left, bottom: h - height - top };
+}
+
+// The framed canvas as a window on a sourceWidth × sourceHeight source,
+// centred on the product box: the part of the source to copy (extract) and
+// the padding to add where the window runs past the source (extend).
+export function frameWindow(box, sourceWidth, sourceHeight, frame) {
+  const g = frameGeometry(box.width, box.height, frame);
+  const x = box.left - g.left;
+  const y = box.top - g.top;
+  const x0 = Math.max(0, x);
+  const y0 = Math.max(0, y);
+  const x1 = Math.min(sourceWidth, x + g.width);
+  const y1 = Math.min(sourceHeight, y + g.height);
+  return {
+    width: g.width,
+    height: g.height,
+    extract: { left: x0, top: y0, width: x1 - x0, height: y1 - y0 },
+    extend: { top: y0 - y, bottom: y + g.height - y1, left: x0 - x, right: x + g.width - x1 },
+  };
 }
 
 // The sizes that also get a JPEG: those up to jpegMax (always at least the

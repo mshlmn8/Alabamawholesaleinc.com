@@ -1,10 +1,12 @@
 // Naming, sizing and manifest rules of the image build (AW-180, AW-355,
 // AW-322, AW-324). scripts/build-images.mjs does the file work with these.
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  JPEG_MAX_WIDTH, PRODUCT_WIDTHS, SETTINGS, THUMB_BOX, VERSION,
-  contentHash, entryFiles, entryOutputs, isEntry, jpegSizes, renditionFile, renditionSizes,
-  serializeManifest, stableJson, targetWidths, thumbFile, thumbSize,
+  FRAME, JPEG_MAX_WIDTH, PRODUCT_WIDTHS, SETTINGS, THUMB_BOX, VERSION,
+  contentHash, entryFiles, entryOutputs, frameGeometry, frameWindow, isEntry, jpegSizes, renditionFile, renditionSizes,
+  serializeManifest, stableJson, targetWidths, thumbFile, thumbSize, trimBox,
 } from './image-pipeline.mjs';
 
 const bytes = Buffer.from('a photo');
@@ -62,8 +64,65 @@ describe('content hash', () => {
   });
 
   it('puts every value that shapes a product rendition into the product settings', () => {
-    expect(SETTINGS.product).toMatchObject({ version: VERSION, widths: PRODUCT_WIDTHS, jpegMax: JPEG_MAX_WIDTH, thumb: THUMB_BOX });
+    expect(SETTINGS.product).toMatchObject({ version: VERSION, widths: PRODUCT_WIDTHS, jpegMax: JPEG_MAX_WIDTH, thumb: THUMB_BOX, frame: FRAME });
     expect(Object.keys(SETTINGS.product)).toEqual(expect.arrayContaining(['webp', 'jpeg', 'background']));
+    expect(contentHash(bytes, { ...SETTINGS.product, frame: { ...FRAME, share: 0.8 } })).not.toBe(contentHash(bytes, SETTINGS.product));
+    // Heroes are not framed.
+    expect(SETTINGS.hero.frame).toBeUndefined();
+  });
+});
+
+describe('framing product photos at one scale (AW-287)', () => {
+  it('frames to the card tile’s aspect in index.css', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8');
+    expect(/\.card-block \{[^}]*aspect-ratio: ([\d.]+);/.exec(css)[1]).toBe(String(FRAME.aspect));
+    expect(FRAME).toEqual({ aspect: 1.1, share: 0.89, trimThreshold: 18 });
+  });
+
+  it('reads the product box from sharp’s trim info', () => {
+    expect(trimBox({ trimOffsetLeft: -176, trimOffsetTop: -80, width: 365, height: 686 }, 840, 840)).toEqual({ left: 176, top: 80, width: 365, height: 686 });
+    // Nothing trimmed.
+    expect(trimBox({ trimOffsetLeft: 0, trimOffsetTop: 0, width: 600, height: 400 }, 600, 400)).toEqual({ left: 0, top: 0, width: 600, height: 400 });
+    expect(trimBox({ width: 600, height: 400 }, 600, 400)).toEqual({ left: 0, top: 0, width: 600, height: 400 });
+  });
+
+  it('makes the product’s limiting side the same share of a canvas of the tile’s aspect', () => {
+    const share = (box, g) => Math.max(box[0] / g.width, box[1] / g.height);
+    for (const box of [[500, 1000], [1000, 300], [1100, 1000], [800, 800], [37, 211]]) {
+      const g = frameGeometry(box[0], box[1], FRAME);
+      expect(g.width / g.height).toBeCloseTo(FRAME.aspect, 1);
+      expect(share(box, g)).toBeCloseTo(FRAME.share, 2);
+      // Centred, and the product is never scaled: the margins add up exactly.
+      expect(g.left + box[0] + g.right).toBe(g.width);
+      expect(g.top + box[1] + g.bottom).toBe(g.height);
+      expect(Math.abs(g.left - g.right)).toBeLessThanOrEqual(1);
+      expect(Math.abs(g.top - g.bottom)).toBeLessThanOrEqual(1);
+      expect(Math.min(g.left, g.right, g.top, g.bottom)).toBeGreaterThanOrEqual(0);
+    }
+    expect(frameGeometry(500, 1000, FRAME)).toMatchObject({ width: 1236, height: 1124 });
+    expect(frameGeometry(1000, 300, FRAME)).toMatchObject({ width: 1124, height: 1022 });
+  });
+
+  it('cuts the window from the source where it can and pads only past the source’s edges', () => {
+    // A product in the middle of a large source: all of the window is source.
+    const inside = frameWindow({ left: 1000, top: 1000, width: 500, height: 1000 }, 4000, 3000, FRAME);
+    expect(inside).toEqual({
+      width: 1236, height: 1124,
+      extract: { left: 632, top: 938, width: 1236, height: 1124 },
+      extend: { top: 0, bottom: 0, left: 0, right: 0 },
+    });
+    // The product box is the whole photo (nothing to trim): all margin is padding.
+    const whole = frameWindow({ left: 0, top: 0, width: 800, height: 800 }, 800, 800, FRAME);
+    expect(whole.extract).toEqual({ left: 0, top: 0, width: 800, height: 800 });
+    expect(whole.extend.left + 800 + whole.extend.right).toBe(whole.width);
+    expect(whole.extend.top + 800 + whole.extend.bottom).toBe(whole.height);
+    // Near one edge: the source fills what it can, padding the rest.
+    const edge = frameWindow({ left: 10, top: 100, width: 300, height: 600 }, 1000, 800, FRAME);
+    expect(edge.extract.left).toBe(0);
+    expect(edge.extend.left).toBeGreaterThan(0);
+    expect(edge.extend.right).toBe(0);
+    expect(edge.extract.width + edge.extend.left + edge.extend.right).toBe(edge.width);
+    expect(edge.extract.height + edge.extend.top + edge.extend.bottom).toBe(edge.height);
   });
 });
 
