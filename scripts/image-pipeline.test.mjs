@@ -4,9 +4,9 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  FRAME, JPEG_MAX_WIDTH, PRODUCT_WIDTHS, SETTINGS, THUMB_BOX, VERSION,
-  contentHash, entryFiles, entryOutputs, frameGeometry, frameWindow, isEntry, jpegSizes, renditionFile, renditionSizes,
-  serializeManifest, stableJson, targetWidths, thumbFile, thumbSize, trimBox,
+  FRAME, JPEG_MAX_WIDTH, PRODUCT_WIDTHS, SETTINGS, THUMB_BOX, VERSION, ZOOM_WIDTH,
+  contentHash, entryFiles, entryOutputs, frameGeometry, frameWindow, isEntry, jpegSizes, mayZoom, renditionFile, renditionSizes,
+  serializeManifest, stableJson, targetWidths, thumbFile, thumbSize, trimBox, zoomSize,
 } from './image-pipeline.mjs';
 
 const bytes = Buffer.from('a photo');
@@ -41,6 +41,40 @@ describe('sizes', () => {
   it('gives JPEGs only to the sizes up to the cap, and always to the smallest', () => {
     expect(jpegSizes([[320, 291], [480, 436], [640, 582], [1024, 931]], 640)).toEqual([[320, 291], [480, 436], [640, 582]]);
     expect(jpegSizes([[700, 700]], 640)).toEqual([[700, 700]]);
+  });
+});
+
+// The enlarged photo's own rendition (AW-236, LEFT-5).
+describe('zoom rendition', () => {
+  it('is 1600 wide at most, only for a framed photo wider than the largest size, never enlarged', () => {
+    expect(ZOOM_WIDTH).toBe(1600);
+    // Not one of the page's sizes: the page and card srcsets stay as they are.
+    expect(PRODUCT_WIDTHS).not.toContain(ZOOM_WIDTH);
+    expect(zoomSize(2400, 2182)).toEqual([1600, 1455]);
+    expect(zoomSize(1236, 1124)).toEqual([1236, 1124]);
+    expect(zoomSize(1025, 932)).toEqual([1025, 932]);
+    expect(zoomSize(1024, 931)).toBeNull();
+    expect(zoomSize(800, 727)).toBeNull();
+    expect(zoomSize(3000, 1000, { zoom: 2000, above: 640 })).toEqual([2000, 667]);
+  });
+
+  it('may exist only for an entry whose largest size is the cap', () => {
+    expect(mayZoom({ s: [[320, 291], [480, 436], [640, 582], [1024, 931]] })).toBe(true);
+    expect(mayZoom({ s: [[320, 291], [480, 436], [640, 582], [927, 843]] })).toBe(false);
+    expect(mayZoom({ s: [] })).toBe(false);
+    expect(mayZoom(undefined)).toBe(false);
+  });
+
+  it('is hashed apart from the product sizes, so adding or changing it leaves their names alone', () => {
+    const product = contentHash(bytes, SETTINGS.product);
+    const zoom = contentHash(bytes, SETTINGS.zoom);
+    expect(zoom).not.toBe(product);
+    expect(SETTINGS.product).not.toHaveProperty('zoom');
+    expect(JSON.stringify(SETTINGS.product)).not.toMatch(String(ZOOM_WIDTH));
+    // Everything that shapes the zoom file is in its settings: the framed photo, its width, the WebP settings.
+    expect(SETTINGS.zoom).toEqual({ version: VERSION, width: ZOOM_WIDTH, webp: SETTINGS.product.webp, background: SETTINGS.product.background, frame: FRAME });
+    expect(contentHash(bytes, { ...SETTINGS.zoom, width: 2000 })).not.toBe(zoom);
+    expect(contentHash(bytes, { ...SETTINGS.zoom, frame: { ...FRAME, share: 0.8 } })).not.toBe(zoom);
   });
 });
 
@@ -153,7 +187,21 @@ describe('file names', () => {
     ]);
   });
 
+  it('adds the zoom WebP, named by its own hash, to a product that has one (AW-236)', () => {
+    const zoomed = { ...entry, z: { h: '5e6f7a8b', s: [1600, 1455] } };
+    expect(entryFiles('kite', zoomed, 640)).toEqual([...entryFiles('kite', entry, 640), 'kite--1600x1455-5e6f7a8b.webp']);
+    expect(entryOutputs('kite', zoomed, 640).at(-1)).toEqual({ file: 'kite--1600x1455-5e6f7a8b.webp', size: [1600, 1455], ext: 'webp', thumb: false, zoom: true });
+    // Only one zoom file, and no JPEG of it.
+    expect(entryFiles('kite', zoomed, 640).filter((f) => f.includes('1600x1455'))).toHaveLength(1);
+  });
+
   it('reuses only well-formed entries from an earlier manifest', () => {
+    expect(isEntry({ ...entry, z: { h: '5e6f7a8b', s: [1600, 1455] } }, { thumb: true })).toBe(true);
+    expect(isEntry({ ...entry, z: { h: 'nope', s: [1600, 1455] } }, { thumb: true })).toBe(false);
+    expect(isEntry({ ...entry, z: { h: '5e6f7a8b', s: [1600] } }, { thumb: true })).toBe(false);
+    expect(isEntry({ ...entry, z: null }, { thumb: true })).toBe(false);
+    // A hero has no zoom.
+    expect(isEntry({ h: 'ffff0000', s: [[480, 270]], z: { h: '5e6f7a8b', s: [1600, 900] } }, { thumb: false })).toBe(false);
     expect(isEntry(entry, { thumb: true })).toBe(true);
     expect(isEntry({ h: 'ffff0000', s: [[480, 270]] }, { thumb: false })).toBe(true);
     expect(isEntry({ ...entry, t: undefined }, { thumb: true })).toBe(false);
@@ -169,7 +217,7 @@ describe('manifest', () => {
   const images = {
     zyn: { h: '22222222', s: [[320, 320]], t: [112, 112] },
     'hero_candy': { h: '33333333', s: [[480, 270], [720, 405]] },
-    argo: { h: '11111111', s: [[320, 291], [480, 436]], t: [112, 102] },
+    argo: { h: '11111111', s: [[320, 291], [480, 436], [640, 582], [1024, 931]], t: [112, 102], z: { h: '44444444', s: [1236, 1124] } },
   };
 
   it('writes sorted, one-line entries that read back as the same data', () => {

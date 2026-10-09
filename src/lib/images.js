@@ -5,12 +5,18 @@
 // that carry a hash of the photo and its render settings, and records each
 // photo in src/assets/generated/manifest.json (format: scripts/image-pipeline.mjs).
 // This module builds the URLs from that one small manifest (AW-180), and
-// exposes each photo as { img, picture }:
+// exposes each photo as { img, picture }, and a product photo as
+// { img, picture, zoom }:
 //
 //   img      products: the 112px thumbnail JPEG (search, cart and checkout
 //            lines, AW-324); heroes: the smallest JPEG (the video poster).
 //            Also the "has a photo" check and the share-image fallback.
 //   picture  { src, srcSet, webpSrcSet, width, height } for <Picture>
+//   zoom     { src, width, height }: the enlarged photo on the product page
+//            (AW-236): the zoom WebP (up to 1600px) for a photo wider than
+//            the largest rendition, else that largest rendition. It is in no
+//            srcset but the zoom dialog's (zoomPicture), so the page and the
+//            cards never load it.
 //
 // In development, a photo the manifest doesn't list (the script has not run
 // since it was added, e.g. a dev server started before pulling) falls back
@@ -33,19 +39,20 @@ function devOriginal(relativePath) {
 
 const stripExt = (file) => String(file).replace(/\.[^.]+$/, '');
 const srcSetOf = (list) => list.map((v) => `${v.url} ${v.w}w`).join(', ');
-const single = (url) => ({ img: url, picture: { src: url, srcSet: '', webpSrcSet: '', width: undefined, height: undefined } });
-const NONE = { img: null, picture: null };
+const single = (url) => ({ img: url, picture: { src: url, srcSet: '', webpSrcSet: '', width: undefined, height: undefined }, zoom: { src: url, width: undefined, height: undefined } });
+const NONE = { img: null, picture: null, zoom: null };
 
-// { img, picture } for one manifest entry ({ h, s, t }, see
+// { img, picture, zoom } for one manifest entry ({ h, s, t, z }, see
 // scripts/image-pipeline.mjs). The URLs match the file names the build
 // script writes into public/img, which Vite serves at <base URL>img/.
 export function imageFromEntry(base, entry, jpegMax) {
   const root = `${import.meta.env.BASE_URL}img/${encodeURIComponent(base)}--`;
-  const file = ([w, h], ext) => ({ url: `${root}${w}x${h}-${entry.h}.${ext}`, w, h });
+  const file = ([w, h], ext, hash = entry.h) => ({ url: `${root}${w}x${h}-${hash}.${ext}`, w, h });
   const webp = entry.s.map((size) => file(size, 'webp'));
   const small = entry.s.filter(([w]) => w <= jpegMax);
   const jpg = (small.length ? small : entry.s.slice(0, 1)).map((size) => file(size, 'jpg'));
   const largest = webp[webp.length - 1];
+  const zoom = entry.z ? file(entry.z.s, 'webp', entry.z.h) : largest;
   return {
     img: entry.t ? `${root}thumb-${entry.t[0]}x${entry.t[1]}-${entry.h}.jpg` : jpg[0].url,
     picture: {
@@ -55,6 +62,7 @@ export function imageFromEntry(base, entry, jpegMax) {
       width: largest.w,
       height: largest.h,
     },
+    zoom: { src: zoom.url, width: zoom.w, height: zoom.h },
   };
 }
 
@@ -87,10 +95,47 @@ export function sharedImageFiles(rows) {
   return new Set([...counts].filter(([, n]) => n > 1).map(([file]) => file));
 }
 
-// `file` is a filename in src/assets, e.g. 'hero_candy.jpg'.
+// `file` is a filename in src/assets, e.g. 'hero_candy.jpg'. A hero has no
+// zoom.
 export function heroImage(file) {
   const name = String(file).trim();
-  return fromManifest(stripExt(name), devOriginal(`../assets/${name}`));
+  const { img, picture } = fromManifest(stripExt(name), devOriginal(`../assets/${name}`));
+  return { img, picture };
+}
+
+// The enlarged photo's <Picture> (AW-236, LEFT-5): the largest WebP
+// rendition and the zoom one, so the browser takes the 1024 rendition where
+// it is enough and the zoom one on a sharper or larger screen; the JPEG
+// fallback is the page's. Its width and height are the zoom one's, the most
+// the dialog shows. A photo with no zoom, or a single URL, is the page's own.
+export function zoomPicture(picture, zoom) {
+  if (!picture?.src || !picture.webpSrcSet || !zoom?.src || !zoom.width) return picture || null;
+  // srcset entries are "<url> <w>w"; the URLs are encoded, so hold no ', '.
+  const largest = picture.webpSrcSet.split(', ').pop();
+  if (largest.split(' ')[0] === zoom.src) return picture;
+  return { ...picture, webpSrcSet: `${largest}, ${zoom.src} ${zoom.width}w`, width: zoom.width, height: zoom.height };
+}
+
+// The `sizes` of the enlarged photo, at most `width` (the zoom file's, so it
+// is never shown larger than its pixels): its widest shown size from the
+// .pd-zoom-dialog rules in index.css. On a phone (37.5em) the dialog is the
+// screen's width; wider, at most 92% of it; and the photo is no taller than
+// 80% of the screen, which with the 1.1 aspect of every product photo
+// (FRAME in scripts/image-pipeline.mjs) is 88vh wide, the bound on a screen
+// wider than 22:23. Each is a little more than the CSS gives (the dialog's
+// padding, the 11rem the height also keeps clear), so the browser never
+// takes a file smaller than the photo is shown.
+export function zoomSizes(width) {
+  if (!width) return undefined;
+  const w = Math.round(width);
+  return [
+    `(max-width: 37.5em) and (max-width: ${w}px) 100vw`,
+    `(max-width: 37.5em) ${w}px`,
+    `(min-aspect-ratio: 22/23) and (max-height: ${Math.ceil(w / 0.88)}px) 88vh`,
+    `(min-aspect-ratio: 22/23) ${w}px`,
+    `(max-width: ${Math.ceil(w / 0.92)}px) 92vw`,
+    `${w}px`,
+  ].join(', ');
 }
 
 // `sizes` values: the width the photo is shown at, worked out from the CSS in

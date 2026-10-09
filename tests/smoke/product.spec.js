@@ -1,7 +1,8 @@
 // The product page (AW-235, AW-074, AW-234, AW-230, AW-231, AW-236): the
 // variant chips as one required choice, adding before a choice, the SKU that
 // follows the variant, the trail through the product line, the related row,
-// and the photo's larger view. Products come from the seeded catalog
+// and the photo's larger view, with its own zoom rendition on a sharp screen
+// (LEFT-5). Products come from the seeded catalog
 // (./catalog.js); every other request that leaves the preview server is
 // aborted.
 import { test, expect } from '@playwright/test';
@@ -94,11 +95,12 @@ test('the photo opens larger, and Escape and Back close it, focus back on the ph
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Close' })).toBeFocused();
   const img = dialog.locator('img');
-  await expect.poll(() => img.evaluate((el) => el.complete && el.naturalWidth)).toBe(1024);
-  // Never wider than its largest rendition or the screen.
+  // The 1024 rendition or, on a sharper screen, the zoom one (1136px wide for this photo).
+  await expect.poll(() => img.evaluate((el) => el.complete && el.naturalWidth > 0 && /--(1024x931|1136x1033)-[0-9a-f]{8}\.webp$/.test(el.currentSrc))).toBe(true);
+  // Never wider than the zoom file or the screen.
   const box = await img.boundingBox();
   const viewport = page.viewportSize();
-  expect(box.width).toBeLessThanOrEqual(Math.min(1024, viewport.width));
+  expect(box.width).toBeLessThanOrEqual(Math.min(1136, viewport.width));
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
   await expect(zoom).toBeFocused();
@@ -109,4 +111,28 @@ test('the photo opens larger, and Escape and Back close it, focus back on the ph
   await expect(page).toHaveURL(/\/product\/162$/);
   await expect(zoom).toBeFocused();
   expect(errors).toEqual([]);
+});
+
+// LEFT-5 (AW-236): a 2x laptop screen gets the 1600px zoom rendition in the
+// dialog, and the page itself still loads at most the 1024 one.
+test.describe('the zoom rendition', () => {
+  test.use({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
+
+  test('is loaded by the dialog only, on a 2x screen (LEFT-5)', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'a laptop screen');
+    const errors = trackErrors(page);
+    const photos = [];
+    page.on('requestfinished', (r) => { if (/\/img\/4k_cigarillos--/.test(r.url())) photos.push(r.url().split('/img/')[1]); });
+    await page.goto('/product/5');
+    const onPage = page.locator('.pd-media img');
+    await expect.poll(() => onPage.evaluate((el) => el.complete && el.currentSrc)).toMatch(/--1024x931-[0-9a-f]{8}\.webp$/);
+    expect(photos.filter((f) => !/--(1024x931|thumb)/.test(f))).toEqual([]);
+    await page.getByRole('button', { name: "Enlarge photo of 4K's cigarillos" }).click();
+    const img = page.getByRole('dialog').locator('img');
+    await expect.poll(() => img.evaluate((el) => el.complete && el.currentSrc)).toMatch(/--1600x1454-[0-9a-f]{8}\.webp$/);
+    // Shown at the dialog's size, not the file's.
+    const box = await img.boundingBox();
+    expect(box.width).toBeLessThanOrEqual(800);
+    expect(errors).toEqual([]);
+  });
 });

@@ -6,6 +6,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { announce } from '../lib/announce.js';
 import { dismissToast, getToast } from '../lib/toast.js';
+import { zoomSizes } from '../lib/images.js';
 import { CHECKING_AVAILABILITY_TEXT, ProductPage } from './ProductPage.jsx';
 
 vi.mock('../lib/announce.js', async (importOriginal) => ({ ...(await importOriginal()), announce: vi.fn() }));
@@ -373,9 +374,27 @@ describe('ProductPage photo zoom (AW-236)', () => {
     expect(dialog.querySelector('button').getAttribute('aria-label')).toBe('Close');
     const img = dialog.querySelector('img');
     expect(img.getAttribute('alt')).toBe('Rolling dice');
+    // No zoom rendition: the largest one, at most its own width.
     expect(img.getAttribute('width')).toBe('1024');
-    expect(dialog.querySelector('source').getAttribute('sizes')).toBe('1024px');
+    expect(dialog.querySelector('source').getAttribute('srcset')).toBe(PICTURE.webpSrcSet);
+    expect(dialog.querySelector('source').getAttribute('sizes')).toBe(zoomSizes(1024));
     expect(dialog.querySelector('.photo-credit').textContent).toBe('Photo: Dietmar Rabich, CC BY-SA 4.0 (opens in a new tab), resized. Wikimedia Commons (opens in a new tab)');
+  });
+
+  it('offers the dialog the zoom rendition beside the 1024 one, and keeps it out of the page’s photo (LEFT-5)', () => {
+    const zoom = { src: '/img/dice--1600x1455-5e6f7a8b.webp', width: 1600, height: 1455 };
+    render(zoomPage({ products: [{ ...DICE[0], zoom }] }));
+    const onPage = [...document.querySelectorAll('.pd-media source, .pd-media img')].map((el) => el.getAttribute('srcset') || '').join(' ');
+    expect(onPage).not.toMatch(/1600/);
+    fireEvent.click(screen.getByRole('button', { name: 'Enlarge photo of Rolling dice' }));
+    const dialog = screen.getByRole('dialog', { name: 'Photo of Rolling dice' });
+    const source = dialog.querySelector('source');
+    expect(source.getAttribute('srcset')).toBe('/img/dice--1024x931.webp 1024w, /img/dice--1600x1455-5e6f7a8b.webp 1600w');
+    expect(source.getAttribute('sizes')).toBe(zoomSizes(1600));
+    const img = dialog.querySelector('img');
+    expect([img.getAttribute('width'), img.getAttribute('height')]).toEqual(['1600', '1455']);
+    // The JPEG fallback is the page's.
+    expect(img.getAttribute('srcset')).toBe(PICTURE.srcSet);
   });
 
   it('credits the photo under it: the author, the licence linked to its deed, "resized", and the file page (AW-033)', () => {

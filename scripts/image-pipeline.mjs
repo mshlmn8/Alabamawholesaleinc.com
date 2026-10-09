@@ -5,21 +5,27 @@
 //
 //   public/img/<base>--<w>x<h>-<hash>.webp|jpg       responsive sizes
 //   public/img/<base>--thumb-<w>x<h>-<hash>.jpg      product thumbnail (AW-324)
+//   public/img/<base>--<w>x<h>-<zoom hash>.webp      product zoom (AW-236)
 //
 // <hash> is the first 8 hex digits of sha1(source bytes + the render
 // settings), so a changed photo or a changed setting gives new file names,
 // and the files can be cached as immutable (netlify.toml, "/img/*"). The same
 // hash is how a rerun knows a source is unchanged: no file times are read.
+// The zoom rendition has its own hash, of the bytes and the zoom settings
+// (SETTINGS.zoom), so adding it, or changing it, leaves the responsive
+// sizes' names alone.
 //
 // One manifest, src/assets/generated/manifest.json, records each source:
 //
 //   { "version": 5, "jpegMax": 640,
-//     "images": { "<base>": { "h": "1a2b3c4d", "s": [[320,291], …], "t": [112,102] } },
+//     "images": { "<base>": { "h": "1a2b3c4d", "s": [[320,291], …], "t": [112,102],
+//                             "z": { "h": "5e6f7a8b", "s": [1600,1455] } } },
 //     "brand": "<hash of logo.jpg and BRAND_VERSION>" }
 //
 // h is the hash, s the rendered sizes (ascending), t the thumbnail size
-// (products only). src/lib/images.js builds the URLs from it
-// (imageFromEntry); meta.js reads a share image's size from the
+// (products only), z the zoom rendition's hash and size (only products whose
+// framed photo is wider than the largest size). src/lib/images.js builds the
+// URLs from it (imageFromEntry); meta.js reads a share image's size from the
 // `--<w>x<h>-` part of its name.
 
 import { createHash } from 'node:crypto';
@@ -61,9 +67,18 @@ export const FRAME = { aspect: 1.1, share: 0.89, trimThreshold: 18 };
 
 // The settings each kind of source is rendered with. All of them go into the
 // hash, so changing any value re-renders that kind.
+// The enlarged photo on the product page (AW-236, LEFT-5): one WebP up to
+// this wide, for a product whose framed photo is wider than the largest of
+// PRODUCT_WIDTHS, never enlarged. Only the zoom dialog asks for it: it is in
+// no srcset of the page or the cards, so they still load at most the 1024
+// rendition. No JPEG: a browser without WebP enlarges the 640 JPEG.
+export const ZOOM_WIDTH = 1600;
 export const SETTINGS = {
   product: { version: VERSION, widths: PRODUCT_WIDTHS, jpegMax: JPEG_MAX_WIDTH, thumb: THUMB_BOX, webp: WEBP, jpeg: JPEG, background: TILE_BG, frame: FRAME },
   hero: { version: VERSION, widths: HERO_WIDTHS, jpegMax: JPEG_MAX_WIDTH, webp: WEBP, jpeg: JPEG, background: TILE_BG },
+  // Hashed apart from the product settings, so the zoom file's name follows
+  // what shapes it (the framed photo, its width and the WebP settings).
+  zoom: { version: VERSION, width: ZOOM_WIDTH, webp: WEBP, background: TILE_BG, frame: FRAME },
 };
 
 // JSON with object keys sorted at every level, so the hash does not depend on
@@ -95,6 +110,23 @@ export function targetWidths(sourceWidth, targets) {
 // source's aspect ratio.
 export function renditionSizes(width, height, targets) {
   return targetWidths(width, targets).map((w) => [w, Math.max(1, Math.round((height * w) / width))]);
+}
+
+// The zoom rendition's size for a framed photo of width × height: up to
+// `zoom` wide, keeping the aspect ratio, and only when the photo is wider
+// than `above` (the largest responsive size), so it is never enlarged and
+// never a copy of that size. Null otherwise.
+export function zoomSize(width, height, { zoom = ZOOM_WIDTH, above = PRODUCT_WIDTHS[PRODUCT_WIDTHS.length - 1] } = {}) {
+  if (!(width > above)) return null;
+  const w = Math.min(width, zoom);
+  return [w, Math.max(1, Math.round((height * w) / width))];
+}
+
+// Whether a product entry's photo may be wider than the largest size, so
+// only measuring it can tell whether it gets a zoom rendition: its largest
+// size is the cap (a narrower photo's largest size is its own width).
+export function mayZoom(entry, above = PRODUCT_WIDTHS[PRODUCT_WIDTHS.length - 1]) {
+  return Boolean(entry?.s?.length) && entry.s[entry.s.length - 1][0] >= above;
 }
 
 // The thumbnail size: the source fitted inside a box × box square, never
@@ -160,32 +192,36 @@ export function jpegSizes(sizes, jpegMax) {
 export const renditionFile = (base, [w, h], hash, ext) => `${base}--${w}x${h}-${hash}.${ext}`;
 export const thumbFile = (base, [w, h], hash) => `${base}--thumb-${w}x${h}-${hash}.jpg`;
 
-// Every file a manifest entry stands for, as { file, size, ext, thumb }.
+// Every file a manifest entry stands for, as { file, size, ext, thumb }; the
+// zoom rendition also has zoom: true.
 export function entryOutputs(base, entry, jpegMax) {
   const out = entry.s.map((size) => ({ file: renditionFile(base, size, entry.h, 'webp'), size, ext: 'webp', thumb: false }));
   for (const size of jpegSizes(entry.s, jpegMax)) out.push({ file: renditionFile(base, size, entry.h, 'jpg'), size, ext: 'jpg', thumb: false });
   if (entry.t) out.push({ file: thumbFile(base, entry.t, entry.h), size: entry.t, ext: 'jpg', thumb: true });
+  if (entry.z) out.push({ file: renditionFile(base, entry.z.s, entry.z.h, 'webp'), size: entry.z.s, ext: 'webp', thumb: false, zoom: true });
   return out;
 }
 
 export const entryFiles = (base, entry, jpegMax) => entryOutputs(base, entry, jpegMax).map((o) => o.file);
 
 const isSize = (s) => Array.isArray(s) && s.length === 2 && s.every((n) => Number.isInteger(n) && n > 0);
+const isHash = (h) => typeof h === 'string' && /^[0-9a-f]{8}$/.test(h);
 
 // A manifest entry read back from disk is reused only when it has this shape;
-// anything else is measured again.
+// anything else is measured again. Only products (thumb) may have a zoom.
 export function isEntry(entry, { thumb }) {
-  return Boolean(entry) && typeof entry.h === 'string' && /^[0-9a-f]{8}$/.test(entry.h)
+  return Boolean(entry) && isHash(entry.h)
     && Array.isArray(entry.s) && entry.s.length > 0 && entry.s.every(isSize)
-    && (thumb ? isSize(entry.t) : entry.t === undefined);
+    && (thumb ? isSize(entry.t) : entry.t === undefined)
+    && (entry.z === undefined || (thumb && Boolean(entry.z) && isHash(entry.z.h) && isSize(entry.z.s)));
 }
 
 // The manifest as text: sorted keys, one line per image, so a diff of two
 // builds shows which photos changed.
 export function serializeManifest({ version, jpegMax, images, brand }) {
   const lines = Object.keys(images).sort().map((base) => {
-    const { h, s, t } = images[base];
-    const entry = t ? { h, s, t } : { h, s };
+    const { h, s, t, z } = images[base];
+    const entry = { h, s, ...(t ? { t } : {}), ...(z ? { z: { h: z.h, s: z.s } } : {}) };
     return `    ${JSON.stringify(base)}: ${JSON.stringify(entry)}`;
   });
   return [

@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { SIZES, imageFromEntry, productImage, sharedImageFiles } from './images.js';
+import { SIZES, heroImage, imageFromEntry, productImage, sharedImageFiles, zoomPicture, zoomSizes } from './images.js';
 import { MOBILE_QUERY } from './useMediaQuery.js';
 import { entryFiles } from '../../scripts/image-pipeline.mjs';
 
@@ -22,7 +22,19 @@ describe('imageFromEntry', () => {
         width: 1024,
         height: 931,
       },
+      // No zoom rendition (a photo no wider than 1024): the largest one.
+      zoom: { src: '/img/p1-kite--1024x931-1a2b3c4d.webp', width: 1024, height: 931 },
     });
+  });
+
+  it('gives a wider product photo its zoom WebP, named by its own hash, and leaves it out of every srcset (AW-236)', () => {
+    const zoomed = { ...product, z: { h: '5e6f7a8b', s: [1600, 1455] } };
+    const { picture, zoom } = imageFromEntry('p1-kite', zoomed, 640);
+    expect(zoom).toEqual({ src: '/img/p1-kite--1600x1455-5e6f7a8b.webp', width: 1600, height: 1455 });
+    // The page's photo and the cards are unchanged: the 1024 rendition is still the largest they ask for.
+    expect(picture).toEqual(imageFromEntry('p1-kite', product, 640).picture);
+    expect(`${picture.srcSet}, ${picture.webpSrcSet}`).not.toMatch(/1600/);
+    expect(new Set(entryFiles('p1-kite', zoomed, 640)).has(decodeURIComponent(zoom.src.slice('/img/'.length)))).toBe(true);
   });
 
   it('gives a hero its smallest JPEG as img (the video poster)', () => {
@@ -45,20 +57,108 @@ describe('imageFromEntry', () => {
 describe('productImage', () => {
   it('passes full URLs, data: URLs and absolute paths through as a single image', () => {
     for (const url of ['https://x.supabase.co/storage/v1/object/public/p/kite.jpg', '//cdn.example.test/a.jpg', 'data:image/png;base64,AAAA', '/brand/kite.png']) {
-      expect(productImage(url)).toEqual({ img: url, picture: { src: url, srcSet: '', webpSrcSet: '', width: undefined, height: undefined } });
+      expect(productImage(url)).toEqual({
+        img: url,
+        picture: { src: url, srcSet: '', webpSrcSet: '', width: undefined, height: undefined },
+        zoom: { src: url, width: undefined, height: undefined },
+      });
     }
   });
 
   it('has nothing for an empty file name', () => {
-    expect(productImage('')).toEqual({ img: null, picture: null });
-    expect(productImage('  ')).toEqual({ img: null, picture: null });
-    expect(productImage(null)).toEqual({ img: null, picture: null });
+    expect(productImage('')).toEqual({ img: null, picture: null, zoom: null });
+    expect(productImage('  ')).toEqual({ img: null, picture: null, zoom: null });
+    expect(productImage(null)).toEqual({ img: null, picture: null, zoom: null });
+  });
+
+  it('gives a hero no zoom', () => {
+    expect(Object.keys(heroImage('hero_candy.jpg'))).toEqual(['img', 'picture']);
   });
 
   it('falls back to the original file in development for a photo the manifest does not list', () => {
     const { img, picture } = productImage('not-rendered-yet.jpg');
     expect(img).toMatch(/\/assets\/products\/not-rendered-yet\.jpg$/);
     expect(picture.srcSet).toBe('');
+  });
+});
+
+// The enlarged photo (AW-236, LEFT-5): the 1024 and zoom WebP renditions,
+// with sizes no larger than what the dialog shows.
+describe('zoomPicture and zoomSizes', () => {
+  const zoomed = { ...product, z: { h: '5e6f7a8b', s: [1600, 1455] } };
+
+  it('offers the dialog the largest rendition and the zoom one, with the page’s JPEG fallback', () => {
+    const { picture, zoom } = imageFromEntry('p1-kite', zoomed, 640);
+    expect(zoomPicture(picture, zoom)).toEqual({
+      ...picture,
+      webpSrcSet: '/img/p1-kite--1024x931-1a2b3c4d.webp 1024w, /img/p1-kite--1600x1455-5e6f7a8b.webp 1600w',
+      width: 1600,
+      height: 1455,
+    });
+  });
+
+  it('keeps the page’s picture without a zoom rendition, for a single URL, and without a zoom at all', () => {
+    const { picture, zoom } = imageFromEntry('p1-kite', product, 640);
+    expect(zoomPicture(picture, zoom)).toBe(picture);
+    const storage = productImage('https://x.supabase.co/storage/v1/object/public/p/kite.jpg');
+    expect(zoomPicture(storage.picture, storage.zoom)).toBe(storage.picture);
+    expect(zoomPicture(picture, undefined)).toBe(picture);
+    expect(zoomPicture(null, zoom)).toBeNull();
+  });
+
+  // The dialog's photo from index.css: on a phone the dialog is the screen
+  // wide less 2 × 8px padding; wider, at most 92vw less 2 × 16px; the photo
+  // at most min(80vh, 100vh − 11rem) tall, and 1.1 times as wide as tall.
+  const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const shown = (vw, vh) => {
+    const width = vw <= 600 ? vw - 16 : 0.92 * vw - 32;
+    return Math.min(width, 1.1 * Math.min(0.8 * vh, vh - 176));
+  };
+  // The first entry of a sizes list whose media condition matches.
+  const pick = (sizes, vw, vh) => {
+    for (const entry of sizes.split(', ')) {
+      const parts = /^((?:\([^)]*\)(?: and )?)*)\s*(\S+)$/.exec(entry);
+      const conditions = [...parts[1].matchAll(/\(([a-z-]+): ([^)]+)\)/g)];
+      const matches = conditions.every(([, feature, value]) => {
+        if (feature === 'max-width') return vw <= (value.endsWith('em') ? 16 * parseFloat(value) : parseFloat(value));
+        if (feature === 'max-height') return vh <= parseFloat(value);
+        if (feature === 'min-aspect-ratio') { const [a, b] = value.split('/').map(Number); return vw / vh >= a / b; }
+        throw new Error(`unknown feature ${feature}`);
+      });
+      if (!matches) continue;
+      const value = parts[2];
+      if (value.endsWith('vw')) return (parseFloat(value) / 100) * vw;
+      if (value.endsWith('vh')) return (parseFloat(value) / 100) * vh;
+      return parseFloat(value);
+    }
+    throw new Error('no entry matched');
+  };
+
+  it('reads the dialog geometry it assumes from index.css', () => {
+    expect(css).toMatch(/\.dialog\.pd-zoom-dialog \{[^}]*max-width: 92vw; padding: 12px 16px 16px; \}/);
+    expect(css).toMatch(/\.pd-zoom-dialog img \{[^}]*max-height: min\(80vh, calc\(100vh - 11rem\)\);/);
+    expect(css).toMatch(/@media \(max-width: 37\.5em\) \{\s*\.overlay\.pd-zoom-overlay \{ padding: 0; \}\s*\.dialog\.pd-zoom-dialog \{ max-width: 100%; padding: 8px 8px 12px; \}/);
+  });
+
+  it.each([[1440, 900], [1366, 650], [1920, 1080], [2560, 1440], [1280, 1600], [1024, 768], [768, 1024], [844, 390], [390, 844], [360, 740], [600, 960], [3840, 2160]])(
+    'never asks for less than the dialog shows, nor more than the file, at %ix%i', (vw, vh) => {
+      for (const width of [1600, 1236, 1024, 458]) {
+        const asked = pick(zoomSizes(width), vw, vh);
+        expect(asked).toBeLessThanOrEqual(width);
+        expect(asked).toBeGreaterThanOrEqual(Math.min(width, shown(vw, vh)) - 0.5);
+      }
+    },
+  );
+
+  it('takes the 1024 rendition at 1440x900 and the zoom one on a 2x screen', () => {
+    const asked = pick(zoomSizes(1600), 1440, 900);
+    expect(asked).toBeCloseTo(792, 0);
+    expect(asked).toBeLessThanOrEqual(1024);
+    expect(asked * 2).toBeGreaterThan(1024);
+  });
+
+  it('has no sizes without a width', () => {
+    expect(zoomSizes(undefined)).toBeUndefined();
   });
 });
 

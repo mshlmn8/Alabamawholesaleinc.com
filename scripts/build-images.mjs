@@ -8,6 +8,7 @@
 //
 //   src/assets/products/*   -> public/img/<base>--<w>x<h>-<hash>.{webp,jpg}
 //                              public/img/<base>--thumb-<w>x<h>-<hash>.jpg
+//                              public/img/<base>--<w>x<h>-<zoom hash>.webp (wider photos, AW-236)
 //   src/assets/hero_*.jpg   -> public/img/<base>--<w>x<h>-<hash>.{webp,jpg}
 //   every photo above       -> src/assets/generated/manifest.json
 //   src/assets/logo.jpg     -> public/favicon.ico, favicon-32.png, apple-touch-icon.png,
@@ -29,7 +30,7 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import {
   FRAME, JPEG, JPEG_MAX_WIDTH, SETTINGS, TILE_BG, VERSION, WEBP,
-  contentHash, entryOutputs, frameWindow, isEntry, renditionSizes, serializeManifest, thumbSize, trimBox,
+  contentHash, entryOutputs, frameWindow, isEntry, mayZoom, renditionSizes, serializeManifest, thumbSize, trimBox, zoomSize,
 } from './image-pipeline.mjs';
 
 const require = createRequire(import.meta.url);
@@ -93,11 +94,21 @@ async function master(kind, base, bytes, stats) {
     .raw().toBuffer({ resolveWithObject: true });
 }
 
+// A product entry with the zoom rendition its picture of width × height
+// gets (AW-236), if any: zoomHash names it.
+function withZoom(entry, zoomHash, width, height) {
+  const rest = { ...entry };
+  delete rest.z;
+  const size = zoomSize(width, height);
+  return size ? { ...rest, z: { h: zoomHash, s: size } } : rest;
+}
+
 // A manifest entry for a picture of width × height.
-function entryOf(kind, hash, width, height) {
+function entryOf(kind, hash, width, height, zoomHash) {
   const entry = { h: hash, s: renditionSizes(width, height, SETTINGS[kind].widths) };
-  if (kind === 'product') entry.t = thumbSize(width, height, SETTINGS[kind].thumb);
-  return entry;
+  if (kind !== 'product') return entry;
+  entry.t = thumbSize(width, height, SETTINGS[kind].thumb);
+  return withZoom(entry, zoomHash, width, height);
 }
 
 // Writes each output at exactly the size its name gives. A file appears under
@@ -160,18 +171,32 @@ async function buildLibrary(previous) {
     const base = baseName(file);
     const bytes = await fs.readFile(file);
     const hash = contentHash(bytes, SETTINGS[kind]);
+    const zoomHash = kind === 'product' ? contentHash(bytes, SETTINGS.zoom) : null;
     // The previous run's entry when the hash still matches: its sizes are
     // known without reading the image. Otherwise the master is made once,
     // measured, and rendered from.
     const known = previous?.images?.[base];
     if (known?.h === hash && isEntry(known, { thumb: kind === 'product' })) {
-      jobs.push(() => finish(kind, base, bytes, known, null));
+      // Its zoom rendition is known too when it has a current one, or when
+      // the photo is narrower than the largest size, so can't have one.
+      // Otherwise (an entry from before AW-236, or new zoom settings) the
+      // master is measured for it; the other files stay as they are.
+      const zoomKnown = kind !== 'product' || (known.z ? known.z.h === zoomHash : !mayZoom(known));
+      if (zoomKnown) {
+        jobs.push(() => finish(kind, base, bytes, known, null));
+        continue;
+      }
+      jobs.push(async () => {
+        stats.measured++;
+        const picture = await master(kind, base, bytes, stats);
+        await finish(kind, base, bytes, withZoom(known, zoomHash, picture.info.width, picture.info.height), picture);
+      });
       continue;
     }
     jobs.push(async () => {
       stats.measured++;
       const picture = await master(kind, base, bytes, stats);
-      await finish(kind, base, bytes, entryOf(kind, hash, picture.info.width, picture.info.height), picture);
+      await finish(kind, base, bytes, entryOf(kind, hash, picture.info.width, picture.info.height, zoomHash), picture);
     });
   }
   await runPool(jobs);
@@ -188,7 +213,8 @@ async function buildLibrary(previous) {
     await fs.rm(path.join(OUT_DIR, f), { force: true, recursive: true });
     stats.removed++;
   }
-  return { sources: sources.length, images, ...stats };
+  const zooms = Object.values(images).filter((e) => e.z).length;
+  return { sources: sources.length, images, zooms, ...stats };
 }
 
 // ---------------------------------------------------------------------------
@@ -298,7 +324,8 @@ const manifestChanged = (await fs.readFile(MANIFEST, 'utf8').catch(() => '')) !=
 if (manifestChanged) await fs.writeFile(MANIFEST, manifest);
 console.log(
   `build-images: ${library.sources} sources → ${library.expected.size} files ` +
-  `(${library.written} written for ${library.rendered} sources, ${library.kept} up to date, ${library.measured} measured, ${library.removed} stale removed); ` +
+  `(${library.written} written for ${library.rendered} sources, ${library.kept} up to date, ${library.measured} measured, ${library.removed} stale removed; ` +
+  `${library.zooms} zoom renditions); ` +
   `brand assets ${brand.written ? 'rebuilt' : 'up to date'}; manifest ${manifestChanged ? 'updated' : 'unchanged'}; ` +
   `${((Date.now() - started) / 1000).toFixed(1)}s`
 );

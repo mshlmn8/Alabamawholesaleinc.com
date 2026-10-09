@@ -64,11 +64,15 @@
 // (src/lib/toast.js). Focus stays on the add button.
 //
 // The photo opens larger (AW-236): the whole frame is a button that opens
-// the photo in a dialog at the largest rendition the build makes (800 to
-// 1024px wide, never enlarged past it), with its credit. Escape, Back and the
-// backdrop close it, and focus goes back to the photo. Without a photo, or
-// when it failed to load, there is no button (index.css hides it next to
-// "Photo coming soon").
+// the photo in a dialog, with its credit. The dialog has its own rendition
+// (LEFT-5): for a photo wider than the page's largest (1024px), a zoom WebP
+// up to 1600px wide that only the dialog asks for, beside the 1024 one, so a
+// sharp or large screen gets the detail and the page itself never loads it;
+// otherwise the largest rendition, never enlarged past it. Escape, Back and
+// the backdrop close it, and focus goes back to the photo. Without a photo,
+// or when it failed to load, there is no button (index.css hides it next to
+// "Photo coming soon"). Other views of a pack (its back) wait on photos from
+// the owner.
 //
 // Until the live catalog has answered (AW-232), the page is drawn from the
 // copy bundled with the site, which still lists a product staff have since
@@ -93,7 +97,7 @@ import {
 import { PRICE_FAILED_SENTENCE, lineTotal, pctText, priceDidNotLoad, priceLabel, tierName, variantPriceRange } from '../lib/pricing.js';
 import { CHECKING_ACCOUNT_TEXT, PRICES_NEED_PROFILE, PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
 import { SHARED_PHOTO_NOTE, brandLabel, catLabel, formatMoney, photoAlt, sharedPhotoBadge } from '../lib/format.js';
-import { SIZES } from '../lib/images.js';
+import { SIZES, zoomPicture, zoomSizes } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { APPLY_LABEL } from '../data/terms.js';
 import { Breadcrumbs, catalogCrumbs } from '../components/Breadcrumbs.jsx';
@@ -192,6 +196,8 @@ export function ProductPage({
   // row this is, from the sell unit or the name; with neither, the caption
   // says the photo shows a related pack or size.
   const badge = p.picture && p.sharedPhoto ? sharedPhotoBadge(p) : '';
+  // The enlarged photo's candidates: the largest rendition and the zoom one (AW-236).
+  const zoomed = zoomPicture(p.picture, p.zoom);
   const photoNote = p.picture && p.sharedPhoto && !badge ? SHARED_PHOTO_NOTE : '';
   // An account on hold is told ordering is paused and who to call, not that
   // pricing waits for approval (AW-101).
@@ -411,8 +417,9 @@ export function ProductPage({
             {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
             <div className="dialog pd-zoom-dialog scale-in" role="dialog" aria-modal="true" aria-label={`Photo of ${p.name}`} onClick={(e) => e.stopPropagation()}>
               <button className="icon-btn" type="button" onClick={closeZoom} aria-label="Close"><Icon name="close" /></button>
-              {/* Sized to the largest rendition, so the browser loads it (AW-236). */}
-              <Picture picture={p.picture} alt={photoAlt(p)} sizes={p.picture.width ? `${p.picture.width}px` : undefined} loading="eager" />
+              {/* Sized to the most the dialog shows, at most the zoom file's width, so the
+                  browser takes the 1024 or the zoom rendition for the screen (AW-236). */}
+              <Picture picture={zoomed} alt={photoAlt(p)} sizes={zoomSizes(zoomed?.width)} loading="eager" />
               {(photoNote || credit) && <p className="photo-credit"><PhotoCaption note={photoNote} credit={credit} /></p>}
             </div>
           </div>
