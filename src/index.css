@@ -610,6 +610,15 @@ p > .text-link { min-height: 0; }
 /* A field of the admin table (the field system), wider than the table's
    220px cells. */
 .account-note input { max-width: 26.25rem; }
+/* What an admin change did (AdminStatus, AW-202): a line at the foot of the
+   screen for 8 seconds. Its role=status paragraph is always there, empty and
+   out of the way between messages. */
+.admin-status { position: fixed; left: 50%; bottom: 16px; z-index: 40; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; width: max-content; max-width: calc(100vw - 32px); pointer-events: none; }
+.admin-status.is-shown { padding: 10px 16px; background: var(--purple-deep); color: #fff; box-shadow: 0 10px 30px var(--shadow-popover); pointer-events: auto; }
+.admin-status-text { margin: 0; font-size: var(--text-sm); font-weight: 600; line-height: 1.4; }
+/* A load that failed (AW-202): the message and Try again, where the list would be. */
+.admin-load-problem { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 14px; }
+.admin-load-problem .form-error { margin: 0; }
 /* Admin confirmations (ConfirmDialog): a narrow dialog with a smaller title. */
 .dialog.confirm-dialog { width: min(32.5rem, 100%); }
 .dialog.confirm-dialog h2 { font-size: var(--h3); line-height: 1.15; }

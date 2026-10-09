@@ -7,6 +7,8 @@ import { formatMoney } from '../../lib/format.js';
 import { MISSING_FUNCTION_CODES, lineTotal, tierUnitPrice, toCents, fromCents } from '../../lib/pricing.js';
 import { DEFAULT_ORDER_STATUS, LEGACY_ORDER_STATES, ORDER_STATES } from '../../lib/adminRoutes.js';
 import { useLeaveGuard } from './useLeaveGuard.js';
+import { adminErrorMessage, checkedWrite, withStatus } from './adminData.js';
+import { LoadProblem } from './AdminStatus.jsx';
 
 // The order statuses (and the owner question about them, AW-024) are in
 // src/lib/adminRoutes.js, which checks the status filter in the URL.
@@ -38,7 +40,9 @@ export function orderActionError(error) {
     case 'unpriced_lines': return 'Price every line before converting the quote.';
     case 'unknown_account':
     case 'account_mismatch': return 'This quote can’t be moved to that account.';
-    default: return `The change wasn’t saved${error?.message ? ` (${error.message})` : ''}. Try again.`;
+    // A lost connection, an ended session, a refusal or a missing column
+    // (AW-202), else the database's own message.
+    default: return adminErrorMessage(error, 'The change wasn’t saved');
   }
 }
 
@@ -117,25 +121,34 @@ export function orderEmail(order, lines, quote = isQuote(order)) {
 export const ADMIN_ORDER_SELECT = '*, order_items(*), profiles!orders_user_id_fkey(business, name, pricing_tier)';
 
 // query: the URL's filters (status, AW-118); onQuery writes them.
-export function OrdersTab({ query = {}, onQuery }) {
+// notify: shows what a change did (useAdminStatus).
+export function OrdersTab({ query = {}, onQuery, notify }) {
   const [orders, setOrders] = useState(null);
   const [loadError, setLoadError] = useState(null);
+  const [retrying, setRetrying] = useState(false);
   const [statusError, setStatusError] = useState(null);
   const filter = query.status || DEFAULT_ORDER_STATUS;
   const [tiers, setTiers] = useState({});
 
-  const reload = () => {
-    supabase
-      .from('orders')
-      .select(ADMIN_ORDER_SELECT)
-      .order('created_at', { ascending: false })
-      .limit(200)
-      .then(({ data, error }) => {
-        setLoadError(error ? 'The orders didn’t load. Reload the page to try again.' : null);
-        setOrders(current => (error ? (current || []) : (data || [])));
-      });
+  // A failed load says so, with Try again, instead of "No orders" (AW-202);
+  // orders already on screen stay. The newest 200 orders: paging and
+  // per-status counts from the server are AW-199, not built yet.
+  const reload = () => supabase
+    .from('orders')
+    .select(ADMIN_ORDER_SELECT)
+    .order('created_at', { ascending: false })
+    .limit(200)
+    .then((result) => {
+      const error = withStatus(result);
+      setLoadError(error ? adminErrorMessage(error, 'The orders didn’t load') : null);
+      if (!error) setOrders(result.data || []);
+    });
+  useEffect(() => { reload(); }, []);
+  const retry = async () => {
+    setRetrying(true);
+    await reload();
+    setRetrying(false);
   };
-  useEffect(reload, []);
   useEffect(() => {
     let cancelled = false;
     supabase.from('pricing_tiers').select('tier,discount_pct').then(({ data, error }) => {
@@ -144,14 +157,20 @@ export function OrdersTab({ query = {}, onQuery }) {
     return () => { cancelled = true; };
   }, []);
 
+  // The changed row is read back: a refusal by row-level security changes
+  // no row and returns no error (AW-202). The list reloads either way, so a
+  // refused status visibly goes back to the saved one, beside the error.
   const updateStatus = async (order, status) => {
     setStatusError(null);
-    const { error } = await supabase.from('orders').update({ status }).eq('id', order.id);
+    const { error } = await checkedWrite(supabase.from('orders').update({ status }).eq('id', order.id));
     if (error) setStatusError(`${order.ref_num}: ${orderActionError(error)}`);
+    else notify?.(`${order.ref_num} is now ${status.replace(/_/g, ' ')}.`);
     reload();
   };
 
-  if (!orders) return <p className="result-note">Loading…</p>;
+  if (!orders) {
+    return loadError ? <LoadProblem message={loadError} onRetry={retry} retrying={retrying} /> : <p className="result-note">Loading…</p>;
+  }
   const workflow = hasQuoteWorkflow(orders);
   const states = workflow ? ORDER_STATES : LEGACY_ORDER_STATES;
   const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter);
@@ -159,7 +178,7 @@ export function OrdersTab({ query = {}, onQuery }) {
 
   return (
     <div>
-      {loadError && <p className="form-error" role="alert">{loadError}</p>}
+      {loadError && <LoadProblem message={loadError} onRetry={retry} retrying={retrying} />}
       <div className="sub-pills" role="group" aria-label="Order status">
         {filters.map(s => (
           <button
@@ -180,10 +199,10 @@ export function OrdersTab({ query = {}, onQuery }) {
 
       <div className="order-list">
         {filtered.map(o => (
-          <OrderCard key={o.id} order={o} states={states} workflow={workflow} tiers={tiers} onStatus={updateStatus} onReload={reload} />
+          <OrderCard key={o.id} order={o} states={states} workflow={workflow} tiers={tiers} onStatus={updateStatus} onReload={reload} notify={notify} />
         ))}
       </div>
-      {filtered.length === 0 && <p className="result-note">No orders in this state.</p>}
+      {filtered.length === 0 && !loadError && <p className="result-note">No orders in this state.</p>}
     </div>
   );
 }
@@ -191,7 +210,7 @@ export function OrdersTab({ query = {}, onQuery }) {
 // One order or quote (AW-024, Cursor's PR #13): staff edit quantities and unit
 // prices (suggested from the list price and the account's tier), email the
 // quote, and convert a priced quote into a confirmed order.
-function OrderCard({ order: o, states, workflow, tiers, onStatus, onReload }) {
+function OrderCard({ order: o, states, workflow, tiers, onStatus, onReload, notify }) {
   const quote = isQuote(o);
   const items = o.order_items || [];
   const [draft, setDraft] = useState(null); // the lines being edited, or null
@@ -240,6 +259,7 @@ function OrderCard({ order: o, states, workflow, tiers, onStatus, onReload }) {
     setBusy(false);
     if (rpcError) { setError(orderActionError(rpcError)); return; }
     closeEditor();
+    notify?.(`Saved the quantities and prices of ${o.ref_num}.`);
     onReload();
   };
   const convert = async () => {
@@ -248,7 +268,10 @@ function OrderCard({ order: o, states, workflow, tiers, onStatus, onReload }) {
     const { error: rpcError } = await supabase.rpc('admin_convert_quote', { p_order_id: o.id, p_user_id: null });
     setBusy(false);
     if (rpcError) setError(orderActionError(rpcError));
-    else onReload();
+    else {
+      notify?.(`${o.ref_num} is now an order.`);
+      onReload();
+    }
   };
 
   const unpriced = items.some(it => it.unit_price == null);

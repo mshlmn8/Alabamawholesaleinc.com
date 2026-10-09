@@ -18,6 +18,7 @@ import { AccountLoading, AccountProblem } from '../../components/AccountStatus.j
 import { OrdersTab } from './OrdersSection.jsx';
 import { AccountsTab } from './AccountsSection.jsx';
 import { ProductsTab } from './ProductsSection.jsx';
+import { AdminStatus, useAdminStatus } from './AdminStatus.jsx';
 
 export {
   ORDER_STATES, LEGACY_ORDER_STATES, hasQuoteWorkflow, isQuote, orderActionError, loadListPrices, suggestedUnitPrice,
@@ -40,6 +41,7 @@ export function AdminPage({
   profile, account = profile ? 'ready' : 'signed-out', onSignIn, onRetry, retrying = false, onSignOut, signingOut = false,
   onCatalogChange, route = { page: 'admin' },
 }) {
+  const status = useAdminStatus();
   const section = adminSection(route);
   const query = route.query || NO_QUERY;
   // Each section's last filters, so its link brings them back after a visit
@@ -119,9 +121,10 @@ export function AdminPage({
         })}
       </nav>
 
-      {section === 'orders' && <OrdersTab query={query} onQuery={setQuery} />}
-      {section === 'accounts' && <AccountsTab currentAdminId={profile.id} />}
-      {section === 'products' && <ProductsTab query={query} onQuery={setQuery} onCatalogChange={onCatalogChange} />}
+      {section === 'orders' && <OrdersTab query={query} onQuery={setQuery} notify={status.show} />}
+      {section === 'accounts' && <AccountsTab currentAdminId={profile.id} notify={status.show} />}
+      {section === 'products' && <ProductsTab query={query} onQuery={setQuery} onCatalogChange={onCatalogChange} notify={status.show} />}
+      <AdminStatus status={status} />
     </section>
   );
 }

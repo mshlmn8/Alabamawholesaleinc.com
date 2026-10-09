@@ -8,6 +8,8 @@ import { MISSING_FUNCTION_CODES } from '../../lib/pricing.js';
 import { MAX_PRODUCT_QUERY } from '../../lib/adminRoutes.js';
 import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { useLeaveGuard } from './useLeaveGuard.js';
+import { adminErrorMessage, checkedWrite, withStatus } from './adminData.js';
+import { LoadProblem } from './AdminStatus.jsx';
 
 // The product columns the Products tab shows. Not price: admins read list
 // prices through admin_product_prices() (AW-003).
@@ -24,10 +26,11 @@ export async function loadAdminProducts(client) {
     client.rpc('admin_product_prices', {}, { get: true }),
   ]);
   if (prices.error && MISSING_FUNCTION_CODES.includes(prices.error.code)) {
-    const { data, error } = await client.from('products').select('*').order('id');
-    return error ? { rows: null, error } : { rows: data || [], error: null };
+    const legacy = await client.from('products').select('*').order('id');
+    const error = withStatus(legacy);
+    return error ? { rows: null, error } : { rows: legacy.data || [], error: null };
   }
-  const error = products.error || prices.error;
+  const error = withStatus(products) || withStatus(prices);
   if (error) return { rows: null, error };
   const listed = prices.data || {};
   return { rows: (products.data || []).map(p => ({ ...p, price: listed[p.id]?.list ?? null })), error: null };
@@ -58,9 +61,11 @@ export function productEditChanged(editing, product) {
 export const SEARCH_DEBOUNCE_MS = 300;
 
 // query: the URL's filters (q, AW-118); onQuery writes them.
-export function ProductsTab({ query = {}, onQuery, onCatalogChange }) {
+// notify: shows what a change did (useAdminStatus).
+export function ProductsTab({ query = {}, onQuery, onCatalogChange, notify }) {
   const [rows, setRows] = useState(null);
   const [loadError, setLoadError] = useState(null);
+  const [retrying, setRetrying] = useState(false);
   const [editing, setEditing] = useState(null);
   const [saveError, setSaveError] = useState(null);
   // The search box filters as you type and keeps ?q= in step a moment later,
@@ -85,14 +90,18 @@ export function ProductsTab({ query = {}, onQuery, onCatalogChange }) {
     return () => clearTimeout(timer);
   }, [search, urlSearch, query, onQuery]);
 
-  const reload = () => {
-    loadAdminProducts(supabase).then(({ rows: next, error }) => {
-      setLoadError(error ? 'The products didn’t load. Reload the page to try again.' : null);
-      if (next) setRows(next);
-      else setRows((current) => current || []);
-    });
+  // A failed load says so, with Try again, never "0 of 0 products" (AW-202);
+  // rows already on screen stay.
+  const reload = () => loadAdminProducts(supabase).then(({ rows: next, error }) => {
+    setLoadError(error ? adminErrorMessage(error, 'The products didn’t load') : null);
+    if (next) setRows(next);
+  });
+  useEffect(() => { reload(); }, []);
+  const retry = async () => {
+    setRetrying(true);
+    await reload();
+    setRetrying(false);
   };
-  useEffect(reload, []);
 
   // An edit row that differs from its product is unsaved work (AW-118):
   // leaving the page asks first, and so do Edit on another row and Cancel.
@@ -136,14 +145,21 @@ export function ProductsTab({ query = {}, onQuery, onCatalogChange }) {
     else closeEdit();
   };
 
+  // The saved row is read back: row-level security refuses an update by
+  // changing no row, with no error (AW-202). A refused save keeps the edit
+  // row open with what was typed, beside the error.
+  const [saving, setSaving] = useState(false);
   const save = async (id, patch) => {
     setSaveError(null);
-    const { error } = await supabase.from('products').update(patch).eq('id', id);
+    setSaving(true);
+    const { error } = await checkedWrite(supabase.from('products').update(patch).eq('id', id));
+    setSaving(false);
     if (error) {
-      setSaveError(`The changes to product ${id} weren’t saved (${error.message || 'unknown error'}). Try again.`);
+      setSaveError(adminErrorMessage(error, `The changes to product ${id} weren’t saved`));
       return;
     }
     closeEdit();
+    notify?.(`Saved product ${id}, ${patch.name}.`);
     reload();
     onCatalogChange?.();
   };
@@ -156,7 +172,9 @@ export function ProductsTab({ query = {}, onQuery, onCatalogChange }) {
     save(id, { name: editing.name, brand: editing.brand, price: parsed.price, tag: editing.tag, active: editing.active });
   };
 
-  if (!rows) return <p className="result-note">Loading…</p>;
+  if (!rows) {
+    return loadError ? <LoadProblem message={loadError} onRetry={retry} retrying={retrying} /> : <p className="result-note">Loading…</p>;
+  }
 
   const needle = search.trim().toLowerCase();
   const filtered = !needle ? rows : rows.filter(r =>
@@ -171,7 +189,7 @@ export function ProductsTab({ query = {}, onQuery, onCatalogChange }) {
         <input type="search" placeholder="Name, brand, or SKU" value={search} onChange={e => setSearch(e.target.value)} />
       </label>
       <p className="result-note">{`${filtered.length} of ${rows.length} products`}</p>
-      {loadError && <p className="form-error" role="alert">{loadError}</p>}
+      {loadError && <LoadProblem message={loadError} onRetry={retry} retrying={retrying} />}
       {saveError && <p className="form-error" role="alert">{saveError}</p>}
       <div className="table-scroll" ref={tableRef}>
         <table className="aw-table">
@@ -204,7 +222,7 @@ export function ProductsTab({ query = {}, onQuery, onCatalogChange }) {
                 </td>
                 <td>
                   <div className="inline-actions">
-                    <button className="button xs" type="button" onClick={() => saveEditing(p.id)}>Save</button>
+                    <button className="button xs" type="button" disabled={saving} onClick={() => saveEditing(p.id)}>Save</button>
                     <button className="button xs text" type="button" onClick={cancelEdit}>Cancel</button>
                   </div>
                 </td>
