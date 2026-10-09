@@ -62,6 +62,9 @@ async function main() {
     logLevel: 'error',
     appType: 'custom',
     server: { middlewareMode: true, hmr: false, watch: null },
+    // Only two plain modules are loaded: no dependency scan, which otherwise
+    // races the close below and prints a page of 'Request is outdated' errors.
+    optimizeDeps: { noDiscovery: true, include: [] },
   });
   let departments;
   let products;
