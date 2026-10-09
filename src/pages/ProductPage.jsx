@@ -41,11 +41,12 @@ import {
 } from '../lib/lines.js';
 import { lineTotal, pctText, priceLabel, tierName, variantPriceRange } from '../lib/pricing.js';
 import { PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
-import { COMPANY } from '../data/content.js';
 import { brandLabel, catLabel, formatMoney } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
+import { APPLY_LABEL } from '../data/terms.js';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
+import { CallOrEmail } from '../components/ContactLinks.jsx';
 import { ProductPhoto } from '../components/ProductPhoto.jsx';
 import { photoCredit, photoCreditSource } from '../data/photoCredits.js';
 import { ProductCard } from '../components/ProductCard.jsx';
@@ -175,7 +176,8 @@ export function ProductPage({
           {choiceRequired && <p className="in-cart-note">{`Pick a ${axis.noun} to add it. Add each ${axis.noun} you want separately.`}</p>}
           {savedQty > 0 && <p className="pd-saved">{`From your last visit: quantity ${savedQty}.${choiceRequired ? ` Choose a ${axis.noun}, then add it.` : ''}`}</p>}
           {variantError && <p className="form-error" role="alert">{`Select a ${axis.noun} before adding this product.`}</p>}
-          <div className="pd-price">
+          {/* No price yet (AW-133): a sentence and the one way forward, never a word in price type. */}
+          <div className={isApprovedBuyer ? 'pd-price' : 'pd-price is-locked'}>
             {isApprovedBuyer
               ? (
                 <>
@@ -186,10 +188,10 @@ export function ProductPage({
                 </>
               )
               : onHold
-              ? <><b>On hold</b><span>{PRICE_LOCK.suspended.line}</span></>
+              ? <p>{PRICE_LOCK.suspended.line} <CallOrEmail after=" and a trade rep will help you sort it out." /></p>
               : profile
-              ? <><b>Pending</b><span>Pricing unlocks after your account is approved</span></>
-              : <><b>Sign in</b><span>Wholesale pricing is visible to approved trade accounts</span></>}
+              ? <><p>Pricing unlocks when your account is approved.</p><Link className="text-link" to="/account">View approval status</Link></>
+              : <><p>Wholesale prices show here for approved trade accounts.</p><button className="button ghost" type="button" onClick={onLoginClick}>Sign in to see wholesale prices</button><button className="text-link" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button></>}
           </div>
           <div className="qty-row">
             {/* Typed or stepped, 1 to 100,000 (AW-013). */}
@@ -198,18 +200,6 @@ export function ProductPage({
           </div>
           {qtyTotal && <p className="in-cart-note pd-line-total">{qtyTotal}</p>}
           {qty > 0 && <p className="in-cart-note"><span>{`Already in ${isApprovedBuyer ? 'order' : 'quote'}: `}</span><strong>{qty}</strong><span>{selected ? ` · ${selected}` : ''}</span></p>}
-          {!profile && (
-            <div className="dialog-actions compact-actions">
-              <button className="text-link" type="button" onClick={onLoginClick}>Sign in for pricing</button>
-              <button className="text-link" type="button" onClick={onApplyClick}>Apply for account</button>
-            </div>
-          )}
-          {profile && !isApprovedBuyer && (
-            <div className="dialog-actions compact-actions">
-              {onHold && <a className="text-link" href={`tel:${COMPANY.phoneRaw}`}>{`Call ${COMPANY.phone}`}</a>}
-              <Link className="text-link" to="/account">{onHold ? 'View account status' : 'View approval status'}</Link>
-            </div>
-          )}
         </div>
       </div>
       {related.length > 0 && (

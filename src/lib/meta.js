@@ -8,6 +8,7 @@
 // (AW-007, AW-338).
 
 import { COMPANY, HOME_PITCH, HOURS, ORDER_MINIMUM, hoursLine } from '../data/content.js';
+import { APPLY_LABEL, basketTerms } from '../data/terms.js';
 import { POLICY_TITLES, POLICY_INTROS } from '../pages/support/PolicyPage.jsx';
 import { resetTitle } from '../pages/support/resetView.js';
 import { brandLabel, catLabel, formatMoney } from './format.js';
@@ -71,7 +72,7 @@ function adminTitle(route) {
 // route.applyAs to 'loading' or accountStatus(profile). Without it, the
 // page is the one a visitor, or a search engine, sees.
 export const APPLY_TITLES = {
-  guest: 'Apply for a Trade Account',
+  guest: APPLY_LABEL,
   loading: 'Trade Account',
   pending: 'Application Under Review',
   approved: 'Your Trade Account',
@@ -133,9 +134,11 @@ function pageText(route, products, departments) {
       image: imageOf(p, p.name),
     };
   }
-  // After a save, /quote shows the receipt (App sets route.received, AW-022).
-  if (route.page === 'quote') return { title: route.received ? `${route.received === 'order' ? 'Order' : 'Quote'} received · ${site}` : `Checkout · ${site}`, description: `Review your items and submit a wholesale quote or order to ${site}. Minimum order ${formatMoney(ORDER_MINIMUM)}.` };
-  if (route.page === 'account') return { title: `My Account · ${site}`, description: `Your ${site} trade account: order history, reorders and quick entry by SKU.` };
+  // After a save, /quote shows the receipt (App sets route.received, AW-022);
+  // before, its heading, once App knows the account (route.basket 'quote' or
+  // 'order', AW-132).
+  if (route.page === 'quote') return { title: route.received ? `${route.received === 'order' ? 'Order' : 'Quote'} received · ${site}` : `${route.basket ? basketTerms(route.basket === 'order').page : 'Checkout'} · ${site}`, description: `Review your items and submit a wholesale quote or order to ${site}. Minimum order ${formatMoney(ORDER_MINIMUM)}.` };
+  if (route.page === 'account') return { title: `My account · ${site}`, description: `Your ${site} trade account: order history, reorders and quick entry by SKU.` };
   // route.unseen: orders placed since the admin last opened Orders (AW-111,
   // App's useAdminUnseen), as '(2) ' in front.
   if (route.page === 'admin') {

@@ -18,7 +18,7 @@ vi.mock('../../lib/router.js', async (importOriginal) => ({
 }));
 
 const SESSION = { access_token: 't', user: { id: 'u1', email: 'buyer@example.test' } };
-const AUTH = { session: null, loading: false, recovery: false, linkError: null, linkChecking: false, isBackendConfigured: true, updatePassword: vi.fn() };
+const AUTH = { session: null, loading: false, recovery: false, linkError: null, linkChecking: false, isBackendConfigured: true, updatePassword: vi.fn(), verifyPassword: vi.fn(async () => {}) };
 const STATES = {
   unavailable: { isBackendConfigured: false },
   request: {},
@@ -43,6 +43,9 @@ const head = () => {
 };
 
 async function save(password = 'a-new-password-1') {
+  // Signed in without a reset link, the current password comes first (AW-349).
+  const current = screen.queryByLabelText('Current password');
+  if (current) fireEvent.change(current, { target: { value: 'the-old-password-1' } });
   fireEvent.change(screen.getByLabelText('New password'), { target: { value: password } });
   fireEvent.change(screen.getByLabelText('Confirm new password'), { target: { value: password } });
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save new password' })); });

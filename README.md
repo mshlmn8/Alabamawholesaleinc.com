@@ -10,13 +10,14 @@ Every page has a real path URL (History API router, `src/lib/router.js` and `src
 
 | Route | Page |
 | ----- | ---- |
-| `/` | Home — warehouse hero, department strip, new arrivals (`/#new-arrivals`), collections, bestsellers (`/#bestsellers`), services, department grid, account application |
+| `/` | Home — split hero with a photo carousel, services, shop by department, new arrivals (`/#new-arrivals`), bestsellers (`/#bestsellers`), collections, and the steps to open a trade account |
 | `/catalog` | All products: every department, product line and SKU |
 | `/category/<department>[/<line>]` | Department catalog, optionally one product line, e.g. `/category/drinks-and-bags/energy-drinks`. Search, sort and filters live in the query string (`?q=&sort=&tags=&variants=1`) |
 | `/product/<id>` | Product detail |
-| `/quote` | Checkout for a signed-in account, or a quote request for a guest |
+| `/search?q=` | Search results for name, brand, department, SKU and variants (marked `noindex`) |
+| `/quote` | Checkout: an order from an approved trade account, or a quote request from a guest or an account still waiting for approval (the words come from `basketTerms()` in `src/data/terms.js`) |
 | `/account` | Trade account and order history |
-| `/admin` | Admin dashboard |
+| `/admin`, `/admin/orders`, `/admin/accounts`, `/admin/products`, `/admin/pricing` | Admin back office: orders (`/admin/orders/<id>/print` for the pick list or packing slip), accounts (`/admin/accounts/<id>`), products (`/admin/products/<id>`, `/admin/products/new`) and pricing tiers. Filters that name no person live in the query string (`src/lib/adminRoutes.js`) |
 | `/contact`, `/delivery`, `/shipping`, `/privacy`, `/terms`, `/apply`, `/reset-password` | Support pages |
 
 Any other address shows a not-found page with a catalog search and the departments (marked `noindex`). Department and line segments are slugs of the catalog names; other spellings (`/category/TOBACCO`) redirect to the canonical one. `npm run build` also writes `dist/sitemap.xml` from the catalog (`scripts/build-sitemap.mjs`).
@@ -28,8 +29,8 @@ Also on the storefront:
 - Category menu for the eight departments
 - Cart drawer. The cart is kept in `localStorage`, one per account on the device plus one for guests, and stays in step across open tabs; signing in adds the guest cart to the account's, and signing out leaves the next person an empty cart. Lines the catalog no longer has are flagged instead of dropped, and carts from earlier builds are moved over once (`src/lib/cartStorage.js`). Escape closes the cart, sign-in, and help overlays and unlocks page scrolling
 - The catalog is read from Supabase's `products` table (`src/lib/catalog.jsx`). The copy built into the site shows first and is the fallback: a slow or failed load says so and offers **Try again**, a product only the live catalog has shows a loading view instead of "not found", open tabs load it again after five minutes away or when the connection comes back, and checkout checks it once more before sending
-- Quote requests and orders are saved by the `submit_quote` function in Supabase, which prices the lines on the server. If saving fails, the quote page shows an error with the trade desk's phone number and email; there is no other fallback. After a save, the lines that were sent leave the cart and the page shows a printable receipt (reference, lines, delivery details). It is kept in `sessionStorage` for that tab only, so a reload or Back shows it again, and it is cleared on sign-out (`src/lib/receipt.js`)
-- Trade sign-in and account applications through Supabase Auth. One provider (`src/lib/auth.jsx`) holds the session and profile; account pages wait for them instead of flashing a signed-out view, and email links are handled by `src/lib/authLink.js` (see BACKEND.md, "Email links")
+- Quote requests and orders are saved by the `submit_quote` function in Supabase, which prices the lines on the server. While the form is being filled in, a draft is kept in `sessionStorage` for that tab, so leaving `/quote` or a reload keeps what was typed; it is cleared on a successful submit and on sign-out (`src/lib/quoteDraft.js`). If saving fails, the quote page shows an error with the trade desk's phone number and email; there is no other fallback. After a save, the lines that were sent leave the cart and the page shows a printable receipt (reference, lines, delivery details). It is kept in `sessionStorage` for that tab only, so a reload or Back shows it again, and it is cleared on sign-out (`src/lib/receipt.js`)
+- Trade sign-in and account applications through Supabase Auth. One provider (`src/lib/auth.jsx`) holds the session and profile; account pages wait for them instead of flashing a signed-out view, and email links are handled by `src/lib/authLink.js` (see BACKEND.md, "Email links"). Changing the password while signed in asks for the current password first and then signs the account out on its other devices (BACKEND.md, "Password changes (AW-349)")
 
 Trade prices are kept only in Supabase: the site's code and the product seed carry none. Approved accounts see their tier's prices, which the `my_prices()` database function works out; guests, pending and suspended accounts get no prices. The public API stops serving the price column once `supabase/migrations/20261009100000_price_boundary.sql` is applied (see BACKEND.md, "How pricing tiers work" and "Release checklist").
 
@@ -83,13 +84,14 @@ Output goes to `dist/`; `npm run preview` serves it locally, with the security h
 | Editorial colors and type | `src/index.css` (`--purple`, `--orange`, `--cream`, `--display`, `--body`) |
 | Logo | `IMG` in `src/data/theme.js` |
 | Hero photos | `HERO_SLIDES` in `src/data/content.js` |
-| Address, phone, hours, email | `COMPANY` in `src/data/content.js` |
+| Business facts: address, phone, email, hours, minimum order, free-delivery threshold | `COMPANY`, `HOURS`, `ORDER_MINIMUM` and `FREE_DELIVERY_THRESHOLD` in `src/data/content.js`; pages print them from there (money through `formatMoney`/`formatMoneyShort`), and `src/data/facts.test.js` fails when the phone, address, hours, minimum or threshold is typed into another source file |
+| Wording: the apply and sign-in labels, quote or order, the licensed-only line | `src/data/terms.js` (`APPLY_LABEL`, `SIGN_IN_LABEL`, `basketTerms()`); `LICENSED_ONLY` in `src/data/content.js` |
 | Top ticker | `ANNOUNCEMENTS` in `src/data/content.js` |
-| Departments and sub-lines | `NAV_CATEGORIES` in `src/data/products.js` |
+| Departments and product lines | `departmentsFor()` in `src/lib/departments.js`, derived from `cat` and `sub` in `src/data/products.js` (in `NAV_ORDER`) |
 | The 368 products | `PRODUCTS` in `src/data/products.js` |
 | Account and admin styles | the `account / admin` block in `src/index.css` |
 
-`SHOP_CATS`, `BRANDS`, `TRUST`, `FAQS`, and `WELCOME_OFFERS` in `src/data/content.js` are leftover from the previous layout. The editorial pages do not render them.
+`BRANDS`, `TRUST` and `FAQS` in `src/data/content.js` stay unpublished until the owner confirms them (see `docs/OWNER-TODO.md`).
 
 ### Images
 

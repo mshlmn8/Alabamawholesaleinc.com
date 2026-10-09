@@ -16,7 +16,7 @@ const ORDER = [
   ['Contact & visit', '/contact'],
   ['Delivery & service area', '/delivery'],
   ['Delivery policy', '/shipping'],
-  ['Apply for an account', '/apply'],
+  ['Apply for a trade account', '/apply'],
   ['Trade terms', '/terms'],
   ['Privacy', '/privacy'],
 ];
@@ -86,7 +86,7 @@ describe('SupportLayout on every support page', () => {
   it('wraps the application checklist for a guest, and the status for a signed-in applicant', () => {
     const props = { isBackendConfigured: true, onApplyClick: vi.fn(), onLoginClick: vi.fn(), onResetClick: vi.fn() };
     const guest = render(<ApplyPage profile={null} account="signed-out" {...props} />);
-    expect(current()).toEqual(['Apply for an account']);
+    expect(current()).toEqual(['Apply for a trade account']);
     expect(layoutOf(guest.container).main.querySelector(':scope > .apply-layout')).toBeTruthy();
     expect(guest.container.querySelector('.support-layout + .contact-strip')).toBeTruthy();
     guest.unmount();
@@ -94,7 +94,7 @@ describe('SupportLayout on every support page', () => {
     // Signed in, the heading says 'Your trade account'; the nav keeps its label.
     const pending = render(<ApplyPage profile={{ id: 'p', name: 'Test Buyer', email: 'buyer@example.test', status: 'pending' }} account="ready" {...props} />);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Your trade account');
-    expect(current()).toEqual(['Apply for an account']);
+    expect(current()).toEqual(['Apply for a trade account']);
     expect(layoutOf(pending.container).main.querySelector(':scope > .status-panel')).toBeTruthy();
   });
 });

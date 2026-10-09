@@ -6,6 +6,7 @@
 // (TODO(owner) at HOME_HERO in src/data/content.js).
 
 import { HERO_SLIDES, HOME_HERO } from '../data/content.js';
+import { APPLY_LABEL } from '../data/terms.js';
 import { Link } from '../lib/router.js';
 import { HeroCarousel } from './HeroCarousel.jsx';
 
@@ -26,7 +27,7 @@ export function HomeHero({ signedIn = false, onApplyClick }) {
             </>
           ) : (
             <>
-              <button className="button" type="button" onClick={onApplyClick}>Apply for a trade account</button>
+              <button className="button" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button>
               <Link className="button ghost" to="/catalog">Browse the catalog</Link>
             </>
           )}

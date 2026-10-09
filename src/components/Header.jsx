@@ -12,6 +12,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { IMG } from '../data/theme.js';
 import { COMPANY } from '../data/content.js';
+import { APPLY_LABEL, SIGN_IN_LABEL, basketBadge, basketButtonLabel, basketTerms } from '../data/terms.js';
 import { useMediaQuery, MOBILE_QUERY } from '../lib/useMediaQuery.js';
 import { Link, navigate, useLocation } from '../lib/router.js';
 import { MobileMenu } from './MobileMenu.jsx';
@@ -34,10 +35,11 @@ const QUICK_REORDER = '/account#quick-reorder';
 // A left click with no modifier key, which a Link follows in the app.
 const plainClick = (e) => e.button === 0 && !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey);
 
-export function Header({ cartCount, onCart, products, departments, user, isAdmin, adminUnseen = 0, onLoginClick, onSignupClick, onLogout, signingOut = false, onHelp }) {
+export function Header({ cartCount, onCart, products, departments, user, isAdmin, isApprovedBuyer = false, adminUnseen = 0, onLoginClick, onSignupClick, onLogout, signingOut = false, onHelp }) {
   const [megaOpen, setMegaOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const isMobile = useMediaQuery(MOBILE_QUERY);
+  const basket = basketTerms(isApprovedBuyer);
   const categoryToggleRef = useRef(null);
   const megaMenuRef = useRef(null);
   const megaOpenRef = useRef(false);
@@ -147,19 +149,19 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
               {isAdmin && <Link className="aw-signin aw-desktop-only" to="/admin" onClick={closeMenus}>Admin<AdminUnseenBadge count={adminUnseen} /></Link>}
               <span className="aw-account-or">·</span>
               <button className="aw-signin aw-desktop-only" type="button" onClick={() => runNav(onLogout)} disabled={signingOut}>
-                <span>{signingOut ? 'Signing out…' : 'Sign Out'}</span>
+                <span>{signingOut ? 'Signing out…' : 'Sign out'}</span>
               </button>
             </>
           ) : (
             <>
-              <button className="aw-signin" type="button" onClick={() => runNav(onLoginClick)}>Sign In</button>
+              <button className="aw-signin" type="button" onClick={() => runNav(onLoginClick)}>{SIGN_IN_LABEL}</button>
               <span className="aw-account-or">or</span>
-              <button className="button aw-desktop-only" type="button" onClick={() => runNav(onSignupClick)}>Sign Up</button>
+              <button className="button aw-desktop-only" type="button" onClick={() => runNav(onSignupClick)}>{APPLY_LABEL}</button>
             </>
           )}
-          <button className="button ghost sm aw-cart-btn" type="button" onClick={() => runNav(onCart)} aria-label={`Cart, ${cartCount} items`}>
-            Cart
-            {cartCount > 0 && <span key={cartCount} className="aw-cart-count">{cartCount}</span>}
+          <button className="button ghost sm aw-cart-btn" type="button" onClick={() => runNav(onCart)} aria-label={basketButtonLabel(basket, cartCount)}>
+            <span>{basket.label}</span>
+            {cartCount > 0 && <span key={cartCount} className="aw-cart-count">{basketBadge(cartCount)}</span>}
           </button>
         </div>
       </div>
@@ -206,12 +208,12 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
           </section>
         )}
         <nav className="aw-discovery-nav" aria-label="Main navigation">
-          <Link to="/#new-arrivals" onClick={closeMenus}><span className="aw-new-dot" aria-hidden="true"></span>New Arrivals</Link>
+          <Link to="/#new-arrivals" onClick={closeMenus}><span className="aw-new-dot" aria-hidden="true"></span>New arrivals</Link>
           <Link to="/#bestsellers" onClick={closeMenus}>Bestsellers</Link>
           <Link className="aw-exotics-link" to={{ page: 'category', category: 'NOVELTIES' }} onClick={closeMenus}>Exotics</Link>
         </nav>
         <div className="aw-service-nav">
-          <Link to={QUICK_REORDER} onClick={followReorder}>Quick Reorder</Link>
+          <Link to={QUICK_REORDER} onClick={followReorder}>Quick reorder</Link>
           <button type="button" onClick={() => runNav(onHelp)}>Help <Icon name="help" /></button>
         </div>
       </div>

@@ -128,14 +128,14 @@ describe('pageMeta', () => {
 describe('pageMeta for /apply (AW-098)', () => {
   it('titles the application page by the account’s state, with one description and canonical path', () => {
     const guest = pageMeta({ page: 'apply' }, products, departments);
-    expect(guest).toMatchObject({ title: 'Apply for a Trade Account · Alabama Wholesale Inc', path: '/apply', noindex: false });
+    expect(guest).toMatchObject({ title: 'Apply for a trade account · Alabama Wholesale Inc', path: '/apply', noindex: false });
     const titles = Object.fromEntries(['guest', 'loading', 'pending', 'approved', 'suspended'].map((applyAs) => {
       const meta = pageMeta({ page: 'apply', applyAs }, products, departments);
       expect(meta).toMatchObject({ description: guest.description, path: '/apply', noindex: false });
       return [applyAs, meta.title];
     }));
     expect(titles).toEqual({
-      guest: 'Apply for a Trade Account · Alabama Wholesale Inc',
+      guest: 'Apply for a trade account · Alabama Wholesale Inc',
       loading: 'Trade Account · Alabama Wholesale Inc',
       pending: 'Application Under Review · Alabama Wholesale Inc',
       approved: 'Your Trade Account · Alabama Wholesale Inc',

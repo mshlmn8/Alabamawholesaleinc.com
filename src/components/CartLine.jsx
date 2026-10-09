@@ -16,7 +16,15 @@
 // button, rather than the select's change event, makes the choice, because
 // arrow keys in a closed select fire change in Firefox and on Windows
 // (WCAG 3.2.2). Without variants to offer, "Choose variant" is a link to the
-// product page; onChoose runs when it is followed (the drawer closes itself).
+// product page.
+//
+// The name and the thumbnail link to the product page too (AW-239), so a
+// buyer can check a flavor, a pack size or the description from the cart.
+// The thumbnail is the same link, out of the tab order and hidden from
+// screen readers, so each line is one tab stop. onChoose runs when any link
+// to the product page is followed (the drawer passes onClose and closes
+// itself). A line whose product has left the catalog keeps its name as
+// plain text: there is no page to go to.
 //
 // A line that can no longer be ordered (item.unavailable, AW-083) keeps its
 // quantity on show but has no stepper: it says so, offers another variant
@@ -82,15 +90,19 @@ export function CartLine({ item: it, layout = 'drawer', showPrice, pricesStatus 
   const noun = it.axis?.noun || 'variant';
   const className = ['drawer-line', checkout && 'checkout-line', gone && 'is-unavailable'].filter(Boolean).join(' ');
   const unit = it.sellUnit ? `Sold by the ${it.sellUnit}` : '';
+  const linked = it.unavailable !== 'product';
+  const productPage = { page: 'product', productId: it.productId };
   let detail;
   if (gone) detail = [it.sku, `Quantity ${it.qty}`, checkout ? '' : 'No longer available'];
   else detail = [it.sku, unit, priced ? `${formatMoney(it.price)} each` : noPrice];
   return (
     <li className={className} data-line-key={it.lineKey}>
       {/* No photo yet: the picture mark (AW-029). A product no catalog knows gets an empty tile. */}
-      <span className="thumb">{gone && !it.sku && !it.img ? null : <Thumb src={it.img} />}</span>
+      {linked
+        ? <Link className="thumb" to={productPage} onClick={onChoose} tabIndex={-1} aria-hidden="true"><Thumb src={it.img} /></Link>
+        : <span className="thumb">{gone && !it.sku && !it.img ? null : <Thumb src={it.img} />}</span>}
       <span className="info">
-        <b>{it.name}</b>
+        {linked ? <Link className="line-name" to={productPage} onClick={onChoose}>{it.name}</Link> : <b>{it.name}</b>}
         <small>{detail.filter(Boolean).join(' · ')}</small>
         {it.needsVariant && <small>{`${it.qty} ${it.qty === 1 ? 'unit' : 'units'} · choose a ${noun}`}</small>}
         {checkout && gone && <small className="line-flag">No longer available. Remove it to continue.</small>}
@@ -98,7 +110,7 @@ export function CartLine({ item: it, layout = 'drawer', showPrice, pricesStatus 
       {pickHere ? (
         <VariantChoice item={it} onChooseVariant={onChooseVariant} />
       ) : choose ? (
-        <Link className="text-link choose" to={{ page: 'product', productId: it.productId }} onClick={onChoose}>Choose variant</Link>
+        <Link className="text-link choose" to={productPage} onClick={onChoose}>Choose variant</Link>
       ) : gone ? null : (
         <QuantityInput className="qty" value={it.qty} onChange={(n) => onSetQty?.(n)} label={`Quantity of ${it.name}`} groupLabel={`${it.name} quantity`} />
       )}

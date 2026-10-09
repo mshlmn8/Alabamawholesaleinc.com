@@ -142,16 +142,16 @@ test('signing out without a connection stays signed out after a reload, in every
   const menu = page.getByRole('button', { name: 'Menu' });
   if (await menu.isVisible()) {
     await menu.click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Sign Out', exact: true }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Sign out', exact: true }).click();
   } else {
-    await page.getByRole('button', { name: 'Sign Out', exact: true }).click();
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   }
   await expect(page.locator('.site-notice[data-notice="signed-out"]')).toContainText('You’re signed out on this computer.');
   expect(calls.logout).toEqual(['?scope=local']);
   expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('aw-auth')))).toEqual([]);
 
   await page.reload();
-  await expect(page.locator('.aw-account-actions')).toContainText('Sign In');
+  await expect(page.locator('.aw-account-actions')).toContainText('Sign in');
   await expect(page.locator('.aw-account-actions')).not.toContainText('Test Market LLC');
   // The other tab followed, and says why.
   await expect(other.locator('.site-notice[data-notice="session-ended"]')).toContainText('Your session has ended');
@@ -163,32 +163,32 @@ test('signing out puts the buyer’s cart away: the next person starts empty, th
   const errors = trackErrors(page);
   await seedSession(context);
   await mockSupabase(page);
-  const cart = page.getByRole('button', { name: /^Cart, \d+ items$/ });
+  const cart = page.getByRole('button', { name: /^(Quote|Order), [\d,]+ items?$/ });
   await page.goto('/product/14');
   await expect(page.locator('.aw-account-actions')).toContainText('Test Market LLC');
   await page.locator('.pd-info').getByRole('button', { name: /^Add to (quote|order)/ }).click();
-  await expect(cart).toHaveAccessibleName('Cart, 1 items');
+  await expect(cart).toHaveAccessibleName('Order, 1 item');
   expect(JSON.parse(await page.evaluate((k) => localStorage.getItem(k), `aw-cart-v2:${UID}`))).toEqual({ 14: 1 });
 
   const menu = page.getByRole('button', { name: 'Menu' });
   if (await menu.isVisible()) {
     await menu.click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Sign Out', exact: true }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Sign out', exact: true }).click();
   } else {
-    await page.getByRole('button', { name: 'Sign Out', exact: true }).click();
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   }
-  await expect(page.locator('.site-notice[data-notice="signed-out"]')).toContainText('Your cart is saved on this computer for your next sign-in.');
+  await expect(page.locator('.site-notice[data-notice="signed-out"]')).toContainText('The items you added are saved on this computer for your next sign-in.');
   await page.getByRole('button', { name: /Yes, I am 21\+/ }).click();
-  await expect(cart).toHaveAccessibleName('Cart, 0 items');
+  await expect(cart).toHaveAccessibleName('Quote, 0 items');
   await page.goto('/quote');
-  await expect(page.getByRole('heading', { level: 1, name: 'Your cart is empty' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Your quote is empty' })).toBeVisible();
 
   // The buyer signs in again (in another tab; this one follows).
   const other = await context.newPage();
   await other.goto('/robots.txt');
   await other.evaluate(([key, value]) => localStorage.setItem(key, value), [AUTH_KEY, JSON.stringify(savedSession())]);
   await expect(page.locator('.aw-account-actions')).toContainText('Test Market LLC');
-  await expect(cart).toHaveAccessibleName('Cart, 1 items');
+  await expect(cart).toHaveAccessibleName('Order, 1 item');
   await expect(page.getByRole('heading', { level: 1, name: 'Place your order' })).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -217,21 +217,21 @@ test('after a sign-out, a session another tab saved that cannot be refreshed nev
     token_type: 'bearer', expires_in: 3600, expires_at: past, refresh_token: 'smoke-other',
     user: { ...USER, id: OTHER, email: 'other@example.test' },
   };
-  const cart = page.getByRole('button', { name: /^Cart, \d+ items$/ });
+  const cart = page.getByRole('button', { name: /^(Quote|Order), [\d,]+ items?$/ });
   await page.goto('/product/14');
   await expect(page.locator('.aw-account-actions')).toContainText('Test Market LLC');
   await page.locator('.pd-info').getByRole('button', { name: /^Add to (quote|order)/ }).click();
-  await expect(cart).toHaveAccessibleName('Cart, 1 items');
+  await expect(cart).toHaveAccessibleName('Order, 1 item');
 
   const menu = page.getByRole('button', { name: 'Menu' });
   if (await menu.isVisible()) {
     await menu.click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Sign Out', exact: true }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Sign out', exact: true }).click();
   } else {
-    await page.getByRole('button', { name: 'Sign Out', exact: true }).click();
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   }
   await page.getByRole('button', { name: /Yes, I am 21\+/ }).click();
-  await expect(cart).toHaveAccessibleName('Cart, 0 items');
+  await expect(cart).toHaveAccessibleName('Quote, 0 items');
 
   const other = await context.newPage();
   await other.goto('/robots.txt');
@@ -239,7 +239,7 @@ test('after a sign-out, a session another tab saved that cannot be refreshed nev
   // supabase-js retries the refresh with backoff for up to 30 s.
   await page.clock.runFor(35_000);
   await expect(page.locator('.site-notice[data-notice="connection"]')).toBeVisible();
-  await expect(cart).toHaveAccessibleName('Cart, 0 items');
+  await expect(cart).toHaveAccessibleName('Quote, 0 items');
   expect(errors).toEqual([]);
 });
 
@@ -257,12 +257,12 @@ test('an approved buyer’s prices come from my_prices(), and each × quantity i
   await page.getByRole('group', { name: 'Quantity to add' }).getByRole('button', { name: 'Increase quantity' }).click();
   await page.getByRole('group', { name: 'Quantity to add' }).getByRole('button', { name: 'Increase quantity' }).click();
   await page.locator('.pd-info').getByRole('button', { name: /^Add to order/ }).click();
-  await page.getByRole('button', { name: /^Cart, 3 items$/ }).click();
+  await page.getByRole('button', { name: 'Order, 3 items' }).click();
   const drawer = page.getByRole('dialog', { name: 'Your order' });
   await expect(drawer.locator('.drawer-line small').first()).toHaveText('AW-KITE · $13.40 each');
   await expect(drawer.locator('.drawer-line .line-total')).toHaveText('$40.20');
   await expect(drawer.locator('.drawer-total')).toContainText('$40.20');
-  await drawer.getByRole('link', { name: /Checkout/ }).click();
+  await drawer.getByRole('link', { name: 'Review order' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Place your order' })).toBeVisible();
   const line = page.locator('.checkout-lines .drawer-line').first();
   await expect(line.locator('small').first()).toHaveText('AW-KITE · $13.40 each');
@@ -297,9 +297,9 @@ test('Back on a half-typed application asks first, keeps the answers, and leaves
   await mockSupabase(page);
   await page.goto('/');
   await page.goto('/apply');
-  // The page head's Start application (AW-242); the checklist card has one too.
-  await page.locator('.page-head').getByRole('button', { name: 'Start application' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Apply for an account' });
+  // The page head's apply button (AW-242); the checklist card has one too.
+  await page.locator('.page-head').getByRole('button', { name: 'Apply for a trade account' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Apply for a trade account' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Your name').fill('Typed Applicant');
 

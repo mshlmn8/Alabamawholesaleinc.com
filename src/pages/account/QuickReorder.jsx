@@ -1,7 +1,7 @@
 // Quick entry by SKU and quantity for signed-in buyers. Each row resolves
-// live against the catalog; a code that is ambiguous (duplicate catalog SKUs,
-// or a bare SKU of a multi-variant product) asks for one more choice before
-// its line can be added.
+// live against the catalog; a code that is ambiguous (one more than one
+// product answers to, or a bare SKU of a multi-variant product) asks for one
+// more choice before its line can be added.
 //
 // Quantities follow the one rule in src/lib/quantity.js (AW-100, AW-013): a
 // whole number from 1 to 100,000. Anything else (0, 2.5, 150000) is a row
@@ -233,7 +233,7 @@ export function QuickReorder({ products, addLines, onOpenCart, isApprovedBuyer, 
             {`Added ${summary.lines} line${summary.lines === 1 ? '' : 's'} (${summary.units} unit${summary.units === 1 ? '' : 's'}) to your ${target}.`
               + (summary.attention > 0 ? ` ${summary.attention} line${summary.attention === 1 ? ' is' : 's are'} still waiting above.` : '')}
           </p>
-          <button className="button xs" type="button" onClick={onOpenCart}>Review cart</button>
+          <button className="button xs" type="button" onClick={onOpenCart}>{`View ${target}`}</button>
         </div>
       )}
     </form>

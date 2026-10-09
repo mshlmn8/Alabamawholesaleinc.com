@@ -61,7 +61,7 @@ describe('CatalogIndexPage pricing prompt', () => {
     page({ signedIn: false, onLoginClick, onApplyClick });
     const banner = document.querySelector('.catalog-pricing');
     const signIn = within(banner).getByRole('button', { name: 'Sign in' });
-    const apply = within(banner).getByRole('button', { name: 'Apply for an account' });
+    const apply = within(banner).getByRole('button', { name: 'Apply for a trade account' });
     expect(signIn.className).toBe('button sm');
     expect(apply.className).toBe('button ghost sm');
     fireEvent.click(signIn);

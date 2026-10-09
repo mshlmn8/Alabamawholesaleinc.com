@@ -70,15 +70,15 @@ describe('ContactPage cards', () => {
   });
 });
 
-// 'Start application' opens the form, as on /apply, and is the primary
+// 'Apply for a trade account' opens the form, as on /apply, and is the primary
 // action; the checklist is the secondary one (AW-271).
 describe('ContactPage account call to action', () => {
-  it('makes Start application the primary button, calling onApplyClick', () => {
+  it('makes the apply button the primary button, calling onApplyClick', () => {
     const onApplyClick = vi.fn();
     render(<ContactPage onApplyClick={onApplyClick} />);
     const cta = document.querySelector('.support-cta .contact-strip-actions');
     const [first, second] = cta.children;
-    expect(first).toBe(within(cta).getByRole('button', { name: 'Start application' }));
+    expect(first).toBe(within(cta).getByRole('button', { name: 'Apply for a trade account' }));
     expect(first.className).toBe('button');
     fireEvent.click(first);
     expect(onApplyClick).toHaveBeenCalledTimes(1);

@@ -60,9 +60,9 @@ describe('ApplyPage for each account state', () => {
     const aside = screen.getByRole('complementary', { name: 'Contact the trade desk' });
     return [aside.querySelector('.eyebrow').textContent, aside.querySelector('h2').textContent];
   };
-  const startButtons = () => screen.queryAllByRole('button', { name: 'Start application' });
+  const startButtons = () => screen.queryAllByRole('button', { name: 'Apply for a trade account' });
 
-  it('invites a guest to apply, with Start application in the page head and on the checklist', () => {
+  it('invites a guest to apply, with the apply button in the page head and on the checklist', () => {
     const onApplyClick = vi.fn();
     const onLoginClick = vi.fn();
     page({ onApplyClick, onLoginClick });
@@ -76,13 +76,13 @@ describe('ApplyPage for each account state', () => {
     expect(screen.getByRole('region', { name: 'Application checklist' }).contains(last)).toBe(true);
     fireEvent.click(first);
     expect(onApplyClick).toHaveBeenCalledTimes(1);
-    const signIns = screen.getAllByRole('button', { name: 'Already applied? Sign in' });
+    const signIns = screen.getAllByRole('button', { name: 'Already have an account? Sign in' });
     expect(signIns).toHaveLength(2);
     expect(head().contains(signIns[0])).toBe(true);
     fireEvent.click(signIns[0]);
     expect(onLoginClick).toHaveBeenCalledTimes(1);
     // No arrow glyphs on the buttons (styles.test).
-    expect(head().querySelector('.dialog-actions').textContent).toBe('Start applicationAlready applied? Sign in');
+    expect(head().querySelector('.dialog-actions').textContent).toBe('Apply for a trade accountAlready have an account? Sign in');
   });
 
   it('offers the phone in the page head without a backend', () => {

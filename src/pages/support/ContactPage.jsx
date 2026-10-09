@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import { COMPANY, HOURS, TIME_ZONE_LABEL, TIME_ZONE_NAME, hoursRange, openStatusNow } from '../../data/content.js';
+import { APPLY_LABEL } from '../../data/terms.js';
 import { Link } from '../../lib/router.js';
 import { Icon } from '../../components/Icon.jsx';
 import { EmailText } from '../../components/ContactLinks.jsx';
@@ -127,7 +128,7 @@ export function ContactPage({ onApplyClick }) {
         </div>
         <div className="contact-strip-actions">
           {/* The form itself, as on /apply; the checklist is the secondary step (AW-271). */}
-          <button className="button" type="button" onClick={onApplyClick}>Start application</button>
+          <button className="button" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button>
           <Link className="button ghost" to="/apply">Application checklist</Link>
         </div>
       </section>

@@ -1,6 +1,7 @@
 // "Talk to the warehouse" dialog opened from the header's Help button.
 
 import { COMPANY, ORDER_MINIMUM } from '../data/content.js';
+import { APPLY_LABEL } from '../data/terms.js';
 import { formatMoney } from '../lib/format.js';
 import { ModalLayer } from './ModalLayer.jsx';
 import { Icon } from './Icon.jsx';
@@ -26,7 +27,7 @@ export function HelpDialog({ onClose, onApply }) {
           </dl>
           <div className="dialog-actions">
             <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Call now</a>
-            <button className="text-link" type="button" onClick={onApply}>Apply for an account</button>
+            <button className="text-link" type="button" onClick={onApply}>{APPLY_LABEL}</button>
           </div>
           <p className="fine">{`The minimum order is ${formatMoney(ORDER_MINIMUM)}. Next-day delivery on our own trucks when the stop is on a delivery route in AL, MS and GA. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
         </div>

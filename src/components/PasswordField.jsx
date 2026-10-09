@@ -16,7 +16,8 @@ const RULE = `At least ${PASSWORD_MIN_LENGTH} characters`;
 const RULE_MET = `${RULE}: done`;
 
 export function PasswordField({
-  id, label, value, onChange, autoComplete, required = false, minLength, hint, showRule = false, inputRef, className, ...inputProps
+  id, label, value, onChange, autoComplete, required = false, minLength, hint, showRule = false, inputRef, className,
+  'aria-describedby': describedByMore, ...inputProps
 }) {
   const [shown, setShown] = useState(false);
   const input = useRef(null);
@@ -33,7 +34,8 @@ export function PasswordField({
   }, []);
 
   const met = String(value ?? '').length >= PASSWORD_MIN_LENGTH;
-  const describedBy = [hint && `${id}-hint`, showRule && `${id}-rule`].filter(Boolean).join(' ') || undefined;
+  // The hint and rule, then anything the caller adds (an error's id).
+  const describedBy = [hint && `${id}-hint`, showRule && `${id}-rule`, describedByMore].filter(Boolean).join(' ') || undefined;
 
   return (
     <div className={className}>

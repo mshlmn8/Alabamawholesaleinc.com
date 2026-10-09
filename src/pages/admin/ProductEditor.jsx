@@ -485,7 +485,7 @@ export function ProductEditor({ id, fromId = null, rows, columns, loadError, onR
           <label htmlFor="product-sku">SKU</label>
           <input id="product-sku" className="product-sku" value={draft.sku} maxLength={80} autoComplete="off" autoCapitalize="characters" spellCheck={false}
             aria-invalid={invalid('sku')} aria-describedby={describedBy('product-sku', true)} onChange={(e) => set('sku', e.target.value)} />
-          <small className="field-hint" id="product-sku-hint">Capital letters, digits and hyphens, used once. Saved carts and Quick Reorder entries use the SKU: after a change they won’t match the old one (an alias for it can only be added in the code).</small>
+          <small className="field-hint" id="product-sku-hint">Capital letters, digits and hyphens, used once. Saved carts and Quick reorder entries use the SKU: after a change they won’t match the old one (an alias for it can only be added in the code).</small>
           <p className="form-error" id="product-sku-error">{err('sku')}</p>
         </div>
         <div>
@@ -535,7 +535,7 @@ export function ProductEditor({ id, fromId = null, rows, columns, loadError, onR
 
         <div className="full product-variants">
           <h3 id="product-variants-title">Variants</h3>
-          <p className="field-hint" id="product-variants-hint">Renaming or removing a variant: carts and Quick Reorder entries saved with the old name won’t match it any more. To stop orders of one for now, tick “Can’t be ordered” instead.</p>
+          <p className="field-hint" id="product-variants-hint">Renaming or removing a variant: carts and Quick reorder entries saved with the old name won’t match it any more. To stop orders of one for now, tick “Can’t be ordered” instead.</p>
           <ol className="variant-list" aria-labelledby="product-variants-title">
             {draft.variants.map((v, i) => (
               <li key={v.key} className={`variant-row${pricesAvailable ? ' has-price' : ''}`}>

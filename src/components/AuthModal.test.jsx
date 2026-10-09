@@ -43,7 +43,7 @@ function setup(initial, props = {}) {
   let value = authValue(initial);
   const ui = () => (
     <AuthContext.Provider value={value}>
-      <AuthModal open onClose={onClose} onSignOut={onSignOut} {...props} />
+      <AuthModal onClose={onClose} onSignOut={onSignOut} {...props} />
     </AuthContext.Provider>
   );
   const view = render(ui());
@@ -140,7 +140,7 @@ describe('AuthModal and a sign-in in another tab (AW-335)', () => {
 
   it('leaves the application checklist open for a signed-in visitor', () => {
     const t = setup({ session: SESSION, profileReady: true, profile: { id: 'u1', status: 'approved' } }, { initialMode: 'signup' });
-    expect(screen.getByRole('heading', { name: 'Apply for an account' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Apply for a trade account' })).toBeTruthy();
     t.update({ profile: { id: 'u1', status: 'approved', name: 'x' } });
     expect(t.onClose).not.toHaveBeenCalled();
   });
@@ -320,7 +320,7 @@ describe('AuthModal guards a half-typed application (AW-018)', () => {
     fireEvent.click(closeButton());
     expect(discardBar()).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Already approved? Sign in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Already have an account? Sign in' }));
     pressEscape();
     expect(discardBar()).toBeTruthy();
     expect(t.onClose).not.toHaveBeenCalled();
@@ -341,7 +341,7 @@ describe('AuthModal guards a half-typed application (AW-018)', () => {
   it('closes without asking after a sign-in here: that account is the one in use', async () => {
     const t = setup({}, { initialMode: 'application' });
     fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Typed' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Already approved? Sign in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Already have an account? Sign in' }));
     await signInWith();
     t.update({ session: SESSION, profileReady: true, profile: { id: 'u1', status: 'pending', email: 'buyer@example.test' } });
     expect(screen.getByRole('heading', { name: 'Your account is pending approval' })).toBeTruthy();
@@ -547,16 +547,16 @@ describe('AuthModal step changes (AW-090, AW-096, AW-245)', () => {
     press('Continue to the application');
     expect(document.activeElement).toBe(title());
     press('Back to the checklist');
-    expect(title().textContent).toBe('Apply for an account');
+    expect(title().textContent).toBe('Apply for a trade account');
     expect(screen.getByRole('heading', { name: 'What you’ll need' })).toBeTruthy();
     expect(document.activeElement).toBe(title());
   });
 
   it('focuses the heading on a return to Sign in', () => {
     setup();
-    press('No account? Apply instead');
+    press('New here? Apply for a trade account');
     expect(document.activeElement).toBe(title());
-    press('Already approved? Sign in');
+    press('Already have an account? Sign in');
     expect(title().textContent).toBe('Sign in');
     expect(document.activeElement).toBe(title());
   });
@@ -568,7 +568,7 @@ describe('AuthModal step changes (AW-090, AW-096, AW-245)', () => {
     press('Back to the checklist');
     expect(dialog.scrollTop).toBe(0);
     dialog.scrollTop = 500;
-    press('Already approved? Sign in');
+    press('Already have an account? Sign in');
     expect(dialog.scrollTop).toBe(0);
   });
 
@@ -590,7 +590,7 @@ describe('AuthModal step changes (AW-090, AW-096, AW-245)', () => {
     expect(top.querySelector('.kicker').textContent).toBe('EXISTING ACCOUNTS');
     expect(screen.queryByText('TRADE ACCOUNT')).toBeNull();
     expect(document.querySelectorAll('[role="dialog"] .kicker')).toHaveLength(1);
-    press('No account? Apply instead');
+    press('New here? Apply for a trade account');
     expect(top.querySelector('.kicker').textContent).toBe('NEW ACCOUNTS · LICENSED RETAILERS ONLY');
   });
 });
@@ -770,7 +770,8 @@ describe('AuthModal application choices and groups (AW-091, AW-243)', () => {
       expect(select.options.length, label).toBeGreaterThan(2);
       expect(select.validity.valueMissing, label).toBe(true);
     }
-    expect([...screen.getByLabelText('Store state').options].slice(1, 3).map((o) => o.value)).toEqual(['AL', 'GA']);
+    // Every state by its code, Alabama first (AW-282).
+    expect([...screen.getByLabelText('Store state').options].slice(1, 3).map((o) => o.value)).toEqual(['AL', 'AK']);
   });
 
   it('counts a chosen select as a typed answer, and an untouched form as none', () => {

@@ -61,7 +61,7 @@ const logFailure = (error) => {
 const reorderMessage = (note, target) => (note.lines > 0
   ? `Added ${plural(note.lines, 'line')} (${plural(note.units, 'unit')}) to your ${target}.`
   : 'None of these items are available right now.')
-  + (note.needsVariant > 0 ? ` ${plural(note.needsVariant, 'line')} need${note.needsVariant === 1 ? 's' : ''} a variant choice in the cart.` : '')
+  + (note.needsVariant > 0 ? ` ${plural(note.needsVariant, 'line')} need${note.needsVariant === 1 ? 's' : ''} a variant choice in your ${target}.` : '')
   + (note.unavailable.length > 0 ? ` No longer available: ${note.unavailable.join(', ')}.` : '');
 
 export function OrderHistory({ userId, products = [], addLines, onOpenCart, isApprovedBuyer }) {
@@ -275,7 +275,8 @@ export function OrderHistory({ userId, products = [], addLines, onOpenCart, isAp
           <div className="order-list" aria-busy={loading || undefined}>
             {rows.map((o) => (
               <OrderCard key={o.id} order={o} headingId={`${uid}-order-${o.id}`} onReorder={reorder} onOpenCart={onOpenCart}
-                         note={reorderNote?.orderId === o.id ? reorderMessage(reorderNote, target) : null} noteHasLines={reorderNote?.lines > 0} />
+                         note={reorderNote?.orderId === o.id ? reorderMessage(reorderNote, target) : null} noteHasLines={reorderNote?.lines > 0}
+                         viewLabel={`View ${target}`} />
             ))}
           </div>
           {more?.error && <OrdersLoadError kind={more.error} />}
@@ -292,7 +293,7 @@ export function OrderHistory({ userId, products = [], addLines, onOpenCart, isAp
   );
 }
 
-function OrderCard({ order: o, headingId, onReorder, onOpenCart, note, noteHasLines }) {
+function OrderCard({ order: o, headingId, onReorder, onOpenCart, note, noteHasLines, viewLabel }) {
   const [open, setOpen] = useState(false);
   const items = o.order_items || [];
   const shown = open ? items : items.slice(0, ITEMS_SHOWN);
@@ -338,7 +339,7 @@ function OrderCard({ order: o, headingId, onReorder, onOpenCart, note, noteHasLi
       {note && (
         <div className="order-foot" role="status">
           <p>{note}</p>
-          {noteHasLines && <button className="button xs" type="button" onClick={onOpenCart}>Review cart</button>}
+          {noteHasLines && <button className="button xs" type="button" onClick={onOpenCart}>{viewLabel}</button>}
         </div>
       )}
     </article>

@@ -44,7 +44,7 @@ async function quoteApi(page, ...answers) {
 }
 
 async function fillGuest(page) {
-  for (const [label, value] of [['Business', 'Test Market LLC'], ['Contact', 'Test Buyer'], ['Email', 'buyer@example.test'], ['Phone', '205-555-0100']]) {
+  for (const [label, value] of [['Business name', 'Test Market LLC'], ['Contact name', 'Test Buyer'], ['Email', 'buyer@example.test'], ['Phone', '205-555-0100']]) {
     await page.getByLabel(label, { exact: true }).fill(value);
   }
 }
@@ -74,9 +74,9 @@ test('a guest will-call quote sends no address or reference, and shows the serve
   const errors = trackErrors(page);
   const sent = await quoteApi(page, { json: { id: 'smoke-order', ref_num: 'ALW-Q-5E4F3A2B1C', kind: 'quote', total_units: 2, subtotal: null, priced_lines: 0, unpriced_lines: 1 } });
   await page.goto('/quote');
-  await expect(page.getByRole('heading', { level: 1, name: 'Request your quote' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Request a quote' })).toBeVisible();
   // Guests can sign in or apply first (AW-014), and the tobacco line asks for the license answers, all required.
-  await expect(page.getByRole('button', { name: 'New? Apply for a trade account' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'New here? Apply for a trade account' })).toBeVisible();
   await expect(page.getByLabel('State tobacco/retail license #')).toHaveAttribute('required', '');
   await fillGuest(page);
   await page.getByLabel('Street', { exact: true }).fill('1 Test Way');
@@ -126,9 +126,11 @@ test('a refusal says what to fix and cites no reference (AW-198)', async ({ page
   await quoteApi(page, { status: 400, json: { code: 'P0001', message: 'Delivery routes cover AL, MS, GA — choose will-call', hint: 'delivery_state', details: null } });
   await page.goto('/quote');
   await fillGuest(page);
-  for (const [label, value] of [['Street', '1 Test Way'], ['City', 'Nashville'], ['State', 'tn'], ['ZIP', '37201']]) {
+  // The State lists route states only (AW-078); the server's answer is mocked.
+  for (const [label, value] of [['Street', '1 Test Way'], ['City', 'Nashville'], ['ZIP', '37201']]) {
     await page.getByLabel(label, { exact: true }).fill(value);
   }
+  await page.getByLabel('State', { exact: true }).selectOption('AL');
   await fillLicense(page);
   await page.getByRole('button', { name: /Submit quote request/ }).click();
   const alert = page.getByRole('alert');
@@ -144,9 +146,10 @@ test('a refusal says what to fix and cites no reference (AW-198)', async ({ page
 const RECEIPT_ANSWER = { json: { id: 'smoke-order', ref_num: 'ALW-Q-RECEIPT001', kind: 'quote', total_units: 2, subtotal: null, priced_lines: 0, unpriced_lines: 1 } };
 
 async function fillAddress(page) {
-  for (const [label, value] of [['Street', '1 Test Way'], ['City', 'Birmingham'], ['State', 'AL'], ['ZIP', '35203']]) {
+  for (const [label, value] of [['Street', '1 Test Way'], ['City', 'Birmingham'], ['ZIP', '35203']]) {
     await page.getByLabel(label, { exact: true }).fill(value);
   }
+  await page.getByLabel('State', { exact: true }).selectOption('AL');
 }
 
 test('the receipt replaces checkout: the cart empties, and a reload or Back keeps it (AW-012, AW-022)', async ({ page }) => {
@@ -193,8 +196,8 @@ test('the receipt replaces checkout: the cart empties, and a reload or Back keep
   // address again is a reload in Chromium, which keeps the receipt.)
   await page.goto('/catalog');
   await page.goto('/quote');
-  await expect(page.getByRole('heading', { level: 1, name: 'Your cart is empty' })).toBeVisible();
-  await expect(page).toHaveTitle('Checkout · Alabama Wholesale Inc');
+  await expect(page.getByRole('heading', { level: 1, name: 'Your quote is empty' })).toBeVisible();
+  await expect(page).toHaveTitle('Request a quote · Alabama Wholesale Inc');
   expect(sent).toHaveLength(1);
   expect(errors).toEqual([]);
 });

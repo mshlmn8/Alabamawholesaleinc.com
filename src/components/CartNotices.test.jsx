@@ -30,7 +30,7 @@ describe('UnavailableNotice (AW-083)', () => {
   it('says how many lines can no longer be ordered and removes them all', () => {
     const onRemoveAll = vi.fn();
     render(<UnavailableNotice items={[{ lineKey: '999' }, { lineKey: '1::purple' }]} onRemoveAll={onRemoveAll} />);
-    expect(screen.getByText('2 items in your cart are no longer available.')).toBeTruthy();
+    expect(screen.getByText('2 items in your quote are no longer available.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Remove unavailable items' }));
     expect(onRemoveAll).toHaveBeenCalledWith(['999', '1::purple']);
   });

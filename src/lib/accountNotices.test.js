@@ -17,7 +17,7 @@ describe('signOutMessage', () => {
   });
 
   it('says the cart is kept for the next sign-in when it had items (AW-189)', () => {
-    expect(signOutMessage({ ok: true, scope: 'local' }, { cartSaved: true })).toBe('You’re signed out. Your cart is saved on this computer for your next sign-in.');
+    expect(signOutMessage({ ok: true, scope: 'local' }, { cartSaved: true })).toBe('You’re signed out. The items you added are saved on this computer for your next sign-in.');
     expect(signOutMessage({ ok: false, scope: 'local' }, { cartSaved: false })).toBe('You’re signed out on this computer.');
   });
 });
@@ -88,7 +88,7 @@ describe('accountNotices', () => {
     const a = act();
     const [notice] = accountNotices({ sessionEnded: true }, a);
     expect(notice.title).toBe('Your session has ended');
-    expect(notice.text).toMatch(/saved cart/);
+    expect(notice.text).toMatch(/the items you added/);
     notice.actions[0].onClick();
     expect(a.signIn).toHaveBeenCalled();
   });

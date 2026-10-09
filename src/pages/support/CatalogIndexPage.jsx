@@ -7,6 +7,8 @@ import { variantAxis, variantCount } from '../../lib/lines.js';
 import { brandLabel } from '../../lib/format.js';
 import { PRICE_LOCK, accountStatus } from '../../lib/accountStatus.js';
 import { Icon } from '../../components/Icon.jsx';
+import { SkuCount } from '../../components/SkuCount.jsx';
+import { APPLY_LABEL, SIGN_IN_LABEL } from '../../data/terms.js';
 import { PageHead } from './SupportShell.jsx';
 
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -18,8 +20,8 @@ function PricingLockedBanner({ onLoginClick, onApplyClick }) {
     <div className="callout catalog-pricing">
       <p><b>Wholesale pricing is locked.</b> <span>Sign in to see your account pricing on every product, or apply for a trade account.</span></p>
       <div className="catalog-pricing-actions">
-        <button className="button sm" type="button" onClick={onLoginClick}>Sign in</button>
-        <button className="button ghost sm" type="button" onClick={onApplyClick}>Apply for an account</button>
+        <button className="button sm" type="button" onClick={onLoginClick}>{SIGN_IN_LABEL}</button>
+        <button className="button ghost sm" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button>
       </div>
     </div>
   );
@@ -35,7 +37,7 @@ export function CatalogIndexPage({ products, departments, isApprovedBuyer, profi
 
   return (
     <section className="support-page catalog-index">
-      <PageHead crumb="All products" eyebrow={`FULL ASSORTMENT · ${departments.length} DEPARTMENTS · ${products.length} SKUs`} title="All products">
+      <PageHead crumb="All products" eyebrow="FULL ASSORTMENT" title="All products">
         <p>{`Every department and product line we stock, in one place. Jump to a department, open a line, or expand the full SKU list. ${isApprovedBuyer ? 'Your account pricing shows on every product.' : profile ? lockLine : 'Sign in to see wholesale pricing.'}`}</p>
       </PageHead>
       {!signedIn && <PricingLockedBanner onLoginClick={onLoginClick} onApplyClick={onApplyClick} />}
@@ -54,7 +56,7 @@ export function CatalogIndexPage({ products, departments, isApprovedBuyer, profi
             <section key={d.key} className="dept-section" id={`dept-${slug(d.key)}`} aria-labelledby={`dept-title-${slug(d.key)}`}>
               <div className="dept-head">
                 <div>
-                  <p className="eyebrow">{`DEPARTMENT ${String(i + 1).padStart(2, '0')} · ${d.count} SKUs`}</p>
+                  <p className="eyebrow"><SkuCount lead={`DEPARTMENT ${String(i + 1).padStart(2, '0')} · `} count={d.count} /></p>
                   <h2 id={`dept-title-${slug(d.key)}`}>{d.label}</h2>
                 </div>
                 <Link className="text-link" to={{ page: 'category', category: d.key }}><span>{`Browse ${d.label}`}</span></Link>

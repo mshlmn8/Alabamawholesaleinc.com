@@ -144,7 +144,7 @@ test.describe('after age confirmation', () => {
   const pages = [
     { name: 'department', path: '/category/tobacco', heading: 'Tobacco' },
     { name: 'product', path: '/product/12', heading: /\S/ },
-    { name: 'empty checkout', path: '/quote', heading: 'Your cart is empty' },
+    { name: 'empty checkout', path: '/quote', heading: 'Your quote is empty' },
     { name: 'all products', path: '/catalog', heading: 'All products' },
     { name: 'contact', path: '/contact', heading: /Contact/ },
     { name: 'privacy policy', path: '/privacy', heading: 'Privacy' },
@@ -248,7 +248,7 @@ test.describe('after age confirmation', () => {
   test('Back closes an open dialog instead of leaving the page', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/category/novelties');
-    await page.getByRole('button', { name: 'Sign In' }).first().click();
+    await page.getByRole('button', { name: 'Sign in', exact: true }).first().click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await page.goBack();
     await expect(page.getByRole('dialog')).toBeHidden();
@@ -374,7 +374,7 @@ test.describe('after age confirmation', () => {
     await expect(list).toBeVisible();
     await page.keyboard.press('Tab');
     await expect(list).toHaveCount(0);
-    const newArrivals = page.getByRole('link', { name: 'New Arrivals', exact: true });
+    const newArrivals = page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'New arrivals', exact: true });
     for (let i = 0; i < 8 && !(await newArrivals.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('Tab');
     await expect(newArrivals).toBeFocused();
     const uncovered = await newArrivals.evaluate((el) => {
@@ -404,7 +404,7 @@ test.describe('after age confirmation', () => {
     await page.keyboard.press('Tab');
     await expect(menu).toHaveCount(0);
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    await expect(page.getByRole('link', { name: 'New Arrivals', exact: true })).toBeFocused();
+    await expect(page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'New arrivals', exact: true })).toBeFocused();
     expect(errors).toEqual([]);
   });
 
@@ -601,9 +601,9 @@ test.describe('tobacco and vapor', () => {
     await expect(page.getByLabel('State tobacco/retail license #')).toHaveAttribute('required', '');
     await expect(page.getByLabel('Sales-tax / resale certificate #')).toHaveAttribute('required', '');
     await expect(page.getByRole('checkbox', { name: /all purchasers are 21\+/ })).toHaveAttribute('required', '');
-    await expect(page.getByRole('button', { name: 'Have an account? Sign in' })).toBeVisible();
-    await page.getByRole('button', { name: 'New? Apply for a trade account' }).click();
-    await expect(page.getByRole('dialog', { name: /Apply for an account/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Already have an account? Sign in' })).toBeVisible();
+    await page.getByRole('button', { name: 'New here? Apply for a trade account' }).click();
+    await expect(page.getByRole('dialog', { name: 'Apply for a trade account' })).toBeVisible();
     expect(errors).toEqual([]);
   });
 });
@@ -627,7 +627,7 @@ test.describe('home hero', () => {
     await expect(hero.getByRole('link', { name: 'Browse the catalog' })).toBeInViewport({ ratio: 1 });
     await expect(page.locator('.home-carousel-slide.is-active')).toHaveAttribute('aria-label', '1 of 4: Candies');
     await hero.getByRole('button', { name: 'Apply for a trade account' }).click();
-    await expect(page.getByRole('dialog', { name: /Apply for an account/ })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Apply for a trade account' })).toBeVisible();
     expect(errors).toEqual([]);
   });
 });

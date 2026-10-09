@@ -148,7 +148,7 @@ describe('CartLine and a bare line (AW-011)', () => {
     expect(screen.queryByText(/before submitting/)).toBeNull();
   });
 
-  it('offers the variants in a labelled select, the ones not available disabled, and no link', () => {
+  it('offers the variants in a labelled select, the ones not available disabled, and no "Choose variant" link', () => {
     renderLine({ item: bareLine, layout: 'drawer', ...handlers() });
     const select = screen.getByRole('combobox', { name: 'Choose a flavor for Swisher Sweets cigarillos' });
     expect([...select.options].map((o) => [o.textContent, o.disabled])).toEqual([
@@ -156,7 +156,7 @@ describe('CartLine and a bare line (AW-011)', () => {
     ]);
     expect(select.value).toBe('');
     expect(screen.getByRole('button', { name: 'Set flavor' }).disabled).toBe(true);
-    expect(screen.queryByRole('link')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Choose variant' })).toBeNull();
     expect(screen.queryByRole('group')).toBeNull();
   });
 

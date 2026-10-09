@@ -2,7 +2,7 @@
 // process works, and — for a signed-in applicant — the current approval status.
 //
 // The page head, intro and contact strip follow the account (AW-098): a guest
-// is invited to apply, with Start application in the first screen (AW-242);
+// is invited to apply, with the apply button in the first screen (AW-242);
 // an applicant under review sees where the application stands; an approved
 // account is pointed at the catalog and its account; an account on hold is
 // told who to call. While the account loads the page says nothing it might
@@ -11,6 +11,7 @@
 import { COMPANY } from '../../data/content.js';
 import { APPLICATION_CHECKLIST } from '../../data/onboarding.js';
 import { accountStatus } from '../../lib/accountStatus.js';
+import { APPLY_LABEL, SIGN_IN_INSTEAD } from '../../data/terms.js';
 import { ServiceUnavailable } from '../../components/ServiceUnavailable.jsx';
 import { ApplicationDocuments } from '../../components/DocumentUploads.jsx';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
@@ -24,7 +25,7 @@ const INTRO_21 = 'Alabama Wholesale sells exclusively to licensed retail busines
 // Per view ('guest', 'loading' and the three account statuses): the eyebrow,
 // the h1 and the contact strip. A strip left out is the default one.
 const VIEWS = {
-  guest: { eyebrow: 'OPEN AN ACCOUNT', title: 'Apply for a trade account', strip: { eyebrow: 'RATHER TALK IT THROUGH?', title: 'Apply with a trade rep' } },
+  guest: { eyebrow: 'OPEN AN ACCOUNT', title: APPLY_LABEL, strip: { eyebrow: 'RATHER TALK IT THROUGH?', title: 'Apply with a trade rep' } },
   loading: { eyebrow: 'TRADE ACCOUNT', title: 'Trade account' },
   pending: { eyebrow: 'APPLICATION UNDER REVIEW', title: 'Your trade account', strip: { eyebrow: 'QUESTIONS ABOUT YOUR APPLICATION?', title: 'Talk to a trade rep' } },
   approved: { eyebrow: 'ACCOUNT ACTIVE', title: 'Your trade account' },
@@ -63,9 +64,9 @@ export function ApplyPage({ profile, account = profile ? 'ready' : 'signed-out',
   const loadingAccount = account === 'loading';
   const view = applyView(profile, account);
   const { eyebrow, title, strip } = VIEWS[view];
-  // Start application, or the phone number without a backend.
+  // Apply (the one label, AW-132), or the phone number without a backend.
   const applyAction = isBackendConfigured
-    ? <button className="button" type="button" onClick={onApplyClick}>Start application</button>
+    ? <button className="button" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button>
     : <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Apply by phone · {COMPANY.phone}</a>;
 
   return (
@@ -78,7 +79,7 @@ export function ApplyPage({ profile, account = profile ? 'ready' : 'signed-out',
         {view === 'guest' && (
           <div className="dialog-actions compact-actions">
             {applyAction}
-            <button className="text-link" type="button" onClick={onLoginClick}>Already applied? Sign in</button>
+            <button className="text-link" type="button" onClick={onLoginClick}>{SIGN_IN_INSTEAD}</button>
           </div>
         )}
       </PageHead>
@@ -112,7 +113,7 @@ export function ApplyPage({ profile, account = profile ? 'ready' : 'signed-out',
             <p className="checklist-note">Read the <Link className="text-link" to={{ page: 'terms' }}>Trade terms</Link> and <Link className="text-link" to={{ page: 'privacy' }}>Privacy policy</Link> before you apply.</p>
             <div className="dialog-actions">
               {applyAction}
-              <button className="text-link" type="button" onClick={onLoginClick}>Already applied? Sign in</button>
+              <button className="text-link" type="button" onClick={onLoginClick}>{SIGN_IN_INSTEAD}</button>
             </div>
           </section>
 

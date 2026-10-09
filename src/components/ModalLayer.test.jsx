@@ -51,7 +51,7 @@ describe('ModalLayer', () => {
     expect(document.activeElement).toBe(opener);
   });
 
-  // AW-249: Menu -> Help -> 'Apply for an account' -> Escape. The menu and
+  // AW-249: Menu -> Help -> 'Apply for a trade account' -> Escape. The menu and
   // the Help dialog close as the next layer opens, so their buttons are gone
   // by the time the last layer closes.
   function Chain({ dropMenuButton = false, keepMenu = false }) {

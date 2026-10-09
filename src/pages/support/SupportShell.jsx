@@ -2,6 +2,7 @@
 // application, password reset). Same editorial system as the storefront.
 
 import { COMPANY } from '../../data/content.js';
+import { APPLY_LABEL } from '../../data/terms.js';
 import { Link } from '../../lib/router.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 
@@ -49,7 +50,8 @@ export const SUPPORT_NAV = [
   { page: 'contact', label: 'Contact & visit' },
   { page: 'delivery', label: 'Delivery & service area' },
   { page: 'shipping', label: 'Delivery policy' },
-  { page: 'apply', label: 'Apply for an account' },
+  // The one apply label (AW-132).
+  { page: 'apply', label: APPLY_LABEL },
   { page: 'terms', label: 'Trade terms' },
   { page: 'privacy', label: 'Privacy' },
 ];

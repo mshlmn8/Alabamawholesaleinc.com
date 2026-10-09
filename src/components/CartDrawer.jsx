@@ -10,20 +10,32 @@
 // the last one, never to <body>. Closing hands focus back to the control
 // that opened the drawer (ModalLayer); when that control has gone (the card
 // stepper of a product just removed here), the page's heading takes it.
+//
+// Above the total, the cart's summary (CartSummary, AW-238): lines and units,
+// and an approved buyer's progress to the order minimum and free delivery.
+// On a short screen (a phone in landscape) it follows the lines instead, so
+// the fixed foot takes no more height from the list than before. After the
+// lines, a note says the cart is kept on this device only (AW-334).
 
 import { useEffect, useRef } from 'react';
 import { FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../data/content.js';
+import { basketTerms, cartDeviceNote } from '../data/terms.js';
 import { announce } from '../lib/announce.js';
 import { LINE_CONTROL, focusLineSoon, keepFocusNear, neighbourKey } from '../lib/focus.js';
 import { formatMoney, formatMoneyShort } from '../lib/format.js';
 import { totalLabel } from '../lib/pricing.js';
 import { variantExcludedText } from '../lib/cart.js';
 import { Link, focusPageHeading } from '../lib/router.js';
+import { useMediaQuery } from '../lib/useMediaQuery.js';
 import { CallOrEmail } from './ContactLinks.jsx';
 import { ModalLayer } from './ModalLayer.jsx';
 import { CartLine } from './CartLine.jsx';
+import { CartSummary } from './CartSummary.jsx';
 import { Icon } from './Icon.jsx';
 import { SavedLinesNotice, UnavailableNotice } from './CartNotices.jsx';
+
+// A screen too short to give the summary room in the fixed foot.
+export const SHORT_DRAWER_QUERY = '(max-height: 31.25em)';
 
 export function CartDrawer({
   open, onClose, items, total, setLine, chooseVariant, removeLine, removeLines, legacy = [], onDismissLegacy,
@@ -31,6 +43,7 @@ export function CartDrawer({
 }) {
   const listRef = useRef(null);
   const wasOpen = useRef(open);
+  const short = useMediaQuery(SHORT_DRAWER_QUERY);
   useEffect(() => {
     const closed = wasOpen.current && !open;
     wasOpen.current = open;
@@ -48,28 +61,34 @@ export function CartDrawer({
     if (next) focusLineSoon(listRef.current, next, { selector: LINE_CONTROL, fallback: () => keepFocusNear(dialog) });
   };
   const unavailable = items.filter(it => it.unavailable);
+  // A quote, or an order for an approved buyer (AW-132, src/data/terms.js).
+  const basket = basketTerms(isApprovedBuyer);
   const excluded = isApprovedBuyer ? variantExcludedText(items) : '';
-  // Guests are asked to sign in; signed-in buyers who are not approved yet are
-  // told pricing is waiting on approval instead, and suspended ones that the
-  // account is on hold.
+  // Guests are told prices are for approved trade accounts, with a way to
+  // sign in; signed-in buyers who are not approved yet are told pricing is
+  // waiting on approval instead, and suspended ones that the account is on
+  // hold.
   const pendingBuyer = Boolean(profile) && !isApprovedBuyer;
-  let note = 'Sign in for pricing';
+  let note = 'Prices show for approved trade accounts';
   if (isSuspended) note = 'Account on hold';
   else if (pendingBuyer) note = 'Pricing unlocks when your account is approved';
+  const summary = items.length > 0 && (
+    <CartSummary items={items} total={total} isApprovedBuyer={isApprovedBuyer} isSuspended={isSuspended} pricesStatus={pricesStatus} />
+  );
   return (
     <ModalLayer onClose={onClose}>
       <div className="overlay overlay-soft" aria-hidden="true" onClick={onClose} />
       <aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title">
         <div className="drawer-head">
-          <h2 id="cart-title">Your order</h2>
-          <button className="icon-btn" type="button" onClick={onClose} aria-label="Close cart"><Icon name="close" /></button>
+          <h2 id="cart-title">{basket.title}</h2>
+          <button className="icon-btn" type="button" onClick={onClose} aria-label="Close"><Icon name="close" /></button>
         </div>
         <div className="drawer-body">
           <SavedLinesNotice items={legacy} onDismiss={onDismissLegacy} onChoose={onClose} />
-          <UnavailableNotice items={unavailable} onRemoveAll={removeLines} />
-          {items.length === 0 && <p className="empty-note">Your cart is empty.<br />Browse the catalog and add items to build an order.</p>}
+          <UnavailableNotice items={unavailable} onRemoveAll={removeLines} noun={basket.noun} />
+          {items.length === 0 && <p className="empty-note"><span>{`${basket.empty}.`}</span><br /><span>{`Browse the catalog and add items to build ${basket.noun === 'order' ? 'an order' : 'a quote'}.`}</span></p>}
           {items.length > 0 && (
-            <ul className="drawer-lines" aria-label="Items in your order" ref={listRef}>
+            <ul className="drawer-lines" aria-label={basket.items} ref={listRef}>
               {items.map(it => (
                 <CartLine key={it.lineKey} item={it} layout="drawer" showPrice={isApprovedBuyer} pricesStatus={pricesStatus}
                           onSetQty={(n) => setLine(it.lineKey, n)} onChooseVariant={chooseVariant}
@@ -77,8 +96,11 @@ export function CartDrawer({
               ))}
             </ul>
           )}
+          {short && summary}
+          <p className="fine cart-device-note">{cartDeviceNote(Boolean(profile))}</p>
         </div>
         <div className="drawer-foot">
+          {!short && summary}
           <div className="drawer-total">
             <span>Estimated total</span>
             {isApprovedBuyer
@@ -91,9 +113,9 @@ export function CartDrawer({
           )}
           {items.length > 0 && !isSuspended && (
             isApprovedBuyer
-              ? <Link className="button wide" to="/quote" onClick={onClose}>Checkout</Link>
+              ? <Link className="button wide" to="/quote" onClick={onClose}>{basket.cta}</Link>
               : <>
-                  <Link className="button wide" to="/quote" onClick={onClose}>Request quote</Link>
+                  <Link className="button wide" to="/quote" onClick={onClose}>{basket.cta}</Link>
                   {!pendingBuyer && <button className="drawer-signin text-link" type="button" onClick={onLoginClick}>Sign in for account pricing</button>}
                 </>
           )}

@@ -1,5 +1,6 @@
-// 368 SKUs across 8 departments. Edit here to add/remove products. NAV
-// subcategories are derived from cat + sub fields below — no separate list to sync.
+// 368 SKUs across 8 departments. Edit here to add/remove products. The
+// departments and their product lines are derived from the cat + sub fields
+// below (departmentsFor in ../lib/departments.js) — no separate list to sync.
 //
 // Row fields:
 //   variants     the sellable variants a buyer chooses between; one variant is
@@ -861,10 +862,3 @@ export const PRODUCTS = CATALOG.map((p) => ({ ...p, ...productImage(p.img), shar
 // only breaks ties between unranked products, and tells the AW-001 guard
 // there what the homepage showed before.
 export const NEW_ARRIVALS_IDS = [61, 62, 64, 31, 171, 167, 342, 184, 75, 76];
-
-// Derived nav so the mega-menu, mobile nav, and footer stay in sync with
-// PRODUCTS automatically when SKUs are added or moved.
-export const NAV_CATEGORIES = NAV_ORDER.map(name => {
-  const subs = Array.from(new Set(PRODUCTS.filter(p => p.cat === name).map(p => p.sub))).sort();
-  return { name, sub: subs };
-});

@@ -1,5 +1,8 @@
-// Storefront content: company info, marketing copy, hero slides, FAQs, and
-// welcome-popup offers. PRODUCTS lives in ./products.js.
+// Storefront content: the business facts (company, hours, minimum order,
+// free-delivery threshold), the licensed-only line, the ticker, the home
+// hero's copy and photos, the department photos, the storage keys and the
+// policy date. PRODUCTS lives in ./products.js. BRANDS, TRUST and FAQS are
+// not shown anywhere; they wait on owner answers (see each one).
 
 import { heroImage } from '../lib/images.js';
 import { formatMoney, formatMoneyShort } from '../lib/format.js';
@@ -109,7 +112,6 @@ export const COMPANY = {
   name: 'Alabama Wholesale Inc',
   phone: '(205) 354-4473',
   phoneRaw: '+12053544473',
-  whatsapp: '12053544473',
   // TODO(owner): Which domain email address is monitored, so it can replace the Gmail address? (AW-127)
   email: 'Alabamawholesaleinc@gmail.com',
   addressShort: '613 Graymont Ave N, Birmingham AL 35203',
@@ -133,23 +135,17 @@ export const FREE_DELIVERY_THRESHOLD = 1500;
 // TODO(owner): Is the $500 minimum order a hard rule that blocks submission, or only a guideline that orders below it may still be submitted? It is not enforced; checkout only notes it. (AW-076)
 export const ORDER_MINIMUM = 500;
 
+// The licensed-only statement, in one wording wherever the site prints it:
+// the trade-only strip above the header (upper-cased there by CSS) and the
+// footer's legal bar (AW-285). The policy pages keep their own legal text.
+export const LICENSED_ONLY = 'Wholesale to licensed retail businesses only · No consumer sales · 21+';
+
 // TODO(owner): Who gets Net-30, and what is the real volume discount behind "up to 18%"? Kept exactly as published until you say (decision 2). (AW-025)
 export const ANNOUNCEMENTS = [
   `★ FREE DELIVERY on orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} on our delivery routes in Alabama, Mississippi & Georgia`,
   '★ NET-30 TERMS available for approved retail accounts',
   '★ WILL-CALL · Pickup at the Birmingham warehouse during business hours',
   '★ VOLUME DISCOUNTS · Save up to 18% on pallet quantities'
-];
-
-export const SHOP_CATS = [
-  { name: 'TOBACCO',       count: 68, color: ['#3A1F1A', '#8C6F3D'], icon: 'cigar' },
-  { name: 'NOVELTIES',     count: 51, color: ['#2D1A4A', '#9333EA'], icon: 'vape' },
-  { name: 'MERCHANDISE',   count: 60, color: ['#1A1A1A', '#DB6433'], icon: 'shopping' },
-  { name: 'CANDIES',       count: 57, color: ['#A0282E', '#F59E0B'], icon: 'candy' },
-  { name: 'FOOD STUFF',    count: 25, color: ['#1F4A3D', '#10B981'], icon: 'snack' },
-  { name: 'GROCERY',       count: 47, color: ['#1F4A2A', '#22C55E'], icon: 'cleaning' },
-  { name: 'MOTOR OIL',     count: 16, color: ['#1F2A1A', '#EF4444'], icon: 'oil' },
-  { name: 'DRINKS & BAGS', count: 44, color: ['#1F2A4A', '#0EA5E9'], icon: 'drink' }
 ];
 
 // The home page's pitch: the h1's supporting line (HomeHero) and the meta
@@ -177,7 +173,8 @@ export const HOME_HERO = {
 // so the carousel's video support was dropped.
 // TODO(owner): Wide licensed photos of the warehouse or a multi-department assortment for the hero; the current hero photos are unchanged until then. (AW-006)
 // eyebrow, title, sub, cta1 and cta2 are kept as published (decision 2) but
-// no longer shown anywhere, not even as alt text (AW-169).
+// no longer shown anywhere, not even as alt text (AW-169). accent is unused
+// too; it goes with them once the owner answers (AW-328).
 // TODO(owner): The unshown slide copy makes claims the catalog doesn't support: "over 368 SKUs", "Geekbar 25K" (the photo and catalog say Geek Bar Pulse X), "World's first 3D curved screen", Monster and Red Bull (only Gatorade and G2 are pictured) and Eagle torches. May eyebrow, title, sub, cta1 and cta2 be deleted? (AW-169)
 export const HERO_SLIDES = [
   { eyebrow: 'NEW THIS WEEK', title: 'The brands your customers ask for.', sub: 'Tobacco, novelties, candy, beverages, motor oil, household and more — over 368 SKUs at our Birmingham warehouse.', cta1: 'Shop Catalog', cta2: 'Apply for Account', ...heroImage('hero_candy.jpg'), alt: 'Display box of Turtles Bites chocolates', accent: 'orange', goCat: 'CANDIES' },
@@ -208,9 +205,11 @@ export const DEPARTMENT_PHOTOS = {
   'DRINKS & BAGS': 249, // Sprite (Sodas)
 };
 
+// Not shown on the site. Kept for the brand strip AW-005 asks the owner
+// about (see TRUST); AW-328 removes only the exports no open finding needs.
 export const BRANDS = ["HERSHEY'S", 'GATORADE', 'BIC', 'WD-40', 'GEEK BAR', 'GAIN', 'STP', 'WHITE OWL', 'TWANGERZ', 'POM POM', 'NEON', 'JOB'];
 
-// Not shown on the site.
+// Not shown on the site. Kept until the owner answers AW-005 (AW-328).
 // TODO(owner): Years in business, account or route counts, warehouse and truck photos, and which brand logos may be shown, before any trust claim like these is published. (AW-005)
 export const TRUST = [
   { icon: 'ShieldCheck', title: '100% Authentic',        blurb: 'Sourced direct from manufacturers and authorized distributors. Every SKU verified.' },
@@ -219,7 +218,8 @@ export const TRUST = [
   { icon: 'Users',       title: 'Family Owned',          blurb: 'Three generations serving Southeast retailers. Real relationships, honest pricing.' }
 ];
 
-// Not shown on the site.
+// Not shown on the site. Kept for the FAQ page AW-279 asks the owner to
+// confirm; Help stands in for it until then (AW-328).
 // TODO(owner): Confirm the FAQ answers (including Net-30, approval time and volume discounts) before they are published. (AW-279)
 export const FAQS = [
   { q: 'Do I need a business license to order?',
@@ -240,33 +240,6 @@ export const FAQS = [
     a: 'Delivery is currently on routes in Alabama, Mississippi and Georgia.' }
 ];
 
-export const WELCOME_OFFERS = [
-  {
-    type: 'NEW',
-    color: '#DB6433',
-    title: 'Geekbar Pulse X 25K — In Stock Now',
-    body: 'World-first 3D curved screen disposable. Flavors and availability change often. The trade desk confirms what is in stock at our Birmingham warehouse.',
-    cta: 'Shop Vapes',
-    target: 'NOVELTIES'
-  },
-  {
-    type: 'RESTOCK',
-    color: '#1E1B5C',
-    title: 'BIC Lighters — Counter Displays Restocked',
-    body: '50-count assorted color displays back in stock. Perfect for high-traffic counters. Volume pricing available.',
-    cta: 'Shop Lighters',
-    target: 'MERCHANDISE'
-  },
-  {
-    type: 'SALE',
-    color: '#1F7A47',
-    title: 'Pallet Rates — Up To 18% Off',
-    body: 'Save up to 18% on pallet quantities. Mix and match any combination of SKUs. Net-30 terms for approved accounts.',
-    cta: 'Get a Quote',
-    target: null
-  }
-];
-
 export const STORAGE = {
   // localStorage: the dated 21+ confirmation (src/lib/ageGate.js, AW-340).
   age: 'aw-age-verified',
@@ -283,7 +256,13 @@ export const STORAGE = {
   // receipt, one record { owner, entryKey, receipt }, so a reload or Back
   // keeps the confirmation. It holds the buyer's contact details and is
   // cleared on sign-out. See src/lib/receipt.js (AW-012, AW-022).
-  receipt: 'aw-last-receipt'
+  receipt: 'aw-last-receipt',
+  // sessionStorage only, never localStorage: this tab's draft of the quote
+  // form, one record { owner, data, savedAt }, so leaving /quote or a reload
+  // keeps what was typed. It holds contact details (never the tobacco
+  // license answers) and is cleared on a successful submit and on sign-out.
+  // See src/lib/quoteDraft.js (AW-080).
+  quoteDraft: 'aw-quote-draft'
 };
 
 // The date the Trade terms and Privacy policy last changed, as the policy

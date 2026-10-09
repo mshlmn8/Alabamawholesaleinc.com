@@ -5,6 +5,7 @@
 // steps are numbered, the page's one real sequence (AW-216).
 
 import { DEPARTMENT_PHOTOS, FREE_DELIVERY_THRESHOLD } from '../data/content.js';
+import { APPLY_LABEL } from '../data/terms.js';
 import { topLines } from '../lib/departments.js';
 import { formatMoneyShort } from '../lib/format.js';
 import { tierPriceNote } from '../lib/pricing.js';
@@ -159,16 +160,17 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, pric
         <div className="apply-panel">
           <div className="apply-intro">
             <p className="eyebrow">OPEN AN ACCOUNT</p>
-            <h2>Become a retail account</h2>
-            <button className="button" type="button" onClick={onApplyClick}>Start application</button>
+            <h2>Open a trade account</h2>
+            <button className="button" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button>
           </div>
           <ol className="apply-steps">
             <li>
               <h3>Apply online</h3>
-              <p>Tell us about your store — business name, EIN, state retail tobacco license number and resale certificate. Takes about five minutes.</p>
+              <p>Tell us about your store — business name, EIN, state retail tobacco license number and resale certificate. Takes a few minutes.</p>
             </li>
             <li>
               <h3>We verify</h3>
+              {/* TODO(owner): Does approval really take one business day for most accounts, and does the team check each license with the state? Kept as published; the approval time is the AW-246 question. (AW-281, see AW-246) */}
               <p>Our team checks your license with the state and approves most accounts within one business day. Wholesale pricing and ordering unlock when you sign in.</p>
             </li>
             <li>

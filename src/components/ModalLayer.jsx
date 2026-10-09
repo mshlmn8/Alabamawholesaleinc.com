@@ -116,7 +116,7 @@ function takesFocus(el) {
 }
 
 // Hands focus back along the chain of openers (AW-249). Menu -> Help ->
-// 'Apply for an account' unmounts the first two openers, so the walk goes on
+// 'Apply for a trade account' unmounts the first two openers, so the walk goes on
 // to the first one still on the page. With none left, focus goes to the phone
 // menu button when it shows, else to the page's heading, never to <body>.
 // While a lower layer stays open, focus stays inside that layer.

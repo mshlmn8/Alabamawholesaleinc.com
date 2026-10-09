@@ -55,7 +55,7 @@ describe('Header account link (AW-267)', () => {
 });
 
 describe('Header Quick Reorder (AW-086)', () => {
-  const reorder = () => screen.getByRole('link', { name: 'Quick Reorder' });
+  const reorder = () => screen.getByRole('link', { name: 'Quick reorder' });
 
   it('links to the Quick Reorder section of My account', () => {
     const onLoginClick = renderHeader({ business: 'Test Market LLC', name: 'Test Buyer' });
@@ -95,13 +95,13 @@ describe('Phone menu account links (AW-267, AW-086)', () => {
     const account = within(group()).getByRole('link', { name: `My account ${LONG}` });
     expect(account.getAttribute('href')).toBe('/account');
     expect(account.querySelector('small.menu-sub').textContent).toBe(LONG);
-    expect(within(group()).getByRole('link', { name: 'Quick Reorder' }).getAttribute('href')).toBe('/account#quick-reorder');
+    expect(within(group()).getByRole('link', { name: 'Quick reorder' }).getAttribute('href')).toBe('/account#quick-reorder');
   });
 
   it('sends a guest’s Quick Reorder through the header’s sign-in path', () => {
     const reorder = vi.fn();
     renderMenu(null, { reorder });
-    const link = within(group()).getByRole('link', { name: 'Quick Reorder' });
+    const link = within(group()).getByRole('link', { name: 'Quick reorder' });
     expect(link.getAttribute('href')).toBe('/account#quick-reorder');
     fireEvent.click(link);
     expect(reorder).toHaveBeenCalledTimes(1);

@@ -20,11 +20,13 @@ import { priceFor } from './lib/pricing.js';
 import { cartOwner, clearGuestCart } from './lib/cartStorage.js';
 import { clearReceipt, saveReceipt, useLastReceipt } from './lib/receipt.js';
 import { loadAccountShipTo } from './lib/shipTo.js';
+import { clearQuoteDraft } from './lib/quoteDraft.js';
 import { confirmLeave, focusPageHeading, navigate, pathFor, resolveRoute, routeKey, useNavigationEffects, useRoute } from './lib/router.js';
 import { pageKeyFor } from './lib/routes.js';
 import { confirmAge, declineAge, endAgeConfirmationOnSignOut, reconsiderAge, useAgeGate } from './lib/ageGate.js';
 import { pageMeta, applyPageMeta } from './lib/meta.js';
 import { accountStatus } from './lib/accountStatus.js';
+import { basketTerms } from './data/terms.js';
 import { departmentsFor } from './lib/departments.js';
 import { accountNotices, signOutMessage } from './lib/accountNotices.js';
 import { catalogNotices } from './lib/catalogNotices.js';
@@ -103,6 +105,8 @@ export default function App() {
   // profile, so Sign Out is always within reach (AW-089).
   const user = session ? { name: profile?.name || '', business: profile?.business || '' } : null;
   const isApprovedBuyer = profile?.status === 'approved';
+  // A quote, or an order for an approved buyer (AW-132, src/data/terms.js).
+  const basket = basketTerms(isApprovedBuyer);
   // Ordering is paused on a suspended account (AW-201).
   const isSuspended = profile?.status === 'suspended';
   // Only an approved admin is one; the database's is_admin() says the same
@@ -162,21 +166,23 @@ export default function App() {
     }
   }, [canonicalPath, location]);
 
-  // The title names a saved receipt ('Quote received', AW-022) on /quote, the
-  // count of orders new since the last visit on /admin (AW-111), the
-  // account's state on /apply ('Application Under Review', AW-098) and what
-  // /reset-password shows ('Password Updated', AW-255).
+  // The title names a saved receipt ('Quote received', AW-022) on /quote, or
+  // else its heading once the account is known (AW-132), the count of orders
+  // new since the last visit on /admin (AW-111), the account's state on
+  // /apply ('Application Under Review', AW-098) and what /reset-password
+  // shows ('Password Updated', AW-255).
   const applyAs = account === 'loading' ? 'loading' : accountStatus(profile);
   // The reset page's view belongs to the page that reported it.
   if (resetShown && resetShown.pageKey !== location.pageKey) setResetShown(null);
   const resetAs = resetShown?.view || null;
   const metaRoute = useMemo(() => {
     if (receivedKind) return { ...route, received: receivedKind };
+    if (route.page === 'quote' && account !== 'loading') return { ...route, basket: basket.kind };
     if (route.page === 'admin' && adminUnseen > 0) return { ...route, unseen: adminUnseen };
     if (route.page === 'apply') return { ...route, applyAs };
     if (route.page === 'reset-password' && resetAs) return { ...route, view: resetAs };
     return route;
-  }, [route, receivedKind, adminUnseen, applyAs, resetAs]);
+  }, [route, receivedKind, adminUnseen, account, basket.kind, applyAs, resetAs]);
   const currentPageKey = location.pageKey;
   const onResetView = useCallback((view) => setResetShown({ view, pageKey: currentPageKey }), [currentPageKey]);
   useEffect(() => {
@@ -248,8 +254,10 @@ export default function App() {
       setSigningOut(false);
     }
     clearGuestCart();
-    // The last receipt holds the buyer's contact details (AW-022).
+    // The last receipt and the quote form's draft hold the buyer's contact
+    // details (AW-022, AW-080).
     clearReceipt();
+    clearQuoteDraft();
     navigate(SIGNED_OUT_PAGE, { force: true });
     setLoginOpen(false);
     setSignOutNotice({ text: signOutMessage(result, { cartSaved }), pageKey: SIGNED_OUT_PAGE_KEY });
@@ -343,7 +351,7 @@ export default function App() {
       case 'quote':
         return (
           <QuotePage items={cart.items} total={cart.total} setLine={cart.setLine} chooseVariant={cart.chooseVariant} removeLine={cart.removeLine}
-                     removeLines={cart.removeLines} clearCart={cart.clearCart} legacy={cart.legacy} onDismissLegacy={cart.dismissLegacy}
+                     removeLines={cart.removeLines} clearCart={cart.clearCart} restoreLines={cart.restoreLines} owner={owner} legacy={cart.legacy} onDismissLegacy={cart.dismissLegacy}
                      profile={profile} account={account} signedIn={!!session} onSignIn={openSignin} onApplyClick={openSignup}
                      isApprovedBuyer={isApprovedBuyer} isSuspended={isSuspended} pricesStatus={prices.status} isBackendConfigured={isBackendConfigured} checkCart={checkCart}
                      savedReceipt={receiptHere} entryKey={location.key} onSubmitted={(receipt) => saveReceipt({ owner, entryKey: location.key, receipt })}
@@ -399,7 +407,7 @@ export default function App() {
       <Header
         cartCount={cart.count} onCart={() => setCartOpen(true)}
         products={products} departments={departments}
-        user={user} isAdmin={isAdmin} adminUnseen={adminUnseen}
+        user={user} isAdmin={isAdmin} isApprovedBuyer={isApprovedBuyer} adminUnseen={adminUnseen}
         onLoginClick={openSignin} onSignupClick={openSignup} onLogout={signOutHere} signingOut={signingOut}
         onHelp={() => setHelpOpen(true)}
       />
@@ -412,7 +420,7 @@ export default function App() {
         </ErrorBoundary>
       </main>
 
-      <Footer departments={departments} onLoginClick={openSignin} onApplyClick={openSignup} />
+      <Footer departments={departments} onLoginClick={openSignin} onApplyClick={openSignup} onHelp={() => setHelpOpen(true)} />
 
       {/* Confirms an add (AW-072); its action opens the cart. */}
       <Toast onAction={(id) => { if (id === 'open-cart') setCartOpen(true); }} />
@@ -424,7 +432,7 @@ export default function App() {
       {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} onApply={() => { setHelpOpen(false); openSignup(); }} />}
       {/* It has its own ModalLayer, so Escape and Back ask before a typed
           application is lost (AW-018). Sign Out closes it outright. */}
-      {loginOpen && <AuthModal open initialMode={loginMode} onClose={() => setLoginOpen(false)} onSignOut={signOutHere} signingOut={signingOut} />}
+      {loginOpen && <AuthModal initialMode={loginMode} onClose={() => setLoginOpen(false)} onSignOut={signOutHere} signingOut={signingOut} />}
       {/* Last, so it sits above any other layer. No onClose and no history
           entry: Escape and Back leave it open (AW-044, AW-065). */}
       {gated && (

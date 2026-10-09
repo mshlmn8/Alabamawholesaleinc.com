@@ -21,6 +21,7 @@ import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 import { ModalLayer } from '../components/ModalLayer.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
 import { Icon } from '../components/Icon.jsx';
+import { SkuCount } from '../components/SkuCount.jsx';
 
 // TODO(owner): What do the DEAL and PREMIUM tags mean for buyers (the actual deal terms and premium criteria), or should those tags be removed? (AW-139)
 const TAG_OPTIONS = [
@@ -191,7 +192,7 @@ export function CategoryPage({
     <section>
       <div className="page-head">
         <Breadcrumbs items={[HOME_CRUMB, { label: catLabel(category), to: here({ sub: null }) }, ...(activeSub ? [{ label: activeSub }] : [])]} />
-        <p className="eyebrow">{`DEPARTMENT · ${String(cat?.count ?? inCategory.length).padStart(2, '0')} SKUs`}</p>
+        <p className="eyebrow"><SkuCount lead="DEPARTMENT · " count={String(cat?.count ?? inCategory.length).padStart(2, '0')} /></p>
         <h1>{catLabel(category)}</h1>
         {/* An approved buyer is told whose prices the cards show, from my_prices() (AW-107). */}
         <p>{`Wholesale ${catLabel(category).toLowerCase()} for licensed retail accounts. ${isApprovedBuyer ? tierPriceNote(priceTier) : (status === 'suspended' ? lock.detail : lock.line)}`}</p>

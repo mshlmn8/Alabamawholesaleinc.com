@@ -40,8 +40,9 @@ export function SavedLinesNotice({ items, onDismiss, onChoose }) {
   );
 }
 
-// items: the cart's unavailable lines.
-export function UnavailableNotice({ items, onRemoveAll }) {
+// items: the cart's unavailable lines. noun: 'quote' or 'order', what the
+// page calls the basket (basketTerms in src/data/terms.js, AW-132).
+export function UnavailableNotice({ items, onRemoveAll, noun = 'quote' }) {
   if (!items.length) return null;
   const remove = (event) => {
     keepFocusNear(event.currentTarget);
@@ -50,7 +51,7 @@ export function UnavailableNotice({ items, onRemoveAll }) {
   };
   return (
     <div className="cart-notice is-warn" data-notice="unavailable">
-      <p className="cart-notice-title">{items.length === 1 ? '1 item in your cart is no longer available.' : `${items.length} items in your cart are no longer available.`}</p>
+      <p className="cart-notice-title">{items.length === 1 ? `1 item in your ${noun} is no longer available.` : `${items.length} items in your ${noun} are no longer available.`}</p>
       <p>Remove them to continue, or choose another variant where the product is still offered.</p>
       <button className="text-link" type="button" onClick={remove}>Remove unavailable items</button>
     </div>

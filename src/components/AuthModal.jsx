@@ -38,6 +38,9 @@ import { announce } from '../lib/announce.js';
 import { PHONE_ERROR, PHONE_EXAMPLE, PHONE_PATTERN, PHONE_TITLE, usPhone } from '../lib/phone.js';
 import { Link, restoreOverlayEntry } from '../lib/router.js';
 import { APPLICATION_CHECKLIST } from '../data/onboarding.js';
+import { DELIVERY_ROUTE_STATES } from '../data/quoteRules.js';
+import { APPLY_INSTEAD, APPLY_LABEL, SIGN_IN_INSTEAD } from '../data/terms.js';
+import { US_STATES, stateName } from '../data/usStates.js';
 import { DOCUMENT_TYPES, documentErrorMessage, shortFileName, uploadSelectedProof } from '../lib/documents.js';
 import { ServiceUnavailable } from './ServiceUnavailable.jsx';
 import { CallOrEmail } from './ContactLinks.jsx';
@@ -46,9 +49,20 @@ import { Icon } from './Icon.jsx';
 import { ModalLayer } from './ModalLayer.jsx';
 import { PASSWORD_MIN_LENGTH, PasswordField } from './PasswordField.jsx';
 
-const STATES = ['AL','GA','MS','TN','FL','LA','SC','NC','KY','Other'];
 const BUSINESS_TYPES = ['Convenience Store','Smoke Shop','Vape Shop','Liquor Store','Grocery / Bodega','Auto Parts','Hookah Lounge','Other'];
+// The values stored in profiles.expected_volume stay as they were; the
+// options show them with the site's unspaced en dash, '$5K–$15K' (AW-282).
 const VOLUMES = ['Under $5K','$5K — $15K','$15K — $50K','$50K — $100K','$100K+'];
+const volumeLabel = (value) => value.replace(' — ', '–');
+// A store outside the delivery routes is told how orders would reach it,
+// instead of the list offering only nearby states and 'Other' (AW-282). No
+// state chosen yet (an empty default) is no store off the routes.
+// TODO(owner): Do you accept trade accounts from stores outside AL, MS and GA, for will-call only? (AW-282)
+const ROUTE_STATE_NAMES = DELIVERY_ROUTE_STATES.map(stateName);
+const ROUTE_STATES_TEXT = `${ROUTE_STATE_NAMES.slice(0, -1).join(', ')} and ${ROUTE_STATE_NAMES.at(-1)}`;
+const outOfAreaHint = (code) => (!code || DELIVERY_ROUTE_STATES.includes(code)
+  ? null
+  : `Our delivery routes cover ${ROUTE_STATES_TEXT}. For a store in ${stateName(code) || 'another state'}, ask the trade desk how orders would reach you.`);
 
 // How long "Signing you in…" waits for the account before saying so.
 export const CHECKING_TIMEOUT_MS = 10000;
@@ -127,7 +141,7 @@ function proofOutcome(results) {
   return { failed, status };
 }
 
-export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, signingOut = false }) {
+export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingOut = false }) {
   const {
     signIn, signUp, resetPassword, resendConfirmation, refreshProfile,
     session, profile, profileReady, profileRefreshing, loading, isBackendConfigured,
@@ -254,7 +268,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
   }, [heldReady, session, proof]);
 
   // Typed application answers (AW-018). Guarded in every mode, so they stay
-  // guarded after 'Back to the checklist' or 'Already approved? Sign in',
+  // guarded after 'Back to the checklist' or 'Already have an account? Sign in',
   // until the application is sent or a sign-in here makes it moot.
   const touched = Object.keys(EMPTY_SIGNUP).some((k) => signup[k] !== EMPTY_SIGNUP[k]) || Object.values(proof).some(Boolean);
   const dirty = touched && !afterSignup && !SIGNED_IN_MODES.includes(mode);
@@ -263,8 +277,6 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
   useEffect(() => {
     if (confirming) keepEditingRef.current?.focus();
   }, [confirming]);
-
-  if (!open) return null;
 
   const keepEditing = () => {
     setConfirming(false);
@@ -437,6 +449,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
   };
 
   const status = profile?.status || 'pending';
+  const stateHint = outOfAreaHint(signup.state);
   const kicker = {
     signin: 'EXISTING ACCOUNTS',
     checklist: 'NEW ACCOUNTS · LICENSED RETAILERS ONLY',
@@ -451,8 +464,8 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
   }[mode];
   const title = {
     signin: 'Sign in',
-    checklist: 'Apply for an account',
-    signup: 'Apply for an account',
+    checklist: APPLY_LABEL,
+    signup: APPLY_LABEL,
     sent: 'Check your inbox',
     status: status === 'suspended' ? 'Your account needs attention' : 'Your account is pending approval',
     checking: 'Signing you in…',
@@ -529,7 +542,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
         <h2 id="auth-title" ref={titleRef} tabIndex={-1}>{title}</h2>
 
         {mode === 'signin' && <p className="desc">Sign in to view wholesale pricing, build orders and see your order history.</p>}
-        {mode === 'checklist' && <p className="desc">Alabama Wholesale sells exclusively to licensed retail businesses. Have these on hand before you start — the application takes a few minutes.</p>}
+        {mode === 'checklist' && <p className="desc">Alabama Wholesale sells exclusively to licensed retail businesses. Have these on hand before you start. The application takes a few minutes.</p>}
         {/* TODO(owner): How long does approval actually take, what should the application promise, and is Net-30 offered (with credit verification)? Kept as published. (AW-246, AW-272, AW-025) */}
         {/* TODO(owner): A Cloudflare Turnstile site key, so Supabase can require a CAPTCHA on sign-up. (AW-206) */}
         {mode === 'signup' && <p className="desc">Alabama Wholesale sells exclusively to licensed retail businesses. Most applications are approved within one business day. Net-30 terms available with credit verification.</p>}
@@ -564,7 +577,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             <div className="dialog-actions">
               <button className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Signing in…' : 'Sign in'}</span></button>
               <button className="text-link" type="button" onClick={() => { setResetEmail(signin.email || resetEmail); switchMode('reset'); }}>Forgot password?</button>
-              <button className="text-link" type="button" onClick={() => switchMode('checklist')}>No account? Apply instead</button>
+              <button className="text-link" type="button" onClick={() => switchMode('checklist')}>{APPLY_INSTEAD}</button>
             </div>
           </form>
         )}
@@ -612,7 +625,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             <p className="checklist-note">Missing one of these? <CallOrEmail after=" and a trade rep can talk you through the application." /></p>
             <div className="dialog-actions">
               <button className="button" type="button" onClick={() => switchMode('signup')} data-autofocus>Continue to the application</button>
-              <button className="text-link" type="button" onClick={() => switchMode('signin')}>Already approved? Sign in</button>
+              <button className="text-link" type="button" onClick={() => switchMode('signin')}>{SIGN_IN_INSTEAD}</button>
             </div>
           </>
         )}
@@ -647,8 +660,8 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
               <Field id="aw-su-type" label="Business type">
                 <select id="aw-su-type" name="business_type" value={signup.business_type} onChange={setU('business_type')} required autoComplete="off">{choose}{BUSINESS_TYPES.map(o => <option key={o}>{o}</option>)}</select>
               </Field>
-              <Field id="aw-su-state" label="Store state">
-                <select id="aw-su-state" name="state" value={signup.state} onChange={setU('state')} required autoComplete="address-level1">{choose}{STATES.map(o => <option key={o}>{o}</option>)}</select>
+              <Field id="aw-su-state" label="Store state" hint={stateHint}>
+                <select id="aw-su-state" name="state" value={signup.state} onChange={setU('state')} required autoComplete="address-level1" aria-describedby={stateHint ? 'aw-su-state-hint' : undefined}>{choose}{US_STATES.map(s => <option key={s.code} value={s.code}>{s.name}</option>)}</select>
               </Field>
               <Field id="aw-su-street" label="Store street address" full>
                 <input id="aw-su-street" name="address-line1" value={signup.store_street} onChange={setU('store_street')} required maxLength={200} autoComplete="address-line1" />
@@ -660,7 +673,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
                 <input id="aw-su-zip" name="postal-code" value={signup.store_zip} onChange={setU('store_zip')} required maxLength={5} inputMode="numeric" pattern="[0-9]{5}" autoComplete="postal-code" title="Enter a 5-digit ZIP code" />
               </Field>
               <Field id="aw-su-volume" label="Expected monthly volume" full>
-                <select id="aw-su-volume" name="expected_volume" value={signup.expected_volume} onChange={setU('expected_volume')} required autoComplete="off">{choose}{VOLUMES.map(o => <option key={o}>{o}</option>)}</select>
+                <select id="aw-su-volume" name="expected_volume" value={signup.expected_volume} onChange={setU('expected_volume')} required autoComplete="off">{choose}{VOLUMES.map(v => <option key={v} value={v}>{volumeLabel(v)}</option>)}</select>
               </Field>
             </fieldset>
             <fieldset className="form-grid form-section">
@@ -699,9 +712,9 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             </div>
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
-              <button className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Creating…' : 'Submit application'}</span></button>
+              <button className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Submitting…' : 'Submit application'}</span></button>
               <button className="text-link" type="button" onClick={() => switchMode('checklist')}>Back to the checklist</button>
-              <button className="text-link" type="button" onClick={() => switchMode('signin')}>Already approved? Sign in</button>
+              <button className="text-link" type="button" onClick={() => switchMode('signin')}>{SIGN_IN_INSTEAD}</button>
             </div>
           </form>
         )}
