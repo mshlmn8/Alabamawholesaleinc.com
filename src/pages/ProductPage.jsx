@@ -26,6 +26,12 @@
 // The SKU follows the chosen variant for every visitor (AW-234), and the info
 // column keeps one measure (AW-237, index.css).
 //
+// The trail names the product line (AW-230): Home / All products / department
+// / line / product. The row underneath (AW-231, src/lib/related.js) is the
+// same brand first, then the line, filled from the department when the line
+// is small; it is headed by the line when every pick is in it, else by the
+// department, and its "View all" link goes to the one it names.
+//
 // The quantity to add is typed or stepped (QuantityInput, AW-013), and
 // a bare cart line of this product (AW-011) doesn't count as "Already in"
 // any variant.
@@ -46,7 +52,7 @@ import { priceLabel, variantPriceRange } from '../lib/pricing.js';
 import { brandLabel, catLabel } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
-import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
+import { Breadcrumbs, catalogCrumbs } from '../components/Breadcrumbs.jsx';
 import { ProductPhoto } from '../components/ProductPhoto.jsx';
 import { photoCredit, photoCreditSource } from '../data/photoCredits.js';
 import { ProductCard } from '../components/ProductCard.jsx';
@@ -56,6 +62,7 @@ import { Icon } from '../components/Icon.jsx';
 import { QuantityInput } from '../components/QuantityInput.jsx';
 import { showToast } from '../lib/toast.js';
 import { maxPerLineText } from '../lib/quantity.js';
+import { relatedProducts } from '../lib/related.js';
 
 const NO_PRICES = () => null;
 
@@ -75,7 +82,6 @@ export function ProductPage({
   const p = products.find(x => Number(x.id) === Number(productId));
   // App renders NotFound for ids that are not in the catalog.
   if (!p) return null;
-  const department = { page: 'category', category: p.cat };
   const variants = variantList(p);
   const axis = variantAxis(p);
   const available = (v) => isVariantAvailable(p, v);
@@ -92,7 +98,8 @@ export function ProductPage({
   // Before a variant is chosen, the key is the bare product id: a bare cart
   // line (a reorder that needs its variant, AW-011) is not "already in" it.
   const qty = choiceRequired && !selected ? 0 : (cart[key] || 0);
-  const related = products.filter(x => x.sub === p.sub && Number(x.id) !== Number(p.id)).slice(0, 4);
+  const related = relatedProducts(products, p);
+  const sameLine = related.every(x => x.sub === p.sub);
   const brand = brandLabel(p.brand);
   const credit = p.picture ? photoCredit(p) : '';
   const creditSource = photoCreditSource(p);
@@ -147,7 +154,7 @@ export function ProductPage({
   return (
     <section>
       <div className="page-head is-flush">
-        <Breadcrumbs items={[HOME_CRUMB, { label: catLabel(p.cat), to: department }, { label: p.name }]} />
+        <Breadcrumbs items={catalogCrumbs({ category: p.cat, sub: p.sub, product: p })} />
       </div>
       <div className="pd-grid">
         <figure className="pd-figure">
@@ -216,8 +223,8 @@ export function ProductPage({
       {related.length > 0 && (
         <section className="section">
           <div className="section-head">
-            <div><p className="eyebrow">SAME LINE</p><h2>{`More ${p.sub.toLowerCase()}`}</h2></div>
-            <Link to={department}>View department</Link>
+            <div><p className="eyebrow">{sameLine ? 'SAME LINE' : 'RELATED'}</p><h2>{sameLine ? `More ${p.sub}` : `More from ${catLabel(p.cat)}`}</h2></div>
+            <Link to={{ page: 'category', category: p.cat, sub: sameLine ? p.sub : null }}>View all <span className="sr-only">{sameLine ? p.sub : catLabel(p.cat)}</span></Link>
           </div>
           <div className="card-grid">
             {related.map(r => <ProductCard key={r.id} p={r} profile={profile} isApprovedBuyer={isApprovedBuyer} priceOf={priceOf} pricesStatus={pricesStatus} cart={cart} addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} />)}

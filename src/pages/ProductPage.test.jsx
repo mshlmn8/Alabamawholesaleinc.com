@@ -224,6 +224,51 @@ describe('ProductPage variant choice (AW-235, AW-074)', () => {
   });
 });
 
+// The trail names the line (AW-230), and the row underneath varies and fills
+// a small line from its department (AW-231, src/lib/related.js).
+describe('ProductPage trail and related row (AW-230, AW-231)', () => {
+  const cigar = (id, extra = {}) => ({ id, sku: `AW-C${id}`, name: `Cigar ${id}`, brand: `Brand ${id}`, cat: 'TOBACCO', sub: 'Cigars & Cigarillos', variants: [], img: `/img/c${id}.jpg`, ...extra });
+  const LINE = [cigar(1, { name: 'Swisher Sweets cigarillos' }), cigar(2), cigar(3), cigar(4), cigar(5), cigar(6)];
+  const crumbs = () => [...document.querySelectorAll('nav.crumbs li')].map((li) => {
+    const a = li.querySelector('a');
+    return a ? `${a.textContent} -> ${a.getAttribute('href')}` : li.textContent;
+  });
+
+  it('leads back through All products, the department and the product line', () => {
+    render(page({ products: LINE }));
+    expect(screen.getByRole('navigation', { name: 'Breadcrumb' })).toBeTruthy();
+    expect(crumbs()).toEqual(['Home -> /', 'All products -> /catalog', 'Tobacco -> /category/tobacco',
+      'Cigars & Cigarillos -> /category/tobacco/cigars-and-cigarillos', 'Swisher Sweets cigarillos']);
+    expect(document.querySelector('nav.crumbs [aria-current="page"]').textContent).toBe('Swisher Sweets cigarillos');
+  });
+
+  it('heads a row from the line "More <line>", with "View all" leading to the line', () => {
+    render(page({ products: LINE }));
+    const row = screen.getByRole('heading', { level: 2, name: 'More Cigars & Cigarillos' }).closest('section');
+    expect(row.querySelector('.eyebrow').textContent).toBe('SAME LINE');
+    expect(row.querySelectorAll('.content-card')).toHaveLength(4);
+    const all = screen.getByRole('link', { name: 'View all Cigars & Cigarillos' });
+    expect(all.getAttribute('href')).toBe('/category/tobacco/cigars-and-cigarillos');
+    // Only "View all" shows; the line's name is for screen readers.
+    expect(all.firstChild.textContent.trim()).toBe('View all');
+    expect(all.querySelector('.sr-only').textContent).toBe('Cigars & Cigarillos');
+  });
+
+  it('fills a small line from the department, headed by the department', () => {
+    const products = [cigar(1, { name: 'Swisher Sweets cigarillos' }), cigar(2), cigar(10, { sub: 'Wraps & Leafs' }), cigar(11, { sub: 'Wraps & Leafs' }), cigar(12, { sub: 'Cigarettes' })];
+    render(page({ products }));
+    const row = screen.getByRole('heading', { level: 2, name: 'More from Tobacco' }).closest('section');
+    expect(row.querySelector('.eyebrow').textContent).toBe('RELATED');
+    expect(row.querySelectorAll('.content-card')).toHaveLength(4);
+    expect(screen.getByRole('link', { name: 'View all Tobacco' }).getAttribute('href')).toBe('/category/tobacco');
+  });
+
+  it('has no row when the department has nothing else', () => {
+    render(page({ products: [cigar(1)] }));
+    expect(screen.queryByRole('heading', { level: 2 })).toBeNull();
+  });
+});
+
 describe('ProductPage and a saved quantity', () => {
   it('fills in the saved quantity, then what is left of it after an add', () => {
     const addLine = vi.fn();
