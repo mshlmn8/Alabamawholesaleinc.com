@@ -1588,8 +1588,9 @@ address.info-lead-small { font-style: normal; }
    expired link. */
 .status-panel.status-approved { border-left-color: var(--success); }
 .status-panel.status-suspended { border-left-color: var(--danger); }
-/* A phone number in a panel's text never breaks across lines (AW-261). */
-.status-panel p a[href^="tel:"] { white-space: nowrap; }
+/* A phone number in a panel's text (AW-261), or a dialog's (AW-097), never
+   breaks across lines. */
+.status-panel p a[href^="tel:"], .dialog > .desc a[href^="tel:"] { white-space: nowrap; }
 
 .eligibility { background: var(--cream); border: 1px solid var(--line); align-items: start; }
 .eligibility .eyebrow { color: var(--orange-dark); margin-bottom: 8px; }
