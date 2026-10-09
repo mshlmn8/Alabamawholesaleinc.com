@@ -649,6 +649,32 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
     // is room; the percentage lets it give way first in a narrow line.
     expect(own('.stepper input')).toMatchObject({ width: '100%', 'max-width': 'calc(6ch + 1.5rem + 2px)', 'min-width': '0' });
   });
+
+  // A touch size declared before the control's own rule loses to it at the
+  // same specificity: the hero dots stayed 24px and the admin sort buttons
+  // 32px tall on touch screens (NEW-025).
+  it('lets no later rule outside a media block undo a touch size (NEW-025)', () => {
+    const at = (source, offset = 0) => [...source.matchAll(RULE)].map((m) => ({ selectors: splitList(m[1]), body: m[2], index: offset + m.index }));
+    const inAnyBlock = (index) => blocks.some((b) => index >= b.start && index < b.end);
+    const baseRules = at(css).filter((r) => !inAnyBlock(r.index));
+    const touchRules = coarseBlocks.flatMap((b) => at(b.body, b.start));
+    expect(touchRules.length).toBeGreaterThan(20);
+    const lost = [];
+    for (const touch of touchRules) {
+      const properties = Object.keys(declarations(touch.body));
+      for (const selector of touch.selectors) {
+        for (const base of baseRules.filter((r) => r.index > touch.index && r.selectors.includes(selector))) {
+          const later = declarations(base.body);
+          for (const property of properties.filter((p) => p in later)) lost.push(`${selector} ${property}: ${later[property]}`);
+        }
+      }
+    }
+    expect(lost).toEqual([]);
+    // The two that lost, now after their own rules.
+    const touchOf = (selector) => declarations(touchRules.find((r) => r.selectors.join() === selector)?.body ?? '');
+    expect(touchOf('.home-carousel-dots button')).toEqual({ width: 'var(--tap)', height: 'var(--tap)' });
+    expect(touchOf('.sort-button')).toEqual({ 'min-height': 'var(--tap)' });
+  });
 });
 
 // Cards, tiles and collection cards (AW-170, AW-154, AW-304, AW-303): a real
