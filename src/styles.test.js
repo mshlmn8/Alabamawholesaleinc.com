@@ -359,6 +359,19 @@ describe('the sticky header and what sticks under it (AW-153, AW-300, AW-312, AW
     expect(inBlocks(MOBILE_QUERY, '.category-head .sub-pills')[0]).not.toHaveProperty('margin');
   });
 
+  it('gives a tablet or a phone on its side one trade-bar row and one masthead row, in DOM order (AW-153)', () => {
+    const wide = '(min-width: 37.5625em)';
+    // Nested in the main compact block, after its phone rows, so it overrides them.
+    const compact = mediaBlocks(css).find((b) => b.prelude === MOBILE_QUERY && b.body.includes('.aw-search > button {'));
+    expect(compact.body.indexOf(`@media ${wide}`)).toBeGreaterThan(compact.body.indexOf('.aw-search {'));
+    expect(compact.body.indexOf(`@media ${wide}`)).toBeGreaterThan(compact.body.indexOf('.announcements {'));
+    const inWide = (selector) => mediaBlocks(compact.body).filter((b) => b.prelude === wide).flatMap((b) => rules(b.body))
+      .filter((r) => r.selectors.join(', ') === selector).map((r) => declarations(r.body));
+    expect(inWide('.announcements')).toEqual([{ flex: '1 1 16rem' }]);
+    expect(inWide('.aw-search')).toEqual([{ order: '2', flex: '1 1 12rem' }]);
+    expect(inWide('.aw-account-actions')).toEqual([{ order: '3' }]);
+  });
+
   it('hides the product line from the phone filter bar visually only', () => {
     expect(inBlocks('(max-width: 37.5em)', '.result-scope')[0]).toMatchObject({ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden' });
     expect(css).not.toMatch(/\.result-scope\s*\{[^}]*display:\s*none/);

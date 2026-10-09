@@ -1444,6 +1444,17 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   }
   .aw-search > button:active { background: var(--purple-hover); }
   .aw-search-results { top: calc(100% + 6px); max-height: calc(100dvh - 6.5rem); } /* ends on screen once focus has scrolled the bar to the top: scroll-padding 24px + scroll-margin 8px + the 48px bar (AW-307) */
+  /* A wider compact screen, a tablet or a phone on its side, has room for
+     Apply and Call beside the announcements and for the search between the
+     logo and the account actions: a row each, so the header is about half
+     as tall (108px instead of 210 at 844x390, AW-153), and the masthead is
+     in its DOM order. In em, so large text keeps the phone's rows. */
+  @media (min-width: 37.5625em) {
+    .announcements { flex: 1 1 16rem; }
+    .aw-masthead { padding-block: 8px; }
+    .aw-search { order: 2; flex: 1 1 12rem; }
+    .aw-account-actions { order: 3; }
+  }
   .home-hero { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'copy' 'media'; }
   .home-hero-copy { padding: 32px; }
   /* A phone on its side: the whole stage, with its dots and pause toggle,

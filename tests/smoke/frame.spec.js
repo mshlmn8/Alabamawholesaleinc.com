@@ -188,6 +188,31 @@ test.describe('the sticky header and the department page', () => {
     expect(errors).toEqual([]);
   });
 
+  test('a phone on its side or a tablet gets a short header, the search beside the logo (AW-153)', async ({ page }) => {
+    const errors = trackErrors(page);
+    for (const size of [{ width: 844, height: 390 }, { width: 768, height: 1024 }]) {
+      await page.setViewportSize(size);
+      await page.goto('/category/candies');
+      await expect(page.locator('main h1')).toHaveText('Candies');
+      const banner = page.getByRole('banner');
+      const header = await rect(banner);
+      expect(header.height).toBeLessThanOrEqual(120);
+      // One row of announcements, Apply and Call; one row of menu, logo, search and account.
+      const middle = (r) => (r.top + r.bottom) / 2;
+      const announcements = await rect(banner.getByRole('list', { name: 'Announcements' }));
+      const call = await rect(banner.getByRole('link', { name: /^Call / }));
+      expect(Math.abs(middle(call) - middle(announcements))).toBeLessThan(12);
+      const search = await rect(banner.getByRole('combobox', { name: 'Search products' }));
+      const logo = await rect(banner.getByRole('link', { name: 'Alabama Wholesale home' }));
+      const cart = await rect(banner.getByRole('button', { name: /^Cart/ }));
+      expect(Math.abs(middle(search) - middle(cart))).toBeLessThan(12);
+      expect(logo.right).toBeLessThanOrEqual(search.left);
+      expect(search.right).toBeLessThanOrEqual(cart.left);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBe(0);
+    }
+    expect(errors).toEqual([]);
+  });
+
   test('an anchor lands below the header (AW-153)', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/#bestsellers');
