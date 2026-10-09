@@ -3,7 +3,7 @@
 // the whole file, like the app.
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { holdOverlayEntry, Link, navigate, redirectLegacyHash, setNavigationGuard, useNavigationEffects, useRoute } from './router.js';
+import { confirmLeave, holdOverlayEntry, Link, navigate, redirectLegacyHash, setNavigationGuard, useNavigationEffects, useRoute } from './router.js';
 
 const url = () => window.location.pathname + window.location.search + window.location.hash;
 
@@ -218,6 +218,19 @@ describe('leave guard (AW-118)', () => {
     expect(url()).toBe('/admin/accounts');
     expect(screen.getByTestId('route').textContent).toBe('admin /admin/accounts');
     release();
+  });
+
+  it('confirmLeave asks the newest guard for a page change without a link (signing out)', () => {
+    expect(confirmLeave('/')).toBe(true);
+    const guard = vi.fn(() => false);
+    const release = setNavigationGuard(guard);
+    expect(confirmLeave('/')).toBe(false);
+    expect(guard).toHaveBeenCalledWith('/');
+    guard.mockReturnValue(true);
+    expect(confirmLeave('/')).toBe(true);
+    release();
+    expect(confirmLeave('/')).toBe(true);
+    expect(guard).toHaveBeenCalledTimes(2);
   });
 
   it('asks only the newest guard, and none once released', () => {

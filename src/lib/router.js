@@ -270,6 +270,10 @@ function mayLeave(next) {
     return true;
   }
 }
+// Asks the leave guard before an action that drops the page some other way
+// than a link (signing out): true when there is no guard or it lets go. The
+// action's own navigate() then passes force, so the guard isn't asked twice.
+export const confirmLeave = (next) => mayLeave(next);
 
 // Goes to `to` (a route object or an href). Options:
 //   replace  replace the current history entry instead of adding one

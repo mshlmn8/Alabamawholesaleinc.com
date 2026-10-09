@@ -18,7 +18,7 @@ import { useCart } from './lib/cart.js';
 import { usePrices } from './lib/prices.jsx';
 import { priceFor } from './lib/pricing.js';
 import { cartOwner, clearGuestCart } from './lib/cartStorage.js';
-import { focusPageHeading, navigate, pathFor, resolveRoute, routeKey, useNavigationEffects, useRoute } from './lib/router.js';
+import { confirmLeave, focusPageHeading, navigate, pathFor, resolveRoute, routeKey, useNavigationEffects, useRoute } from './lib/router.js';
 import { pageKeyFor } from './lib/routes.js';
 import { confirmAge, declineAge, endAgeConfirmationOnSignOut, reconsiderAge, useAgeGate } from './lib/ageGate.js';
 import { pageMeta, applyPageMeta } from './lib/meta.js';
@@ -184,6 +184,9 @@ export default function App() {
   // scope 'global' is "Sign out of all devices" on /account.
   const handleLogout = async ({ scope = 'local' } = {}) => {
     if (signingOut) return;
+    // Unsaved admin edits ask first (AW-118): No keeps the session and the
+    // edits; Yes signs out without asking again on the way home.
+    if (!confirmLeave(SIGNED_OUT_PAGE)) return;
     setSigningOut(true);
     // The account's cart stays stored for its next sign-in; the next person
     // here gets an empty guest cart (AW-189).
@@ -197,7 +200,7 @@ export default function App() {
       setSigningOut(false);
     }
     clearGuestCart();
-    navigate(SIGNED_OUT_PAGE);
+    navigate(SIGNED_OUT_PAGE, { force: true });
     setLoginOpen(false);
     setSignOutNotice({ text: signOutMessage(result, { cartSaved }), pageKey: SIGNED_OUT_PAGE_KEY });
     // The next person on a shared computer is asked their age again (AW-340).
