@@ -32,10 +32,13 @@ export const PRICE_PATTERN = /^\d{1,5}(\.\d{1,2})?$/;
 // After normalizeSku: capitals, digits and single hyphens, 2 to 41 long.
 export const SKU_PATTERN = /^[A-Z0-9][A-Z0-9-]{1,40}$/;
 export const MAX_RANK = 999;
-// A photo file bundled with the site, or an https:// address (a product-images
-// upload is one).
+// A photo file bundled with the site, or a public Supabase Storage address
+// (a product-images upload is one). Only those: the site's CSP (netlify.toml)
+// allows images from the site and https://*.supabase.co alone, so a photo on
+// any other host would be blocked and show the placeholder. A new image host
+// needs img-src in the CSP and the privacy policy's processor list first.
 const BUNDLED_FILE = /^[A-Za-z0-9][A-Za-z0-9_.-]*\.(avif|gif|jpe?g|png|webp)$/i;
-const PHOTO_URL = /^https:\/\/[^\s]+$/i;
+export const PHOTO_URL = /^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/(object|render\/image)\/public\/[^\s]+$/i;
 
 // The product-images bucket (20261010120000): these types, at most 5 MB.
 export const PHOTO_BUCKET = 'product-images';
@@ -283,7 +286,7 @@ export function validateProduct(draft, { rows = [], departments = departmentsFor
 
   const img = trim(draft.img);
   if (img && (img.length > LIMITS.img || !(BUNDLED_FILE.test(img) || PHOTO_URL.test(img)))) {
-    errors.img = 'Enter a photo file name such as kite.jpg, or a full https:// address.';
+    errors.img = 'Enter a photo file name such as kite.jpg, or upload the photo (other sites’ addresses are blocked).';
   }
   return { ok: Object.keys(errors).length === 0, errors };
 }

@@ -21,7 +21,8 @@
 // rows); a write returns [{ id }] (the eq('id') value) when it asks for rows
 // back, else null (an insert returns its rows); rpc returns
 // fake.rpcData[name] ?? null; a signed URL is https://files.example.test/<path>
-// and a public one https://files.example.test/public/<bucket>/<path>.
+// and a public one https://fake.supabase.co/storage/v1/object/public/<bucket>/<path>
+// (the shape the product editor accepts, AW-205).
 
 const FILTERS = ['eq', 'neq', 'in', 'or', 'gt', 'gte', 'lt', 'lte', 'like', 'ilike', 'is', 'not', 'filter', 'match', 'contains', 'textSearch'];
 const MODIFIERS = ['order', 'range', 'limit', 'abortSignal'];
@@ -114,7 +115,7 @@ export function createFakeSupabase(initial = {}) {
         upload: (path, file, options) => answer({ kind: 'storage', bucket, op: 'upload', path, file, options }),
         getPublicUrl: (path) => {
           fake.calls.push({ kind: 'storage', bucket, op: 'getPublicUrl', path });
-          return { data: { publicUrl: `https://files.example.test/public/${bucket}/${path}` } };
+          return { data: { publicUrl: `https://fake.supabase.co/storage/v1/object/public/${bucket}/${path}` } };
         },
         remove: (paths) => answer({ kind: 'storage', bucket, op: 'remove', paths }),
       }),

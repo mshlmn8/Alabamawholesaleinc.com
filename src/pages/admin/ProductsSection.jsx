@@ -24,7 +24,7 @@ import { productImage } from '../../lib/images.js';
 import { MISSING_FUNCTION_CODES } from '../../lib/pricing.js';
 import { MAX_PRODUCT_QUERY, adminHref } from '../../lib/adminRoutes.js';
 import { Link, navigate } from '../../lib/router.js';
-import { MissingPhoto } from '../../components/MissingPhoto.jsx';
+import { Thumb } from '../../components/Thumb.jsx';
 import { Icon } from '../../components/Icon.jsx';
 import { adminErrorMessage, withStatus } from './adminData.js';
 import { LoadProblem } from './AdminStatus.jsx';
@@ -172,12 +172,9 @@ export function ProductsTab({ route = {}, query = {}, onQuery, onCatalogChange, 
 }
 
 // The 48px photo of a row (AW-023): the bundled file or the uploaded one, or
-// the "photo coming soon" mark.
-function Thumb({ img }) {
-  const src = productImage(img).img;
-  return src
-    ? <img className="product-thumb" src={src} width="48" height="48" alt="" loading="lazy" />
-    : <span className="product-thumb"><MissingPhoto compact /></span>;
+// the "photo coming soon" mark, also when the photo fails (Thumb, AW-192).
+function RowPhoto({ img }) {
+  return <span className="product-thumb"><Thumb src={productImage(img).img} /></span>;
 }
 
 // The list's columns; those with a `sort` have a sort button in their header
@@ -486,7 +483,7 @@ function ProductsList({
                       </label>
                     </td>
                     <td>{p.id}</td>
-                    <td className="product-thumb-cell"><Thumb img={p.img} /></td>
+                    <td className="product-thumb-cell"><RowPhoto img={p.img} /></td>
                     <td>{p.name}</td>
                     <td>{p.brand}</td>
                     <td className="muted">{`${p.cat} / ${p.sub}`}</td>

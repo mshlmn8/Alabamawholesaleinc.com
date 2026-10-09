@@ -66,9 +66,9 @@ describe('the products list (AW-023)', () => {
     await renderAdmin();
     const rows = screen.getAllByRole('row').slice(1);
     expect(rows).toHaveLength(3);
-    const photo = rows[0].querySelector('img.product-thumb');
+    const photo = rows[0].querySelector('.product-thumb img');
     expect([photo.getAttribute('src'), photo.getAttribute('width'), photo.getAttribute('height'), photo.getAttribute('alt')])
-      .toEqual(['https://cdn.example.test/sw.jpg', '48', '48', '']);
+      .toEqual(['https://cdn.example.test/sw.jpg', '52', '52', '']);
     expect(rows[2].querySelector('.product-thumb .photo-soon')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'New product' }).getAttribute('href')).toBe('/admin/products/new');
     expect(editLink('Kite').getAttribute('href')).toBe('/admin/products/2');
@@ -362,7 +362,7 @@ describe('photos (AW-023)', () => {
     await act(async () => { fireEvent.change(field('Upload a photo'), { target: { files: [fakePhoto()] } }); });
     const upload = fake.find({ kind: 'storage', op: 'upload' })[0];
     expect(upload).toMatchObject({ bucket: 'product-images', path: 'products/2/1700000000000-kite-front.png', options: { contentType: 'image/png', upsert: false } });
-    expect(field('Image file or URL').value).toBe('https://files.example.test/public/product-images/products/2/1700000000000-kite-front.png');
+    expect(field('Image file or URL').value).toBe('https://fake.supabase.co/storage/v1/object/public/product-images/products/2/1700000000000-kite-front.png');
     expect(document.querySelector('.product-photo-preview img').getAttribute('src')).toBe(field('Image file or URL').value);
     fireEvent.click(screen.getByRole('button', { name: 'Remove photo' }));
     expect(field('Image file or URL').value).toBe('');

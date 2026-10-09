@@ -28,6 +28,7 @@ import { catLabel } from '../../lib/format.js';
 import { departmentsFor } from '../../lib/departments.js';
 import { Link } from '../../lib/router.js';
 import { MissingPhoto } from '../../components/MissingPhoto.jsx';
+import { Picture } from '../../components/Picture.jsx';
 import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { useLeaveGuard } from './useLeaveGuard.js';
 import { LoadProblem } from './AdminStatus.jsx';
@@ -452,7 +453,7 @@ export function ProductEditor({ id, fromId = null, rows, columns, loadError, onR
       </div>
 
       {summary.length > 0 && (
-        <div className="form-error-summary" role="alert">
+        <div className="callout error form-error-summary" role="alert">
           <p>{summary.length === 1 ? 'Check this field:' : `Check these ${summary.length} fields:`}</p>
           <ul>
             {summary.map((field) => <li key={field}>{`${fieldLabel(field, draft)}: ${errors[field]}`}</li>)}
@@ -635,7 +636,11 @@ export function ProductEditor({ id, fromId = null, rows, columns, loadError, onR
           <h3>Photo</h3>
           <div className="product-photo-body">
             <div className="product-photo-preview">
-              {previewSrc && !previewBroken ? <img src={previewSrc} alt="" onError={() => setBrokenSrc(previewSrc)} /> : <MissingPhoto compact />}
+              {/* Picture: the placeholder when the photo fails, a retry when the
+                  connection comes back (AW-192, AW-343). */}
+              {previewSrc && !previewBroken
+                ? <Picture picture={preview.picture} sizes="10rem" fallback={<MissingPhoto compact />} onFail={() => setBrokenSrc(previewSrc)} />
+                : <MissingPhoto compact />}
             </div>
             <div className="product-photo-fields">
               <label htmlFor="product-photo-file">Upload a photo</label>
@@ -650,7 +655,7 @@ export function ProductEditor({ id, fromId = null, rows, columns, loadError, onR
                 ? 'There is no photo by that name in this build of the site.'
                 : previewBroken
                   ? 'The photo at that address didn’t load. Check it, or upload the photo again.'
-                  : 'A photo file bundled with the site (e.g. kite.jpg) or a full https:// address. An upload fills this in.'}</small>
+                  : 'A photo file bundled with the site (e.g. kite.jpg), or the address of an uploaded photo. An upload fills this in.'}</small>
               <p className="form-error" id="product-img-error">{err('img')}</p>
               {draft.img.trim() && <button className="button xs ghost" type="button" onClick={() => set('img', '')}>Remove photo</button>}
             </div>

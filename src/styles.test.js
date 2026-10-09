@@ -734,7 +734,8 @@ describe('one link style (AW-297)', () => {
   // Every running-text link context. A new one goes into the CSS list and here.
   const LINKS = ['.text-link', '.support-note a', '.checklist a', '.checklist-note a', '.next-steps a', '.policy-body a', '.contact-grid a',
     '.doc-uploads-note a', '.doc-panel a', '.doc-admin a', '.status-panel p a', '.eligibility-result a', '.error-fallback > p a', '.dialog > .desc a',
-    '.form-error a', '.dialog .form-grid a', '.consent-block .consent a', '.photo-credit a', '.order-contact a'];
+    '.form-error a', '.dialog .form-grid a', '.consent-block .consent a', '.photo-credit a', '.order-contact a',
+    '.account-link', '.order-account-link', '.account-contact a', '.account-detail-contact a'];
   const LOOK = { color: 'var(--link-color)', 'font-weight': '600', 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' };
 
   it('defines the link colour and underline offset once', () => {

@@ -67,6 +67,9 @@ describe('validateProduct (AW-116)', () => {
     ['two variants and no axis', { variantAxis: '' }, 'variantAxis', 'Choose what the variants differ by.'],
     ['a photo address that isn’t https', { img: 'http://example.test/a.jpg' }, 'img', expect.stringMatching(/^Enter a photo file name/)],
     ['a script as the photo', { img: 'javascript:alert(1)' }, 'img', expect.stringMatching(/^Enter a photo file name/)],
+    // The CSP allows images from the site and *.supabase.co only (AW-205).
+    ['a photo on another host', { img: 'https://cdn.example.test/a.jpg' }, 'img', expect.stringMatching(/^Enter a photo file name/)],
+    ['a Supabase address outside public Storage', { img: 'https://abc.supabase.co/rest/v1/a.jpg' }, 'img', expect.stringMatching(/^Enter a photo file name/)],
   ])('refuses %s', (label, change, field, message) => {
     const { ok, errors } = check({ ...kite(), ...change });
     expect(ok).toBe(false);
@@ -82,7 +85,7 @@ describe('validateProduct (AW-116)', () => {
     ['a blank rank', { rankText: '' }],
     ['its own SKU in lower case', { sku: 'aw-kite' }],
     ['an existing sub-line typed as new', { sub: NEW_SUB, newSub: 'pipe tobacco' }],
-    ['a full https address', { img: 'https://abc.supabase.co/storage/v1/object/public/product-images/products/2/1-kite.jpg' }],
+    ['a public Supabase Storage address', { img: 'https://abc.supabase.co/storage/v1/object/public/product-images/products/2/1-kite.jpg' }],
     ['no photo', { img: '' }],
   ])('accepts %s', (label, change) => {
     expect(check({ ...kite(), ...change })).toEqual({ ok: true, errors: {} });
