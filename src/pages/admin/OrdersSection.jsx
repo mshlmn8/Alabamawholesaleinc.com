@@ -500,6 +500,32 @@ export function OrdersTab({
     return true;
   };
 
+  // A quote priced or converted on its card (NEW-016): admin_price_order
+  // moves a new or contacted quote to quoted, and admin_convert_quote moves
+  // it to confirmed. Like a status change (AW-112) the card stays where it
+  // is, tagged "Moved to …", instead of vanishing from the filter on screen
+  // (and taking the focus with it): it is marked moved and patched with
+  // `expected` at once, read again by its id (the list's query no longer
+  // sends it for this status), and the list reloads. Returns the row read,
+  // or null when that read failed (the patch stays).
+  const cardChanged = async (order, expected) => {
+    const ids = new Set([...movedRef.current, order.id]);
+    movedRef.current = ids;
+    setMoved({ key: movedKey, ids });
+    const patch = (fields) => setOrders((list) => list?.map((o) => (o.id === order.id ? { ...o, ...fields } : o)) ?? list);
+    patch(expected);
+    let row = null;
+    try {
+      const result = await supabase.from('orders').select(ADMIN_ORDER_SELECT).eq('id', order.id).maybeSingle();
+      if (!result?.error && result?.data && typeof result.data === 'object') row = result.data;
+    } catch {
+      row = null;
+    }
+    if (row) patch(row);
+    await reload();
+    return row;
+  };
+
   // Back from a print view: its print link takes focus again.
   useEffect(() => {
     if (!returnFocusId || !orders) return;
@@ -634,7 +660,7 @@ export function OrdersTab({
 
       <div className="order-list">
         {shown.map(o => (
-          <OrderCard key={o.id} order={o} states={states} workflow={workflow} tiers={tiers} onStatus={updateStatus} onReload={reload} notify={notify}
+          <OrderCard key={o.id} order={o} states={states} workflow={workflow} tiers={tiers} onStatus={updateStatus} onChanged={cardChanged} notify={notify}
             isNew={isNewSince(o, since)} admins={admins} assignment={assignment} onAssigned={assigned} onOpenPrint={onOpenPrint}
             accounts={approved} onNeedAccounts={loadApproved}
             saving={saving.has(o.id)} movedTo={filter !== 'all' && movedIds.has(o.id) && o.status !== filter ? o.status : null} />
@@ -687,8 +713,11 @@ function keepMoved(rows, previous, ids) {
 // out of the filter on screen). accounts / onNeedAccounts: the approved
 // accounts a guest quote can be linked to when it is converted ({ rows,
 // error, loading }), and the call that loads them (AW-024).
+// onChanged(order, expected): a save or a conversion went through; the
+// list keeps the card, with `expected` ({ status, kind }) until the order is
+// read again (NEW-016).
 function OrderCard({
-  order: o, states, workflow, tiers, onStatus, onReload, notify, isNew = false, admins = null, assignment = false, onAssigned, onOpenPrint,
+  order: o, states, workflow, tiers, onStatus, onChanged, notify, isNew = false, admins = null, assignment = false, onAssigned, onOpenPrint,
   saving = false, movedTo = null, accounts = null, onNeedAccounts,
 }) {
   const quote = isQuote(o);
@@ -702,11 +731,32 @@ function OrderCard({
   const [suggested, setSuggested] = useState(false);
   const discountPct = tiers[o.profiles?.pricing_tier || 'standard'] ?? 0;
 
+  // Keyboard focus across the editor (NEW-016): the controls that are
+  // pressed go away (Edit becomes Save and Cancel, which go when the editor
+  // closes; Convert goes once the quote is an order), or are disabled while
+  // their request is out, so the focus is put somewhere once the card has
+  // rendered: the first Qty box when the editor opens, Edit after Cancel,
+  // the card's status select after a save or a conversion (the card stays,
+  // tagged "Moved to …"), and the button again after a refusal.
+  const editRef = useRef(null);
+  const qtyRef = useRef(null);
+  const saveRef = useRef(null);
+  const convertRef = useRef(null);
+  const statusRef = useRef(null);
+  const [focusTo, setFocusTo] = useState(null); // { to, n }
+  const focusOn = (to) => setFocusTo((current) => ({ to, n: (current?.n || 0) + 1 }));
+  useEffect(() => {
+    if (!focusTo) return;
+    const target = { qty: qtyRef, edit: editRef, save: saveRef, convert: convertRef, status: statusRef }[focusTo.to]?.current;
+    target?.focus();
+  }, [focusTo]);
+
   const openEditor = async () => {
     setError(null);
     const lines = items.map(it => ({ ...it, qty: String(it.qty), unit_price: it.unit_price == null ? '' : String(Number(it.unit_price).toFixed(2)) }));
     setDraft(lines);
     setBaseline(lines);
+    focusOn('qty');
     if (lines.every(l => l.unit_price !== '')) return;
     let listPrices = null;
     try {
@@ -723,6 +773,10 @@ function OrderCard({
     setSuggested(lines.some(l => l.unit_price === '' && prices.get(l.id) != null));
   };
   const closeEditor = () => { setDraft(null); setBaseline(null); setSuggested(false); setError(null); };
+  const cancelEditor = () => {
+    closeEditor();
+    focusOn('edit');
+  };
   const dirty = !!draft && !!baseline && draft.some((l, i) => l.qty !== baseline[i]?.qty || l.unit_price !== baseline[i]?.unit_price);
   useLeaveGuard(dirty, `Your changes to ${o.ref_num} aren’t saved. Leave without saving them?`);
   const setLine = (index, field) => (e) => {
@@ -730,23 +784,41 @@ function OrderCard({
     setDraft(current => current.map((l, i) => (i === index ? { ...l, [field]: value } : l)));
   };
 
+  // A save moves a new or contacted quote to quoted (admin_price_order); an
+  // order keeps its status. The status line names the new one.
   const save = async () => {
     const parsed = parseOrderLines(draft);
     if (!parsed.ok) { setError(parsed.error); return; }
     setBusy(true);
     setError(null);
-    const { error: rpcError } = await supabase.rpc('admin_price_order', { p_order_id: o.id, p_lines: parsed.lines });
+    let rpcError = null;
+    try {
+      ({ error: rpcError } = await supabase.rpc('admin_price_order', { p_order_id: o.id, p_lines: parsed.lines }));
+    } catch (thrown) {
+      rpcError = thrown;
+    }
     setBusy(false);
-    if (rpcError) { setError(orderActionError(rpcError)); return; }
+    if (rpcError) {
+      setError(orderActionError(rpcError));
+      focusOn('save');
+      return;
+    }
+    const status = quote && ['new', 'contacted'].includes(o.status) ? 'quoted' : o.status;
     closeEditor();
-    notify?.(`Saved the quantities and prices of ${o.ref_num}.`);
-    onReload();
+    focusOn('status');
+    notify?.(status === o.status
+      ? `Saved the quantities and prices of ${o.ref_num}.`
+      : `Saved the quantities and prices of ${o.ref_num}, and marked it ${statusLabel(status)}.`);
+    await onChanged?.(o, { status });
   };
   // Convert (AW-024): a guest's quote asks first, with the approved account
   // to link the order to (or none: it stays a guest's order); a quote from
   // an account converts at once and stays that account's. A refusal in the
   // dialog is said there (an account deleted meanwhile: choose another).
   const [linking, setLinking] = useState(null); // the dialog: { error }
+  // The dialog gives the focus back to Convert, unless the conversion went
+  // through (Convert is gone then): the status select takes it (NEW-016).
+  const doneFocus = useRef(null);
   const convert = async (userId = null, { dialog = false } = {}) => {
     setBusy(true);
     setError(null);
@@ -760,13 +832,20 @@ function OrderCard({
     setBusy(false);
     if (rpcError) {
       if (dialog) setLinking({ error: orderActionError(rpcError) });
-      else setError(orderActionError(rpcError));
+      else {
+        setError(orderActionError(rpcError));
+        focusOn('convert');
+      }
       return;
     }
-    setLinking(null);
+    if (dialog) {
+      doneFocus.current = statusRef.current;
+      setLinking(null);
+    } else focusOn('status');
     const account = userId ? accounts?.rows?.find((a) => a.id === userId) : null;
-    notify?.(account ? `${o.ref_num} is now an order of ${account.business || account.name || account.email}.` : `${o.ref_num} is now an order.`);
-    onReload();
+    const whose = account ? ` of ${account.business || account.name || account.email}` : '';
+    notify?.(`${o.ref_num} is now an order${whose}, marked ${statusLabel('confirmed')}.`);
+    await onChanged?.(o, { kind: 'order', status: 'confirmed', ...(userId ? { user_id: userId } : {}) });
   };
   const startConvert = () => {
     if (o.user_id != null) {
@@ -774,6 +853,7 @@ function OrderCard({
       return;
     }
     setError(null);
+    doneFocus.current = null;
     setLinking({ error: null });
     onNeedAccounts?.();
   };
@@ -817,7 +897,7 @@ function OrderCard({
           {isNew && <span className="order-new"><span>New</span><span className="sr-only"> since your last visit</span></span>}
           <span className="order-kind">{kindLabel}</span>
           <b className="order-ref">{o.ref_num}</b>
-          <select id={orderStatusId(o.id)} aria-label={`Status for ${o.ref_num}`} value={o.status} aria-disabled={saving || undefined} onChange={chooseStatus}>
+          <select id={orderStatusId(o.id)} ref={statusRef} aria-label={`Status for ${o.ref_num}`} value={o.status} aria-disabled={saving || undefined} onChange={chooseStatus}>
             {options.map(s => <option key={s} value={s}>{statusLabel(s)}</option>)}
           </select>
           {movedTo && <span className="order-moved">{`Moved to ${statusLabel(movedTo)}`}</span>}
@@ -851,7 +931,8 @@ function OrderCard({
             <div className="order-edit-line" key={line.id}>
               <span className="order-edit-name"><span>{line.product_name}</span> <span className="sku">{`(${line.sku})`}</span></span>
               <label><span>Qty</span>
-                <input aria-label={`Quantity for ${line.product_name}`} type="text" inputMode="numeric" value={line.qty} onChange={setLine(index, 'qty')} />
+                <input ref={index === 0 ? qtyRef : undefined} aria-label={`Quantity for ${line.product_name}`} type="text" inputMode="numeric" value={line.qty}
+                  onChange={setLine(index, 'qty')} />
               </label>
               <label><span>Unit price</span>
                 <input aria-label={`Unit price for ${line.product_name}`} type="text" inputMode="decimal" placeholder="—" value={line.unit_price} onChange={setLine(index, 'unit_price')} />
@@ -880,11 +961,11 @@ function OrderCard({
       <div className="inline-actions order-actions-row">
         {draft ? (
           <>
-            <button className="button" type="button" disabled={busy || !workflow} onClick={save}>Save prices</button>
-            <button className="button ghost" type="button" onClick={closeEditor}>Cancel</button>
+            <button className="button" type="button" ref={saveRef} disabled={busy || !workflow} onClick={save}>Save prices</button>
+            <button className="button ghost" type="button" onClick={cancelEditor}>Cancel</button>
           </>
         ) : (
-          <button className="button ghost" type="button" onClick={openEditor}>
+          <button className="button ghost" type="button" ref={editRef} onClick={openEditor}>
             <span>Edit quantities and prices</span><span className="sr-only">{` for ${o.ref_num}`}</span>
           </button>
         )}
@@ -892,7 +973,7 @@ function OrderCard({
           <span>{quote ? 'Email the quote' : 'Email the order'}</span><span className="sr-only">{` ${o.ref_num} to ${o.email}`}</span>
         </a>
         {quote && !draft && (
-          <button className="button ghost" type="button" disabled={busy || !workflow || unpriced} onClick={startConvert}
+          <button className="button ghost" type="button" ref={convertRef} disabled={busy || !workflow || unpriced} onClick={startConvert}
             aria-haspopup={o.user_id == null ? 'dialog' : undefined}>
             <span>Convert to order</span><span className="sr-only">{` ${o.ref_num}`}</span>
           </button>
@@ -932,7 +1013,7 @@ function OrderCard({
         />
       )}
       {linking && (
-        <ConvertDialog order={o} accounts={accounts} onRetryAccounts={onNeedAccounts} busy={busy} error={linking.error}
+        <ConvertDialog order={o} accounts={accounts} onRetryAccounts={onNeedAccounts} busy={busy} error={linking.error} returnFocus={doneFocus}
           onConfirm={(userId) => convert(userId, { dialog: true })} onCancel={() => { if (!busy) setLinking(null); }} />
       )}
     </article>
@@ -944,7 +1025,7 @@ function OrderCard({
 // quote's email come first. accounts: { rows, error, loading };
 // onRetryAccounts loads them again after a failure. error: why the
 // database refused the conversion; the account list then takes the focus.
-function ConvertDialog({ order, accounts, onRetryAccounts, busy, error, onConfirm, onCancel }) {
+function ConvertDialog({ order, accounts, onRetryAccounts, busy, error, onConfirm, onCancel, returnFocus = null }) {
   const id = useId();
   const selectRef = useRef(null);
   const [userId, setUserId] = useState('');
@@ -964,7 +1045,7 @@ function ConvertDialog({ order, accounts, onRetryAccounts, busy, error, onConfir
       title={`Convert ${order.ref_num} to an order?`}
       body="It becomes a confirmed order. Link it to an approved account, or leave it a guest’s order."
       confirmLabel={busy ? 'Converting…' : 'Convert to order'} busy={busy}
-      onConfirm={() => onConfirm(userId || null)} onCancel={onCancel}
+      onConfirm={() => onConfirm(userId || null)} onCancel={onCancel} returnFocus={returnFocus}
     >
       <div className="form-grid confirm-reason">
         <div className="full">

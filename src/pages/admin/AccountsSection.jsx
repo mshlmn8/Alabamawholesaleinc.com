@@ -40,18 +40,18 @@ export const telHref = (phone) => `tel:${String(phone ?? '').replace(/[^\d+]/g, 
 // notify: shows what a change did (useAdminStatus). search/onSearch: the
 // search box, kept by AdminPage (never in the URL: it names people).
 // returnFocusId/onReturnFocus: the business link the list focuses when an
-// account's page closes.
+// account's page closes. openedFrom/onOpen: the account page the list
+// opened (AdminPage keeps it, and forgets it when the browser's Back leaves
+// the page, NEW-036), so leaving it goes Back to the list (its search and
+// scroll position); a page opened any other way goes to the list by its
+// link.
 export function AccountsTab({
-  route = {}, query = {}, onQuery, currentAdminId, notify, search = '', onSearch, returnFocusId = null, onReturnFocus,
+  route = {}, query = {}, onQuery, currentAdminId, notify, search = '', onSearch, returnFocusId = null, onReturnFocus, openedFrom = null, onOpen,
 }) {
   const [profiles, setProfiles] = useState(null);
   const [profilesError, setProfilesError] = useState(null);
   const [retrying, setRetrying] = useState(false);
   const [tiers, setTiers] = useState(FALLBACK_TIERS);
-  // The account page the list opened, so leaving it goes Back to the list
-  // (its search and scroll position); a page opened any other way goes to
-  // the list by its link.
-  const [openedFrom, setOpenedFrom] = useState(null);
   const changes = useAccountChanges({ setProfiles, currentAdminId, notify });
   const detail = route.id != null;
   // The status filter (AW-268). The list shows the accounts that had the
@@ -100,7 +100,7 @@ export function AccountsTab({
   const leaveDetail = (event) => {
     onReturnFocus?.(accountLinkId(route.id));
     const back = openedFrom && openedFrom === currentUrl();
-    setOpenedFrom(null);
+    onOpen?.(null);
     if (back) {
       event.preventDefault();
       window.history.back();
@@ -118,7 +118,7 @@ export function AccountsTab({
       ) : (
         <AccountsList
           profiles={profiles} profilesError={profilesError} onRetry={retry} retrying={retrying} tiers={tiers} currentAdminId={currentAdminId}
-          changes={changes} search={search} onSearch={onSearch} onOpen={setOpenedFrom} returnFocusId={returnFocusId} onReturnFocus={onReturnFocus}
+          changes={changes} search={search} onSearch={onSearch} onOpen={onOpen} returnFocusId={returnFocusId} onReturnFocus={onReturnFocus}
           filter={filter} listedStatus={listedStatus} onFilter={(status) => onQuery?.({ ...query, status })}
         />
       )}

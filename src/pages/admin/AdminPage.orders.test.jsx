@@ -230,7 +230,7 @@ describe('Admin orders with the quote workflow', () => {
     await act(async () => { fireEvent.click(within(convertDialog()).getByRole('button', { name: 'Convert to order' })); });
     expect(rpcCalls('admin_convert_quote')).toEqual([['admin_convert_quote', { p_order_id: 'o-guest', p_user_id: null }]]);
     expect(screen.queryByRole('alertdialog')).toBeNull();
-    expect(statusText()).toBe('ALW-Q-5E4F3A2B1C is now an order.');
+    expect(statusText()).toBe('ALW-Q-5E4F3A2B1C is now an order, marked Confirmed.');
   });
 
   it('links a converted guest quote to the approved account chosen, listing the quote’s email first (AW-024)', async () => {
@@ -256,7 +256,7 @@ describe('Admin orders with the quote workflow', () => {
     fireEvent.change(linkSelect(), { target: { value: 'acct-alpha' } });
     await act(async () => { fireEvent.click(within(convertDialog()).getByRole('button', { name: 'Convert to order' })); });
     expect(rpcCalls('admin_convert_quote')).toEqual([['admin_convert_quote', { p_order_id: 'o-guest', p_user_id: 'acct-alpha' }]]);
-    expect(statusText()).toBe('ALW-Q-5E4F3A2B1C is now an order of Alpha Mart.');
+    expect(statusText()).toBe('ALW-Q-5E4F3A2B1C is now an order of Alpha Mart, marked Confirmed.');
   });
 
   it('says in the dialog why a link was refused, and keeps it open (AW-024)', async () => {
@@ -306,6 +306,130 @@ describe('Admin orders with the quote workflow', () => {
     });
     expect(updates()).toEqual([{ table: 'orders', id: 'o-order', patch: { status: 'picking' } }]);
     expect(screen.getByRole('alert').textContent).toBe('ALW-O-BBBB222233: That status needs the October 2026 database update (see BACKEND.md).');
+  });
+});
+
+// Keyboard focus across the quote editor, and the card staying in the
+// filter on screen after a save or a conversion moves it (NEW-016).
+describe('the quote editor’s focus, and cards a save or a conversion moves (NEW-016)', () => {
+  const statusText = () => document.querySelector('.admin-status-text').textContent;
+  const statusSelect = (ref) => screen.getByRole('combobox', { name: `Status for ${ref}` });
+  // The database's side of the two functions: a new or contacted quote
+  // becomes quoted, a converted one a confirmed order.
+  const workflowDatabase = () => {
+    const respond = fake.respond;
+    fake.respond = (request) => {
+      const answered = respond(request);
+      if (answered !== undefined || request.kind !== 'rpc') return answered;
+      // A new copy of the row (the page holds the old one).
+      const index = db.orders.findIndex((o) => o.id === request.args?.p_order_id);
+      const row = db.orders[index];
+      if (request.name === 'admin_price_order' && row) {
+        const lines = new Map(request.args.p_lines.map((line) => [line.item_id, line]));
+        db.orders[index] = {
+          ...row,
+          status: row.kind === 'quote' && ['new', 'contacted'].includes(row.status) ? 'quoted' : row.status,
+          order_items: row.order_items.map((it) => (lines.has(it.id) ? { ...it, qty: lines.get(it.id).qty, unit_price: lines.get(it.id).unit_price } : it)),
+        };
+      }
+      if (request.name === 'admin_convert_quote' && row) db.orders[index] = { ...row, kind: 'order', status: 'confirmed', user_id: request.args.p_user_id ?? row.user_id };
+      return undefined;
+    };
+  };
+  // The list on its default filter, New.
+  const openNew = async () => {
+    await act(async () => { render(<RoutedAdmin profile={ADMIN} account="ready" />); });
+    expect(screen.getByRole('button', { name: /^New \(/ }).getAttribute('aria-pressed')).toBe('true');
+  };
+
+  it('puts the focus in the first Qty box on Edit, and back on Edit after Cancel', async () => {
+    await openNew();
+    const guest = card('ALW-Q-5E4F3A2B1C');
+    const edit = within(guest).getByRole('button', { name: /^Edit quantities and prices/ });
+    edit.focus();
+    await act(async () => { fireEvent.click(edit); });
+    expect(document.activeElement).toBe(within(guest).getByLabelText('Quantity for Kite cigarette tobacco'));
+    await act(async () => { fireEvent.click(within(guest).getByRole('button', { name: 'Cancel' })); });
+    expect(document.activeElement).toBe(within(guest).getByRole('button', { name: /^Edit quantities and prices/ }));
+  });
+
+  it('keeps a saved quote on the New filter, tagged “Moved to Quoted”, with the focus on its status', async () => {
+    workflowDatabase();
+    await openNew();
+    const guest = card('ALW-Q-5E4F3A2B1C');
+    await act(async () => { fireEvent.click(within(guest).getByRole('button', { name: /^Edit quantities and prices/ })); });
+    await act(async () => { fireEvent.click(within(guest).getByRole('button', { name: 'Save prices' })); });
+    expect(rpcCalls('admin_price_order')).toHaveLength(1);
+    // The list's query no longer sends it for New; the card stays, read again by its id.
+    expect(fake.find({ table: 'orders', op: 'select' }).some((r) => r.single === 'maybe' && r.filters.some(([f, c, v]) => f === 'eq' && c === 'id' && v === 'o-guest'))).toBe(true);
+    const kept = card('ALW-Q-5E4F3A2B1C');
+    expect(within(kept).getByText('Moved to Quoted')).toBeTruthy();
+    expect(statusSelect('ALW-Q-5E4F3A2B1C').value).toBe('quoted');
+    // The saved prices, from the order read again.
+    expect(within(kept).getByText('$28.20')).toBeTruthy();
+    expect(document.activeElement).toBe(statusSelect('ALW-Q-5E4F3A2B1C'));
+    expect(statusText()).toBe('Saved the quantities and prices of ALW-Q-5E4F3A2B1C, and marked it Quoted.');
+    expect(screen.getAllByRole('article')).toHaveLength(2);
+  });
+
+  it('says a save of an order without naming a status, and keeps its status', async () => {
+    workflowDatabase();
+    await openNew();
+    const order = card('ALW-O-BBBB222233');
+    await act(async () => { fireEvent.click(within(order).getByRole('button', { name: /^Edit quantities and prices/ })); });
+    await act(async () => { fireEvent.click(within(order).getByRole('button', { name: 'Save prices' })); });
+    expect(statusText()).toBe('Saved the quantities and prices of ALW-O-BBBB222233.');
+    expect(within(card('ALW-O-BBBB222233')).queryByText(/^Moved to/)).toBeNull();
+    expect(document.activeElement).toBe(statusSelect('ALW-O-BBBB222233'));
+  });
+
+  it('gives the focus back to Save prices after a refusal', async () => {
+    db.rpcError.admin_price_order = { code: 'P0001', message: 'This order is closed', hint: 'order_closed' };
+    await openNew();
+    const guest = card('ALW-Q-5E4F3A2B1C');
+    await act(async () => { fireEvent.click(within(guest).getByRole('button', { name: /^Edit quantities and prices/ })); });
+    await act(async () => { fireEvent.click(within(guest).getByRole('button', { name: 'Save prices' })); });
+    expect(within(guest).getByRole('alert').textContent).toBe('This order is fulfilled or cancelled, so it can’t be changed.');
+    expect(document.activeElement).toBe(within(guest).getByRole('button', { name: 'Save prices' }));
+  });
+
+  it('keeps a converted guest quote on its filter, tagged “Moved to Confirmed”, with the focus on its status', async () => {
+    setOrders([guestQuote({ order_items: guestQuote().order_items.map((it) => ({ ...it, unit_price: 9.99 })) }), tradeOrder()]);
+    workflowDatabase();
+    await openNew();
+    const convert = within(card('ALW-Q-5E4F3A2B1C')).getByRole('button', { name: /^Convert to order/ });
+    convert.focus();
+    await act(async () => { fireEvent.click(convert); });
+    const dialog = screen.getByRole('alertdialog', { name: 'Convert ALW-Q-5E4F3A2B1C to an order?' });
+    await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Convert to order' })); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    const kept = card('ALW-Q-5E4F3A2B1C');
+    expect(within(kept).getByText('Moved to Confirmed')).toBeTruthy();
+    expect(within(kept).getByText('Trade order')).toBeTruthy();
+    expect(within(kept).queryByRole('button', { name: /^Convert to order/ })).toBeNull();
+    expect(document.activeElement).toBe(statusSelect('ALW-Q-5E4F3A2B1C'));
+    expect(statusText()).toBe('ALW-Q-5E4F3A2B1C is now an order, marked Confirmed.');
+  });
+
+  it('gives Convert the focus back when its dialog is cancelled', async () => {
+    setOrders([guestQuote({ order_items: guestQuote().order_items.map((it) => ({ ...it, unit_price: 9.99 })) })]);
+    await openNew();
+    const convert = within(card('ALW-Q-5E4F3A2B1C')).getByRole('button', { name: /^Convert to order/ });
+    convert.focus();
+    await act(async () => { fireEvent.click(convert); });
+    await act(async () => { fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancel' })); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+    expect(document.activeElement).toBe(within(card('ALW-Q-5E4F3A2B1C')).getByRole('button', { name: /^Convert to order/ }));
+  });
+
+  it('puts the focus on the status of an account’s quote converted at once', async () => {
+    setOrders([guestQuote({ user_id: 'buyer-2', profiles: { business: 'Pending Mart', pricing_tier: 'standard' }, order_items: guestQuote().order_items.map((it) => ({ ...it, unit_price: 9.99 })) })]);
+    workflowDatabase();
+    await openNew();
+    await act(async () => { fireEvent.click(within(card('ALW-Q-5E4F3A2B1C')).getByRole('button', { name: /^Convert to order/ })); });
+    expect(within(card('ALW-Q-5E4F3A2B1C')).getByText('Moved to Confirmed')).toBeTruthy();
+    expect(document.activeElement).toBe(statusSelect('ALW-Q-5E4F3A2B1C'));
   });
 });
 

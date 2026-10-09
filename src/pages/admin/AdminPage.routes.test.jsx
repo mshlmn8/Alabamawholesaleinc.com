@@ -118,3 +118,73 @@ describe('admin sections (AW-118)', () => {
     expect(screen.getByRole('searchbox', { name: 'Search products' }).value).toBe('kite');
   });
 });
+
+// The browser's Back from a detail view (an order's print view, an
+// account's page, the product editor) gives the focus back to the link that
+// opened it, as the views' own Back links do (NEW-036).
+describe('the browser’s Back from a detail view (NEW-036)', () => {
+  const ORDER_ID = 'aaaaaaaa-0000-4000-8000-0000000000d1';
+  const ACCOUNT_ID = '11111111-2222-4333-8444-0000000000d2';
+  const back = async () => {
+    await act(async () => {
+      const popped = new Promise((resolve) => { window.addEventListener('popstate', resolve, { once: true }); });
+      window.history.back();
+      await popped;
+    });
+    // The list loads (orders) and its effect focuses the link.
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+  };
+  beforeEach(() => {
+    fake.tables.orders = [{ ...order('D1', 'new'), id: ORDER_ID, ref_num: 'ALW-O-DDDD000001' }];
+    fake.tables.profiles = [ADMIN, { id: ACCOUNT_ID, business: 'Delta Mart', name: 'Dee', email: 'dee@example.test', status: 'approved', role: 'customer', pricing_tier: 'standard' }];
+  });
+
+  it('from an order’s print view: its print link', async () => {
+    act(() => navigate('/admin/orders?status=all', { replace: true }));
+    await renderAdmin();
+    await act(async () => { fireEvent.click(screen.getByRole('link', { name: /^Print packing slip ?for ALW-O-DDDD000001$/ })); });
+    expect(url()).toBe(`/admin/orders/${ORDER_ID}/print?doc=slip`);
+    await back();
+    expect(url()).toBe('/admin/orders?status=all');
+    expect(document.activeElement?.id).toBe(`print-slip-${ORDER_ID}`);
+  });
+
+  it('from an account’s page: its business link, and a later Back link doesn’t go back in history', async () => {
+    act(() => navigate('/admin/accounts?status=all', { replace: true }));
+    await renderAdmin();
+    await act(async () => { fireEvent.click(screen.getByRole('link', { name: 'Delta Mart' })); });
+    expect(url()).toBe(`/admin/accounts/${ACCOUNT_ID}`);
+    await back();
+    expect(url()).toBe('/admin/accounts?status=all');
+    expect(document.activeElement?.id).toBe(`account-link-${ACCOUNT_ID}`);
+    // The same page opened another way (an order card's account link): its
+    // Back link goes to the list by its address, not back to Orders.
+    await act(async () => { fireEvent.click(sectionLink('Orders')); });
+    await act(async () => { navigate(`/admin/accounts/${ACCOUNT_ID}`); });
+    await act(async () => { fireEvent.click(screen.getByRole('link', { name: 'Back to accounts' })); });
+    expect(window.location.pathname).toBe('/admin/accounts');
+  });
+
+  it('from the product editor: the product’s Edit link', async () => {
+    act(() => navigate('/admin/products', { replace: true }));
+    await renderAdmin();
+    await act(async () => { fireEvent.click(screen.getByRole('link', { name: /^Edit ?Kite$/ })); });
+    expect(url()).toBe('/admin/products/2');
+    await back();
+    expect(url()).toBe('/admin/products');
+    expect(document.activeElement?.id).toBe('edit-product-2');
+  });
+
+  it('names each view’s opener', async () => {
+    const { detailOpener } = await import('./AdminPage.jsx');
+    const print = { page: 'admin', section: 'orders', id: ORDER_ID, view: 'print', query: {} };
+    expect(detailOpener(print, { page: 'admin', section: 'orders', query: {} })).toBe(`print-pick-${ORDER_ID}`);
+    expect(detailOpener(print, { page: 'admin' })).toBe(`print-pick-${ORDER_ID}`);
+    expect(detailOpener(print, { page: 'admin' }, { printFrom: { linkId: `print-slip-${ORDER_ID}` } })).toBe(`print-slip-${ORDER_ID}`);
+    expect(detailOpener({ section: 'products', id: 'new', query: {} }, { section: 'products', query: {} })).toBe('new-product');
+    expect(detailOpener({ section: 'products', id: 7, query: { back: 'homepage' } }, { section: 'homepage', query: {} })).toBe('rail-edit-product-7');
+    // Not that view's list: nothing.
+    expect(detailOpener({ section: 'accounts', id: ACCOUNT_ID, query: {} }, { section: 'orders', query: {} })).toBeNull();
+    expect(detailOpener({ section: 'products', id: 7, query: {} }, { section: 'products', id: 8, query: {} })).toBeNull();
+  });
+});

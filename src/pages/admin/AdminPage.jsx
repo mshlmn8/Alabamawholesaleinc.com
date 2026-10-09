@@ -14,26 +14,30 @@
 // returns to the previous section. A detail view (the product editor,
 // /admin/products/:id and /new; an order's print view; an account's page,
 // /admin/accounts/:id, AW-113) moves focus itself, and hands back a
-// returnFocusId that its list focuses when it shows again.
+// returnFocusId that its list focuses when it shows again: by its own Back
+// link, or by the browser's Back (NEW-036), which the route change below
+// catches.
 //
 // The Orders and Accounts searches are kept here, not in the URL (they name
 // people), so they survive a visit to a print view or an account's page. Opening Orders (a print view included)
 // is a visit: orders placed since the previous one are marked New (AW-111,
 // ordersSeen.js).
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, navigate } from '../../lib/router.js';
 import { supabase } from '../../lib/supabase.js';
 import { preloadStorage } from '../../lib/storageClient.js';
 import { adminHref, adminPath, adminSection } from '../../lib/adminRoutes.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
-import { OrdersTab } from './OrdersSection.jsx';
+import { OrdersTab, printLinkId } from './OrdersSection.jsx';
 import { AccountsTab } from './AccountsSection.jsx';
-import { ProductsTab } from './ProductsSection.jsx';
+import { NEW_PRODUCT_LINK_ID, ProductsTab, editLinkId } from './ProductsSection.jsx';
 import { PricingTab } from './PricingSection.jsx';
-import { HomepageTab } from './HomepageSection.jsx';
+import { HomepageTab, RAILS_HEADING_ID, railEditId } from './HomepageSection.jsx';
 import { PrintSheet } from './PrintSheet.jsx';
+import { printDoc } from './printSheet.js';
+import { accountLinkId } from './accountDetail.js';
 import { AdminStatus, useAdminStatus } from './AdminStatus.jsx';
 import { useOrdersSeen } from './ordersSeen.js';
 
@@ -53,6 +57,26 @@ const SECTIONS = [
 ];
 const NO_QUERY = Object.freeze({});
 
+// The control that opened a detail view, for its list to focus when the
+// view closes (NEW-036): `before` is the detail view's route, `after` the
+// route shown now; null when `after` isn't that view's list. printFrom: the
+// print link the orders list opened the print view with ({ linkId }).
+export function detailOpener(before, after, { printFrom = null } = {}) {
+  if (before?.id == null || after?.id != null) return null;
+  const from = adminSection(before);
+  const to = adminSection(after);
+  if (from === 'orders' && before.view === 'print' && to === 'orders') {
+    return printFrom?.linkId || printLinkId(before.id, printDoc(before.query?.doc));
+  }
+  if (from === 'accounts' && to === 'accounts') return accountLinkId(before.id);
+  if (from === 'products' && to === 'products') return before.id === 'new' ? NEW_PRODUCT_LINK_ID : editLinkId(before.id);
+  // The editor opened from Admin -> Homepage's rails goes back there (NEW-076).
+  if (from === 'products' && to === 'homepage' && before.query?.back === 'homepage') {
+    return before.id === 'new' ? RAILS_HEADING_ID : railEditId(before.id);
+  }
+  return null;
+}
+
 // route: the admin route (parseAdminPath); bare /admin shows Orders.
 // onCatalogChange: a product was edited; the storefront loads the catalog
 // again so this tab shows the edit at once (AW-191).
@@ -71,6 +95,14 @@ export function AdminPage({
   // The control a section's list focuses when a detail view closes (e.g. the
   // Edit link of the product just saved).
   const [returnFocusId, setReturnFocusId] = useState(null);
+  // A detail view's own Back link names that control itself as it leaves
+  // (after a save, the saved product's Edit link): the route change it
+  // makes then adds nothing (NEW-036).
+  const handedBack = useRef(false);
+  const returnFocusTo = useCallback((id) => {
+    if (id) handedBack.current = true;
+    setReturnFocusId(id);
+  }, []);
   // The product editor URL a link opened (Products' list or the Homepage
   // rails), so leaving the editor goes Back to that page (NEW-076).
   const [productOpenedFrom, setProductOpenedFrom] = useState(null);
@@ -79,6 +111,27 @@ export function AdminPage({
   const [orderSearch, setOrderSearch] = useState('');
   const [printFrom, setPrintFrom] = useState(null);
   const [accountSearch, setAccountSearch] = useState('');
+  // The account page the Accounts list opened (its URL), so leaving it goes
+  // Back in history to the list.
+  const [accountOpenedFrom, setAccountOpenedFrom] = useState(null);
+  // A detail view closed by the browser's Back (or Forward) rather than its
+  // own Back link (NEW-036): the list focuses the control that opened it,
+  // as the link would have done. What remembered the opening is forgotten,
+  // so a later Back link on a view opened another way doesn't go back in
+  // history.
+  const previousRoute = useRef(route);
+  useEffect(() => {
+    const before = previousRoute.current;
+    previousRoute.current = route;
+    if (before === route || before?.id == null || route.id != null) return;
+    const handled = handedBack.current;
+    handedBack.current = false;
+    const opener = detailOpener(before, route, { printFrom });
+    setPrintFrom(null);
+    setAccountOpenedFrom(null);
+    setProductOpenedFrom(null);
+    if (opener && !handled) setReturnFocusId(opener);
+  }, [route, printFrom]);
   const approvedAdmin = profile?.role === 'admin' && profile?.status === 'approved';
   const ordersSince = useOrdersSeen(approvedAdmin && account === 'ready' && section === 'orders', supabase);
   // Photo uploads and document links need Storage, whose code loads on
@@ -93,7 +146,7 @@ export function AdminPage({
   // list's filters and scroll position come back), else the link's own
   // navigation; either way the print link that opened it takes focus.
   const leavePrint = (event) => {
-    if (printFrom) setReturnFocusId(printFrom.linkId);
+    if (printFrom) returnFocusTo(printFrom.linkId);
     const back = printFrom && printFrom.path === window.location.pathname;
     setPrintFrom(null);
     if (back) {
@@ -188,19 +241,19 @@ export function AdminPage({
       {section === 'orders' && !detail && (
         <OrdersTab query={query} onQuery={setQuery} notify={status.show} search={orderSearch} onSearch={setOrderSearch} since={ordersSince}
           onOpenPrint={(href, linkId) => setPrintFrom({ path: href.split('?')[0], linkId })}
-          returnFocusId={returnFocusId} onReturnFocus={setReturnFocusId} />
+          returnFocusId={returnFocusId} onReturnFocus={returnFocusTo} />
       )}
       {section === 'accounts' && (
         <AccountsTab route={route} query={query} onQuery={setQuery} currentAdminId={profile.id} notify={status.show} search={accountSearch} onSearch={setAccountSearch}
-          returnFocusId={returnFocusId} onReturnFocus={setReturnFocusId} />
+          returnFocusId={returnFocusId} onReturnFocus={returnFocusTo} openedFrom={accountOpenedFrom} onOpen={setAccountOpenedFrom} />
       )}
       {section === 'products' && (
         <ProductsTab route={route} query={query} onQuery={setQuery} onCatalogChange={onCatalogChange} notify={status.show}
-          returnFocusId={returnFocusId} onReturnFocus={setReturnFocusId} openedFrom={productOpenedFrom} onOpen={setProductOpenedFrom} />
+          returnFocusId={returnFocusId} onReturnFocus={returnFocusTo} openedFrom={productOpenedFrom} onOpen={setProductOpenedFrom} />
       )}
       {section === 'pricing' && <PricingTab notify={status.show} />}
       {section === 'homepage' && (
-        <HomepageTab notify={status.show} onOpenProduct={setProductOpenedFrom} returnFocusId={returnFocusId} onReturnFocus={setReturnFocusId} />
+        <HomepageTab notify={status.show} onOpenProduct={setProductOpenedFrom} returnFocusId={returnFocusId} onReturnFocus={returnFocusTo} />
       )}
       <AdminStatus status={status} />
     </section>
