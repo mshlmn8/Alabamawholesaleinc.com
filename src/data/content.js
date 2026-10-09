@@ -153,16 +153,24 @@ export const SHOP_CATS = [
 ];
 
 // The home page's pitch: the h1's supporting line (HomeHero) and the meta
-// description (src/lib/meta.js HOME_DESCRIPTION), so the page says what the
-// search result says (AW-004). It is the meta description as published, word
-// for word; nothing new is claimed.
-// The delivery wording (next-day, the three states, the Birmingham
-// warehouse) should come from the business-facts module once the commerce
-// lane's AW-283 lands.
-export const HOME_PITCH = 'Wholesale tobacco, vapes, candy, drinks, grocery and motor oil for licensed retailers. Next-day delivery on our routes in Alabama, Mississippi and Georgia from our Birmingham warehouse.';
+// description (src/lib/meta.js HOME_DESCRIPTION, index.html), so the page
+// says what the search result says (AW-004). It is the description as
+// published, shortened to fit a search result (155 characters, AW-318) by
+// dropping only its closing 'from our Birmingham warehouse'; the hero's
+// eyebrow still names Birmingham, and nothing new is claimed.
+// The delivery wording (next-day, the three states) should come from the
+// business-facts module once the commerce lane's AW-283 lands.
+// TODO(owner): Approve the home page's title (HOME_TITLE, "Wholesale Tobacco, Vapes & Candy · Alabama Wholesale Inc" in search results and tabs) and this description, the line under the home headline. (AW-318)
+export const HOME_PITCH = 'Wholesale tobacco, vapes, candy, drinks, grocery and motor oil for licensed retailers. Next-day delivery on our routes in Alabama, Mississippi and Georgia.';
+
+// The home page's title before the site name (src/lib/meta.js, index.html):
+// the products people search for, within 60 characters with the name
+// (AW-318). TODO(owner) above.
+export const HOME_TITLE = 'Wholesale Tobacco, Vapes & Candy';
 
 // The home page's split hero (src/components/HomeHero.jsx, AW-004): the
-// eyebrow and the h1 come from the site's title and meta description.
+// eyebrow comes from the site's former title, and the line under the h1 is
+// the meta description.
 // TODO(owner): Approve the home headline "Wholesale for licensed retailers." and its supporting line, and say whether the hero beside it keeps the four rotating photos or shows one fixed photo. (AW-004)
 export const HOME_HERO = {
   eyebrow: 'WHOLESALE DISTRIBUTOR · BIRMINGHAM, AL',
