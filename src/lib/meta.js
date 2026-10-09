@@ -5,9 +5,9 @@
 // Only the route decides the metadata. The header search is a dropdown, not
 // a page, so what is typed there never reaches the title or history entries.
 
-import { COMPANY } from '../data/content.js';
+import { COMPANY, HOURS, ORDER_MINIMUM, hoursLine } from '../data/content.js';
 import { POLICY_TITLES, POLICY_INTROS } from '../pages/support/PolicyPage.jsx';
-import { brandLabel, catLabel } from './format.js';
+import { brandLabel, catLabel, formatMoney } from './format.js';
 import { NOINDEX_PAGES, pathFor, siteUrl } from './routes.js';
 
 export const SITE_URL = siteUrl(import.meta.env.VITE_SITE_URL);
@@ -97,12 +97,12 @@ function pageText(route, products, departments) {
       image: imageOf(p, p.name),
     };
   }
-  if (route.page === 'quote') return { title: `Checkout · ${site}`, description: `Review your items and submit a wholesale quote or order to ${site}. Minimum order $500.00.` };
+  if (route.page === 'quote') return { title: `Checkout · ${site}`, description: `Review your items and submit a wholesale quote or order to ${site}. Minimum order ${formatMoney(ORDER_MINIMUM)}.` };
   if (route.page === 'account') return { title: `My Account · ${site}`, description: `Your ${site} trade account: order history, reorders and quick entry by SKU.` };
   if (route.page === 'admin') return { title: `Admin · ${site}`, description: `Catalog and account administration for ${site}.` };
   // Support pages (src/pages/support/).
   if (route.page === 'catalog') return { title: `All Products · Wholesale Catalog · ${site}`, description: clip(`Every department and product line ${site} stocks — ${products.length} wholesale SKUs for licensed retailers, from the Birmingham warehouse.`) };
-  if (route.page === 'contact') return { title: `Contact & Visit · ${site}`, description: clip(`Call ${COMPANY.phone}, email ${COMPANY.email}, or visit ${COMPANY.addressShort}. ${COMPANY.hoursLine1}, ${COMPANY.hoursLine2}.`) };
+  if (route.page === 'contact') return { title: `Contact & Visit · ${site}`, description: clip(`Call ${COMPANY.phone}, email ${COMPANY.email}, or visit ${COMPANY.addressShort}. ${HOURS.map(r => hoursLine(r, { nowrap: false })).join(', ')}.`) };
   if (route.page === 'delivery') return { title: `Delivery & Service Area · ${site}`, description: 'Next-day delivery on our own trucks when your stop is on a route in Alabama, Mississippi or Georgia, plus will-call pickup at the Birmingham warehouse.' };
   if (POLICY_TITLES[route.page]) return { title: `${POLICY_TITLES[route.page]} · ${site}`, description: clip(POLICY_INTROS[route.page]) };
   if (route.page === 'apply') return { title: `Apply for a Trade Account · ${site}`, description: `What licensed retailers need to open a ${site} trade account: EIN, state retail tobacco license, resale certificate and store details.` };

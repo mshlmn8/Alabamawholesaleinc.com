@@ -38,7 +38,7 @@ export function Footer({ departments, onLoginClick, onApplyClick }) {
           </div>
         </div>
         <div className="footer-legal">
-          <p>© 2026 Alabama Wholesale Inc. All rights reserved.</p>
+          <p>{`© 2026 ${COMPANY.name}. All rights reserved.`}</p>
           <nav className="footer-policies" aria-label="Customer policies">
             <Link to="/shipping">Delivery</Link>
             <Link to="/privacy">Privacy</Link>

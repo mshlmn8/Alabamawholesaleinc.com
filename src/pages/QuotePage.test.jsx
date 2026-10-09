@@ -282,10 +282,13 @@ describe('QuotePage minimum note (AW-076)', () => {
     expect(minimum()).toBeNull();
   });
 
+  // The minimum is printed once per page, in the intro (AW-283); the
+  // free-delivery claim stays in the form's fine print.
   it('prints the minimum and free-delivery amounts from content.js', () => {
     render(page({ profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false }));
     expect(document.querySelector('.page-head p:last-of-type').textContent).toMatch(/The minimum order is \$500\.00\./);
-    expect(document.querySelector('form .fine:last-of-type').textContent).toMatch(/^The minimum order is \$500\.00\. Orders over \$1,500 qualify/);
+    expect(document.querySelector('form .fine:last-of-type').textContent).toMatch(/^Orders over \$1,500 qualify for free delivery/);
+    expect(document.body.textContent.split('$500.00')).toHaveLength(2);
   });
 });
 

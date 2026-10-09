@@ -69,6 +69,14 @@ describe('pageMeta', () => {
     expect(pageMeta({ page: 'not-found', kind: 'page', catalog: 'loading' }, products, departments).title).toBe('Page not found · Alabama Wholesale Inc');
   });
 
+  it('prints the minimum and the hours from content.js, in plain text (AW-283, AW-275)', () => {
+    expect(pageMeta({ page: 'quote' }, products, departments).description).toMatch(/Minimum order \$500\.00\.$/);
+    const contact = pageMeta({ page: 'contact' }, products, departments).description;
+    expect(contact).toMatch(/^Call \(205\) 354-4473, email .* Mon–Fri 7:00 AM – 6:00 PM CT, /);
+    // No no-break spaces or word joiners in head tags.
+    expect(contact).not.toMatch(/[\u00A0\u2060]/);
+  });
+
   it('depends on the route only, never on the header search (AW-338)', () => {
     expect(pageMeta({ page: 'quote' }, products, departments, 'kite').title).toBe('Checkout · Alabama Wholesale Inc');
   });

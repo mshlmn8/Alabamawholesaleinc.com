@@ -2,8 +2,110 @@
 // welcome-popup offers. PRODUCTS lives in ./products.js.
 
 import { heroImage } from '../lib/images.js';
+import { formatMoney, formatMoneyShort } from '../lib/format.js';
+
+// ---------------------------------------------------------------------------
+// Business facts (AW-283)
+//
+// Contact details, opening hours, the minimum order and the free-delivery
+// threshold are defined once, here. Pages, meta and the copy arrays below
+// print them from these constants (money with formatMoney/formatMoneyShort),
+// never as literals; src/data/facts.test.js scans the source for strays and
+// checks the copies in index.html (structured data, boot shell) and
+// public/site.webmanifest against these values.
+
+// The warehouse's clock. Every printed time is in this zone
+// (src/lib/orders.js todayInBirmingham uses the same one).
+export const TIME_ZONE = 'America/Chicago';
+export const TIME_ZONE_LABEL = 'CT';
+export const TIME_ZONE_NAME = 'Central Time';
+
+// Opening hours, one row per run of days. dayOfWeek, opens and closes are the
+// schema.org openingHoursSpecification fields (24-hour clock) that index.html
+// repeats; days and long are the short and spelled-out labels pages print.
+// TODO(owner): Which dates is the warehouse closed for holidays (or open
+// shorter hours), and are these hours Central Time? The contact page says
+// "Holiday hours can differ" and prints the hours as CT until then. (AW-275)
+export const HOURS = [
+  { days: 'Mon–Fri', long: 'Monday – Friday', dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], opens: '07:00', closes: '18:00' },
+  { days: 'Sat–Sun', long: 'Saturday – Sunday', dayOfWeek: ['Saturday', 'Sunday'], opens: '08:00', closes: '17:30' }
+];
+
+const NBSP = '\u00A0';
+const WORD_JOINER = '\u2060';
+
+// '18:00' → '6:00 PM'.
+export function clockLabel(time) {
+  const [hours, minutes] = String(time).split(':').map(Number);
+  return `${hours % 12 || 12}:${String(minutes).padStart(2, '0')} ${hours < 12 ? 'AM' : 'PM'}`;
+}
+
+// Hours that cannot wrap inside themselves (AW-275): every space becomes a
+// no-break space and a word joiner follows every en dash, because browsers
+// otherwise break after a dash, even one followed by a no-break space
+// ('Mon–' | 'Fri …', '8:00 AM –' | '5:30 PM'). Meta text uses nowrap: false.
+const keepTogether = (text) => text.replace(/ /g, NBSP).replace(/–/g, `–${WORD_JOINER}`);
+
+// '7:00 AM – 6:00 PM'.
+export function hoursRange(row, { nowrap = true } = {}) {
+  const text = `${clockLabel(row.opens)} – ${clockLabel(row.closes)}`;
+  return nowrap ? keepTogether(text) : text;
+}
+
+// 'Mon–Fri 7:00 AM – 6:00 PM CT'.
+export function hoursLine(row, { nowrap = true, zone = true } = {}) {
+  const text = `${row.days} ${hoursRange(row, { nowrap: false })}${zone ? ` ${TIME_ZONE_LABEL}` : ''}`;
+  return nowrap ? keepTogether(text) : text;
+}
+
+const WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+// Open or closed at `now` by `hours`, on the clock in `timeZone` (AW-275):
+// { open: true, closes } while open, otherwise { open: false, opens, inDays,
+// day } for the next opening (inDays 0 is later today). null without hours.
+// Holiday closures are not known (see the TODO at HOURS).
+export function openStatus(now, hours = HOURS, timeZone = TIME_ZONE) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+    timeZone, weekday: 'long', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(now).map(p => [p.type, p.value]));
+  // Some engines print midnight as 24:00.
+  const time = `${parts.hour === '24' ? '00' : parts.hour}:${parts.minute}`;
+  const today = WEEK.indexOf(parts.weekday);
+  for (let inDays = 0; inDays <= 7; inDays += 1) {
+    const day = WEEK[(today + inDays) % 7];
+    const row = hours.find(r => r.dayOfWeek.includes(day));
+    if (!row) continue;
+    if (inDays === 0 && time >= row.opens && time < row.closes) return { open: true, closes: row.closes };
+    if (inDays > 0 || time < row.opens) return { open: false, opens: row.opens, inDays, day };
+  }
+  return null;
+}
+
+// 'Open now · closes 6:00 PM CT', 'Closed · opens 8:00 AM CT',
+// 'Closed · opens tomorrow 7:00 AM CT'; '' without hours.
+export function openStatusLabel(status) {
+  if (!status) return '';
+  const at = (time) => keepTogether(`${clockLabel(time)} ${TIME_ZONE_LABEL}`);
+  if (status.open) return `Open now · closes ${at(status.closes)}`;
+  const when = status.inDays === 0 ? '' : status.inDays === 1 ? 'tomorrow ' : `${status.day} `;
+  return `Closed · opens ${when}${at(status.opens)}`;
+}
+
+// The label for this moment, or '' if the browser cannot read the Central
+// Time clock. Components read the clock through this, never themselves
+// (react-hooks/purity).
+export function openStatusNow() {
+  try {
+    return openStatusLabel(openStatus(new Date()));
+  } catch {
+    return '';
+  }
+}
 
 export const COMPANY = {
+  // TODO(owner): Is the legal name "Alabama Wholesale Inc" or "Alabama
+  // Wholesale Inc." (with the period)? The header prints "ALABAMA WHOLESALE
+  // INC."; the name is unchanged until you say. (AW-283)
   name: 'Alabama Wholesale Inc',
   phone: '(205) 354-4473',
   phoneRaw: '+12053544473',
@@ -19,13 +121,21 @@ export const COMPANY = {
   addressCity: 'Birmingham',
   addressState: 'AL',
   addressZip: '35203',
-  hoursLine1: 'Mon–Fri 7:00 AM – 6:00 PM',
-  hoursLine2: 'Sat–Sun 8:00 AM – 5:30 PM'
+  // 'Mon–Fri 7:00 AM – 6:00 PM CT', unbreakable (AW-275).
+  hoursLine1: hoursLine(HOURS[0]),
+  hoursLine2: hoursLine(HOURS[1])
 };
+
+// TODO(owner): Free delivery "over $1,500" (ticker, cart, quote, delivery
+// pages) or "$1,500 or more" (FAQ, TRUST)? Both wordings are unchanged until
+// you say. (AW-283)
+export const FREE_DELIVERY_THRESHOLD = 1500;
+// TODO(owner): Is the $500 minimum order a hard rule that blocks submission, or only a guideline that orders below it may still be submitted? It is not enforced; checkout only notes it. (AW-076)
+export const ORDER_MINIMUM = 500;
 
 // TODO(owner): Who gets Net-30, and what is the real volume discount behind "up to 18%"? Kept exactly as published until you say (decision 2). (AW-025)
 export const ANNOUNCEMENTS = [
-  '★ FREE DELIVERY on orders over $1,500 on our delivery routes in Alabama, Mississippi & Georgia',
+  `★ FREE DELIVERY on orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} on our delivery routes in Alabama, Mississippi & Georgia`,
   '★ NET-30 TERMS available for approved retail accounts',
   '★ WILL-CALL · Pickup at the Birmingham warehouse during business hours',
   '★ VOLUME DISCOUNTS · Save up to 18% on pallet quantities'
@@ -60,7 +170,7 @@ export const BRANDS = ["HERSHEY'S", 'GATORADE', 'BIC', 'WD-40', 'GEEK BAR', 'GAI
 // TODO(owner): Years in business, account or route counts, warehouse and truck photos, and which brand logos may be shown, before any trust claim like these is published. (AW-005)
 export const TRUST = [
   { icon: 'ShieldCheck', title: '100% Authentic',        blurb: 'Sourced direct from manufacturers and authorized distributors. Every SKU verified.' },
-  { icon: 'Truck',       title: 'Free Delivery $1,500+', blurb: 'Will-call pickup at the Birmingham warehouse during business hours, or next-day delivery on our routes in Alabama, Georgia and Mississippi.' },
+  { icon: 'Truck',       title: `Free Delivery ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)}+`, blurb: 'Will-call pickup at the Birmingham warehouse during business hours, or next-day delivery on our routes in Alabama, Georgia and Mississippi.' },
   { icon: 'Tag',         title: 'Volume Discounts',      blurb: 'Tiered case and pallet pricing. Save up to 18% on pallet-quantity orders.' },
   { icon: 'Users',       title: 'Family Owned',          blurb: 'Three generations serving Southeast retailers. Real relationships, honest pricing.' }
 ];
@@ -71,13 +181,13 @@ export const FAQS = [
   { q: 'Do I need a business license to order?',
     a: 'Yes. Alabama Wholesale only sells to licensed retailers. You\'ll need a valid retail business license, sales tax / resale certificate, and (for tobacco/vape products) a tobacco permit for your state. We verify all documents during account approval.' },
   { q: 'What is your minimum order?',
-    a: 'The minimum order is $500.00. Free delivery applies to orders of $1,500 or more when the stop is on a delivery route. Will-call is pickup at the Birmingham warehouse during business hours.' },
+    a: `The minimum order is ${formatMoney(ORDER_MINIMUM)}. Free delivery applies to orders of ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} or more when the stop is on a delivery route. Will-call is pickup at the Birmingham warehouse during business hours.` },
   { q: 'How long does account approval take?',
-    a: 'Most applications are approved within 24 hours. Net-30 terms require credit verification which can add 2–3 business days. You can also call us at (205) 354-4473 to expedite.' },
+    a: `Most applications are approved within 24 hours. Net-30 terms require credit verification which can add 2–3 business days. You can also call us at ${COMPANY.phone} to expedite.` },
   { q: 'What areas do you deliver to?',
-    a: 'We deliver on routes in Alabama, Mississippi and Georgia. Next-day delivery on our own trucks and free delivery on orders over $1,500 apply when the stop is on a delivery route.' },
+    a: `We deliver on routes in Alabama, Mississippi and Georgia. Next-day delivery on our own trucks and free delivery on orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} apply when the stop is on a delivery route.` },
   { q: 'Can I pick up my order in person?',
-    a: 'Yes. Will-call is pickup at the Birmingham warehouse, 613 Graymont Ave N, during business hours: Monday–Friday 7:00 AM–6:00 PM, Saturday–Sunday 8:00 AM–5:30 PM.' },
+    a: `Yes. Will-call is pickup at the Birmingham warehouse, ${COMPANY.addressLine1}, during business hours: ${HOURS.map(row => `${row.dayOfWeek[0]}–${row.dayOfWeek[row.dayOfWeek.length - 1]} ${clockLabel(row.opens)}–${clockLabel(row.closes)}`).join(', ')}.` },
   { q: 'How does pallet / volume pricing work?',
     a: 'Discounts kick in starting at 5 cases (5%) and scale up to 18% off for 5+ pallet orders. The discount is applied automatically at checkout. Contact your trade rep for custom mixed-pallet pricing.' },
   { q: 'What payment methods do you accept?',
@@ -126,10 +236,6 @@ export const STORAGE = {
   cart: 'aw-cart-v2',
   cartLegacy: 'aw-cart-legacy'
 };
-
-export const FREE_DELIVERY_THRESHOLD = 1500;
-// TODO(owner): Is the $500 minimum order a hard rule that blocks submission, or only a guideline that orders below it may still be submitted? It is not enforced; checkout only notes it. (AW-076)
-export const ORDER_MINIMUM = 500;
 
 // The date the Trade terms and Privacy policy last changed, as the policy
 // pages print it, and the version a trade application records acceptance of

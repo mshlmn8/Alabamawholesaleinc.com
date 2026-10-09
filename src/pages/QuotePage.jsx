@@ -339,7 +339,7 @@ export function QuotePage({
           <button className="button wide" type="submit" disabled={sending || submitBlocked}>
             <span>{submitLabel}</span></button>
           )}
-          <p className="fine">{`The minimum order is ${formatMoney(ORDER_MINIMUM)}. Orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} qualify for free delivery on a delivery route in AL, MS & GA. Will-call is pickup at the Birmingham warehouse during business hours. Tobacco products supplied to licensed retailers only — 21+.`}</p>
+          <p className="fine">{`Orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} qualify for free delivery on a delivery route in AL, MS & GA. Will-call is pickup at the Birmingham warehouse during business hours. Tobacco products supplied to licensed retailers only — 21+.`}</p>
         </form>
       </div>
     </section>
