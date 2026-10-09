@@ -7,7 +7,7 @@
 // Each section has its own URL (AW-118, src/lib/adminRoutes.js): /admin
 // (Orders), /admin/orders?status=…, /admin/orders/:id/print?doc=pick|slip
 // (AW-110), /admin/accounts, /admin/products?q=…, /admin/pricing (the tier
-// discounts, AW-114).
+// discounts, AW-114), /admin/homepage (the hero photos and the rails, AW-119).
 // Every admin URL is the same page to the router (pageKey 'admin'), so moving
 // between sections and filters keeps the scroll position and focus, and Back
 // returns to the previous section. A detail view (the product editor,
@@ -30,6 +30,7 @@ import { OrdersTab } from './OrdersSection.jsx';
 import { AccountsTab } from './AccountsSection.jsx';
 import { ProductsTab } from './ProductsSection.jsx';
 import { PricingTab } from './PricingSection.jsx';
+import { HomepageTab } from './HomepageSection.jsx';
 import { PrintSheet } from './PrintSheet.jsx';
 import { AdminStatus, useAdminStatus } from './AdminStatus.jsx';
 import { useOrdersSeen } from './ordersSeen.js';
@@ -46,6 +47,7 @@ const SECTIONS = [
   { id: 'accounts', label: 'Accounts' },
   { id: 'products', label: 'Products' },
   { id: 'pricing', label: 'Pricing' },
+  { id: 'homepage', label: 'Homepage' },
 ];
 const NO_QUERY = Object.freeze({});
 
@@ -149,7 +151,7 @@ export function AdminPage({
         <Breadcrumbs items={[HOME_CRUMB, { label: 'Admin' }]} />
         <p className="eyebrow">TRADE DESK</p>
         <h1>Admin</h1>
-        <p>Orders, account approvals, catalog edits, and pricing tiers.</p>
+        <p>Orders, account approvals, catalog edits, pricing tiers, and the home page.</p>
       </div>
 
       <nav className="sub-pills admin-sections" aria-label="Admin sections">
@@ -185,6 +187,7 @@ export function AdminPage({
           returnFocusId={returnFocusId} onReturnFocus={setReturnFocusId} />
       )}
       {section === 'pricing' && <PricingTab notify={status.show} />}
+      {section === 'homepage' && <HomepageTab notify={status.show} />}
       <AdminStatus status={status} />
     </section>
   );

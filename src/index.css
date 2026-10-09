@@ -1003,6 +1003,36 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .aw-table.pricing-table { min-width: 0; }
 .pricing-tiers .table-scroll { max-width: 45rem; }
 .pricing-key { font-size: var(--text-sm); color: var(--purple); }
+/* Admin -> Homepage (AW-119): the hero photos in the home page's order, one
+   row each (photo, description, controls; the controls drop under the text
+   on phones), the add/edit form (the product editor's photo block), and the
+   two rails, read-only, side by side where there is room. */
+.homepage-admin { display: grid; gap: 32px; }
+.admin-slides, .admin-rail-list { list-style: none; max-width: 60rem; margin: 0 0 14px; padding: 0; border-top: 1px solid var(--line); }
+.admin-slide, .admin-rail-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px 16px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.admin-slide-photo { display: flex; align-items: center; justify-content: center; width: 6rem; height: 4rem; background: var(--tile); border: 1px solid var(--line); overflow: hidden; }
+/* The photo is a Thumb (52px attributes), fitted into the box. */
+.admin-slide-photo img { width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; }
+.admin-slide.inactive .admin-slide-photo { opacity: var(--disabled-opacity); }
+.admin-slide-text p { margin: 0; }
+.admin-slide-alt { font-size: var(--text-base); font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.admin-slide.inactive .admin-slide-alt { color: var(--muted); }
+.admin-slide-meta { font-size: var(--text-sm); line-height: 1.5; color: var(--muted); }
+.admin-slide-text .admin-slide-state { margin-top: 4px; }
+.admin-slide-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 8px; }
+.admin-slide-actions .admin-toggle { display: flex; align-items: center; gap: 8px; min-height: var(--tap); margin-right: 4px; font-size: var(--text-sm); font-weight: 600; cursor: pointer; }
+.admin-slides-missing { max-width: 45rem; margin-bottom: 14px; }
+.admin-slides-missing p { margin: 0; }
+.form-grid.slide-form { max-width: 45rem; margin-top: 4px; padding-top: 14px; border-top: 1px solid var(--line); }
+.slide-form h3 { margin: 0; font-size: var(--text-lg); line-height: 1.3; }
+/* The bundled-photo hint, then the next way to choose a photo. */
+.slide-form .field-hint + label { margin-top: 14px; }
+.admin-rails { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 16px 32px; max-width: 75rem; }
+.admin-rail h3 { margin: 0 0 8px; font-size: var(--text-lg); line-height: 1.3; }
+@media (max-width: 37.5em) {
+  .admin-slide { grid-template-columns: auto minmax(0, 1fr); }
+  .admin-slide-actions { grid-column: 1 / -1; justify-content: flex-start; }
+}
 .product-editor { margin-top: 18px; }
 .product-editor-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 16px; }
 .product-editor-head h2 { margin: 0 0 4px; font-size: var(--h3); line-height: 1.15; }

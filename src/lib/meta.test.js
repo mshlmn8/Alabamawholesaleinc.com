@@ -75,6 +75,7 @@ describe('pageMeta', () => {
     expect(title({ section: 'products', id: 'new' })).toBe('New product · Admin · Alabama Wholesale Inc');
     expect(title({ section: 'products', id: 12 })).toBe('Edit product · Admin · Alabama Wholesale Inc');
     expect(title({ section: 'pricing' })).toBe('Pricing · Admin · Alabama Wholesale Inc');
+    expect(title({ section: 'homepage' })).toBe('Homepage · Admin · Alabama Wholesale Inc');
     expect(pageMeta({ page: 'admin', section: 'products', id: 12 }, products, departments)).toMatchObject({ noindex: true, path: null });
     // Orders placed since the last visit to Orders (AW-111): a count, never a name.
     expect(title({ unseen: 2 })).toBe('(2) Orders · Admin · Alabama Wholesale Inc');

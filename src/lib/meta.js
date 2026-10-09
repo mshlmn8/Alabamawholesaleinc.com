@@ -58,6 +58,7 @@ const CATALOG_PENDING = { product: 'product', department: 'department', line: 'p
 function adminTitle(route) {
   if (route.section === 'accounts') return route.id ? 'Account details' : 'Accounts';
   if (route.section === 'pricing') return 'Pricing';
+  if (route.section === 'homepage') return 'Homepage';
   if (route.section === 'products') {
     if (route.id === 'new') return 'New product';
     return route.id != null ? 'Edit product' : 'Products';
