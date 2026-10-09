@@ -22,6 +22,7 @@ export const CACHE_PATHS = [
   'public/apple-touch-icon.png',
   'public/icon-192.png',
   'public/icon-512.png',
+  'public/icon-maskable-512.png',
   'public/og.jpg',
 ];
 

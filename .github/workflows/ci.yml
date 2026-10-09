@@ -58,6 +58,7 @@ jobs:
             public/apple-touch-icon.png
             public/icon-192.png
             public/icon-512.png
+            public/icon-maskable-512.png
             public/og.jpg
           key: images-${{ hashFiles('src/assets/products/**', 'src/assets/hero_*', 'src/assets/logo.jpg', 'scripts/build-images.mjs', 'scripts/image-pipeline.mjs') }}
           restore-keys: images-

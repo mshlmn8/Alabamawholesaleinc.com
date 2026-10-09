@@ -107,6 +107,11 @@
     Cache-Control = "public, max-age=604800"
 
 [[headers]]
+  for = "/icon-maskable-512.png"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
   for = "/og.jpg"
   [headers.values]
     Cache-Control = "public, max-age=604800"

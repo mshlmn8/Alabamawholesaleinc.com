@@ -176,7 +176,7 @@ describe('caching (AW-182)', () => {
   });
 
   it('keeps each brand file at a fixed name for a week', () => {
-    for (const path of ['/favicon.ico', '/favicon-32.png', '/apple-touch-icon.png', '/icon-192.png', '/icon-512.png', '/og.jpg']) {
+    for (const path of ['/favicon.ico', '/favicon-32.png', '/apple-touch-icon.png', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png', '/og.jpg']) {
       expect([path, rule(path)?.values]).toEqual([path, { 'Cache-Control': 'public, max-age=604800' }]);
     }
   });

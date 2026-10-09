@@ -11,7 +11,7 @@
 //   src/assets/hero_*.jpg   -> public/img/<base>--<w>x<h>-<hash>.{webp,jpg}
 //   every photo above       -> src/assets/generated/manifest.json
 //   src/assets/logo.jpg     -> public/favicon.ico, favicon-32.png, apple-touch-icon.png,
-//                              icon-192.png, icon-512.png, og.jpg
+//                              icon-192.png, icon-512.png, icon-maskable-512.png, og.jpg
 //
 // File names, sizes and the manifest format are in scripts/image-pipeline.mjs.
 // Re-runs are incremental by content, never by file time: a photo whose hash
