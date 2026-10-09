@@ -25,6 +25,8 @@ import { useAuth } from '../lib/auth.jsx';
 import { COMPANY, TERMS_VERSION } from '../data/content.js';
 import { isRateLimitError } from '../lib/errors.js';
 import { friendlyAuthError } from '../lib/authErrors.js';
+import { announce } from '../lib/announce.js';
+import { PHONE_ERROR, PHONE_EXAMPLE, PHONE_PATTERN, PHONE_TITLE, usPhone } from '../lib/phone.js';
 import { Link, restoreOverlayEntry } from '../lib/router.js';
 import { APPLICATION_CHECKLIST } from '../data/onboarding.js';
 import { DOCUMENT_TYPES, documentErrorMessage, uploadSelectedProof } from '../lib/documents.js';
@@ -80,12 +82,17 @@ function useCooldown() {
   return [round > 0, () => setRound((r) => r + 1)];
 }
 
-function Field({ id, label, hint, full = false, children }) {
+// A labelled control in the form grid. The control names its hint
+// (`${id}-hint`) and, while there is one, its error (`${id}-error`) in
+// aria-describedby. A field that can have an error passes `error` ('' when
+// there is none), so the element is always there and only its text changes.
+function Field({ id, label, hint, error, full = false, children }) {
   return (
     <div className={full ? 'full' : undefined}>
       <label htmlFor={id}>{label}</label>
       {children}
       {hint && <small className="field-hint" id={`${id}-hint`}>{hint}</small>}
+      {error !== undefined && <p className="form-error" id={`${id}-error`}>{error}</p>}
     </div>
   );
 }
@@ -108,6 +115,8 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
   const [signin, setSignin] = useState({ email: '', password: '' });
   const [resetEmail, setResetEmail] = useState('');
   const [signup, setSignup] = useState(EMPTY_SIGNUP);
+  // The phone number's own error, under the field (AW-247).
+  const [phoneError, setPhoneError] = useState('');
   const [proof, setProof] = useState({});
   const [proofErrors, setProofErrors] = useState({});
   const [proofWaiting, setProofWaiting] = useState(false);
@@ -125,6 +134,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
   const dialogRef = useRef(null);
   const keepEditingRef = useRef(null);
   const resendRef = useRef(null);
+  const phoneRef = useRef(null);
   // Where focus was when the discard bar opened, for Keep editing.
   const focusBeforeConfirm = useRef(null);
   // A resend is running; see the focus effect below.
@@ -269,10 +279,25 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
 
   const handleSignup = async (e) => {
     e.preventDefault();
-    setSubmitting(true); setError(null);
+    setError(null);
+    // A number staff can call (AW-247): ten digits, sent as (205) 555-0123.
+    // The browser's pattern lets through text with the right characters
+    // only; this is the real check.
+    const phone = usPhone(signup.phone);
+    if (!phone) {
+      setPhoneError(PHONE_ERROR);
+      const field = phoneRef.current;
+      // Focus reads the error out with the field; a field that already has
+      // focus (Enter pressed in it) is not read again, so say it.
+      if (field && document.activeElement === field) announce(PHONE_ERROR);
+      else field?.focus();
+      return;
+    }
+    setSubmitting(true);
     try {
       const data = await signUp({
         ...signup,
+        phone: phone.formatted,
         terms_accepted: signup.agreeTerms,
         terms_version: TERMS_VERSION,
         age_confirmed: signup.ageConfirmed,
@@ -493,8 +518,13 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
               <Field id="aw-su-email" label="Business email">
                 <input id="aw-su-email" type="email" name="email" value={signup.email} onChange={setU('email')} required autoComplete="email" inputMode="email" />
               </Field>
-              <Field id="aw-su-phone" label="Phone">
-                <input id="aw-su-phone" type="tel" name="tel" value={signup.phone} onChange={setU('phone')} required autoComplete="tel" inputMode="tel" />
+              <Field id="aw-su-phone" label="Phone" hint="Ten digits, the number we should call about this account." error={phoneError}>
+                <input
+                  id="aw-su-phone" ref={phoneRef} type="tel" name="tel" value={signup.phone}
+                  onChange={(e) => { setPhoneError(''); setU('phone')(e); }}
+                  required autoComplete="tel" inputMode="tel" placeholder={PHONE_EXAMPLE} pattern={PHONE_PATTERN} title={PHONE_TITLE}
+                  aria-invalid={phoneError ? true : undefined} aria-describedby={phoneError ? 'aw-su-phone-hint aw-su-phone-error' : 'aw-su-phone-hint'}
+                />
               </Field>
               <Field id="aw-su-pass" label="Password" hint="At least 8 characters." full>
                 <input id="aw-su-pass" type="password" name="new-password" value={signup.password} onChange={setU('password')} required minLength={8} autoComplete="new-password" aria-describedby="aw-su-pass-hint" />
@@ -573,9 +603,8 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             <ol className="next-steps">
               <li><b>Confirm your email.</b><span>Open the link in that email. Not there after a few minutes? Check your spam folder. Already have an account with this email? <button className="text-link" type="button" onClick={signInWithApplication}>Sign in instead</button>.</span></li>
               <li><b>We review your application.</b><span>A trade rep checks your EIN, state retail tobacco license and resale certificate.</span></li>
-              <li><b>You hear from us.</b><span>{signup.phone
-                ? `We’ll email you or call ${signup.phone} when your account is approved. Wholesale pricing and ordering unlock then.`
-                : 'We’ll email you when your account is approved. Wholesale pricing and ordering unlock then.'}</span></li>
+              {/* The application went with a checked number (AW-247), shown as sent. */}
+              <li><b>You hear from us.</b><span>{`We’ll email you or call ${usPhone(signup.phone)?.formatted ?? signup.phone} when your account is approved. Wholesale pricing and ordering unlock then.`}</span></li>
             </ol>
             {proofWaiting && (
               <p className="checklist-note">Your files stay on this device until you are signed in. After you confirm your email, upload them from your application status, or send proof later to <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.</p>

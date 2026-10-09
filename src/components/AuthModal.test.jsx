@@ -35,6 +35,8 @@ function setup(initial, props = {}) {
   return { onClose, onSignOut, update, get value() { return value; } };
 }
 
+// A phone number the application accepts (AW-247); the form checks it before signUp.
+const typePhone = (value = '205-555-0199') => fireEvent.change(screen.getByLabelText('Phone'), { target: { value } });
 // The three selects start empty and are required (AW-091).
 const chooseSelects = () => {
   fireEvent.change(screen.getByLabelText('Business type'), { target: { value: 'Smoke Shop' } });
@@ -159,6 +161,7 @@ describe('AuthModal application form', () => {
     fireEvent.change(street, { target: { value: '1 Test St' } });
     fireEvent.change(city, { target: { value: 'Birmingham' } });
     fireEvent.change(zip, { target: { value: '35203' } });
+    typePhone();
     chooseSelects();
     fireEvent.click(terms);
     fireEvent.click(age);
@@ -216,7 +219,7 @@ describe('AuthModal application form, more cases (AW-092, AW-019)', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'I am 21 or older' }));
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Submit application/ })); });
     expect(t.value.signUp).toHaveBeenCalledWith(expect.objectContaining({
-      email: 'new@example.test', name: 'New Buyer', phone: '205-555-0199',
+      email: 'new@example.test', name: 'New Buyer', phone: '(205) 555-0199',
       business_type: 'Vape Shop', state: 'GA', expected_volume: 'Under $5K',
       store_street: '1 Test Way', store_city: 'Testville', store_zip: '35203',
       terms_accepted: true, age_confirmed: true,
@@ -311,6 +314,7 @@ describe('AuthModal guards a half-typed application (AW-018)', () => {
     const signUp = vi.fn(async () => ({ session: null }));
     const t = setup({ signUp }, { initialMode: 'application' });
     fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'New Buyer' } });
+    typePhone();
     await act(async () => { fireEvent.submit(screen.getByLabelText('Your name').closest('form')); });
     expect(screen.getByRole('heading', { name: 'Check your inbox' })).toBeTruthy();
     fireEvent.click(closeButton());
@@ -337,6 +341,7 @@ describe('AuthModal resends the confirmation email (AW-016)', () => {
   const sendApplication = async (overrides = {}) => {
     const t = setup({ signUp: vi.fn(async () => ({ session: null })), ...overrides }, { initialMode: 'application' });
     fireEvent.change(screen.getByLabelText('Business email'), { target: { value: 'new@example.test' } });
+    typePhone();
     await act(async () => { fireEvent.submit(screen.getByLabelText('Business email').closest('form')); });
     expect(screen.getByRole('heading', { name: 'Check your inbox' })).toBeTruthy();
     return t;
@@ -432,6 +437,7 @@ describe('AuthModal error messages (AW-084)', () => {
 
   it('tells an applicant whose email is taken to sign in or reset, never “User already registered”', async () => {
     setup({ signUp: vi.fn(async () => { throw apiError('User already registered', 'user_already_exists', 422); }) }, { initialMode: 'application' });
+    typePhone();
     await act(async () => { fireEvent.submit(screen.getByLabelText('Business email').closest('form')); });
     expect(alert().textContent).toBe('An account already uses this email. Sign in or reset your password.');
     expect(screen.queryByText(/User already registered/)).toBeNull();
@@ -440,6 +446,7 @@ describe('AuthModal error messages (AW-084)', () => {
   it('says what a weak password needs', async () => {
     const weak = Object.assign(new Error('Password should be at least 8 characters.'), { name: 'AuthWeakPasswordError', code: 'weak_password', status: 422, reasons: ['length'] });
     setup({ signUp: vi.fn(async () => { throw weak; }) }, { initialMode: 'application' });
+    typePhone();
     await act(async () => { fireEvent.submit(screen.getByLabelText('Business email').closest('form')); });
     expect(alert().textContent).toBe('Choose a stronger password: at least 8 characters.');
   });
@@ -552,6 +559,7 @@ describe('AuthModal step changes (AW-090, AW-096, AW-245)', () => {
     setup({ signUp: vi.fn(async () => ({ session: null })) }, { initialMode: 'application' });
     const dialog = screen.getByRole('dialog');
     dialog.scrollTop = 905;
+    typePhone();
     await act(async () => { fireEvent.submit(screen.getByLabelText('Your name').closest('form')); });
     expect(screen.getByRole('heading', { name: 'Check your inbox' })).toBeTruthy();
     expect(dialog.scrollTop).toBe(0);
@@ -696,13 +704,13 @@ describe('AuthModal after the application is sent (AW-260)', () => {
     expect(steps()).toEqual([
       'Confirm your email.Open the link in that email. Not there after a few minutes? Check your spam folder. Already have an account with this email? Sign in instead.',
       'We review your application.A trade rep checks your EIN, state retail tobacco license and resale certificate.',
-      'You hear from us.We’ll email you or call 205-555-0199 when your account is approved. Wholesale pricing and ordering unlock then.',
+      'You hear from us.We’ll email you or call (205) 555-0199 when your account is approved. Wholesale pricing and ordering unlock then.',
     ]);
   });
 
-  it('leaves out “or call” without a phone number', async () => {
-    await sendApplication({ phone: '' });
-    expect(steps()[2]).toBe('You hear from us.We’ll email you when your account is approved. Wholesale pricing and ordering unlock then.');
+  it('names the phone number as it was sent (AW-247)', async () => {
+    await sendApplication({ phone: '+1 205.555.0199' });
+    expect(steps()[2]).toBe('You hear from us.We’ll email you or call (205) 555-0199 when your account is approved. Wholesale pricing and ordering unlock then.');
   });
 
   for (const [label, find] of [
@@ -768,5 +776,60 @@ describe('AuthModal application choices and groups (AW-091, AW-243)', () => {
     }
     expect(document.getElementById('aw-su-name').hasAttribute('data-autofocus')).toBe(true);
     expect(document.activeElement).toBe(screen.getByLabelText('Your name'));
+  });
+});
+
+// AW-247: the phone number is ten digits, checked before anything is sent,
+// with its own error under the field.
+describe('AuthModal application phone number (AW-247)', () => {
+  const phone = () => screen.getByLabelText('Phone');
+  const submit = () => act(async () => { fireEvent.submit(phone().closest('form')); });
+
+  it('says what it wants: an example, a hint, a phone keypad and a pattern the browser can use', () => {
+    setup({}, { initialMode: 'application' });
+    expect(phone().getAttribute('placeholder')).toBe('(205) 555-0123');
+    expect(phone().getAttribute('inputmode')).toBe('tel');
+    expect(phone().getAttribute('title')).toBe('Enter a 10-digit US phone number');
+    expect(phone().getAttribute('aria-describedby')).toBe('aw-su-phone-hint');
+    expect(document.getElementById('aw-su-phone-hint').textContent).toBe('Ten digits, the number we should call about this account.');
+    // The browser compiles the pattern with the v flag; an invalid one is ignored.
+    const html = new RegExp(`^(?:${phone().getAttribute('pattern')})$`, 'v');
+    expect([html.test('(205) 555-0123'), html.test('abc')]).toEqual([true, false]);
+  });
+
+  it('refuses a number that is not ten digits: no signUp, the field marked, described and focused', async () => {
+    const t = setup({ signUp: vi.fn(async () => ({ session: null })) }, { initialMode: 'application' });
+    typePhone('205-555-012');
+    screen.getByLabelText('Your name').focus();
+    await submit();
+    expect(t.value.signUp).not.toHaveBeenCalled();
+    expect(phone().getAttribute('aria-invalid')).toBe('true');
+    expect(phone().getAttribute('aria-describedby')).toBe('aw-su-phone-hint aw-su-phone-error');
+    expect(document.getElementById('aw-su-phone-error').textContent).toBe('Enter a 10-digit phone number, area code first.');
+    expect(document.activeElement).toBe(phone());
+    // Nothing in the form's own error line: the field says it.
+    expect(screen.getAllByRole('alert').map((el) => el.textContent).join('')).toBe('');
+    // Editing the number clears the error.
+    typePhone('205-555-0123');
+    expect(phone().hasAttribute('aria-invalid')).toBe(false);
+    expect(phone().getAttribute('aria-describedby')).toBe('aw-su-phone-hint');
+    expect(document.getElementById('aw-su-phone-error').textContent).toBe('');
+  });
+
+  it('reads the error out when the phone field already had focus', async () => {
+    vi.useFakeTimers();
+    setup({}, { initialMode: 'application' });
+    typePhone('abc');
+    phone().focus();
+    await submit();
+    act(() => { vi.advanceTimersByTime(200); });
+    expect(document.getElementById('aw-announcer').textContent).toBe('Enter a 10-digit phone number, area code first.');
+  });
+
+  it('sends the number formatted', async () => {
+    const t = setup({ signUp: vi.fn(async () => ({ session: null })) }, { initialMode: 'application' });
+    typePhone('1 205 555 0123');
+    await submit();
+    expect(t.value.signUp).toHaveBeenCalledWith(expect.objectContaining({ phone: '(205) 555-0123' }));
   });
 });
