@@ -37,7 +37,7 @@ export const SIGNED_OUT_TEXT = 'A trade account shows your order history, lets y
 
 export function AccountPage({
   profile, account = profile ? 'ready' : 'signed-out', onSignIn, onApplyClick, onRetry, retrying = false, onSignOut, onSignOutEverywhere,
-  signingOut = false, products = [], addLines, onOpenCart, isApprovedBuyer, isBackendConfigured = true,
+  signingOut = false, products = [], addLines, onOpenCart, isApprovedBuyer, isBackendConfigured = true, priceOf, pricesStatus,
 }) {
   // A link to #quick-reorder or #documents that arrived before the account
   // did (a guest's Quick Reorder, then sign-in; a reload): when the account
@@ -138,7 +138,8 @@ export function AccountPage({
             <h2>Reorder by SKU</h2>
           </div>
         </div>
-        <QuickReorder products={products} addLines={addLines} onOpenCart={onOpenCart} isApprovedBuyer={isApprovedBuyer} />
+        <QuickReorder products={products} addLines={addLines} onOpenCart={onOpenCart} isApprovedBuyer={isApprovedBuyer}
+                      priceOf={priceOf} pricesStatus={pricesStatus} />
       </section>
 
       <OrderHistory userId={profile.id} products={products} addLines={addLines} onOpenCart={onOpenCart} isApprovedBuyer={isApprovedBuyer} />

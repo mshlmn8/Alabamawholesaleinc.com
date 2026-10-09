@@ -332,6 +332,7 @@ export default function App() {
         return (
           <AccountPage key={session?.user?.id || 'guest'} {...accountProps} products={products} onApplyClick={openSignup}
                        addLines={cart.addLines} onOpenCart={() => setCartOpen(true)} isApprovedBuyer={isApprovedBuyer} isBackendConfigured={isBackendConfigured}
+                       priceOf={priceOf} pricesStatus={prices.status}
                        onSignOutEverywhere={() => handleLogout({ scope: 'global' })} />
         );
       case 'admin':
