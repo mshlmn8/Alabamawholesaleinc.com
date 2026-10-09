@@ -388,7 +388,7 @@ h2 { font-size: var(--h2); margin-bottom: 0; }
    context goes into this list (and into LINKS in styles.test.js). Links on
    purple surfaces (trade bar, footer, contact strip, collection card) keep
    their light colours with the same offset. */
-.text-link, .support-note a, .checklist a, .checklist-note a, .next-steps a, .policy-body a, .contact-grid a, .doc-uploads-note a, .doc-panel a, .doc-admin a, .status-panel p a, .eligibility-result a, .error-fallback > p a, .dialog > .desc a, .form-error a, .dialog .form-grid a, .consent-block .consent a, .photo-credit a, .order-contact a, .account-link, .order-account-link, .account-contact a, .account-detail-contact a, .pd-price.is-locked p a {
+.text-link, .support-note a, .checklist a, .checklist-note a, .next-steps a, .policy-body a, .contact-grid a, .doc-uploads-note a, .doc-panel a, .doc-admin a, .status-panel p a, .eligibility-result a, .error-fallback > p a, .dialog > .desc a, .form-error a, .dialog .form-grid a, .consent-block .consent a, .photo-credit a, .order-contact a, .account-link, .order-account-link, .account-contact a, .account-detail-contact a, .pd-price.is-locked p a, .quote-paused a, .drawer-paused a {
   color: var(--link-color); font-weight: 600; text-decoration: underline; text-underline-offset: var(--link-offset);
 }
 .text-link { display: inline-flex; align-items: center; min-height: 36px; font-size: var(--text-sm); background: none; border: 0; padding: 0; }
@@ -397,7 +397,7 @@ p > .text-link { min-height: 0; min-width: 0; }
    surfaces alike, so no link turns orange on purple (AW-145). The list is the
    link list above. */
 @media (hover: hover) {
-  .text-link:not(:disabled):hover, .support-note a:hover, .checklist a:hover, .checklist-note a:hover, .next-steps a:hover, .policy-body a:hover, .contact-grid a:hover, .doc-uploads-note a:hover, .doc-panel a:hover, .doc-admin a:hover, .status-panel p a:hover, .eligibility-result a:hover, .error-fallback > p a:hover, .dialog > .desc a:hover, .form-error a:hover, .dialog .form-grid a:hover, .consent-block .consent a:hover, .photo-credit a:hover, .order-contact a:hover, .account-link:hover, .order-account-link:hover, .account-contact a:hover, .account-detail-contact a:hover, .pd-price.is-locked p a:hover {
+  .text-link:not(:disabled):hover, .support-note a:hover, .checklist a:hover, .checklist-note a:hover, .next-steps a:hover, .policy-body a:hover, .contact-grid a:hover, .doc-uploads-note a:hover, .doc-panel a:hover, .doc-admin a:hover, .status-panel p a:hover, .eligibility-result a:hover, .error-fallback > p a:hover, .dialog > .desc a:hover, .form-error a:hover, .dialog .form-grid a:hover, .consent-block .consent a:hover, .photo-credit a:hover, .order-contact a:hover, .account-link:hover, .order-account-link:hover, .account-contact a:hover, .account-detail-contact a:hover, .pd-price.is-locked p a:hover, .quote-paused a:hover, .drawer-paused a:hover {
     text-decoration-thickness: 2px;
   }
 }
@@ -1785,6 +1785,11 @@ ul.sub-pills { list-style: none; padding: 0; }
 .quote-account-links .text-link { min-height: var(--tap); }
 .quote-paused { margin: 16px 0 0; }
 .drawer-paused { margin: 4px 0 0; }
+/* Its phone and email are links like any other (the shared link rule above).
+   The email may break anywhere, so large text never widens the page; the
+   phone number stays on one line. */
+.quote-paused a, .drawer-paused a { overflow-wrap: anywhere; }
+.quote-paused a[href^="tel:"], .drawer-paused a[href^="tel:"] { white-space: nowrap; }
 
 /* ============================ toast (AW-072) ============================
    The cart toast (src/components/Toast.jsx), fixed at the bottom of the

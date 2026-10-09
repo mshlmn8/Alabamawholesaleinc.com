@@ -1,5 +1,6 @@
 // Checkout's spacing and phone layout (AW-241) and its Notes box (AW-078),
-// read from src/index.css as text like styles.test.js does.
+// read from src/index.css as text like styles.test.js does. Also the links
+// in the paused-ordering notes on /quote and in the drawer.
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -60,5 +61,12 @@ describe('the Notes box (AW-078)', () => {
     expect(base).toBeGreaterThanOrEqual(0);
     expect(notes).toBeGreaterThan(base);
     expect(declarations(top[notes].body)).toMatchObject({ 'padding-block': '.625rem', 'min-height': '6rem' });
+  });
+});
+
+describe('the paused-ordering notes (AW-201)', () => {
+  it('let the email break anywhere and keep the phone number whole, so large text never widens /quote or the drawer', () => {
+    expect(declarations(rule(top, '.quote-paused a, .drawer-paused a').body)).toEqual({ 'overflow-wrap': 'anywhere' });
+    expect(declarations(rule(top, '.quote-paused a[href^="tel:"], .drawer-paused a[href^="tel:"]').body)).toEqual({ 'white-space': 'nowrap' });
   });
 });
