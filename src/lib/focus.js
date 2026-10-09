@@ -2,7 +2,8 @@
 // is re-keyed (a bare line moved to its variant, AW-011) is a new element,
 // and a removed line takes its focused Remove with it (AW-042), so focus would
 // otherwise drop to <body>. Each line is an element with
-// data-line-key="<line key>" inside listEl (CartLine's <li>).
+// data-line-key="<line key>" inside listEl (CartLine's <li>). The department
+// page's filter chips and Clear all buttons use the same rules (NEW-005).
 
 const nextFrame = (fn) => (typeof window.requestAnimationFrame === 'function'
   ? window.requestAnimationFrame(fn)
@@ -46,6 +47,31 @@ export function focusLineSoon(listEl, key, { selector = 'input', fallback = null
     else if (fallback?.isConnected) fallback.focus();
   };
   nextFrame(attempt);
+}
+
+// The first control in `container` that takes focus (not disabled, not
+// hidden by the hidden attribute), or null.
+const CONTROLS = 'input, select, textarea, button, a[href], [tabindex]:not([tabindex="-1"])';
+export function firstControlIn(container) {
+  if (!container) return null;
+  return [...container.querySelectorAll(CONTROLS)].find((el) => !el.disabled && !el.closest('[hidden]')) || null;
+}
+
+// Moves focus to `el` without scrolling the page (a filter change keeps the
+// scroll position, AW-327). An element that isn't a control takes
+// tabindex="-1" first. Returns whether focus is now on it.
+export function focusInPlace(el) {
+  if (!el?.isConnected) return false;
+  if (!el.matches(CONTROLS) && !el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
+  el.focus({ preventScroll: true });
+  return document.activeElement === el;
+}
+
+// Whether keyboard focus has nowhere to be: on <body>, or on an element that
+// has left the page.
+export function focusLost() {
+  const active = document.activeElement;
+  return !active || active === document.body || !active.isConnected;
 }
 
 // The control `el` is about to disappear: focus moves to its dialog's

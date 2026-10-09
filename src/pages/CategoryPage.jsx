@@ -26,6 +26,7 @@ import { featuredOrder } from '../lib/merchandising.js';
 import { brandLabel, catLabel } from '../lib/format.js';
 import { tierPriceNote } from '../lib/pricing.js';
 import { Link, navigate } from '../lib/router.js';
+import { firstControlIn, focusInPlace, focusLost, neighbourKey } from '../lib/focus.js';
 import { useToolbarHeight } from '../lib/stickyHeader.js';
 import { EMPTY_CATEGORY_QUERY, slugify } from '../lib/routes.js';
 import { Breadcrumbs, catalogCrumbs } from '../components/Breadcrumbs.jsx';
@@ -91,12 +92,41 @@ function byBrand(a, b) {
   return ba.localeCompare(bb) || a.name.localeCompare(b.name);
 }
 
+// A pill's left edge in the phone pill row's scrolled content. The row is
+// positioned in the compact layout, so the pill's offsetLeft is measured
+// from it.
+const pillLeft = (pill, row) => (pill.offsetParent === row ? pill.offsetLeft : pill.offsetLeft - row.offsetLeft);
+
 // The row scroll that centres a product-line pill in the phone pill row
-// (AW-157). The row is positioned in the compact layout, so the pill's
-// offsetLeft is measured from it; scrollLeft keeps itself in range.
+// (AW-157); scrollLeft keeps itself in range.
 export function centredScrollLeft(pill, row) {
-  const left = pill.offsetParent === row ? pill.offsetLeft : pill.offsetLeft - row.offsetLeft;
-  return Math.max(0, Math.round(left + pill.offsetWidth / 2 - row.clientWidth / 2));
+  return Math.max(0, Math.round(pillLeft(pill, row) + pill.offsetWidth / 2 - row.clientWidth / 2));
+}
+
+// How far a focused pill stays inside the row's edges (NEW-084): clear of
+// the 12px fade, with its focus ring. The same 20px as the row's
+// scroll-padding-inline in index.css.
+export const PILL_EDGE = 20;
+
+// A pill's place in the phone pill row's scrolled content, { left, width }
+// in px, measured from the rendered boxes (offsetLeft and offsetWidth are
+// rounded, which could leave a pill a pixel short).
+function pillBox(pill, row) {
+  const p = pill.getBoundingClientRect();
+  const r = row.getBoundingClientRect();
+  return { left: p.left - r.left - row.clientLeft + row.scrollLeft, width: p.width };
+}
+
+// The row scroll that brings a pill (its pillBox) at least `edge` px inside
+// both ends of the row ({ scrollLeft, clientWidth }), moving the row as
+// little as it can; the current scroll when the pill is already that far
+// in. A pill wider than that shows its start.
+export function revealedScrollLeft({ left, width }, { scrollLeft, clientWidth }, edge = PILL_EDGE) {
+  const start = left - edge;
+  const end = left + width + edge - clientWidth;
+  if (scrollLeft > start || end > start) return Math.max(0, Math.floor(start));
+  if (scrollLeft < end) return Math.ceil(end);
+  return scrollLeft;
 }
 
 // Typing in the department search updates the URL once the typing pauses.
@@ -201,8 +231,33 @@ export function CategoryPage({
   // The phone drawer's line choice (AW-223) replaces the entry: a push while
   // the drawer holds its own history entry would race it.
   const pickLine = (line) => navigate(here({ sub: line || null }), { replace: true, scroll: false });
-  // Clears the product line and every filter; the sort order stays.
-  const clearFilters = () => {
+  // Where focus goes once a filter change has redrawn the page (NEW-005). A
+  // removed chip takes its own button away, and so does every Clear all once
+  // nothing is left to clear, so focus would drop to <body> and the next Tab
+  // start again at the skip link. The handler names the target; the effect
+  // below moves focus there after the render, without scrolling (AW-327).
+  //   { chip: key }  that chip's button, else the result note
+  //   { drawer }     the first control of the Filter & Sort drawer
+  //   {}             the result note, which is always there
+  const focusAfter = useRef(null);
+  const noteRef = useRef(null);
+  const chipsRef = useRef(null);
+  const drawerBodyRef = useRef(null);
+  useEffect(() => {
+    const target = focusAfter.current;
+    if (!target) return;
+    focusAfter.current = null;
+    // Only where focus was lost: a mouse user who has moved on keeps theirs.
+    if (!focusLost()) return;
+    const chip = target.chip && [...(chipsRef.current?.querySelectorAll('button[data-chip]') || [])].find((b) => b.dataset.chip === target.chip);
+    const drawer = target.drawer && firstControlIn(drawerBodyRef.current);
+    focusInPlace(chip || drawer || noteRef.current);
+  });
+
+  // Clears the product line and every filter; the sort order stays. From the
+  // phone drawer, focus stays in the drawer.
+  const clearFilters = ({ drawer = false } = {}) => {
+    focusAfter.current = drawer ? { drawer: true } : {};
     cancelSearch();
     setDraft('');
     navigate({ page: 'category', category, sub: null, query: { ...EMPTY_CATEGORY_QUERY, sort: query.sort } }, { replace: true, scroll: false });
@@ -216,7 +271,10 @@ export function CategoryPage({
   brands.forEach(slug => chips.push({ key: `brand-${slug}`, brand: slug, label: `Brand: ${brandChoices.find(o => o.slug === slug)?.label || slug}` }));
   if (hasVariants) chips.push({ key: 'variants', label: 'Has variants' });
   if (needle) chips.push({ key: 'query', label: `“${query.q.trim()}”` });
+  // Focus moves to the next chip, else the one before, else the result note.
   const removeChip = (chip) => {
+    const next = neighbourKey(chips.map((c) => c.key), chip.key);
+    focusAfter.current = next ? { chip: next } : {};
     if (chip.key === 'sub') navigate(here({ sub: null }), { replace: true, scroll: false });
     else if (chip.tag) toggleTag(chip.tag);
     else if (chip.brand) toggleBrand(chip.brand);
@@ -230,7 +288,7 @@ export function CategoryPage({
   const noResultActions = (
     <>
       {needle && <Link className="button" to={{ page: 'search', q: query.q }}>{`Search all departments for “${query.q.trim()}”`}</Link>}
-      <button className="button ghost" type="button" onClick={clearFilters}>Clear filters</button>
+      <button className="button ghost" type="button" onClick={() => clearFilters()}>Clear filters</button>
       {otherDepartments.length > 0 && (
         <ul className="sub-pills" aria-label="Other departments">
           {otherDepartments.map(d => (
@@ -244,7 +302,7 @@ export function CategoryPage({
   // With a product line picked, the count compares against that line (AW-232).
   // Phones show the note without the line's name (AW-158, .result-scope).
   const resultNote = (
-    <p className="result-note" role="status">
+    <p className="result-note" role="status" ref={noteRef} tabIndex={-1}>
       Showing <strong>{items.length}</strong> <span>{`of ${inScope.length} item${inScope.length === 1 ? '' : 's'}${activeSub ? ' ' : ''}`}</span><span className="result-scope">{activeSub ? `in ${activeSub}` : ''}</span>
     </p>
   );
@@ -314,7 +372,10 @@ export function CategoryPage({
   // On phones the product lines are one scrolling row, and the current one is
   // centred in it on arrival and after each pick (AW-157): the row's own
   // scrollLeft, not scrollIntoView, which can also scroll the page and undo
-  // the position Back restores.
+  // the position Back restores. Again once the web fonts are in, and when the
+  // row or the pill changes size: Safari lays a cold load out in the
+  // fallback font first, and the wider Barlow pills then left the current one
+  // under the fade at the end of the row.
   const pillsRef = useRef(null);
   // The Filter & Sort row's height, for the scroll margin of the cards that
   // scroll under it where it sticks (NEW-081).
@@ -323,9 +384,31 @@ export function CategoryPage({
   useLayoutEffect(() => {
     const row = pillsRef.current;
     const pill = row?.querySelector('[aria-current="page"]');
-    if (!isMobile || !pill) return;
-    row.scrollLeft = centredScrollLeft(pill, row);
+    if (!isMobile || !pill) return undefined;
+    const centre = () => {
+      if (pill.isConnected) row.scrollLeft = centredScrollLeft(pill, row);
+    };
+    centre();
+    let live = true;
+    document.fonts?.ready?.then(() => { if (live) centre(); }, () => {});
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(centre) : null;
+    observer?.observe(row);
+    observer?.observe(pill);
+    return () => {
+      live = false;
+      observer?.disconnect();
+    };
   }, [activeSub, isMobile]);
+  // A pill reached with Tab comes fully into the row, 20px clear of its ends
+  // (NEW-084): browsers leave a partly shown one where it is. The row's own
+  // scrollLeft again, never the page's.
+  const revealPill = (event) => {
+    const row = pillsRef.current;
+    const pill = event.target;
+    if (!isMobile || !row || pill === row || !row.contains(pill)) return;
+    const left = revealedScrollLeft(pillBox(pill, row), row);
+    if (left !== row.scrollLeft) row.scrollLeft = left;
+  };
 
   return (
     <section>
@@ -340,7 +423,7 @@ export function CategoryPage({
         <p>{`${activeSub
           ? `Wholesale ${deptLabel.toLowerCase()} for licensed retail accounts: ${plural(inScope.length, 'product')} in ${activeSub}.`
           : `Wholesale ${deptLabel.toLowerCase()} for licensed retail accounts: ${plural(inCategory.length, 'product')}${lines.length ? ` in ${plural(lines.length, 'product line')}` : ''}.`}${isApprovedBuyer ? ` ${tierPriceNote(priceTier)}` : ''}`}</p>
-        <nav className="sub-pills" ref={pillsRef} aria-label={`${deptLabel} product lines`}>
+        <nav className="sub-pills" ref={pillsRef} aria-label={`${deptLabel} product lines`} onFocus={revealPill}>
           <Link className={`sub-pill${!activeSub ? ' active' : ''}${filtered.length ? '' : ' is-empty'}`} to={here({ sub: null })} scroll={false} aria-current={!activeSub ? 'page' : undefined}>{`All (${filtered.length})`}</Link>
           {lines.map(({ sub: s, count }) => (
             <Link key={s} className={`sub-pill${activeSub === s ? ' active' : ''}${count ? '' : ' is-empty'}`} to={here({ sub: s })} scroll={false} aria-current={activeSub === s ? 'page' : undefined}>{`${s} (${count})`}</Link>
@@ -362,11 +445,11 @@ export function CategoryPage({
         </div>
       </div>
       {chips.length > 0 && (
-        <ul className="active-filters" aria-label="Active filters">
+        <ul className="active-filters" aria-label="Active filters" ref={chipsRef}>
           {chips.map(c => (
-            <li key={c.key}><button type="button" onClick={() => removeChip(c)} aria-label={`Remove filter ${c.label}`}><span>{c.label}</span><Icon name="close" /></button></li>
+            <li key={c.key}><button type="button" data-chip={c.key} onClick={() => removeChip(c)} aria-label={`Remove filter ${c.label}`}><span>{c.label}</span><Icon name="close" /></button></li>
           ))}
-          <li><button className="text-link" type="button" onClick={clearFilters}>Clear all</button></li>
+          <li><button className="text-link" type="button" onClick={() => clearFilters()}>Clear all</button></li>
         </ul>
       )}
 
@@ -378,14 +461,14 @@ export function CategoryPage({
               <h2 id="aw-filter-title">Filter &amp; Sort</h2>
               <button className="icon-btn" type="button" onClick={closeFilters} aria-label="Close filters"><Icon name="close" /></button>
             </div>
-            <div className="drawer-body filter-drawer-body">
+            <div className="drawer-body filter-drawer-body" ref={drawerBodyRef}>
               {linePicker}
               {sortControl}
               {filterPanel}
             </div>
             <div className="drawer-foot">
               <div className="drawer-actions">
-                {activeFilterCount > 0 && <button className="text-link" type="button" onClick={clearFilters}>{`Clear all (${activeFilterCount})`}</button>}
+                {activeFilterCount > 0 && <button className="text-link" type="button" onClick={() => clearFilters({ drawer: true })}>{`Clear all (${activeFilterCount})`}</button>}
                 <button className="button" type="button" onClick={closeFilters}><span>{`Show ${items.length} item${items.length === 1 ? '' : 's'}`}</span></button>
               </div>
             </div>
@@ -398,7 +481,7 @@ export function CategoryPage({
           <aside className="category-filters" aria-label="Product filters">
             <div className="filter-heading">
               <h2>Filters</h2>
-              {activeFilterCount > 0 && <button className="text-link" type="button" onClick={clearFilters}>{`Clear all (${activeFilterCount})`}</button>}
+              {activeFilterCount > 0 && <button className="text-link" type="button" onClick={() => clearFilters()}>{`Clear all (${activeFilterCount})`}</button>}
             </div>
             {filterPanel}
           </aside>
