@@ -1057,7 +1057,12 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .account-contact { display: grid; gap: 2px; min-width: 10rem; }
 .account-contact a, .account-detail-contact a { overflow-wrap: anywhere; }
 :where(.aw-table, .order-head, .form-grid) select[aria-disabled="true"] { opacity: var(--disabled-opacity); cursor: progress; }
-.order-moved { display: inline-block; padding: 2px 8px; border: 1px solid var(--purple); color: var(--purple); font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; }
+.order-moved, .account-moved { display: inline-block; padding: 2px 8px; border: 1px solid var(--purple); color: var(--purple); font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; }
+/* Admin -> Accounts' status filter (AW-268): an account whose status changed
+   while it was listed stays, marked under its status select; a search that
+   finds nothing in one status offers to search them all. */
+.account-moved { display: block; width: max-content; margin-top: 6px; }
+.empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 24px; }
 .account-detail { margin-top: 18px; }
 .account-detail-back, .account-orders-link { margin: 0 0 6px; }
 .account-detail-back .text-link, .account-orders-link .text-link { min-height: var(--tap); }

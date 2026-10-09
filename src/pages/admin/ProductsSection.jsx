@@ -451,7 +451,11 @@ function ProductsList({
         <BulkBar rows={selectedRows} adjustMissing={missing.adjust} onAdjustMissing={() => onMissing?.('adjust')}
           onApplied={afterChange} onClear={clearSelection} />
       )}
-      {result.total === 0 ? (
+      {rows.length === 0 ? (
+        // An empty catalog is not a filter's doing (AW-268); a failed load
+        // says so above.
+        !loadError && <p className="result-note">No products loaded. Check the catalog connection.</p>
+      ) : result.total === 0 ? (
         <div className="empty-results">
           <p>No products match these filters.</p>
           <Link className="text-link" to={clearHref} replace scroll={false}>Clear filters</Link>

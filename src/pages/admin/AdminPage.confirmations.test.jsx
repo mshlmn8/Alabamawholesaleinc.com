@@ -209,7 +209,7 @@ describe('account changes', () => {
   const row = (business) => screen.getByRole('link', { name: business }).closest('tr');
 
   it('suspending asks for a reason, then saves it as an internal note', async () => {
-    await open('/admin/accounts');
+    await open('/admin/accounts?status=all');
     const select = within(row('Alpha Food Mart')).getByRole('combobox', { name: 'Status for Alpha Food Mart' });
     await act(async () => { fireEvent.change(select, { target: { value: 'suspended' } }); });
     const dialog = screen.getByRole('alertdialog', { name: 'Suspend Alpha Food Mart?' });
@@ -228,7 +228,7 @@ describe('account changes', () => {
 
   it('says the account is suspended but the reason wasn’t saved when the notes table is missing', async () => {
     db.tableError.profile_admin_notes = MISSING_TABLE;
-    await open('/admin/accounts');
+    await open('/admin/accounts?status=all');
     await act(async () => { fireEvent.change(screen.getByRole('combobox', { name: 'Status for Alpha Food Mart' }), { target: { value: 'suspended' } }); });
     fireEvent.change(screen.getByLabelText('Reason for suspending'), { target: { value: 'Licence expired' } });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Suspend the account' })); });
@@ -257,7 +257,7 @@ describe('account changes', () => {
 
   it('a double click on Approve sends one update; the status select then has the focus, and Undo puts it back', async () => {
     db.hold['profiles:update'] = true;
-    await open('/admin/accounts');
+    await open('/admin/accounts?status=all');
     const approve = within(row('Bravo Tobacco Outlet')).getByRole('button', { name: /^Approve ?Bravo Tobacco Outlet$/ });
     await act(async () => { fireEvent.click(approve); });
     await act(async () => { fireEvent.click(approve); });
@@ -282,7 +282,7 @@ describe('account changes', () => {
   });
 
   it('a tier change shows at once and goes back, with the reason, when it reaches no row', async () => {
-    await open('/admin/accounts');
+    await open('/admin/accounts?status=all');
     const tier = () => screen.getByRole('combobox', { name: 'Tier for Alpha Food Mart' });
     db.updateResult = { data: [], error: null, status: 200 };
     await act(async () => { fireEvent.change(tier(), { target: { value: 'standard' } }); });

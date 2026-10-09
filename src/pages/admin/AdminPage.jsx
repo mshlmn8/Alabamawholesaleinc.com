@@ -6,8 +6,8 @@
 //
 // Each section has its own URL (AW-118, src/lib/adminRoutes.js): /admin
 // (Orders), /admin/orders?status=…, /admin/orders/:id/print?doc=pick|slip
-// (AW-110), /admin/accounts, /admin/products?q=…, /admin/pricing (the tier
-// discounts, AW-114).
+// (AW-110), /admin/accounts?status=… (AW-268), /admin/products?q=…,
+// /admin/pricing (the tier discounts, AW-114).
 // Every admin URL is the same page to the router (pageKey 'admin'), so moving
 // between sections and filters keeps the scroll position and focus, and Back
 // returns to the previous section. A detail view (the product editor,
@@ -177,7 +177,7 @@ export function AdminPage({
           returnFocusId={returnFocusId} onReturnFocus={setReturnFocusId} />
       )}
       {section === 'accounts' && (
-        <AccountsTab route={route} currentAdminId={profile.id} notify={status.show} search={accountSearch} onSearch={setAccountSearch}
+        <AccountsTab route={route} query={query} onQuery={setQuery} currentAdminId={profile.id} notify={status.show} search={accountSearch} onSearch={setAccountSearch}
           returnFocusId={returnFocusId} onReturnFocus={setReturnFocusId} />
       )}
       {section === 'products' && (

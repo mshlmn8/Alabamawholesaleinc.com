@@ -299,6 +299,8 @@ describe('Admin accounts', () => {
     await act(async () => { render(<RoutedAdmin profile={ADMIN} account="ready" />); });
     await act(async () => { fireEvent.click(screen.getByRole('link', { name: 'Accounts' })); });
     expect(window.location.pathname).toBe('/admin/accounts');
+    // The list opens on pending accounts (AW-268); every status:
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'all (3)' })); });
     const links = screen.getAllByRole('link', { name: /^Email applicant/ });
     expect(links).toHaveLength(1);
     expect(links[0].getAttribute('href')).toMatch(/^mailto:al@example\.test\?subject=/);

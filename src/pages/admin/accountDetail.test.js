@@ -1,8 +1,8 @@
 // The account search and the account page's pure parts (AW-113).
 import { describe, expect, it } from 'vitest';
 import {
-  ACCOUNT_ORDER_COLUMNS, accountHref, accountOrdersHref, businessTypes, contactChanges, contactDraft, loadAccountOrders, matchesAccountSearch,
-  ordersSummary, validateContact,
+  ACCOUNT_ORDER_COLUMNS, accountCountText, accountHref, accountOrdersHref, accountStatusCounts, businessTypes, contactChanges, contactDraft,
+  loadAccountOrders, matchesAccountSearch, ordersSummary, validateContact,
 } from './accountDetail.js';
 
 const ALPHA = {
@@ -96,5 +96,32 @@ describe('the account’s orders', () => {
   it('links to the account’s page and its orders in Admin -> Orders', () => {
     expect(accountHref(ALPHA.id)).toBe(`/admin/accounts/${ALPHA.id}`);
     expect(accountOrdersHref(ALPHA.id)).toBe(`/admin/orders?status=all&account=${ALPHA.id}`);
+  });
+});
+
+describe('accountStatusCounts (AW-268)', () => {
+  it('counts each status and all, an unknown or missing status as pending', () => {
+    const rows = [{ status: 'pending' }, { status: 'approved' }, { status: 'approved' }, { status: 'suspended' }, { status: 'deleted' }, {}];
+    expect(accountStatusCounts(rows)).toEqual({ pending: 3, approved: 2, suspended: 1, all: 6 });
+    expect(accountStatusCounts(null)).toEqual({ pending: 0, approved: 0, suspended: 0, all: 0 });
+  });
+});
+
+describe('accountCountText (AW-268)', () => {
+  const pending = [{ status: 'pending' }, { status: 'pending' }, { status: 'pending' }];
+  it('names the status, and counts the search’s results out of the status’s', () => {
+    expect(accountCountText({ listed: pending, filter: 'pending' })).toBe('3 pending accounts');
+    expect(accountCountText({ listed: pending, shown: pending.slice(0, 1), filter: 'pending', searching: true })).toBe('1 of 3 pending accounts');
+    expect(accountCountText({ listed: [{ status: 'suspended' }], filter: 'suspended' })).toBe('1 suspended account');
+    expect(accountCountText({ listed: [], filter: 'suspended' })).toBe('0 suspended accounts');
+    expect(accountCountText({ listed: [...pending, { status: 'approved' }], filter: 'all' })).toBe('4 accounts');
+    expect(accountCountText({ listed: pending, shown: [], filter: 'all', searching: true })).toBe('0 of 3 accounts');
+  });
+
+  it('counts the accounts that moved to another status apart', () => {
+    const listed = [{ status: 'pending' }, { status: 'approved' }, { status: 'pending' }];
+    expect(accountCountText({ listed, filter: 'pending' })).toBe('2 pending accounts · 1 moved');
+    expect(accountCountText({ listed, shown: [listed[1]], filter: 'pending', searching: true })).toBe('0 of 2 pending accounts · 1 moved');
+    expect(accountCountText({ listed, shown: [listed[0]], filter: 'pending', searching: true })).toBe('1 of 2 pending accounts');
   });
 });

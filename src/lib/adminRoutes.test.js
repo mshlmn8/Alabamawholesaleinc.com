@@ -46,8 +46,13 @@ describe('parseAdminPath', () => {
       .toEqual({ status: 'picking', from: '2026-10-01', method: 'willcall', account: UUID });
     expect(parseAdminQuery('orders', '?status=new')).toEqual({});
     expect(parseAdminQuery('orders', '?status=lost')).toEqual({});
-    // Accounts take nothing from the URL: their search names people.
+    // Accounts take only their status filter from the URL (AW-268), never
+    // the search: it names people. 'pending' is the default.
     expect(parseAdminQuery('accounts', '?q=alice@example.test&status=pending')).toEqual({});
+    expect(parseAdminQuery('accounts', '?q=alice@example.test&status=Approved')).toEqual({ status: 'approved' });
+    expect(parseAdminQuery('accounts', '?status=suspended')).toEqual({ status: 'suspended' });
+    expect(parseAdminQuery('accounts', '?status=all')).toEqual({ status: 'all' });
+    expect(parseAdminQuery('accounts', '?status=deleted')).toEqual({});
     expect(parseAdminQuery('products', `?q=+swisher+&status=inactive&dept=drinks-and-bags&sub=Energy-Drinks&tag=NEW&photo=None&unit=none&stock=low_stock&sort=price&dir=desc&page=3&from=12&x=1`))
       .toEqual({ q: 'swisher', status: 'inactive', dept: 'drinks-and-bags', sub: 'energy-drinks', tag: 'new', photo: 'none', unit: 'none', stock: 'low_stock', sort: 'price', dir: 'desc', page: 3, from: 12 });
     expect(parseAdminQuery('products', '?page=1&dept=../etc&sort=evil&q=')).toEqual({});
@@ -68,6 +73,8 @@ describe('adminPath and adminQueryString', () => {
     expect(adminQueryString('orders', { status: 'new' })).toBe('');
     expect(adminQueryString('products', { page: 1, q: '  swisher sweets ', sort: 'name' })).toBe('?q=swisher+sweets&sort=name');
     expect(adminQueryString('accounts', { q: 'alice' })).toBe('');
+    expect(adminQueryString('accounts', { status: 'pending' })).toBe('');
+    expect(adminQueryString('accounts', { status: 'all', q: 'alice' })).toBe('?status=all');
   });
 
   it('builds paths that resolve back to the same route', () => {
@@ -78,6 +85,7 @@ describe('adminPath and adminQueryString', () => {
       { page: 'admin', section: 'orders', id: UUID, view: 'print', query: { doc: 'pick' } },
       { page: 'admin', section: 'orders', id: UUID, view: 'print', query: { doc: 'slip' } },
       { page: 'admin', section: 'accounts', query: {} },
+      { page: 'admin', section: 'accounts', query: { status: 'suspended' } },
       { page: 'admin', section: 'accounts', id: UUID, query: {} },
       { page: 'admin', section: 'products', query: { q: 'swisher', status: 'inactive', page: 2 } },
       { page: 'admin', section: 'products', id: 42, query: {} },
@@ -87,6 +95,8 @@ describe('adminPath and adminQueryString', () => {
     expect(pathFor({ page: 'admin', section: 'products', id: 42, query: { q: 'x' } })).toBe('/admin/products/42');
     expect(adminPath({ section: 'nowhere' })).toBe('/admin');
     expect(adminHref({ section: 'orders', query: { status: 'picking' } })).toBe('/admin/orders?status=picking');
+    expect(adminHref({ section: 'accounts', query: { status: 'approved' } })).toBe('/admin/accounts?status=approved');
+    expect(adminHref({ section: 'accounts', query: { status: 'pending' } })).toBe('/admin/accounts');
     expect(adminHref({ section: 'orders', id: UUID, view: 'print', query: { doc: 'slip', status: 'all' } })).toBe(`/admin/orders/${UUID}/print?doc=slip`);
   });
 });

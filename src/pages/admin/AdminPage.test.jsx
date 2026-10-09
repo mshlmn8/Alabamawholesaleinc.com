@@ -41,8 +41,9 @@ beforeEach(() => {
 
 const updates = () => fake.find({ op: 'update' }).map(({ table, filters, patch }) => ({ table, id: filters.find(([name]) => name === 'eq')[2], patch }));
 
+// Every status: the list opens on pending accounts (AW-268).
 async function openAccounts() {
-  await act(async () => { render(<AdminPage profile={ADMIN} account="ready" route={{ page: 'admin', section: 'accounts', query: {} }} />); });
+  await act(async () => { render(<AdminPage profile={ADMIN} account="ready" route={{ page: 'admin', section: 'accounts', query: { status: 'all' } }} />); });
   expect(screen.getByRole('link', { name: 'Accounts' }).getAttribute('aria-current')).toBe('page');
 }
 // jsdom drops the space before an sr-only span in accessible names.

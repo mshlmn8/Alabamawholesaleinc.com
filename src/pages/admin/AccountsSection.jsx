@@ -1,13 +1,16 @@
 // Admin -> Accounts: every account with its status, tier, role and licence
 // documents, the details row with the application answers (AW-017), Approve
-// and Email applicant; a search box, and each business's own page
+// and Email applicant; status pills with counts (?status=, pending by
+// default, AW-268), a search box, and each business's own page
 // (/admin/accounts/:id, AccountDetail.jsx, AW-113). Status, tier and role
 // changes show at once, with Undo; suspending asks for a reason
 // (AccountChanges.jsx, AW-112).
 
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { Link } from '../../lib/router.js';
+import { accountStatus } from '../../lib/accountStatus.js';
+import { ACCOUNT_STATUS_FILTERS, DEFAULT_ACCOUNT_STATUS } from '../../lib/adminRoutes.js';
 import { DOCUMENT_TYPES, listAllProfileDocuments } from '../../lib/documents.js';
 import { useLeaveGuard } from './useLeaveGuard.js';
 import { adminErrorMessage, withStatus } from './adminData.js';
@@ -16,7 +19,7 @@ import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { AccountFacts, DocumentView, Email, approvalLine, useDocumentViewer } from './accountParts.jsx';
 import { AccountChangeDialog, accountControlId, useAccountChanges } from './AccountChanges.jsx';
 import { AccountDetail } from './AccountDetail.jsx';
-import { MAX_ACCOUNT_SEARCH, accountHref, accountLinkId, matchesAccountSearch } from './accountDetail.js';
+import { MAX_ACCOUNT_SEARCH, accountCountText, accountHref, accountLinkId, accountStatusCounts, matchesAccountSearch } from './accountDetail.js';
 
 export { approvalLine, profileChangeText, profileSaveError } from './accountParts.jsx';
 
@@ -28,6 +31,7 @@ const currentUrl = () => window.location.pathname + window.location.search;
 export const telHref = (phone) => `tel:${String(phone ?? '').replace(/[^\d+]/g, '')}`;
 
 // route: the admin route; route.id is an account's id for its page.
+// query: the list's filter from the URL (status, AW-268); onQuery writes it.
 // currentAdminId: the signed-in admin, whose own status and role can't be
 // changed here (AW-352); the database refuses it too (profiles_guard).
 // notify: shows what a change did (useAdminStatus). search/onSearch: the
@@ -35,7 +39,7 @@ export const telHref = (phone) => `tel:${String(phone ?? '').replace(/[^\d+]/g, 
 // returnFocusId/onReturnFocus: the business link the list focuses when an
 // account's page closes.
 export function AccountsTab({
-  route = {}, currentAdminId, notify, search = '', onSearch, returnFocusId = null, onReturnFocus,
+  route = {}, query = {}, onQuery, currentAdminId, notify, search = '', onSearch, returnFocusId = null, onReturnFocus,
 }) {
   const [profiles, setProfiles] = useState(null);
   const [profilesError, setProfilesError] = useState(null);
@@ -47,6 +51,18 @@ export function AccountsTab({
   const [openedFrom, setOpenedFrom] = useState(null);
   const changes = useAccountChanges({ setProfiles, currentAdminId, notify });
   const detail = route.id != null;
+  // The status filter (AW-268). The list shows the accounts that had the
+  // status when the filter was chosen (or the accounts loaded): one approved
+  // or suspended since, in the list, on its page or by Undo, stays where it
+  // is, marked "Moved to …", so Approve never takes the row (and the focus)
+  // away and Back from an account's page finds its link. Another filter, or
+  // loading the accounts again, starts afresh.
+  const filter = query.status || DEFAULT_ACCOUNT_STATUS;
+  const [listed, setListed] = useState({ filter: null, statuses: null });
+  if (!detail && profiles && listed.filter !== filter) {
+    setListed({ filter, statuses: new Map(profiles.map((p) => [p.id, accountStatus(p)])) });
+  }
+  const listedStatus = (p) => listed.statuses?.get(p.id) ?? accountStatus(p);
 
   // A failed load says so, with Try again, instead of an empty table or
   // "Not on file" for every account (AW-202). Changes patch the rows where
@@ -54,7 +70,10 @@ export function AccountsTab({
   const reload = () => supabase.from('profiles').select('*').order('created_at', { ascending: false }).then((result) => {
     const error = withStatus(result);
     setProfilesError(error ? adminErrorMessage(error, 'The accounts didn’t load') : null);
-    if (!error) setProfiles(result.data || []);
+    if (!error) {
+      setProfiles(result.data || []);
+      setListed({ filter: null, statuses: null });
+    }
   });
   useEffect(() => { reload(); }, []);
   const retry = async () => {
@@ -95,6 +114,7 @@ export function AccountsTab({
         <AccountsList
           profiles={profiles} profilesError={profilesError} onRetry={retry} retrying={retrying} tiers={tiers} currentAdminId={currentAdminId}
           changes={changes} search={search} onSearch={onSearch} onOpen={setOpenedFrom} returnFocusId={returnFocusId} onReturnFocus={onReturnFocus}
+          filter={filter} listedStatus={listedStatus} onFilter={(status) => onQuery?.({ ...query, status })}
         />
       )}
       <AccountChangeDialog changes={changes} />
@@ -102,8 +122,11 @@ export function AccountsTab({
   );
 }
 
+// filter: the status filter ('pending' … 'all'); listedStatus(p): the
+// status the list files the account under; onFilter(status) changes it.
 function AccountsList({
   profiles, profilesError, onRetry, retrying, tiers, currentAdminId, changes, search, onSearch, onOpen, returnFocusId, onReturnFocus,
+  filter = DEFAULT_ACCOUNT_STATUS, listedStatus = accountStatus, onFilter,
 }) {
   // The licence documents: null while loading. They load once when the list
   // first shows (and on Try again), never after a change to an account.
@@ -111,6 +134,7 @@ function AccountsList({
   const [documentsError, setDocumentsError] = useState(null);
   const [documentsRetrying, setDocumentsRetrying] = useState(false);
   const viewer = useDocumentViewer();
+  const searchRef = useRef(null);
   const [openId, setOpenId] = useState(null);
   const [noteDraft, setNoteDraft] = useState('');
   // A verification note typed but not saved: leaving the page asks first
@@ -154,9 +178,22 @@ function AccountsList({
     return profilesError ? <LoadProblem message={profilesError} onRetry={onRetry} retrying={retrying} /> : <p className="result-note">Loading…</p>;
   }
 
-  const shown = profiles.filter((p) => matchesAccountSearch(p, search));
+  // The status pills count every account; the list is the filter's, then
+  // the search's.
+  const counts = accountStatusCounts(profiles);
+  const inFilter = filter === 'all' ? profiles : profiles.filter((p) => listedStatus(p) === filter);
+  const shown = inFilter.filter((p) => matchesAccountSearch(p, search));
   const searching = search.trim() !== '';
-  const plural = profiles.length === 1 ? 'account' : 'accounts';
+  const kind = filter === 'all' ? '' : `${filter} `;
+  // The empty state's buttons go away with it: the search box takes the focus.
+  const clearSearch = () => {
+    onSearch?.('');
+    searchRef.current?.focus();
+  };
+  const searchAll = () => {
+    onFilter?.('all');
+    searchRef.current?.focus();
+  };
   // A change on its way: the account's selects take no other change until
   // it is answered (aria-disabled keeps the keyboard focus on them).
   const busy = (p) => !!changes.saving(p.id);
@@ -174,19 +211,31 @@ function AccountsList({
       {/* TODO(owner): Should staff be able to set up and invite accounts for stores that phone in, and through which email service? (AW-113) */}
       <div className="admin-toolbar admin-account-toolbar">
         <label className="admin-account-search">Search accounts
-          <input type="search" placeholder="Business, name, email or phone" maxLength={MAX_ACCOUNT_SEARCH} autoComplete="off"
+          <input ref={searchRef} type="search" placeholder="Business, name, email or phone" maxLength={MAX_ACCOUNT_SEARCH} autoComplete="off"
             value={search} onChange={(e) => onSearch?.(e.target.value)} />
         </label>
       </div>
-      <p className="result-note admin-count" aria-live="polite">{searching ? `${shown.length} of ${profiles.length} ${plural}` : `${profiles.length} ${plural}`}</p>
+      <div className="sub-pills" role="group" aria-label="Account status">
+        {ACCOUNT_STATUS_FILTERS.map((s) => (
+          <button key={s} type="button" aria-pressed={filter === s} className={`sub-pill${filter === s ? ' active' : ''}`} onClick={() => onFilter?.(s)}>
+            {`${s} (${counts[s]})`}
+          </button>
+        ))}
+      </div>
+      <p className="result-note admin-count" aria-live="polite">{accountCountText({ listed: inFilter, shown, filter, searching })}</p>
       {profilesError && <LoadProblem message={profilesError} onRetry={onRetry} retrying={retrying} />}
       {documentsError && <LoadProblem message={documentsError} onRetry={retryDocuments} retrying={documentsRetrying} />}
       {viewer.viewError && <p className="form-error" role="alert">{viewer.viewError}</p>}
       {changes.error && <p className="form-error" role="alert">{changes.error}</p>}
-      {shown.length === 0 ? (
+      {shown.length === 0 && !searching ? (
+        <p className="result-note">{filter === 'all' ? 'No accounts yet.' : `No ${filter} accounts.`}</p>
+      ) : shown.length === 0 ? (
         <div className="empty-results">
-          <p>{`No account matches “${search.trim()}”.`}</p>
-          <button className="text-link" type="button" onClick={() => onSearch?.('')}>Clear the search</button>
+          <p>{`No ${kind}account matches “${search.trim()}”.`}</p>
+          <div className="empty-actions">
+            <button className="text-link" type="button" onClick={clearSearch}>Clear the search</button>
+            {filter !== 'all' && <button className="text-link" type="button" onClick={searchAll}>Search all accounts</button>}
+          </div>
         </div>
       ) : (
         <div className="table-scroll">
@@ -222,6 +271,9 @@ function AccountsList({
                         <option value="approved">approved</option>
                         <option value="suspended">suspended</option>
                       </select>
+                      {filter !== 'all' && accountStatus(p) !== filter && (
+                        <span className="account-moved">{`Moved to ${accountStatus(p)}`}</span>
+                      )}
                       {p.id === currentAdminId && <small className="field-hint" id="admin-own-row">Your own status and role can’t be changed here.</small>}
                       {p.approved_at && <small className="field-hint">{approvalLine(p, profiles)}</small>}
                     </td>
