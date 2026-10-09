@@ -72,7 +72,8 @@ describe('pageMeta', () => {
   it('prints the minimum and the hours from content.js, in plain text (AW-283, AW-275)', () => {
     expect(pageMeta({ page: 'quote' }, products, departments).description).toMatch(/Minimum order \$500\.00\.$/);
     const contact = pageMeta({ page: 'contact' }, products, departments).description;
-    expect(contact).toMatch(/^Call \(205\) 354-4473, email .* Mon–Fri 7:00 AM – 6:00 PM CT, /);
+    // Both hours lines whole: the description is never clipped mid-hours.
+    expect(contact).toBe('Call (205) 354-4473 or visit 613 Graymont Ave N, Birmingham AL 35203. Mon–Fri 7:00 AM – 6:00 PM CT, Sat–Sun 8:00 AM – 5:30 PM CT.');
     // No no-break spaces or word joiners in head tags.
     expect(contact).not.toMatch(/[\u00A0\u2060]/);
   });
