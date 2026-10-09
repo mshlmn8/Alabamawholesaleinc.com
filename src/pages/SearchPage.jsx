@@ -48,7 +48,7 @@ export function SearchPage({ q = '', products, departments, ...cardProps }) {
         <p className="eyebrow">SEARCH</p>
         <h1>{ready ? `Results for “${query}”` : 'Search the catalog'}</h1>
         <form className="search-form" role="search" aria-label="Catalog" onSubmit={submit}>
-          <label className="filter-search" htmlFor="search-page-input"><span>Search products, brands or SKUs</span>
+          <label className="filter-search" htmlFor="search-page-input"><span>Search products, brands or <span className="keep-case">SKUs</span></span>
             <input id="search-page-input" type="search" value={draft} onChange={(e) => setDraft(e.target.value)} autoComplete="off" />
           </label>
           <button className="button" type="submit">Search</button>

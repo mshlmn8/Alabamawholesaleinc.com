@@ -6,6 +6,7 @@ import { Link } from '../../lib/router.js';
 import { variantAxis, variantCount } from '../../lib/lines.js';
 import { brandLabel } from '../../lib/format.js';
 import { Icon } from '../../components/Icon.jsx';
+import { SkuCount } from '../../components/SkuCount.jsx';
 import { PageHead } from './SupportShell.jsx';
 
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -15,7 +16,7 @@ export function CatalogIndexPage({ products, departments, isApprovedBuyer, profi
 
   return (
     <section className="support-page catalog-index">
-      <PageHead crumb="All products" eyebrow={`FULL ASSORTMENT · ${departments.length} DEPARTMENTS · ${products.length} SKUs`} title="All products">
+      <PageHead crumb="All products" eyebrow="FULL ASSORTMENT" title="All products">
         <p>{`Every department and product line we stock, in one place. Jump to a department, open a line, or expand the full SKU list. ${isApprovedBuyer ? 'Your account pricing shows on every product.' : profile ? 'Pricing unlocks after your account is approved.' : 'Sign in to see wholesale pricing.'}`}</p>
       </PageHead>
 
@@ -33,7 +34,7 @@ export function CatalogIndexPage({ products, departments, isApprovedBuyer, profi
             <section key={d.key} className="dept-section" id={`dept-${slug(d.key)}`} aria-labelledby={`dept-title-${slug(d.key)}`}>
               <div className="dept-head">
                 <div>
-                  <p className="eyebrow">{`DEPARTMENT ${String(i + 1).padStart(2, '0')} · ${d.count} SKUs`}</p>
+                  <p className="eyebrow"><SkuCount lead={`DEPARTMENT ${String(i + 1).padStart(2, '0')} · `} count={d.count} /></p>
                   <h2 id={`dept-title-${slug(d.key)}`}>{d.label}</h2>
                 </div>
                 <Link className="text-link" to={{ page: 'category', category: d.key }}><span>{`Browse ${d.label}`}</span></Link>
