@@ -47,13 +47,14 @@ supabase/migrations/20261010122000_order_operations.sql
 supabase/migrations/20261010130000_catalog_apostrophes.sql
 supabase/migrations/20261010131000_photo_filenames.sql
 supabase/migrations/20261011130000_catalog_names.sql
+supabase/migrations/20261011131000_home_slides.sql
 supabase/seed/products.sql
 ```
 
 On a project that is already running, apply only the migrations it doesn't
 have yet, in that order, then the seed, then deploy the frontend (see the
 release checklist at the end of this file). The live project has the files
-up to `20260927180000`; the nineteen `20261008…`/`20261009…`/`20261010…`/`20261011…`
+up to `20260927180000`; the twenty `20261008…`/`20261009…`/`20261010…`/`20261011…`
 files are new.
 Review them before applying them; the site keeps working without them (see
 `docs/OWNER-TODO.md` and "Before and after" in the release checklist).
@@ -557,6 +558,40 @@ old one, and the data migration that updates `products.img` is applied after
 the frontend that ships the new file (`20261010131000_photo_filenames.sql`,
 AW-290). New photos are named `p<id>-<slug>.<ext>`.
 
+## The homepage (Admin → Homepage)
+
+Admin → Homepage (`/admin/homepage`, `src/pages/admin/HomepageSection.jsx`)
+edits the photos beside the home page's headline and shows what the two
+product rails hold (AW-119).
+
+- **Hero photos** are the rows of `public.home_slides`
+  (`20261011131000_home_slides.sql`), shown in `sort` order (ties by id):
+  each has a photo, its alt text (what it shows, 1 to 200 characters), the
+  department it links to (or none), whether it shows a nicotine product (the
+  FDA warning then shows under it) and whether it is active. Staff add,
+  edit, reorder (Move up / Move down swaps two rows' `sort`), turn off and
+  delete photos. A photo is one of the hero photos bundled with the site
+  (`hero_candy.jpg`, `hero_vape.jpg`, `hero_lighters.jpg`,
+  `hero_gatorade.jpg`) or an upload to the `product-images` bucket, saved
+  under `home/<upload time>-<name>.<ext>` with its public address
+  (`https://<project>.supabase.co/storage/v1/object/public/product-images/…`);
+  the table's check refuses anything else, as the site's CSP would block it.
+  A deleted or replaced photo stays in the bucket.
+- With every photo turned off the home page shows the headline alone, which
+  is how to answer "one fixed photo or rotating photos" (AW-004): leave one
+  photo active for a fixed one. Turn photos off rather than deleting every
+  row: the migration adds the four bundled photos back to an empty table if
+  it is run again.
+- The storefront shows the bundled photos first and swaps in the table's
+  active rows once they load (`src/lib/homeSlides.js`, one request per visit).
+  Without the migration, or when the request fails, it keeps the bundled
+  photos, and Admin → Homepage says editing them needs the October 2026
+  database update.
+- **Homepage rails** (read-only here): New arrivals and Bestsellers come from
+  the products' tags and homepage rank, set in Admin → Products (see "The
+  product editor"), with the legal-review rule described there; each product
+  has an Edit link.
+
 ## Quotes and orders (`submit_quote`)
 
 The storefront saves a quote (or an approved buyer's order) with one call,
@@ -830,6 +865,12 @@ docs/OWNER-TODO.md, AW-113 and AW-088).
 - **storage `product-images`** (`20261010120000`): public, so anyone loads a
   product photo by its URL; only approved admins add, replace, list or
   remove files.
+- **home_slides** (`20261011131000`): the home page's hero photos. Guests
+  and signed-in accounts read the active rows; approved admins read every row
+  and add, change and delete them (`updated_at` and `updated_by` follow each
+  change). The id comes from the identity column, so no role needs the
+  sequence. A photo must be a bundled `hero_*.jpg/jpeg/png/webp` file or a
+  `product-images` Storage address.
 
 ## Resetting
 
@@ -856,10 +897,11 @@ For each release:
 5. Then apply the migrations the table below marks "Apply AFTER deploying
    the new frontend" (`20261010131000_photo_filenames.sql`).
 
-The live project needs all nineteen, in this order (Cursor's seven
+The live project needs all twenty, in this order (Cursor's seven
 `20261008…` files, then the six `20261009…` ones, which build on them, then
 the five `20261010…` ones: three for the admin back office and two data-only
-catalog fixes, then the data-only `20261011130000`). Apply
+catalog fixes, then the data-only `20261011130000` and the home page's
+`20261011131000`). Apply
 `20261008200000` and `20261009100000`–`20261009150000` in one session: the
 price boundary hides `products.variant_prices` and `20261009110000` moves it.
 Each `20261009…` migration ends with a commented reverse-SQL block for
@@ -888,6 +930,8 @@ rolling it back.
 18. `20261010131000_photo_filenames.sql` (data only; **after the new
     frontend is deployed**, step 5 above)
 19. `20261011130000_catalog_names.sql` (data only; any time)
+20. `20261011131000_home_slides.sql` (the home page's hero photos, Admin →
+    Homepage; any time, also on its own)
 
 Then `supabase/seed/products.sql`, then the frontend, then 18.
 
@@ -912,6 +956,7 @@ Then `supabase/seed/products.sql`, then the frontend, then 18.
 | `20261010130000_catalog_apostrophes.sql` | Data only (AW-064): #163 and #166 get a straight apostrophe in their name and brand ("M&M's", "Reese's"), like every other possessive name in the catalog. Each row changes only while it still has the curly value the seed wrote, so admin edits are kept and a re-run changes nothing. | Apply any time, before or after the frontend: the storefront search treats ’ and ' alike, so both spellings are found before and after. Ids, SKUs and variant labels don't change. |
 | `20261010131000_photo_filenames.sql` | Data only (AW-290): six products' `img` move to the renamed photo files (#21 `p21-speed-stick-mens-deodorant.jpg`, #110 `p110-brillo-basics-dish-liquid.png`, #128 `p128-fabuloso.avif`, #225 `p225-lady-speed-stick-deodorant.webp`, #280 `p280-coastal-motor-oil.jpg`, #292 `p292-electrolit.webp`). Each row changes only while it still names the old file the seed wrote, so a photo an admin has set is kept and a re-run changes nothing. | **Apply AFTER deploying the new frontend.** The frontend deployed before it ships only the old file names, so after this migration it would show "Photo coming soon" for these six products; the new frontend ships only the new files and reads both names (`IMAGE_FILE_ALIASES` in `src/data/catalogAliases.js`). Ids, SKUs and variant labels don't change. |
 | `20261011130000_catalog_names.sql` | Data only (AW-071): one naming style, from each row's own data. Names: "Value" for "Cheap" (#100, #221, #246, #250), no retail price in #12's name ("LooseLeaf wraps 2-pack"), size words in brackets (#132, #133, #190, #290, #291, #335, #336, e.g. "Powerade (big)"), "Faygo bottles 20 oz" (#58), "6-pack beer carriers" (#93), "AA Cellular" (#286), and a product noun from the description for #25, #350 and #355; descriptions of #9, #221, #274, #310 and #311 spelled like their names. The lines under legal review keep their names (decision 2). Each column changes only while it still has the value the seed wrote, so admin edits are kept and a re-run changes nothing. | Apply any time, before or after the frontend: every frontend reads names from the database. Ids, SKUs (the AW-CHEAP-* Quick Reorder codes) and variant labels don't change; order lines keep the name they were placed with. |
+| `20261011131000_home_slides.sql` | The home page's hero photos (see "The homepage"): the `home_slides` table (`img` a bundled `hero_*` file or a `product-images` Storage address, `alt` 1–200 characters, `go_cat`, `nicotine_warning`, `sort` 0–999, `active`, `created_at`, `updated_at`, `updated_by`), readable by everyone for active rows and by approved admins for all, written only by approved admins (RLS with `is_admin()`); the identity sequence and the trigger function are revoked from guests; today's four photos are added, in today's order, when the table is empty. Uploads use the existing `product-images` bucket; storage is unchanged. A commented Reverse block is at the end. | Apply any time, before or after the frontend. No seed change. The frontend deployed before it doesn't read the table. The new frontend works before and after: without it the home page shows the photos bundled with it (the request answers 404 / `PGRST205`) and Admin → Homepage shows those photos read-only with a note that editing needs the update; the rails work either way. |
 
 ### Later steps
 

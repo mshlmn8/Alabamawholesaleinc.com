@@ -1,5 +1,6 @@
 // The home page's split hero (AW-004, AW-169): its h1, the pitch, the calls
-// to action for guests and signed-in visitors, and the photos beside it.
+// to action for guests and signed-in visitors, and the photos beside it
+// (the bundled ones, or those the home page passes, AW-119).
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HERO_SLIDES, HOME_HERO, HOME_PITCH } from '../data/content.js';
@@ -71,5 +72,40 @@ describe('HomeHero', () => {
         expect(hero.innerHTML, field).not.toContain(slide[field].replace(/&/g, '&amp;'));
       }
     }
+  });
+});
+
+describe('HomeHero photos (AW-119)', () => {
+  const photo = (name) => ({ key: `/${name}.jpg`, img: `/${name}.jpg`, picture: { src: `/${name}.jpg`, width: 700, height: 440 } });
+  const SLIDES = [
+    { ...photo('one'), alt: 'Photo one', goCat: 'CANDIES' },
+    { ...photo('two'), alt: 'Photo two', goCat: 'TOBACCO' },
+    { ...photo('three'), alt: 'Photo three', goCat: 'GROCERY' },
+  ];
+  const active = () => document.querySelector('.home-carousel-slide.is-active').getAttribute('aria-label');
+
+  it('shows the slides it is given', () => {
+    render(<HomeHero onApplyClick={() => {}} slides={SLIDES} />);
+    expect([...document.querySelectorAll('.home-carousel-slide')].map((s) => s.getAttribute('aria-label')))
+      .toEqual(['1 of 3: Candies', '2 of 3: Tobacco', '3 of 3: Grocery']);
+  });
+
+  it('starts again at slide 1 when the photos change, and keeps its place when only their text does', () => {
+    const { rerender } = render(<HomeHero onApplyClick={() => {}} slides={SLIDES} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Show slide 3: Grocery' }));
+    expect(active()).toBe('3 of 3: Grocery');
+    // The same photos with new alt text: the same carousel.
+    rerender(<HomeHero onApplyClick={() => {}} slides={SLIDES.map((s) => ({ ...s, alt: `${s.alt}, edited` }))} />);
+    expect(active()).toBe('3 of 3: Grocery');
+    expect(document.querySelector('.home-carousel-slide.is-active img').getAttribute('alt')).toBe('Photo three, edited');
+    // Another set: back to slide 1.
+    rerender(<HomeHero onApplyClick={() => {}} slides={[SLIDES[2], SLIDES[0]]} />);
+    expect(active()).toBe('1 of 2: Grocery');
+  });
+
+  it('gives the copy the whole hero when there are no photos', () => {
+    render(<HomeHero onApplyClick={() => {}} slides={[]} />);
+    expect(document.querySelector('.home-hero-media').children).toHaveLength(0);
+    expect(document.querySelectorAll('h1')).toHaveLength(1);
   });
 });

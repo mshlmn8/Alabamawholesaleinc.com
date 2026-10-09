@@ -4,12 +4,18 @@
 // comes first in the page; on wide screens the photos sit on the left.
 // The headline and whether the photos keep rotating wait on the owner
 // (TODO(owner) at HOME_HERO in src/data/content.js).
+// The photos are `slides`: the home page passes the ones staff keep in
+// Admin -> Homepage (useHomeSlides, src/lib/homeSlides.js), the bundled
+// HERO_SLIDES otherwise. The carousel is keyed by its photos, so a different
+// set starts again at slide 1, and the same photos keep their place.
 
 import { HERO_SLIDES, HOME_HERO } from '../data/content.js';
 import { Link } from '../lib/router.js';
 import { HeroCarousel } from './HeroCarousel.jsx';
 
-export function HomeHero({ signedIn = false, onApplyClick }) {
+const slidesKey = (slides) => slides.map((s) => s.key || s.img || s.picture?.src || '').join('\n');
+
+export function HomeHero({ signedIn = false, onApplyClick, slides = HERO_SLIDES }) {
   return (
     <section className="home-hero" aria-labelledby="home-hero-title">
       <div className="home-hero-copy">
@@ -33,7 +39,7 @@ export function HomeHero({ signedIn = false, onApplyClick }) {
         </div>
       </div>
       <div className="home-hero-media">
-        <HeroCarousel slides={HERO_SLIDES} />
+        <HeroCarousel key={slidesKey(slides)} slides={slides} />
       </div>
     </section>
   );

@@ -7,6 +7,7 @@
 import { DEPARTMENT_PHOTOS, FREE_DELIVERY_THRESHOLD } from '../data/content.js';
 import { topLines } from '../lib/departments.js';
 import { formatMoneyShort } from '../lib/format.js';
+import { useHomeSlides } from '../lib/homeSlides.js';
 import { homeRails } from '../lib/merchandising.js';
 import { heroImage, SIZES } from '../lib/images.js';
 import { showsNicotineWarning } from '../lib/regulated.js';
@@ -62,10 +63,12 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, pric
   // TODO(owner): Which products are really new and which are bestsellers, plus dedicated hero and department images? (AW-056)
   // Tags and homepage rank (AW-119), RAIL_LENGTH cards each (AW-061).
   const { newArrivals, bestsellers } = homeRails(products, { limit: RAIL_LENGTH, hasPhoto });
+  // The hero photos staff keep in Admin -> Homepage, or the bundled ones (AW-119).
+  const slides = useHomeSlides();
 
   return (
     <>
-      <HomeHero signedIn={signedIn} onApplyClick={onApplyClick} />
+      <HomeHero signedIn={signedIn} onApplyClick={onApplyClick} slides={slides} />
 
       {/* What the business offers, straight after the hero (AW-059): an icon,
           the claim as published and a link to the page that explains it. */}
