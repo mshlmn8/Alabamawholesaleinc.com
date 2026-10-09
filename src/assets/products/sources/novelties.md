@@ -26,5 +26,8 @@ Photos added to `src/assets/products/` for Novelties rows that had none. Each wa
 | 312 | Stoned blue lotus gummies bags | `p312-stoned-blue-lotus-gummies.webp` | https://pureleafkratom.com/products/stoned-blue-lotus-white-lotus-gummies-blue-raspberry-1000mg.html | retailer | 2026-09-27 |
 | 314 | Coco Nara hookah charcoal | `p314-coco-nara-hookah-charcoal.webp` | https://www.coconaraonline.com/products/coco-nara-hookah-charcoal-coal-120pcs-flat | retailer | 2026-09-27 |
 | 310 | Geek Bar Mate 60K kit (device + pod) | `p310-geek-bar-mate-60k.webp` | https://juicefly.com/product/geek-bar-mate-60k-kit-battery-pod/ | retailer | 2026-09-27 |
-| 311 | Geek Bar Mate 60K pods (identified; photo not added) | — | https://juicefly.com/product/geek-bar-mate-60k-kit-battery-pod/ | retailer | 2026-09-27 |
+| 311 | Geek Bar Mate 60K pods (still no photo) | — | https://juicefly.com/product/geek-bar-mate-60k-kit-battery-pod/ | retailer | 2026-09-27 |
 | 219 | Happy valentines jar (not identified; two candidates) | — | https://branexwholesale.com/product/happy-valentine-glass-rose-4-small-24-count | retailer | 2026-09-27 |
+
+Retry (2026-09-27):
+- #311 Geek Bar Mate 60K pods — the Juicefly image is the kit already used on #310. A replacement-pod page at geekbar.store redirected to a lander with no product image. No separate pod-only packshot at least 600 px was saved. #310 was not changed.
