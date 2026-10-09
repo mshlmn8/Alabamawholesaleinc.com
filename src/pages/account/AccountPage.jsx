@@ -19,6 +19,7 @@
 
 import { useEffect, useRef } from 'react';
 import { Link, revealAnchor, useLocation } from '../../lib/router.js';
+import { tierDiscountText, tierName } from '../../lib/pricing.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
@@ -37,7 +38,7 @@ export const SIGNED_OUT_TEXT = 'A trade account shows your order history, lets y
 
 export function AccountPage({
   profile, account = profile ? 'ready' : 'signed-out', onSignIn, onApplyClick, onRetry, retrying = false, onSignOut, onSignOutEverywhere,
-  signingOut = false, products = [], addLines, onOpenCart, isApprovedBuyer, isBackendConfigured = true, priceOf, pricesStatus,
+  signingOut = false, products = [], addLines, onOpenCart, isApprovedBuyer, isBackendConfigured = true, priceOf, pricesStatus, priceTier = null,
 }) {
   // A link to #quick-reorder or #documents that arrived before the account
   // did (a guest's Quick Reorder, then sign-in; a reload): when the account
@@ -83,6 +84,9 @@ export function AccountPage({
   }
 
   const statusTone = profile.status === 'approved' ? 'ok' : 'warn';
+  // The tier and what it means, from my_prices() once the prices are in
+  // ('Silver · 5% off list', AW-265); until then the tier's name.
+  const tierText = pricesStatus === 'ready' && priceTier ? tierDiscountText(priceTier) : tierName(profile.pricing_tier);
 
   return (
     <section>
@@ -101,7 +105,7 @@ export function AccountPage({
 
       <div className="account-stats">
         <Stat label="Account status" value={profile.status} tone={statusTone} />
-        <Stat label="Pricing tier" value={profile.pricing_tier} />
+        <Stat label="Pricing tier" value={tierText} asWritten />
         <Stat label="Role" value={profile.role} />
       </div>
 
@@ -147,11 +151,12 @@ export function AccountPage({
   );
 }
 
-function Stat({ label, value, tone }) {
+// asWritten: the value is already in sentence case ('Silver · 5% off list').
+function Stat({ label, value, tone, asWritten = false }) {
   return (
     <div className={`stat-card${tone ? ` ${tone}` : ''}`}>
       <span>{label}</span>
-      <b>{value}</b>
+      <b className={asWritten ? 'as-written' : undefined}>{value}</b>
     </div>
   );
 }

@@ -46,6 +46,28 @@ describe('AccountPage for an account on hold (AW-101)', () => {
   });
 });
 
+describe('AccountPage pricing tier (AW-265)', () => {
+  const stat = () => [...document.querySelectorAll('.stat-card')].find((el) => el.querySelector('span').textContent === 'Pricing tier').querySelector('b');
+
+  it('says what the tier means once the prices are in, from my_prices()', async () => {
+    const view = render(<AccountPage profile={PROFILE} account="ready" products={[]} pricesStatus="ready" priceTier={{ tier: 'silver', label: 'Silver (5% off)', discountPct: 5 }} />);
+    expect(stat().textContent).toBe('Silver · 5% off list');
+    // Written as it is: the stat style would otherwise capitalize "Off List".
+    expect(stat().className).toBe('as-written');
+    view.rerender(<AccountPage profile={{ ...PROFILE, pricing_tier: 'standard' }} account="ready" products={[]} pricesStatus="ready" priceTier={{ tier: 'standard', discountPct: 0 }} />);
+    expect(stat().textContent).toBe('Standard');
+    await screen.findByText('No orders yet');
+  });
+
+  it('names the tier alone while the prices load, and for accounts that see none', async () => {
+    const view = render(<AccountPage profile={PROFILE} account="ready" products={[]} pricesStatus="loading" priceTier={null} />);
+    expect(stat().textContent).toBe('Silver');
+    view.rerender(<AccountPage profile={{ ...PROFILE, status: 'pending', pricing_tier: 'standard' }} account="ready" products={[]} pricesStatus="off" />);
+    expect(stat().textContent).toBe('Standard');
+    await screen.findByText('No orders yet');
+  });
+});
+
 describe('AccountPage order history that did not load (AW-084)', () => {
   it('says what to do, with the trade desk, and never the database’s message', async () => {
     fake.respond = (request) => (request.table === 'orders'

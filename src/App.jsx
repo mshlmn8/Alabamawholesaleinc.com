@@ -108,6 +108,9 @@ export default function App() {
   const priceTier = useMemo(() => (prices.prices
     ? { tier: prices.prices.tier, label: prices.prices.tierLabel, discountPct: prices.prices.discountPct }
     : null), [prices.prices]);
+  // A product's (or variant's) list price for the same buyer, to show beside
+  // the tier price on the product page (AW-265); null without one.
+  const listOf = useMemo(() => (id, variant) => priceFor(prices.prices, id, variant)?.list ?? null, [prices.prices]);
   // Each account on this device has its own cart, and guests share one
   // (AW-189). While the saved session is being checked, or can't be
   // refreshed because Supabase is out of reach, it is that session's
@@ -296,7 +299,7 @@ export default function App() {
 
   // Product cards need the account, its prices, the cart and the add/step actions.
   const cardProps = {
-    profile, isApprovedBuyer, priceOf, pricesStatus: prices.status, priceTier,
+    profile, isApprovedBuyer, priceOf, pricesStatus: prices.status, priceTier, listOf,
     cart: cart.cart, addLine: cart.addLine, decLine: cart.decLine, onLoginClick: openSignin,
   };
   // Account pages wait for the session and profile instead of flashing a
@@ -337,7 +340,7 @@ export default function App() {
         return (
           <AccountPage key={session?.user?.id || 'guest'} {...accountProps} products={products} onApplyClick={openSignup}
                        addLines={cart.addLines} onOpenCart={() => setCartOpen(true)} isApprovedBuyer={isApprovedBuyer} isBackendConfigured={isBackendConfigured}
-                       priceOf={priceOf} pricesStatus={prices.status}
+                       priceOf={priceOf} pricesStatus={prices.status} priceTier={priceTier}
                        onSignOutEverywhere={() => handleLogout({ scope: 'global' })} />
         );
       case 'admin':

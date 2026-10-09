@@ -744,6 +744,9 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .pd-price { margin: 22px 0; padding: 18px 0; border-block: 1px solid var(--line); }
 .pd-price b { font: 700 2.125rem/1 var(--display); color: var(--purple); }
 .pd-price span { display: block; font-size: var(--text-xs); letter-spacing: var(--track-label); color: var(--muted); text-transform: uppercase; margin-top: 6px; }
+/* The tier, the list price and the saving, then the SKU (AW-265). */
+.pd-price span + span { margin-top: 4px; }
+.pd-save strong { color: var(--purple); }
 .variant-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 22px; }
 .variant-chips button { display: inline-flex; align-items: center; min-height: var(--tap-sm); border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-size: var(--text-sm); font-weight: 600; padding: 0 14px; border-radius: 2px; }
 .variant-chips button[aria-pressed="true"] { border-color: var(--purple); background: var(--purple); color: #fff; }
@@ -779,6 +782,8 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .stat-card b { font: 700 1.75rem/1 var(--display); color: var(--purple); text-transform: capitalize; }
 .stat-card.ok b { color: var(--success); }
 .stat-card.warn b { color: var(--orange-dark); }
+/* A value already written in sentence case ('Silver · 5% off list', AW-265). */
+.stat-card b.as-written { text-transform: none; }
 .notice { margin-top: 22px; }
 .order-list { display: flex; flex-direction: column; gap: 14px; }
 .order-card { border: 1px solid var(--line); background: #fff; }
