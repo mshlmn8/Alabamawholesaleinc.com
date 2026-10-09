@@ -6,9 +6,9 @@
 // products request, which gets the seeded catalog (./catalog.js).
 import { test, expect } from '@playwright/test';
 import { serveCatalog } from './catalog.js';
+import { GUEST_CART, cartValue } from './cartStore.js';
 
 const AGE_KEY = 'aw-age-verified'; // STORAGE.age in src/data/content.js
-const GUEST_CART = 'aw-cart-v2:guest'; // cartKey('guest') in src/lib/cartStorage.js
 const ageRecord = (at) => JSON.stringify({ ok: true, at });
 // Five products without variants, so each is one plain line.
 const FIVE_LINES = { 14: 2, 25: 1, 26: 3, 30: 1, 45: 2 };
@@ -63,7 +63,7 @@ test.describe('a phone on its side', () => {
     const errors = trackErrors(page);
     await context.addInitScript(([key, value]) => {
       try { if (!sessionStorage.getItem('smoke-cart')) { localStorage.setItem(key, value); sessionStorage.setItem('smoke-cart', '1'); } } catch { /* storage blocked */ }
-    }, [GUEST_CART, JSON.stringify(FIVE_LINES)]);
+    }, [GUEST_CART, cartValue(FIVE_LINES)]);
     await page.goto('/category/grocery');
     await expect(cartButton(page)).toContainText('9');
     await cartButton(page).click();
@@ -119,7 +119,7 @@ test('stepping a line down to 1 keeps focus in the drawer, and the steppers name
   const errors = trackErrors(page);
   await context.addInitScript(([key, value]) => {
     try { if (!sessionStorage.getItem('smoke-cart')) { localStorage.setItem(key, value); sessionStorage.setItem('smoke-cart', '1'); } } catch { /* storage blocked */ }
-  }, [GUEST_CART, JSON.stringify({ 14: 2, 45: 2 })]);
+  }, [GUEST_CART, cartValue({ 14: 2, 45: 2 })]);
   await page.goto('/category/grocery');
   await cartButton(page).click();
   const drawer = page.getByRole('dialog', { name: 'Your quote' });

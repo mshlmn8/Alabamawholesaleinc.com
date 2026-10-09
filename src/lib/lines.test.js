@@ -1,8 +1,9 @@
 // Cart and order line helpers (AW-209). Fixtures carry no prices.
 import { describe, expect, it } from 'vitest';
 import {
-  DEFAULT_AXIS, canonicalVariant, informativeVariant, isVariantAvailable, lineKey, linesFromOrder, matchVariant, normalizeCart,
-  normalizeSku, parseLineKey, resolveCartItems, resolveSkuLine, variantAxis, variantCount, variantSku, requiresVariantChoice,
+  DEFAULT_AXIS, canonicalLineKey, canonicalVariant, informativeVariant, isVariantAvailable, lineKey, linesFromOrder, matchVariant,
+  normalizeCart, normalizeOrder, normalizeSku, orderedLineKeys, parseLineKey, resolveCartItems, resolveSkuLine, variantAxis,
+  variantCount, variantSku, requiresVariantChoice,
 } from './lines.js';
 import { SKU_ALIASES, VARIANT_ALIASES } from '../data/catalogAliases.js';
 import { PRODUCTS } from '../data/products.js';
@@ -428,5 +429,46 @@ describe('stored keys that name the same line', () => {
     ]);
     expect(normalizeCart({ 20: 1, '20::only': 2, '171::cookies-king': 3, '171::cookies-king-size': 4 }, products))
       .toEqual({ '20::only': 3, '171::cookies-king': 7 });
+  });
+});
+
+describe('the order lines were added in (NEW-065)', () => {
+  // The finding: Long Boys (174), then Kite (14), then Argo (45), as a cart object lists them.
+  const products = [
+    { id: 174, sku: 'AW-LB', name: 'Long Boys', variants: [] },
+    { id: 14, sku: 'AW-KITE', name: 'Kite', variants: [] },
+    { id: 45, sku: 'AW-ARGO', name: 'Argo', variants: [] },
+    ...P,
+  ];
+  const cart = { 174: 1, 14: 2, 45: 1, '1::red': 1 };
+
+  it('lists the cart in the order given, then any key the order lacks', () => {
+    expect(Object.keys(cart)).toEqual(['14', '45', '174', '1::red']);
+    expect(orderedLineKeys(cart, ['1::red', '174', '14', '45'])).toEqual(['1::red', '174', '14', '45']);
+    expect(orderedLineKeys(cart, ['174', '999', '174'])).toEqual(['174', '14', '45', '1::red']);
+    expect(orderedLineKeys(cart)).toEqual(['14', '45', '174', '1::red']);
+    expect(orderedLineKeys(null, ['14'])).toEqual([]);
+  });
+
+  it('resolves the lines in that order', () => {
+    const items = resolveCartItems(cart, products, { order: ['174', '14', '45', '1::red'] });
+    expect(items.map((i) => i.name)).toEqual(['Long Boys', 'Kite', 'Argo', 'Cigarillos — Red']);
+    // A variant line first, integer-like keys after it.
+    expect(resolveCartItems(cart, products, { order: ['1::red', '45', '174', '14'] }).map((i) => i.lineKey)).toEqual(['1::red', '45', '174', '14']);
+  });
+
+  it('merges two keys of one line where the first of them was', () => {
+    const one = [{ id: 20, sku: 'AW-ONE', name: 'One', variants: ['Only'] }, ...products];
+    const items = resolveCartItems({ 174: 1, '20::only': 2, 20: 3 }, one, { order: ['20', '174', '20::only'] });
+    expect(items.map((i) => [i.lineKey, i.qty])).toEqual([['20::only', 5], ['174', 1]]);
+  });
+
+  it('re-keys the order in place, a key listed twice keeping its first place', () => {
+    expect(canonicalLineKey('20', P)).toBe('20::only');
+    expect(canonicalLineKey('1', P)).toBe('1');
+    expect(canonicalLineKey('999::x', P)).toBe('999::x');
+    expect(canonicalLineKey('40', P)).toBe('40');
+    expect(normalizeOrder(['14', '20', '1::red', '20::only'], P)).toEqual(['14', '20::only', '1::red']);
+    expect(normalizeOrder(null, P)).toEqual([]);
   });
 });

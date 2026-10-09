@@ -9,9 +9,9 @@
 // every other request that leaves the preview server is aborted.
 import { test, expect } from '@playwright/test';
 import { fulfillMyPrices, fulfillProducts, seedRows, serveCatalog } from './catalog.js';
+import { GUEST_CART, cartKey, cartValue } from './cartStore.js';
 
 const AGE_KEY = 'aw-age-verified'; // STORAGE.age in src/data/content.js
-const GUEST_CART = 'aw-cart-v2:guest'; // cartKey('guest') in src/lib/cartStorage.js
 const ageRecord = (at) => JSON.stringify({ ok: true, at });
 // COMPANY.addressStreet etc. in src/data/content.js (the spec can't import it: it imports images).
 const WAREHOUSE = ['613 Graymont Ave N', 'Birmingham', 'AL', '35203'];
@@ -67,7 +67,7 @@ test.beforeEach(async ({ context }) => {
         sessionStorage.setItem('smoke-cart', '1');
       }
     } catch { /* storage blocked */ }
-  }, [AGE_KEY, ageRecord(Date.now()), GUEST_CART, JSON.stringify({ 14: 2 })]);
+  }, [AGE_KEY, ageRecord(Date.now()), GUEST_CART, cartValue({ 14: 2 })]);
 });
 
 test('a guest will-call quote sends no address or reference, and shows the server’s reference (AW-049, AW-079)', async ({ page }) => {
@@ -216,7 +216,7 @@ test('a double click, or two submits in one moment, sends one quote (AW-012)', a
   expect(sent).toHaveLength(1);
 
   // Two submits in the same task, before React re-renders the button.
-  await page.evaluate(([key, cart]) => localStorage.setItem(key, cart), [GUEST_CART, JSON.stringify({ 14: 2 })]);
+  await page.evaluate(([key, cart]) => localStorage.setItem(key, cart), [GUEST_CART, cartValue({ 14: 2 })]);
   await page.goto('/catalog');
   await page.goto('/quote');
   await fillGuest(page);
@@ -255,7 +255,7 @@ test('an approved buyer’s receipt says ORDER RECEIVED, centred, with a link to
         sessionStorage.setItem('smoke-approved', '1');
       }
     } catch { /* storage blocked */ }
-  }, ['aw-auth', JSON.stringify(savedSession()), `aw-cart-v2:${UID}`, JSON.stringify({ 45: 3 })]);
+  }, ['aw-auth', JSON.stringify(savedSession()), cartKey(UID), cartValue({ 45: 3 })]);
   const sent = [];
   await page.route(/supabase\.co\//, async (route) => {
     const req = route.request();

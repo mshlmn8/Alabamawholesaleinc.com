@@ -254,11 +254,13 @@ export const STORAGE = {
   // sessionStorage: "No, exit" on the age gate, for this tab's session (AW-176).
   ageDeclined: 'aw-age-declined',
   // localStorage: the cart, one per account on this device plus one for
-  // guests ('aw-cart-v2:guest', 'aw-cart-v2:<user id>'), and lines from an
-  // older cart that still need a variant ('aw-cart-legacy:<owner>'). See
-  // src/lib/cartStorage.js (AW-189, AW-354). The first builds' 'aw-cart',
-  // 'aw-trade-user' and 'aw-welcome-seen' are moved or removed there.
-  cart: 'aw-cart-v2',
+  // guests ('aw-cart-v3:guest', 'aw-cart-v3:<user id>'), its lines in the
+  // order they were added (NEW-065), and lines from an older cart that still
+  // need a variant ('aw-cart-legacy:<owner>'). See src/lib/cartStorage.js
+  // (AW-189, AW-354). The v2 carts ('aw-cart-v2:<owner>') and the first
+  // builds' 'aw-cart', 'aw-trade-user' and 'aw-welcome-seen' are moved or
+  // removed there.
+  cart: 'aw-cart-v3',
   cartLegacy: 'aw-cart-legacy',
   // sessionStorage only, never localStorage: this tab's last quote or order
   // receipt, one record { owner, entryKey, receipt }, so a reload or Back

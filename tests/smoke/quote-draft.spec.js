@@ -7,10 +7,10 @@
 // leaves the preview server is aborted. Nothing is submitted.
 import { test, expect } from '@playwright/test';
 import { fulfillMyPrices, fulfillProducts, seedRows, serveCatalog } from './catalog.js';
+import { GUEST_CART, cartKey, cartValue } from './cartStore.js';
 
 const AGE_KEY = 'aw-age-verified'; // STORAGE.age in src/data/content.js
 const DRAFT_KEY = 'aw-quote-draft'; // STORAGE.quoteDraft in src/data/content.js
-const GUEST_CART = 'aw-cart-v2:guest'; // cartKey('guest') in src/lib/cartStorage.js
 const ageRecord = (at) => JSON.stringify({ ok: true, at });
 const isLocal = (url) => /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(url) || url.startsWith('data:') || url.startsWith('blob:');
 
@@ -40,7 +40,7 @@ const seed = (context, owner, cart) => context.addInitScript(([ageKey, age, cart
       sessionStorage.setItem('smoke-cart', '1');
     }
   } catch { /* storage blocked */ }
-}, [AGE_KEY, ageRecord(Date.now()), `aw-cart-v2:${owner}`, JSON.stringify(cart)]);
+}, [AGE_KEY, ageRecord(Date.now()), cartKey(owner), cartValue(cart)]);
 
 const TYPED = [['Business name', 'Draft Market LLC'], ['Contact name', 'Dee Draft'], ['Email', 'dee@example.test'], ['Phone', '(205) 555-0123'],
   ['Street', '7 Draft Rd'], ['City', 'Tupelo'], ['ZIP', '38801']];
@@ -197,7 +197,7 @@ test('an approved buyer’s draft wins over the profile, survives a reload, and 
   expect(await draft(page)).toBeNull();
   // The next person on this computer: a guest with a line in the cart sees an empty form.
   await page.getByRole('button', { name: /Yes, I am 21\+/ }).click();
-  await page.evaluate(([key, cart]) => localStorage.setItem(key, cart), [GUEST_CART, JSON.stringify({ 45: 1 })]);
+  await page.evaluate(([key, cart]) => localStorage.setItem(key, cart), [GUEST_CART, cartValue({ 45: 1 })]);
   await page.goto('/quote');
   await expect(page.getByRole('heading', { level: 1, name: 'Request a quote' })).toBeVisible();
   for (const label of ['Business name', 'Contact name', 'Street', 'Notes (optional)']) await expect(field(page, label), label).toHaveValue('');

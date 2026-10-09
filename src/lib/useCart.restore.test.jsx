@@ -5,6 +5,7 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { useCart } from './cart.js';
 import { GUEST, cartKey, readCart, resetCartStoreForTests, restoreCart, writeCart } from './cartStorage.js';
+import { readStored, storedValue } from '../test/cartRecords.js';
 
 const P = [
   { id: 1, sku: 'AW-SS', name: 'Cigarillos', variants: ['Diamond', 'Red'] },
@@ -12,9 +13,9 @@ const P = [
   { id: 45, sku: 'AW-ARGO', name: 'Argo', variants: [] },
 ];
 const A = '11111111-2222-4333-8444-555555555555';
-const stored = (key) => JSON.parse(window.localStorage.getItem(key) || 'null');
+const stored = readStored;
 function otherTab(key, value) {
-  const raw = value === null ? null : JSON.stringify(value);
+  const raw = value === null ? null : JSON.stringify(storedValue(key, value));
   if (raw === null) window.localStorage.removeItem(key);
   else window.localStorage.setItem(key, raw);
   window.dispatchEvent(new StorageEvent('storage', { key, newValue: raw }));
@@ -59,7 +60,8 @@ describe('useCart clearCart and restoreLines (AW-082)', () => {
     act(() => { snapshot = result.current.clearCart(); });
     expect(snapshot).toEqual({ 14: 40, '1::red': 2 });
     expect(result.current.count).toBe(0);
-    expect(window.localStorage.getItem(cartKey(A))).toBeNull();
+    // An account's emptied cart keeps its time, with no lines (AW-334).
+    expect(stored(cartKey(A))).toEqual({});
     act(() => { result.current.restoreLines(snapshot); });
     expect(result.current.count).toBe(42);
     expect(stored(cartKey(A))).toEqual({ 14: 40, '1::red': 2 });

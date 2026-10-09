@@ -5,6 +5,7 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useCart } from './cart.js';
 import { GUEST, OLD_CART_KEY, cartKey, legacyListKey, resetCartStoreForTests } from './cartStorage.js';
+import { cartRecord as cartRecordOf, readStored, storedValue } from '../test/cartRecords.js';
 
 const P = [
   { id: 1, sku: 'AW-SS', name: 'Cigarillos', variants: ['Diamond', 'Red'] },
@@ -16,10 +17,10 @@ const PRICE_OF = pricesFrom({ 1: 10, 14: 20, 20: 5 });
 const A = '11111111-2222-4333-8444-555555555555';
 const B = '99999999-8888-4777-8666-555555555555';
 
-const stored = (key) => JSON.parse(window.localStorage.getItem(key) || 'null');
-const store = (key, value) => window.localStorage.setItem(key, JSON.stringify(value));
+const stored = readStored;
+const store = (key, value) => window.localStorage.setItem(key, JSON.stringify(storedValue(key, value)));
 function otherTab(key, value) {
-  const raw = value === null ? null : JSON.stringify(value);
+  const raw = value === null ? null : JSON.stringify(storedValue(key, value));
   if (raw === null) window.localStorage.removeItem(key);
   else window.localStorage.setItem(key, raw);
   window.dispatchEvent(new StorageEvent('storage', { key, newValue: raw }));
@@ -91,8 +92,9 @@ describe('useCart', () => {
     expect(result.current.items.map((i) => i.lineKey)).toEqual(['14', '20::only']);
     expect(stored(cartKey(GUEST))).toEqual({ 14: 1, 999: 2, 20: 1, '1::purple': 1 });
     rerender({ owner: GUEST, catalogSettled: true });
+    // In the stored order, '20' re-keyed in its place (NEW-065).
     expect(result.current.items.map((i) => [i.lineKey, i.unavailable])).toEqual([
-      ['14', null], ['999', 'product'], ['20::only', null], ['1::purple', 'variant'],
+      ['14', null], ['20::only', null], ['999', 'product'], ['1::purple', 'variant'],
     ]);
     expect(result.current.count).toBe(5);
     expect(stored(cartKey(GUEST))).toEqual({ 14: 1, 999: 2, '20::only': 1, '1::purple': 1 });
@@ -209,3 +211,53 @@ describe('useCart', () => {
   });
 });
 
+
+describe('useCart keeps the order lines were added in (NEW-065)', () => {
+  const keys = (result) => result.current.items.map((i) => i.lineKey);
+
+  it('lists new lines at the end, whatever their keys, and keeps it after a reload', () => {
+    const { result, unmount } = renderHook(() => useTestCart({ owner: GUEST }));
+    act(() => result.current.addLine(20, 'Only'));
+    act(() => result.current.addLine(14, null));
+    act(() => result.current.addLine(1, 'Red'));
+    expect(keys(result)).toEqual(['20::only', '14', '1::red']);
+    // More of a line leaves it where it is.
+    act(() => result.current.addLine(20, 'Only', 2));
+    act(() => result.current.setLine('14', 5));
+    expect(keys(result)).toEqual(['20::only', '14', '1::red']);
+    unmount();
+    resetCartStoreForTests();
+    const again = renderHook(() => useTestCart({ owner: GUEST }));
+    expect(keys(again.result)).toEqual(['20::only', '14', '1::red']);
+  });
+
+  it('adds a reorder’s lines in its order, and a chosen variant takes the bare line’s place', () => {
+    const { result } = renderHook(() => useTestCart({ owner: GUEST }));
+    act(() => result.current.addLine(14, null));
+    act(() => { result.current.addLines([{ productId: 1, qty: 2 }, { productId: 20, variant: 'Only', qty: 1 }]); });
+    expect(keys(result)).toEqual(['14', '1', '20::only']);
+    act(() => { result.current.chooseVariant('1', 'Diamond'); });
+    expect(keys(result)).toEqual(['14', '1::diamond', '20::only']);
+  });
+
+  it('puts the account’s lines first and the guest’s after them at sign-in, and an undo back in order', () => {
+    store(cartKey(A), { 1: 1 });
+    const { result, rerender } = renderHook((props) => useTestCart(props), { initialProps: { owner: GUEST } });
+    act(() => result.current.addLine(20, 'Only'));
+    act(() => result.current.addLine(14, null));
+    rerender({ owner: A });
+    expect(keys(result)).toEqual(['1', '20::only', '14']);
+    let snapshot;
+    act(() => { snapshot = result.current.clearCart(); });
+    act(() => result.current.addLine(1, 'Red'));
+    act(() => result.current.restoreLines(snapshot));
+    expect(keys(result)).toEqual(['1', '20::only', '14', '1::red']);
+  });
+
+  it('re-keys a line to the catalog’s key in its place once the catalog is final', () => {
+    store(cartKey(GUEST), cartRecordOf([['14', 1], ['20', 2], ['1::red', 1]]));
+    const { result, rerender } = renderHook((props) => useTestCart(props), { initialProps: { owner: GUEST, catalogSettled: false } });
+    rerender({ owner: GUEST, catalogSettled: true });
+    expect(keys(result)).toEqual(['14', '20::only', '1::red']);
+  });
+});

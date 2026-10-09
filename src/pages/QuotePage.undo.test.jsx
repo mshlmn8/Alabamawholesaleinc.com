@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { announce } from '../lib/announce.js';
 import { useCart } from '../lib/cart.js';
 import { GUEST, cartKey, resetCartStoreForTests } from '../lib/cartStorage.js';
+import { readStored, storedValue } from '../test/cartRecords.js';
 import { QuotePage } from './QuotePage.jsx';
 
 vi.mock('../lib/announce.js', async (importOriginal) => ({ ...(await importOriginal()), announce: vi.fn() }));
@@ -32,8 +33,8 @@ function Harness({ owner = GUEST, profile = null }) {
     </main>
   );
 }
-const seed = (owner, cart) => window.localStorage.setItem(cartKey(owner), JSON.stringify(cart));
-const stored = (owner) => JSON.parse(window.localStorage.getItem(cartKey(owner)) || 'null');
+const seed = (owner, cart) => window.localStorage.setItem(cartKey(owner), JSON.stringify(storedValue(cartKey(owner), cart)));
+const stored = (owner) => readStored(cartKey(owner));
 const said = () => vi.mocked(announce).mock.calls.map(([m]) => m);
 const clearButton = () => screen.getByRole('button', { name: 'Clear all items' });
 

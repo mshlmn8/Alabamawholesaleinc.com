@@ -5,9 +5,9 @@
 // (./catalog.js). Per-account carts (AW-189) are covered in auth.spec.js.
 import { test, expect } from '@playwright/test';
 import { serveCatalog } from './catalog.js';
+import { GUEST_CART, cartFromStored, cartValue, orderFromStored, v2CartKey } from './cartStore.js';
 
 const AGE_KEY = 'aw-age-verified'; // STORAGE.age in src/data/content.js
-const GUEST_CART = 'aw-cart-v2:guest'; // cartKey('guest') in src/lib/cartStorage.js
 const GUEST_LEGACY = 'aw-cart-legacy:guest'; // legacyListKey('guest')
 const ageRecord = (at) => JSON.stringify({ ok: true, at });
 
@@ -54,7 +54,7 @@ test.describe('with the age confirmed', () => {
     await addButton(second).click();
     await expect(cartButton(first)).toHaveAccessibleName('Quote, 2 items');
     await expect(cartButton(second)).toHaveAccessibleName('Quote, 2 items');
-    expect(Object.keys(JSON.parse(await stored(first, GUEST_CART)))).toHaveLength(2);
+    expect(Object.keys(cartFromStored(await stored(first, GUEST_CART)))).toHaveLength(2);
 
     await second.goto('/quote');
     await second.getByRole('button', { name: 'Clear all items' }).click();
@@ -62,7 +62,7 @@ test.describe('with the age confirmed', () => {
     // The first tab's next add does not bring the cleared lines back.
     await addButton(first).click();
     await expect(cartButton(second)).toHaveAccessibleName('Quote, 1 item');
-    expect(JSON.parse(await stored(first, GUEST_CART))).toEqual({ 14: 1 });
+    expect(cartFromStored(await stored(first, GUEST_CART))).toEqual({ 14: 1 });
     expect(errors).toEqual([]);
   });
 
@@ -95,7 +95,7 @@ test.describe('with the age confirmed', () => {
   test('a bare line gets its variant in the drawer and keeps its quantity, so the quote can be sent (AW-011)', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/');
-    await page.evaluate((k) => localStorage.setItem(k, JSON.stringify({ 1: 12, 14: 2 })), GUEST_CART);
+    await page.evaluate(([k, v]) => localStorage.setItem(k, v), [GUEST_CART, cartValue({ 1: 12, 14: 2 })]);
     await page.reload();
     await expect(cartButton(page)).toHaveAccessibleName('Quote, 14 items');
     await cartButton(page).click();
@@ -105,12 +105,12 @@ test.describe('with the age confirmed', () => {
     await expect(set).toBeDisabled();
     await drawer.getByRole('combobox', { name: 'Choose a variety for Swisher Sweets cigarillos' }).selectOption('Red');
     // Choosing alone changes nothing (WCAG 3.2.2); Set does.
-    expect(JSON.parse(await stored(page, GUEST_CART))).toEqual({ 1: 12, 14: 2 });
+    expect(cartFromStored(await stored(page, GUEST_CART))).toEqual({ 1: 12, 14: 2 });
     await set.click();
     const moved = drawer.getByRole('textbox', { name: 'Quantity of Swisher Sweets cigarillos — Red' });
     await expect(moved).toHaveValue('12');
     await expect(moved).toBeFocused();
-    expect(JSON.parse(await stored(page, GUEST_CART))).toEqual({ '1::red': 12, 14: 2 });
+    expect(cartFromStored(await stored(page, GUEST_CART))).toEqual({ '1::red': 12, 14: 2 });
     await drawer.getByRole('button', { name: 'Close', exact: true }).click();
     await expect(cartButton(page)).toHaveAccessibleName('Quote, 14 items');
 
@@ -129,7 +129,7 @@ test.describe('with the age confirmed', () => {
     const input = group.getByRole('textbox');
     await input.fill('48');
     await addButton(page).click();
-    expect(JSON.parse(await stored(page, GUEST_CART))).toEqual({ 14: 48 });
+    expect(cartFromStored(await stored(page, GUEST_CART))).toEqual({ 14: 48 });
     await expect(cartButton(page)).toHaveAccessibleName('Quote, 48 items');
 
     // In the cart, a number over the limit comes down to it.
@@ -138,18 +138,49 @@ test.describe('with the age confirmed', () => {
     await line.fill('150000');
     await line.press('Enter');
     await expect(line).toHaveValue('100000');
-    expect(JSON.parse(await stored(page, GUEST_CART))).toEqual({ 14: 100000 });
+    expect(cartFromStored(await stored(page, GUEST_CART))).toEqual({ 14: 100000 });
     expect(errors).toEqual([]);
   });
 
   test('a stored fraction and a billion are read as 2 and 100,000 (AW-013)', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/');
-    await page.evaluate((k) => localStorage.setItem(k, JSON.stringify({ '1::red': 2.5, 366: 1e9 })), GUEST_CART);
+    await page.evaluate(([k, v]) => localStorage.setItem(k, v), [GUEST_CART, cartValue({ '1::red': 2.5, 366: 1e9 })]);
     await page.goto('/quote');
     await expect(page.getByRole('textbox', { name: 'Quantity of Swisher Sweets cigarillos — Red' })).toHaveValue('2');
     await expect(page.getByRole('textbox', { name: /^Quantity of Garcia y Vega cigars/ })).toHaveValue('100000');
     await expect(cartButton(page)).toHaveAccessibleName('Quote, 100,002 items');
+    expect(errors).toEqual([]);
+  });
+
+  test('lines stay in the order they were added, in the drawer, at checkout and after a reload (NEW-065)', async ({ page }) => {
+    const errors = trackErrors(page);
+    // The finding's order: Long Boys (174), then Kite (14), then Argo (45).
+    for (const id of [174, 14, 45]) {
+      await page.goto(`/product/${id}`);
+      await addButton(page).click();
+    }
+    await expect(cartButton(page)).toHaveAccessibleName('Quote, 3 items');
+    const names = ['Long Boys coconut candy tub', 'Kite cigarette tobacco', 'Argo corn starch'];
+    await cartButton(page).click();
+    await expect(page.getByRole('dialog', { name: 'Your quote' }).locator('.drawer-line .line-name')).toHaveText(names);
+    await page.goto('/quote');
+    await expect(page.locator('.checkout-lines .line-name')).toHaveText(names);
+    expect(orderFromStored(await stored(page, GUEST_CART))).toEqual(['174', '14', '45']);
+    await page.reload();
+    await expect(page.locator('.checkout-lines .line-name')).toHaveText(names);
+    expect(errors).toEqual([]);
+  });
+
+  test('a cart stored by the build before moves to the new record in the order it showed (NEW-065)', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/');
+    // As that build stored it: JSON.parse lists '14' and '174' first, by number.
+    await page.evaluate((k) => localStorage.setItem(k, '{"1::red":1,"174":1,"14":2}'), v2CartKey('guest'));
+    await page.goto('/quote');
+    await expect(page.locator('.checkout-lines .line-name')).toHaveText(['Kite cigarette tobacco', 'Long Boys coconut candy tub', 'Swisher Sweets cigarillos — Red']);
+    expect(await stored(page, v2CartKey('guest'))).toBeNull();
+    expect(orderFromStored(await stored(page, GUEST_CART))).toEqual(['14', '174', '1::red']);
     expect(errors).toEqual([]);
   });
 

@@ -5,10 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { STORAGE } from '../data/content.js';
 import { PRODUCTS } from '../data/products.js';
 import {
-  GUEST, OLD_CART_KEY, ORPHAN_KEYS, adoptGuestCart, cartKey, cartOwner, clearGuestCart, legacyListKey, mergeCarts,
-  mergeLegacyLists, migrateLegacyCart, readCart, readLegacyList, resetCartStoreForTests, sanitizeCart, sanitizeLegacyList,
-  splitOldCart, subscribeCart, takeFromLegacyList, updateCart, validLineKey, validQty, writeCart,
+  GUEST, OLD_CART_KEY, ORPHAN_KEYS, adoptGuestCart, cartKey, cartOrder, cartOwner, clearGuestCart, legacyListKey, mergeCarts,
+  mergeLegacyLists, migrateLegacyCart, migrateV2Cart, parseStoredCart, readCart, readCartState, readLegacyList, resetCartStoreForTests,
+  restoreCart, sanitizeCart, sanitizeLegacyList, splitOldCart, subscribeCart, takeAdoption, takeFromLegacyList, updateCart, v2CartKey,
+  validLineKey, validQty, writeCart,
 } from './cartStorage.js';
+import { cartRecord, readStored, storedOrder, storedValue } from '../test/cartRecords.js';
 
 const P = [
   { id: 1, sku: 'AW-SS', name: 'Cigarillos', variants: ['Diamond', 'Red'] },
@@ -18,12 +20,9 @@ const P = [
 const A = '11111111-2222-4333-8444-555555555555';
 const B = '99999999-8888-4777-8666-555555555555';
 
-const stored = (key) => {
-  const raw = window.localStorage.getItem(key);
-  return raw === null ? null : JSON.parse(raw);
-};
+const stored = readStored;
 const otherTabWrites = (key, value) => {
-  const raw = value === null ? null : JSON.stringify(value);
+  const raw = value === null ? null : JSON.stringify(storedValue(key, value));
   if (raw === null) window.localStorage.removeItem(key);
   else window.localStorage.setItem(key, raw);
   window.dispatchEvent(new StorageEvent('storage', { key, newValue: raw }));
@@ -251,5 +250,130 @@ describe('one cart per account (AW-189)', () => {
     writeCart(A, { 14: 40000 });
     adoptGuestCart(A);
     expect(readCart(A)).toEqual({ 14: 100000 });
+  });
+});
+
+describe('the order lines were added in (NEW-065)', () => {
+  const order = (owner) => readCartState(owner).order;
+
+  it('keeps integer-like keys after a variant key in the order they were added, stored and read back', () => {
+    for (const key of ['1::white-grape', '174', '14']) updateCart(GUEST, (c) => ({ ...c, [key]: 1 }));
+    expect(order(GUEST)).toEqual(['1::white-grape', '174', '14']);
+    expect(storedOrder(cartKey(GUEST))).toEqual(['1::white-grape', '174', '14']);
+    // A reload reads the same order.
+    resetCartStoreForTests();
+    expect(order(GUEST)).toEqual(['1::white-grape', '174', '14']);
+    // A line keeps its place when its quantity changes, and a removed one goes.
+    updateCart(GUEST, (c) => ({ ...c, 174: 5 }));
+    updateCart(GUEST, (c) => { const next = { ...c }; delete next['1::white-grape']; return next; });
+    expect(order(GUEST)).toEqual(['174', '14']);
+    expect(readCart(GUEST)).toEqual({ 174: 5, 14: 1 });
+  });
+
+  it('stores the v3 record and reads the order another tab stored', () => {
+    writeCart(GUEST, { 14: 2, '1::red': 1 }, { order: ['1::red', '14'] });
+    expect(JSON.parse(window.localStorage.getItem('aw-cart-v3:guest'))).toEqual({ v: 3, savedAt: expect.any(Number), lines: [['1::red', 1], ['14', 2]] });
+    const listener = vi.fn();
+    const stop = subscribeCart(listener);
+    otherTabWrites(cartKey(GUEST), cartRecord([['45', 1], ['14', 2], ['1::red', 1]]));
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(order(GUEST)).toEqual(['45', '14', '1::red']);
+    stop();
+  });
+
+  it('moves a v2 cart to v3 in the order it was shown in, and removes the v2 key', () => {
+    // JSON.parse lists '14' and '174' first, by number: the order the v2 cart showed.
+    window.localStorage.setItem(v2CartKey(GUEST), '{"1::white-grape":2,"174":1,"14":3}');
+    expect(order(GUEST)).toEqual(['14', '174', '1::white-grape']);
+    expect(migrateLegacyCart(GUEST, P)).toBe(false);
+    expect(window.localStorage.getItem(v2CartKey(GUEST))).toBeNull();
+    expect(storedOrder(cartKey(GUEST))).toEqual(['14', '174', '1::white-grape']);
+    expect(readCart(GUEST)).toEqual({ 14: 3, 174: 1, '1::white-grape': 2 });
+    // Its time isn't known, so an account's saved copy counts as newer (AW-334).
+    expect(readCartState(GUEST).savedAt).toBe(0);
+    // New lines go after it.
+    updateCart(GUEST, (c) => ({ ...c, 45: 1 }));
+    expect(order(GUEST)).toEqual(['14', '174', '1::white-grape', '45']);
+  });
+
+  it('adds what an old tab wrote to v2 after the move, without doubling a line, and leaves no v2 key', () => {
+    writeCart(A, { 14: 2 });
+    window.localStorage.setItem(v2CartKey(A), JSON.stringify({ 14: 2, '1::red': 1 }));
+    migrateV2Cart(A);
+    expect(readCart(A)).toEqual({ 14: 2, '1::red': 1 });
+    expect(order(A)).toEqual(['14', '1::red']);
+    expect(window.localStorage.getItem(v2CartKey(A))).toBeNull();
+    // A damaged v2 value just goes.
+    window.localStorage.setItem(v2CartKey(A), '{broken');
+    expect(migrateV2Cart(A)).toBe(true);
+    expect(window.localStorage.getItem(v2CartKey(A))).toBeNull();
+    expect(migrateV2Cart(A)).toBe(false);
+  });
+
+  it('removes the owner’s v2 key on any write, so it never comes back', () => {
+    window.localStorage.setItem(v2CartKey(GUEST), JSON.stringify({ 14: 1 }));
+    updateCart(GUEST, (c) => ({ ...c, 45: 1 }));
+    expect(readCart(GUEST)).toEqual({ 14: 1, 45: 1 });
+    expect(window.localStorage.getItem(v2CartKey(GUEST))).toBeNull();
+  });
+
+  it('reads a list of entries or a plain object under the v3 key, and drops what isn’t a line', () => {
+    expect(parseStoredCart([['174', 1], ['14', '2'], ['x', 1], ['14', 1], [20], 'y'])).toEqual({ cart: { 174: 1, 14: 3 }, order: ['174', '14'], savedAt: 0 });
+    expect(parseStoredCart({ v: 3, savedAt: 1700000000000, lines: [['1::White Grape', 2]] })).toEqual({ cart: { '1::white-grape': 2 }, order: ['1::white-grape'], savedAt: 1700000000000 });
+    expect(parseStoredCart({ v: 3, savedAt: 'soon', lines: 'all' })).toEqual({ cart: {}, order: [], savedAt: 0 });
+    expect(parseStoredCart({ 14: 1 })).toEqual({ cart: { 14: 1 }, order: ['14'], savedAt: 0 });
+    expect(parseStoredCart(null)).toEqual({ cart: {}, order: [], savedAt: 0 });
+  });
+
+  it('dates each change, never earlier than the last, and keeps the date for a change that isn’t the buyer’s', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(5000);
+    writeCart(A, { 14: 1 });
+    expect(readCartState(A).savedAt).toBe(5000);
+    updateCart(A, (c) => ({ ...c, 14: 2 }));
+    expect(readCartState(A).savedAt).toBe(5001);
+    updateCart(A, (c) => ({ ...c, 45: 1 }), { touch: false });
+    expect(readCartState(A).savedAt).toBe(5001);
+    // A cart taken from a device whose clock runs ahead.
+    writeCart(A, { 14: 3 }, { savedAt: 9000 });
+    updateCart(A, (c) => ({ ...c, 14: 4 }));
+    expect(readCartState(A).savedAt).toBe(9001);
+  });
+
+  it('keeps an account’s emptied cart as a dated record with no lines; a guest’s goes', () => {
+    writeCart(A, { 14: 1 });
+    updateCart(A, () => ({}));
+    expect(JSON.parse(window.localStorage.getItem(cartKey(A)))).toEqual({ v: 3, savedAt: expect.any(Number), lines: [] });
+    expect(readCartState(A)).toMatchObject({ cart: {}, order: [], savedAt: expect.any(Number) });
+    expect(readCartState(A).savedAt).toBeGreaterThan(0);
+    writeCart(GUEST, { 14: 1 });
+    updateCart(GUEST, () => ({}));
+    expect(window.localStorage.getItem(cartKey(GUEST))).toBeNull();
+  });
+
+  it('puts undone lines back in their old order, ahead of lines added meanwhile', () => {
+    writeCart(GUEST, { 45: 1, 14: 2, '1::red': 3 }, { order: ['1::red', '45', '14'] });
+    const snapshot = readCart(GUEST);
+    expect(cartOrder(snapshot)).toEqual(['1::red', '45', '14']);
+    writeCart(GUEST, {});
+    updateCart(GUEST, (c) => ({ ...c, 174: 1 }));
+    restoreCart(GUEST, snapshot);
+    expect(order(GUEST)).toEqual(['1::red', '45', '14', '174']);
+  });
+
+  it('adds the guest’s lines after the account’s at sign-in, and hands the adoption over once', () => {
+    writeCart(A, { 45: 1, 14: 2 }, { order: ['45', '14'] });
+    writeCart(GUEST, { 174: 1, '1::red': 1, 14: 1 }, { order: ['174', '1::red', '14'] });
+    const before = readCartState(A);
+    const adopted = adoptGuestCart(A);
+    expect(order(A)).toEqual(['45', '14', '174', '1::red']);
+    expect(readCart(A)).toEqual({ 45: 1, 14: 3, 174: 1, '1::red': 1 });
+    expect(adopted.before).toBe(before);
+    expect(adopted.guest.order).toEqual(['174', '1::red', '14']);
+    expect(adopted.after).toBe(readCartState(A));
+    expect(takeAdoption(A)).toBe(adopted);
+    expect(takeAdoption(A)).toBeNull();
+    // Nothing to adopt: nothing handed over.
+    expect(adoptGuestCart(A)).toBeNull();
+    expect(takeAdoption(A)).toBeNull();
   });
 });

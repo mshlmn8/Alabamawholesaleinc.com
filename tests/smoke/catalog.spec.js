@@ -6,9 +6,9 @@
 // aborted, and submit_quote is answered here.
 import { test, expect } from '@playwright/test';
 import { fulfillProducts, seedRows } from './catalog.js';
+import { GUEST_CART, cartValue } from './cartStore.js';
 
 const AGE_KEY = 'aw-age-verified'; // STORAGE.age in src/data/content.js
-const GUEST_CART = 'aw-cart-v2:guest'; // cartKey('guest') in src/lib/cartStorage.js
 const ageRecord = (at) => JSON.stringify({ ok: true, at });
 
 const isLocal = (url) => /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(url) || url.startsWith('data:') || url.startsWith('blob:');
@@ -158,7 +158,7 @@ test('checkout checks the catalog again and names a line that was taken out (AW-
         sessionStorage.setItem('smoke-cart', '1');
       }
     } catch { /* storage blocked */ }
-  }, [GUEST_CART, JSON.stringify({ 14: 2, '1::red': 1 })]);
+  }, [GUEST_CART, cartValue({ 14: 2, '1::red': 1 })]);
   await page.goto('/quote');
   await expect(page.getByRole('heading', { level: 1, name: 'Request a quote' })).toBeVisible();
   for (const [label, value] of [['Business name', 'Test Market LLC'], ['Contact name', 'Test Buyer'], ['Email', 'buyer@example.test'], ['Phone', '205-555-0100'],

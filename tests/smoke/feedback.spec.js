@@ -7,9 +7,9 @@
 // runs at 390 px.
 import { test, expect } from '@playwright/test';
 import { serveCatalog } from './catalog.js';
+import { GUEST_CART, cartValue } from './cartStore.js';
 
 const AGE_KEY = 'aw-age-verified'; // STORAGE.age in src/data/content.js
-const GUEST_CART = 'aw-cart-v2:guest'; // cartKey('guest') in src/lib/cartStorage.js
 const isLocal = (url) => /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(url) || url.startsWith('data:') || url.startsWith('blob:');
 
 function trackErrors(page) {
@@ -129,7 +129,7 @@ test('focus stays on the cart controls after adds and removals (AW-042)', async 
   await expect.poll(async () => (await said(page)).at(-1)).toMatch(/^Removed .+ from your quote\.$/);
 
   // The drawer: × on a line, then on the last one.
-  await page.evaluate((k) => localStorage.setItem(k, JSON.stringify({ 14: 2, 45: 1 })), GUEST_CART);
+  await page.evaluate(([k, v]) => localStorage.setItem(k, v), [GUEST_CART, cartValue({ 14: 2, 45: 1 })]);
   await page.goto('/');
   await page.getByRole('button', { name: /^Quote, [\d,]+ items?$/ }).click();
   const drawer = page.getByRole('dialog', { name: 'Your quote' });
@@ -141,7 +141,7 @@ test('focus stays on the cart controls after adds and removals (AW-042)', async 
   await expect.poll(async () => (await said(page)).at(-1)).toBe('Removed Argo corn starch.');
 
   // Checkout: × on a line, then "Clear all items".
-  await page.evaluate((k) => localStorage.setItem(k, JSON.stringify({ 14: 2, 45: 1 })), GUEST_CART);
+  await page.evaluate(([k, v]) => localStorage.setItem(k, v), [GUEST_CART, cartValue({ 14: 2, 45: 1 })]);
   await page.goto('/quote');
   await page.getByRole('button', { name: 'Remove Kite cigarette tobacco' }).click();
   await expect(page.getByRole('textbox', { name: 'Quantity of Argo corn starch' })).toBeFocused();

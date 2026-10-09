@@ -8,9 +8,9 @@
 // server is aborted or answered here.
 import { test, expect } from '@playwright/test';
 import { serveCatalog } from './catalog.js';
+import { GUEST_CART, cartValue } from './cartStore.js';
 
 const AGE_KEY = 'aw-age-verified'; // STORAGE.age in src/data/content.js
-const GUEST_CART = 'aw-cart-v2:guest'; // cartKey('guest') in src/lib/cartStorage.js
 const ageRecord = (at) => JSON.stringify({ ok: true, at });
 
 const isLocal = (url) => /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(url) || url.startsWith('data:') || url.startsWith('blob:');
@@ -36,7 +36,7 @@ test.beforeEach(async ({ context }) => {
       localStorage.setItem(ageKey, age);
       localStorage.setItem(cartKey, cart);
     } catch { /* storage blocked */ }
-  }, [AGE_KEY, ageRecord(Date.now()), GUEST_CART, JSON.stringify({ 14: 2 })]);
+  }, [AGE_KEY, ageRecord(Date.now()), GUEST_CART, cartValue({ 14: 2 })]);
 });
 
 test('an empty quote names each missing answer under its field, focuses Business, and sends nothing (AW-173)', async ({ page }) => {

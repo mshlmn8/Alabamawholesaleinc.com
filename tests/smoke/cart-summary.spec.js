@@ -9,9 +9,9 @@
 import { test, expect } from '@playwright/test';
 import { fulfillMyPrices, fulfillProducts, seedRows, serveCatalog, syntheticListPrice } from './catalog.js';
 import { tierUnitPrice } from '../../src/lib/pricing.js';
+import { GUEST_CART, cartFromStored, cartKey, cartValue } from './cartStore.js';
 
 const AGE_KEY = 'aw-age-verified'; // STORAGE.age in src/data/content.js
-const GUEST_CART = 'aw-cart-v2:guest'; // cartKey('guest') in src/lib/cartStorage.js
 const ageRecord = (at) => JSON.stringify({ ok: true, at });
 const isLocal = (url) => /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(url) || url.startsWith('data:') || url.startsWith('blob:');
 
@@ -55,7 +55,7 @@ test.describe('a guest', () => {
   test('a drawer line’s name opens its product and closes the drawer; the drawer counts and says where the cart is kept (AW-239, AW-238, AW-334)', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/');
-    await page.evaluate((k) => localStorage.setItem(k, JSON.stringify({ 14: 2, 45: 1 })), GUEST_CART);
+    await page.evaluate(([k, v]) => localStorage.setItem(k, v), [GUEST_CART, cartValue({ 14: 2, 45: 1 })]);
     await page.reload();
     await cartButton(page).click();
     const drawer = page.getByRole('dialog', { name: 'Your quote' });
@@ -75,7 +75,7 @@ test.describe('a guest', () => {
   test('checkout lines sit 16px inside their border; Clear all items is undone back to the first quantity (AW-081, AW-082)', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/');
-    await page.evaluate((k) => localStorage.setItem(k, JSON.stringify({ 14: 2, 45: 1 })), GUEST_CART);
+    await page.evaluate(([k, v]) => localStorage.setItem(k, v), [GUEST_CART, cartValue({ 14: 2, 45: 1 })]);
     await page.goto('/quote');
     const line = page.locator('.checkout-line').first();
     const inset = await line.evaluate((li) => {
@@ -98,7 +98,7 @@ test.describe('a guest', () => {
     await page.keyboard.press('Enter');
     await expect(page.getByRole('textbox', { name: 'Quantity of Kite cigarette tobacco' })).toBeFocused();
     await expect(cartButton(page)).toHaveAccessibleName('Quote, 3 items');
-    expect(JSON.parse(await page.evaluate((k) => localStorage.getItem(k), GUEST_CART))).toEqual({ 14: 2, 45: 1 });
+    expect(cartFromStored(await page.evaluate((k) => localStorage.getItem(k), GUEST_CART))).toEqual({ 14: 2, 45: 1 });
     await expect.poll(async () => (await said(page)).at(-1)).toBe('Restored 3 items.');
     await expect(page.locator('.cart-cleared')).toHaveCount(0);
     expect(errors).toEqual([]);
@@ -128,7 +128,7 @@ test('an approved buyer sees the way to the minimum, then to free delivery, in t
         sessionStorage.setItem('smoke-summary', '1');
       }
     } catch { /* storage blocked */ }
-  }, ['aw-auth', JSON.stringify(savedSession()), `aw-cart-v2:${UID}`, JSON.stringify({ 14: 30, 45: 3 })]);
+  }, ['aw-auth', JSON.stringify(savedSession()), cartKey(UID), cartValue({ 14: 30, 45: 3 })]);
   await page.route('**/*', (route) => {
     const req = route.request();
     const url = req.url();

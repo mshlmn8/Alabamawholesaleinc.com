@@ -6,6 +6,7 @@
 // catalog (./catalog.js).
 import { test, expect } from '@playwright/test';
 import { fulfillMyPrices, fulfillProducts, seedRows, serveCatalog } from './catalog.js';
+import { cartFromStored, cartKey } from './cartStore.js';
 
 const AGE_KEY = 'aw-age-verified'; // STORAGE.age in src/data/content.js
 const AUTH_KEY = 'aw-auth'; // AUTH_STORAGE_KEY in src/lib/supabase.js
@@ -169,7 +170,7 @@ test('signing out puts the buyer’s cart away: the next person starts empty, th
   await expect(page.locator('.aw-account-actions')).toContainText('Test Market LLC');
   await page.locator('.pd-info').getByRole('button', { name: /^Add to (quote|order)/ }).click();
   await expect(cart).toHaveAccessibleName('Order, 1 item');
-  expect(JSON.parse(await page.evaluate((k) => localStorage.getItem(k), `aw-cart-v2:${UID}`))).toEqual({ 14: 1 });
+  expect(cartFromStored(await page.evaluate((k) => localStorage.getItem(k), cartKey(UID)))).toEqual({ 14: 1 });
 
   const menu = page.getByRole('button', { name: 'Menu' });
   if (await menu.isVisible()) {

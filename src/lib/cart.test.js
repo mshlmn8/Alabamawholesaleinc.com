@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   NO_PRICES, addableLineKey, cartChanges, cartCount, cartTotal, countsInTotal, decrementLine, deleteLine, describeCartChanges, incrementLine, mergeLines,
-  moveLineToVariant, priceCartItems, setLineQuantity, variantExcludedText,
+  mergeLinesOrder, moveLineToVariant, priceCartItems, setLineQuantity, variantExcludedText,
 } from './cart.js';
 
 const P = [
@@ -222,5 +222,19 @@ describe('cartChanges and describeCartChanges', () => {
   it('names at most three lines', () => {
     const changes = [1, 2, 3, 4, 5].map(n => ({ kind: 'unavailable', reason: 'product', name: `P${n}`, lineKey: String(n) }));
     expect(describeCartChanges(changes)).toMatch(/P3 is no longer available — remove it to continue\. 2 more items changed too\. Check/);
+  });
+});
+
+describe('mergeLinesOrder (NEW-065)', () => {
+  it('gives the keys a reorder adds to, in the lines’ order, skipping the ones mergeLines skips', () => {
+    expect(mergeLinesOrder(P, [
+      { productId: 20, variant: 'Only', qty: 1 }, { productId: 14, qty: 2 }, { productId: 1, qty: 3 },
+      { productId: 99, qty: 1 }, { productId: 40, qty: 1 }, { productId: 14, qty: 0 },
+    ])).toEqual(['20::only', '14', '1']);
+    expect(mergeLinesOrder(P, null)).toEqual([]);
+  });
+
+  it('lists the items in the order given (priceCartItems passes it on)', () => {
+    expect(priceCartItems({ 14: 1, '1::red': 1 }, P, APPROVED, { order: ['1::red', '14'] }).map((i) => [i.lineKey, i.price])).toEqual([['1::red', 10], ['14', 20]]);
   });
 });

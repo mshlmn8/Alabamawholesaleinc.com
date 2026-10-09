@@ -293,14 +293,26 @@ export function linesFromOrder(order, products) {
   return { lines, unavailable, needsVariant };
 }
 
-// Re-keys stored lines to their canonical key: a bare id of a one-variant
-// product gets its variant, variant slugs follow the catalog's labels, and an
-// old slug follows its alias (AW-138, AW-126): '60::fuckin-fab' becomes
-// '60::f-fab', and '329::tips' becomes '329' now that RAW tips has no
-// variants. Lines the catalog does not know (a product that was deactivated
-// or has not loaded yet, a variant that was taken out) are kept as they are,
-// so the cart can flag them instead of dropping them without a word
-// (AW-083). Returns the same object when nothing changes.
+// A stored line's canonical key: a bare id of a one-variant product gets its
+// variant, variant slugs follow the catalog's labels, and an old slug follows
+// its alias (AW-138, AW-126): '60::fuckin-fab' becomes '60::f-fab', and
+// '329::tips' becomes '329' now that RAW tips has no variants. A key the
+// catalog does not know (a product that was deactivated or has not loaded
+// yet, a variant that was taken out) stays as it is.
+export function canonicalLineKey(key, products) {
+  const { productId, variantSlug: slug } = parseLineKey(key);
+  const product = (products || []).find((p) => Number(p.id) === productId);
+  if (!product || product.active === false) return String(key);
+  const variants = variantList(product);
+  const match = slug ? matchVariant(product, slug) : { found: variants.length <= 1, variant: variants.length === 1 ? variants[0] : null };
+  return match.found ? lineKey(product.id, match.variant) : String(key);
+}
+
+// Re-keys stored lines to their canonical key (canonicalLineKey). Lines the
+// catalog does not know are kept as they are, so the cart can flag them
+// instead of dropping them without a word (AW-083). Returns the same object
+// when nothing changes. Two keys that become one add up (normalizeOrder keeps
+// the line where the first of them was, NEW-065).
 export function normalizeCart(cart, products) {
   const source = cart && typeof cart === 'object' && !Array.isArray(cart) ? cart : {};
   const next = {};
@@ -309,17 +321,46 @@ export function normalizeCart(cart, products) {
   for (const [key, qty] of Object.entries(source)) {
     const n = Number(qty);
     if (!Number.isFinite(n) || n <= 0) continue;
-    const { productId, variantSlug: slug } = parseLineKey(key);
-    const product = products.find((p) => Number(p.id) === productId);
-    const variants = variantList(product);
-    const listed = !!product && product.active !== false;
-    const match = !listed ? { found: false, variant: null }
-      : slug ? matchVariant(product, slug) : { found: variants.length <= 1, variant: variants.length === 1 ? variants[0] : null };
-    add(match.found ? lineKey(product.id, match.variant) : key, n);
+    add(canonicalLineKey(key, products), n);
   }
   const same = Object.keys(source).length === Object.keys(next).length
     && Object.entries(next).every(([key, qty]) => source[key] === qty);
   return same ? source : next;
+}
+
+// The order of the cart's lines (NEW-065) after normalizeCart: each key
+// becomes its canonical key in place; a key listed twice keeps its first
+// place.
+export function normalizeOrder(order, products) {
+  const seen = new Set();
+  const next = [];
+  for (const key of order || []) {
+    const canonical = canonicalLineKey(key, products);
+    if (seen.has(canonical)) continue;
+    seen.add(canonical);
+    next.push(canonical);
+  }
+  return next;
+}
+
+// The keys of `cart` in the order `order` gives (a key listed twice keeps its
+// first place), then any key the order doesn't list, as the object lists
+// them. A cart is an object keyed by line key, and JavaScript lists
+// integer-like keys ('14', '174') first, by number, whatever order they were
+// added in, so the order lines were added in is kept beside it (NEW-065).
+export function orderedLineKeys(cart, order = []) {
+  const source = cart && typeof cart === 'object' ? cart : {};
+  const seen = new Set();
+  const keys = [];
+  const put = (key) => {
+    const k = String(key);
+    if (seen.has(k) || !has(source, k)) return;
+    seen.add(k);
+    keys.push(k);
+  };
+  for (const key of order || []) put(key);
+  for (const key of Object.keys(source)) put(key);
+  return keys;
 }
 
 // 'white-grape' -> 'White grape', for a variant the catalog no longer lists.
@@ -366,7 +407,8 @@ function unavailableLine(key, productId, qty, product, variantLabel, reason) {
   };
 }
 
-// The cart's lines against the catalog, in stored order. Each item is
+// The cart's lines against the catalog, in the order they were added
+// (options.order, NEW-065; keys it doesn't list follow). Each item is
 // { lineKey, productId, variant, needsVariant, unavailable, name, sku,
 // sellUnit, cat, qty, img }. Prices are not part of the catalog (AW-003);
 // cart.js adds them.
@@ -386,13 +428,18 @@ function unavailableLine(key, productId, qty, product, variantLabel, reason) {
 //   settled  false while the live catalog is still loading: lines it may yet
 //            know are left out for now instead of being flagged
 //   known    other product lists to take an unavailable product's name from
+//   order    the cart's keys in the order they were added (cartStorage.js
+//            readCartState); without it, the object's own order
 // Stored keys that name the same line (an old and a new key of a renamed
 // variant, AW-138, or a bare id and the id with its only variant) come back
-// as one item with their quantities added, so every lineKey is listed once
-// even before normalizeCart has merged them in storage.
-export function resolveCartItems(cart, products, { settled = true, known = [] } = {}) {
+// as one item with their quantities added, where the first of them was, so
+// every lineKey is listed once even before normalizeCart has merged them in
+// storage.
+export function resolveCartItems(cart, products, { settled = true, known = [], order = null } = {}) {
   const find = (list, id) => list.find((p) => Number(p.id) === id) || null;
-  const resolved = Object.entries(cart || {}).flatMap(([key, qty]) => {
+  const lines = cart || {};
+  const resolved = orderedLineKeys(lines, order || []).flatMap((key) => {
+    const qty = lines[key];
     const n = Number(qty);
     if (!Number.isFinite(n) || n <= 0) return [];
     const { productId, variantSlug: slug } = parseLineKey(key);

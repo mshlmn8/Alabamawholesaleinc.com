@@ -1,17 +1,20 @@
-// The cart: a map of line key (see lines.js) to quantity. Pure helpers plus
-// the useCart hook the app root uses. Where the cart is stored (one per
-// account, kept in step across tabs, older carts moved over) is
-// src/lib/cartStorage.js (AW-045, AW-046, AW-189, AW-354).
+// The cart: a map of line key (see lines.js) to quantity, with the order the
+// lines were added in beside it (NEW-065). Pure helpers plus the useCart hook
+// the app root uses. Where the cart is stored (one per account, kept in step
+// across tabs, older carts moved over) is src/lib/cartStorage.js (AW-045,
+// AW-046, AW-189, AW-354).
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { PRODUCTS as BUNDLED_PRODUCTS } from '../data/products.js';
-import { canonicalVariant, isVariantAvailable, lineKey, parseLineKey, requiresVariantChoice, normalizeCart, resolveCartItems } from './lines.js';
+import {
+  canonicalVariant, isVariantAvailable, lineKey, parseLineKey, requiresVariantChoice, normalizeCart, normalizeOrder, resolveCartItems,
+} from './lines.js';
 import { sumLines } from './pricing.js';
 import { formatMoney } from './format.js';
 import { MAX_QTY, addableQty, clampQty } from './quantity.js';
 import {
-  EMPTY_CART, EMPTY_LIST, GUEST, adoptGuestCart, migrateLegacyCart, readCart, readLegacyList, restoreCart, subscribeCart,
-  takeFromLegacyList, updateCart, writeLegacyList,
+  EMPTY_LIST, EMPTY_STATE, GUEST, adoptGuestCart, migrateLegacyCart, readCart, readCartState, readLegacyList, restoreCart,
+  subscribeCart, takeFromLegacyList, updateCart, writeLegacyList,
 } from './cartStorage.js';
 
 export const cartCount = (cart) => Object.values(cart).reduce((a, b) => a + Number(b || 0), 0);
@@ -34,6 +37,14 @@ export function addableLineKey(products, productId, variant) {
 // (src/lib/quantity.js, AW-013): adds and merges stop at it.
 export const incrementLine = (cart, key, n = 1) => ({ ...cart, [key]: Math.min(MAX_QTY, (Number(cart[key]) || 0) + n) });
 
+// The line key a reorder line goes to (mergeLines), or null when it is
+// skipped.
+function reorderLineKey(products, line) {
+  const product = products.find(p => Number(p.id) === Number(line?.productId));
+  if (!product || product.active === false || addableQty(line.qty) == null) return null;
+  return lineKey(product.id, line.variant || null);
+}
+
 // Batch add for reorders. Unlike a single add, a multi-variant product without
 // a variant is kept as a bare line so the buyer can choose it in the cart.
 // A quantity that isn't a whole number of 1 or more is skipped, not rounded
@@ -41,14 +52,16 @@ export const incrementLine = (cart, key, n = 1) => ({ ...cart, [key]: Math.min(M
 export function mergeLines(cart, products, lines) {
   const next = { ...cart };
   for (const line of lines || []) {
-    const product = products.find(p => Number(p.id) === Number(line.productId));
-    const n = addableQty(line.qty);
-    if (!product || product.active === false || n == null) continue;
-    const key = lineKey(product.id, line.variant || null);
-    next[key] = Math.min(MAX_QTY, (Number(next[key]) || 0) + n);
+    const key = reorderLineKey(products, line);
+    if (key == null) continue;
+    next[key] = Math.min(MAX_QTY, (Number(next[key]) || 0) + addableQty(line.qty));
   }
   return next;
 }
+
+// The keys mergeLines adds to, in the lines' order: where new lines go
+// (NEW-065).
+export const mergeLinesOrder = (products, lines) => (lines || []).map((line) => reorderLineKey(products, line)).filter(Boolean);
 
 // n fewer of a line (1 by default); the line goes at 0.
 export function decrementLine(cart, key, n = 1) {
@@ -206,7 +219,10 @@ export function resolveLegacyList(list, products) {
 }
 
 // The cart for `owner` (cartOwner() in cartStorage.js: the signed-in user's
-// id, or 'guest'). catalogSettled is false until the live catalog is on
+// id, or 'guest'). Lines are listed in the order they were added (NEW-065):
+// a new line goes at the end, a line keeps its place when its quantity
+// changes or it gets its variant, and an undo puts lines back where they
+// were. catalogSettled is false until the live catalog is on
 // screen (useCatalog().settled, src/lib/catalog.jsx); lines are only
 // re-keyed, and unknown ones only flagged, after it. priceOf(productId,
 // variant) gives a line's unit price (see priceCartItems); keep it stable
@@ -240,7 +256,8 @@ export function resolveLegacyList(list, products) {
 // before a submit (AW-191); it also reads storage, so it is for event
 // handlers too.
 export function useCart({ products, priceOf = NO_PRICES, owner = GUEST, catalogSettled = true }) {
-  const cart = useSyncExternalStore(subscribeCart, () => readCart(owner), () => EMPTY_CART);
+  const stored = useSyncExternalStore(subscribeCart, () => readCartState(owner), () => EMPTY_STATE);
+  const { cart, order } = stored;
   const legacyList = useSyncExternalStore(subscribeCart, () => readLegacyList(owner), () => EMPTY_LIST);
 
   // A new owner: an old cart moves in (once per device, AW-354), and signing
@@ -254,23 +271,37 @@ export function useCart({ products, priceOf = NO_PRICES, owner = GUEST, catalogS
     if (previous === GUEST && owner !== GUEST) adoptGuestCart(owner);
   }, [owner, products]);
 
-  // Stored lines take their canonical keys once the catalog is final. Lines
-  // it does not know are kept and flagged (AW-083), never dropped.
+  // Stored lines take their canonical keys once the catalog is final, each
+  // where it was. Lines it does not know are kept and flagged (AW-083), never
+  // dropped. Not a change of the buyer's: savedAt stays.
   useEffect(() => {
-    if (catalogSettled) updateCart(owner, (current) => normalizeCart(current, products));
+    if (catalogSettled) {
+      updateCart(owner, (current) => normalizeCart(current, products), { arrange: (keys) => normalizeOrder(keys, products), touch: false });
+    }
   }, [owner, products, catalogSettled]);
 
   const items = useMemo(
-    () => priceCartItems(cart, products, priceOf, { settled: catalogSettled, known: BUNDLED_PRODUCTS }),
-    [cart, products, priceOf, catalogSettled],
+    () => priceCartItems(cart, products, priceOf, { settled: catalogSettled, known: BUNDLED_PRODUCTS, order }),
+    [cart, order, products, priceOf, catalogSettled],
   );
   const legacy = useMemo(() => resolveLegacyList(legacyList, products), [legacyList, products]);
   const count = itemCount(items);
   const total = cartTotal(items);
 
   // Every change is applied to the cart as stored now, not to this tab's
-  // copy, so another tab's lines survive it (AW-046).
-  const update = (fn) => updateCart(owner, (current) => fn(catalogSettled ? normalizeCart(current, products) : current));
+  // copy, so another tab's lines survive it (AW-046). The lines keep their
+  // order (NEW-065); `append` lists new keys in the order they go at the
+  // end, `rename` {from: to} puts a re-keyed line in its old key's place.
+  const update = (fn, { append = [], rename = null } = {}) => updateCart(
+    owner,
+    (current) => fn(catalogSettled ? normalizeCart(current, products) : current),
+    {
+      arrange: (keys) => [
+        ...(catalogSettled ? normalizeOrder(keys, products) : keys).map((key) => (rename && rename[key]) || key),
+        ...append,
+      ],
+    },
+  );
 
   const addLine = (productId, variant, n = 1) => {
     const key = addableLineKey(products, productId, variant);
@@ -280,7 +311,7 @@ export function useCart({ products, priceOf = NO_PRICES, owner = GUEST, catalogS
     const next = update(c => {
       before = Number(c[key]) || 0;
       return incrementLine(c, key, want);
-    });
+    }, { append: [key] });
     const qty = Number(next[key]) || 0;
     const added = Math.max(0, qty - before);
     // Adding a product on the old cart's list (with the variant it needed)
@@ -288,13 +319,13 @@ export function useCart({ products, priceOf = NO_PRICES, owner = GUEST, catalogS
     if (added > 0) takeFromLegacyList(owner, productId, added);
     return { key, qty, capped: added < want };
   };
-  const addLines = (lines) => update(c => mergeLines(c, products, lines));
+  const addLines = (lines) => update(c => mergeLines(c, products, lines), { append: mergeLinesOrder(products, lines) });
   const decLine = (key, n = 1) => update(c => decrementLine(c, key, n));
   const setLine = (key, n) => update(c => setLineQuantity(c, key, n));
   const chooseVariant = (key, variant) => {
     const toKey = addableLineKey(products, parseLineKey(key).productId, variant);
     if (!toKey) return null;
-    const next = update(c => moveLineToVariant(c, key, toKey));
+    const next = update(c => moveLineToVariant(c, key, toKey), { rename: { [key]: toKey } });
     return next[toKey] ? { key: toKey, qty: Number(next[toKey]) } : null;
   };
   const removeLine = (key) => update(c => deleteLine(c, key));
@@ -306,7 +337,10 @@ export function useCart({ products, priceOf = NO_PRICES, owner = GUEST, catalogS
   };
   const restoreLines = (snapshot) => restoreCart(owner, snapshot);
   const dismissLegacy = () => writeLegacyList(owner, []);
-  const itemsFor = (nextProducts, nextPriceOf = priceOf) => priceCartItems(readCart(owner), nextProducts, nextPriceOf, { settled: true, known: BUNDLED_PRODUCTS });
+  const itemsFor = (nextProducts, nextPriceOf = priceOf) => {
+    const now = readCartState(owner);
+    return priceCartItems(now.cart, nextProducts, nextPriceOf, { settled: true, known: BUNDLED_PRODUCTS, order: now.order });
+  };
 
   return { cart, count, items, total, legacy, addLine, addLines, decLine, setLine, chooseVariant, removeLine, removeLines, clearCart, restoreLines, dismissLegacy, itemsFor };
 }
