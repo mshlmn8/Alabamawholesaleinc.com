@@ -135,7 +135,7 @@ export async function submitOrder({ formData, items }, { client = supabase } = {
     if (error) throw error;
     if (!data?.id) throw new Error('The quote was not saved.');
     workingSignature = signature;
-    return { source: 'supabase', ok: true, order: data, legacy: signature !== 'current' };
+    return { ok: true, order: data, legacy: signature !== 'current' };
   }
   workingSignature = null;
   throw missing;

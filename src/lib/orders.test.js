@@ -101,7 +101,7 @@ describe('submitOrder', () => {
   it('calls the current submit_quote once and returns what it saved', async () => {
     const client = fakeClient({ data: SAVED, error: null });
     const r = await submitOrder({ formData: LICENSED, items: ITEMS }, { client });
-    expect(r).toEqual({ source: 'supabase', ok: true, order: SAVED, legacy: false });
+    expect(r).toEqual({ ok: true, order: SAVED, legacy: false });
     expect(client.calls).toHaveLength(1);
     expect(client.calls[0].name).toBe('submit_quote');
     expect(client.calls[0].args).not.toHaveProperty('p_ref_num');

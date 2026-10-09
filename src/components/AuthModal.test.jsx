@@ -26,7 +26,7 @@ function setup(initial, props = {}) {
   let value = authValue(initial);
   const ui = () => (
     <AuthContext.Provider value={value}>
-      <AuthModal open onClose={onClose} onSignOut={onSignOut} {...props} />
+      <AuthModal onClose={onClose} onSignOut={onSignOut} {...props} />
     </AuthContext.Provider>
   );
   const view = render(ui());

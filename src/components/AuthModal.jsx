@@ -87,7 +87,7 @@ function Field({ id, label, hint, full = false, children }) {
   );
 }
 
-export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, signingOut = false }) {
+export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingOut = false }) {
   const {
     signIn, signUp, resetPassword, resendConfirmation, refreshProfile,
     session, profile, profileReady, profileRefreshing, loading, isBackendConfigured,
@@ -186,8 +186,6 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
   useEffect(() => {
     if (confirming) keepEditingRef.current?.focus();
   }, [confirming]);
-
-  if (!open) return null;
 
   const keepEditing = () => {
     setConfirming(false);

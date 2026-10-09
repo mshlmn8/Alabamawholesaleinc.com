@@ -392,7 +392,7 @@ export default function App() {
       {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} onApply={() => { setHelpOpen(false); openSignup(); }} />}
       {/* It has its own ModalLayer, so Escape and Back ask before a typed
           application is lost (AW-018). Sign Out closes it outright. */}
-      {loginOpen && <AuthModal open initialMode={loginMode} onClose={() => setLoginOpen(false)} onSignOut={signOutHere} signingOut={signingOut} />}
+      {loginOpen && <AuthModal initialMode={loginMode} onClose={() => setLoginOpen(false)} onSignOut={signOutHere} signingOut={signingOut} />}
       {/* Last, so it sits above any other layer. No onClose and no history
           entry: Escape and Back leave it open (AW-044, AW-065). */}
       {gated && (

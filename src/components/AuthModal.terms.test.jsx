@@ -16,7 +16,7 @@ function setup(initialMode = 'signin', overrides = {}) {
   };
   render(
     <AuthContext.Provider value={value}>
-      <AuthModal open initialMode={initialMode} onClose={vi.fn()} onSignOut={vi.fn()} />
+      <AuthModal initialMode={initialMode} onClose={vi.fn()} onSignOut={vi.fn()} />
     </AuthContext.Provider>,
   );
   return value;

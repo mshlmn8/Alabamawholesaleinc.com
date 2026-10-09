@@ -1,7 +1,7 @@
 // Quick entry by SKU and quantity for signed-in buyers. Each row resolves
-// live against the catalog; a code that is ambiguous (duplicate catalog SKUs,
-// or a bare SKU of a multi-variant product) asks for one more choice before
-// its line can be added.
+// live against the catalog; a code that is ambiguous (one more than one
+// product answers to, or a bare SKU of a multi-variant product) asks for one
+// more choice before its line can be added.
 //
 // Quantities follow the one rule in src/lib/quantity.js (AW-100, AW-013): a
 // whole number from 1 to 100,000. Anything else (0, 2.5, 150000) is a row
