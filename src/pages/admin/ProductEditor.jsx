@@ -24,6 +24,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { productImage } from '../../lib/images.js';
+import { currentImageFile } from '../../data/catalogAliases.js';
 import { catLabel } from '../../lib/format.js';
 import { departmentsFor } from '../../lib/departments.js';
 import { Link } from '../../lib/router.js';
@@ -430,7 +431,8 @@ export function ProductEditor({ id, fromId = null, rows, columns, loadError, onR
   const invalid = (field) => (errors[field] ? true : undefined);
   const summary = errorFields(errors, draft);
   const dept = departments.find((d) => d.key === draft.cat);
-  const preview = productImage(draft.img);
+  // A renamed photo file (AW-290) shows under either name.
+  const preview = productImage(currentImageFile(draft.img));
   const previewSrc = preview.picture?.src || preview.img;
   const previewBroken = !!previewSrc && previewSrc === brokenSrc;
   const disabled = !!busy;

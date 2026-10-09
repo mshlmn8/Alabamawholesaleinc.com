@@ -21,6 +21,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { formatMoney } from '../../lib/format.js';
 import { productImage } from '../../lib/images.js';
+import { currentImageFile } from '../../data/catalogAliases.js';
 import { MISSING_FUNCTION_CODES } from '../../lib/pricing.js';
 import { MAX_PRODUCT_QUERY, adminHref } from '../../lib/adminRoutes.js';
 import { Link, navigate } from '../../lib/router.js';
@@ -172,9 +173,10 @@ export function ProductsTab({ route = {}, query = {}, onQuery, onCatalogChange, 
 }
 
 // The 48px photo of a row (AW-023): the bundled file or the uploaded one, or
-// the "photo coming soon" mark, also when the photo fails (Thumb, AW-192).
+// the "photo coming soon" mark, also when the photo fails (Thumb, AW-192). A
+// renamed photo file (AW-290) shows under either name.
 function RowPhoto({ img }) {
-  return <span className="product-thumb"><Thumb src={productImage(img).img} /></span>;
+  return <span className="product-thumb"><Thumb src={productImage(currentImageFile(img)).img} /></span>;
 }
 
 // The list's columns; those with a `sort` have a sort button in their header
