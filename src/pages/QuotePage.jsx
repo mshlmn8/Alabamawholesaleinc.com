@@ -72,7 +72,9 @@ import { CartLine } from '../components/CartLine.jsx';
 import { CartSummary } from '../components/CartSummary.jsx';
 import { SavedLinesNotice, UnavailableNotice } from '../components/CartNotices.jsx';
 import { AccountLoading } from '../components/AccountStatus.jsx';
-import { initialQuoteForm, quoteFormForAccount } from '../lib/quoteForm.js';
+import { initialQuoteForm, phoneDigitsOk, quoteFormForAccount } from '../lib/quoteForm.js';
+import { DELIVERY_ROUTE_STATES, DELIVERY_STATE_NOTE } from '../data/quoteRules.js';
+import { stateName } from '../data/usStates.js';
 import { QuoteReceipt } from './QuoteReceipt.jsx';
 
 const UNAVAILABLE_ERROR = 'Remove the items that are no longer available before you submit.';
@@ -83,6 +85,12 @@ const RESTORED_LINE_CONTROL = 'input, select, a.choose, .drawer-remove';
 // Never shown for a cart read from storage, which is repaired on read; a
 // guard in case a quantity the database would refuse gets through (AW-013).
 const QTY_ERROR = `Quantities must be ${QTY_RANGE_TEXT}.`;
+// The ship-to State offers the delivery route states only, by name (AW-078);
+// the value is the 2-letter code submit_quote takes.
+const ROUTE_STATE_OPTIONS = DELIVERY_ROUTE_STATES.map((code) => ({ code, name: stateName(code) || code }))
+  .sort((a, b) => a.name.localeCompare(b.name));
+const PHONE_EXAMPLE = '(205) 555-0123';
+const PHONE_ERROR = 'Enter a 10-digit phone number.';
 
 // Identifies what the buyer is looking at: which lines, how many, whether
 // each can be ordered and at what price.
@@ -263,6 +271,14 @@ export function QuotePage({
       setSubmitError(QTY_ERROR);
       return;
     }
+    // The pattern lets through a number with too few or too many digits
+    // (AW-078): say so at the field, before anything is checked or sent.
+    if (!phoneDigitsOk(data.phone)) {
+      setSubmitError(PHONE_ERROR);
+      setErrorField('phone');
+      e.currentTarget.elements.namedItem('phone')?.focus();
+      return;
+    }
     submittingRef.current = true;
     // What is sent, and what the receipt shows: edits made while it is on
     // its way change neither.
@@ -410,7 +426,8 @@ export function QuotePage({
             <div><label htmlFor="quote-business">Business name</label><input id="quote-business" name="business" value={data.business} onChange={set('business')} required maxLength={200} autoComplete="organization" {...fieldProps('business')} /></div>
             <div><label htmlFor="quote-contact">Contact name</label><input id="quote-contact" name="contact" value={data.contact} onChange={set('contact')} required maxLength={120} autoComplete="name" {...fieldProps('contact')} /></div>
             <div><label htmlFor="quote-email">Email</label><input id="quote-email" name="email" type="email" value={data.email} onChange={set('email')} required maxLength={254} autoComplete="email" inputMode="email" {...fieldProps('email')} /></div>
-            <div><label htmlFor="quote-phone">Phone</label><input id="quote-phone" name="phone" type="tel" value={data.phone} onChange={set('phone')} required maxLength={40} autoComplete="tel" inputMode="tel" {...fieldProps('phone')} /></div>
+            <div><label htmlFor="quote-phone">Phone</label><input id="quote-phone" name="phone" type="tel" value={data.phone} onChange={set('phone')} required maxLength={40} pattern={String.raw`[0-9\(\)+.\-\s]{10,20}`} title={`Enter a 10-digit phone number, for example ${PHONE_EXAMPLE}`} autoComplete="tel" inputMode="tel" {...fieldProps('phone', 'quote-phone-hint')} />
+              <small className="field-hint" id="quote-phone-hint">{`10 digits, for example ${PHONE_EXAMPLE}`}</small></div>
             {/* TODO(owner): Confirm guest tobacco and vape quotes may collect a license number, resale certificate, and 21+ attestation instead of requiring an approved sign-in. (AW-014) */}
             {needsLicense && (
               <>
@@ -436,12 +453,18 @@ export function QuotePage({
               <>
                 <div className="full"><label htmlFor="ship-street">Street</label><input id="ship-street" name="shipStreet" value={data.shipStreet} onChange={set('shipStreet')} required maxLength={200} autoComplete="street-address" {...fieldProps('shipStreet')} /></div>
                 <div><label htmlFor="ship-city">City</label><input id="ship-city" name="shipCity" value={data.shipCity} onChange={set('shipCity')} required maxLength={100} autoComplete="address-level2" {...fieldProps('shipCity')} /></div>
-                <div><label htmlFor="ship-state">State</label><input id="ship-state" name="shipState" value={data.shipState} onChange={set('shipState')} required maxLength={2} pattern="[A-Za-z]{2}" title="The 2-letter state code, for example AL" autoCapitalize="characters" autoComplete="address-level1" {...fieldProps('shipState')} /></div>
+                <div><label htmlFor="ship-state">State</label>
+                  <select id="ship-state" name="shipState" value={data.shipState} onChange={set('shipState')} required autoComplete="address-level1" {...fieldProps('shipState', 'ship-state-hint')}>
+                    <option value="" disabled>Choose a state…</option>
+                    {ROUTE_STATE_OPTIONS.map(({ code, name }) => <option key={code} value={code}>{name}</option>)}
+                  </select>
+                  <small className="field-hint" id="ship-state-hint">{DELIVERY_STATE_NOTE}</small></div>
                 <div><label htmlFor="ship-zip">ZIP</label><input id="ship-zip" name="shipZip" value={data.shipZip} onChange={set('shipZip')} required maxLength={10} pattern="[0-9]{5}(-[0-9]{4})?" title="A 5-digit ZIP code, or ZIP+4" autoComplete="postal-code" inputMode="numeric" {...fieldProps('shipZip')} /></div>
               </>
             )}
+            {/* TODO(owner): Which days do the routes run, and what is the cutoff for next-day delivery, so the date picker can rule out other days? (AW-078, see AW-130) */}
             <div><label htmlFor="quote-date">Preferred date</label><input id="quote-date" name="preferredDate" type="date" value={data.preferredDate} onChange={set('preferredDate')} min={minDate} autoComplete="off" {...fieldProps('preferredDate')} /></div>
-            <div className="full"><label htmlFor="quote-notes">Notes</label><input id="quote-notes" name="notes" value={data.notes} onChange={set('notes')} maxLength={2000} placeholder="Dock hours, pallet needs, substitutions…" autoComplete="off" /></div>
+            <div className="full"><label htmlFor="quote-notes">Notes</label><textarea id="quote-notes" name="notes" rows={4} value={data.notes} onChange={set('notes')} maxLength={2000} placeholder="Dock hours, pallet needs, substitutions…" autoComplete="off" /></div>
           </div>
           <div className="drawer-total checkout-total">
             <span>{`${totalUnits} ${totalUnits === 1 ? 'unit' : 'units'}`}</span>

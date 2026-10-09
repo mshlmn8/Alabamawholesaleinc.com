@@ -1144,7 +1144,7 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .dialog > .desc { max-width: 600px; font-size: var(--text-base); color: var(--muted); line-height: 1.7; margin: 0 0 22px; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0 6px; }
 .form-grid label, .contact-grid dt { display: block; margin-bottom: 6px; }
-.form-grid input, .form-grid select { width: 100%; }
+.form-grid input, .form-grid select, .form-grid textarea { width: 100%; }
 .form-grid .full { grid-column: 1 / -1; }
 /* Consent checkboxes (PR #12): the label beside the box is running text,
    not the small capitals the field labels use. */
@@ -1170,6 +1170,9 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
   background-color: var(--field-bg); color: var(--ink); font-size: var(--field-font); font-weight: 400; letter-spacing: 0; text-transform: none;
 }
 :where(:is(.aw-table :is(input, select), .order-head select, .stepper input):not([type=checkbox]):not([type=radio])) { min-height: var(--field-h-compact); }
+/* Checkout's Notes box (AW-078): four lines tall, with room above and below
+   the text; it grows downward only (the reset). */
+:where(.checkout-form-grid textarea) { display: block; padding-block: .625rem; min-height: 6rem; }
 /* The border turns purple under the global focus ring. */
 :where(:is(.form-grid :is(input, select, textarea), .filter-search input, .category-sort select, .eligibility-form :is(input, select), .qr-field input, .qr-choice select, .order-head select, .order-edit-line input, .aw-table :is(input, select), .doc-file, .stepper input, .drawer-line select, .admin-toolbar :is(input, select)):focus) { border-color: var(--purple); }
 /* Selects draw the same box in every engine (AW-309): no native menulist, which

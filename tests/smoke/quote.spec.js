@@ -126,9 +126,11 @@ test('a refusal says what to fix and cites no reference (AW-198)', async ({ page
   await quoteApi(page, { status: 400, json: { code: 'P0001', message: 'Delivery routes cover AL, MS, GA — choose will-call', hint: 'delivery_state', details: null } });
   await page.goto('/quote');
   await fillGuest(page);
-  for (const [label, value] of [['Street', '1 Test Way'], ['City', 'Nashville'], ['State', 'tn'], ['ZIP', '37201']]) {
+  // The State lists route states only (AW-078); the server's answer is mocked.
+  for (const [label, value] of [['Street', '1 Test Way'], ['City', 'Nashville'], ['ZIP', '37201']]) {
     await page.getByLabel(label, { exact: true }).fill(value);
   }
+  await page.getByLabel('State', { exact: true }).selectOption('AL');
   await fillLicense(page);
   await page.getByRole('button', { name: /Submit quote request/ }).click();
   const alert = page.getByRole('alert');
@@ -144,9 +146,10 @@ test('a refusal says what to fix and cites no reference (AW-198)', async ({ page
 const RECEIPT_ANSWER = { json: { id: 'smoke-order', ref_num: 'ALW-Q-RECEIPT001', kind: 'quote', total_units: 2, subtotal: null, priced_lines: 0, unpriced_lines: 1 } };
 
 async function fillAddress(page) {
-  for (const [label, value] of [['Street', '1 Test Way'], ['City', 'Birmingham'], ['State', 'AL'], ['ZIP', '35203']]) {
+  for (const [label, value] of [['Street', '1 Test Way'], ['City', 'Birmingham'], ['ZIP', '35203']]) {
     await page.getByLabel(label, { exact: true }).fill(value);
   }
+  await page.getByLabel('State', { exact: true }).selectOption('AL');
 }
 
 test('the receipt replaces checkout: the cart empties, and a reload or Back keeps it (AW-012, AW-022)', async ({ page }) => {

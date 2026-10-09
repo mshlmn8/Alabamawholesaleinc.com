@@ -414,7 +414,8 @@ describe('QuotePage and submit_quote', () => {
     const attr = (id, name) => document.getElementById(id).getAttribute(name);
     expect(['quote-business', 'quote-contact', 'quote-email', 'quote-phone', 'ship-street', 'ship-city', 'quote-notes'].map((id) => attr(id, 'maxlength')))
       .toEqual(['200', '120', '254', '40', '200', '100', '2000']);
-    expect([attr('ship-state', 'maxlength'), attr('ship-state', 'pattern')]).toEqual(['2', '[A-Za-z]{2}']);
+    // The State is a list of the route states' 2-letter codes (AW-078).
+    expect([...document.getElementById('ship-state').options].map((o) => o.value)).toEqual(['', 'AL', 'GA', 'MS']);
     expect(attr('ship-zip', 'pattern')).toBe('[0-9]{5}(-[0-9]{4})?');
     expect(attr('quote-date', 'min')).toBe(todayInBirmingham());
   });
@@ -574,7 +575,7 @@ describe('QuotePage receipt', () => {
   const LINES = [ITEMS[0], CORN];
   const fillAll = () => {
     for (const [id, value] of [['quote-business', 'Test Market'], ['quote-contact', 'Test Buyer'], ['quote-email', 'buyer@example.test'],
-      ['quote-phone', '205-000-0000'], ['ship-street', '1 Test Way'], ['ship-city', 'Birmingham'], ['ship-state', 'al'], ['ship-zip', '35203'],
+      ['quote-phone', '205-000-0000'], ['ship-street', '1 Test Way'], ['ship-city', 'Birmingham'], ['ship-state', 'AL'], ['ship-zip', '35203'],
       ['quote-date', '2030-01-15'], ['quote-notes', 'Back door, before 10']]) {
       fireEvent.change(document.getElementById(id), { target: { value } });
     }

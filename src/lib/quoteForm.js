@@ -14,6 +14,8 @@
 // A saved draft (AW-080, later) comes before profile values for the same
 // account, and is discarded when the account changes.
 
+import { routeStateCode } from '../data/quoteRules.js';
+
 export const EMPTY_QUOTE_FORM = Object.freeze({
   business: '', contact: '', email: '', phone: '',
   notes: '', delivery: 'delivery', preferredDate: '',
@@ -33,9 +35,11 @@ const FROM_PROFILE = {
   business: 'business', contact: 'name', email: 'email', phone: 'phone',
   shipStreet: 'store_street', shipCity: 'store_city', shipState: 'state', shipZip: 'store_zip',
 };
-// The store state fills the state field only when it is a 2-letter code (the
-// application's list also offers 'Other').
-const PROFILE_VALUE_OK = { shipState: (value) => /^[A-Za-z]{2}$/.test(value) };
+// A profile value as the form holds it, or null when the field can't take it.
+// The ship-to State lists only the delivery route states (AW-078), so the
+// store state fills it only when it is one of them, upper-case; a store in
+// another state (or an older application's 'Other') leaves it empty.
+const FROM_PROFILE_VALUE = { shipState: routeStateCode };
 
 // The form once the signed-in account is `profile` (or null), where
 // `previousId` is the account the form was filled for before (or null).
@@ -47,12 +51,21 @@ export function quoteFormForAccount(data, profile, previousId = null) {
   }
   if (profile) {
     for (const [field, column] of Object.entries(FROM_PROFILE)) {
-      const value = profile[column];
-      if (!value || (PROFILE_VALUE_OK[field] && !PROFILE_VALUE_OK[field](String(value)))) continue;
-      if (!String(next[field] ?? '').trim()) next[field] = String(value);
+      const value = profile[column] ? (FROM_PROFILE_VALUE[field] || String)(profile[column]) : null;
+      if (!value) continue;
+      if (!String(next[field] ?? '').trim()) next[field] = value;
     }
   }
   return next;
 }
 
 export const initialQuoteForm = (profile) => quoteFormForAccount(EMPTY_QUOTE_FORM, profile);
+
+// A US phone number has 10 digits, once a leading country code 1 is dropped
+// (AW-078). The field's pattern allows the usual spaces, dots, dashes,
+// brackets and +; this counts what is left.
+export function phoneDigitsOk(value) {
+  let digits = String(value ?? '').replace(/\D/g, '');
+  if (digits.length === 11 && digits.startsWith('1')) digits = digits.slice(1);
+  return digits.length === 10;
+}

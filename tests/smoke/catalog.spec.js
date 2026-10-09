@@ -162,9 +162,10 @@ test('checkout checks the catalog again and names a line that was taken out (AW-
   await page.goto('/quote');
   await expect(page.getByRole('heading', { level: 1, name: 'Request a quote' })).toBeVisible();
   for (const [label, value] of [['Business name', 'Test Market LLC'], ['Contact name', 'Test Buyer'], ['Email', 'buyer@example.test'], ['Phone', '205-555-0100'],
-    ['Street', '1 Test Way'], ['City', 'Birmingham'], ['State', 'AL'], ['ZIP', '35203']]) {
+    ['Street', '1 Test Way'], ['City', 'Birmingham'], ['ZIP', '35203']]) {
     await page.getByLabel(label, { exact: true }).fill(value);
   }
+  await page.getByLabel('State', { exact: true }).selectOption('AL');
   // Tobacco lines from a guest: the licence questions (AW-014, PR #12).
   await page.getByLabel('State tobacco/retail license #').fill('TL-SMOKE');
   await page.getByLabel('Sales-tax / resale certificate #').fill('RC-SMOKE');

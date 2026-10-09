@@ -24,7 +24,7 @@
 // one call per quote after the first.
 
 import { COMPANY } from '../data/content.js';
-import { DELIVERY_ROUTE_STATES } from '../data/quoteRules.js';
+import { DELIVERY_STATE_NOTE } from '../data/quoteRules.js';
 import { MISSING_FUNCTION_CODES } from './pricing.js';
 import { supabase } from './supabase.js';
 
@@ -150,10 +150,6 @@ export function todayInBirmingham(now = new Date()) {
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
-const listStates = (states) => (states.length > 1
-  ? `${states.slice(0, -1).join(', ')} and ${states[states.length - 1]}`
-  : states.join(''));
-
 // Text for the hints submit_quote raises. An object is a sentence around the
 // trade desk's phone and email (CallOrEmail's before/after); a string stands
 // alone. AW-200 (Phase 6) adds the remaining ones.
@@ -166,7 +162,7 @@ const HINT_MESSAGES = {
   address_required: 'Enter the ship-to street, city, state and ZIP, or choose will-call pickup.',
   invalid_zip: 'Enter a 5-digit ZIP code (or ZIP+4).',
   invalid_state: 'Enter the 2-letter state code, for example AL.',
-  delivery_state: `Delivery routes cover ${listStates(DELIVERY_ROUTE_STATES)}. For another state, choose will-call pickup.`,
+  delivery_state: DELIVERY_STATE_NOTE,
   past_date: 'Choose a preferred date from today on.',
   license_required: 'Enter the tobacco license and resale certificate numbers and confirm the 21+ statement to quote tobacco and vape items.',
 };

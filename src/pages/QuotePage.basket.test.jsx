@@ -14,7 +14,7 @@ const ITEMS = [{ lineKey: '45', productId: 45, variant: null, name: 'Argo corn s
 const GUEST = { profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false };
 const PENDING = { profile: { id: 'p', name: 'Pat', business: 'Pending Mart', email: 'p@example.test', phone: '', status: 'pending' }, account: 'ready', signedIn: true, isApprovedBuyer: false };
 const SUSPENDED = { ...PENDING, profile: { ...PENDING.profile, status: 'suspended' }, isSuspended: true };
-const APPROVED = { profile: { id: 'a', name: 'Al', business: 'Alpha Mart', email: 'a@example.test', phone: '1', status: 'approved' }, account: 'ready', signedIn: true, isApprovedBuyer: true };
+const APPROVED = { profile: { id: 'a', name: 'Al', business: 'Alpha Mart', email: 'a@example.test', phone: '205-555-0101', status: 'approved' }, account: 'ready', signedIn: true, isApprovedBuyer: true };
 const page = (props) => (
   <QuotePage items={ITEMS} total={20} setLine={vi.fn()} chooseVariant={vi.fn()} removeLine={vi.fn()} removeLines={vi.fn()} clearCart={vi.fn()}
              isBackendConfigured onSignIn={vi.fn()} onApplyClick={vi.fn()} {...props} />
