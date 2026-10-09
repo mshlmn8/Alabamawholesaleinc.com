@@ -5,11 +5,12 @@
 //   link to /search?q=, AW-007) as the options of a listbox. Focus stays in
 //   the box: ArrowDown opens the list or moves to the next option, ArrowUp
 //   to the previous one (both wrap), Home/End jump to the first/last option
-//   while one is active (otherwise they move the caret), and the pointer
-//   picks the same option the keys do. Enter follows the active option, or
-//   with none active opens /search?q= and keeps the text (AW-007); a query
-//   under MIN_QUERY_LENGTH says so instead. Escape closes the list and keeps
-//   the text; Escape on a closed list clears the box.
+//   while one is active (otherwise they move the caret). Only the keys make
+//   an option active: the pointer gets a hover style, so a list that opens or
+//   scrolls under a resting pointer never arms Enter. Enter follows the
+//   active option, or with none active opens /search?q= and keeps the text
+//   (AW-007); a query under MIN_QUERY_LENGTH says so instead. Escape closes
+//   the list and keeps the text; Escape on a closed list clears the box.
 // - The options are real links (role=option is allowed on a[href]), so a
 //   middle click or "Open in new tab" still works. They are not Tab stops:
 //   Tab goes to the Search button and then on, and the list closes as soon
@@ -229,7 +230,7 @@ export function HeaderSearch({ products, isMobile = false, onOpen }) {
             <div className="aw-search-list" role="listbox" id={LIST_ID} aria-label="Products">
               {hits.map((p, i) => (
                 <Link key={p.id} to={{ page: 'product', productId: p.id }} role="option" id={optionId(i)} aria-selected={i === current} tabIndex={-1}
-                      onMouseDown={keepFocus} onMouseEnter={() => setActive(i)} onClick={pickProduct}>
+                      onMouseDown={keepFocus} onClick={pickProduct}>
                   <span className="sr-thumb">{p.img ? <img src={p.img} alt="" width="38" height="38" loading="lazy" decoding="async" /> : <MissingPhoto compact />}</span>
                   <span><strong>{p.name}</strong><small>{`${catLabel(p.cat)} · ${p.sub} · ${p.sku}`}</small></span>
                 </Link>
@@ -237,7 +238,7 @@ export function HeaderSearch({ products, isMobile = false, onOpen }) {
               {seeAll && (
                 <Link className="aw-search-all" to={{ page: 'search', q: searchText }} role="option" id={optionId(hits.length)}
                       aria-selected={hits.length === current} tabIndex={-1}
-                      onMouseDown={keepFocus} onMouseEnter={() => setActive(hits.length)} onClick={close}>
+                      onMouseDown={keepFocus} onClick={close}>
                   {search.total === 1 ? `See 1 result for “${searchText}”` : `See all ${search.total} results for “${searchText}”`}
                 </Link>
               )}

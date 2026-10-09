@@ -104,17 +104,24 @@ describe('combobox semantics (AW-171)', () => {
     expect(fireEvent.keyDown(box(), { key: 'End' })).toBe(false);
   });
 
-  it('starts over after typing, and the pointer picks the option the keys would', () => {
+  it('starts over after typing, and the pointer never makes an option active', () => {
     renderSearch();
     type('cigar');
     key('ArrowDown');
     key('ArrowDown');
     type('cigars');
     expect(active()).toBeNull();
+    // A list that opens or scrolls under a resting pointer must not arm
+    // Enter: hovering leaves the active option alone.
     fireEvent.mouseEnter(options()[3]);
-    expect(active()).toBe(options()[3].id);
+    fireEvent.mouseMove(options()[3]);
+    expect(active()).toBeNull();
+    fireEvent.submit(box().closest('form'));
+    expect(url()).toBe('/search?q=cigars');
+    type('cigar');
     key('ArrowDown');
-    expect(active()).toBe(options()[4].id);
+    fireEvent.mouseEnter(options()[3]);
+    expect(active()).toBe(options()[0].id);
   });
 
   it('opens with ArrowDown after Escape closed it, only for a query of 2+ characters', () => {
