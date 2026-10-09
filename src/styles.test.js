@@ -422,11 +422,11 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
     expect(declarations(rules(compact.body).find((r) => r.selectors.join() === '.aw-search > button:active').body)).toEqual({ background: 'var(--purple-hover)' });
   });
 
-  it('shows the chosen variant, line, admin tab, policy page and hero slide dot in the system highlight in forced colours', () => {
+  it('shows the chosen variant, line, admin tab, policy page, hero slide dot and current navigation link in the system highlight in forced colours', () => {
     const forced = blocks.find((b) => b.prelude === '(forced-colors: active)');
     const selected = rules(forced.body).find((r) => r.selectors.includes('.sub-pill.active'));
     expect(selected.selectors).toEqual(['.variant-chips button[aria-checked="true"]', '.sub-pill.active', '.sub-pill[aria-current="page"]', 'nav.policy-nav a[aria-current="page"]',
-      '.home-carousel-dots [aria-current="true"] span']);
+      '.home-carousel-dots [aria-current="true"] span', '.aw-discovery-nav a[aria-current]', '.aw-service-nav a[aria-current]', 'nav.menu-group a[aria-current]']);
     expect(declarations(selected.body)).toEqual({ 'forced-color-adjust': 'none', background: 'Highlight', color: 'HighlightText', 'border-color': 'Highlight' });
     const ring = rules(forced.body).find((r) => r.selectors.includes('.sub-pill.active:focus-visible'));
     expect(declarations(ring.body)).toEqual({ 'outline-color': 'CanvasText' });
@@ -998,6 +998,23 @@ describe('the Categories menu fits the window (AW-062)', () => {
     expect(ruleFor('.aw-menu-grid')['grid-template-columns']).toBe('repeat(4, minmax(0, 1fr))');
     expect(css).not.toMatch(/aw-menu-feature/);
     expect(code(read('src/components/Header.jsx'))).not.toMatch(/aw-menu-feature|subs\.slice/);
+  });
+});
+
+// The link to the page on screen (AW-221): orange with a bar along its foot in
+// the header rows and the phone menu (the system highlight in forced colours,
+// above), white, bold and more heavily underlined in the footer.
+describe('the page on screen in the navigation (AW-221)', () => {
+  it('marks the current link in the header rows, the phone menu, the Categories menu and the footer', () => {
+    expect(ruleFor('.aw-discovery-nav a[aria-current], .aw-service-nav a[aria-current], .menu-group a[aria-current]'))
+      .toEqual({ color: 'var(--orange-dark)', 'box-shadow': 'inset 0 -3px 0 var(--orange)' });
+    expect(ruleFor('.aw-department a[aria-current="page"], .aw-menu-footer a[aria-current="page"]')).toEqual({ 'font-weight': '700', color: 'var(--orange-dark)' });
+    expect(ruleFor('.footer-main [aria-current]')).toEqual({ color: '#fff', 'font-weight': '700', 'text-decoration-thickness': '2px' });
+    // It outranks the footer's own link rules, which keep the underline offset.
+    expect(css.indexOf('.footer-main [aria-current] {')).toBeGreaterThan(css.indexOf('.footer-grid button, .footer-grid .footer-link {'));
+    for (const selector of ['.footer-grid button, .footer-grid .footer-link', '.footer-policies a']) {
+      expect(ruleFor(selector)['text-underline-offset'], selector).toBe('var(--link-offset)');
+    }
   });
 });
 

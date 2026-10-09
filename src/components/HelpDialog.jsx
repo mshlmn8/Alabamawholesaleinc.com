@@ -1,11 +1,12 @@
-// "Talk to the warehouse" dialog opened from the header's Help button.
+// "Talk to the warehouse" dialog opened from the header's Help button. The
+// apply button is for guests only (AW-066).
 
 import { COMPANY, ORDER_MINIMUM } from '../data/content.js';
 import { formatMoney } from '../lib/format.js';
 import { ModalLayer } from './ModalLayer.jsx';
 import { Icon } from './Icon.jsx';
 
-export function HelpDialog({ onClose, onApply }) {
+export function HelpDialog({ signedIn = false, onClose, onApply }) {
   return (
     <ModalLayer onClose={onClose}>
       {/* Backdrop click is a mouse shortcut; Escape (ModalLayer) and the Close button are the keyboard paths. */}
@@ -26,7 +27,7 @@ export function HelpDialog({ onClose, onApply }) {
           </dl>
           <div className="dialog-actions">
             <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Call now</a>
-            <button className="text-link" type="button" onClick={onApply}>Apply for an account</button>
+            {!signedIn && <button className="text-link" type="button" onClick={onApply}>Apply for an account</button>}
           </div>
           <p className="fine">{`The minimum order is ${formatMoney(ORDER_MINIMUM)}. Next-day delivery on our own trucks when the stop is on a delivery route in AL, MS and GA. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
         </div>

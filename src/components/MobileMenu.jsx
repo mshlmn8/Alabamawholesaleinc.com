@@ -1,14 +1,17 @@
 // Phone/tablet menu: departments plus everything the desktop navigation rows,
 // utility bar and account actions show, in one drawer. Destinations are
-// links (AW-043); following one closes the menu (onFollowLink).
+// links (AW-043); following one closes the menu (onFollowLink). Links to the
+// page on screen carry aria-current (AW-221).
 
 import { COMPANY } from '../data/content.js';
-import { Link } from '../lib/router.js';
+import { Link, useRoute } from '../lib/router.js';
+import { currentFor } from '../lib/navCurrent.js';
 import { ModalLayer } from './ModalLayer.jsx';
 import { Icon } from './Icon.jsx';
 import { AdminUnseenBadge } from './AdminUnseenBadge.jsx';
 
 export function MobileMenu({ onClose, onFollowLink, departments, products, user, isAdmin, adminUnseen = 0, signingOut = false, go }) {
+  const { raw } = useRoute();
   return (
     <ModalLayer onClose={onClose} className="aw-menu-layer">
       <div className="overlay" aria-hidden="true" onClick={onClose} />
@@ -21,18 +24,19 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
           <nav className="menu-group" aria-label="Departments">
             <h3>Departments</h3>
             {departments.map((c, i) => (
-              <Link key={c.key} to={{ page: 'category', category: c.key }} onClick={onFollowLink}>
+              <Link key={c.key} to={{ page: 'category', category: c.key }} onClick={onFollowLink} aria-current={currentFor(raw, { page: 'category', category: c.key })}>
                 <span><span className="menu-index" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span><span>{c.label}</span></span>
                 <span className="menu-count">{c.count}</span>
               </Link>
             ))}
-            <Link className="menu-highlight" to="/catalog" onClick={onFollowLink}>View full catalog</Link>
+            <Link className="menu-highlight" to="/catalog" onClick={onFollowLink} aria-current={currentFor(raw, '/catalog')}>View full catalog</Link>
           </nav>
           <nav className="menu-group" aria-label="Discover">
             <h3>Discover</h3>
             <Link to="/#new-arrivals" onClick={onFollowLink}><span><span className="aw-new-dot" aria-hidden="true"></span>New Arrivals</span></Link>
             <Link to="/#bestsellers" onClick={onFollowLink}>Bestsellers</Link>
-            <Link className="menu-highlight" to={{ page: 'category', category: 'NOVELTIES' }} onClick={onFollowLink}>Exotics</Link>
+            <Link className="menu-highlight" to={{ page: 'category', category: 'NOVELTIES' }} onClick={onFollowLink}
+                  aria-current={currentFor(raw, { page: 'category', category: 'NOVELTIES' })}>Exotics</Link>
           </nav>
           <nav className="menu-group" aria-label="Account and help">
             <h3>Account</h3>
@@ -40,14 +44,14 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
               <>
                 <Link to="/account" onClick={onFollowLink}>{user.business || user.name || 'My Account'}</Link>
                 {isAdmin && <Link to="/admin" onClick={onFollowLink}><span>Admin</span><AdminUnseenBadge count={adminUnseen} /></Link>}
-                <Link to="/account" onClick={onFollowLink}>Quick Reorder</Link>
+                <Link to="/account" onClick={onFollowLink} aria-current={currentFor(raw, '/account')}>Quick Reorder</Link>
                 <button type="button" onClick={go.logout} disabled={signingOut}><span>{signingOut ? 'Signing out…' : 'Sign Out'}</span></button>
               </>
             ) : (
               <>
                 <button type="button" onClick={go.signin}>Sign In</button>
                 <button type="button" onClick={go.signup}>Sign Up</button>
-                <Link to="/account" onClick={onFollowLink}>Quick Reorder</Link>
+                <Link to="/account" onClick={onFollowLink} aria-current={currentFor(raw, '/account')}>Quick Reorder</Link>
               </>
             )}
             <button type="button" onClick={go.help}>Help</button>

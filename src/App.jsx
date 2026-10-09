@@ -354,7 +354,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <TradeBar onApplyClick={openSignup} />
+      <TradeBar signedIn={!!session} onApplyClick={openSignup} />
 
       <Header
         cartCount={cart.count} onCart={() => setCartOpen(true)}
@@ -372,7 +372,7 @@ export default function App() {
         </ErrorBoundary>
       </main>
 
-      <Footer departments={departments} onLoginClick={openSignin} onApplyClick={openSignup} />
+      <Footer departments={departments} signedIn={!!session} onLoginClick={openSignin} onApplyClick={openSignup} />
 
       {/* Confirms an add (AW-072); its action opens the cart. */}
       <Toast onAction={(id) => { if (id === 'open-cart') setCartOpen(true); }} />
@@ -381,7 +381,7 @@ export default function App() {
                   setLine={cart.setLine} chooseVariant={cart.chooseVariant} removeLine={cart.removeLine} removeLines={cart.removeLines}
                   legacy={cart.legacy} onDismissLegacy={cart.dismissLegacy}
                   profile={profile} isApprovedBuyer={isApprovedBuyer} isSuspended={isSuspended} pricesStatus={prices.status} onLoginClick={openCartSignin} />
-      {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} onApply={() => { setHelpOpen(false); openSignup(); }} />}
+      {helpOpen && <HelpDialog signedIn={!!session} onClose={() => setHelpOpen(false)} onApply={() => { setHelpOpen(false); openSignup(); }} />}
       {/* It has its own ModalLayer, so Escape and Back ask before a typed
           application is lost (AW-018). Sign Out closes it outright. */}
       {loginOpen && <AuthModal open initialMode={loginMode} onClose={() => setLoginOpen(false)} onSignOut={signOutHere} signingOut={signingOut} />}
