@@ -51,7 +51,7 @@ export default defineConfig(({ command, mode }) => {
     // unit tests.
     test: {
       environment: 'jsdom',
-      include: ['src/**/*.test.{js,jsx}', 'scripts/**/*.test.{js,mjs}'],
+      include: ['src/**/*.test.{js,jsx}', 'scripts/**/*.test.{js,mjs}', 'netlify/**/*.test.{js,mjs}'],
       setupFiles: ['src/test/setup.js'],
       restoreMocks: true
     }

@@ -2,23 +2,35 @@
 // Renders the responsive image library, favicon set, and share image.
 //
 // Runs automatically before `npm run dev` and `npm run build` (see package.json).
-// Nothing it writes is committed: src/assets/generated/ and the favicon files in
-// public/ are gitignored, so the repo only carries the original photos.
+// Nothing it writes is committed: public/img/, src/assets/generated/ and the
+// favicon files in public/ are gitignored, so the repo only carries the
+// original photos.
 //
-//   src/assets/products/*            -> src/assets/generated/<base>--<w>x<h>.{webp,jpg}
-//   src/assets/hero_*.jpg            -> src/assets/generated/<base>--<w>x<h>.{webp,jpg}
-//   src/assets/logo.jpg              -> public/favicon.ico, favicon-32.png, apple-touch-icon.png,
-//                                       icon-192.png, icon-512.png, og.jpg
+//   src/assets/products/*   -> public/img/<base>--<w>x<h>-<hash>.{webp,jpg}
+//                              public/img/<base>--thumb-<w>x<h>-<hash>.jpg
+//   src/assets/hero_*.jpg   -> public/img/<base>--<w>x<h>-<hash>.{webp,jpg}
+//   every photo above       -> src/assets/generated/manifest.json
+//   src/assets/logo.jpg     -> public/favicon.ico, favicon-32.png, apple-touch-icon.png,
+//                              icon-192.png, icon-512.png, og.jpg
 //
-// Widths are capped at the source width (never upscaled). Re-runs are incremental:
-// outputs newer than their source are kept, and outputs whose source is gone are
-// removed. Bump VERSION when changing sizes or quality to force a full rebuild.
+// File names, sizes and the manifest format are in scripts/image-pipeline.mjs.
+// Re-runs are incremental by content, never by file time: a photo whose hash
+// (its bytes plus the render settings) matches the manifest and whose files
+// all exist is skipped, so a fresh checkout or a restored build cache
+// (netlify/plugins/image-cache, the CI cache step) renders nothing. Files no
+// photo needs any more are removed. Change VERSION or a setting in
+// image-pipeline.mjs to re-render the photos, and BRAND_VERSION below to
+// rebuild the brand files.
 
 import { createRequire } from 'node:module';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
+import {
+  JPEG, JPEG_MAX_WIDTH, SETTINGS, TILE_BG, VERSION, WEBP,
+  contentHash, entryOutputs, isEntry, renditionSizes, serializeManifest, thumbSize,
+} from './image-pipeline.mjs';
 
 const require = createRequire(import.meta.url);
 const sharp = require('sharp');
@@ -27,21 +39,14 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ASSETS = path.join(ROOT, 'src/assets');
 const PRODUCTS_DIR = path.join(ASSETS, 'products');
 const OUT_DIR = path.join(ASSETS, 'generated');
+const MANIFEST = path.join(OUT_DIR, 'manifest.json');
 const PUBLIC_DIR = path.join(ROOT, 'public');
+const IMG_DIR = path.join(PUBLIC_DIR, 'img');
 const LOGO = path.join(ASSETS, 'logo.jpg');
-
-const VERSION = 3;
-const PRODUCT_WIDTHS = [320, 640, 1024];
-const HERO_WIDTHS = [480, 720];
-// WebP is rendered at every width. The JPEG fallback (browsers without WebP,
-// plus the small thumbnails that use a plain <img>) stops at this width so the
-// build output stays roughly half the size.
-const JPEG_MAX_WIDTH = 640;
-const WEBP = { quality: 78, effort: 4 };
-const JPEG = { quality: 78, progressive: true, mozjpeg: true };
-// JPEG has no alpha; transparent PNG sources are flattened onto the photo tile
-// colour, white since the tiles are white (AW-141; --tile in src/index.css).
-const CARD_BG = '#ffffff';
+// Bump BRAND_VERSION when brand rendering changes (buildBrandAssets() below:
+// sizes, crops, colours, a new output), so the next run rebuilds the brand
+// files. A new logo.jpg rebuilds them on its own: its bytes are hashed too.
+const BRAND_VERSION = 1;
 const CONCURRENCY = Math.max(2, Math.min(8, os.cpus().length));
 
 const SOURCE_RE = /\.(webp|jpe?g|png|avif)$/i;
@@ -51,43 +56,43 @@ async function exists(p) {
   try { await fs.access(p); return true; } catch { return false; }
 }
 
-async function mtime(p) {
-  try { return (await fs.stat(p)).mtimeMs; } catch { return 0; }
+async function readManifest() {
+  try { return JSON.parse(await fs.readFile(MANIFEST, 'utf8')); } catch { return null; }
 }
 
-// Widths to render for a source: every target below ~90% of the source width,
-// plus the source width itself (capped at the largest target).
-function targetWidths(sourceWidth, targets) {
-  const max = targets[targets.length - 1];
-  const widths = targets.filter((w) => w < sourceWidth * 0.9);
-  widths.push(Math.min(sourceWidth, max));
-  return [...new Set(widths)].sort((a, b) => a - b);
+// The upright size of a source (EXIF orientation applied, as .rotate() renders it).
+async function sourceSize(bytes) {
+  const meta = await sharp(bytes, { animated: false }).metadata();
+  const upright = meta.autoOrient || meta;
+  return [upright.width, upright.height];
 }
 
-async function renderSource(file, targets, stats) {
-  const base = baseName(file);
-  const image = sharp(file, { animated: false });
-  const meta = await image.metadata();
-  const srcTime = await mtime(file);
-  const jobs = [];
-  for (const width of targetWidths(meta.width, targets)) {
-    const height = Math.max(1, Math.round((meta.height * width) / meta.width));
-    const stem = path.join(OUT_DIR, `${base}--${width}x${height}`);
-    for (const ext of ['webp', 'jpg']) {
-      if (ext === 'jpg' && width > JPEG_MAX_WIDTH) continue;
-      const out = `${stem}.${ext}`;
-      stats.expected.add(path.basename(out));
-      if ((await mtime(out)) >= srcTime) { stats.kept++; continue; }
-      jobs.push(async () => {
-        let pipeline = sharp(file, { animated: false }).rotate().resize({ width, withoutEnlargement: true });
-        if (ext === 'webp') pipeline = pipeline.webp(WEBP);
-        else pipeline = pipeline.flatten({ background: CARD_BG }).jpeg(JPEG);
-        await pipeline.toFile(out);
-        stats.written++;
-      });
-    }
+// A source's manifest entry: the previous run's when the hash still matches
+// (no need to read the image), else measured again.
+async function entryFor(kind, bytes, hash, previousEntry, stats) {
+  const thumb = kind === 'product';
+  if (previousEntry?.h === hash && isEntry(previousEntry, { thumb })) return previousEntry;
+  stats.measured++;
+  const [width, height] = await sourceSize(bytes);
+  const entry = { h: hash, s: renditionSizes(width, height, SETTINGS[kind].widths) };
+  if (thumb) entry.t = thumbSize(width, height, SETTINGS[kind].thumb);
+  return entry;
+}
+
+// Writes each output at exactly the size its name gives. A file appears under
+// its final name only once complete, so an interrupted run never leaves a
+// truncated file that a later run would take as done.
+async function render(bytes, outputs, stats) {
+  const upright = sharp(bytes, { animated: false }).rotate();
+  for (const { file, size: [width, height], ext } of outputs) {
+    let pipeline = upright.clone().resize({ width, height, fit: 'fill' });
+    if (ext === 'webp') pipeline = pipeline.webp(WEBP);
+    else pipeline = pipeline.flatten({ background: TILE_BG }).jpeg(JPEG);
+    const out = path.join(IMG_DIR, file);
+    await pipeline.toFile(`${out}.tmp`);
+    await fs.rename(`${out}.tmp`, out);
+    stats.written++;
   }
-  return jobs;
 }
 
 async function runPool(jobs) {
@@ -101,14 +106,9 @@ async function runPool(jobs) {
   await Promise.all(workers);
 }
 
-async function buildLibrary() {
+async function buildLibrary(previous) {
+  await fs.mkdir(IMG_DIR, { recursive: true });
   await fs.mkdir(OUT_DIR, { recursive: true });
-  const stampFile = path.join(OUT_DIR, '.version');
-  const stamp = await fs.readFile(stampFile, 'utf8').catch(() => '');
-  if (stamp.trim() !== String(VERSION)) {
-    for (const f of await fs.readdir(OUT_DIR)) await fs.rm(path.join(OUT_DIR, f), { force: true });
-    await fs.writeFile(stampFile, `${VERSION}\n`);
-  }
 
   const products = (await fs.readdir(PRODUCTS_DIR)).filter((f) => SOURCE_RE.test(f)).map((f) => path.join(PRODUCTS_DIR, f));
   const heroes = (await fs.readdir(ASSETS)).filter((f) => /^hero_.*\.(jpe?g|png|webp)$/i.test(f)).map((f) => path.join(ASSETS, f));
@@ -120,23 +120,49 @@ async function buildLibrary() {
     bases.set(b, f);
   }
 
-  const stats = { expected: new Set(), kept: 0, written: 0, removed: 0 };
+  const present = new Set(await fs.readdir(IMG_DIR));
+  const stats = { expected: new Set(), kept: 0, rendered: 0, measured: 0, written: 0, removed: 0 };
+  const images = {};
   const jobs = [];
-  for (const f of products) jobs.push(...(await renderSource(f, PRODUCT_WIDTHS, stats)));
-  for (const f of heroes) jobs.push(...(await renderSource(f, HERO_WIDTHS, stats)));
+  const sources = [...products.map((file) => ['product', file]), ...heroes.map((file) => ['hero', file])];
+  for (const [kind, file] of sources) {
+    const base = baseName(file);
+    const bytes = await fs.readFile(file);
+    const hash = contentHash(bytes, SETTINGS[kind]);
+    const entry = await entryFor(kind, bytes, hash, previous?.images?.[base], stats);
+    images[base] = entry;
+    const outputs = entryOutputs(base, entry, JPEG_MAX_WIDTH);
+    for (const o of outputs) stats.expected.add(o.file);
+    const missing = outputs.filter((o) => !present.has(o.file));
+    if (!missing.length) { stats.kept++; continue; }
+    stats.rendered++;
+    jobs.push(() => render(bytes, missing, stats));
+  }
   await runPool(jobs);
 
-  for (const f of await fs.readdir(OUT_DIR)) {
-    if (f === '.version' || stats.expected.has(f)) continue;
-    await fs.rm(path.join(OUT_DIR, f), { force: true });
+  // Files no photo needs any more, and the renditions earlier versions of
+  // this script wrote next to the manifest.
+  for (const f of await fs.readdir(IMG_DIR)) {
+    if (stats.expected.has(f)) continue;
+    await fs.rm(path.join(IMG_DIR, f), { force: true, recursive: true });
     stats.removed++;
   }
-  return { sources: products.length + heroes.length, ...stats };
+  for (const f of await fs.readdir(OUT_DIR)) {
+    if (f === path.basename(MANIFEST)) continue;
+    await fs.rm(path.join(OUT_DIR, f), { force: true, recursive: true });
+    stats.removed++;
+  }
+  return { sources: sources.length, images, ...stats };
 }
 
 // ---------------------------------------------------------------------------
 // Favicons and share image from the logo
 // ---------------------------------------------------------------------------
+
+// The hash manifest.brand stores: the logo's bytes and BRAND_VERSION.
+async function brandHash() {
+  return contentHash(await fs.readFile(LOGO), { brandVersion: BRAND_VERSION });
+}
 
 // Wrap PNG buffers in an ICO container (modern browsers accept PNG-encoded entries).
 function packIco(pngs) {
@@ -171,9 +197,9 @@ async function averageColor(file, region) {
 }
 
 async function buildBrandAssets() {
-  const logoTime = await mtime(LOGO);
+  const logoHash = await brandHash();
   const outputs = ['favicon.ico', 'favicon-32.png', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'og.jpg'].map((f) => path.join(PUBLIC_DIR, f));
-  const fresh = await Promise.all(outputs.map(async (f) => (await mtime(f)) >= logoTime));
+  const fresh = await Promise.all(outputs.map(async (f) => logoHash === previous?.brand && (await exists(f))));
   if (fresh.every(Boolean)) return { written: 0 };
 
   const meta = await sharp(LOGO).metadata();
@@ -215,10 +241,16 @@ if (!(await exists(PRODUCTS_DIR))) {
   console.error(`build-images: missing ${PRODUCTS_DIR}`);
   process.exit(1);
 }
-const library = await buildLibrary();
+const previous = await readManifest();
+const library = await buildLibrary(previous);
 const brand = await buildBrandAssets();
+const manifest = serializeManifest({ version: VERSION, jpegMax: JPEG_MAX_WIDTH, images: library.images, brand: await brandHash() });
+const manifestChanged = (await fs.readFile(MANIFEST, 'utf8').catch(() => '')) !== manifest;
+// Rewritten only when it changes, so a running dev server does not reload.
+if (manifestChanged) await fs.writeFile(MANIFEST, manifest);
 console.log(
   `build-images: ${library.sources} sources → ${library.expected.size} files ` +
-  `(${library.written} written, ${library.kept} up to date, ${library.removed} stale removed); ` +
-  `brand assets ${brand.written ? 'rebuilt' : 'up to date'}; ${((Date.now() - started) / 1000).toFixed(1)}s`
+  `(${library.written} written for ${library.rendered} sources, ${library.kept} up to date, ${library.measured} measured, ${library.removed} stale removed); ` +
+  `brand assets ${brand.written ? 'rebuilt' : 'up to date'}; manifest ${manifestChanged ? 'updated' : 'unchanged'}; ` +
+  `${((Date.now() - started) / 1000).toFixed(1)}s`
 );

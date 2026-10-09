@@ -30,6 +30,22 @@ Optional: `VITE_SITE_URL` sets the public origin used for canonical links,
 share tags and the sitemap. It defaults to `https://alabamawholesaleinc.com`;
 set it only if the site moves to another domain.
 
+## Build cache for photos
+
+`npm run build` first renders every product and hero photo (about 2,000
+files) and the brand files from the originals in `src/assets/` (README,
+"Images"). They are not in Git, so a plain Netlify build would render them all
+on every deploy. The local build plugin `netlify/plugins/image-cache`,
+registered in `netlify.toml` under `[[plugins]]`, restores the previous
+deploy's `public/img`, `src/assets/generated` and brand files before the
+build and saves them after it. The script then renders only photos whose
+content hash is new. The plugin is part of the repository and needs no
+install or setting in the Netlify UI.
+
+If a deploy ever looks wrong because of the cache, use **Deploys → Trigger
+deploy → Clear cache and deploy site**: everything is rendered again (about a
+minute). `.github/workflows/ci.yml` caches the same paths for CI.
+
 ## Headers and caching
 
 `netlify.toml` sets the response headers (AW-205, AW-182), with a comment
@@ -62,9 +78,12 @@ next to each one. On every path (`/*`):
 
 Caching:
 
-- `/assets/*` (Vite's content-hashed JS, CSS, fonts, logo and product photo
-  renditions): `public, max-age=31536000, immutable`. A changed file always
-  gets a new name, so browsers keep these for a year without asking again.
+- `/assets/*` (Vite's content-hashed JS, CSS, fonts and logo): `public,
+  max-age=31536000, immutable`. A changed file always gets a new name, so
+  browsers keep these for a year without asking again.
+- `/img/*` (the product and hero photo renditions from
+  `scripts/build-images.mjs`): the same, for the same reason. Each name
+  carries a hash of the photo and its render settings.
 - The brand files at fixed names (`/favicon.ico`, `/favicon-32.png`,
   `/apple-touch-icon.png`, `/icon-192.png`, `/icon-512.png`, `/og.jpg`):
   `public, max-age=604800` (a week), so a new logo still reaches visitors.

@@ -6,6 +6,11 @@
   NODE_VERSION = "24"
   NPM_FLAGS = "--no-fund"
 
+# Keeps the rendered photos and brand files between builds, so a deploy
+# renders only new or changed photos (AW-355; netlify/plugins/image-cache).
+[[plugins]]
+  package = "./netlify/plugins/image-cache"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
@@ -58,11 +63,19 @@
     # No Cache-Control here: index.html (served for every page path) keeps
     # Netlify's default, max-age=0, must-revalidate, so a deploy shows at once.
 
-# Vite's content-hashed build files (JS, CSS, fonts, the logo and the product
-# photo renditions). A changed file always gets a new name, so browsers keep
-# these for a year without asking again.
+# Vite's content-hashed build files (JS, CSS, fonts and the logo). A changed
+# file always gets a new name, so browsers keep these for a year without
+# asking again.
 [[headers]]
   for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# The product and hero photo renditions from scripts/build-images.mjs. Each
+# name carries a hash of the photo and its render settings, so a changed photo
+# is a new file: kept for a year like /assets.
+[[headers]]
+  for = "/img/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 

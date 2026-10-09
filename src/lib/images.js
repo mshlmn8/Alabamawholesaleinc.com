@@ -1,19 +1,27 @@
 // Responsive image sets for product and hero photos.
 //
 // scripts/build-images.mjs (run by `npm run images`, and automatically before
-// dev and build) renders every source photo into src/assets/generated as
-// `<base>--<width>x<height>.webp` and `.jpg`. This module groups those files
-// by base name and exposes each photo as { img, picture }:
+// dev and build) renders every source photo into public/img, under names
+// that carry a hash of the photo and its render settings, and records each
+// photo in src/assets/generated/manifest.json (format: scripts/image-pipeline.mjs).
+// This module builds the URLs from that one small manifest (AW-180), and
+// exposes each photo as { img, picture }:
 //
-//   img      URL of the smallest JPEG — for thumbnails and any plain <img src>
+//   img      products: the 112px thumbnail JPEG (search, cart and checkout
+//            lines, AW-324); heroes: the smallest JPEG (the video poster).
+//            Also the "has a photo" check and the share-image fallback.
 //   picture  { src, srcSet, webpSrcSet, width, height } for <Picture>
 //
-// In development, a photo whose generated set is missing (the script has not
-// run yet, e.g. a dev server started before pulling) falls back to the
-// original file served by the dev server so nothing disappears. Production
-// builds always run the script first and ship only the generated sizes.
+// In development, a photo the manifest doesn't list (the script has not run
+// since it was added, e.g. a dev server started before pulling) falls back
+// to the original file served by the dev server so nothing disappears.
+// Production builds always run the script first and ship only the renditions.
+// Before the script has ever run (unit tests in CI) the manifest is missing
+// and every photo takes that fallback.
 
-const GENERATED = import.meta.glob('../assets/generated/*.{webp,jpg}', { eager: true, query: '?url', import: 'default' });
+const MANIFEST = Object.values(import.meta.glob('../assets/generated/manifest.json', { eager: true, import: 'default' }))[0] || {};
+const ENTRIES = MANIFEST.images || {};
+const JPEG_MAX = MANIFEST.jpegMax || 640;
 
 // The path is assembled at runtime on purpose: a literal template here would
 // make Vite bundle every original photo into the production build as well.
@@ -23,40 +31,37 @@ function devOriginal(relativePath) {
   return new URL(rel, import.meta.url).href;
 }
 
-const SETS = new Map();
-for (const [file, url] of Object.entries(GENERATED)) {
-  const m = file.match(/\/([^/]+)--(\d+)x(\d+)\.(webp|jpg)$/);
-  if (!m) continue;
-  const [, base, w, h, ext] = m;
-  const set = SETS.get(base) || { webp: [], jpg: [] };
-  set[ext].push({ url, w: Number(w), h: Number(h) });
-  SETS.set(base, set);
-}
-for (const set of SETS.values()) {
-  set.webp.sort((a, b) => a.w - b.w);
-  set.jpg.sort((a, b) => a.w - b.w);
-}
-
 const stripExt = (file) => String(file).replace(/\.[^.]+$/, '');
 const srcSetOf = (list) => list.map((v) => `${v.url} ${v.w}w`).join(', ');
 const single = (url) => ({ img: url, picture: { src: url, srcSet: '', webpSrcSet: '', width: undefined, height: undefined } });
 const NONE = { img: null, picture: null };
 
-function fromSet(base, originalUrl) {
-  const set = SETS.get(base);
-  if (!set) return originalUrl ? single(originalUrl) : NONE;
-  const fallback = set.jpg.length ? set.jpg : set.webp;
-  const largest = set.webp.length ? set.webp[set.webp.length - 1] : fallback[fallback.length - 1];
+// { img, picture } for one manifest entry ({ h, s, t }, see
+// scripts/image-pipeline.mjs). The URLs match the file names the build
+// script writes into public/img, which Vite serves at <base URL>img/.
+export function imageFromEntry(base, entry, jpegMax) {
+  const root = `${import.meta.env.BASE_URL}img/${encodeURIComponent(base)}--`;
+  const file = ([w, h], ext) => ({ url: `${root}${w}x${h}-${entry.h}.${ext}`, w, h });
+  const webp = entry.s.map((size) => file(size, 'webp'));
+  const small = entry.s.filter(([w]) => w <= jpegMax);
+  const jpg = (small.length ? small : entry.s.slice(0, 1)).map((size) => file(size, 'jpg'));
+  const largest = webp[webp.length - 1];
   return {
-    img: fallback[0].url,
+    img: entry.t ? `${root}thumb-${entry.t[0]}x${entry.t[1]}-${entry.h}.jpg` : jpg[0].url,
     picture: {
-      src: fallback[fallback.length - 1].url,
-      srcSet: srcSetOf(fallback),
-      webpSrcSet: srcSetOf(set.webp),
+      src: jpg[jpg.length - 1].url,
+      srcSet: srcSetOf(jpg),
+      webpSrcSet: srcSetOf(webp),
       width: largest.w,
       height: largest.h,
     },
   };
+}
+
+function fromManifest(base, originalUrl) {
+  const entry = ENTRIES[base];
+  if (entry) return imageFromEntry(base, entry, JPEG_MAX);
+  return originalUrl ? single(originalUrl) : NONE;
 }
 
 // `file` is a filename in src/assets/products (as stored in the catalog and
@@ -66,7 +71,7 @@ export function productImage(file) {
   const name = String(file).trim();
   if (!name) return NONE;
   if (/^(https?:)?\/\//i.test(name) || name.startsWith('data:') || name.startsWith('/')) return single(name);
-  return fromSet(stripExt(name), devOriginal(`../assets/products/${name}`));
+  return fromManifest(stripExt(name), devOriginal(`../assets/products/${name}`));
 }
 
 // The photo files that more than one catalog row uses (AW-136): a shared
@@ -85,15 +90,37 @@ export function sharedImageFiles(rows) {
 // `file` is a filename in src/assets, e.g. 'hero_candy.jpg'.
 export function heroImage(file) {
   const name = String(file).trim();
-  return fromSet(stripExt(name), devOriginal(`../assets/${name}`));
+  return fromManifest(stripExt(name), devOriginal(`../assets/${name}`));
 }
 
-// `sizes` values matching the CSS in index.css: a 4-up grid inside the
-// 1280px container, 3-up beside the category filters, 2-up on phones. The
-// conditions are in em like the CSS breakpoints (37.5em = 600px, 53.125em =
-// 850px, 84em = 1344px at the default text size), so they move with them.
+// `sizes` values: the width the photo is shown at, worked out from the CSS in
+// index.css (AW-322), so phones pick the 320 or 480 rendition instead of 640.
+// The conditions are in em like the CSS breakpoints (37.5em = 600px,
+// 53.125em = 850px, 68.75em = 1100px, 84em = 1344px at the default text
+// size). SHORT_LANDSCAPE is the second half of MOBILE_QUERY, which applies
+// the compact layout at any width. Change these with the CSS.
+//
+// card: the photo area is the tile minus its 1px borders and the img's 14px
+// inset on each side (30px). The page container is 100% − 32px (compact) or
+// − 64px, at most 1280px. Phones show 2 cards with a 16px gap; the compact
+// category grid shows 3 with 24px gaps; on desktop the category grid shows 3
+// beside the 220px filter column and its 34px gap. That category grid has the
+// widest card in each range (the home and related-product grids show 4).
+//   phone    (100vw − 32 − 16) / 2 − 30        = (100vw − 108px) / 2
+//   compact  (100vw − 32 − 48) / 3 − 30        = (100vw − 170px) / 3
+//   desktop  (100vw − 64 − 254 − 48) / 3 − 30  = (100vw − 456px) / 3
+//   max      (1280 − 254 − 48) / 3 − 30        = 296px
+// detail: .pd-media minus its 1px borders and the img's 34px inset (20px on
+// phones). One column in the compact layout; two columns with a 26px gap up
+// to 68.75em and a 40px gap above.
+//   phone    100vw − 32 − 2 − 40               = 100vw − 74px
+//   compact  100vw − 32 − 2 − 68               = 100vw − 102px
+//   narrow   (100vw − 64 − 26) / 2 − 70        = (100vw − 230px) / 2
+//   desktop  (100vw − 64 − 40) / 2 − 70        = (100vw − 244px) / 2
+//   max      (1280 − 40) / 2 − 70              = 550px
+const SHORT_LANDSCAPE = '(hover: none) and (pointer: coarse) and (max-height: 31.25em)';
 export const SIZES = {
-  card: '(max-width: 37.5em) 46vw, (max-width: 53.125em) 24vw, (max-width: 84em) 23vw, 302px',
-  detail: '(max-width: 53.125em) 100vw, (max-width: 84em) 47vw, 620px',
+  card: `(max-width: 37.5em) calc((100vw - 108px) / 2), (max-width: 53.125em) calc((100vw - 170px) / 3), ${SHORT_LANDSCAPE} calc((100vw - 170px) / 3), (max-width: 84em) calc((100vw - 456px) / 3), 296px`,
+  detail: `(max-width: 37.5em) calc(100vw - 74px), (max-width: 53.125em) calc(100vw - 102px), ${SHORT_LANDSCAPE} calc(100vw - 102px), (max-width: 68.75em) calc((100vw - 230px) / 2), (max-width: 84em) calc((100vw - 244px) / 2), 550px`,
   editorial: '(max-width: 37.5em) 100vw, (max-width: 84em) 50vw, 628px',
 };

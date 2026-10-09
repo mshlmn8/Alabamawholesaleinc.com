@@ -171,6 +171,10 @@ describe('caching (AW-182)', () => {
     expect(rule('/assets/*')?.values).toEqual({ 'Cache-Control': 'public, max-age=31536000, immutable' });
   });
 
+  it('keeps the content-hashed photo renditions in /img for a year (AW-355)', () => {
+    expect(rule('/img/*')?.values).toEqual({ 'Cache-Control': 'public, max-age=31536000, immutable' });
+  });
+
   it('keeps each brand file at a fixed name for a week', () => {
     for (const path of ['/favicon.ico', '/favicon-32.png', '/apple-touch-icon.png', '/icon-192.png', '/icon-512.png', '/og.jpg']) {
       expect([path, rule(path)?.values]).toEqual([path, { 'Cache-Control': 'public, max-age=604800' }]);
@@ -178,6 +182,8 @@ describe('caching (AW-182)', () => {
   });
 
   it('names its paths: no suffix wildcards, and nothing else is cached', () => {
+    // Only the folders whose file names carry a content hash are immutable.
+    expect(rules.filter((r) => /immutable/.test(r.values['Cache-Control'] || '')).map((r) => r.for)).toEqual(['/assets/*', '/img/*']);
     for (const r of rules) {
       expect(r.for).not.toMatch(/\*\./);
       if (r.for === '/*') continue;
