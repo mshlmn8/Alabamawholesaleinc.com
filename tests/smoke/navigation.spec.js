@@ -116,3 +116,56 @@ test('a Help link opens its page, and Back returns to the page Help was opened o
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+// Back and Forward (NEW-007, NEW-028): Back puts focus on the product card
+// the visitor left from, where the scroll position comes back to, so the
+// next Tab carries on there instead of jumping to the page head; and Forward
+// onto the entry of a dialog Back already closed adds no dead stop: the next
+// Back leaves the page.
+test('Back puts focus on the card the visitor left from, and the next Tab stays there (NEW-007)', async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto('/category/candies');
+  await expect(page.getByRole('heading', { level: 1, name: 'Candies' })).toBeVisible();
+  const card = page.locator('main a.card-link').nth(9);
+  const href = await card.getAttribute('href');
+  await card.scrollIntoViewIfNeeded();
+  await page.mouse.wheel(0, 300);
+  await card.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(new RegExp(`${href}$`));
+  await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/category\/candies$/);
+  await expect(card).toBeFocused();
+  await expect(card).toBeInViewport();
+  const y = await page.evaluate(() => window.scrollY);
+  expect(y).toBeGreaterThan(0);
+  await page.keyboard.press('Tab');
+  // The card's own control, not the page's first pill near the top.
+  const next = page.locator(':focus');
+  await expect(next).toBeInViewport();
+  expect(await next.evaluate((el, link) => !!el.closest('article, li, .content-card')?.contains(link), await card.elementHandle())).toBe(true);
+  expect(Math.abs(await page.evaluate(() => window.scrollY) - y)).toBeLessThan(300);
+  expect(errors).toEqual([]);
+});
+
+test('Forward onto a dialog Back closed leaves no dead stop: the next Back leaves the page (NEW-028)', async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto('/category/tobacco');
+  await expect(page.getByRole('heading', { level: 1, name: 'Tobacco' })).toBeVisible();
+  await page.locator('footer').getByRole('link', { name: /^Candies \(\d+\)$/ }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Candies' })).toBeVisible();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).first().click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page).toHaveURL(/\/category\/candies$/);
+  await page.goForward();
+  await expect(page).toHaveURL(/\/category\/candies$/);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.history.state?.awOverlay ?? null)).toBeNull();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/category\/tobacco$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Tobacco' })).toBeVisible();
+  expect(errors).toEqual([]);
+});

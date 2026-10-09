@@ -22,7 +22,7 @@
 
 import { Suspense, lazy, useEffect } from 'react';
 import { clearChunkReload, isChunkLoadError } from '../lib/chunks.js';
-import { anchorOf, focusPageHeading, revealAnchor, useLocation } from '../lib/router.js';
+import { anchorOf, focusPageHeading, isRestoringFocus, revealAnchor, useLocation } from '../lib/router.js';
 import { ErrorBoundary } from './ErrorBoundary.jsx';
 import { Icon } from './Icon.jsx';
 import { ModalLayer } from './ModalLayer.jsx';
@@ -43,8 +43,9 @@ export function PageLoading() {
 // that section is brought into view and its heading focused now (NEW-032,
 // AW-086); a section that appears later, once the account loads, is
 // AccountPage's to reveal. Back, Forward and a reload keep their restored
-// position. A page opened directly keeps the browser's own focus, and focus
-// the visitor moved meanwhile stays put.
+// position, and focus there is the router's to put back (NEW-007). A page
+// opened directly keeps the browser's own focus, and focus the visitor
+// moved meanwhile stays put.
 function PageArrived() {
   const { action, hash } = useLocation();
   const navigated = action !== 'load';
@@ -52,7 +53,8 @@ function PageArrived() {
     // Its code loaded: a later file that fails may reload once again
     // (src/lib/chunks.js, NEW-006).
     clearChunkReload();
-    if (!navigated) return undefined;
+    // Back/Forward is still putting focus back where it was (NEW-007).
+    if (!navigated || isRestoringFocus()) return undefined;
     const active = document.activeElement;
     if (active && active !== document.body && active.tagName !== 'MAIN') return undefined;
     const anchor = action === 'push' || action === 'replace' ? anchorOf(hash) : null;

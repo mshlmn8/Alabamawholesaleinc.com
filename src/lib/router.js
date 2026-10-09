@@ -9,7 +9,10 @@
 //     when only filters or the product line change, restored on Back/Forward
 //     and after a reload (AW-037, AW-008);
 //   - focus and announcement: the new page's h1 (or <main>) takes focus and
-//     its title is read out through the shared live region (AW-041);
+//     its title is read out through the shared live region (AW-041). Back
+//     and Forward put focus back on the link or line it was on when the
+//     visitor left that entry (stored beside its scroll position), so the
+//     next Tab carries on from there instead of from the top (NEW-007);
 //   - history hygiene: a link to the current URL adds no entry, and filter
 //     changes replace the entry instead of pushing one (AW-327);
 //   - dialogs: every ModalLayer holds a history entry while it is open, so
@@ -38,9 +41,12 @@ let seq = 0;
 // ModalLayer leaves focus alone when one happened while it was open.
 let lastPageMoveSeq = 0;
 let started = false;
-// Scroll positions by history entry (history.state.awKey). Kept in
-// sessionStorage when the page is hidden, so a reload or coming back from
-// another site restores them too; the most recent 50 are kept.
+// Scroll positions by history entry (history.state.awKey): { x, y, focus? }.
+// Kept in sessionStorage when the page is hidden, so a reload or coming back
+// from another site restores them too; the most recent 50 are kept. `focus`
+// says what had focus when the entry was left (NEW-007): { href } an
+// internal link's path (and #anchor; never its query, which can hold typed
+// text), { line } a cart line's data-line-key, or { id }.
 const positions = new Map();
 const SCROLL_STORE = 'aw-scroll';
 const MAX_POSITIONS = 50;
@@ -117,14 +123,64 @@ function onScroll() {
   remember(snapshot?.key, scrollPos());
 }
 
+// What a stored focus may be: short strings shaped like a path, a cart line
+// key or an element id, nothing else (the store is sessionStorage, which
+// other code on the origin could write).
+const FOCUS_SHAPES = {
+  href: /^\/[\w\-./~%]*(#[A-Za-z][\w-]*)?$/,
+  line: /^[\w.:-]+$/,
+  id: /^[A-Za-z][\w-]*$/,
+};
+const FOCUS_MAX = 200;
+function cleanFocus(focus) {
+  if (!focus || typeof focus !== 'object') return null;
+  for (const [kind, shape] of Object.entries(FOCUS_SHAPES)) {
+    const value = focus[kind];
+    if (typeof value === 'string' && value.length <= FOCUS_MAX && shape.test(value)) return { [kind]: value };
+  }
+  return null;
+}
+
 function loadPositions() {
   try {
     const saved = JSON.parse(window.sessionStorage.getItem(SCROLL_STORE) || '{}');
     for (const [key, pos] of Object.entries(saved)) {
-      if (pos && Number.isFinite(pos.y)) positions.set(key, { x: Number(pos.x) || 0, y: pos.y });
+      if (!pos || !Number.isFinite(pos.y)) continue;
+      const focus = cleanFocus(pos.focus);
+      positions.set(key, focus ? { x: Number(pos.x) || 0, y: pos.y, focus } : { x: Number(pos.x) || 0, y: pos.y });
     }
   } catch { /* storage blocked or corrupt: positions start empty */ }
 }
+
+// An internal link's path plus its #anchor, the way focusTarget() compares
+// links; null for another site's.
+function linkKey(link) {
+  try {
+    const url = new URL(link.getAttribute('href'), window.location.href);
+    if (url.origin !== window.location.origin) return null;
+    return url.pathname + (anchorOf(url.hash) ? url.hash : '');
+  } catch {
+    return null;
+  }
+}
+
+// What has focus now, as a stored focus (see `positions`), or null.
+function focusDescriptor() {
+  const el = document.activeElement;
+  if (!el || el === document.body || !el.closest || !el.closest('main')) return null;
+  const link = el.closest('a[href]');
+  const href = link && linkKey(link);
+  if (href) return cleanFocus({ href });
+  const line = el.closest('[data-line-key]');
+  if (line) return cleanFocus({ line: line.getAttribute('data-line-key') });
+  return el.id ? cleanFocus({ id: el.id }) : null;
+}
+
+// The scroll position and focus of the entry being left.
+const leaving = () => {
+  const focus = focusDescriptor();
+  return focus ? { ...scrollPos(), focus } : scrollPos();
+};
 
 // For a reload, or for coming back from another site.
 function savePositions() {
@@ -165,8 +221,13 @@ function onPopState() {
     // A jump further back closes every dialog and changes the page.
     for (const holder of [...overlay.holders].reverse()) holder.close();
   } else if (st?.awOverlay && !overlay.pushed) {
-    // Forward onto the entry of a dialog that has since closed.
-    writeState('replaceState', withoutOverlay(st));
+    // Forward onto the entry of a dialog that has since closed: straight
+    // back to the page's own entry, so the next Back leaves the page in one
+    // press (NEW-028). Forward then does nothing here, which is fine:
+    // nothing can follow a dialog's entry (a link in a dialog replaces it).
+    overlay.ignorePop = true;
+    window.history.back();
+    return;
   }
   if (sameUrl) return; // e.g. the hashchange that follows a popstate
 
@@ -184,6 +245,10 @@ function onPopState() {
     key = newKey();
     writeState('replaceState', { ...(historyState() || {}), awKey: key });
   }
+  // Where focus was on the entry just left, for a Forward back to it
+  // (NEW-007). Its scroll position is the one last recorded there.
+  const focus = snapshot?.key ? focusDescriptor() : null;
+  if (focus) remember(snapshot.key, { ...(positions.get(snapshot.key) || scrollPos()), focus });
   emit(makeSnapshot('pop', { restore: positions.get(key) || null }));
 }
 
@@ -297,7 +362,7 @@ export function navigate(to, { replace = false, scroll = true, force = false } =
     return;
   }
   if (!force && !mayLeave(next)) return;
-  remember(snapshot?.key, scrollPos());
+  remember(snapshot?.key, leaving());
   const st = historyState() || {};
   const onOverlay = overlay.pushed && !!st.awOverlay;
   let ok;
@@ -495,6 +560,83 @@ export function scrollToTop() {
   if (hasWindow) scrollToPosition(0, 0);
 }
 
+// The element a stored focus names on the page now: a product card's link
+// first, then any link in <main> to the same path, a cart line (its first
+// control), or the id. Null when it isn't there (yet).
+function focusTarget(focus) {
+  const main = document.querySelector('main');
+  if (!main || !focus) return null;
+  if (focus.href) {
+    const links = [...main.querySelectorAll('a.card-link[href]'), ...main.querySelectorAll('a[href]')];
+    return links.find((a) => linkKey(a) === focus.href) || null;
+  }
+  if (focus.line) {
+    const line = [...main.querySelectorAll('[data-line-key]')].find((el) => el.getAttribute('data-line-key') === focus.line);
+    return line ? line.querySelector('a[href], button, input, select, textarea') || line : null;
+  }
+  const el = focus.id ? document.getElementById(focus.id) : null;
+  return el && main.contains(el) ? el : null;
+}
+
+const inView = (el) => {
+  const r = el.getBoundingClientRect();
+  return r.bottom > 0 && r.top < window.innerHeight && (r.width > 0 || r.height > 0);
+};
+
+// Back/Forward (NEW-007): once the page is on screen and its scroll
+// restored, focus goes back to what had it when the visitor left this entry,
+// without moving the page, so the next Tab carries on from there. It keeps
+// looking for a moment while late content arrives (as restoreScroll does),
+// and stops if the visitor clicks, types or moves focus meanwhile. Without
+// one in view: a new page's h1; on the same page (an anchor jump undone on
+// /catalog), the section in view's heading for an #anchor, the h1 at the
+// top, or else <main>, never a heading scrolled out of view. Returns a
+// cancel function.
+let restoringFocus = 0;
+// True while Back/Forward is still putting focus back (LazyPage.jsx then
+// leaves focus to it).
+export const isRestoringFocus = () => restoringFocus > 0;
+
+function restoreFocus(location) {
+  const wanted = location.restore?.focus || null;
+  const y = location.restore ? location.restore.y : window.scrollY;
+  const fallback = () => {
+    if (location.pageChanged || y <= 0) return document.querySelector('main h1') || document.querySelector('main');
+    const anchor = anchorOf(location.hash);
+    const section = anchor && document.getElementById(anchor);
+    if (section && inView(section)) return headingIn(section);
+    return document.querySelector('main');
+  };
+  const startedAt = performance.now();
+  let frame = 0;
+  let done = false;
+  const events = ['pointerdown', 'keydown', 'focusin'];
+  const stop = () => {
+    if (done) return;
+    done = true;
+    restoringFocus -= 1;
+    window.cancelAnimationFrame(frame);
+    events.forEach((type) => window.removeEventListener(type, stop, true));
+  };
+  const land = (el) => {
+    stop();
+    focusWithoutScroll(el);
+  };
+  const attempt = () => {
+    if (done) return;
+    const late = performance.now() - startedAt > 1000;
+    const el = wanted && focusTarget(wanted);
+    const settled = Math.abs(window.scrollY - y) <= 1 || late;
+    if (el && settled) return land(inView(el) ? el : fallback());
+    if (!wanted || late) return land(fallback());
+    frame = window.requestAnimationFrame(attempt);
+  };
+  restoringFocus += 1;
+  attempt();
+  if (!done) events.forEach((type) => window.addEventListener(type, stop, { capture: true, passive: true }));
+  return stop;
+}
+
 // Runs the page-change behaviour for every navigation. App calls it once,
 // after the effect that writes the page title.
 export function useNavigationEffects() {
@@ -517,14 +659,19 @@ export function useNavigationEffects() {
   // Focus and announcement. A passive effect, so it runs after a closing
   // dialog has handed focus back and wins over it.
   useEffect(() => {
-    if (location.action === 'load') return;
-    const moved = location.action === 'pop' ? location.pageChanged : location.reset;
-    if (!moved) return;
-    const anchor = location.action === 'pop' ? null : anchorOf(location.hash);
+    if (location.action === 'load') return undefined;
+    if (location.action === 'pop') {
+      // Back/Forward to another page, or to another address on this one.
+      if (location.pageChanged) announce(document.title);
+      return restoreFocus(location);
+    }
+    if (!location.reset) return undefined;
+    const anchor = anchorOf(location.hash);
     const target = (anchor && headingIn(document.getElementById(anchor)))
       || document.querySelector('main h1')
       || document.querySelector('main');
     focusWithoutScroll(target);
     if (location.pageChanged || location.action === 'same') announce(document.title);
+    return undefined;
   }, [location]);
 }

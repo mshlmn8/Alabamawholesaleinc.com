@@ -303,3 +303,156 @@ describe('redirectLegacyHash', () => {
     expect(window.location.hash).toBe('#error=access_denied&error_description=expired');
   });
 });
+
+// Back/Forward put focus back where it was (NEW-007): the link (or cart
+// line, or id) that had focus when the entry was left is stored beside its
+// scroll position, and focused again, without scrolling, once it is back on
+// screen; the h1 or <main> only when it isn't.
+describe('focus after Back/Forward (NEW-007)', () => {
+  const back = (state, path) => act(() => {
+    window.history.replaceState(state, '', path);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+  // jsdom has no layout: every element is "in view" unless listed.
+  const offScreen = new Set();
+  beforeEach(() => {
+    offScreen.clear();
+    // jsdom has no scrollIntoView either.
+    Element.prototype.scrollIntoView = vi.fn();
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function rect() {
+      const top = offScreen.has(this) ? 5000 : 100;
+      return { top, bottom: top + 20, left: 0, right: 100, width: 100, height: 20, x: 0, y: top };
+    });
+  });
+
+  afterEach(() => { delete Element.prototype.scrollIntoView; });
+
+  function Cards() {
+    useNavigationEffects();
+    return (
+      <main id="main" tabIndex={-1}>
+        <h1>Candies</h1>
+        <article><h3><a className="card-link" href="/product/5">Wrigley’s slim pack gum</a></h3></article>
+        <a href="/terms?q=typed+text">Trade terms</a>
+        <section id="dept-food-stuff"><h2>Food Stuff</h2></section>
+        <a href="#dept-food-stuff">Jump to Food Stuff</a>
+      </main>
+    );
+  }
+
+  it('focuses the card link the visitor left from after Back, and stores no query string', () => {
+    render(<Cards />);
+    act(() => navigate('/category/candies'));
+    const below = window.history.state;
+    const card = screen.getByRole('link', { name: 'Wrigley’s slim pack gum' });
+    card.focus();
+    act(() => navigate('/product/5'));
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 }));
+    // Stored for a reload too, as a path only.
+    window.dispatchEvent(new Event('pagehide'));
+    const stored = JSON.parse(window.sessionStorage.getItem('aw-scroll'));
+    expect(stored[below.awKey].focus).toEqual({ href: '/product/5' });
+    back(below, '/category/candies');
+    expect(document.activeElement).toBe(card);
+
+    // A link with a query: only its path is kept.
+    act(() => navigate('/category/candies?sort=name'));
+    screen.getByRole('link', { name: 'Trade terms' }).focus();
+    const here = window.history.state.awKey;
+    act(() => navigate('/terms?q=typed+text'));
+    window.dispatchEvent(new Event('pagehide'));
+    expect(JSON.parse(window.sessionStorage.getItem('aw-scroll'))[here].focus).toEqual({ href: '/terms' });
+    expect(window.sessionStorage.getItem('aw-scroll')).not.toMatch(/typed/);
+  });
+
+  it('falls back to the h1 when that link is gone or off screen, and Back from an anchor jump never leaves focus on an off-screen heading', () => {
+    render(<Cards />);
+    act(() => navigate('/catalog'));
+    const top = window.history.state;
+    const card = screen.getByRole('link', { name: 'Wrigley’s slim pack gum' });
+    card.focus();
+    act(() => navigate('/product/5'));
+    offScreen.add(card);
+    back(top, '/catalog');
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 }));
+
+    // An anchor jump on the same page, then Back at the top of the page.
+    act(() => navigate('/catalog'));
+    const before = window.history.state;
+    act(() => navigate('/catalog#dept-food-stuff'));
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Food Stuff' }));
+    offScreen.add(screen.getByRole('heading', { name: 'Food Stuff' }));
+    back(before, '/catalog');
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 }));
+  });
+
+  it('after Back from an anchor jump further down, focuses the jump link, or <main> when it is off screen', () => {
+    const scrollY = vi.spyOn(window, 'scrollY', 'get').mockReturnValue(800);
+    render(<Cards />);
+    act(() => navigate('/catalog'));
+    const jump = screen.getByRole('link', { name: 'Jump to Food Stuff' });
+    jump.focus();
+    const before = window.history.state;
+    act(() => navigate('/catalog#dept-food-stuff'));
+    back(before, '/catalog');
+    expect(document.activeElement).toBe(jump);
+
+    act(() => navigate('/catalog#dept-food-stuff'));
+    offScreen.add(jump);
+    back(before, '/catalog');
+    expect(document.activeElement).toBe(document.getElementById('main'));
+    scrollY.mockRestore();
+  });
+
+  it('keeps only well-formed focus records from storage', async () => {
+    vi.resetModules();
+    window.sessionStorage.setItem('aw-scroll', JSON.stringify({
+      good: { x: 0, y: 40, focus: { href: '/product/5' } },
+      bad: { x: 0, y: 40, focus: { href: 'javascript:alert(1)' } },
+      long: { x: 0, y: 40, focus: { id: `a${'b'.repeat(300)}` } },
+    }));
+    window.history.replaceState({ awKey: 'good' }, '', '/category/candies');
+    const fresh = await import('./router.js');
+    function Restore() {
+      const { restore } = fresh.useLocation();
+      return <p data-testid="restore">{JSON.stringify(restore)}</p>;
+    }
+    render(<Restore />);
+    expect(JSON.parse(screen.getByTestId('restore').textContent)).toEqual({ x: 0, y: 40, focus: { href: '/product/5' } });
+    for (const key of ['bad', 'long']) {
+      act(() => {
+        window.history.replaceState({ awKey: key }, '', `/${key}`);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      });
+      expect(JSON.parse(screen.getByTestId('restore').textContent)).toEqual({ x: 0, y: 40 });
+    }
+    window.sessionStorage.removeItem('aw-scroll');
+  });
+});
+
+// Forward onto a dialog's entry after Back closed the dialog (NEW-028).
+describe('Forward onto a closed dialog’s entry (NEW-028)', () => {
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 30));
+
+  it('goes straight back to the page’s entry, so the next Back leaves the page', async () => {
+    act(() => navigate('/category/tobacco'));
+    act(() => navigate('/category/candies'));
+    const close = vi.fn();
+    const release = holdOverlayEntry(close);
+    expect(window.history.state.awOverlay).toBe(true);
+    window.history.back();
+    await settle();
+    expect(close).toHaveBeenCalledTimes(1);
+    release();
+    await settle();
+    expect(url()).toBe('/category/candies');
+    window.history.forward();
+    await settle();
+    // Bounced back off the dialog's entry, which is never current again.
+    expect(url()).toBe('/category/candies');
+    expect(window.history.state.awOverlay).toBeUndefined();
+    window.history.back();
+    await settle();
+    expect(url()).toBe('/category/tobacco');
+  });
+});
