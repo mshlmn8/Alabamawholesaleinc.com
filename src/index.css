@@ -491,7 +491,9 @@ p > .text-link { min-height: 0; min-width: 0; }
 .content-card { min-width: 0; text-align: left; background: none; border: 0; padding: 0; display: block; width: 100%; }
 .card-link { display: block; width: 100%; padding: 0; margin: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .card-block { aspect-ratio: 1.1; display: grid; place-items: center; margin-bottom: 14px; position: relative; overflow: hidden; background: var(--tile); border: 1px solid var(--line); }
-.card-block .block-label { top: 12px; left: 12px; font-size: var(--text-xs); letter-spacing: var(--track-label); }
+/* The department label never runs under the tag or past the tile, whatever
+   font draws it (AW-346): one line, cut with an ellipsis. */
+.card-block .block-label { top: 12px; left: 12px; font-size: var(--text-xs); letter-spacing: var(--track-label); max-width: calc(100% - 24px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-initials { font: 500 3.625rem/1 var(--display); color: var(--initials); letter-spacing: -.125rem; }
 /* A photo is never drawn larger than its own pixel size (AW-073): its width
    comes from the img width attribute (the largest rendition, never wider than
@@ -1334,6 +1336,11 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .aw-discovery-nav { gap: 21px; }
   .aw-service-nav { gap: 16px; }
   .pd-grid { gap: 26px; }
+  /* Narrower cards leave no room for the department label and the tag on
+     one row, least of all in a fallback font (AW-346): the tag moves to the
+     bottom corner, as on phones, and a sell-unit badge stacks above it. */
+  .card-block .card-tag { top: auto; bottom: 12px; right: 12px; }
+  .card-block .card-tag ~ .pack-badge { bottom: calc(28px + var(--text-xs)); }
 }
 /* Phones and small tablets, and short touch screens such as a phone in
    landscape (AW-151): compact header (menu · logo · account · cart, then a
