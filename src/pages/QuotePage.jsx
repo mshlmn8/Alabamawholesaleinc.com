@@ -46,6 +46,14 @@
 // buyer below it is told "You can still submit this order" only while the
 // submit button can actually be used (Cursor's PR #13).
 //
+// The form is kept as a draft for this tab and cart owner (AW-080,
+// src/lib/quoteDraft.js), so following a line's product link, Back or a
+// reload brings back what was typed. A successful submit clears it.
+//
+// The fields (AW-078): the ship-to State lists the delivery route states,
+// the phone needs 10 digits (checked before anything is sent) and Notes is a
+// box of several lines. On phones State and ZIP share a row (AW-241).
+//
 // After the save (AW-012, AW-022): one send at a time, the lines that were
 // sent leave the cart, and the page shows a receipt (QuoteReceipt.jsx) built
 // from what was sent and what submit_quote answered. App keeps that receipt
@@ -73,6 +81,7 @@ import { CartSummary } from '../components/CartSummary.jsx';
 import { SavedLinesNotice, UnavailableNotice } from '../components/CartNotices.jsx';
 import { AccountLoading } from '../components/AccountStatus.jsx';
 import { initialQuoteForm, phoneDigitsOk, quoteFormForAccount } from '../lib/quoteForm.js';
+import { readQuoteDraft, useQuoteDraft } from '../lib/quoteDraft.js';
 import { DELIVERY_ROUTE_STATES, DELIVERY_STATE_NOTE } from '../data/quoteRules.js';
 import { stateName } from '../data/usStates.js';
 import { QuoteReceipt } from './QuoteReceipt.jsx';
@@ -104,15 +113,22 @@ export function QuotePage({
 }) {
   // A quote, or an order for an approved buyer (AW-132, src/data/terms.js).
   const basket = basketTerms(isApprovedBuyer);
-  const [data, setData] = useState(() => initialQuoteForm(profile));
+  // What was typed here before survives leaving the page and a reload: this
+  // owner's draft, then the profile in the fields still empty (AW-080).
+  const [data, setData] = useState(() => initialQuoteForm(profile, readQuoteDraft(owner)));
+  const draft = useQuoteDraft(owner, data);
   // The field the last refused submit was about (its hint), marked invalid
   // until it is edited.
   const [errorField, setErrorField] = useState(null);
   const set = k => e => {
+    draft.edited();
     setData({ ...data, [k]: e.target.value });
     if (k === errorField) setErrorField(null);
   };
-  const setChecked = k => e => setData({ ...data, [k]: e.target.checked });
+  const setChecked = k => e => {
+    draft.edited();
+    setData({ ...data, [k]: e.target.checked });
+  };
   // aria-describedby: the field's own hint, and the submit error when it is
   // about this field.
   const fieldProps = (k, hintId = null) => {
@@ -328,7 +344,9 @@ export function QuotePage({
       setPhase(null);
     }
     if (!saved) return;
-    // Saved: show the receipt and let App keep it for this history entry.
+    // Saved: the draft has done its job (AW-080). Show the receipt and let
+    // App keep it for this history entry.
+    draft.submitted();
     setReceipt(saved);
     onSubmitted?.(saved);
     // Only the lines that were sent leave the cart (not clearCart): a line

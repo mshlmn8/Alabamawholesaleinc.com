@@ -283,7 +283,13 @@ export const STORAGE = {
   // receipt, one record { owner, entryKey, receipt }, so a reload or Back
   // keeps the confirmation. It holds the buyer's contact details and is
   // cleared on sign-out. See src/lib/receipt.js (AW-012, AW-022).
-  receipt: 'aw-last-receipt'
+  receipt: 'aw-last-receipt',
+  // sessionStorage only, never localStorage: this tab's draft of the quote
+  // form, one record { owner, data, savedAt }, so leaving /quote or a reload
+  // keeps what was typed. It holds contact details (never the tobacco
+  // license answers) and is cleared on a successful submit and on sign-out.
+  // See src/lib/quoteDraft.js (AW-080).
+  quoteDraft: 'aw-quote-draft'
 };
 
 // The date the Trade terms and Privacy policy last changed, as the policy

@@ -11,8 +11,10 @@
 //   notes and tobacco license answers (AW-014) are cleared first, so an order
 //   is never sent under one account with another buyer's details.
 //
-// A saved draft (AW-080, later) comes before profile values for the same
-// account, and is discarded when the account changes.
+// A saved draft (AW-080, src/lib/quoteDraft.js) comes before profile values
+// for the same account: initialQuoteForm(profile, draft) starts from the
+// draft, and the profile fills only the fields it left empty. The draft is
+// discarded when the account changes.
 
 import { routeStateCode } from '../data/quoteRules.js';
 
@@ -59,7 +61,7 @@ export function quoteFormForAccount(data, profile, previousId = null) {
   return next;
 }
 
-export const initialQuoteForm = (profile) => quoteFormForAccount(EMPTY_QUOTE_FORM, profile);
+export const initialQuoteForm = (profile, draft = null) => quoteFormForAccount(draft || EMPTY_QUOTE_FORM, profile);
 
 // A US phone number has 10 digits, once a leading country code 1 is dropped
 // (AW-078). The field's pattern allows the usual spaces, dots, dashes,

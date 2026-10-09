@@ -19,6 +19,7 @@ import { usePrices } from './lib/prices.jsx';
 import { priceFor } from './lib/pricing.js';
 import { cartOwner, clearGuestCart } from './lib/cartStorage.js';
 import { clearReceipt, saveReceipt, useLastReceipt } from './lib/receipt.js';
+import { clearQuoteDraft } from './lib/quoteDraft.js';
 import { confirmLeave, focusPageHeading, navigate, pathFor, resolveRoute, routeKey, useNavigationEffects, useRoute } from './lib/router.js';
 import { pageKeyFor } from './lib/routes.js';
 import { confirmAge, declineAge, endAgeConfirmationOnSignOut, reconsiderAge, useAgeGate } from './lib/ageGate.js';
@@ -219,8 +220,10 @@ export default function App() {
       setSigningOut(false);
     }
     clearGuestCart();
-    // The last receipt holds the buyer's contact details (AW-022).
+    // The last receipt and the quote form's draft hold the buyer's contact
+    // details (AW-022, AW-080).
     clearReceipt();
+    clearQuoteDraft();
     navigate(SIGNED_OUT_PAGE, { force: true });
     setLoginOpen(false);
     setSignOutNotice({ text: signOutMessage(result, { cartSaved }), pageKey: SIGNED_OUT_PAGE_KEY });
