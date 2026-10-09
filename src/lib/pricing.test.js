@@ -4,8 +4,8 @@
 // not a catalog price.
 import { describe, expect, it, vi } from 'vitest';
 import {
-  MISSING_FUNCTION_CODES, PRICE_FAILED, PRICE_LOADING, PRICE_ON_REQUEST, fromCents, lineTotal, loadPrices, normalizePrices,
-  priceFor, priceLabel, pctText, sumLines, tierDiscountText, tierName, tierPriceNote, tierUnitPrice, toCents, totalLabel, variantPriceRange,
+  MISSING_FUNCTION_CODES, PRICE_FAILED, PRICE_FAILED_SENTENCE, PRICE_LOADING, PRICE_ON_REQUEST, fromCents, lineTotal, loadPrices, normalizePrices,
+  priceDidNotLoad, priceFor, priceLabel, pctText, sumLines, tierDiscountText, tierName, tierPriceNote, tierUnitPrice, toCents, totalLabel, variantPriceRange,
 } from './pricing.js';
 import * as pricing from './pricing.js';
 
@@ -274,6 +274,14 @@ describe('priceLabel and totalLabel', () => {
     expect(PRICE_LOADING).toBe('Loading price…');
     expect(priceLabel(12.34, 'ready', { from: true })).toBe('From $12.34');
     expect(priceLabel(null, 'loading', { from: true })).toBe(PRICE_LOADING);
+  });
+
+  it('tells where a price set in price type didn’t load, for the sentence that replaces it (NEW-054)', () => {
+    expect(priceDidNotLoad(null, 'error')).toBe(true);
+    expect(priceDidNotLoad(12.34, 'error')).toBe(false);
+    expect(priceDidNotLoad(null, 'loading')).toBe(false);
+    expect(priceDidNotLoad(null, 'ready')).toBe(false);
+    expect(PRICE_FAILED_SENTENCE).toBe('Your price didn’t load.');
   });
 
   it('shows the total once a line has a price, and says why otherwise', () => {

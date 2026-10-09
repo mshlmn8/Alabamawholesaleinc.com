@@ -5,7 +5,8 @@
 //
 // A new notice is read out through the shared live region, a moment after
 // the page-change announcement so neither cuts the other off. The catalog's
-// notices (src/lib/catalogNotices.js, AW-204) use the same list.
+// notices (src/lib/catalogNotices.js, AW-204) and then the buyer's prices'
+// (src/lib/pricesNotices.js, NEW-054) use the same list.
 //
 // When a notice goes away while focus is in it (dismissed, or its "Try
 // again" worked), focus moves to <main> instead of falling back to <body>.

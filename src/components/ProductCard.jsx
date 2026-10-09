@@ -15,7 +15,9 @@
 // An approved buyer's price is the card's figure, larger than the name, with
 // what it buys under it ("per 36-count box") when the product has a sell
 // unit (AW-107). The price row sits at the foot of the card, so the rows line
-// up across a grid row.
+// up across a grid row. Prices that didn't load are "Your price didn’t load."
+// in body type, like the lock text, never a word in price type (NEW-054); the
+// site notice offers Try again.
 //
 // The card is an <article> named by its title (AW-170). The title is a real
 // link to the product page, stretched over the whole card (.card-link::after
@@ -57,7 +59,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import {
   isVariantAvailable, lineKey, parseLineKey, requiresVariantChoice, variantAxis, variantCount, variantList,
 } from '../lib/lines.js';
-import { priceLabel, variantPriceRange } from '../lib/pricing.js';
+import { PRICE_FAILED_SENTENCE, priceDidNotLoad, priceLabel, variantPriceRange } from '../lib/pricing.js';
 import { PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
 import { brandLabel } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
@@ -172,7 +174,10 @@ export function ProductCard({
       <p className="card-detail"><TextParts parts={cardDetailParts(p, { sku: showSku })} /></p>
       {showsNicotineWarning(p) && <NicotineWarning compact />}
       <span className="card-meta card-actions">
-        {isApprovedBuyer ? (
+        {isApprovedBuyer && priceDidNotLoad(shown.unit, pricesStatus) ? (
+          // A sentence in body type, never a word in price type (NEW-054).
+          <span className="card-price-failed">{PRICE_FAILED_SENTENCE}</span>
+        ) : isApprovedBuyer ? (
           <span className="card-price">
             <b>{priceLabel(shown.unit, pricesStatus, { from: shown.from })}</b>
             {shown.unit != null && p.sellUnit && <small>{`per ${p.sellUnit}`}</small>}

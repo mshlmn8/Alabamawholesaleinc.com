@@ -78,6 +78,25 @@ describe('ProductPage price context (AW-265)', () => {
     expect(lines()).toEqual(['Loading price…', 'Wholesale unit price']);
   });
 
+  // Prices that didn't load (NEW-054): a sentence in body type, not a word in
+  // price type; the site notice (pricesNotices.js) says why, with Try again.
+  it('says the price didn’t load in a sentence, with no price figure, tier or line total', () => {
+    const view = render(page(KITE, approved({ priceOf: () => null, listOf: () => null, pricesStatus: 'error', priceTier: null })));
+    const slot = document.querySelector('.pd-price');
+    expect(slot.className).toBe('pd-price is-locked');
+    expect(slot.querySelector('b')).toBeNull();
+    expect(lines()).toEqual(['Your price didn’t load.']);
+    expect(slot.firstElementChild.tagName).toBe('P');
+    expect(qtyNote()).toBeNull();
+    expect(document.body.textContent).not.toMatch(/Wholesale unit price|Price didn’t load/);
+    // Before a variant is chosen too.
+    view.rerender(page(SNICKERS, approved({ priceOf: () => null, listOf: () => null, pricesStatus: 'error', priceTier: null })));
+    expect(lines()).toEqual(['Your price didn’t load.']);
+    // A price kept from an earlier load is still shown.
+    view.rerender(page(KITE, approved({ pricesStatus: 'error' })));
+    expect(lines()).toEqual(['$32.35', 'Silver price', 'list $34.05 · you save 5%']);
+  });
+
   // The locked slot's own wording is AW-133's (ProductPage.locked.test.jsx).
   it('shows guests and accounts awaiting approval none of it', () => {
     const view = render(page(KITE, { priceOf: () => 32.35, listOf: () => 34.05, priceTier: SILVER }));

@@ -62,7 +62,7 @@ import { useRef, useState } from 'react';
 import {
   informativeVariant, isVariantAvailable, lineKey, requiresVariantChoice, variantAxis, variantList, variantSku,
 } from '../lib/lines.js';
-import { lineTotal, pctText, priceLabel, tierName, variantPriceRange } from '../lib/pricing.js';
+import { PRICE_FAILED_SENTENCE, lineTotal, pctText, priceDidNotLoad, priceLabel, tierName, variantPriceRange } from '../lib/pricing.js';
 import { CHECKING_ACCOUNT_TEXT, PRICES_NEED_PROFILE, PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
 import { brandLabel, catLabel, formatMoney } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
@@ -177,6 +177,10 @@ export function ProductPage({
     } else {
       lockedPrice = <><p>Wholesale prices show here for approved trade accounts.</p><button className="button ghost" type="button" onClick={onLoginClick}>Sign in to see wholesale prices</button><button className="text-link" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button></>;
     }
+  } else if (priceDidNotLoad(shown.unit, pricesStatus)) {
+    // An approved buyer's prices didn't load (NEW-054): a sentence, not a
+    // word in price type; the site notice says why, with Try again.
+    lockedPrice = <p>{PRICE_FAILED_SENTENCE}</p>;
   }
   const chipFor = (v) => chipsRef.current?.querySelectorAll('[role="radio"]')[variants.indexOf(v)] || null;
   const choose = (v) => {

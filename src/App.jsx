@@ -40,6 +40,7 @@ import { basketTerms } from './data/terms.js';
 import { departmentsFor } from './lib/departments.js';
 import { accountNotices, signOutMessage } from './lib/accountNotices.js';
 import { catalogNotices } from './lib/catalogNotices.js';
+import { pricesNotices } from './lib/pricesNotices.js';
 import { offlineNotices } from './lib/offlineNotice.js';
 import { useOnlineStatus } from './lib/useOnlineStatus.js';
 import { announce } from './lib/announce.js';
@@ -167,6 +168,12 @@ export default function App() {
   // A product's (or variant's) list price for the same buyer, to show beside
   // the tier price on the product page (AW-265); null without one.
   const listOf = useMemo(() => (id, variant) => priceFor(prices.prices, id, variant)?.list ?? null, [prices.prices]);
+  // "Try again" on prices that didn't load (NEW-054); the notice stays when
+  // it fails again, so say so.
+  const retryPrices = async () => {
+    const result = await prices.refresh();
+    if (!result.ok) announce('Your prices still didn’t load. Try again in a moment.');
+  };
   // Each account on this device has its own cart, and guests share one
   // (AW-189). While the saved session is being checked, or can't be
   // refreshed because Supabase is out of reach, it is that session's
@@ -349,7 +356,7 @@ export default function App() {
   }), ...catalogNotices(catalog, { dismissed: catalogNoticeHidden, pageExplains: catalogPending }, {
     retry: retryCatalog,
     dismiss: () => setCatalogNoticeHidden(true),
-  })];
+  }), ...pricesNotices(prices, { routePage: route.page }, { retry: retryPrices })];
 
   // Checkout loads the catalog and the buyer's prices again right before a
   // submit and stops when a line changed (AW-191): the cart as stored now,

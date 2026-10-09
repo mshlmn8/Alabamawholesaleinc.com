@@ -177,6 +177,13 @@ export function priceLabel(unit, status, { from = false } = {}) {
   return PRICE_ON_REQUEST;
 }
 
+// Where the price is set in price type (a card, the product page), a price
+// that didn't load is a sentence in body type instead, never a word set as a
+// price (NEW-054, the AW-133 rule); the site notice (pricesNotices.js) says
+// why and offers Try again. PRICE_FAILED stays where a line of text says it.
+export const PRICE_FAILED_SENTENCE = 'Your price didn’t load.';
+export const priceDidNotLoad = (unit, status) => unit == null && status === 'error';
+
 // The buyer's tier, for saying what the prices on screen are (AW-107,
 // AW-265). Everything comes from my_prices() (or the legacy path above):
 // App passes { tier, label, discountPct } from usePrices().prices, and

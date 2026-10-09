@@ -634,6 +634,9 @@ p > .text-link { min-height: 0; min-width: 0; }
    so the action rows of a grid row are the same height and start level
    (AW-215), and it reads on one line down to a 178px card. */
 .card-meta .lock { flex-basis: 100%; color: var(--muted); font-weight: 400; font-size: var(--text-xs); line-height: 1.4; }
+/* An approved buyer's price that didn't load (NEW-054): a sentence in body
+   type like the lock text, on its own line above the control. */
+.card-meta .card-price-failed { flex-basis: 100%; color: var(--ink); font-weight: 400; font-size: var(--text-xs); line-height: 1.4; }
 /* An approved buyer's price, larger than the name, and what it buys (AW-107). */
 .card-price b { display: block; font: 700 1.25rem/1.05 var(--display); color: var(--purple); }
 .card-price small { display: block; margin-top: .125rem; font: 400 var(--text-xs)/1.3 var(--body); color: var(--muted); }

@@ -39,6 +39,23 @@ describe('ProductCard price (AW-107)', () => {
     expect(priceBox().textContent).toBe('Price on request');
   });
 
+  // NEW-054: never a word in price type (AW-133's rule).
+  it('says the price didn’t load in a sentence, in place of the price box', () => {
+    const view = render(card(BOX, { ...APPROVED, priceOf: () => null, pricesStatus: 'error' }));
+    expect(priceBox()).toBeNull();
+    const note = document.querySelector('.card-meta > .card-price-failed');
+    expect(note.tagName).toBe('SPAN');
+    expect(note.textContent).toBe('Your price didn’t load.');
+    expect(note.querySelector('b')).toBeNull();
+    expect(document.querySelector('.card-meta b')).toBeNull();
+    // The add button is still there.
+    expect(document.querySelector('.card-add').textContent).toMatch(/^Add to order/);
+    // A price kept from an earlier load is still the card's figure.
+    view.rerender(card(BOX, { ...APPROVED, priceOf: () => 20.34, pricesStatus: 'error' }));
+    expect(priceBox().querySelector('b').textContent).toBe('$20.34');
+    expect(document.querySelector('.card-price-failed')).toBeNull();
+  });
+
   it('shows "From" for variants priced differently', () => {
     const p = { ...BOX, variants: ['Blue', 'Cherry'] };
     render(card(p, { ...APPROVED, priceOf: (id, v) => (v === 'Blue' ? 21 : 20.34) }));
