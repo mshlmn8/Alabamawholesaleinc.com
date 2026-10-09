@@ -2,7 +2,9 @@
 // (AW-118, AW-202): a title, what will happen, and two buttons. With
 // `reasonLabel` it also asks for a reason, which it requires. Focus starts on
 // the cancel button; Escape, Back and the backdrop cancel; ModalLayer gives
-// focus back to the control that opened it.
+// focus back to the control that opened it. historyEntry={false}: Back
+// doesn't close it (its own history entry would be in the way when its
+// confirm button leaves the page, as the product editor's do).
 //
 // Admin-local for now: the commerce lane is building a site dialog and toast
 // at the same time, and the two are meant to be unified when they merge.
@@ -12,6 +14,7 @@ import { ModalLayer } from '../../components/ModalLayer.jsx';
 
 export function ConfirmDialog({
   title, body, confirmLabel, cancelLabel = 'Cancel', reasonLabel = null, reasonHint = null, busy = false, onConfirm, onCancel,
+  historyEntry = true,
 }) {
   const id = useId();
   const cancelRef = useRef(null);
@@ -35,7 +38,7 @@ export function ConfirmDialog({
   const describedBy = [reasonHint ? `${id}-hint` : null, `${id}-error`].filter(Boolean).join(' ');
 
   return (
-    <ModalLayer onClose={onCancel} initialFocus={cancelRef}>
+    <ModalLayer onClose={onCancel} initialFocus={cancelRef} historyEntry={historyEntry}>
       {/* Backdrop click is a mouse shortcut; Escape (ModalLayer) and the cancel button are the keyboard paths. */}
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div className="overlay" onClick={onCancel}>

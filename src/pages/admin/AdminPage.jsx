@@ -8,7 +8,9 @@
 // (Orders), /admin/orders?status=…, /admin/accounts, /admin/products?q=….
 // Every admin URL is the same page to the router (pageKey 'admin'), so moving
 // between sections and filters keeps the scroll position and focus, and Back
-// returns to the previous section.
+// returns to the previous section. A detail view (the product editor,
+// /admin/products/:id and /new) moves focus itself, and hands back a
+// returnFocusId that its list focuses when it shows again.
 
 import { useEffect, useState } from 'react';
 import { Link, navigate } from '../../lib/router.js';
@@ -44,10 +46,14 @@ export function AdminPage({
   const status = useAdminStatus();
   const section = adminSection(route);
   const query = route.query || NO_QUERY;
-  // Each section's last filters, so its link brings them back after a visit
-  // to another section.
+  const detail = route.id != null;
+  // Each section's last list filters, so its link brings them back after a
+  // visit to another section or a detail view.
   const [lastQuery, setLastQuery] = useState({});
-  if (lastQuery[section] !== query) setLastQuery({ ...lastQuery, [section]: query });
+  if (!detail && lastQuery[section] !== query) setLastQuery({ ...lastQuery, [section]: query });
+  // The control a section's list focuses when a detail view closes (e.g. the
+  // Edit link of the product just saved).
+  const [returnFocusId, setReturnFocusId] = useState(null);
   // A filter change replaces the history entry and keeps the scroll position.
   // options.force: the change keeps any unsaved edit, so it skips the leave guard.
   const setQuery = (next, options = {}) => navigate(adminHref({ section, query: next }), { replace: true, scroll: false, ...options });
@@ -120,7 +126,7 @@ export function AdminPage({
           return (
             <Link
               key={s.id}
-              to={adminHref({ section: s.id, query: current ? query : lastQuery[s.id] })}
+              to={adminHref({ section: s.id, query: current && !detail ? query : lastQuery[s.id] })}
               className={`sub-pill${current ? ' active' : ''}`}
               aria-current={current ? 'page' : undefined}
             >
@@ -132,7 +138,10 @@ export function AdminPage({
 
       {section === 'orders' && <OrdersTab query={query} onQuery={setQuery} notify={status.show} />}
       {section === 'accounts' && <AccountsTab currentAdminId={profile.id} notify={status.show} />}
-      {section === 'products' && <ProductsTab query={query} onQuery={setQuery} onCatalogChange={onCatalogChange} notify={status.show} />}
+      {section === 'products' && (
+        <ProductsTab route={route} query={query} onQuery={setQuery} onCatalogChange={onCatalogChange} notify={status.show}
+          returnFocusId={returnFocusId} onReturnFocus={setReturnFocusId} />
+      )}
       <AdminStatus status={status} />
     </section>
   );

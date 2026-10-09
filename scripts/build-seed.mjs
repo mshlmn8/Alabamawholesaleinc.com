@@ -56,6 +56,29 @@ function rowSql(p) {
   return `  (${values.join(', ')})`;
 }
 
+// 20261010120000_admin_product_editor.sql gives products.id a sequence
+// default, so Admin -> Products inserts new products without an id. The seed
+// inserts explicit ids after the migrations, which the sequence doesn't see:
+// move it past them, never back, so the next admin insert can't take a seeded
+// id. Does nothing on a database without that migration.
+const SEQUENCE_FOOTER = [
+  '-- Moves products_id_seq (20261010120000_admin_product_editor.sql) past the ids above, so',
+  '-- the next product added in Admin -> Products gets a new id. Never moves it back.',
+  'do $$',
+  'begin',
+  "  if to_regclass('public.products_id_seq') is not null then",
+  '    perform setval(',
+  "      'public.products_id_seq',",
+  '      greatest(',
+  '        coalesce((select max(id) from public.products), 0) + 1,',
+  '        (select case when is_called then last_value + 1 else last_value end from public.products_id_seq)',
+  '      ),',
+  '      false',
+  '    );',
+  '  end if;',
+  'end $$;',
+];
+
 function validate(rows) {
   const { problems, warnings } = validateCatalog(rows, { aliases: { skuAliases: SKU_ALIASES, variantAliases: VARIANT_ALIASES } });
   // TODO(owner): What is the sell unit (each, box of N, case of N, or a size) of each product that has none yet? (AW-031)
@@ -100,6 +123,8 @@ const sql = [
   `insert into public.products (${COLUMNS.join(', ')}) values`,
   rows.map(rowSql).join(',\n'),
   'on conflict (id) do nothing;',
+  '',
+  ...SEQUENCE_FOOTER,
   '',
 ].join('\n');
 

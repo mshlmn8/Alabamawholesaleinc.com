@@ -41,6 +41,7 @@ supabase/migrations/20261009120000_catalog_corrections.sql
 supabase/migrations/20261009130000_submit_quote_v3.sql
 supabase/migrations/20261009140000_profile_and_document_boundaries.sql
 supabase/migrations/20261009150000_quote_workflow.sql
+supabase/migrations/20261010120000_admin_product_editor.sql
 supabase/seed/products.sql
 ```
 
@@ -116,6 +117,10 @@ no price, which approved buyers see as "Price on request". Because
 `products.price` was `not null` before `20261009100000_price_boundary.sql`,
 apply that migration first: Postgres checks NOT NULL before ON CONFLICT, so
 on an older database every row of the seed fails, even ids that already exist.
+The seed's last statement moves `products_id_seq`
+(`20261010120000_admin_product_editor.sql`) past the ids it inserted, never
+back, so the next product added in Admin → Products gets a new id; on a
+database without that sequence it does nothing.
 
 The first migration creates four tables — `profiles`, `products`, `orders`,
 `order_items` — plus a `pricing_tiers` lookup. Later migrations add the
@@ -367,8 +372,10 @@ and cart lines, Quick Reorder and order history keep working with them.
 <!-- TODO(owner): What is the price, and is it in stock, for each size or pack-count variant of the multi-variant products (for example gas cans 1 gal / 2 gal / 5 gal)? Load them as below. (AW-030) -->
 <!-- TODO(owner): What is the sell unit (each, box of N, case of N, or a size) of each product that has none yet? Load them as below. (AW-031) -->
 
-Until Admin → Products can edit these, load them from a private SQL file
-under `supabase/private/` (never committed), run in the SQL editor:
+Admin → Products edits them one product at a time (a variant's list price,
+"Can't be ordered", the sell unit; see "The product editor" below). For many
+at once, load them from a private SQL file under `supabase/private/` (never
+committed), run in the SQL editor:
 
 ```sql
 -- A variant's own list price (leave price null for "price on request").
@@ -404,6 +411,71 @@ Saved orders keep their own `sku`, `product_name` and `variant`.
 AW-138, AW-126): SKUs cut at 17 characters or ending in a hyphen, misspelled
 codes, and inconsistent or abbreviated labels. A renamed label also renames
 its `product_variant_prices` row and its `unavailable_variants` entry.
+
+The product editor (below) can change a SKU or rename or remove a variant,
+but it can't add an alias: carts and Quick Reorder entries saved with the old
+value no longer match it, and the editor says so under those fields. To stop
+orders of a variant for now, tick "Can't be ordered" instead of removing it;
+for a SKU that must change, add the alias in `catalogAliases.js` in the next
+release.
+
+## The product editor (Admin → Products)
+
+Admin → Products lists every product with its photo, list price, tag and
+whether it is active; **New product** and each row's **Edit** open a
+full-page editor at `/admin/products/new` and `/admin/products/<id>`
+(`src/pages/admin/ProductEditor.jsx`; the checks are in
+`src/pages/admin/productForm.js`). It edits the name, brand, department,
+sub-line (or a new one), SKU, sell unit, description, the variants (order,
+"Can't be ordered", and each one's own list price), what the variants differ
+by, the tag, the list price (blank: price on request), the homepage rank, the
+stock status, whether it is active, and the photo. **Duplicate** starts a new
+product from a copy; **Delete** removes one that no order refers to.
+
+`20261010120000_admin_product_editor.sql` (AW-023, AW-116, AW-119) adds what
+it needs:
+
+- **New products** take the next id from `products_id_seq`, the column's new
+  default. The seed moves the sequence past the ids it inserts.
+- **Checks**: a SKU is used by one product only, whatever its case or
+  surrounding spaces (the unique index `products_sku_upper_key`, created only
+  when the table has no such duplicates; otherwise the migration prints a
+  notice with the query that finds them); a product needs a name and a brand;
+  a list price is at most 99,999.99 (`price >= 0` is `20261009100000`'s). The
+  name, brand and price checks are `NOT VALID`: rows already in the table are
+  checked only when someone next edits them. The editor checks the same
+  things first and names the field.
+- **Stock status** (`products.stock_status`: `in_stock`, `low`, `out`,
+  `discontinued`; new rows are `in_stock`). Staff only for now: the
+  storefront doesn't show it (owner question AW-023 in `docs/OWNER-TODO.md`).
+- **Homepage rank** (`products.featured_rank`, 1 to 999, or empty). The
+  homepage's New arrivals shows active products with a photo tagged NEW, and
+  Bestsellers those tagged BESTSELLER (`src/lib/merchandising.js`); a rank puts
+  a product first, 1 before 2, and unranked ones follow in today's order.
+  Products in the lines under legal review (AW-001) are featured only with a
+  rank, or where the homepage already showed them (owner question
+  AW-119/AW-001).
+- **Delete** is refused for a product that an order line refers to (errcode
+  23503, hint `product_has_orders`): `order_items.product_id` would be set to
+  null and the order history would lose its link. Deactivate it instead; the
+  editor counts its order lines first and offers only that.
+- **Photos**: a public Storage bucket, `product-images` (JPEG, PNG or WebP,
+  at most 5 MB). Only approved admins add, replace, list or remove files. The
+  editor uploads to `products/<id>/<upload time>-<name>.<ext>`
+  (`products/new/…` for a product not saved yet) and saves the file's public
+  URL in `products.img`; a photo file bundled with the site (`kite.jpg`) still
+  works. A replaced or removed photo stays in the bucket. A deploy with a
+  Content-Security-Policy must allow `https://<project>.supabase.co` in
+  `img-src` for these photos.
+
+Without this migration the editor still works on the live database: a new
+product is inserted with the next free id (the table has no id default), the
+stock status and homepage rank fields say they need the update, a photo
+upload says so too (a file name or URL still works), and the editor checks a
+product's order lines before it offers Delete. Before `20261009110000` the
+variants' axis, "Can't be ordered" and own prices are not offered, and before
+`20261009100000` a blank price can't be saved ("price on request" needs that
+update).
 
 ## Quotes and orders (`submit_quote`)
 
@@ -527,6 +599,9 @@ update is needed.
   them with an ordinary update. Approved buyers get their prices from
   `my_prices()`. A column added to `products` later needs its own
   `grant select (<column>) on public.products to anon, authenticated;`.
+  Since `20261010120000`, a product that an order line refers to can't be
+  deleted (hint `product_has_orders`), and admins' inserts take their id from
+  `products_id_seq` (guests have no use of it).
 - **product_variant_prices**: admins only (read and write); guests have no
   privileges on it at all. Approved buyers get its prices, at their tier,
   from `my_prices()`.
@@ -554,6 +629,9 @@ update is needed.
   and uploads there at that layout only, at most 10 files in 24 hours; only a
   pending applicant deletes there. Admins can read every object, which is
   what the Accounts tab uses to mint a signed View link.
+- **storage `product-images`** (`20261010120000`): public, so anyone loads a
+  product photo by its URL; only approved admins add, replace, list or
+  remove files.
 
 ## Resetting
 
@@ -598,6 +676,8 @@ rolling it back.
 11. `20261009130000_submit_quote_v3.sql`
 12. `20261009140000_profile_and_document_boundaries.sql`
 13. `20261009150000_quote_workflow.sql`
+14. `20261010120000_admin_product_editor.sql` (Admin → Products; it can be
+    applied later on its own)
 
 Then `supabase/seed/products.sql`, then the frontend.
 
@@ -616,6 +696,7 @@ Then `supabase/seed/products.sql`, then the frontend.
 | `20261009130000_submit_quote_v3.sql` | Recreates `submit_quote` without `p_ref_num` and with the license answers last (`p_license_no`, `p_resale_cert`, `p_purchasers_21`, with defaults): the server makes the reference (`ALW-Q-`/`ALW-O-` and 10 hex digits), checks lengths, email, ZIP, state, route state and date, throttles (new private table `quote_throttle`), refuses suspended accounts, needs an address only for delivery, and keeps PR #12's license rule and columns; every refusal has a typed hint. Turns PR #12's 16-argument function into a wrapper and brings back the 13-argument one as a wrapper; both ignore `p_ref_num` (see "Quotes and orders"). | Apply after `20261009120000`, before the new frontend. Frontends deployed before it keep working through the wrappers (their reference is ignored; a will-call quote sends the address they always required; the 13-argument call has no license answers, so its guest tobacco and vape quotes are refused, as `20261008190000` intends). The new frontend also works before it: it falls back to the 16-argument call, then the 13-argument one, with a long random reference and the warehouse address for will-call. **Later step:** drop the wrappers (below). |
 | `20261009140000_profile_and_document_boundaries.sql` | `is_admin()` requires an approved admin; Cursor's self-update guard keeps every column but name, phone and store address in a customer's own update, and refuses an admin's change to their own role or status, the consent or approval records, or a made-up email; `profiles.email` follows the sign-in email (a trigger on `auth.users`, and existing rows are realigned); new table `profile_admin_notes` (internal notes, admins only) and an index for `profile_status_log`; accounts from before `20261008194000` get their metadata answers, store address and consent copied to the profile (`backfill_profiles_from_metadata()`, run once) and the keys stripped; license rows and files must sit at `{user id}/{type}/{file}`, with at most 10 uploads per account in 24 hours. | Apply after `20261009130000`, before the new frontend. Before running it, check with `select id, email, status from public.profiles where role = 'admin';` that every real admin is `approved`: the others lose admin rights. The frontend deployed before it keeps working (its admins must be approved). The new frontend also works before it: the store address and consent stay in auth metadata until this migration moves them, Admin → Accounts shows '—' for the missing columns, and the document paths it uploads already match the layout. Then run `supabase/seed/provision_owner.sql`'s admin list once. |
 | `20261009150000_quote_workflow.sql` | One quote workflow (see "Pricing quotes and converting them"): `kind` is `order` only for an approved account's request, as `submit_quote` returns it (existing unpriced requests become quotes); `quoted_by` is set to null when that admin's profile is deleted; `admin_price_order()` and `admin_convert_quote()` check their input, keep an order's status, need every line priced before converting, and refuse guests (EXECUTE revoked from anon), with typed hints. | Apply after `20261009140000`, before the new frontend. The frontend deployed before it doesn't use these functions. The new frontend also works before it (and before `20261008200000`): Admin → Orders offers the old four statuses and says saving prices and converting need the update. |
+| `20261010120000_admin_product_editor.sql` | The product editor (see "The product editor"): `products.id` defaults to the new `products_id_seq`; a SKU is unique whatever its case (`products_sku_upper_key`, skipped with a notice when duplicates exist); `NOT VALID` checks for a name and a brand and a list price of at most 99,999.99; `products.stock_status` (staff only) and `products.featured_rank` (homepage rank), readable like every column but price; a trigger that refuses to delete a product an order line refers to (hint `product_has_orders`); the public `product-images` bucket that only approved admins write to. | Apply after `20261009150000`, then re-apply the regenerated seed (its last statement moves the id sequence past the seeded ids). The frontend deployed before it doesn't read the new columns. The new frontend works before and after: without it, a new product gets the next free id from the editor, stock status, homepage rank and photo upload say they need the update, Delete checks for order lines in the editor only, and the homepage rails follow the tags without a rank. |
 
 ### Later steps
 

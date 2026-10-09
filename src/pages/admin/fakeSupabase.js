@@ -17,9 +17,11 @@
 //   { kind: 'rpc', name, args, options, filters, ... }
 //   { kind: 'storage', bucket, op: 'createSignedUrl', path, expiresIn, ... }
 // Defaults: a select returns fake.tables[table] narrowed by its eq/in
-// filters; a write returns [{ id }] (the eq('id') value) when it asks for
-// rows back, else null; rpc returns fake.rpcData[name] ?? null; a signed URL
-// is https://files.example.test/<path>.
+// filters (with { count: 'exact' } also their count, and with head: true no
+// rows); a write returns [{ id }] (the eq('id') value) when it asks for rows
+// back, else null (an insert returns its rows); rpc returns
+// fake.rpcData[name] ?? null; a signed URL is https://files.example.test/<path>
+// and a public one https://files.example.test/public/<bucket>/<path>.
 
 const FILTERS = ['eq', 'neq', 'in', 'or', 'gt', 'gte', 'lt', 'lte', 'like', 'ilike', 'is', 'not', 'filter', 'match', 'contains', 'textSearch'];
 const MODIFIERS = ['order', 'range', 'limit', 'abortSignal'];
@@ -63,7 +65,8 @@ export function createFakeSupabase(initial = {}) {
     }
     if (request.op === 'select') {
       const rows = narrow(fake.tables[request.table] || [], request.filters);
-      return ok(request.single ? (rows[0] ?? null) : rows);
+      const result = ok(request.options?.head ? null : (request.single ? (rows[0] ?? null) : rows));
+      return request.options?.count ? { ...result, count: rows.length } : result;
     }
     if (!request.returning) return ok(null);
     const id = request.filters.find(([name, column]) => name === 'eq' && column === 'id')?.[2];
@@ -109,6 +112,10 @@ export function createFakeSupabase(initial = {}) {
       from: (bucket) => ({
         createSignedUrl: (path, expiresIn, options) => answer({ kind: 'storage', bucket, op: 'createSignedUrl', path, expiresIn, options }),
         upload: (path, file, options) => answer({ kind: 'storage', bucket, op: 'upload', path, file, options }),
+        getPublicUrl: (path) => {
+          fake.calls.push({ kind: 'storage', bucket, op: 'getPublicUrl', path });
+          return { data: { publicUrl: `https://files.example.test/public/${bucket}/${path}` } };
+        },
         remove: (paths) => answer({ kind: 'storage', bucket, op: 'remove', paths }),
       }),
     },

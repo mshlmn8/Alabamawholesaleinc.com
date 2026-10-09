@@ -136,22 +136,23 @@ describe('checked writes (AW-202)', () => {
     expect(statusText()).toBe('Test Market LLC is now approved.');
   });
 
-  it('a refused product save keeps the edit row and what was typed', async () => {
-    await open('products');
-    fireEvent.click(screen.getByRole('button', { name: /^Edit ?Kite$/ }));
-    const row = document.querySelector('tr.editing');
-    fireEvent.change(within(row).getByLabelText('Price'), { target: { value: '13.40' } });
+  it('a refused product save keeps the editor and what was typed (AW-023)', async () => {
+    await act(async () => {
+      render(<AdminPage profile={ADMIN} account="ready" route={{ page: 'admin', section: 'products', id: 2, query: {} }} />);
+    });
+    const price = screen.getByLabelText('List price');
+    fireEvent.change(price, { target: { value: '13.40' } });
+    const save = async () => { await act(async () => { fireEvent.submit(document.querySelector('form.product-form')); }); };
     writeFailure = 'refused';
-    await act(async () => { fireEvent.click(within(row).getByRole('button', { name: 'Save' })); });
-    expect(screen.getByRole('alert').textContent).toBe('The changes to product 2 weren’t saved: your account isn’t allowed to do that.');
-    expect(within(document.querySelector('tr.editing')).getByLabelText('Price').value).toBe('13.40');
+    await save();
+    expect(screen.getByRole('alert').textContent).toBe('The changes to Kite weren’t saved: your account isn’t allowed to do that.');
+    expect(screen.getByLabelText('List price').value).toBe('13.40');
     writeFailure = 'no rows';
-    await act(async () => { fireEvent.click(within(row).getByRole('button', { name: 'Save' })); });
-    expect(screen.getByRole('alert').textContent).toBe('The changes to product 2 weren’t saved. Try again.');
+    await save();
+    expect(screen.getByRole('alert').textContent).toBe('The changes to Kite weren’t saved. Try again.');
     writeFailure = null;
-    await act(async () => { fireEvent.click(within(row).getByRole('button', { name: 'Save' })); });
-    expect(document.querySelector('tr.editing')).toBeNull();
+    await save();
     expect(fake.find({ op: 'update' }).at(-1)).toMatchObject({ table: 'products', patch: { price: 13.4 }, returning: 'id' });
-    expect(statusText()).toBe('Saved product 2, Kite.');
+    expect(statusText()).toBe('Saved Kite.');
   });
 });
