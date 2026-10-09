@@ -10,12 +10,17 @@
 // A pending applicant uploads license documents right here (AW-085): the
 // application dialog's 'View account status' and its failed-upload notes
 // link to #documents. Approved and suspended accounts keep a link to /apply.
+//
+// Signed out, it says what a trade account gives and offers Sign in and
+// Apply (AW-086). The header's Quick Reorder links to #quick-reorder; a guest
+// gets the sign-in dialog over this page, and once the account has loaded
+// the section is brought into view with its heading focused.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { linesFromOrder } from '../../lib/lines.js';
 import { formatMoney } from '../../lib/format.js';
-import { Link } from '../../lib/router.js';
+import { Link, revealAnchor, useLocation } from '../../lib/router.js';
 import { lineTotal } from '../../lib/pricing.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
@@ -45,6 +50,12 @@ const STATUS_LABEL = {
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
+// The sections a link can open My account at (AW-086): Quick Reorder from
+// the header, the license documents from the application dialog.
+const REVEALED_SECTIONS = ['quick-reorder', 'documents'];
+// What a trade account gives, for a visitor who is signed out (AW-086).
+export const SIGNED_OUT_TEXT = 'A trade account shows your order history, lets you reorder by SKU with Quick Reorder, and shows your wholesale prices once it is approved.';
+
 // Order history that didn't load (AW-084): what to do, never the database's
 // own message.
 export const ORDERS_LOAD_ERROR = 'We couldn’t load your orders. Refresh the page, or';
@@ -60,12 +71,30 @@ const reorderMessage = (note, target) => (note.lines > 0
   + (note.unavailable.length > 0 ? ` No longer available: ${note.unavailable.join(', ')}.` : '');
 
 export function AccountPage({
-  profile, account = profile ? 'ready' : 'signed-out', onSignIn, onRetry, retrying = false, onSignOut, onSignOutEverywhere,
+  profile, account = profile ? 'ready' : 'signed-out', onSignIn, onApplyClick, onRetry, retrying = false, onSignOut, onSignOutEverywhere,
   signingOut = false, products = [], addLines, onOpenCart, isApprovedBuyer, isBackendConfigured = true,
 }) {
   const [orders, setOrders] = useState(null);
   const [error, setError] = useState(null);
   const [reorderNote, setReorderNote] = useState(null);
+
+  // A link to #quick-reorder or #documents that arrived before the account
+  // did (a guest's Quick Reorder, then sign-in; a reload): when the account
+  // turns ready, the section comes into view with its heading focused, once.
+  // A page that was ready from the start had that from the router, and a
+  // saved scroll position (Back, a reload) is left alone.
+  const location = useLocation();
+  const ready = account === 'ready' && !!profile;
+  const wasReady = useRef(ready);
+  const { hash } = location;
+  const restored = !!location.restore;
+  useEffect(() => {
+    const was = wasReady.current;
+    wasReady.current = ready;
+    const id = hash.slice(1);
+    if (!ready || was || restored || !REVEALED_SECTIONS.includes(id)) return undefined;
+    return revealAnchor(id);
+  }, [ready, hash, restored]);
 
   const profileId = profile?.id;
   useEffect(() => {
@@ -94,10 +123,11 @@ export function AccountPage({
           {account === 'no-profile' && (
             <AccountProblem onRetry={onRetry} retrying={retrying} onSignOut={onSignOut} signingOut={signingOut} />
           )}
-          {account === 'signed-out' && <p>Sign in to view your account, order history, and quick reorder.</p>}
-          {account === 'signed-out' && onSignIn && (
+          {account === 'signed-out' && <p>{SIGNED_OUT_TEXT}</p>}
+          {account === 'signed-out' && (onSignIn || onApplyClick) && (
             <div className="dialog-actions compact-actions">
-              <button className="button" type="button" onClick={onSignIn}>Sign in</button>
+              {onSignIn && <button className="button" type="button" onClick={onSignIn}>Sign in</button>}
+              {onApplyClick && <button className="button ghost" type="button" onClick={onApplyClick}>Apply for a trade account</button>}
             </div>
           )}
         </div>

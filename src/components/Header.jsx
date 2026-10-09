@@ -13,7 +13,7 @@ import { useState, useEffect, useRef } from 'react';
 import { IMG } from '../data/theme.js';
 import { COMPANY } from '../data/content.js';
 import { useMediaQuery, MOBILE_QUERY } from '../lib/useMediaQuery.js';
-import { Link, useLocation } from '../lib/router.js';
+import { Link, navigate, useLocation } from '../lib/router.js';
 import { MobileMenu } from './MobileMenu.jsx';
 import { AdminUnseenBadge } from './AdminUnseenBadge.jsx';
 import { HeaderSearch } from './HeaderSearch.jsx';
@@ -28,6 +28,11 @@ function Logo() {
   if (status === 'failed') return <span className="aw-logo-text"><span>Alabama</span><small>WHOLESALE INC.</small></span>;
   return <img key={attempt} ref={ref} src={IMG.logo} alt="" width="320" height="320" onLoad={onLoad} onError={onError} />;
 }
+
+// Quick Reorder is a section of My account (AW-086).
+const QUICK_REORDER = '/account#quick-reorder';
+// A left click with no modifier key, which a Link follows in the app.
+const plainClick = (e) => e.button === 0 && !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey);
 
 export function Header({ cartCount, onCart, products, departments, user, isAdmin, adminUnseen = 0, onLoginClick, onSignupClick, onLogout, signingOut = false, onHelp }) {
   const [megaOpen, setMegaOpen] = useState(false);
@@ -84,6 +89,17 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
     closeMenus();
     action();
   };
+  // A guest's Quick Reorder opens My account with the sign-in dialog over
+  // it (AW-086): the page first, so the dialog's history entry sits on top
+  // of /account and Back closes it there. Signing in then lands on the
+  // section (AccountPage reveals it once the account has loaded).
+  const followReorder = (e) => {
+    closeMenus();
+    if (user || !plainClick(e)) return;
+    e.preventDefault();
+    navigate(QUICK_REORDER);
+    onLoginClick();
+  };
   const closeMega = () => {
     setMegaOpen(false);
     categoryToggleRef.current?.focus();
@@ -97,6 +113,8 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
     if (!next || categoryToggleRef.current?.contains(next) || megaMenuRef.current?.contains(next)) return;
     setMegaOpen(false);
   };
+
+  const accountName = user ? (user.business || user.name || '') : '';
 
   return (
     <header className="aw-header container">
@@ -117,7 +135,15 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
         <div className="aw-account-actions">
           {user ? (
             <>
-              <Link className="aw-signin aw-account-name" to="/account" onClick={closeMenus}>{user.business || user.name || 'My Account'}</Link>
+              {/* What the link is for, above whose account it is (AW-267). The
+                  name is cut short to fit; the title has it in full. */}
+              {accountName ? (
+                <Link key="named" className="aw-signin aw-account-name" to="/account" onClick={closeMenus} title={accountName}>
+                  <small className="aw-account-kicker">My account</small>{' '}<span className="aw-account-label">{accountName}</span>
+                </Link>
+              ) : (
+                <Link key="plain" className="aw-signin aw-account-name" to="/account" onClick={closeMenus}>My account</Link>
+              )}
               {isAdmin && <Link className="aw-signin aw-desktop-only" to="/admin" onClick={closeMenus}>Admin<AdminUnseenBadge count={adminUnseen} /></Link>}
               <span className="aw-account-or">·</span>
               <button className="aw-signin aw-desktop-only" type="button" onClick={() => runNav(onLogout)} disabled={signingOut}>
@@ -143,7 +169,7 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
           onClose={() => setMenuOpen(false)} onFollowLink={closeMenus} departments={departments} products={products} user={user} isAdmin={isAdmin} adminUnseen={adminUnseen}
           signingOut={signingOut}
           go={{
-            logout: () => onLogout(), signin: () => runNav(onLoginClick), signup: () => runNav(onSignupClick), help: () => runNav(onHelp),
+            logout: () => onLogout(), signin: () => runNav(onLoginClick), signup: () => runNav(onSignupClick), help: () => runNav(onHelp), reorder: followReorder,
           }}
         />
       )}
@@ -185,7 +211,7 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
           <Link className="aw-exotics-link" to={{ page: 'category', category: 'NOVELTIES' }} onClick={closeMenus}>Exotics</Link>
         </nav>
         <div className="aw-service-nav">
-          <Link to="/account" onClick={closeMenus}>Quick Reorder</Link>
+          <Link to={QUICK_REORDER} onClick={followReorder}>Quick Reorder</Link>
           <button type="button" onClick={() => runNav(onHelp)}>Help <Icon name="help" /></button>
         </div>
       </div>

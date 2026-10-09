@@ -330,7 +330,7 @@ export default function App() {
       case 'account':
         // Keyed by account: another buyer never sees the last one's orders (AW-190).
         return (
-          <AccountPage key={session?.user?.id || 'guest'} {...accountProps} products={products}
+          <AccountPage key={session?.user?.id || 'guest'} {...accountProps} products={products} onApplyClick={openSignup}
                        addLines={cart.addLines} onOpenCart={() => setCartOpen(true)} isApprovedBuyer={isApprovedBuyer} isBackendConfigured={isBackendConfigured}
                        onSignOutEverywhere={() => handleLogout({ scope: 'global' })} />
         );

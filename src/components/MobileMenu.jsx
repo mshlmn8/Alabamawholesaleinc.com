@@ -8,6 +8,9 @@ import { ModalLayer } from './ModalLayer.jsx';
 import { Icon } from './Icon.jsx';
 import { AdminUnseenBadge } from './AdminUnseenBadge.jsx';
 
+// Quick Reorder is a section of My account (AW-086).
+const QUICK_REORDER = '/account#quick-reorder';
+
 export function MobileMenu({ onClose, onFollowLink, departments, products, user, isAdmin, adminUnseen = 0, signingOut = false, go }) {
   return (
     <ModalLayer onClose={onClose} className="aw-menu-layer">
@@ -38,16 +41,20 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
             <h3>Account</h3>
             {user ? (
               <>
-                <Link to="/account" onClick={onFollowLink}>{user.business || user.name || 'My Account'}</Link>
+                {/* What the link is for, then whose account it is (AW-267). */}
+                <Link to="/account" onClick={onFollowLink}>
+                  <span className="menu-account">My account{' '}<small className="menu-sub">{user.business || user.name || ''}</small></span>
+                </Link>
                 {isAdmin && <Link to="/admin" onClick={onFollowLink}><span>Admin</span><AdminUnseenBadge count={adminUnseen} /></Link>}
-                <Link to="/account" onClick={onFollowLink}>Quick Reorder</Link>
+                <Link to={QUICK_REORDER} onClick={onFollowLink}>Quick Reorder</Link>
                 <button type="button" onClick={go.logout} disabled={signingOut}><span>{signingOut ? 'Signing out…' : 'Sign Out'}</span></button>
               </>
             ) : (
               <>
                 <button type="button" onClick={go.signin}>Sign In</button>
                 <button type="button" onClick={go.signup}>Sign Up</button>
-                <Link to="/account" onClick={onFollowLink}>Quick Reorder</Link>
+                {/* My account's section, with the sign-in dialog over it (AW-086). */}
+                <Link to={QUICK_REORDER} onClick={go.reorder}>Quick Reorder</Link>
               </>
             )}
             <button type="button" onClick={go.help}>Help</button>

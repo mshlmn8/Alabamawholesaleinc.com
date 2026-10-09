@@ -453,6 +453,41 @@ export function focusPageHeading() {
   focusWithoutScroll(document.querySelector('main h1') || document.querySelector('main'));
 }
 
+// Brings #id into view and focuses its heading, as following a link to it
+// does, for a section that appears after its page did (My account's Quick
+// Reorder once the account has loaded, AW-086). It runs after the current
+// task, so a dialog that closes in the same update hands focus back first,
+// and while a dialog keeps the page inert it waits for that dialog to close.
+// Returns a function that cancels it.
+export function revealAnchor(id) {
+  if (!hasWindow) return () => {};
+  let timer = 0;
+  let observer = null;
+  const cancel = () => {
+    window.clearTimeout(timer);
+    observer?.disconnect();
+    observer = null;
+  };
+  const attempt = () => {
+    const target = document.getElementById(id);
+    if (!target) return;
+    const cover = target.closest('[inert]');
+    if (cover) {
+      observer = new MutationObserver(() => {
+        if (cover.hasAttribute('inert')) return;
+        cancel();
+        timer = window.setTimeout(attempt, 0);
+      });
+      observer.observe(cover, { attributes: true, attributeFilter: ['inert'] });
+      return;
+    }
+    scrollToAnchor(id);
+    focusWithoutScroll(headingIn(target));
+  };
+  timer = window.setTimeout(attempt, 0);
+  return cancel;
+}
+
 // Jumps to the top of the page at once, as a page change does (AW-037), for
 // a view that replaces the page without a navigation (the quote receipt).
 export function scrollToTop() {

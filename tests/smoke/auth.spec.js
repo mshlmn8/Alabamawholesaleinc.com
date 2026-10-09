@@ -122,7 +122,7 @@ test('an account page waits for the account instead of showing the signed-out vi
   const calls = await mockSupabase(page, { profileDelay: 800 });
   await page.goto('/account');
   await expect(page.getByText('Loading your account…')).toBeVisible();
-  await expect(page.getByText(/Sign in to view your account/)).toHaveCount(0);
+  await expect(page.getByText(/A trade account shows your order history/)).toHaveCount(0);
   await expect(page.getByRole('heading', { level: 1, name: 'Test Market LLC' })).toBeVisible();
   expect(calls.profiles).toBe(1);
   expect(errors).toEqual([]);
