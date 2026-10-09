@@ -5,6 +5,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { MOBILE_QUERY } from './lib/useMediaQuery.js';
+import { STICKY_HEADER_QUERY } from './lib/stickyHeader.js';
 
 // Vitest runs from the repository root.
 const read = (file) => readFileSync(resolve(process.cwd(), file), 'utf8');
@@ -283,6 +284,69 @@ describe('the page frame (AW-166, AW-167, AW-315)', () => {
   });
 });
 
+describe('the sticky header and what sticks under it (AW-153, AW-300, AW-312, AW-158, AW-157)', () => {
+  const rule = (selector) => declarations(rules(css).find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+  const inBlocks = (prelude, selector) => mediaBlocks(css).filter((b) => b.prelude === prelude)
+    .flatMap((b) => rules(b.body)).filter((r) => r.selectors.join(', ') === selector).map((r) => declarations(r.body));
+
+  it('has no utility row above the masthead', () => {
+    expect(css).not.toMatch(/\.aw-utility/);
+  });
+
+  it('defines --header-h and --trade-bar-h once, in :root, as 0px until measured', () => {
+    expect(root['--header-h']).toBe('0px');
+    expect(root['--trade-bar-h']).toBe('0px');
+  });
+
+  it('sticks the header, its trade bar scrolled away, only on wide windows at least 600px tall', () => {
+    expect(STICKY_HEADER_QUERY).not.toContain('53.125em');
+    expect(mediaPreludes.filter((p) => p === STICKY_HEADER_QUERY)).toHaveLength(1);
+    const sticky = inBlocks(STICKY_HEADER_QUERY, '.site-header');
+    expect(sticky).toEqual([{ position: 'sticky', top: 'calc(-1 * var(--trade-bar-h))', 'z-index': '20' }]);
+    // Nowhere else: not in the compact layout, not on short windows.
+    const stuck = declared('position').filter(({ value }) => value === 'sticky').map(({ selector }) => selector);
+    expect(stuck.filter((s) => /site-header|aw-header/.test(s))).toEqual(['.site-header']);
+    // Above the page's own layers, below the toast and the dialogs.
+    expect(Number(rule('.toast-root')['z-index'])).toBeGreaterThan(20);
+    expect(Number(rule('.aw-layer')['z-index'])).toBeGreaterThan(20);
+    expect(Number(rule('.skip-link')['z-index'])).toBeGreaterThan(20);
+    // The skip link is fixed to the window: nothing may make the header its containing block.
+    for (const property of ['transform', 'filter', 'contain', 'will-change', 'perspective']) {
+      expect(declared(property).filter(({ selector }) => /(^|, )(\.site-header|\.app-shell|body|html)$/.test(selector)), property).toEqual([]);
+    }
+  });
+
+  it('lands anchors and keyboard focus below the stuck header, and never counts the header as hidden under itself', () => {
+    const html = rules(css).filter((r) => r.selectors.join() === 'html').map((r) => declarations(r.body)).find((d) => d['scroll-padding-top']);
+    expect(html['scroll-padding-top']).toBe('24px');
+    // Where the header sticks, the offset moves from <html> to everything outside the header.
+    expect(inBlocks(STICKY_HEADER_QUERY, 'html')).toEqual([{ 'scroll-padding-top': '0' }]);
+    expect(inBlocks(STICKY_HEADER_QUERY, '.app-shell > :not(.site-header), .app-shell > :not(.site-header) *')).toEqual([{ 'scroll-margin-top': 'calc(var(--header-h) + 24px)' }]);
+  });
+
+  it('sticks the filter sidebar, the policy nav and the phone filter bar under the header, the sidebar no taller than the window', () => {
+    expect(rule('.category-filters')).toMatchObject({ position: 'sticky', top: 'calc(var(--header-h) + 18px)', 'max-height': 'calc(100dvh - var(--header-h) - 36px)', 'overflow-y': 'auto' });
+    // The vh line before it is the fallback for browsers without dvh.
+    expect(css).toMatch(/max-height: calc\(100vh - var\(--header-h\) - 36px\); max-height: calc\(100dvh - var\(--header-h\) - 36px\);/);
+    expect(rule('.policy-nav')).toMatchObject({ position: 'sticky', top: 'calc(var(--header-h) + 18px)' });
+    expect(inBlocks(MOBILE_QUERY, '.category-toolbar')[0]).toMatchObject({ position: 'sticky', top: 'var(--header-h)' });
+  });
+
+  it('starts inner pages 8px under the navigation row, and keeps the department head compact', () => {
+    expect(rule('.page-head')).toEqual({ padding: '8px 0 8px' });
+    expect(rule('.category-head h1')['font-size']).toMatch(/^clamp\(/);
+    // margin-block only: the compact row's -16px side margins must survive.
+    expect(rule('.category-head .sub-pills')).toEqual({ 'margin-block': '12px 16px' });
+    expect(inBlocks(MOBILE_QUERY, '.category-head .sub-pills')[0]).toMatchObject({ position: 'relative', 'margin-block': '6px 10px' });
+    expect(inBlocks(MOBILE_QUERY, '.category-head .sub-pills')[0]).not.toHaveProperty('margin');
+  });
+
+  it('hides the product line from the phone filter bar visually only', () => {
+    expect(inBlocks('(max-width: 37.5em)', '.result-scope')[0]).toMatchObject({ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden' });
+    expect(css).not.toMatch(/\.result-scope\s*\{[^}]*display:\s*none/);
+  });
+});
+
 // Every `@media` block's prelude and the text between its braces (nested
 // rules included), with the offsets of that text in the source.
 const mediaBlocks = (source) => {
@@ -405,7 +469,7 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
     expect(inHover('.editorial-card:hover .text-link')).toEqual({ 'text-decoration-thickness': '2px' });
     expect(inHover('.editorial-card:hover img.bg')).toEqual({ opacity: '.36' });
     expect(inHover('.aw-menu-feature:hover')).toEqual({ background: 'var(--purple-hover)' });
-    for (const s of ['.section-head > a:hover', '.aw-utility a:hover', '.sku-details summary:hover']) expect(inHover(s), s).toEqual({ color: 'var(--orange-dark)' });
+    for (const s of ['.section-head > a:hover', '.sku-details summary:hover']) expect(inHover(s), s).toEqual({ color: 'var(--orange-dark)' });
     expect(inHover('.variant-chips button:not(:disabled):not([aria-pressed="true"]):hover')).toEqual({ 'border-color': 'var(--purple)' });
     expect(inHover('button.filter-signin:hover')).toEqual({ 'border-left-color': 'var(--purple)' });
     expect(inHover('button.filter-signin:hover span')).toEqual({ 'text-decoration-thickness': '2px' });
@@ -536,7 +600,8 @@ describe('photo loading states (AW-192, AW-341, AW-345)', () => {
     expect(own('.aw-logo-text > span').font).toMatch(/^700 [\d.]+rem\/1 var\(--body\)$/);
     expect(own('.aw-logo-text > small').color).toBe('var(--purple)');
     const heights = (selector, property) => all.filter((r) => r.selectors.join(', ') === selector).map((r) => declarations(r.body)[property]);
-    expect(heights('.aw-logo img', 'height')).toEqual(['72px', '64px', '48px', '42px']);
+    // 56px in the compact masthead row (AW-153), 48px and 42px on phones.
+    expect(heights('.aw-logo img', 'height')).toEqual(['56px', '48px', '42px']);
     expect(heights('.aw-logo-text', 'min-height')).toEqual(heights('.aw-logo img', 'height'));
   });
 });
@@ -799,7 +864,7 @@ describe('one link style (AW-297)', () => {
     const offsets = declared('text-underline-offset');
     expect(offsets.length).toBeGreaterThan(10);
     for (const { selector, value } of offsets) expect(value, selector).toBe('var(--link-offset)');
-    for (const selector of ['.trade-bar a, .trade-bar button', '.footer-grid a', '.footer-policies a', '.aw-utility a', '.sku-details summary']) {
+    for (const selector of ['.trade-bar a, .trade-bar button', '.footer-grid a', '.footer-policies a', '.sku-details summary']) {
       expect(ruleFor(selector), selector).toMatchObject({ 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' });
     }
   });

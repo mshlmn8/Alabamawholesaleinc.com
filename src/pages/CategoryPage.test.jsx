@@ -3,7 +3,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { navigate, resolveRoute, useRoute } from '../lib/router.js';
-import { CategoryPage } from './CategoryPage.jsx';
+import { CategoryPage, centredScrollLeft } from './CategoryPage.jsx';
 
 const products = [
   { id: 1, name: 'Kite tobacco', brand: 'Kite', cat: 'TOBACCO', sub: 'Cigarettes', sku: 'AW-KITE', variants: [], tag: 'NEW' },
@@ -174,5 +174,76 @@ describe('CategoryPage', () => {
     act(() => navigate('/category/grocery'));
     expect(screen.queryByRole('group', { name: 'Featured' })).toBeNull();
     expect(boxes()).toEqual([]);
+  });
+});
+
+describe('CategoryPage on a phone (AW-158, AW-157)', () => {
+  // The compact layout: MOBILE_QUERY matches.
+  const phone = () => vi.stubGlobal('matchMedia', vi.fn((query) => ({ media: query, matches: true, addEventListener() {}, removeEventListener() {} })));
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('puts the active-filter chips after the toolbar, so only the Filter & Sort row sticks (AW-158)', () => {
+    phone();
+    act(() => navigate('/category/tobacco/cigars?tags=bestseller&q=swish', { replace: true }));
+    render(<Harness />);
+    const toolbar = document.querySelector('.category-toolbar');
+    const chips = screen.getByRole('list', { name: 'Active filters' });
+    expect(toolbar.contains(chips)).toBe(false);
+    expect(toolbar.nextElementSibling).toBe(chips);
+    // The Filter & Sort badge keeps the count.
+    expect(document.querySelector('.filter-toggle .filter-count').textContent).toBe(', 3 active');
+    // The phone note leaves the line to screen readers, which still hear it.
+    expect(note()).toBe('Showing 1 of 2 items in Cigars');
+    expect(document.querySelector('.result-note .result-scope').textContent).toBe('in Cigars');
+    fireEvent.click(screen.getByRole('button', { name: 'Remove filter Cigars' }));
+    expect(note()).toBe('Showing 1 of 3 items');
+    expect(document.querySelector('.result-note .result-scope').textContent).toBe('');
+  });
+
+  it('centres the current product line in the pill row, without scrolling the page (AW-157)', () => {
+    phone();
+    // Pill positions in the scrolling row, which is their offsetParent (it is
+    // positioned in the compact layout); the row is 200px wide.
+    const layout = { 'All (3)': [16, 80], 'Cigarettes (1)': [104, 120], 'Cigars (2)': [232, 100] };
+    const pillBox = (el) => (el.classList.contains('sub-pill') ? layout[el.textContent] : null);
+    vi.spyOn(HTMLElement.prototype, 'offsetLeft', 'get').mockImplementation(function left() { return pillBox(this)?.[0] ?? 0; });
+    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function width() { return pillBox(this)?.[1] ?? 0; });
+    vi.spyOn(HTMLElement.prototype, 'offsetParent', 'get').mockImplementation(function parent() { return pillBox(this) ? this.parentElement : null; });
+    vi.spyOn(Element.prototype, 'clientWidth', 'get').mockImplementation(function client() { return this.classList.contains('sub-pills') ? 200 : 0; });
+    const scrolls = [];
+    vi.spyOn(Element.prototype, 'scrollLeft', 'set').mockImplementation(function set(value) { if (this.classList.contains('sub-pills')) scrolls.push(value); });
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+
+    act(() => navigate('/category/tobacco/cigars', { replace: true }));
+    render(<Harness />);
+    // Cigars (232 + 100 / 2) in the middle of 200px.
+    expect(scrolls).toEqual([182]);
+    fireEvent.click(screen.getByRole('link', { name: 'Cigarettes (1)' }));
+    expect(url()).toBe('/category/tobacco/cigarettes');
+    expect(scrolls).toEqual([182, 64]);
+    // All sits at the start: the row goes back to 0, never below.
+    fireEvent.click(screen.getByRole('link', { name: 'All (3)' }));
+    expect(scrolls).toEqual([182, 64, 0]);
+    // The page itself never moved.
+    expect(window.scrollTo).not.toHaveBeenCalled();
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    delete Element.prototype.scrollIntoView;
+  });
+
+  it('leaves the pill row alone in the desktop layout, where the pills wrap', () => {
+    const set = vi.spyOn(Element.prototype, 'scrollLeft', 'set').mockImplementation(() => {});
+    act(() => navigate('/category/tobacco/cigars', { replace: true }));
+    render(<Harness />);
+    expect(set).not.toHaveBeenCalled();
+  });
+});
+
+describe('centredScrollLeft', () => {
+  it('centres a pill measured from its row, and from a shared offsetParent when the row is not positioned', () => {
+    const row = { offsetLeft: 40, clientWidth: 300 };
+    expect(centredScrollLeft({ offsetParent: row, offsetLeft: 500, offsetWidth: 100 }, row)).toBe(400);
+    expect(centredScrollLeft({ offsetParent: {}, offsetLeft: 540, offsetWidth: 100 }, row)).toBe(400);
+    expect(centredScrollLeft({ offsetParent: row, offsetLeft: 16, offsetWidth: 80 }, row)).toBe(0);
   });
 });

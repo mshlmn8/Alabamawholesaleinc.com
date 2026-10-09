@@ -144,3 +144,120 @@ test.describe('announcements (WCAG 2.2.2)', () => {
     expect(errors).toEqual([]);
   });
 });
+
+// The header sticks on wide windows at least 600px tall, with the trade bar
+// scrolled away, and everything that sticks or scrolls to an anchor stays
+// below it (AW-153, AW-312). On phones the Filter & Sort row is the one
+// sticky control, the chips scroll away (AW-158), and the current product
+// line is centred in the pill row (AW-157).
+test.describe('the sticky header and the department page', () => {
+  const rect = (locator) => locator.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, height: r.height };
+  });
+
+  test('on a long page search, the cart and Categories stay in reach (AW-153)', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'phone', 'the header sticks on wide windows only');
+    const errors = trackErrors(page);
+    await page.goto('/category/tobacco');
+    await expect(page.locator('main h1')).toHaveText('Tobacco');
+    await page.evaluate(() => window.scrollTo({ top: 2500, behavior: 'instant' }));
+    await page.waitForFunction(() => window.scrollY === 2500);
+    const banner = page.getByRole('banner');
+    await expect(banner.locator('.trade-bar')).not.toBeInViewport();
+    const search = banner.getByRole('combobox', { name: 'Search products' });
+    const cart = banner.getByRole('button', { name: /^Cart/ });
+    const categories = banner.getByRole('button', { name: 'Categories' });
+    for (const control of [search, cart, categories]) await expect(control).toBeInViewport({ ratio: 1 });
+    // The header's bottom edge is what --header-h says.
+    const headerH = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')));
+    expect(Math.abs((await rect(banner)).bottom - headerH)).toBeLessThan(1);
+
+    await search.click();
+    await search.fill('swisher');
+    await expect(page.getByRole('listbox', { name: 'Products' })).toBeInViewport();
+    await page.keyboard.press('Escape');
+    await categories.click();
+    await expect(page.locator('#aw-mega-menu')).toBeInViewport();
+    await page.keyboard.press('Escape');
+    await cart.click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    // Using them never scrolled the page: the header's own controls never
+    // count as hidden under it.
+    expect(await page.evaluate(() => window.scrollY)).toBe(2500);
+    expect(errors).toEqual([]);
+  });
+
+  test('an anchor lands below the header (AW-153)', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/#bestsellers');
+    const section = page.locator('#bestsellers');
+    await expect(section).toBeInViewport();
+    await page.waitForFunction(() => window.scrollY > 0);
+    const headerH = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')));
+    const { top } = await rect(section);
+    // scroll-padding-top: the stuck header (none on a phone), then 24px.
+    expect(Math.abs(top - (headerH + 24))).toBeLessThan(2);
+    expect(errors).toEqual([]);
+  });
+
+  test('on a zoomed laptop the filter panel ends on screen and scrolls (AW-312)', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'phone', 'the filter sidebar is desktop only');
+    const errors = trackErrors(page);
+    for (const size of [{ width: 960, height: 526 }, { width: 1280, height: 600 }]) {
+      await page.setViewportSize(size);
+      await page.goto('/category/tobacco');
+      await expect(page.locator('main h1')).toHaveText('Tobacco');
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight / 2));
+      const panel = page.getByRole('complementary', { name: 'Product filters' });
+      expect((await rect(panel)).bottom).toBeLessThanOrEqual(size.height);
+      // Its last control is reached by keyboard, scrolled into the panel.
+      await panel.getByRole('searchbox').focus();
+      const locked = panel.getByRole('button', { name: /Wholesale pricing is locked/ });
+      for (let i = 0; i < 10 && !(await locked.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('Tab');
+      await expect(locked).toBeFocused();
+      await expect(locked).toBeInViewport({ ratio: 1 });
+      const box = await rect(locked);
+      expect(box.bottom).toBeLessThanOrEqual((await rect(panel)).bottom);
+    }
+    expect(errors).toEqual([]);
+  });
+
+  test('on a phone only the Filter & Sort row sticks, and the current line is in view (AW-158, AW-157)', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'phone', 'the compact layout');
+    const errors = trackErrors(page);
+    await page.setViewportSize({ width: 360, height: 740 });
+    await page.goto('/category/candies/chocolate-bars?tags=bestseller&q=bar');
+    const toolbar = page.locator('.category-toolbar');
+    const chips = page.getByRole('list', { name: 'Active filters' });
+    await expect(chips.getByRole('button')).toHaveCount(4);
+    expect(await toolbar.evaluate((el, list) => el.contains(list), await chips.elementHandle())).toBe(false);
+    expect((await rect(toolbar)).height).toBeLessThanOrEqual(64);
+    // The pill row did not move the page, and shows the current line.
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    await expect(page.locator('.sub-pills [aria-current="page"]')).toBeInViewport({ ratio: 1 });
+    // Scrolled: the row is stuck at the top, and the chips have gone under it and away.
+    await page.evaluate(() => window.scrollTo({ top: 900, behavior: 'instant' }));
+    await page.waitForFunction(() => window.scrollY === 900);
+    expect((await rect(toolbar)).top).toBe(0);
+    expect((await rect(toolbar)).height).toBeLessThanOrEqual(64);
+    await expect(chips).not.toBeInViewport();
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    for (const path of ['/category/tobacco/wraps-and-leafs', '/category/novelties/mushroom-products']) {
+      await page.goto(path);
+      const current = page.locator('.sub-pills [aria-current="page"]');
+      await expect(current).toBeInViewport({ ratio: 1 });
+      // Picking another line keeps the page where it is and centres the pick.
+      const name = await page.locator('.sub-pills .sub-pill:not([aria-current])').last().textContent();
+      const next = page.locator('.sub-pills').getByRole('link', { name, exact: true });
+      await next.evaluate((el) => el.closest('.sub-pills').scrollTo({ left: el.offsetLeft }));
+      const y = await page.evaluate(() => window.scrollY);
+      await next.click();
+      await expect(next).toHaveAttribute('aria-current', 'page');
+      await expect(next).toBeInViewport({ ratio: 1 });
+      expect(await page.evaluate(() => window.scrollY)).toBe(y);
+    }
+    expect(errors).toEqual([]);
+  });
+});

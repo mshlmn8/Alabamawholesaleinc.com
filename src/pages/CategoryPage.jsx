@@ -38,6 +38,14 @@ export function featuredOptions(products, picked = []) {
     .filter(o => o.count > 0 || picked.includes(o.tag));
 }
 
+// The row scroll that centres a product-line pill in the phone pill row
+// (AW-157). The row is positioned in the compact layout, so the pill's
+// offsetLeft is measured from it; scrollLeft keeps itself in range.
+export function centredScrollLeft(pill, row) {
+  const left = pill.offsetParent === row ? pill.offsetLeft : pill.offsetLeft - row.offsetLeft;
+  return Math.max(0, Math.round(left + pill.offsetWidth / 2 - row.clientWidth / 2));
+}
+
 // Typing in the department search updates the URL once the typing pauses.
 const SEARCH_DELAY_MS = 250;
 
@@ -141,9 +149,10 @@ export function CategoryPage({
   };
 
   // With a product line picked, the count compares against that line (AW-232).
+  // Phones show the note without the line's name (AW-158, .result-scope).
   const resultNote = (
     <p className="result-note" role="status">
-      Showing <strong>{items.length}</strong> <span>{`of ${inScope.length} item${inScope.length === 1 ? '' : 's'}${activeSub ? ` in ${activeSub}` : ''}`}</span>
+      Showing <strong>{items.length}</strong> <span>{`of ${inScope.length} item${inScope.length === 1 ? '' : 's'}${activeSub ? ' ' : ''}`}</span><span className="result-scope">{activeSub ? `in ${activeSub}` : ''}</span>
     </p>
   );
   const sortControl = (
@@ -181,14 +190,26 @@ export function CategoryPage({
   );
   const closeFilters = () => setFiltersOpen(false);
 
+  // On phones the product lines are one scrolling row, and the current one is
+  // centred in it on arrival and after each pick (AW-157): the row's own
+  // scrollLeft, not scrollIntoView, which can also scroll the page and undo
+  // the position Back restores.
+  const pillsRef = useRef(null);
+  useLayoutEffect(() => {
+    const row = pillsRef.current;
+    const pill = row?.querySelector('[aria-current="page"]');
+    if (!isMobile || !pill) return;
+    row.scrollLeft = centredScrollLeft(pill, row);
+  }, [activeSub, isMobile]);
+
   return (
     <section>
-      <div className="page-head">
+      <div className="page-head category-head">
         <Breadcrumbs items={[HOME_CRUMB, { label: catLabel(category), to: here({ sub: null }) }, ...(activeSub ? [{ label: activeSub }] : [])]} />
         <p className="eyebrow">{`DEPARTMENT · ${String(cat?.count ?? inCategory.length).padStart(2, '0')} SKUs`}</p>
         <h1>{catLabel(category)}</h1>
         <p>{`Wholesale ${catLabel(category).toLowerCase()} for licensed retail accounts. ${isApprovedBuyer ? 'Your tier pricing is shown on each card.' : profile ? 'Pricing unlocks after your account is approved.' : 'Sign in to see your wholesale pricing.'}`}</p>
-        <nav className="sub-pills" aria-label={`${catLabel(category)} product lines`}>
+        <nav className="sub-pills" ref={pillsRef} aria-label={`${catLabel(category)} product lines`}>
           <Link className={`sub-pill ${!activeSub ? 'active' : ''}`} to={here({ sub: null })} scroll={false} aria-current={!activeSub ? 'page' : undefined}>{`All (${inCategory.length})`}</Link>
           {(cat?.subs || []).map(s => {
             const count = inCategory.filter(p => p.sub === s).length;
@@ -209,15 +230,15 @@ export function CategoryPage({
           {resultNote}
           {!isMobile && sortControl}
         </div>
-        {chips.length > 0 && (
-          <ul className="active-filters" aria-label="Active filters">
-            {chips.map(c => (
-              <li key={c.key}><button type="button" onClick={() => removeChip(c)} aria-label={`Remove filter ${c.label}`}><span>{c.label}</span><Icon name="close" /></button></li>
-            ))}
-            <li><button className="text-link" type="button" onClick={clearFilters}>Clear all</button></li>
-          </ul>
-        )}
       </div>
+      {chips.length > 0 && (
+        <ul className="active-filters" aria-label="Active filters">
+          {chips.map(c => (
+            <li key={c.key}><button type="button" onClick={() => removeChip(c)} aria-label={`Remove filter ${c.label}`}><span>{c.label}</span><Icon name="close" /></button></li>
+          ))}
+          <li><button className="text-link" type="button" onClick={clearFilters}>Clear all</button></li>
+        </ul>
+      )}
 
       {isMobile && filtersOpen && (
         <ModalLayer onClose={closeFilters} className="aw-filter-layer">

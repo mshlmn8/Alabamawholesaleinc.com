@@ -81,6 +81,11 @@
   --section-gap: 48px;
   --block-gap: 24px;
   --grid-gap: 24px;
+  /* The sticky header (AW-153): what stays on screen when it is stuck, and the
+     trade bar that scrolls away above it. src/lib/stickyHeader.js measures
+     them; 0px where the header doesn't stick (compact layout, short windows). */
+  --header-h: 0px;
+  --trade-bar-h: 0px;
   /* Touch targets grow with the text size. */
   --tap: 2.75rem;
   --tap-sm: 2.5rem;
@@ -189,6 +194,22 @@ input[type="search"]:focus-visible { outline-offset: -3px; }
    focus, then shows over the top-left corner, above the header; fixed, so it
    shows however far the page is scrolled. */
 .site-header { background: #fff; }
+/* On a wide window at least 600px tall the header sticks, with the trade bar
+   scrolled away, so search, the cart and Categories stay in reach on long
+   pages (AW-153). Not in the compact layout, where the Filter & Sort bar
+   sticks instead, nor on short windows (zoomed laptops, AW-312; phones on
+   their side). Its menus stay above the page and below the toast and the
+   dialogs. The prelude is STICKY_HEADER_QUERY in src/lib/stickyHeader.js. No
+   transform, filter or contain here: the skip link is fixed to the window. */
+@media (min-width: 53.13em) and (min-height: 37.5em) {
+  .site-header { position: sticky; top: calc(-1 * var(--trade-bar-h)); z-index: 20; }
+  /* Anchors, the skip link and keyboard focus land below the stuck header
+     (WCAG 2.4.11). The offset is on the page's content, not scroll-padding on
+     <html>: that would count the header's own controls as hidden under it,
+     and every Tab through them would scroll the page up. */
+  html { scroll-padding-top: 0; }
+  .app-shell > :not(.site-header), .app-shell > :not(.site-header) * { scroll-margin-top: calc(var(--header-h) + 24px); }
+}
 .skip-link { position: fixed; top: 8px; left: 8px; z-index: 70; display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 16px; background: #fff; color: var(--purple); border: 2px solid var(--purple); font-size: var(--text-sm); font-weight: 700; text-decoration: underline; text-underline-offset: var(--link-offset); transform: translateY(-200%); }
 .skip-link:focus { transform: none; }
 .trade-bar { background: var(--purple); color: #fff; font-size: var(--text-xs); letter-spacing: var(--track-label); font-weight: 600; }
@@ -211,18 +232,13 @@ input[type="search"]:focus-visible { outline-offset: -3px; }
 
 /* ============================ header ============================ */
 .aw-header { position: relative; z-index: 20; background: #fff; }
-.aw-utility { display: flex; justify-content: space-between; align-items: center; padding-top: 12px; color: var(--muted); font-size: var(--text-sm); }
-.aw-utility span:first-child { letter-spacing: var(--track-label); font-weight: 700; color: var(--purple); }
-/* The phone number: ink and bold, in a full-size tap target whose extra height
-   hangs into the padding around the row instead of pushing the header down. */
-.aw-utility a { display: inline-flex; align-items: center; min-height: var(--tap); margin-block: calc((var(--tap) - 1.5em) / -2); padding-inline: 4px; margin-inline: -4px; color: var(--ink); font-weight: 700; text-decoration: underline; text-underline-offset: var(--link-offset); }
-.aw-masthead { display: flex; align-items: center; gap: 48px; min-height: 106px; padding: 12px 0 18px; }
+.aw-masthead { display: flex; align-items: center; gap: 32px; min-height: 0; padding: 10px 0; }
 .aw-menu-toggle { display: none; }
 .aw-logo { flex: 0 0 auto; padding: 0; line-height: 0; display: block; background: none; border: 0; text-align: left; }
-.aw-logo img { display: block; height: 72px; width: auto; max-width: 96px; object-fit: contain; }
+.aw-logo img { display: block; height: 56px; width: auto; max-width: 96px; object-fit: contain; }
 /* The brand in text when the logo photo fails to load (AW-341), as tall as
    the logo would be: the name in text orange, the line under it in purple. */
-.aw-logo-text { display: flex; flex-direction: column; justify-content: center; min-height: 72px; white-space: nowrap; }
+.aw-logo-text { display: flex; flex-direction: column; justify-content: center; min-height: 56px; white-space: nowrap; }
 .aw-logo-text > span { font: 700 1.75rem/1 var(--body); letter-spacing: -.075rem; color: var(--orange-dark); }
 .aw-logo-text > small { font: 700 var(--text-xs)/1.4 var(--body); letter-spacing: var(--track-eyebrow); color: var(--purple); margin-top: 4px; }
 /* The header search box takes the field border, fill, corner and text size
@@ -238,10 +254,9 @@ input[type="search"]:focus-visible { outline-offset: -3px; }
 .aw-search input::placeholder { font-size: var(--text-sm); }
 .aw-search > button { flex: 0 0 52px; display: grid; place-items: center; border: 0; border-left: 1px solid var(--field-border); border-radius: 0 2px 2px 0; color: var(--purple); background: var(--paper); font-size: 1.25rem; }
 /* Hover only where there is a mouse (AW-160): a tap leaves no hover colour
-   behind. The utility row's phone link turns the text orange (AW-145). */
+   behind. */
 @media (hover: hover) {
   .aw-search > button:hover { background: var(--line); }
-  .aw-utility a:hover { color: var(--orange-dark); }
 }
 /* Pressed: the page sets no tap highlight, so this is the tap cue. */
 .aw-search > button:active { background: var(--line); }
@@ -261,8 +276,8 @@ input[type="search"]:focus-visible { outline-offset: -3px; }
 /* Orders placed since the admin's last visit to Orders, beside the Admin link (AW-111). */
 .admin-unseen { display: inline-grid; place-items: center; min-width: 1.25rem; height: 1.25rem; margin-left: 6px; padding: 0 5px; border-radius: 999px; background: var(--orange-dark); color: #fff; font-size: var(--text-xs); font-weight: 700; line-height: 1; vertical-align: middle; }
 
-.aw-navigation { display: flex; align-items: stretch; gap: 32px; min-height: 55px; position: relative; border-block: 1px solid var(--line); margin-bottom: var(--block-gap); }
-.aw-category-toggle { display: flex; align-items: center; justify-content: flex-start; gap: 13px; flex: 0 0 205px; padding: 15px 20px; margin: -1px 0; background: var(--purple); color: #fff; border: 1px solid var(--purple); font-size: var(--text-sm); font-weight: 700; }
+.aw-navigation { display: flex; align-items: stretch; gap: 32px; min-height: 48px; position: relative; border-block: 1px solid var(--line); margin-bottom: var(--block-gap); }
+.aw-category-toggle { display: flex; align-items: center; justify-content: flex-start; gap: 13px; flex: 0 0 205px; padding: 0 20px; margin: -1px 0; background: var(--purple); color: #fff; border: 1px solid var(--purple); font-size: var(--text-sm); font-weight: 700; }
 /* Open: always the lighter purple. Hover only with a mouse, so a tap that
    closes the menu leaves the toggle at its resting purple (AW-160). */
 .aw-category-toggle[aria-expanded="true"] { background: var(--purple-hover); }
@@ -276,7 +291,7 @@ input[type="search"]:focus-visible { outline-offset: -3px; }
 .aw-category-toggle[aria-expanded="true"] .aw-chevron { transform: rotate(180deg); }
 .aw-discovery-nav, .aw-service-nav { display: flex; align-items: center; gap: 30px; }
 .aw-discovery-nav { font-size: var(--text-sm); font-weight: 700; }
-.aw-discovery-nav > button, .aw-discovery-nav > a { min-height: 52px; display: flex; align-items: center; gap: 9px; white-space: nowrap; background: none; border: 0; padding: 0; font: inherit; color: inherit; }
+.aw-discovery-nav > button, .aw-discovery-nav > a { min-height: var(--tap); display: flex; align-items: center; gap: 9px; white-space: nowrap; background: none; border: 0; padding: 0; font: inherit; color: inherit; }
 @media (hover: hover) {
   .aw-discovery-nav > button:hover, .aw-discovery-nav > a:hover, .aw-service-nav button:hover, .aw-service-nav a:hover { color: var(--orange-dark); }
 }
@@ -631,7 +646,8 @@ p > .text-link { min-height: 0; min-width: 0; }
 .apply-steps p { grid-column: 2; margin: 0; font-size: var(--text-base); line-height: 1.6; color: var(--ink); }
 
 /* ============================ catalog page ============================ */
-.page-head { padding: 34px 0 8px; }
+/* Close under the navigation row (AW-300): its 24px margin, then 8px. */
+.page-head { padding: 8px 0 8px; }
 .page-head .eyebrow { color: var(--orange-dark); margin-bottom: 9px; }
 .page-head h1 { margin-bottom: 10px; }
 .page-head > p:not([class]) { max-width: 560px; color: var(--muted); font-size: var(--text-base); line-height: 1.7; }
@@ -666,9 +682,18 @@ p > .text-link { min-height: 0; min-width: 0; }
 .sub-pill.active { background: var(--purple); border-color: var(--purple); color: #fff; }
 /* Pressed (AW-160); the current line keeps its purple. */
 .sub-pill:not(.active):active { background: var(--paper); }
+/* A department page's head, tighter than other pages' (AW-153), so the first
+   row of products starts on the first screen: a smaller title, closer
+   margins, and no padding above the toolbar. */
+.category-head { padding-bottom: 0; }
+.category-head .crumbs { margin-bottom: 10px; }
+.category-head .eyebrow { margin-bottom: 6px; }
+.category-head h1 { font-size: clamp(2.25rem, 1.5rem + 2vw, 3.25rem); margin-bottom: 6px; }
+.category-head > p:not([class]) { line-height: 1.5; }
+.category-head .sub-pills { margin-block: 12px 16px; }
 .result-note { font-size: var(--text-sm); color: var(--muted); margin: 0; }
 .result-note strong { color: var(--purple); }
-.category-toolbar { margin-bottom: var(--block-gap); padding-block: 8px; border-block: 1px solid var(--line); }
+.category-toolbar { margin-bottom: 16px; padding-block: 8px; border-block: 1px solid var(--line); }
 .toolbar-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: var(--tap); }
 .category-sort { display: flex; align-items: center; gap: 10px; }
 .category-sort select { min-width: 170px; }
@@ -687,10 +712,18 @@ p > .text-link { min-height: 0; min-width: 0; }
 .active-filters > li > button > .icon { font-size: 1rem; }
 .active-filters > li > button.text-link { border: 0; background: none; color: var(--purple); padding: 0 4px; border-radius: 0; }
 .active-filters > li > button:not(.text-link):active { background: var(--purple-hover); }
+/* The chips sit under the toolbar, not in it, so on phones they scroll away
+   and only the Filter & Sort row stays stuck (AW-158). */
+.category-toolbar + .active-filters { margin: -4px 0 16px; }
 .catalog-layout { display: grid; grid-template-columns: 220px minmax(0,1fr); gap: 34px; align-items: start; }
 .catalog-layout.is-stacked { grid-template-columns: 1fr; }
 .category-card-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
-.category-filters { position: sticky; top: 18px; padding: 18px; border: 1px solid var(--line); background: var(--paper); }
+/* Stuck below the header, and never taller than the window: on a short or
+   zoomed window the panel scrolls (AW-312). Positioned, so its sr-only text
+   stays inside it; the 18px padding keeps the focus rings in view. No
+   overscroll-behavior: contain, which in Chrome stops the wheel scrolling the
+   page over a panel that fits; at its end the wheel moves on to the page. */
+.category-filters { position: sticky; top: calc(var(--header-h) + 18px); max-height: calc(100vh - var(--header-h) - 36px); max-height: calc(100dvh - var(--header-h) - 36px); overflow-y: auto; padding: 18px; border: 1px solid var(--line); background: var(--paper); }
 .filter-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .filter-heading h2 { margin: 0; font-size: var(--h3); }
 .filter-heading .text-link { font-size: var(--text-xs); min-height: 32px; }
@@ -1287,8 +1320,6 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .home-carousel-caption { margin: 14px 0 0 14px; }
   .footer-grid { grid-template-columns: 1fr 1fr; }
   .aw-masthead { gap: 28px; }
-  .aw-logo img { height: 64px; }
-  .aw-logo-text { min-height: 64px; }
   .aw-logo-text > span { font-size: 1.625rem; }
   .aw-navigation { gap: 23px; }
   .aw-category-toggle { flex-basis: 175px; padding-inline: 16px; }
@@ -1302,7 +1333,7 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
    MOBILE_QUERY in src/lib/useMediaQuery.js, so JS and CSS switch together. */
 @media (max-width: 53.125em), (hover: none) and (pointer: coarse) and (max-height: 31.25em) {
   .container { width: calc(100% - 32px); }
-  .aw-utility, .aw-navigation, .aw-desktop-only, .aw-account-or, .aw-account-actions .aw-desktop-only { display: none; }
+  .aw-navigation, .aw-desktop-only, .aw-account-or, .aw-account-actions .aw-desktop-only { display: none; }
   /* The announcements take the first row, and Apply and Call share the
      second; large text wraps them rather than scrolling the page sideways
      (AW-162, AW-311). */
@@ -1346,10 +1377,17 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .services { grid-template-columns: 1fr; gap: 20px; }
   .dept-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pd-grid { grid-template-columns: 1fr; }
-  .page-head { padding-top: 22px; }
+  .page-head { padding-top: 18px; }
   .sub-pills { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 6px 16px; margin-inline: -16px; -webkit-overflow-scrolling: touch; }
   .sub-pills::-webkit-scrollbar { display: none; }
-  .category-toolbar { position: sticky; top: 0; z-index: 5; background: #fff; margin-inline: -16px; padding-inline: 16px; }
+  /* The department's product lines: positioned, so a pill's offsetLeft is
+     measured from the row when CategoryPage centres the current one
+     (AW-157), and faded at the edges where more pills scroll past. The fade
+     stays inside the row's 16px padding at rest, and a pill reached with Tab
+     stops 20px in, so no focus ring sits under it. With the row's 6px
+     padding, the same space around it as on a desktop. */
+  .category-head .sub-pills { position: relative; margin-block: 6px 10px; scroll-padding-inline: 20px; -webkit-mask-image: linear-gradient(90deg, transparent, black 12px, black calc(100% - 12px), transparent); mask-image: linear-gradient(90deg, transparent, black 12px, black calc(100% - 12px), transparent); }
+  .category-toolbar { position: sticky; top: var(--header-h); z-index: 5; background: #fff; margin-inline: -16px; padding-inline: 16px; }
   .toolbar-row { justify-content: flex-start; flex-wrap: wrap; }
   .toolbar-row > .result-note { flex: 1 1 8em; }
   .checkout-grid { grid-template-columns: 1fr; gap: 26px; }
@@ -1406,6 +1444,10 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .drawer-foot { padding-inline: 18px; }
   .menu-body { padding-inline: 18px; }
   .drawer-actions { flex-wrap: wrap; }
+  /* The stuck Filter & Sort row stays one line: its note leaves the product
+     line (in the breadcrumb and the pills) to screen readers (AW-158). The
+     row is sticky, so this stays inside it. */
+  .result-scope { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 }
 @media (max-width: 22.5em) {
   .aw-logo img { height: 42px; }
@@ -1552,7 +1594,7 @@ address.info-lead-small { font-style: normal; }
 
 /* policies */
 .policy-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 40px; align-items: start; margin-top: 10px; }
-.policy-nav { position: sticky; top: 18px; padding: 18px; background: var(--paper); border: 1px solid var(--line); }
+.policy-nav { position: sticky; top: calc(var(--header-h) + 18px); padding: 18px; background: var(--paper); border: 1px solid var(--line); }
 .policy-nav .eyebrow { color: var(--orange-dark); margin-bottom: 10px; }
 .policy-nav a { display: block; width: 100%; text-align: left; padding: 8px 0; border: 0; border-top: 1px solid var(--line); background: none; color: var(--ink); font-size: var(--text-sm); font-weight: 600; }
 .policy-nav a[aria-current="page"] { color: var(--orange-dark); }

@@ -1,6 +1,8 @@
-// Site header: utility line, masthead (menu, logo, search, account, cart),
-// the Categories mega menu and the discovery/service navigation. Below the
-// mobile breakpoint the navigation rows move into MobileMenu.
+// Site header: masthead (menu, logo, search, account, cart), the Categories
+// mega menu and the discovery/service navigation. Below the mobile
+// breakpoint the navigation rows move into MobileMenu. There is no utility
+// row (AW-153): the logo names the business, the trade bar has the Call link,
+// and the address is in the footer, Help, Contact and the phone menu.
 //
 // Every destination is a real link (AW-043); buttons are kept for actions
 // (open a dialog, sign in or out, toggle a menu).
@@ -14,7 +16,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { IMG } from '../data/theme.js';
-import { COMPANY } from '../data/content.js';
 import { useMediaQuery, MOBILE_QUERY } from '../lib/useMediaQuery.js';
 import { Link, useLocation } from '../lib/router.js';
 import { MobileMenu } from './MobileMenu.jsx';
@@ -103,10 +104,6 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
 
   return (
     <div className="aw-header container">
-      <div className="aw-utility">
-        <span>ALABAMA WHOLESALE INC.</span>
-        <span>{COMPANY.addressShort} · <a href={`tel:${COMPANY.phoneRaw}`}>{COMPANY.phone}</a></span>
-      </div>
       <div className="aw-masthead">
         <button className="aw-menu-toggle" type="button" aria-label="Menu" aria-expanded={menuOpen} aria-controls={menuOpen ? 'aw-mobile-menu' : undefined}
                 onClick={() => setMenuOpen(true)}>

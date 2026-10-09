@@ -27,6 +27,7 @@ import { departmentsFor } from './lib/departments.js';
 import { accountNotices, signOutMessage } from './lib/accountNotices.js';
 import { catalogNotices } from './lib/catalogNotices.js';
 import { announce } from './lib/announce.js';
+import { useStickyHeader } from './lib/stickyHeader.js';
 import { AgeGate } from './components/AgeGate.jsx';
 import { TradeBar } from './components/TradeBar.jsx';
 import { Header } from './components/Header.jsx';
@@ -159,6 +160,10 @@ export default function App() {
   useEffect(() => {
     applyPageMeta(pageMeta(metaRoute, products, departments));
   }, [metaRoute, products, departments]);
+  // The sticky header's height (AW-153), measured before paint and before the
+  // page-change scroll, which lands anchors below it (scroll-margin-top).
+  const siteHeaderRef = useRef(null);
+  useStickyHeader(siteHeaderRef);
   // Scroll, focus and announcement on page changes (after the title is set).
   useNavigationEffects();
 
@@ -366,8 +371,9 @@ export default function App() {
   return (
     <div className="app-shell">
       {/* The page's one banner landmark (AW-314): the skip link, first in the
-          tab order (AW-166), the trade bar and the header. */}
-      <header className="site-header">
+          tab order (AW-166), the trade bar and the header. On tall wide
+          windows it sticks, its trade bar scrolled away (AW-153). */}
+      <header className="site-header" ref={siteHeaderRef}>
         <a className="skip-link" href="#main" onClick={skipToMain}>Skip to main content</a>
         <TradeBar onApplyClick={openSignup} />
 
