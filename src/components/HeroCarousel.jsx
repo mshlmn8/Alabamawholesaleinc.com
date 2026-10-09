@@ -1,11 +1,25 @@
 // Home page photo/video carousel with previous/next and pause controls.
+//
+// A slide whose photo fails to load leaves the carousel (AW-342), so the
+// counter, the controls and autoplay only see slides with something to show;
+// with none left the carousel is not rendered and New arrivals moves up. The
+// failed slides come back when the connection does (the 'online' event).
 
 import { useState, useEffect, useRef } from 'react';
 import { Picture } from './Picture.jsx';
 import { NicotineWarning } from './NicotineWarning.jsx';
 
 export function HeroCarousel({ slides }) {
-  const media = slides.filter(slide => slide.img || slide.videoUrl);
+  // The photos (slide.img) that failed to load.
+  const [failed, setFailed] = useState(() => new Set());
+  const markFailed = (img) => setFailed(prev => new Set(prev).add(img));
+  useEffect(() => {
+    if (!failed.size) return undefined;
+    const retry = () => setFailed(new Set());
+    window.addEventListener('online', retry);
+    return () => window.removeEventListener('online', retry);
+  }, [failed]);
+  const media = slides.filter(slide => (slide.img || slide.videoUrl) && !failed.has(slide.img));
   const count = media.length;
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -62,9 +76,9 @@ export function HeroCarousel({ slides }) {
               ) : slide.picture ? (
                 <Picture picture={slide.picture} alt={isActive ? (slide.title || '') : ''}
                          sizes={`(max-width: 37.5em) 100vw, ${slide.picture.width || 720}px`}
-                         priority={i === 0} loading={i === 0 ? 'eager' : 'lazy'} />
+                         priority={i === 0} loading={i === 0 ? 'eager' : 'lazy'} onFail={() => markFailed(slide.img)} />
               ) : (
-                <img src={slide.img} alt={isActive ? (slide.title || '') : ''} />
+                <img src={slide.img} alt={isActive ? (slide.title || '') : ''} onError={() => markFailed(slide.img)} />
               )}
             </div>
           );

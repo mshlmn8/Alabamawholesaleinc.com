@@ -41,6 +41,23 @@ const isField = (selector) => /^(input|select|textarea)\b|^\.doc-file(?![\w-])/.
 const rootBlocks = rules(css).filter((r) => r.selectors.length === 1 && r.selectors[0] === ':root');
 const root = declarations(rootBlocks[0].body);
 const outsideRoot = css.replace(/:root\s*\{[^{}]*\}/g, '');
+// The stylesheet with every @media block taken out, with its nested rules and
+// nested @media blocks (a hover block inside the compact block, AW-160).
+const withoutMedia = (source) => {
+  const re = /@media[^{]*\{/g;
+  let out = '', from = 0, m;
+  while ((m = re.exec(source))) {
+    let depth = 1, i = re.lastIndex;
+    for (; i < source.length && depth; i++) {
+      if (source[i] === '{') depth++;
+      else if (source[i] === '}') depth--;
+    }
+    out += source.slice(from, m.index);
+    from = re.lastIndex = i;
+  }
+  return out + source.slice(from);
+};
+const outsideMedia = withoutMedia(css);
 
 // Every `@media` prelude, e.g. '(max-width: 37.5em)'.
 const mediaPreludes = [...css.matchAll(/@media\s*([^{]+?)\s*\{/g)].map((m) => m[1]);
@@ -107,9 +124,19 @@ describe('colour tokens (AW-292)', () => {
   });
 
   it('defines the shared colours once in :root', () => {
-    for (const token of ['--purple-hover', '--surface-soft', '--line-soft', '--on-dark', '--on-dark-muted', '--on-dark-subtle', '--success', '--focus-on-dark']) {
+    for (const token of ['--purple-hover', '--surface-soft', '--line-soft', '--on-dark', '--on-dark-muted', '--on-dark-subtle', '--success', '--success-bg', '--danger', '--danger-bg', '--focus-on-dark']) {
       expect(root[token], token).toMatch(/^#[0-9a-f]{6}$/);
     }
+  });
+
+  it('defines each token once, in the main :root block; media blocks only redefine existing ones', () => {
+    const names = rootBlocks[0].body.split(';').map((d) => d.trim()).filter(Boolean).map((d) => d.slice(0, d.indexOf(':')).trim());
+    expect(names.filter((n, i) => names.indexOf(n) !== i)).toEqual([]);
+    for (const block of rootBlocks.slice(1)) {
+      for (const token of Object.keys(declarations(block.body))) expect(names, token).toContain(token);
+    }
+    // One plain :root rule outside @media.
+    expect([...outsideMedia.matchAll(/(^|[};])\s*:root\s*\{/g)]).toHaveLength(1);
   });
 });
 
@@ -290,9 +317,10 @@ describe('one button system and drawn icons (AW-143, AW-298, AW-293, AW-218)', (
     }
   });
 
-  it('draws icons as SVG, not text: the breadcrumb slash is the only generated text', () => {
-    const glyphs = declared('content').filter(({ value }) => !/^(''|counter\([\w-]+\))$/.test(value));
-    expect(glyphs.map(({ selector }) => selector)).toEqual(['.crumbs li + li::before']);
+  it('draws icons as SVG, not text: the breadcrumb slash and the error mark are the only generated text', () => {
+    // Step counters are zero-padded (AW-296); the error mark is the ringed '!' (AW-295).
+    const glyphs = declared('content').filter(({ value }) => !/^(''|counter\([\w-]+, decimal-leading-zero\))$/.test(value));
+    expect(glyphs.map(({ selector }) => selector)).toEqual(['.crumbs li + li::before', '.form-error:not(:empty)::before']);
     expect(css).not.toMatch(/[↗→⊞⌄×✓−]/);
     expect(rule('.icon')).toMatchObject({ width: '1em', height: '1em', flex: 'none', 'vertical-align': '-.125em' });
   });
@@ -317,6 +345,182 @@ describe('one button system and drawn icons (AW-143, AW-298, AW-293, AW-218)', (
     const pressed = rules(outsideHover).find((r) => r.selectors.includes('.button:not(:disabled):active'));
     expect(pressed.selectors).toEqual(['.button:not(:disabled):active', '.icon-btn:not(:disabled):active', '.stepper button:not(:disabled):active']);
     expect(declarations(pressed.body)).toMatchObject({ transform: 'translateY(1px)', filter: 'brightness(.95)' });
+  });
+});
+
+// Interaction states (AW-145, AW-160, AW-175, AW-302): hover only where there
+// is a mouse, a pressed state for touch, the selected state in forced colours,
+// and 44px targets on touch screens.
+describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
+  const RULE = /([^{};]+)\{([^{}]*)\}/g;
+  const blocks = mediaBlocks(css);
+  const hoverBlocks = blocks.filter((b) => b.prelude === '(hover: hover)');
+  // The stylesheet without what the hover blocks hold, nested blocks included.
+  const outsideHover = hoverBlocks.reduceRight((text, b) => text.slice(0, b.start) + text.slice(b.end), css);
+  const hoverRules = hoverBlocks.flatMap((b) => rules(b.body));
+  const coarseBlocks = blocks.filter((b) => b.prelude === '(pointer: coarse)');
+  const coarseRules = coarseBlocks.flatMap((b) => rules(b.body));
+  const compact = blocks.find((b) => b.prelude === MOBILE_QUERY && b.body.includes('.aw-search > button {'));
+  const inHover = (selector) => declarations(hoverRules.find((r) => r.selectors.includes(selector))?.body ?? '');
+  const outside = (selector) => declarations(rules(outsideHover).find((r) => r.selectors.includes(selector))?.body ?? '');
+  const own = (selector) => declarations(rules(css).find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+
+  it('keeps every :hover inside @media (hover: hover), so a tap leaves no hover colour behind', () => {
+    expect(hoverBlocks.length).toBeGreaterThan(15);
+    expect(rules(outsideHover).flatMap((r) => r.selectors).filter((s) => s.includes(':hover'))).toEqual([]);
+    expect(outsideHover).not.toMatch(/:hover/);
+    // The compact search button's hover is nested in the compact block, whose
+    // prelude stays MOBILE_QUERY.
+    expect(compact.body).toMatch(/@media \(hover: hover\) \{\s*\.aw-search > button:hover \{/);
+  });
+
+  it('keeps the open categories toggle the lighter purple without hover', () => {
+    expect(outside('.aw-category-toggle[aria-expanded="true"]')).toEqual({ background: 'var(--purple-hover)' });
+    expect(rules(outsideHover).find((r) => r.selectors.includes('.aw-category-toggle[aria-expanded="true"]')).selectors).toHaveLength(1);
+    expect(inHover('.aw-category-toggle:hover')).toEqual({ background: 'var(--purple-hover)' });
+  });
+
+  it('shows a mouse that cards, tiles, collection cards, the mega-menu feature, nav links, chips and the pricing prompt are clickable', () => {
+    for (const s of ['.card-link:hover .card-block', 'a.content-card:hover .card-block']) expect(inHover(s), s).toEqual({ 'border-color': 'var(--purple)' });
+    for (const s of ['.card-link:hover h3', 'a.content-card:hover h3']) expect(inHover(s), s).toEqual({ 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' });
+    for (const s of ['.card-link:hover .card-block img', 'a.content-card:hover .card-block img']) expect(inHover(s), s).toEqual({ transform: 'scale(1.03)' });
+    // One transition list on the card photo (a later fade adds to it); the
+    // reduced-motion rule removes it.
+    expect(own('.card-block img').transition).toMatch(/(^|, )transform \.2s ease(,|$)/);
+    expect(inHover('.editorial-card:hover .text-link')).toEqual({ 'text-decoration-thickness': '2px' });
+    expect(inHover('.editorial-card:hover img.bg')).toEqual({ opacity: '.36' });
+    expect(inHover('.aw-menu-feature:hover')).toEqual({ background: 'var(--purple-hover)' });
+    for (const s of ['.section-head > a:hover', '.aw-utility a:hover', '.sku-details summary:hover']) expect(inHover(s), s).toEqual({ color: 'var(--orange-dark)' });
+    expect(inHover('.variant-chips button:not(:disabled):not([aria-pressed="true"]):hover')).toEqual({ 'border-color': 'var(--purple)' });
+    expect(inHover('button.filter-signin:hover')).toEqual({ 'border-left-color': 'var(--purple)' });
+    expect(inHover('button.filter-signin:hover span')).toEqual({ 'text-decoration-thickness': '2px' });
+    // Keyboard focus underlines the card title too, outside the hover blocks.
+    for (const s of ['.card-link:focus-visible h3', 'a.content-card:focus-visible h3']) expect(outside(s), s).toMatchObject({ 'text-decoration': 'underline' });
+  });
+
+  it('never turns a link orange on a purple surface', () => {
+    const purple = /^(\.trade-bar|\.footer|\.contact-strip|\.editorial-card|\.aw-menu-feature|\.age-gate|\.fda-note)/;
+    const onPurple = hoverRules.filter((r) => r.selectors.some((s) => purple.test(s)));
+    expect(onPurple.length).toBeGreaterThan(3);
+    for (const { selectors, body } of onPurple) expect(body, selectors.join(', ')).not.toMatch(/--orange/);
+  });
+
+  it('gives tappable controls a pressed state outside the hover blocks that never hides the selected one', () => {
+    const pressed = {
+      '.sub-pill:not(.active):active': 'var(--paper)',
+      '.variant-chips button:not(:disabled):not([aria-pressed="true"]):active': 'var(--line)',
+      '.dept-jump a:active': 'var(--paper)',
+      '.policy-nav a:active': 'var(--line)',
+      '.menu-group a:active': 'var(--paper)',
+      '.menu-group button:not(:disabled):active': 'var(--paper)',
+      '.filter-toggle:active': 'var(--purple-hover)',
+      '.active-filters > li > button:not(.text-link):active': 'var(--purple-hover)',
+      '.aw-category-toggle:active': 'var(--purple-hover)',
+      '.aw-search > button:active': 'var(--line)',
+    };
+    for (const [selector, background] of Object.entries(pressed)) expect(outside(selector), selector).toEqual({ background });
+    // The compact layout's purple search button presses to the lighter purple.
+    expect(declarations(rules(compact.body).find((r) => r.selectors.join() === '.aw-search > button:active').body)).toEqual({ background: 'var(--purple-hover)' });
+  });
+
+  it('shows the chosen variant, line, admin tab and policy page in the system highlight in forced colours', () => {
+    const forced = blocks.find((b) => b.prelude === '(forced-colors: active)');
+    const selected = rules(forced.body).find((r) => r.selectors.includes('.sub-pill.active'));
+    expect(selected.selectors).toEqual(['.variant-chips button[aria-pressed="true"]', '.sub-pill.active', '.sub-pill[aria-current="page"]', 'nav.policy-nav a[aria-current="page"]']);
+    expect(declarations(selected.body)).toEqual({ 'forced-color-adjust': 'none', background: 'Highlight', color: 'HighlightText', 'border-color': 'Highlight' });
+    const ring = rules(forced.body).find((r) => r.selectors.includes('.sub-pill.active:focus-visible'));
+    expect(declarations(ring.body)).toEqual({ 'outline-color': 'CanvasText' });
+    // The menu and filter icons are SVG strokes in currentColor, so they take the forced text colour.
+    expect(read('src/components/Icon.jsx')).toMatch(/stroke="currentColor"/);
+  });
+
+  it('makes the small controls 44px targets on touch screens, after their own rules, links in a sentence excepted', () => {
+    expect(declarations(coarseRules.find((r) => r.selectors.join() === ':root').body)).toMatchObject({ '--tap-sm': 'var(--tap)' });
+    // Everything sized with --tap-sm follows it.
+    for (const s of ['.button.sm', '.icon-btn', '.sub-pill', '.variant-chips button', '.price-login', '.filter-panel fieldset label', '.card-meta']) {
+      expect(Object.values(own(s)).join(' '), s).toMatch(/var\(--tap-sm\)/);
+    }
+    const TOUCH = ['.trade-bar a', '.trade-bar button', '.aw-menu-footer a', '.aw-logo', '.aw-department a', '.text-link', '.crumbs li', '.crumbs a',
+      '.active-filters > li > button', '.filter-heading .text-link', '.footer-grid button', '.footer-grid .footer-link', '.footer-grid p > a', 'a.info-lead',
+      '.policy-nav a', '.dept-jump a', '.sku-details summary'];
+    const at = (source, offset = 0) => [...source.matchAll(RULE)].map((m) => ({ selectors: splitList(m[1]), body: m[2], index: offset + m.index }));
+    const touchRules = coarseBlocks.flatMap((b) => at(b.body, b.start));
+    const inAnyBlock = (index) => blocks.some((b) => index >= b.start && index < b.end);
+    const baseRules = at(css).filter((r) => !inAnyBlock(r.index));
+    for (const selector of TOUCH) {
+      const touch = touchRules.find((r) => r.selectors.includes(selector));
+      expect(declarations(touch?.body ?? ''), selector).toMatchObject({ 'min-height': 'var(--tap)' });
+      // Later than the control's own min-height, so it wins at the same specificity.
+      for (const base of baseRules.filter((r) => r.selectors.includes(selector) && 'min-height' in declarations(r.body))) {
+        expect(touch.index, selector).toBeGreaterThan(base.index);
+      }
+    }
+    // A link inside a sentence and the collection cards' link stay inline.
+    expect(own('p > .text-link')).toEqual({ 'min-height': '0', 'min-width': '0' });
+    expect(own('.editorial-card .text-link')).toMatchObject({ 'min-height': '0' });
+    // The stepper's count has a width, so the stepper is as wide as its
+    // buttons need and they keep their size wherever there is room.
+    expect(own('.stepper b')).toMatchObject({ flex: '0 1 2.5rem', width: '2.5rem', 'min-width': '1.5em' });
+  });
+});
+
+// Photos while they load and when they fail (AW-192, AW-341, AW-345). Picture
+// and Thumb add .is-loaded once a photo is in, and swap a failed photo for its
+// placeholder in the markup; these rules cover the moments in between.
+describe('photo loading states (AW-192, AW-341, AW-345)', () => {
+  const all = rules(css);
+  const own = (selector) => declarations(all.find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+  const ruleWith = (selector) => all.find((r) => r.selectors.includes(selector));
+
+  it('never paints alt text over a tile, a thumbnail, the hero or a collection card', () => {
+    for (const s of ['.card-block img', '.pd-media img', '.sr-thumb img', '.drawer-line .thumb img', '.home-carousel-slide img', '.editorial-card img.bg']) {
+      expect(all.some((r) => r.selectors.includes(s) && declarations(r.body).color === 'transparent'), s).toBe(true);
+    }
+  });
+
+  it('fades in lazy photos only, so the product page photo and the first hero slide are never hidden', () => {
+    const fade = ruleWith('.card-block img[loading="lazy"]:not(.is-loaded)');
+    expect(fade.selectors).toEqual(['.card-block img[loading="lazy"]:not(.is-loaded)', '.pd-media img[loading="lazy"]:not(.is-loaded)']);
+    expect(declarations(fade.body)).toEqual({ opacity: '0' });
+    // No other rule hides a photo.
+    for (const r of all.filter((x) => declarations(x.body).opacity === '0')) {
+      for (const s of r.selectors.filter((x) => /^img\b|\simg\b/.test(x))) expect(s).toMatch(/img\[loading="lazy"\]:not\(\.is-loaded\)$/);
+    }
+    // One transition list on the card photo, with the hover zoom.
+    expect(own('.card-block img').transition).toBe('opacity .2s ease, transform .2s ease');
+    expect(own('.pd-media img').transition).toBe('opacity .2s ease');
+  });
+
+  it('shows a sheen, in tokens, only on a tile whose photo is still on its way', () => {
+    const sheen = ruleWith('.card-block:has(img:not(.is-loaded))');
+    expect(sheen.selectors).toEqual(['.card-block:has(img:not(.is-loaded))', '.pd-media:has(img:not(.is-loaded))']);
+    const d = declarations(sheen.body);
+    expect(d.background).toBe('linear-gradient(100deg, var(--tile) 40%, var(--paper) 50%, var(--tile) 60%) var(--tile)');
+    expect(d).toMatchObject({ 'background-size': '200% 100%', animation: 'aw-sheen 1.2s linear infinite' });
+    expect(css).toMatch(/@keyframes aw-sheen \{ to \{ background-position: -200% 0; \} \}/);
+    // ":not(:has(img.is-loaded))" would also match the placeholder tiles, which have no img.
+    expect(css).not.toMatch(/:not\(:has\(/);
+    // The reduced-motion rule stops it.
+    const reduced = mediaBlocks(css).find((b) => b.prelude === '(prefers-reduced-motion:reduce)');
+    expect(rules(reduced.body).find((r) => r.selectors.includes('*'))?.body).toMatch(/animation: none !important/);
+  });
+
+  it('hides the sell-unit badge on the placeholder of a photo that failed', () => {
+    expect(own('.photo-soon ~ .pack-badge')).toEqual({ display: 'none' });
+  });
+
+  it('hides the product page photo credit while the placeholder stands in for the photo', () => {
+    // ProductPage renders figure.pd-figure > .pd-media + figcaption.photo-credit.
+    expect(own('.pd-media:has(.photo-soon) + .photo-credit')).toEqual({ display: 'none' });
+  });
+
+  it('keeps the logo slot when the logo fails: the brand in text, as tall as the logo at every header size', () => {
+    expect(own('.aw-logo-text > span').color).toBe('var(--orange-dark)');
+    expect(own('.aw-logo-text > span').font).toMatch(/^700 [\d.]+rem\/1 var\(--body\)$/);
+    expect(own('.aw-logo-text > small').color).toBe('var(--purple)');
+    const heights = (selector, property) => all.filter((r) => r.selectors.join(', ') === selector).map((r) => declarations(r.body)[property]);
+    expect(heights('.aw-logo img', 'height')).toEqual(['72px', '64px', '48px', '42px']);
+    expect(heights('.aw-logo-text', 'min-height')).toEqual(heights('.aw-logo img', 'height'));
   });
 });
 
@@ -514,5 +718,212 @@ describe('the markup uses the design system (merged PR #12, PR #13 and lane p2 p
     expect(css).not.toMatch(/\.card-add:disabled/);
     const admin = code(read('src/pages/admin/AdminPage.jsx'));
     expect(admin).toMatch(/className="button" type="button" disabled=\{busy \|\| !workflow\} onClick=\{save\}>Save prices/);
+  });
+});
+
+// The declarations of the rule whose selector list is exactly `selector`.
+const ruleFor = (selector) => declarations(rules(css).find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+
+describe('one link style (AW-297)', () => {
+  const all = rules(css);
+  // Every running-text link context. A new one goes into the CSS list and here.
+  const LINKS = ['.text-link', '.support-note a', '.checklist a', '.checklist-note a', '.next-steps a', '.policy-body a', '.contact-grid a',
+    '.doc-uploads-note a', '.doc-panel a', '.doc-admin a', '.status-panel p a', '.eligibility-result a', '.error-fallback > p a', '.dialog > .desc a',
+    '.form-error a', '.dialog .form-grid a', '.consent-block .consent a', '.photo-credit a', '.order-head small a'];
+  const LOOK = { color: 'var(--link-color)', 'font-weight': '600', 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' };
+
+  it('defines the link colour and underline offset once', () => {
+    expect(root).toMatchObject({ '--link-color': 'var(--purple)', '--link-offset': '3px' });
+  });
+
+  it('gives every text link one rule, and no other rule restyles them', () => {
+    const shared = all.find((r) => r.selectors.includes('.form-error a'));
+    expect(shared.selectors).toEqual(LINKS);
+    expect(declarations(shared.body)).toEqual(LOOK);
+    for (const { selectors, body } of all) {
+      if (body === shared.body) continue;
+      for (const s of selectors.filter((x) => LINKS.includes(x))) {
+        for (const property of Object.keys(LOOK)) expect(declarations(body), `${s} ${property}`).not.toHaveProperty(property);
+      }
+    }
+    // The text-link keeps its own layout rule; the guest card prompt is one.
+    expect(ruleFor('.text-link')).toEqual({ display: 'inline-flex', 'align-items': 'center', 'min-height': '36px', 'font-size': 'var(--text-sm)', background: 'none', border: '0', padding: '0' });
+    expect(ruleFor('.price-login')).toEqual({ 'min-height': 'var(--tap-sm)', 'text-align': 'left' });
+    expect(all.flatMap((r) => r.selectors).filter((s) => s.startsWith('.price-login:'))).toEqual([]);
+    expect(code(read('src/components/ProductCard.jsx'))).toMatch(/<button className="text-link price-login" type="button" onClick=\{onLoginClick\}>Sign in for pricing<\/button>/);
+  });
+
+  it('leaves the buttons in a status panel alone: only links in its text are text links', () => {
+    expect(all.flatMap((r) => r.selectors)).not.toContain('.status-panel a');
+  });
+
+  it('keeps the light links on purple surfaces, at a higher specificity than .text-link', () => {
+    expect(ruleFor('.contact-strip .text-link')).toEqual({ color: '#fff' });
+    expect(ruleFor('.editorial-card .text-link')).toMatchObject({ color: 'inherit' });
+  });
+
+  it('underlines every link at the same offset, on light and purple surfaces', () => {
+    const offsets = declared('text-underline-offset');
+    expect(offsets.length).toBeGreaterThan(10);
+    for (const { selector, value } of offsets) expect(value, selector).toBe('var(--link-offset)');
+    for (const selector of ['.trade-bar a, .trade-bar button', '.footer-grid a', '.footer-policies a', '.aw-utility a', '.sku-details summary']) {
+      expect(ruleFor(selector), selector).toMatchObject({ 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' });
+    }
+  });
+
+  it('thickens the underline of every text link with a mouse only, on light and purple surfaces alike', () => {
+    const hover = mediaBlocks(css).filter((b) => b.prelude === '(hover: hover)').flatMap((b) => rules(b.body)).find((r) => r.selectors.includes('.form-error a:hover'));
+    expect(hover.selectors).toEqual(LINKS.map((s) => (s === '.text-link' ? '.text-link:not(:disabled):hover' : `${s}:hover`)));
+    expect(declarations(hover.body)).toEqual({ 'text-decoration-thickness': '2px' });
+  });
+
+  it('colours the section links and underlines the footer navigation like the footer phone and email', () => {
+    expect(ruleFor('.section-head > a')).toMatchObject({ color: 'var(--link-color)', 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' });
+    expect(ruleFor('.footer-grid button, .footer-grid .footer-link')).toMatchObject({ 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' });
+    const hover = mediaBlocks(css).filter((b) => b.prelude === '(hover: hover)').flatMap((b) => rules(b.body))
+      .find((r) => r.selectors.join(', ') === '.footer-grid button:hover, .footer-grid .footer-link:hover');
+    expect(declarations(hover.body)).toEqual({ color: '#fff' });
+  });
+});
+
+describe('one callout, and status colours for errors and success (AW-295)', () => {
+  const all = rules(css);
+  const MAPPED = ['.callout', '.notice', '.support-alert', '.qr-summary', '.order-foot', '.site-notice', '.cart-notice', '.pd-unit', '.pd-saved'];
+  const modifiers = all.filter((r) => r.selectors[0].startsWith('.callout'));
+
+  it('defines danger and success colours that read on every surface they are used on', () => {
+    expect(root).toMatchObject({ '--danger': '#b42318', '--danger-bg': '#fdecea', '--success': '#1f7a47', '--success-bg': '#e8f5ee' });
+    for (const surface of ['#ffffff', root['--cream'], root['--paper'], root['--danger-bg']]) {
+      expect(contrast(root['--danger'], surface), `danger on ${surface}`).toBeGreaterThanOrEqual(4.5);
+    }
+    for (const surface of ['#ffffff', root['--paper'], root['--success-bg']]) {
+      expect(contrast(root['--success'], surface), `success on ${surface}`).toBeGreaterThanOrEqual(4.5);
+    }
+    // Callout text, and a link inside one, on every callout background.
+    for (const surface of [root['--cream'], root['--paper'], root['--success-bg'], root['--danger-bg']]) {
+      expect(contrast(root['--ink'], surface), `ink on ${surface}`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(root['--purple'], surface), `purple on ${surface}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it('has one base callout and three modifiers, with the older notice classes mapped onto them', () => {
+    expect(modifiers.map((r) => r.selectors)).toEqual([
+      MAPPED,
+      ['.callout.info', '.site-notice:not(.is-warn)', '.cart-notice:not(.is-warn)', '.pd-unit', '.pd-saved'],
+      ['.callout.success'],
+      ['.callout.error', '.form-error.support-alert'],
+    ]);
+    expect(modifiers.map((r) => declarations(r.body))).toEqual([
+      { padding: '.875rem 1rem', 'border-left': '4px solid var(--orange)', background: 'var(--cream)', color: 'var(--ink)', 'font-size': 'var(--text-base)', 'line-height': '1.6' },
+      { 'border-left-color': 'var(--purple)', background: 'var(--paper)' },
+      { 'border-left-color': 'var(--success)', background: 'var(--success-bg)' },
+      { 'border-left-color': 'var(--danger)', background: 'var(--danger-bg)', color: 'var(--danger)' },
+    ]);
+  });
+
+  it('leaves the mapped classes only their layout', () => {
+    const visual = ['padding', 'padding-block', 'padding-inline', 'border', 'border-top', 'border-left', 'border-color', 'border-left-color', 'background', 'background-color', 'color', 'font-size', 'line-height'];
+    const own = new Set(modifiers.map((r) => r.body));
+    const isMapped = (selector) => {
+      const last = lastCompound(selector);
+      return MAPPED.some((c) => last === c || last.startsWith(`${c}.`) || last.startsWith(`${c}:`));
+    };
+    let seen = 0;
+    for (const { selectors, body } of all) {
+      if (own.has(body)) continue;
+      for (const s of selectors.filter(isMapped)) {
+        seen += 1;
+        for (const property of visual) {
+          // .support-alert restores the callout size over .form-error's smaller one.
+          if (s === '.support-alert' && property === 'font-size') continue;
+          expect(declarations(body), `${s} ${property}`).not.toHaveProperty(property);
+        }
+      }
+    }
+    expect(seen).toBeGreaterThan(8);
+    expect(ruleFor('.support-alert')).toEqual({ margin: '0 0 22px', 'font-size': 'var(--text-base)' });
+    expect(ruleFor('.pd-info .pd-unit')).toEqual({ margin: '0 0 14px', 'max-width': '480px', 'font-weight': '600' });
+    expect(ruleFor('.pd-info .pd-saved')).toEqual({ margin: '0 0 14px', 'max-width': '480px', 'font-weight': '600' });
+  });
+
+  it('keeps the status panel and the pricing prompt boxes, in the status and callout colours', () => {
+    expect(ruleFor('.status-panel')).toMatchObject({ 'border-left': '6px solid var(--orange)' });
+    expect(ruleFor('.status-panel.status-approved')).toEqual({ 'border-left-color': 'var(--success)' });
+    expect(ruleFor('.status-panel.status-suspended')).toEqual({ 'border-left-color': 'var(--danger)' });
+    expect(ruleFor('.filter-signin')).toMatchObject({ 'border-left': '4px solid var(--orange)', background: 'var(--cream)' });
+    expect(ruleFor('.filter-signin')).not.toHaveProperty('border');
+    expect(ruleFor('button.filter-signin span')).toEqual({ color: 'var(--link-color)', 'font-weight': '600', 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' });
+    expect(ruleFor('.stat-card.ok b')).toEqual({ color: 'var(--success)' });
+    expect(ruleFor('.stat-card.warn b')).toEqual({ color: 'var(--orange-dark)' });
+  });
+
+  it('shows errors in the danger colour with a drawn mark that screen readers skip', () => {
+    expect(ruleFor('.form-error')).toMatchObject({ color: 'var(--danger)' });
+    expect(ruleFor('.qr-problem')).toEqual({ color: 'var(--danger)' });
+    expect(ruleFor('.drawer-line.is-unavailable .info small, .drawer-line .line-flag')).toEqual({ color: 'var(--danger)' });
+    const mark = all.find((r) => r.selectors.join() === '.form-error:not(:empty)::before');
+    // The plain value first, for browsers without alt text, then the one with an empty alt.
+    expect([...mark.body.matchAll(/content:\s*([^;]+);/g)].map((m) => m[1].trim())).toEqual(["'!'", "'!' / ''"]);
+    expect(declarations(mark.body)).toMatchObject({ display: 'inline-grid', width: '1.1em', height: '1.1em', border: '1.5px solid', 'border-radius': '50%', 'font-weight': '700' });
+    // No error takes the accent orange any more.
+    for (const { selectors, body } of all) {
+      if (selectors.some((s) => /form-error|qr-problem|line-flag/.test(s)) && !selectors.includes('.form-error a')) {
+        expect(body, selectors.join(', ')).not.toMatch(/--orange/);
+      }
+    }
+  });
+});
+
+describe('one number marker for ordered steps (AW-296)', () => {
+  const all = rules(css);
+
+  it('draws .num and the apply and next-step counters alike, zero-padded', () => {
+    const marker = all.find((r) => r.selectors.includes('.num'));
+    expect(marker.selectors).toEqual(['.num', '.apply-steps li::before', '.next-steps li::before']);
+    expect(declarations(marker.body)).toEqual({ font: '700 1.75rem/1 var(--display)', color: 'var(--orange-dark)' });
+    expect(ruleFor('.apply-steps li::before').content).toBe('counter(apply, decimal-leading-zero)');
+    expect(ruleFor('.next-steps li::before').content).toBe('counter(steps, decimal-leading-zero)');
+    for (const selector of ['.apply-steps li', '.next-steps li']) expect(ruleFor(selector)['grid-template-columns'], selector).toBe('2.5rem minmax(0, 1fr)');
+    for (const { selectors, body } of all) {
+      if (body === marker.body || !selectors.some((s) => /steps li::before$/.test(s))) continue;
+      for (const property of ['font', 'font-size', 'font-family', 'color']) expect(declarations(body), `${selectors.join(', ')} ${property}`).not.toHaveProperty(property);
+    }
+  });
+
+  it('colours the menu indices in the same text orange', () => {
+    for (const selector of ['.aw-department h3 > span:first-child', '.menu-index']) expect(ruleFor(selector).color, selector).toBe('var(--orange-dark)');
+  });
+
+  it('numbers only ordered steps: no number prefixes on the checklist or the delivery cards', () => {
+    expect(code(read('src/pages/support/ApplyPage.jsx'))).not.toMatch(/padStart\(2/);
+    expect(code(read('src/pages/support/DeliveryPage.jsx'))).not.toMatch(/\d\d · [A-Z]/);
+  });
+});
+
+describe('no inline styles (AW-301)', () => {
+  it('has no style attribute in any component', () => {
+    expect(jsx.length).toBeGreaterThan(20);
+    expect(jsx.filter(({ text }) => /\bstyle=\{/.test(text)).map(({ file }) => file)).toEqual([]);
+  });
+
+  it('gives the root, the footer paragraph and the page heads classes instead', () => {
+    expect(ruleFor('.app-shell')).toEqual({ 'min-height': '100vh' });
+    expect(ruleFor('.footer-brand p')).toEqual({ 'margin-top': '1rem' });
+    expect(ruleFor('.is-flush')).toEqual({ 'padding-bottom': '0' });
+    expect(ruleFor('.is-centered')).toEqual({ 'text-align': 'center', 'padding-block': 'var(--empty-pad)' });
+    expect(ruleFor('.is-centered > p:not([class])')).toEqual({ margin: '0 auto 1.25rem' });
+    expect(ruleFor('.is-centered strong')).toEqual({ color: 'var(--purple)' });
+    expect(ruleFor('.is-centered .dialog-actions')).toEqual({ 'justify-content': 'center' });
+    expect(code(read('src/App.jsx'))).toMatch(/<div className="app-shell">/);
+    expect(code(read('src/pages/ProductPage.jsx'))).toMatch(/className="page-head is-flush"/);
+    expect(code(read('src/pages/QuotePage.jsx')).match(/className="page-head is-centered"/g)).toHaveLength(2);
+  });
+
+  it('lets the phone page-head padding win over the centred message', () => {
+    const compact = mediaBlocks(css).find((b) => b.prelude === MOBILE_QUERY && /\.page-head\s*\{/.test(b.body));
+    expect(declarations(rules(compact.body).find((r) => r.selectors.join() === '.page-head').body)).toHaveProperty('padding-top');
+    // Same specificity (one class), and later in the file.
+    expect(compact.start).toBeGreaterThan(css.indexOf('.is-centered {'));
+    expect(compact.start).toBeGreaterThan(css.indexOf('.is-flush {'));
   });
 });

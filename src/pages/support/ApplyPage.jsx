@@ -37,9 +37,9 @@ export function ApplyPage({ profile, account = profile ? 'ready' : 'signed-out',
             <p className="eyebrow">WHAT YOU’LL NEED</p>
             <h2 id="checklist-title">Application checklist</h2>
             <ul className="checklist big">
-              {APPLICATION_CHECKLIST.map((item, i) => (
+              {APPLICATION_CHECKLIST.map(item => (
                 <li key={item.title}>
-                  <b>{`${String(i + 1).padStart(2, '0')} · ${item.title}`}</b>
+                  <b>{item.title}</b>
                   <span>{item.detail}</span>
                 </li>
               ))}

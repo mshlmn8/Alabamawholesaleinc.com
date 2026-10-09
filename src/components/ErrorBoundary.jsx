@@ -58,7 +58,7 @@ function FullPageFallback() {
   return (
     <div className="error-page">
       <div className="container">
-        <img className="error-page-logo" src={IMG.logo} alt="Alabama Wholesale Inc" />
+        <img className="error-page-logo" src={IMG.logo} alt="Alabama Wholesale Inc" width="320" height="320" />
         <ErrorFallback />
       </div>
     </div>

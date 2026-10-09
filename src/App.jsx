@@ -322,7 +322,7 @@ export default function App() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#fff' }}>
+    <div className="app-shell">
       <TradeBar onApplyClick={openSignup} />
 
       <Header

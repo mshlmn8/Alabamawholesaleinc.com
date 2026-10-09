@@ -13,7 +13,7 @@ export function Footer({ departments, onLoginClick, onApplyClick }) {
         <div className="footer-grid">
           <div className="footer-brand">
             <span>Alabama</span><small>WHOLESALE INC.</small>
-            <p style={{ marginTop: 16 }}>Wholesale distributor of tobacco, vaping products, smoke-shop accessories, novelties, candy, beverages and general merchandise. Serving licensed retail stores — never consumers.</p>
+            <p>Wholesale distributor of tobacco, vaping products, smoke-shop accessories, novelties, candy, beverages and general merchandise. Serving licensed retail stores — never consumers.</p>
           </div>
           <div>
             <h4>Departments</h4>

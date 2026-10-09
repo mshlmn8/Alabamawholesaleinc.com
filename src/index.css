@@ -26,7 +26,17 @@
      doesn't sit in a cream box (AW-141). */
   --tile: #fff;
   --line-soft: #f0ece7;
+  /* Status colours (AW-295): success for approved and done, danger for errors
+     only, so an error never looks like an orange section label. --danger is at
+     least 5.4:1 on white, cream, paper and --danger-bg; --success at least
+     4.7:1 on white, paper and --success-bg (not on cream). */
   --success: #1f7a47;
+  --success-bg: #e8f5ee;
+  --danger: #b42318;
+  --danger-bg: #fdecea;
+  /* One link style (AW-297): the colour and underline offset of every link. */
+  --link-color: var(--purple);
+  --link-offset: 3px;
   /* Photo-less tile initials. */
   --initials: #d6cec5;
   /* Text, rules and ghost buttons on purple surfaces (footer, collection card,
@@ -95,9 +105,11 @@
 }
 /* Touch screens: 16px field text, so iOS Safari does not zoom into a focused
    field, and full-height fields everywhere (AW-147). The compact layout block
-   below does the same for narrow windows. */
+   below does the same for narrow windows. Every --tap-sm control (small
+   buttons, icon buttons, pills, chips, filter rows, the card price row) is a
+   44px target on touch (AW-302); a mouse keeps the 40px size. */
 @media (pointer: coarse) {
-  :root { --field-font: 1rem; --field-h-compact: var(--field-h); }
+  :root { --field-font: 1rem; --field-h-compact: var(--field-h); --tap-sm: var(--tap); }
 }
 
 /* ============================ reset (AW-125) ============================
@@ -167,11 +179,14 @@ input[type="search"]:focus-visible, .aw-search input:focus-visible { outline-off
 .scale-in { animation: scale-in .3s cubic-bezier(.2,.7,.2,1) both; }
 
 .container { width: calc(100% - 64px); max-width: 1280px; margin-inline: auto; }
+/* The app's root fills the window (it was an inline style, AW-301); the body
+   is already white. */
+.app-shell { min-height: 100vh; }
 
 /* ============================ top bars ============================ */
 .trade-bar { background: var(--purple); color: #fff; font-size: var(--text-xs); letter-spacing: var(--track-label); font-weight: 600; }
 .trade-bar .container { display: flex; justify-content: space-between; align-items: center; gap: 20px; min-height: 34px; }
-.trade-bar a, .trade-bar button { flex: 0 0 auto; display: inline-flex; align-items: center; min-height: 34px; white-space: nowrap; font-size: var(--text-xs); letter-spacing: 0; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; background: none; border: 0; color: #fff; padding: 0; }
+.trade-bar a, .trade-bar button { flex: 0 0 auto; display: inline-flex; align-items: center; min-height: 34px; white-space: nowrap; font-size: var(--text-xs); letter-spacing: 0; font-weight: 600; text-decoration: underline; text-underline-offset: var(--link-offset); background: none; border: 0; color: #fff; padding: 0; }
 .trade-bar .trade-call { display: none; }
 .ticker { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; }
 .ticker span { display: inline-block; padding-right: 60px; animation: tick 36s linear infinite; }
@@ -184,11 +199,16 @@ input[type="search"]:focus-visible, .aw-search input:focus-visible { outline-off
 .aw-utility span:first-child { letter-spacing: var(--track-label); font-weight: 700; color: var(--purple); }
 /* The phone number: ink and bold, in a full-size tap target whose extra height
    hangs into the padding around the row instead of pushing the header down. */
-.aw-utility a { display: inline-flex; align-items: center; min-height: var(--tap); margin-block: calc((var(--tap) - 1.5em) / -2); padding-inline: 4px; margin-inline: -4px; color: var(--ink); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.aw-utility a { display: inline-flex; align-items: center; min-height: var(--tap); margin-block: calc((var(--tap) - 1.5em) / -2); padding-inline: 4px; margin-inline: -4px; color: var(--ink); font-weight: 700; text-decoration: underline; text-underline-offset: var(--link-offset); }
 .aw-masthead { display: flex; align-items: center; gap: 48px; min-height: 106px; padding: 12px 0 18px; }
 .aw-menu-toggle { display: none; }
 .aw-logo { flex: 0 0 auto; padding: 0; line-height: 0; display: block; background: none; border: 0; text-align: left; }
 .aw-logo img { display: block; height: 72px; width: auto; max-width: 96px; object-fit: contain; }
+/* The brand in text when the logo photo fails to load (AW-341), as tall as
+   the logo would be: the name in text orange, the line under it in purple. */
+.aw-logo-text { display: flex; flex-direction: column; justify-content: center; min-height: 72px; white-space: nowrap; }
+.aw-logo-text > span { font: 700 1.75rem/1 var(--body); letter-spacing: -.075rem; color: var(--orange-dark); }
+.aw-logo-text > small { font: 700 var(--text-xs)/1.4 var(--body); letter-spacing: var(--track-eyebrow); color: var(--purple); margin-top: 4px; }
 /* The header search box takes the field border, fill, corner and text size
    (AW-146, AW-172); it stays 48px tall as the site's main search. */
 .aw-search { position: relative; flex: 1; display: flex; min-height: 48px; min-width: 0; border: 1px solid var(--field-border); background: var(--field-bg); border-radius: var(--field-radius); }
@@ -196,13 +216,22 @@ input[type="search"]:focus-visible, .aw-search input:focus-visible { outline-off
 .aw-search input { flex: 1; width: 0; min-width: 0; padding: 0 17px; border: 0; background: transparent; color: var(--ink); font-size: var(--field-font); }
 .aw-search input::placeholder { font-size: var(--text-sm); }
 .aw-search > button { flex: 0 0 52px; display: grid; place-items: center; border: 0; border-left: 1px solid var(--field-border); border-radius: 0 2px 2px 0; color: var(--purple); background: var(--paper); font-size: 1.25rem; }
-.aw-search > button:hover { background: var(--line); }
+/* Hover only where there is a mouse (AW-160): a tap leaves no hover colour
+   behind. The utility row's phone link turns the text orange (AW-145). */
+@media (hover: hover) {
+  .aw-search > button:hover { background: var(--line); }
+  .aw-utility a:hover { color: var(--orange-dark); }
+}
+/* Pressed: the page sets no tap highlight, so this is the tap cue. */
+.aw-search > button:active { background: var(--line); }
 .aw-account-actions { display: flex; align-items: center; gap: 13px; flex-shrink: 0; }
 /* :where() keeps this at one class, so the .button sizes below win. */
 .aw-account-actions :where(button, a) { font-size: var(--text-sm); font-weight: 700; min-height: var(--tap); }
 .aw-account-actions a { display: inline-flex; align-items: center; }
 .aw-signin { border: 0; background: transparent; color: var(--purple); padding: 10px 4px; }
-.aw-signin:hover { text-decoration: underline; text-underline-offset: 4px; }
+@media (hover: hover) {
+  .aw-signin:hover { text-decoration: underline; text-underline-offset: var(--link-offset); }
+}
 .aw-account-name { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .aw-account-actions a.aw-account-name { display: inline-block; line-height: calc(var(--tap) - 20px); }
 .aw-account-or { color: var(--muted); font-size: var(--text-xs); }
@@ -211,7 +240,13 @@ input[type="search"]:focus-visible, .aw-search input:focus-visible { outline-off
 
 .aw-navigation { display: flex; align-items: stretch; gap: 32px; min-height: 55px; position: relative; border-block: 1px solid var(--line); margin-bottom: var(--block-gap); }
 .aw-category-toggle { display: flex; align-items: center; justify-content: flex-start; gap: 13px; flex: 0 0 205px; padding: 15px 20px; margin: -1px 0; background: var(--purple); color: #fff; border: 1px solid var(--purple); font-size: var(--text-sm); font-weight: 700; }
-.aw-category-toggle:hover, .aw-category-toggle[aria-expanded="true"] { background: var(--purple-hover); }
+/* Open: always the lighter purple. Hover only with a mouse, so a tap that
+   closes the menu leaves the toggle at its resting purple (AW-160). */
+.aw-category-toggle[aria-expanded="true"] { background: var(--purple-hover); }
+@media (hover: hover) {
+  .aw-category-toggle:hover { background: var(--purple-hover); }
+}
+.aw-category-toggle:active { background: var(--purple-hover); }
 .aw-category-toggle .icon { font-size: 1.125rem; }
 /* Turns about its own centre, so it stays level with the label (AW-293). */
 .aw-category-toggle .aw-chevron { margin-left: auto; font-size: 1rem; transform-origin: center; transition: transform .18s; }
@@ -219,7 +254,9 @@ input[type="search"]:focus-visible, .aw-search input:focus-visible { outline-off
 .aw-discovery-nav, .aw-service-nav { display: flex; align-items: center; gap: 30px; }
 .aw-discovery-nav { font-size: var(--text-sm); font-weight: 700; }
 .aw-discovery-nav > button, .aw-discovery-nav > a { min-height: 52px; display: flex; align-items: center; gap: 9px; white-space: nowrap; background: none; border: 0; padding: 0; font: inherit; color: inherit; }
-.aw-discovery-nav > button:hover, .aw-discovery-nav > a:hover, .aw-service-nav button:hover, .aw-service-nav a:hover { color: var(--orange-dark); }
+@media (hover: hover) {
+  .aw-discovery-nav > button:hover, .aw-discovery-nav > a:hover, .aw-service-nav button:hover, .aw-service-nav a:hover { color: var(--orange-dark); }
+}
 .aw-new-dot { height: 6px; width: 6px; background: var(--button-orange); border-radius: 50%; display: inline-block; }
 .aw-exotics-link { color: var(--orange-dark); }
 .aw-service-nav { margin-left: auto; gap: 22px; }
@@ -233,11 +270,12 @@ input[type="search"]:focus-visible, .aw-search input:focus-visible { outline-off
 .aw-menu-heading h2 { font-size: var(--h2-sm); }
 .aw-menu-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)) 1.35fr; gap: 28px 26px; padding: 0 30px 25px; }
 .aw-department h3 { font-family: var(--body); font-size: var(--text-base); font-weight: 700; letter-spacing: -.0125rem; display: flex; align-items: center; gap: 10px; margin: 0 0 8px; color: var(--purple); }
-.aw-department h3 > span:first-child { font-family: var(--display); font-weight: 600; font-size: 1.0625rem; color: var(--button-orange); }
+.aw-department h3 > span:first-child { font-family: var(--display); font-weight: 600; font-size: 1.0625rem; color: var(--orange-dark); }
 .aw-department a { display: block; width: 100%; text-align: left; font-size: var(--text-sm); padding: 8px 0; color: var(--muted); line-height: 1.3; background: none; border: 0; }
 .aw-department a.aw-department-all { font-weight: 700; color: var(--purple); }
 @media (hover: hover) {
-  .aw-department a:hover { color: var(--orange-dark); text-decoration: underline; text-underline-offset: 4px; }
+  .aw-department a:hover { color: var(--orange-dark); text-decoration: underline; text-underline-offset: var(--link-offset); }
+  .aw-menu-feature:hover { background: var(--purple-hover); }
 }
 .aw-menu-feature { display: block; grid-column: 4; grid-row: 1 / 3; position: relative; overflow: hidden; min-height: 280px; background: var(--purple); border: 0; width: 100%; text-align: left; }
 .aw-menu-feature > div { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; justify-content: end; padding: 24px; color: white; }
@@ -247,6 +285,13 @@ input[type="search"]:focus-visible, .aw-search input:focus-visible { outline-off
 .aw-menu-footer { padding: 15px 30px; border-top: 1px solid var(--line); background: var(--paper); display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .aw-menu-footer a { font-size: var(--text-sm); font-weight: 700; color: var(--purple); display: flex; background: none; border: 0; padding: 0; min-height: 36px; align-items: center; }
 .aw-menu-footer > span { font-size: var(--text-xs); color: var(--muted); }
+/* Touch screens (AW-302): the top bar's links, the logo and the mega menu's
+   links are 44px targets; a mouse keeps the compact sizes. */
+@media (pointer: coarse) {
+  .trade-bar a, .trade-bar button, .aw-menu-footer a { min-height: var(--tap); }
+  .aw-logo { display: flex; align-items: center; justify-content: center; min-width: var(--tap); min-height: var(--tap); }
+  .aw-department a { display: flex; align-items: center; min-height: var(--tap); padding-block: 0; }
+}
 
 /* search results */
 .aw-search-results { position: absolute; top: calc(100% + 8px); left: 0; right: 0; min-width: 280px; z-index: 35; padding: 15px; background: white; border: 1px solid var(--line); box-shadow: 0 12px 30px var(--shadow-popover); max-height: 65dvh; overflow: auto; }
@@ -286,16 +331,18 @@ h2 { font-size: var(--h2); margin-bottom: 0; }
 .icon-btn { display: inline-grid; place-items: center; flex-shrink: 0; width: var(--tap-sm); height: var(--tap-sm); padding: 0; border: 1px solid var(--line); border-radius: 50%; background: #fff; color: var(--purple); font-size: 1.25rem; }
 /* Quantity stepper (cards, product page, cart): − value +. */
 /* It never overflows a narrow card or cart line at a large text size (AW-162):
-   the buttons give way first, the count keeps room for its digits. */
+   the buttons give way first, the count keeps room for its digits. The
+   count's width (not only its flex basis) sizes the stepper, so the buttons
+   keep their full 40px, or 44px on touch, wherever there is room (AW-302). */
 .stepper { display: inline-flex; align-items: center; flex-shrink: 0; max-width: 100%; border: 1px solid var(--line); background: #fff; }
 .stepper button { display: grid; place-items: center; flex: 0 1 auto; min-width: 0; width: var(--tap-sm); height: var(--tap-sm); padding: 0; border: 0; background: #fff; color: var(--purple); font-size: 1.25rem; }
-.stepper b { flex: 0 1 2.5rem; min-width: 1.5em; text-align: center; font-size: var(--text-sm); color: var(--purple); }
+.stepper b { flex: 0 1 2.5rem; width: 2.5rem; min-width: 1.5em; text-align: center; font-size: var(--text-sm); color: var(--purple); }
 .icon-btn:disabled, .stepper button:disabled { opacity: var(--disabled-opacity); cursor: not-allowed; }
 @media (hover: hover) {
   .button:not(:disabled):hover { background: var(--orange-dark); border-color: var(--orange-dark); }
   .button.ghost:not(:disabled):hover { background: var(--purple); border-color: var(--purple); color: #fff; }
   .button.on-dark:not(:disabled):hover { background: var(--on-dark-fill); border-color: #fff; }
-  .button.xs.text:not(:disabled):hover { background: none; border-color: transparent; color: var(--purple); text-decoration: underline; text-underline-offset: 3px; }
+  .button.xs.text:not(:disabled):hover { background: none; border-color: transparent; color: var(--purple); text-decoration: underline; text-underline-offset: var(--link-offset); }
   .icon-btn:not(:disabled):hover, .stepper button:not(:disabled):hover { background: var(--paper); }
 }
 /* On touch screens the compact admin buttons are full-size targets, as the
@@ -309,8 +356,47 @@ h2 { font-size: var(--h2); margin-bottom: 0; }
 .button:not(:disabled):active, .icon-btn:not(:disabled):active, .stepper button:not(:disabled):active { transform: translateY(1px); filter: brightness(.95); }
 /* Icons (AW-293): 1em square, set in the text of the control they sit in. */
 .icon { display: inline-block; width: 1em; height: 1em; flex: none; vertical-align: -.125em; }
-.text-link { display: inline-flex; align-items: center; min-height: 36px; font-size: var(--text-sm); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; background: none; border: 0; color: var(--purple); padding: 0; }
-p > .text-link { min-height: 0; }
+/* One link style (AW-297): purple, semibold, underlined at one offset, for the
+   text-link buttons and every link in running text. A new running-text link
+   context goes into this list (and into LINKS in styles.test.js). Links on
+   purple surfaces (trade bar, footer, contact strip, collection card) keep
+   their light colours with the same offset. */
+.text-link, .support-note a, .checklist a, .checklist-note a, .next-steps a, .policy-body a, .contact-grid a, .doc-uploads-note a, .doc-panel a, .doc-admin a, .status-panel p a, .eligibility-result a, .error-fallback > p a, .dialog > .desc a, .form-error a, .dialog .form-grid a, .consent-block .consent a, .photo-credit a, .order-head small a {
+  color: var(--link-color); font-weight: 600; text-decoration: underline; text-underline-offset: var(--link-offset);
+}
+.text-link { display: inline-flex; align-items: center; min-height: 36px; font-size: var(--text-sm); background: none; border: 0; padding: 0; }
+p > .text-link { min-height: 0; min-width: 0; }
+/* With a mouse a link's underline thickens; that reads on light and purple
+   surfaces alike, so no link turns orange on purple (AW-145). The list is the
+   link list above. */
+@media (hover: hover) {
+  .text-link:not(:disabled):hover, .support-note a:hover, .checklist a:hover, .checklist-note a:hover, .next-steps a:hover, .policy-body a:hover, .contact-grid a:hover, .doc-uploads-note a:hover, .doc-panel a:hover, .doc-admin a:hover, .status-panel p a:hover, .eligibility-result a:hover, .error-fallback > p a:hover, .dialog > .desc a:hover, .form-error a:hover, .dialog .form-grid a:hover, .consent-block .consent a:hover, .photo-credit a:hover, .order-head small a:hover {
+    text-decoration-thickness: 2px;
+  }
+}
+/* Touch screens (AW-302): a text link is a 44px target, except inside a
+   sentence (p > .text-link) and on the collection cards, whose whole card is
+   the target. */
+@media (pointer: coarse) {
+  .text-link { min-height: var(--tap); min-width: var(--tap); }
+}
+/* One callout (AW-295): a cream note with an orange rule; .info is paper with a
+   purple rule; .success and .error take the status colours. Use it for new
+   notices and messages. The older notice classes map onto it here, not in the
+   markup: the account, checkout and drawer notices, the apply and reset
+   pages' service notice (a .form-error), Quick Reorder's result and a
+   reorder's result are the plain callout; the product's unit and
+   saved-quantity notes and the site and cart notices are .info, and the
+   .is-warn site and cart notices the plain callout. */
+.callout, .notice, .support-alert, .qr-summary, .order-foot, .site-notice, .cart-notice, .pd-unit, .pd-saved {
+  padding: .875rem 1rem; border-left: 4px solid var(--orange); background: var(--cream); color: var(--ink); font-size: var(--text-base); line-height: 1.6;
+}
+.callout.info, .site-notice:not(.is-warn), .cart-notice:not(.is-warn), .pd-unit, .pd-saved { border-left-color: var(--purple); background: var(--paper); }
+.callout.success { border-left-color: var(--success); background: var(--success-bg); }
+.callout.error, .form-error.support-alert { border-left-color: var(--danger); background: var(--danger-bg); color: var(--danger); }
+/* One number marker for ordered steps (AW-296): '01', bold display figures in
+   the text orange. Only ordered steps are numbered. */
+.num, .apply-steps li::before, .next-steps li::before { font: 700 1.75rem/1 var(--display); color: var(--orange-dark); }
 .fine { margin: 22px 0 0; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: var(--text-sm); line-height: 1.7; }
 
 /* ============================ homepage carousel ============================ */
@@ -337,7 +423,7 @@ p > .text-link { min-height: 0; }
 .section { padding-top: var(--section-gap); }
 .section-head { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 20px; }
 .section-head .eyebrow { margin-bottom: 9px; color: var(--orange-dark); }
-.section-head > a { display: flex; align-items: center; min-height: var(--tap); font-size: var(--text-sm); font-weight: 600; white-space: nowrap; background: none; border: 0; color: var(--ink); padding: 0; text-decoration: underline; text-underline-offset: 4px; }
+.section-head > a { display: flex; align-items: center; min-height: var(--tap); font-size: var(--text-sm); font-weight: 600; white-space: nowrap; background: none; border: 0; color: var(--link-color); padding: 0; text-decoration: underline; text-underline-offset: var(--link-offset); }
 .card-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: var(--grid-gap); }
 .content-card { min-width: 0; text-align: left; background: none; border: 0; padding: 0; display: block; width: 100%; }
 .card-link { display: block; width: 100%; padding: 0; margin: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
@@ -347,7 +433,17 @@ p > .text-link { min-height: 0; }
 /* A photo is never drawn larger than its own pixel size (AW-073): its width
    comes from the img width attribute (the largest rendition, never wider than
    the source), and the tile only scales it down. */
-.card-block img { position: absolute; inset: 14px; margin: auto; height: auto; max-width: calc(100% - 28px); max-height: calc(100% - 28px); object-fit: contain; }
+.card-block img { position: absolute; inset: 14px; margin: auto; height: auto; max-width: calc(100% - 28px); max-height: calc(100% - 28px); object-fit: contain; transition: opacity .2s ease, transform .2s ease; }
+/* Photos while they load and when they fail (AW-192, AW-345; Picture and
+   Thumb add .is-loaded). Alt text never paints over the tile labels. A lazy
+   photo fades in once it is loaded and its tile shows a sheen until then;
+   eager photos (the product page photo, the first hero slide) are never
+   hidden, so the largest paint is not held back. A failed photo is replaced
+   by its placeholder, which has no img, so the sheen stops. */
+.card-block img, .pd-media img, .sr-thumb img, .drawer-line .thumb img, .home-carousel-slide img, .editorial-card img.bg { color: transparent; }
+.card-block img[loading="lazy"]:not(.is-loaded), .pd-media img[loading="lazy"]:not(.is-loaded) { opacity: 0; }
+.card-block:has(img:not(.is-loaded)), .pd-media:has(img:not(.is-loaded)) { background: linear-gradient(100deg, var(--tile) 40%, var(--paper) 50%, var(--tile) 60%) var(--tile); background-size: 200% 100%; animation: aw-sheen 1.2s linear infinite; }
+@keyframes aw-sheen { to { background-position: -200% 0; } }
 /* "Photo coming soon" (AW-029). */
 .photo-soon { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; max-width: 100%; padding: 16px; text-align: center; color: var(--ink); }
 .photo-soon-mark { flex-shrink: 0; color: var(--muted); }
@@ -359,8 +455,12 @@ p > .text-link { min-height: 0; }
 .pd-media .photo-soon-label { font-size: var(--text-lg); }
 /* The sell unit on a photo other rows share (AW-136). */
 .pack-badge { position: absolute; left: 12px; bottom: 12px; z-index: 2; max-width: calc(100% - 24px); background: var(--purple); color: #fff; font-size: var(--text-xs); font-weight: 700; line-height: 1.3; padding: 4px 8px; }
+/* Not on the placeholder that replaces a photo that failed to load (AW-192). */
+.photo-soon ~ .pack-badge { display: none; }
 .photo-credit { margin: 8px 0 0; font-size: var(--text-xs); line-height: 1.4; color: var(--muted); }
-.photo-credit a { color: var(--purple); text-decoration: underline; text-underline-offset: 3px; }
+/* Nor a photo credit under that placeholder: it would credit a photo that is
+   not shown. It comes back with the photo after a reconnect (AW-343). */
+.pd-media:has(.photo-soon) + .photo-credit { display: none; }
 /* The external-link icon after the text of a link that leaves the site (AW-218). */
 .photo-credit a .icon, .doc-admin a .icon { margin-left: .2em; }
 .card-tag { position: absolute; top: 12px; right: 12px; background: var(--button-orange); color: #fff; font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); padding: 5px 8px; z-index: 2; line-height: 1; }
@@ -379,8 +479,17 @@ p > .text-link { min-height: 0; }
 .added-note { position: absolute; right: 0; top: 100%; font-size: var(--text-xs); font-weight: 700; line-height: 1.5; color: var(--purple); }
 .added-note:empty { display: none; }
 .card-meta .lock { color: var(--muted); font-weight: 400; font-size: var(--text-xs); line-height: 1.4; }
-.price-login { display: inline-flex; align-items: center; min-height: var(--tap-sm); padding: 0; border: 0; background: none; text-align: left; }
-.price-login:hover { color: var(--purple); text-decoration: underline; text-underline-offset: 3px; }
+.price-login { min-height: var(--tap-sm); text-align: left; }
+/* Product cards and department tiles (AW-145): with a mouse the frame turns
+   purple, the title is underlined and the photo grows a little inside its
+   frame; keyboard focus underlines the title too. Section links turn orange. */
+@media (hover: hover) {
+  .card-link:hover .card-block, a.content-card:hover .card-block { border-color: var(--purple); }
+  .card-link:hover h3, a.content-card:hover h3 { text-decoration: underline; text-underline-offset: var(--link-offset); }
+  .card-link:hover .card-block img, a.content-card:hover .card-block img { transform: scale(1.03); }
+  .section-head > a:hover { color: var(--orange-dark); }
+}
+.card-link:focus-visible h3, a.content-card:focus-visible h3 { text-decoration: underline; text-underline-offset: var(--link-offset); }
 
 /* ============================ collections / services ============================ */
 .editorials { display: grid; grid-template-columns: 1fr 1fr; gap: var(--grid-gap); margin-top: var(--section-gap); }
@@ -393,8 +502,15 @@ p > .text-link { min-height: 0; }
 .editorial-card .eyebrow { margin-bottom: 10px; }
 .editorial-card h2 { font-size: var(--h2); margin-bottom: 14px; }
 .editorial-card .text-link { font-size: var(--text-sm); color: inherit; min-height: 0; }
-.editorial-card img.bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .28; }
+.editorial-card img.bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .28; transition: opacity .2s ease; }
 .editorial-card.cream img.bg { mix-blend-mode: multiply; }
+/* The collection cards (AW-145): the link's underline thickens and the photo
+   comes forward a little; the text keeps its colours. */
+@media (hover: hover) {
+  .editorial-card:hover .text-link { text-decoration-thickness: 2px; }
+  .editorial-card:hover img.bg { opacity: .36; }
+}
+.editorial-card:focus-visible .text-link { text-decoration-thickness: 2px; }
 
 .services { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 18px; margin-top: var(--section-gap); }
 .service { background: var(--paper); border: 1px solid var(--line); padding: 25px; }
@@ -406,9 +522,9 @@ p > .text-link { min-height: 0; }
 .apply-intro .eyebrow { color: var(--orange-dark); }
 .apply-intro h2 { margin: 0 0 18px; }
 .apply-steps { list-style: none; margin: 0; padding: 0; counter-reset: apply; }
-.apply-steps li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 8px 14px; padding: 16px 0; border-bottom: 1px solid var(--line); counter-increment: apply; }
+.apply-steps li { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr); gap: 8px 14px; padding: 16px 0; border-bottom: 1px solid var(--line); counter-increment: apply; }
 .apply-steps li:first-child { padding-top: 0; }
-.apply-steps li::before { content: counter(apply); grid-row: 1 / 3; font: 700 2rem/1 var(--display); color: var(--orange-dark); }
+.apply-steps li::before { content: counter(apply, decimal-leading-zero); grid-row: 1 / 3; }
 .apply-steps h3 { grid-column: 2; font-family: var(--body); font-size: var(--text-lg); font-weight: 700; letter-spacing: 0; line-height: 1.3; color: var(--ink); margin: 4px 0 0; }
 .apply-steps p { grid-column: 2; margin: 0; font-size: var(--text-base); line-height: 1.6; color: var(--ink); }
 
@@ -417,10 +533,17 @@ p > .text-link { min-height: 0; }
 .page-head .eyebrow { color: var(--orange-dark); margin-bottom: 9px; }
 .page-head h1 { margin-bottom: 10px; }
 .page-head > p:not([class]) { max-width: 560px; color: var(--muted); font-size: var(--text-base); line-height: 1.7; }
+/* Page-head modifiers (AW-301), one class each, so the phone page-head padding
+   in the compact block below still wins: no bottom padding above the product,
+   and the centred message of the empty and submitted checkout. */
+.is-flush { padding-bottom: 0; }
+.is-centered { text-align: center; padding-block: var(--empty-pad); }
+.is-centered > p:not([class]) { margin: 0 auto 1.25rem; }
+.is-centered strong { color: var(--purple); }
+.is-centered .dialog-actions { justify-content: center; }
 /* Render-error fallback (AW-183): inside the page layout, or full page with the logo. */
 .error-fallback { padding-bottom: var(--section-gap); }
 .error-fallback h1:focus { outline: none; }
-.error-fallback > p a { color: var(--purple); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 .error-page { min-height: 100vh; padding: 40px 0; background: #fff; }
 .error-page-logo { display: block; height: 72px; width: auto; }
 /* Breadcrumbs (AW-043): nav > ol, links for the parents, the current page last. */
@@ -435,8 +558,12 @@ p > .text-link { min-height: 0; }
 }
 .sub-pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 var(--block-gap); }
 .sub-pill { display: inline-flex; align-items: center; min-height: var(--tap-sm); border: 1px solid var(--line); background: #fff; font-size: var(--text-sm); font-weight: 600; padding: 0 14px; color: var(--ink); white-space: nowrap; }
-.sub-pill:hover { border-color: var(--orange); }
+@media (hover: hover) {
+  .sub-pill:hover { border-color: var(--orange); }
+}
 .sub-pill.active { background: var(--purple); border-color: var(--purple); color: #fff; }
+/* Pressed (AW-160); the current line keeps its purple. */
+.sub-pill:not(.active):active { background: var(--paper); }
 .result-note { font-size: var(--text-sm); color: var(--muted); margin: 0; }
 .result-note strong { color: var(--purple); }
 .category-toolbar { margin-bottom: var(--block-gap); padding-block: 8px; border-block: 1px solid var(--line); }
@@ -444,14 +571,20 @@ p > .text-link { min-height: 0; }
 .category-sort { display: flex; align-items: center; gap: 10px; }
 .category-sort select { min-width: 170px; }
 .filter-toggle { display: inline-flex; align-items: center; gap: 10px; min-height: var(--tap); padding: 0 16px; border: 1px solid var(--purple); background: var(--purple); color: #fff; font-size: var(--text-sm); font-weight: 700; border-radius: 2px; white-space: nowrap; }
-.filter-toggle:hover { background: var(--purple-hover); }
+@media (hover: hover) {
+  .filter-toggle:hover { background: var(--purple-hover); }
+}
+.filter-toggle:active { background: var(--purple-hover); }
 .filter-toggle .icon { font-size: 1.125rem; }
 .filter-count { display: grid; place-items: center; min-width: 1.375rem; height: 1.375rem; padding: 0 6px; border-radius: 999px; background: #fff; color: var(--purple); font-size: var(--text-xs); font-weight: 700; }
 .active-filters { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0 2px; padding: 0; }
 .active-filters > li > button { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px; border: 1px solid var(--purple); background: var(--purple); color: #fff; font-size: var(--text-sm); font-weight: 600; border-radius: 999px; }
-.active-filters > li > button:hover { background: var(--purple-hover); }
+@media (hover: hover) {
+  .active-filters > li > button:hover { background: var(--purple-hover); }
+}
 .active-filters > li > button > .icon { font-size: 1rem; }
 .active-filters > li > button.text-link { border: 0; background: none; color: var(--purple); padding: 0 4px; border-radius: 0; }
+.active-filters > li > button:not(.text-link):active { background: var(--purple-hover); }
 .catalog-layout { display: grid; grid-template-columns: 220px minmax(0,1fr); gap: 34px; align-items: start; }
 .catalog-layout.is-stacked { grid-template-columns: 1fr; }
 .category-card-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
@@ -459,16 +592,31 @@ p > .text-link { min-height: 0; }
 .filter-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .filter-heading h2 { margin: 0; font-size: var(--h3); }
 .filter-heading .text-link { font-size: var(--text-xs); min-height: 32px; }
+/* Touch screens (AW-302): breadcrumbs, filter chips and the filter panel's
+   Clear all are 44px targets; a mouse keeps the compact sizes. */
+@media (pointer: coarse) {
+  .crumbs li { min-height: var(--tap); }
+  .crumbs a { min-height: var(--tap); min-width: var(--tap); }
+  .active-filters > li > button, .filter-heading .text-link { min-height: var(--tap); }
+}
 .filter-search { display: block; margin-top: 18px; }
 .filter-search input { width: 100%; margin-top: 8px; }
 .filter-panel fieldset { margin: 20px 0 0; padding: 14px 0 0; border: 0; border-top: 1px solid var(--line); min-width: 0; }
 .filter-panel legend { padding: 0 8px 0 0; }
 .filter-panel fieldset label { display: flex; align-items: center; gap: 10px; min-height: var(--tap-sm); margin: 0; color: var(--ink); font-size: var(--text-sm); cursor: pointer; }
 .filter-panel input[type="checkbox"] { width: 18px; height: 18px; margin: 0; accent-color: var(--button-orange); flex-shrink: 0; }
-.filter-signin { display: block; width: 100%; margin-top: 20px; padding: 14px; border: 1px dashed var(--orange-dark); background: var(--cream); color: var(--purple); text-align: left; }
+/* The pricing prompt keeps its own box, in the callout's colours (AW-295); as
+   a button, its second line reads as the link. */
+.filter-signin { display: block; width: 100%; margin-top: 20px; padding: 14px; border-left: 4px solid var(--orange); background: var(--cream); color: var(--purple); text-align: left; }
 .filter-signin b, .filter-signin span { display: block; }
 .filter-signin b { font: 700 var(--text-lg)/1.2 var(--display); }
 .filter-signin span { margin-top: 4px; color: var(--muted); font-size: var(--text-sm); }
+button.filter-signin span { color: var(--link-color); font-weight: 600; text-decoration: underline; text-underline-offset: var(--link-offset); }
+/* As a button, its rule turns purple and its link thickens with a mouse (AW-145). */
+@media (hover: hover) {
+  button.filter-signin:hover { border-left-color: var(--purple); }
+  button.filter-signin:hover span { text-decoration-thickness: 2px; }
+}
 .empty-results { padding: var(--empty-pad) 24px; border: 1px solid var(--line); background: var(--paper); text-align: center; }
 .empty-results p { color: var(--muted); font-size: var(--text-base); }
 
@@ -485,12 +633,12 @@ p > .text-link { min-height: 0; }
 .pd-media { position: relative; background: var(--tile); border: 1px solid var(--line); aspect-ratio: 1.05; display: grid; place-items: center; overflow: hidden; }
 /* Out of the grid (a <picture>'s <source> would take a grid row), centred,
    and never wider than the photo's own pixels (AW-073). */
-.pd-media img { position: absolute; inset: 34px; margin: auto; height: auto; max-width: calc(100% - 68px); max-height: calc(100% - 68px); object-fit: contain; }
+.pd-media img { position: absolute; inset: 34px; margin: auto; height: auto; max-width: calc(100% - 68px); max-height: calc(100% - 68px); object-fit: contain; transition: opacity .2s ease; }
 .pd-media .card-initials { font-size: 7.5rem; }
 .pd-info h1 { font-size: clamp(2.375rem, 1.5rem + 2.5vw, 3.5rem); margin-bottom: 8px; }
 .pd-info .pd-brand { font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); color: var(--orange-dark); text-transform: uppercase; margin: 0 0 16px; }
 .pd-info .pd-desc { color: var(--muted); font-size: var(--text-base); line-height: 1.7; max-width: 480px; }
-.pd-info .pd-unit { margin: 0 0 14px; padding: 8px 12px; max-width: 480px; border-left: 3px solid var(--orange); background: var(--paper); color: var(--ink); font-size: var(--text-sm); font-weight: 600; }
+.pd-info .pd-unit { margin: 0 0 14px; max-width: 480px; font-weight: 600; }
 .pd-info .pd-fine { font-size: var(--text-xs); }
 .pd-price { margin: 22px 0; padding: 18px 0; border-block: 1px solid var(--line); }
 .pd-price b { font: 700 2.125rem/1 var(--display); color: var(--purple); }
@@ -498,6 +646,12 @@ p > .text-link { min-height: 0; }
 .variant-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 22px; }
 .variant-chips button { display: inline-flex; align-items: center; min-height: var(--tap-sm); border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-size: var(--text-sm); font-weight: 600; padding: 0 14px; border-radius: 2px; }
 .variant-chips button[aria-pressed="true"] { border-color: var(--purple); background: var(--purple); color: #fff; }
+/* A chip that can still be chosen: a purple frame with a mouse, a darker fill
+   while pressed (AW-145, AW-160). The chosen chip keeps its purple. */
+@media (hover: hover) {
+  .variant-chips button:not(:disabled):not([aria-pressed="true"]):hover { border-color: var(--purple); }
+}
+.variant-chips button:not(:disabled):not([aria-pressed="true"]):active { background: var(--line); }
 .qty-row { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
 .in-cart-note { margin: -5px 0 12px; color: var(--muted); font-size: var(--text-sm); }
 .in-cart-note strong { color: var(--orange-dark); }
@@ -520,7 +674,7 @@ p > .text-link { min-height: 0; }
 .stat-card b { font: 700 1.75rem/1 var(--display); color: var(--purple); text-transform: capitalize; }
 .stat-card.ok b { color: var(--success); }
 .stat-card.warn b { color: var(--orange-dark); }
-.notice { margin-top: 22px; padding: 14px 16px; background: var(--cream); border: 1px solid var(--orange); color: var(--purple); font-size: var(--text-base); line-height: 1.6; }
+.notice { margin-top: 22px; }
 .order-list { display: flex; flex-direction: column; gap: 14px; }
 .order-card { border: 1px solid var(--line); background: #fff; }
 .order-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 16px; background: var(--paper); border-bottom: 1px solid var(--line); }
@@ -537,8 +691,8 @@ p > .text-link { min-height: 0; }
 .order-items .line-total { font-weight: 700; color: var(--purple); white-space: nowrap; }
 .order-notes { margin: 0; padding: 0 16px 14px; font-size: var(--text-sm); color: var(--muted); }
 .order-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.order-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; border-top: 1px solid var(--line); background: var(--cream); }
-.order-foot p { margin: 0; font-size: var(--text-sm); line-height: 1.6; color: var(--purple); }
+.order-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.order-foot p { margin: 0; }
 
 /* quick reorder by SKU */
 .quick-reorder { border: 1px solid var(--line); background: var(--paper); padding: 20px 22px 22px; }
@@ -556,12 +710,12 @@ p > .text-link { min-height: 0; }
 .qr-match, .qr-problem { margin: 0; font-size: var(--text-sm); line-height: 1.4; }
 .qr-match b { display: block; color: var(--purple); }
 .qr-match small { display: block; margin-top: 2px; font-size: var(--text-xs); color: var(--muted); }
-.qr-problem { color: var(--orange-dark); }
+.qr-problem { color: var(--danger); }
 .qr-row > .button { min-height: var(--field-h); }
 .qr-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
 .qr-note { font-size: var(--text-xs); color: var(--orange-dark); }
-.qr-summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 16px; padding: 12px 14px; background: var(--cream); border: 1px solid var(--orange); }
-.qr-summary p { margin: 0; font-size: var(--text-sm); line-height: 1.6; color: var(--purple); }
+.qr-summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+.qr-summary p { margin: 0; }
 /* position: relative keeps the absolutely positioned .sr-only labels inside
    the scroller, so a wide table never widens the page (AW-162). */
 .table-scroll { position: relative; overflow-x: auto; border: 1px solid var(--line); background: #fff; }
@@ -583,7 +737,6 @@ p > .text-link { min-height: 0; }
 /* An uploaded document's status starts with the check icon (drawn, AW-293). */
 .doc-status .icon { margin-right: .25em; }
 .order-kind { display: inline-block; margin-right: 8px; padding: 2px 8px; background: var(--cream); color: var(--purple); font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; }
-.order-head small a { color: var(--purple); text-decoration: underline; text-underline-offset: 2px; }
 /* Admin -> Orders: editing a quote's quantities and prices (AW-024). */
 .order-edit { display: grid; gap: 10px; padding: 12px 16px; }
 .order-edit-line { display: grid; grid-template-columns: minmax(0, 1fr) 88px 120px; gap: 8px 12px; align-items: end; font-size: var(--text-sm); }
@@ -615,15 +768,26 @@ p > .text-link { min-height: 0; }
 .footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 32px; }
 .footer-grid h4 { font: 700 var(--text-xs)/1 var(--body); letter-spacing: var(--track-eyebrow); color: var(--on-dark-muted); text-transform: uppercase; margin: 0 0 12px; }
 .footer-grid p { font-size: var(--text-sm); color: var(--on-dark); line-height: 1.8; margin: 0; }
-.footer-grid a { display: inline-block; max-width: 100%; padding-block: 6px; color: var(--on-dark); text-decoration: underline; text-underline-offset: 2px; }
-.footer-grid a:hover { color: #fff; }
-/* Footer navigation: links (.footer-link) and the two dialog buttons look alike. */
-.footer-grid button, .footer-grid .footer-link { display: flex; align-items: center; min-height: 36px; font-size: var(--text-sm); color: var(--on-dark); line-height: 1.4; background: none; border: 0; padding: 0; text-align: left; text-decoration: none; }
+.footer-grid a { display: inline-block; max-width: 100%; padding-block: 6px; color: var(--on-dark); text-decoration: underline; text-underline-offset: var(--link-offset); }
 @media (hover: hover) {
-  .footer-grid button:hover, .footer-grid .footer-link:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+  .footer-grid a:hover { color: #fff; }
+}
+/* Footer navigation: links (.footer-link) and the two dialog buttons look alike,
+   underlined like the phone and email links (AW-297). */
+.footer-grid button, .footer-grid .footer-link { display: flex; align-items: center; min-height: 36px; font-size: var(--text-sm); color: var(--on-dark); line-height: 1.4; background: none; border: 0; padding: 0; text-align: left; text-decoration: underline; text-underline-offset: var(--link-offset); }
+@media (hover: hover) {
+  .footer-grid button:hover, .footer-grid .footer-link:hover { color: #fff; }
+}
+/* Touch screens (AW-302): the footer's links, dialog buttons, phone and email
+   are 44px targets; a mouse keeps the compact list. The email address may
+   break anywhere, or at a large text size it would widen the page (AW-162). */
+@media (pointer: coarse) {
+  .footer-grid button, .footer-grid .footer-link { min-height: var(--tap); min-width: var(--tap); }
+  .footer-grid p > a { display: inline-flex; align-items: center; min-height: var(--tap); padding-block: 0; overflow-wrap: anywhere; }
 }
 .footer-brand > span { font: 700 1.625rem/1 var(--body); letter-spacing: -.075rem; color: var(--orange); display: block; }
 .footer-brand > small { font: 700 var(--text-xs)/1.4 var(--body); letter-spacing: var(--track-eyebrow); color: var(--on-dark-muted); display: block; margin-top: 6px; }
+.footer-brand p { margin-top: 1rem; }
 .footer-legal { border-top: 1px solid var(--purple-hover); margin-top: 30px; padding: 18px 0 24px; display: flex; justify-content: space-between; align-items: center; gap: 20px; font-size: var(--text-xs); color: var(--on-dark-subtle); flex-wrap: wrap; }
 .footer-legal p { margin: 0; }
 /* The FDA nicotine warning band (PR #12): white, full size. */
@@ -646,7 +810,6 @@ p > .text-link { min-height: 0; }
 .dialog h2 { font-size: var(--h2-lg); margin: 0 0 6px; line-height: 1; }
 .dialog .kicker { font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); color: var(--orange-dark); text-transform: uppercase; margin: 0 0 14px; }
 .dialog > .desc { max-width: 600px; font-size: var(--text-base); color: var(--muted); line-height: 1.7; margin: 0 0 22px; }
-.dialog > .desc a { color: var(--purple); text-decoration: underline; text-underline-offset: 2px; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0 6px; }
 .form-grid label, .contact-grid dt { display: block; margin-bottom: 6px; }
 .form-grid input, .form-grid select { width: 100%; }
@@ -658,7 +821,6 @@ p > .text-link { min-height: 0; }
 .form-grid .consent label { margin: 0; letter-spacing: 0; text-transform: none; font-size: var(--text-base); font-weight: 600; line-height: 1.45; color: var(--ink); }
 .consent-block { display: grid; gap: 12px; margin: 14px 0 4px; }
 .consent-block .consent { display: flex; align-items: flex-start; gap: 10px; font-size: var(--text-base); line-height: 1.45; }
-.consent-block .consent a { color: var(--purple); text-decoration: underline; text-underline-offset: 2px; }
 .quote-account-links { display: flex; flex-wrap: wrap; align-items: center; column-gap: .25rem; margin: 0 0 10px; }
 
 /* ============================ fields ============================
@@ -685,8 +847,16 @@ p > .text-link { min-height: 0; }
   -webkit-appearance: none; appearance: none; padding-right: 2.25rem;
   background-image: url('./assets/icons/chevron-down.svg'); background-repeat: no-repeat; background-position: right .75rem center; background-size: .75rem .5rem;
 }
+/* Forced colours (Windows High Contrast): selects get the native arrow back,
+   and the chosen variant, the current product line, the open admin tab and
+   the current policy page keep the system highlight, which the forced
+   palette would otherwise flatten into the other choices (AW-175). Their
+   focus ring takes the text colour, off the highlight. The policy link's
+   'nav' outranks its own orange and hover rules, which come later. */
 @media (forced-colors: active) {
   select { appearance: auto; background-image: none; padding-right: .75rem; }
+  .variant-chips button[aria-pressed="true"], .sub-pill.active, .sub-pill[aria-current="page"], nav.policy-nav a[aria-current="page"] { forced-color-adjust: none; background: Highlight; color: HighlightText; border-color: Highlight; }
+  .variant-chips button[aria-pressed="true"]:focus-visible, .sub-pill.active:focus-visible, .sub-pill[aria-current="page"]:focus-visible, nav.policy-nav a[aria-current="page"]:focus-visible { outline-color: CanvasText; }
 }
 /* No native clear button in search boxes: the header search has its close
    button, and the category search clears from the filter chips. */
@@ -706,10 +876,12 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
 .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0 6px; }
 .contact-grid > div { min-width: 0; }
 .contact-grid dd { margin: 0; font-size: var(--text-base); line-height: 1.5; overflow-wrap: anywhere; }
-.contact-grid a { color: var(--purple); text-decoration: underline; text-underline-offset: 2px; }
-.form-error { font-size: var(--text-sm); color: var(--orange-dark); margin: 10px 0 0; line-height: 1.6; }
-.form-error a, .dialog .form-grid a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
-.dialog .form-grid a { color: var(--purple); }
+/* Errors in the danger red (AW-295), marked with a ringed '!' drawn here, not
+   in the markup, so the message stays the only child of its element
+   (translate-safe). The empty alt text keeps screen readers from reading the
+   mark; browsers without alt text use the plain first value. */
+.form-error { font-size: var(--text-sm); color: var(--danger); margin: 10px 0 0; line-height: 1.6; }
+.form-error:not(:empty)::before { content: '!'; content: '!' / ''; display: inline-grid; place-items: center; width: 1.1em; height: 1.1em; margin-right: .4em; border: 1.5px solid; border-radius: 50%; font-weight: 700; line-height: 1; vertical-align: -.2em; }
 .dialog-actions { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
 
 .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(430px, 100%); background: #fff; z-index: 61; box-shadow: -18px 0 60px var(--shadow-drawer); display: flex; flex-direction: column; }
@@ -742,7 +914,8 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
 @media (hover: hover) {
   .menu-group button:hover, .menu-group a:hover { color: var(--orange-dark); }
 }
-.menu-index { font: 600 .875rem/1 var(--display); color: var(--button-orange); min-width: 20px; flex-shrink: 0; }
+.menu-group a:active, .menu-group button:not(:disabled):active { background: var(--paper); }
+.menu-index { font: 600 .875rem/1 var(--display); color: var(--orange-dark); min-width: 20px; flex-shrink: 0; }
 .menu-count { color: var(--muted); font-size: var(--text-sm); font-weight: 500; }
 .menu-highlight { color: var(--orange-dark); }
 .menu-contact { padding-top: 18px; display: grid; gap: 10px; }
@@ -775,6 +948,8 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .footer-grid { grid-template-columns: 1fr 1fr; }
   .aw-masthead { gap: 28px; }
   .aw-logo img { height: 64px; }
+  .aw-logo-text { min-height: 64px; }
+  .aw-logo-text > span { font-size: 1.625rem; }
   .aw-navigation { gap: 23px; }
   .aw-category-toggle { flex-basis: 175px; padding-inline: 16px; }
   .aw-discovery-nav { gap: 21px; }
@@ -795,13 +970,21 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .aw-menu-toggle .icon { font-size: 1.5rem; }
   .aw-logo { order: 1; margin: 0; }
   .aw-logo img { height: 48px; }
+  /* The narrower display face keeps the text logo beside the account
+     actions down to 360px wide when signed in. */
+  .aw-logo-text { min-height: 48px; }
+  .aw-logo-text > span { font-size: 1.25rem; }
+  .aw-logo-text > small { margin-top: 2px; font-family: var(--display); letter-spacing: var(--track-label); }
   .aw-account-actions { order: 2; margin-left: auto; gap: 4px; }
   .aw-account-name { max-width: 120px; }
   :root { --field-font: 1rem; --field-h-compact: var(--field-h); }
   .aw-search { order: 3; flex-basis: 100%; min-height: 48px; }
   .aw-search input { padding-inline: 14px; }
   .aw-search > button { flex-basis: 54px; background: var(--purple); color: #fff; border-left: 0; }
-  .aw-search > button:hover { background: var(--purple-hover); }
+  @media (hover: hover) {
+    .aw-search > button:hover { background: var(--purple-hover); }
+  }
+  .aw-search > button:active { background: var(--purple-hover); }
   .aw-search-results { top: calc(100% + 6px); }
   .home-carousel-stage { height: 320px; }
   .apply-panel { grid-template-columns: 1fr; gap: 18px; }
@@ -870,6 +1053,7 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
 }
 @media (max-width: 22.5em) {
   .aw-logo img { height: 42px; }
+  .aw-logo-text { min-height: 42px; }
   .aw-menu-toggle span:last-child { display: none; }
 }
 @media(prefers-reduced-motion:reduce) {
@@ -884,8 +1068,9 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
 .support-page { padding-bottom: 24px; }
 .support-page .page-head > p:not([class]) { max-width: 640px; }
 .support-note { color: var(--muted); font-size: var(--text-sm); line-height: 1.7; margin: 14px 0 0; }
-.support-note .text-link, .support-note a { color: var(--purple); text-decoration: underline; text-underline-offset: 3px; }
-.support-alert { margin: 0 0 22px; padding: 14px 16px; border: 1px dashed var(--orange); background: var(--cream); font-size: var(--text-base); }
+/* The callout's text size again: .form-error, which the service notice also
+   carries, sets a smaller one earlier in the file. */
+.support-alert { margin: 0 0 22px; font-size: var(--text-base); }
 
 .info-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 18px; }
 .info-card { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 26px; background: var(--paper); border: 1px solid var(--line); }
@@ -894,7 +1079,13 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
 .info-card > p:not([class]) { color: var(--muted); font-size: var(--text-base); line-height: 1.7; margin: 0; }
 .info-card .button, .info-card .text-link { margin-top: auto; }
 .info-lead { font: 700 var(--h2-sm)/1 var(--display); letter-spacing: -.0375rem; color: var(--purple); text-decoration: none; word-break: break-word; }
-.info-lead:hover { color: var(--orange-dark); }
+/* Only the phone and email are links; the address is text. */
+@media (hover: hover) {
+  a.info-lead:hover { color: var(--orange-dark); }
+}
+@media (pointer: coarse) {
+  a.info-lead { display: inline-flex; align-items: center; min-height: var(--tap); }
+}
 .info-lead-small { font: 600 1.0625rem/1.4 var(--body); letter-spacing: 0; }
 address.info-lead-small { font-style: normal; }
 
@@ -924,9 +1115,11 @@ address.info-lead-small { font-style: normal; }
 .status-panel .eyebrow { color: var(--orange-dark); margin-bottom: 8px; }
 .status-panel h2 { font-size: var(--h2-sm); margin-bottom: 8px; }
 .status-panel p:not([class]) { font-size: var(--text-base); line-height: 1.7; margin: 0; max-width: 60ch; }
-.status-panel.status-approved { border-left-color: var(--purple); }
-.status-panel.status-suspended { border-left-color: var(--orange-dark); }
-.status-panel a { color: var(--purple); text-decoration: underline; text-underline-offset: 3px; }
+/* The status in the status colours (AW-295); pending keeps the orange rule.
+   The password reset page uses approved for done and suspended for an
+   expired link. */
+.status-panel.status-approved { border-left-color: var(--success); }
+.status-panel.status-suspended { border-left-color: var(--danger); }
 
 .eligibility { background: var(--cream); border: 1px solid var(--line); align-items: start; }
 .eligibility .eyebrow { color: var(--orange-dark); margin-bottom: 8px; }
@@ -940,18 +1133,16 @@ address.info-lead-small { font-style: normal; }
 .eligibility-result { min-height: 24px; margin-top: 14px; }
 .eligibility-result b { display: block; font: 700 1.25rem/1.15 var(--display); color: var(--purple); margin-bottom: 6px; }
 .eligibility-result > span { display: block; font-size: var(--text-base); line-height: 1.6; color: var(--ink); }
-.eligibility-result a { color: var(--purple); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 .state-list { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
 .state-list li { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--paper); border: 1px solid var(--line); font-size: var(--text-sm); }
 .state-list b { font: 700 1.375rem/1 var(--display); color: var(--orange-dark); }
 
 /* steps + checklists (shared with the account dialog) */
 .next-steps { list-style: none; margin: 0; padding: 0; counter-reset: steps; }
-.next-steps li { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 2px 12px; padding: 12px 0; border-bottom: 1px solid var(--line); counter-increment: steps; }
-.next-steps li::before { content: counter(steps); grid-row: 1 / 3; font: 700 1.625rem/1 var(--display); color: var(--orange); }
+.next-steps li { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr); gap: 2px 12px; padding: 12px 0; border-bottom: 1px solid var(--line); counter-increment: steps; }
+.next-steps li::before { content: counter(steps, decimal-leading-zero); grid-row: 1 / 3; }
 .next-steps b { font-size: var(--text-base); color: var(--purple); }
 .next-steps span { font-size: var(--text-base); line-height: 1.6; color: var(--muted); }
-.next-steps a { color: var(--purple); text-decoration: underline; text-underline-offset: 3px; }
 .checklist { list-style: none; margin: 0; padding: 0; }
 .checklist li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 /* The orange box, and on it a check drawn with two borders, not a text
@@ -960,7 +1151,6 @@ address.info-lead-small { font-style: normal; }
 .checklist li::after { content: ''; grid-column: 1; grid-row: 1; justify-self: start; width: 10px; height: 6px; margin: 6px 0 0 5px; border: solid #fff; border-width: 0 0 2px 2px; transform: rotate(-45deg); }
 .checklist b { font-size: var(--text-base); color: var(--purple); }
 .checklist span { font-size: var(--text-sm); line-height: 1.6; color: var(--muted); }
-.checklist a { color: var(--purple); text-decoration: underline; text-underline-offset: 3px; }
 .checklist.big li { grid-template-columns: 26px minmax(0, 1fr); padding: 14px 0; }
 .checklist.big li::before { width: 24px; height: 24px; }
 .checklist.big li::after { width: 12px; height: 7px; margin: 7px 0 0 6px; }
@@ -968,7 +1158,6 @@ address.info-lead-small { font-style: normal; }
 .checklist.big span { font-size: var(--text-base); }
 .checklist-heading { font-size: 1.375rem; color: var(--purple); margin: 0 0 8px; }
 .checklist-note { font-size: var(--text-sm); line-height: 1.7; color: var(--muted); margin: 12px 0 0; }
-.checklist-note a { color: var(--purple); text-decoration: underline; text-underline-offset: 3px; }
 .dialog .checklist-heading { margin-top: 4px; }
 .dialog .form-error:not(:empty) + .checklist-heading { margin-top: 18px; }
 .field-hint { display: block; margin-top: 5px; font-size: var(--text-xs); line-height: 1.5; color: var(--muted); }
@@ -998,6 +1187,7 @@ address.info-lead-small { font-style: normal; }
 @media (hover: hover) {
   .policy-nav a:hover { color: var(--orange-dark); }
 }
+.policy-nav a:active { background: var(--line); }
 .policy-body { max-width: 720px; }
 .policy-body section { padding: 18px 0; border-bottom: 1px solid var(--line); }
 .policy-body section:first-child { padding-top: 0; }
@@ -1006,7 +1196,7 @@ address.info-lead-small { font-style: normal; }
 .policy-body p:not([class]):last-child { margin-bottom: 0; }
 .policy-body ul { margin: 0 0 10px; padding-left: 20px; list-style: disc; }
 .policy-body li { font-size: var(--text-base); line-height: 1.7; margin-bottom: 6px; }
-.policy-body a, .policy-body .text-link { color: var(--purple); font-size: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.policy-body a, .policy-body .text-link { font-size: inherit; }
 
 /* all-products index */
 .dept-jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 14px; }
@@ -1015,6 +1205,7 @@ address.info-lead-small { font-style: normal; }
 @media (hover: hover) {
   .dept-jump a:hover { border-color: var(--orange); }
 }
+.dept-jump a:active { background: var(--paper); }
 .dept-index { margin-top: 6px; }
 .dept-section { padding: 26px 0 10px; border-top: 1px solid var(--line); scroll-margin-top: 24px; }
 .dept-head { display: flex; justify-content: space-between; align-items: end; gap: 20px; }
@@ -1023,24 +1214,31 @@ address.info-lead-small { font-style: normal; }
 .dept-head .text-link { white-space: nowrap; }
 .dept-section .sub-pills { margin: 14px 0 12px; }
 .sku-details { margin-bottom: 8px; }
-.sku-details summary { display: inline-flex; align-items: center; gap: 10px; padding: 8px 0; cursor: pointer; color: var(--purple); font-size: var(--text-sm); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; list-style: none; }
+.sku-details summary { display: inline-flex; align-items: center; gap: 10px; padding: 8px 0; cursor: pointer; color: var(--purple); font-size: var(--text-sm); font-weight: 700; text-decoration: underline; text-underline-offset: var(--link-offset); list-style: none; }
 .sku-details summary::-webkit-details-marker { display: none; }
 .sku-details summary .icon { width: 1.25rem; height: 1.25rem; padding: 1px; border: 1px solid var(--purple); }
 .sku-details[open] summary .sku-plus, .sku-details:not([open]) summary .sku-minus { display: none; }
 .sku-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 24px; }
 .sku-list a { display: block; width: 100%; padding: 9px 0; border: 0; border-bottom: 1px solid var(--line-soft); background: none; text-align: left; }
 @media (hover: hover) {
-  .sku-list a:hover b { color: var(--orange-dark); text-decoration: underline; text-underline-offset: 3px; }
+  .sku-list a:hover b { color: var(--orange-dark); text-decoration: underline; text-underline-offset: var(--link-offset); }
+  .sku-details summary:hover { color: var(--orange-dark); }
 }
 .sku-list b { display: block; font-size: var(--text-sm); color: var(--ink); }
 .sku-list small { display: block; margin-top: 2px; font-size: var(--text-xs); color: var(--muted); }
 .catalog-signin { max-width: 440px; margin-top: 30px; }
+/* Touch screens (AW-302): the policy links, the department jump links and the
+   SKU list toggles are 44px targets; a mouse keeps the compact sizes. */
+@media (pointer: coarse) {
+  .policy-nav a { display: flex; align-items: center; min-height: var(--tap); min-width: var(--tap); padding-block: 0; }
+  .dept-jump a, .sku-details summary { min-height: var(--tap); }
+}
 
 /* footer policy links: the only links to Privacy and Trade terms, so full-size
    text and 44×44 targets (AW-174). The padding is the gap between them, and
    the negative margin lines the first one up with the text beside it. */
 .footer-policies { display: flex; flex-wrap: wrap; margin-inline: -8px; }
-.footer-policies a { display: inline-flex; align-items: center; justify-content: center; min-width: var(--tap); min-height: var(--tap); padding: 0 8px; border: 0; background: none; color: var(--on-dark-subtle); font-size: var(--text-xs); text-decoration: underline; text-underline-offset: 3px; }
+.footer-policies a { display: inline-flex; align-items: center; justify-content: center; min-width: var(--tap); min-height: var(--tap); padding: 0 8px; border: 0; background: none; color: var(--on-dark-subtle); font-size: var(--text-xs); text-decoration: underline; text-underline-offset: var(--link-offset); }
 @media (hover: hover) {
   .footer-policies a:hover { color: #fff; }
 }
@@ -1069,7 +1267,6 @@ address.info-lead-small { font-style: normal; }
 .doc-uploads { grid-column: 1 / -1; margin: 8px 0 0; padding: 16px 0 0; border: 0; border-top: 1px solid var(--line); min-inline-size: 0; }
 .doc-uploads legend { padding: 0; }
 .doc-uploads-note { max-width: 62ch; margin: 8px 0 4px; font-size: var(--text-sm); line-height: 1.6; color: var(--muted); }
-.doc-uploads-note a, .doc-panel a, .doc-admin a { color: var(--purple); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 .doc-upload { margin-top: 14px; }
 .doc-upload label { display: block; margin-bottom: 6px; }
 .doc-upload .optional { margin-left: 8px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); }
@@ -1103,15 +1300,15 @@ ul.sub-pills { list-style: none; padding: 0; }
 
 /* Account notices and states (AW-015, AW-048, AW-089, AW-186, AW-336, AW-337) */
 .site-notices { display: grid; gap: 10px; margin: 22px 0 16px; }
-.site-notice { display: flex; align-items: flex-start; gap: 12px; padding: 14px 12px 14px 18px; background: var(--paper); border: 1px solid var(--line); border-left: 4px solid var(--purple); color: var(--ink); }
-.site-notice.is-warn { background: var(--cream); border-color: var(--orange); border-left-color: var(--orange-dark); }
+.site-notice { display: flex; align-items: flex-start; gap: 12px; }
 .site-notice-body { flex: 1; min-width: 0; }
-.site-notice-body p { margin: 0; font-size: var(--text-base); line-height: 1.6; max-width: 72ch; }
+.site-notice-body p { margin: 0; max-width: 72ch; }
 .site-notice-body .site-notice-title { font-weight: 700; color: var(--purple); margin-bottom: 2px; }
 .site-notice-actions { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-top: 4px; }
 .site-notice-actions .text-link { min-height: var(--tap); }
-/* An .icon-btn; the negative margin keeps it from making the notice taller. */
-.site-notice-close { margin: -8px -4px -8px 0; }
+/* An .icon-btn; the negative margin keeps it from making the notice taller,
+   and keeps it 8px from the edge inside the callout's 1rem padding. */
+.site-notice-close { margin: -8px -8px -8px 0; }
 .account-loading { margin: 6px 0 0; }
 .account-problem { margin-top: 12px; max-width: 640px; }
 .account-problem p { margin: 0; }
@@ -1125,9 +1322,8 @@ ul.sub-pills { list-style: none; padding: 0; }
 
 /* Cart notices: products from an older cart that need a variant (AW-354) and
    lines that can no longer be ordered (AW-083). */
-.cart-notice { margin: 12px 0 10px; padding: 12px 14px; background: var(--paper); border: 1px solid var(--line); border-left: 4px solid var(--purple); color: var(--ink); text-align: left; }
-.cart-notice.is-warn { background: var(--cream); border-color: var(--orange); border-left-color: var(--orange-dark); }
-.cart-notice p { margin: 0; font-size: var(--text-base); line-height: 1.6; }
+.cart-notice { margin: 12px 0 10px; text-align: left; }
+.cart-notice p { margin: 0; }
 .cart-notice .cart-notice-title { font-weight: 700; color: var(--purple); margin-bottom: 2px; }
 .cart-notice .text-link { min-height: var(--tap); }
 .cart-notice-list { list-style: none; margin: 6px 0 0; padding: 0; }
@@ -1137,9 +1333,9 @@ ul.sub-pills { list-style: none; padding: 0; }
 .checkout-grid .cart-notice:first-child { margin-top: 0; }
 .quote-saved-lines { max-width: 560px; margin: 28px auto 0; }
 .drawer-line.is-unavailable .thumb { opacity: .55; }
-.drawer-line.is-unavailable .info small, .drawer-line .line-flag { color: var(--orange-dark); }
+.drawer-line.is-unavailable .info small, .drawer-line .line-flag { color: var(--danger); }
 .drawer-line .line-flag { font-weight: 600; }
-.pd-info .pd-saved { margin: 0 0 14px; padding: 8px 12px; max-width: 480px; border-left: 3px solid var(--purple); background: var(--paper); color: var(--ink); font-size: var(--text-sm); font-weight: 600; }
+.pd-info .pd-saved { margin: 0 0 14px; max-width: 480px; font-weight: 600; }
 /* A variant marked not available (AW-030): its chip on the product page, and
    the add button of a card whose only variant it is. The text says so too. */
 .variant-chips button:disabled { border-style: dashed; color: var(--muted); cursor: not-allowed; }

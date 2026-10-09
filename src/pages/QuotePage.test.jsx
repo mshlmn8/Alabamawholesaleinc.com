@@ -99,6 +99,10 @@ describe('QuotePage and the account', () => {
     const legacy = [{ productId: 1, qty: 3, name: 'Swisher Sweets cigarillos' }];
     const view = render(page({ items: [], legacy, onDismissLegacy: vi.fn(), profile: null, account: 'signed-out', isApprovedBuyer: false }));
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Your cart is empty');
+    // Centred by a class, so the phone page-head padding applies (AW-301).
+    const head = screen.getByRole('heading', { level: 1 }).closest('section');
+    expect(head.className).toBe('page-head is-centered');
+    expect(head.matches('[style], [style] *') || head.querySelector('[style]')).toBeFalsy();
     expect(screen.getByRole('link', { name: 'Choose a variant for Swisher Sweets cigarillos' })).toBeTruthy();
     view.rerender(page({ legacy, onDismissLegacy: vi.fn(), profile: null, account: 'signed-out', isApprovedBuyer: false }));
     expect(screen.getByRole('link', { name: 'Choose a variant for Swisher Sweets cigarillos' })).toBeTruthy();
@@ -129,6 +133,10 @@ describe('QuotePage and a catalog that changed', () => {
     await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Thank you/));
     expect(checkCart).toHaveBeenCalledTimes(1);
     expect(sent).toEqual([ITEMS]);
+    // The thank-you message is styled by classes, not inline styles (AW-301).
+    const head = screen.getByRole('heading', { level: 1 }).closest('section');
+    expect(head.className).toBe('page-head is-centered');
+    expect(head.matches('[style], [style] *') || head.querySelector('[style]')).toBeFalsy();
   });
 
   it('names a line that is no longer available and sends nothing', async () => {

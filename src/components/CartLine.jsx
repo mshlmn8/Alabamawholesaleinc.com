@@ -21,7 +21,7 @@ import { formatMoney } from '../lib/format.js';
 import { lineTotal, priceLabel } from '../lib/pricing.js';
 import { Link } from '../lib/router.js';
 import { Icon } from './Icon.jsx';
-import { MissingPhoto } from './MissingPhoto.jsx';
+import { Thumb } from './Thumb.jsx';
 
 export function CartLine({ item: it, layout = 'drawer', showPrice, pricesStatus = 'ready', onInc, onDec, onRemove, onChoose }) {
   const checkout = layout === 'checkout';
@@ -39,7 +39,7 @@ export function CartLine({ item: it, layout = 'drawer', showPrice, pricesStatus 
   return (
     <li className={className}>
       {/* No photo yet: the picture mark (AW-029). A product no catalog knows gets an empty tile. */}
-      <span className="thumb">{it.img ? <img src={it.img} alt="" /> : (gone && !it.sku ? null : <MissingPhoto compact />)}</span>
+      <span className="thumb">{gone && !it.sku && !it.img ? null : <Thumb src={it.img} />}</span>
       <span className="info">
         <b>{it.name}</b>
         <small>{detail.filter(Boolean).join(' · ')}</small>

@@ -34,3 +34,14 @@ describe('DeliveryPage service-area check', () => {
     expect(result()).not.toMatch(/Tuesday|Friday|cutoff is|on our .* route/);
   });
 });
+
+// The three info cards are not ordered steps, so their eyebrows carry no
+// '01 ·' numbers (AW-296); the route steps below them are the numbered list.
+describe('DeliveryPage info cards', () => {
+  it('labels the info cards without numbers', () => {
+    render(<DeliveryPage />);
+    const eyebrows = [...document.querySelectorAll('.info-card .eyebrow')].map((p) => p.textContent);
+    expect(eyebrows).toEqual(['ROUTE DELIVERY', 'WILL-CALL', 'MINIMUM ORDER']);
+    expect(document.querySelector('ol.next-steps').children.length).toBeGreaterThan(1);
+  });
+});

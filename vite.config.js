@@ -1,6 +1,8 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { backendEnvError } from './scripts/build-env.mjs';
+import { previewHeaders } from './scripts/netlify-headers.mjs';
 
 export default defineConfig(({ command, mode }) => {
   // Production builds must carry the Supabase settings (AW-053). Dev servers,
@@ -17,6 +19,13 @@ export default defineConfig(({ command, mode }) => {
       // CI and Playwright runs must not try to open a browser (preview.open
       // inherits this).
       open: !process.env.CI
+    },
+    // `vite preview` (and the Playwright smoke run) sends the security headers
+    // netlify.toml sets for every path, so a local production check runs
+    // under the real Content-Security-Policy (AW-205). Never on the dev
+    // server: React Refresh injects inline scripts the policy would block.
+    preview: {
+      headers: previewHeaders(fileURLToPath(new URL('.', import.meta.url)))
     },
     build: {
       outDir: 'dist',
@@ -42,7 +51,7 @@ export default defineConfig(({ command, mode }) => {
     // unit tests.
     test: {
       environment: 'jsdom',
-      include: ['src/**/*.test.{js,jsx}', 'scripts/**/*.test.{js,mjs}'],
+      include: ['src/**/*.test.{js,jsx}', 'scripts/**/*.test.{js,mjs}', 'netlify/**/*.test.{js,mjs}'],
       setupFiles: ['src/test/setup.js'],
       restoreMocks: true
     }

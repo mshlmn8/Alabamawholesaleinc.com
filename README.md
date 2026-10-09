@@ -72,7 +72,7 @@ Translated pages replace React's text nodes, so a string that can change, appear
 npm run build
 ```
 
-Output goes to `dist/`; `npm run preview` serves it locally. The build fails without `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (see [BACKEND.md](BACKEND.md)). The site deploys from Git through Netlify; see [NETLIFY-DEPLOY.md](NETLIFY-DEPLOY.md). Do not drag and drop `dist/` onto Netlify.
+Output goes to `dist/`; `npm run preview` serves it locally, with the security headers and Content-Security-Policy from `netlify.toml` (NETLIFY-DEPLOY.md, "Headers and caching"). The build also fails when that policy would block an inline script in `dist/index.html` (`scripts/check-headers.mjs`), and without `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (see [BACKEND.md](BACKEND.md)). The site deploys from Git through Netlify; see [NETLIFY-DEPLOY.md](NETLIFY-DEPLOY.md). Do not drag and drop `dist/` onto Netlify.
 
 ## Customize
 
@@ -93,7 +93,9 @@ Output goes to `dist/`; `npm run preview` serves it locally. The build fails wit
 
 ### Images
 
-`npm run images` (run automatically before `dev` and `build`) renders every photo in `src/assets/products/` and `src/assets/hero_*.jpg` into WebP and JPEG card/detail sizes under `src/assets/generated/`, and builds the favicon set and `og.jpg` share image in `public/` from `src/assets/logo.jpg`. Those outputs are gitignored; only the original photos are committed. Drop a new photo into `src/assets/products/`, reference its filename in `products.js`, and the next dev/build run picks it up.
+`npm run images` (run automatically before `dev` and `build`) renders every photo in `src/assets/products/` and `src/assets/hero_*.jpg` into WebP sizes (320, 480, 640 and 1024px wide for products, never enlarged) with JPEG fallbacks up to 640px, plus a 112px JPEG thumbnail of each product for the search, cart and checkout lists. Product photos are first framed at one scale (AW-287): the photo's own near-white or transparent margins are measured off, and the product is placed on a canvas of the card tile's 1.1 aspect where it spans 89% of the limiting side, so every product fills about 80% of its card whatever margins the source came with. Photos with a dark or busy edge are framed whole. Only the margins change; the product's pixels are never scaled up or edited (`FRAME` in `scripts/image-pipeline.mjs`). The files go to `public/img/` (served at `/img/`), and each name carries a hash of the photo and its settings (`kite--640x640-1a2b3c4d.jpg`), so Netlify serves them as immutable. One small manifest, `src/assets/generated/manifest.json`, lists every photo's hash and sizes; `src/lib/images.js` builds the URLs from it. The script also builds the favicon set and `og.jpg` share image in `public/` from `src/assets/logo.jpg`. All of these outputs are gitignored; only the original photos are committed. Drop a new photo into `src/assets/products/`, reference its filename in `products.js`, and the next dev/build run picks it up.
+
+Re-runs compare content hashes, not file dates, so an unchanged photo is never rendered again, even in a fresh checkout. Netlify keeps the outputs between deploys with a local build plugin (`netlify/plugins/image-cache`), and CI with a cache step, so a deploy renders only new or changed photos. To re-render everything, bump `VERSION` in `scripts/image-pipeline.mjs` (sizes, quality and the other settings already change the hash); to rebuild the brand files after changing how they are drawn, bump `BRAND_VERSION` in `scripts/build-images.mjs`. The card and product-page `sizes` in `src/lib/images.js` are worked out from the grid and photo-frame CSS; change them with it (`src/lib/images.test.js` reads the CSS and fails when they drift apart).
 
 ## Stack
 

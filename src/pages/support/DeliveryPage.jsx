@@ -34,19 +34,19 @@ export function DeliveryPage() {
 
       <div className="info-grid">
         <article className="info-card">
-          <p className="eyebrow">01 · ROUTE DELIVERY</p>
+          <p className="eyebrow">ROUTE DELIVERY</p>
           <h2>Next day, on our trucks</h2>
           <p>{`Next-day delivery on our own trucks when your stop is on a delivery route. Free delivery on orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} when the stop is on a route.`}</p>
         </article>
         <article className="info-card">
           {/* TODO(owner): Warehouse photo, will-call lead time, entrance and parking, and payment at pickup. (AW-124) */}
-          <p className="eyebrow">02 · WILL-CALL</p>
+          <p className="eyebrow">WILL-CALL</p>
           <h2>Pick up in Birmingham</h2>
           <p>Will-call is pickup at {COMPANY.addressLine1}, {COMPANY.addressLine2} during business hours. {COMPANY.hoursLine1}, {COMPANY.hoursLine2}.</p>
           <Link className="text-link" to="/contact">Contact &amp; visit</Link>
         </article>
         <article className="info-card">
-          <p className="eyebrow">03 · MINIMUM ORDER</p>
+          <p className="eyebrow">MINIMUM ORDER</p>
           <h2>{`${formatMoney(ORDER_MINIMUM)} minimum`}</h2>
           <p>{`The minimum order is ${formatMoney(ORDER_MINIMUM)}.`}</p>
         </article>

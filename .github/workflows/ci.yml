@@ -41,6 +41,27 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # The rendered photos and brand files (scripts/build-images.mjs), so the
+      # build renders only new or changed photos (AW-355). Every rendition's
+      # name is a content hash, so an older cache (restore-keys) is safe: the
+      # script re-renders what changed and removes what is stale. The paths
+      # are the ones netlify/plugins/image-cache keeps between Netlify builds.
+      # Restored before the unit tests, which then see the image manifest.
+      - name: Cache rendered images
+        uses: actions/cache@v6
+        with:
+          path: |
+            public/img
+            src/assets/generated
+            public/favicon.ico
+            public/favicon-32.png
+            public/apple-touch-icon.png
+            public/icon-192.png
+            public/icon-512.png
+            public/og.jpg
+          key: images-${{ hashFiles('src/assets/products/**', 'src/assets/hero_*', 'src/assets/logo.jpg', 'scripts/build-images.mjs', 'scripts/image-pipeline.mjs') }}
+          restore-keys: images-
+
       - name: Unit tests
         run: npm test
 
