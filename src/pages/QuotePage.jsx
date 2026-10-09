@@ -72,7 +72,10 @@
 // fieldset each), and a send that takes too long gives up and says the
 // request may have been saved (AW-194). Offline, the submit button is off
 // with a note, and nothing is sent (AW-344). A refusal names the product it
-// is about (AW-200, quoteErrorMessage in src/lib/orders.js).
+// is about (AW-200, quoteErrorMessage in src/lib/orders.js). The lock drops
+// focus to <body>, so when a submit ends without a save, focus comes back
+// to the field the refusal is about, else to the message saying what
+// happened (NEW-009).
 
 import { useEffect, useRef, useState } from 'react';
 import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../data/content.js';
@@ -118,6 +121,12 @@ const QTY_ERROR = `Quantities must be ${QTY_RANGE_TEXT}.`;
 // the value is the 2-letter code submit_quote takes.
 const ROUTE_STATE_OPTIONS = DELIVERY_ROUTE_STATES.map((code) => ({ code, name: stateName(code) || code }))
   .sort((a, b) => a.name.localeCompare(b.name));
+// The catalog or the prices couldn't be loaded again before a submit
+// (AW-191): nothing is sent against the copy on screen.
+const CHECK_FAILED = {
+  before: 'We couldn’t check the latest prices and availability, so nothing was sent. Check your connection and try again, or call the trade desk at',
+  after: '.',
+};
 const PHONE_EXAMPLE = '(205) 555-0123';
 const PHONE_ERROR = 'Enter a 10-digit phone number.';
 
@@ -330,6 +339,34 @@ export function QuotePage({
   // A send in progress (AW-012). The button is disabled while one runs, but a
   // fast second Enter or click can arrive before that render.
   const submittingRef = useRef(false);
+  // Where focus goes once a submit that didn't save is over (NEW-009). The
+  // locked fieldsets and button drop focus to <body> while the catalog is
+  // checked and the request is sent, so the buyer would start again at the
+  // top of the page. Once the form is unlocked: the field the refusal is
+  // about, else the message that says what happened. Only when focus was in
+  // the form (or on <body>) when the submit began, and hasn't been moved
+  // elsewhere since.
+  const focusAfterSubmit = useRef(null); // { form, target: 'error' | 'change' }
+  const [focusRequest, setFocusRequest] = useState(0);
+  const focusWhenDone = (form, target) => {
+    if (!form) return;
+    focusAfterSubmit.current = { form, target };
+    setFocusRequest((n) => n + 1);
+  };
+  useEffect(() => {
+    const pending = focusAfterSubmit.current;
+    if (!pending || phase !== null) return;
+    focusAfterSubmit.current = null;
+    const { form, target } = pending;
+    const active = document.activeElement;
+    if (active && active !== document.body && !form.contains(active)) return;
+    const field = target === 'error' && errorField ? form.elements.namedItem(errorField) : null;
+    const el = (field && typeof field.focus === 'function' && !field.disabled ? field : null)
+      || document.getElementById(target === 'change' ? 'quote-change-note' : 'quote-submit-error');
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    el.scrollIntoView?.({ block: 'center' });
+  }, [focusRequest, phase, errorField]);
   // The form's own check (ValidatedForm, AW-173): the pattern lets through a
   // number with too few or too many digits (AW-078), so the digits are
   // counted too, and said under the field before anything is checked or
@@ -367,6 +404,11 @@ export function QuotePage({
       return;
     }
     submittingRef.current = true;
+    // Focus comes back to the form after a submit that didn't save
+    // (NEW-009), unless the buyer was elsewhere when it began.
+    const form = e.currentTarget;
+    const active = document.activeElement;
+    const returnFocusTo = !active || active === document.body || form.contains(active) ? form : null;
     // What is sent, and what the receipt shows: edits made while it is on
     // its way change neither.
     const sent = data;
@@ -380,15 +422,14 @@ export function QuotePage({
       if (checkCart) {
         const check = await checkCart();
         if (!check?.ok) {
-          setSubmitError(isOffline() ? QUOTE_OFFLINE : {
-            before: 'We couldn’t check the latest prices and availability, so nothing was sent. Check your connection and try again, or call the trade desk at',
-            after: '.',
-          });
+          setSubmitError(isOffline() ? QUOTE_OFFLINE : CHECK_FAILED);
+          focusWhenDone(returnFocusTo, 'error');
           return;
         }
         const changes = cartChanges(items, check.items);
         if (changes.length) {
           setChangeNote({ text: describeCartChanges(changes, basket.noun), forItems: itemsSignature(check.items) });
+          focusWhenDone(returnFocusTo, 'change');
           return;
         }
         lines = check.items.filter(it => !it.unavailable);
@@ -410,6 +451,7 @@ export function QuotePage({
       // has none (AW-049). One that took too long may have been saved.
       setSubmitError(quoteErrorMessage(err, { items: lines }));
       setErrorField(quoteErrorField(err));
+      focusWhenDone(returnFocusTo, 'error');
     } finally {
       submittingRef.current = false;
       setPhase(null);
@@ -613,8 +655,9 @@ export function QuotePage({
           {pricedBelowMinimum && !submitBlocked && <p className="notice" role="status">{`The order minimum is ${formatMoney(ORDER_MINIMUM)}. You can still submit this order.`}</p>}
           {!isBackendConfigured && <p className="form-error" role="status"><CallOrEmail before="Quote requests can’t be saved right now. Call" after=" and the trade desk will write it up with you." /></p>}
           {blockedNotes.map((note) => <p key={note.id} className="form-error" id={note.id}>{note.text}</p>)}
-          {changeText && <p className="form-error" role="alert">{changeText}</p>}
-          {submitError && <p className="form-error" id="quote-submit-error" role="alert">{typeof submitError === 'string' ? submitError : <CallOrEmail before={submitError.before} after={submitError.after} />}</p>}
+          {/* Both take focus after a submit that didn't save (NEW-009). */}
+          {changeText && <p className="form-error" id="quote-change-note" role="alert" tabIndex={-1}>{changeText}</p>}
+          {submitError && <p className="form-error" id="quote-submit-error" role="alert" tabIndex={-1}>{typeof submitError === 'string' ? submitError : <CallOrEmail before={submitError.before} after={submitError.after} />}</p>}
           {lostOrdering && (
             <div className="checkout-lost">
               <p className="form-error" role="alert">{signedIn

@@ -138,3 +138,88 @@ describe('QuotePage and the remaining refusals (AW-200)', () => {
     expect(submitError().textContent).not.toMatch(/ALW-/);
   });
 });
+
+// Locking the form for a send drops focus to <body> (NEW-009): when the
+// submit ends without a save, focus comes back to the field the refusal is
+// about, else to the message that says what happened.
+describe('QuotePage focus after a submit that didn’t save (NEW-009)', () => {
+  const KITE = { lineKey: '14', productId: 14, variant: null, name: 'Kite cigarette tobacco', sku: 'AW-KITE', cat: 'TOBACCO', qty: 2, price: null };
+  const answerLicense = () => {
+    fireEvent.change(document.getElementById('quote-license'), { target: { value: 'TL-1' } });
+    fireEvent.change(document.getElementById('quote-resale'), { target: { value: 'RS-1' } });
+    fireEvent.click(document.getElementById('quote-age'));
+  };
+  // Press Enter on the focused submit button; the browser then blurs it, as
+  // Chromium does with a control that becomes disabled.
+  const submitFromButton = async () => {
+    submitButton().focus();
+    await act(async () => {
+      fireEvent.submit(form());
+      document.activeElement.blur();
+    });
+  };
+
+  it('focuses the message, not <body>, when the send fails', async () => {
+    submitOrder.mockImplementationOnce(async () => { throw { code: 'XX000', message: 'boom', hint: '', details: '' }; });
+    render(page());
+    fill();
+    await submitFromButton();
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement).toBe(submitError());
+    expect(submitError().tabIndex).toBe(-1);
+  });
+
+  it('focuses the field a refusal is about: license_required, the license number', async () => {
+    submitOrder.mockImplementationOnce(async () => { throw { code: 'P0001', message: 'x', hint: 'license_required', details: '' }; });
+    render(page({ items: [KITE], checkCart: vi.fn(async () => ({ ok: true, items: [KITE] })) }));
+    fill();
+    answerLicense();
+    await submitFromButton();
+    const license = document.getElementById('quote-license');
+    expect(document.activeElement).toBe(license);
+    expect(license.getAttribute('aria-invalid')).toBe('true');
+    expect(license.getAttribute('aria-describedby')).toMatch(/quote-submit-error/);
+  });
+
+  it('focuses the message after a catalog check that failed, and the change note after one that found changes', async () => {
+    const checkCart = vi.fn(async () => ({ ok: false, part: 'catalog', error: { message: 'x' } }));
+    const view = render(page({ checkCart }));
+    fill();
+    await submitFromButton();
+    expect(document.activeElement).toBe(submitError());
+    view.unmount();
+    // The catalog check finds a line that can no longer be ordered; App's
+    // cart shows the same by the time the note is on screen.
+    const changed = ITEMS.map((it) => (it === CANDY ? { ...it, unavailable: 'product' } : it));
+    const reload = vi.fn(async () => {
+      again.rerender(page({ items: changed, checkCart: reload }));
+      return { ok: true, items: changed };
+    });
+    const again = render(page({ checkCart: reload }));
+    fill();
+    await submitFromButton();
+    const note = document.getElementById('quote-change-note');
+    expect(note.getAttribute('role')).toBe('alert');
+    expect(note.tabIndex).toBe(-1);
+    expect(document.activeElement).toBe(note);
+  });
+
+  it('focuses the message after a send that took too long', async () => {
+    submitOrder.mockImplementationOnce(async () => { throw timeoutError(); });
+    render(page());
+    fill();
+    await submitFromButton();
+    expect(document.activeElement).toBe(submitError());
+  });
+
+  it('leaves focus alone when the buyer was somewhere else when the submit began', async () => {
+    submitOrder.mockImplementationOnce(async () => { throw new Error('boom'); });
+    render(<><button type="button" id="elsewhere">Elsewhere</button><div>{page()}</div></>);
+    fill();
+    const elsewhere = document.getElementById('elsewhere');
+    elsewhere.focus();
+    await act(async () => { fireEvent.submit(form()); });
+    expect(submitError()).toBeTruthy();
+    expect(document.activeElement).toBe(elsewhere);
+  });
+});
