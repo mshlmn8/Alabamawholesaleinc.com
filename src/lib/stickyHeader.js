@@ -10,7 +10,10 @@
 //   --header-h     what stays on screen when the header is stuck: the header
 //                  minus the trade bar, or 0px where it doesn't stick (the
 //                  compact layout and short windows)
-// Both are 0px in :root until they are measured. The page content's
+//   --site-header-h  the whole header, trade bar included, sticky or not:
+//                  how far down the page the Categories menu opens (AW-062)
+// The first two are 0px in :root until they are measured; --site-header-h
+// is read with a fallback (src/index.css, .aw-mega-menu). The page content's
 // scroll-margin-top (anchors, the skip link, keyboard focus), the filter
 // sidebar, the policy nav and the phone filter bar read --header-h.
 
@@ -29,6 +32,7 @@ export function stickyHeaderVars({ headerHeight, barHeight, sticky }) {
   return {
     '--trade-bar-h': px(barHeight),
     '--header-h': sticky ? px(headerHeight - barHeight) : '0px',
+    '--site-header-h': px(headerHeight),
   };
 }
 

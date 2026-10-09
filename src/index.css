@@ -313,13 +313,16 @@ input[type="search"]:focus-visible { outline-offset: -3px; }
 .aw-discovery-nav a[aria-current], .aw-service-nav a[aria-current], .menu-group a[aria-current] { color: var(--orange-dark); box-shadow: inset 0 -3px 0 var(--orange); }
 
 /* mega menu */
-/* It ends 1rem above the bottom of the window (AW-062): --header-h is the
-   height of everything above it, 258px today (the trade bar, the strip and
-   the header) until the header publishes it. Its heading, with the close
+/* It ends 1rem above the bottom of the window (AW-062): --site-header-h is
+   the height of everything above it (the trade bar and the header), which
+   the header publishes (stickyHeader.js); 16.125rem until it does. It is
+   the whole header even where the header sticks (--header-h is only the
+   part that stays), so the menu fits when it opens at the top of the page
+   and scrolls inside itself further down. Its heading, with the close
    button, and its footer, with 'View full catalog', stay in view while the
    departments scroll between them; scroll-padding keeps a focused link clear
    of both. */
-.aw-mega-menu { position: absolute; top: calc(100% + 1px); left: 0; right: 0; z-index: 25; background: white; border: 1px solid var(--line); border-top: 3px solid var(--orange); box-shadow: 0 20px 42px var(--shadow-menu); max-height: max(9rem, calc(100dvh - var(--header-h, 16.125rem) - 1rem)); overflow: auto; overscroll-behavior: contain; scroll-padding-block: 6rem 5rem; }
+.aw-mega-menu { position: absolute; top: calc(100% + 1px); left: 0; right: 0; z-index: 25; background: white; border: 1px solid var(--line); border-top: 3px solid var(--orange); box-shadow: 0 20px 42px var(--shadow-menu); max-height: max(9rem, calc(100dvh - var(--site-header-h, 16.125rem) - 1rem)); overflow: auto; overscroll-behavior: contain; scroll-padding-block: 6rem 5rem; }
 .aw-menu-heading { position: sticky; top: 0; display: flex; justify-content: space-between; align-items: center; padding: 25px 30px 22px; background: #fff; }
 .aw-menu-heading .eyebrow { color: var(--orange-dark); margin-bottom: 7px; }
 .aw-menu-heading h2 { font-size: var(--h2-sm); }

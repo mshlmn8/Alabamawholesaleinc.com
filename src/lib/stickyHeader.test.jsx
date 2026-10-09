@@ -9,17 +9,17 @@ const rootVar = (name) => document.documentElement.style.getPropertyValue(name);
 
 describe('stickyHeaderVars', () => {
   it('publishes what stays on screen: the header minus the trade bar that scrolls away', () => {
-    expect(stickyHeaderVars({ headerHeight: 160, barHeight: 36, sticky: true })).toEqual({ '--trade-bar-h': '36px', '--header-h': '124px' });
+    expect(stickyHeaderVars({ headerHeight: 160, barHeight: 36, sticky: true })).toEqual({ '--trade-bar-h': '36px', '--header-h': '124px', '--site-header-h': '160px' });
   });
 
   it('is 0px where the header does not stick (compact layout, short windows); the bar is still measured', () => {
-    expect(stickyHeaderVars({ headerHeight: 210, barHeight: 88, sticky: false })).toEqual({ '--trade-bar-h': '88px', '--header-h': '0px' });
+    expect(stickyHeaderVars({ headerHeight: 210, barHeight: 88, sticky: false })).toEqual({ '--trade-bar-h': '88px', '--header-h': '0px', '--site-header-h': '210px' });
   });
 
   it('keeps fractions to two places and never goes negative', () => {
-    expect(stickyHeaderVars({ headerHeight: 165.594, barHeight: 41.5937, sticky: true })).toEqual({ '--trade-bar-h': '41.59px', '--header-h': '124px' });
+    expect(stickyHeaderVars({ headerHeight: 165.594, barHeight: 41.5937, sticky: true })).toEqual({ '--trade-bar-h': '41.59px', '--header-h': '124px', '--site-header-h': '165.59px' });
     expect(stickyHeaderVars({ headerHeight: 0, barHeight: 36, sticky: true })['--header-h']).toBe('0px');
-    expect(stickyHeaderVars({ headerHeight: undefined, barHeight: null, sticky: true })).toEqual({ '--trade-bar-h': '0px', '--header-h': '0px' });
+    expect(stickyHeaderVars({ headerHeight: undefined, barHeight: null, sticky: true })).toEqual({ '--trade-bar-h': '0px', '--header-h': '0px', '--site-header-h': '0px' });
   });
 
   it('starts just past the compact layout, in em, on windows at least 37.5em tall', () => {

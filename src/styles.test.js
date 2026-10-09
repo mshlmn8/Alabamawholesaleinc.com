@@ -1437,12 +1437,12 @@ describe('no inline styles (AW-301)', () => {
 });
 
 // The Categories menu (AW-062): it ends inside the window, under the header
-// height the header will publish (--header-h), its heading and footer stay in
+// height the header publishes (--site-header-h), its heading and footer stay in
 // view while it scrolls, and the eight departments fill two rows.
 describe('the Categories menu fits the window (AW-062)', () => {
   it('ends 1rem above the bottom of the window, with its close button and its footer link always in view', () => {
     expect(ruleFor('.aw-mega-menu')).toMatchObject({
-      'max-height': 'max(9rem, calc(100dvh - var(--header-h, 16.125rem) - 1rem))', overflow: 'auto', 'scroll-padding-block': '6rem 5rem',
+      'max-height': 'max(9rem, calc(100dvh - var(--site-header-h, 16.125rem) - 1rem))', overflow: 'auto', 'scroll-padding-block': '6rem 5rem',
     });
     expect(css).not.toMatch(/--aw-menu-top/);
     expect(ruleFor('.aw-menu-heading')).toMatchObject({ position: 'sticky', top: '0', background: '#fff' });
