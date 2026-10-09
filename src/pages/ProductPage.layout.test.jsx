@@ -1,7 +1,7 @@
 // The product page's purchase column (AW-163): the FDA statement, brand and
 // name, then the variant, price, quantity and add, and only then the
-// description and the fine print, so the add button is on the first screen
-// of a laptop. The SKU line (AW-234) sits under the name, and the variant
+// SKU line (AW-234), the description and the fine print, so the add button
+// is on the first screen of a laptop. The variant
 // chips under their 'Choose a …' label (AW-235); no sign-in links under the
 // add button (AW-133). Kept apart from ProductPage.test.jsx.
 import { render } from '@testing-library/react';
@@ -21,16 +21,16 @@ describe('ProductPage purchase column (AW-163)', () => {
   it('runs warning, name, variants, notes, price, quantity and add, then the description and fine print', () => {
     render(page(SWISHER, { savedQty: 3 }));
     expect(column()).toEqual([
-      'nicotine-warning', 'pd-brand', 'h1', 'pd-sku', 'pd-variant-label', 'variant-chips', 'in-cart-note', 'in-cart-note', 'pd-saved',
-      'pd-price.is-locked', 'qty-row', 'pd-desc', 'pd-desc.pd-fine',
+      'nicotine-warning', 'pd-brand', 'h1', 'pd-variant-label', 'variant-chips', 'in-cart-note', 'in-cart-note', 'pd-saved',
+      'pd-price.is-locked', 'qty-row', 'pd-sku', 'pd-desc', 'pd-desc.pd-fine',
     ]);
   });
 
   it('puts the sell unit right above the quantity it explains, and the single variant under the name', () => {
     render(page(TUBES, { profile: { id: 'p', status: 'pending' }, cart: { '2::gold': 4 } }));
     expect(column()).toEqual([
-      'pd-brand', 'h1', 'pd-sku', 'pd-desc', 'pd-price.is-locked', 'pd-unit', 'qty-row', 'in-cart-note',
-      'pd-desc', 'pd-desc.pd-fine',
+      'pd-brand', 'h1', 'pd-desc', 'pd-price.is-locked', 'pd-unit', 'qty-row', 'in-cart-note',
+      'pd-sku', 'pd-desc', 'pd-desc.pd-fine',
     ]);
     expect(document.querySelector('.pd-info > .pd-desc').textContent).toBe('Variety: Gold');
   });

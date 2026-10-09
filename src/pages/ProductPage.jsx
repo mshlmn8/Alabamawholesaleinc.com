@@ -225,8 +225,6 @@ export function ProductPage({
           {/* The tag is a chip beside the brand line, not over the photo (AW-055). */}
           <p className="pd-brand"><span>{brand ? `${brand} · ${p.sub}` : p.sub}</span>{p.tag && <span className={`card-tag${p.tag === 'NEW' ? ' new' : ''}`}>{p.tag}</span>}</p>
           <h1>{p.name}</h1>
-          {/* The SKU for everyone, and the chosen variant's once there is one (AW-234). */}
-          <p className="pd-sku">SKU <span>{variantSku(p.sku, selected)}</span></p>
           {choiceRequired && <p id="pd-variant-label" className="pd-variant-label">{`Choose a ${axis.noun}`}</p>}
           {choiceRequired && (
             // eslint-disable-next-line jsx-a11y/interactive-supports-focus -- the radios inside take focus (roving tabindex); the group only hears their keys
@@ -267,9 +265,12 @@ export function ProductPage({
           </div>
           {qtyTotal && <p className="in-cart-note pd-line-total">{qtyTotal}</p>}
           {qty > 0 && <p className="in-cart-note"><span>{`Already in ${isApprovedBuyer ? 'order' : 'quote'}: `}</span><strong>{qty}</strong><span>{selected ? ` · ${selected}` : ''}</span></p>}
+          {/* The SKU for everyone, and the chosen variant's once there is one
+              (AW-234), after the add row so that row stays in the first
+              screen of a laptop (AW-163). */}
+          <p className="pd-sku">SKU <span>{variantSku(p.sku, selected)}</span></p>
           {/* The description and fine print after the price and the add row, so
-              those are in the first screen on a phone (AW-163); the SKU is the
-              .pd-sku line above (AW-234). */}
+              those are in the first screen on a phone (AW-163). */}
           <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()}${brand ? ` from ${brand}` : ''}.`}</p>
           <p className="pd-desc pd-fine">{`Supplied to licensed retail businesses for lawful resale. Next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
         </div>
