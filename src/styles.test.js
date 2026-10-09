@@ -1025,3 +1025,30 @@ describe('department page controls (AW-223, AW-225, AW-325)', () => {
     expect(inBlock('print').some((r) => r.selectors.includes('.back-to-top') && declarations(r.body).display === 'none')).toBe(true);
   });
 });
+
+describe('All products page (AW-068, AW-069, AW-229)', () => {
+  const blocks = mediaBlocks(css);
+  const inBlock = (prelude) => blocks.filter((b) => b.prelude === prelude).flatMap((b) => rules(b.body));
+  const outside = rules(outsideMedia);
+  const base = (selector) => declarations(outside.find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+
+  it('wraps every department’s product lines at every width, lined up with its heading (AW-069)', () => {
+    expect(base('.dept-section .sub-pills')).toEqual({ 'flex-wrap': 'wrap', overflow: 'visible', padding: '0', margin: '14px 0 12px' });
+    // The compact layout's sideways scroller is a single class, which the two
+    // classes above outrank wherever it sits; no rule overrides them there.
+    const scrollers = inBlock(MOBILE_QUERY).filter((r) => declarations(r.body)['flex-wrap'] === 'nowrap' && r.selectors.some((s) => s.includes('sub-pills')));
+    expect(scrollers.map((r) => r.selectors)).toEqual([['.sub-pills']]);
+    expect(blocks.flatMap((b) => rules(b.body)).some((r) => r.selectors.includes('.dept-section .sub-pills'))).toBe(false);
+  });
+
+  it('gives the jump links, department links and SKU list toggles 40px targets, and 44px on touch (AW-229)', () => {
+    for (const selector of ['.dept-jump a', '.sku-details summary', '.dept-head .text-link, .dept-more .text-link']) {
+      expect(base(selector)['min-height'], selector).toBe('var(--tap-sm)');
+    }
+    const touch = inBlock('(pointer: coarse)').find((r) => r.selectors.includes('.dept-more .text-link'));
+    expect(touch.selectors).toEqual(['.dept-jump a', '.sku-details summary', '.dept-head .text-link', '.dept-more .text-link']);
+    expect(declarations(touch.body)).toEqual({ 'min-height': 'var(--tap)' });
+    // The SKU list's detail line is at the 12px floor.
+    expect(base('.sku-list small')['font-size']).toBe('var(--text-xs)');
+  });
+});

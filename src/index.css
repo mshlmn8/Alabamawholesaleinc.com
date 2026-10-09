@@ -1610,7 +1610,7 @@ address.info-lead-small { font-style: normal; }
 
 /* all-products index */
 .dept-jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 14px; }
-.dept-jump a { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--line); background: #fff; color: var(--purple); font-size: var(--text-sm); font-weight: 700; }
+.dept-jump a { display: flex; align-items: center; gap: 8px; min-height: var(--tap-sm); padding: 8px 14px; border: 1px solid var(--line); background: #fff; color: var(--purple); font-size: var(--text-sm); font-weight: 700; }
 .dept-jump a span:first-child { font: 700 .9375rem/1 var(--display); color: var(--orange-dark); }
 @media (hover: hover) {
   .dept-jump a:hover { border-color: var(--orange); }
@@ -1622,9 +1622,16 @@ address.info-lead-small { font-style: normal; }
 .dept-head .eyebrow { color: var(--orange-dark); margin-bottom: 6px; }
 .dept-head h2 { font-size: var(--h2); }
 .dept-head .text-link { white-space: nowrap; }
-.dept-section .sub-pills { margin: 14px 0 12px; }
+.dept-head .text-link, .dept-more .text-link { min-height: var(--tap-sm); }
+/* Every product line shows, at every width (AW-069): the pills wrap here
+   instead of becoming the compact layout's sideways scroller, which this
+   selector outranks, and line up with the heading. */
+.dept-section .sub-pills { flex-wrap: wrap; overflow: visible; padding: 0; margin: 14px 0 12px; }
+/* The department's row of cards and the link to all of it (AW-068). */
+.dept-section .card-grid { margin-top: 22px; }
+.dept-more { display: flex; margin: 14px 0 2px; }
 .sku-details { margin-bottom: 8px; }
-.sku-details summary { display: inline-flex; align-items: center; gap: 10px; padding: 8px 0; cursor: pointer; color: var(--purple); font-size: var(--text-sm); font-weight: 700; text-decoration: underline; text-underline-offset: var(--link-offset); list-style: none; }
+.sku-details summary { display: inline-flex; align-items: center; gap: 10px; min-height: var(--tap-sm); padding: 8px 0; cursor: pointer; color: var(--purple); font-size: var(--text-sm); font-weight: 700; text-decoration: underline; text-underline-offset: var(--link-offset); list-style: none; }
 .sku-details summary::-webkit-details-marker { display: none; }
 .sku-details summary .icon { width: 1.25rem; height: 1.25rem; padding: 1px; border: 1px solid var(--purple); }
 .sku-details[open] summary .sku-plus, .sku-details:not([open]) summary .sku-minus { display: none; }
@@ -1637,11 +1644,12 @@ address.info-lead-small { font-style: normal; }
 .sku-list b { display: block; font-size: var(--text-sm); color: var(--ink); }
 .sku-list small { display: block; margin-top: 2px; font-size: var(--text-xs); color: var(--muted); }
 .catalog-signin { max-width: 440px; margin-top: 30px; }
-/* Touch screens (AW-302): the policy links, the department jump links and the
-   SKU list toggles are 44px targets; a mouse keeps the compact sizes. */
+/* Touch screens (AW-302, AW-229): the policy links, the department jump
+   links, the department links and the SKU list toggles are 44px targets; a
+   mouse keeps 40px. */
 @media (pointer: coarse) {
   .policy-nav a { display: flex; align-items: center; min-height: var(--tap); min-width: var(--tap); padding-block: 0; }
-  .dept-jump a, .sku-details summary { min-height: var(--tap); }
+  .dept-jump a, .sku-details summary, .dept-head .text-link, .dept-more .text-link { min-height: var(--tap); }
 }
 
 /* footer policy links: the only links to Privacy and Trade terms, so full-size
