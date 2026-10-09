@@ -10,9 +10,9 @@
 // between sections and filters keeps the scroll position and focus, and Back
 // returns to the previous section.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, navigate } from '../../lib/router.js';
-import { adminHref, adminSection } from '../../lib/adminRoutes.js';
+import { adminHref, adminPath, adminSection } from '../../lib/adminRoutes.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
 import { OrdersTab } from './OrdersSection.jsx';
@@ -51,6 +51,15 @@ export function AdminPage({
   // A filter change replaces the history entry and keeps the scroll position.
   // options.force: the change keeps any unsaved edit, so it skips the leave guard.
   const setQuery = (next, options = {}) => navigate(adminHref({ section, query: next }), { replace: true, scroll: false, ...options });
+  // The address bar shows only the checked query: keys the section doesn't
+  // know (a pasted ?email=…) and default values are dropped from it too.
+  useEffect(() => {
+    if (!route.section || window.location.pathname !== adminPath(route)) return;
+    const canonical = adminHref(route);
+    if (window.location.pathname + window.location.search !== canonical) {
+      navigate(canonical + window.location.hash, { replace: true, scroll: false, force: true });
+    }
+  }, [route]);
 
   // While auth loads, a real admin sees "Loading", not "access denied"
   // (AW-087). Not a dead end otherwise (AW-232): signed-out visitors can sign

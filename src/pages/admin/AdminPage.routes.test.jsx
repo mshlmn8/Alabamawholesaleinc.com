@@ -74,11 +74,12 @@ describe('admin sections (AW-118)', () => {
     expect(url()).toBe('/admin/orders');
   });
 
-  it('opens the section and filter a URL names, as after a reload', async () => {
-    act(() => navigate('/admin/orders?status=picking&email=tess@example.test', { replace: true }));
+  it('opens the section and filter a URL names, as after a reload, and drops what it doesn’t know', async () => {
+    act(() => navigate('/admin/orders?email=tess@example.test&status=picking', { replace: true }));
     await renderAdmin();
     expect(screen.getByText('ALW-O-C3')).toBeTruthy();
     expect(screen.queryByText('ALW-O-A1')).toBeNull();
+    expect(url()).toBe('/admin/orders?status=picking');
   });
 
   it('keeps the Products search in ?q= and gives it back after a visit to another section', async () => {

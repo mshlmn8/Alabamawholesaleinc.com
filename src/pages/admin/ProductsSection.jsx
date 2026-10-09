@@ -195,9 +195,10 @@ export function ProductsTab({ query = {}, onQuery, onCatalogChange, notify }) {
         <table className="aw-table">
           <thead>
             <tr>
-              {['ID', 'Name', 'Brand', 'Category', 'Price', 'Tag', 'Active', ''].map(h => (
-                <th key={h || 'actions'}>{h}</th>
+              {['ID', 'Name', 'Brand', 'Category', 'Price', 'Tag', 'Active'].map(h => (
+                <th key={h}>{h}</th>
               ))}
+              <th><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
           <tbody>
