@@ -288,10 +288,13 @@ h2 { font-size: var(--h2); margin-bottom: 0; }
    (QuantityInput, AW-013). */
 /* It never overflows a narrow card or cart line at a large text size (AW-162):
    the buttons give way first. The box is a field (the field rules below draw
-   it) wide enough for 100000; layout only here. */
+   it) wide enough for 100000; layout only here. Its width is a percentage
+   capped at that size, because a fixed width also counts towards the
+   narrowest the page around it can be: at 200% text on a 320px phone the
+   product page then scrolled sideways (AW-162). */
 .stepper { display: inline-flex; align-items: center; flex-shrink: 0; max-width: 100%; border: 1px solid var(--line); background: #fff; }
 .stepper button { display: grid; place-items: center; flex: 0 1 auto; min-width: 0; width: var(--tap-sm); height: var(--tap-sm); padding: 0; border: 0; background: #fff; color: var(--purple); font-size: 1.25rem; }
-.stepper input { width: calc(6ch + 1.5rem + 2px); min-width: 0; flex: 0 1 auto; text-align: center; }
+.stepper input { width: 100%; max-width: calc(6ch + 1.5rem + 2px); min-width: 0; flex: 0 1 auto; text-align: center; }
 .icon-btn:disabled, .stepper button:disabled { opacity: var(--disabled-opacity); cursor: not-allowed; }
 @media (hover: hover) {
   .button:not(:disabled):hover { background: var(--orange-dark); border-color: var(--orange-dark); }

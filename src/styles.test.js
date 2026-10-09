@@ -504,6 +504,13 @@ describe('the markup uses the design system (merged PR #12, PR #13 and lane p2 p
     expect(declarations(coarse.find((r) => r.selectors.join() === '.stepper button').body)).toEqual({ width: 'var(--tap)', height: 'var(--tap)' });
   });
 
+  it('sizes the stepper’s quantity box as a capped percentage, so it never widens the page at a large text size (AW-162, AW-013)', () => {
+    // A fixed width counts towards the page's narrowest layout; a percentage
+    // width on a form control does not.
+    const box = declarations(rules(css).find((r) => r.selectors.join() === '.stepper input').body);
+    expect(box).toMatchObject({ width: '100%', 'max-width': 'calc(6ch + 1.5rem + 2px)', 'min-width': '0' });
+  });
+
   it('keeps a wide admin table from widening the page: its .sr-only labels stay inside the scroller', () => {
     const scroller = declarations(rules(css).find((r) => r.selectors.join() === '.table-scroll').body);
     expect(scroller).toMatchObject({ position: 'relative', 'overflow-x': 'auto' });
