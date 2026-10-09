@@ -47,13 +47,14 @@ supabase/migrations/20261010122000_order_operations.sql
 supabase/migrations/20261010130000_catalog_apostrophes.sql
 supabase/migrations/20261010131000_photo_filenames.sql
 supabase/migrations/20261011110000_order_item_hints.sql
+supabase/migrations/20261011111000_profile_role_audit.sql
 supabase/seed/products.sql
 ```
 
 On a project that is already running, apply only the migrations it doesn't
 have yet, in that order, then the seed, then deploy the frontend (see the
 release checklist at the end of this file). The live project has the files
-up to `20260927180000`; the nineteen `20261008…`/`20261009…`/`20261010…`/`20261011…`
+up to `20260927180000`; the twenty `20261008…`/`20261009…`/`20261010…`/`20261011…`
 files are new.
 Review them before applying them; the site keeps working without them (see
 `docs/OWNER-TODO.md` and "Before and after" in the release checklist).
@@ -763,22 +764,32 @@ account line links there too. The page shows:
 - **Orders**: the newest 50 with the last order's date and the total of the
   priced orders that weren't cancelled; every link opens Admin → Orders for
   the account (`?account=<profile id>`).
-- **Status history** (`profile_status_log`).
+- **Status history** (`profile_status_log`): status changes, and role
+  changes once `20261011111000` is applied.
 
-Status, tier and role changes (on the list and the page) show at once, with
+Status and tier changes (on the list and the page) show at once, with
 Undo for 8 seconds, and go back with the reason if the database refuses
 them; one request per account at a time. **Suspending** asks for a reason,
-which is saved as an internal note ("Suspended: …"). **Cancelling an order**
+which is saved as an internal note ("Suspended: …"). **Making an account an
+admin** or **removing admin access** (AW-203) asks too ("Make … an admin?",
+"Remove admin access from …?"), with a required reason saved as an internal
+note ("Made an admin: …", "Admin access removed: …"); making a pending or
+suspended account an admin approves it, which the question says. The select
+keeps the saved role until it is confirmed, and none of these three has Undo.
+Since `20261011111000`, the **Status history** lists role changes too ("Made
+an admin by …", "Approved and made an admin by …"). **Cancelling an order**
 asks for a reason that goes in its history (`admin_set_order_status`); other
 order status changes keep the card where it is, tagged "Moved to …", until
 Refresh or another filter, with Undo.
 
-No migration is needed: the page uses `20261008191000` (store address),
-`20261008193000` (approval stamp, status history) and `20261009140000`
-(internal notes). Before those are applied, saving a column the database
-doesn't have says it needs the October 2026 update, the notes say so too
-(and a suspension says its reason wasn't saved), the status history is left
-out, and a cancellation's reason is optional because it can't be stored.
+The page uses `20261008191000` (store address), `20261008193000` (approval
+stamp, status history), `20261009140000` (internal notes) and
+`20261011111000` (role changes in the history). Before those are applied,
+saving a column the database doesn't have says it needs the October 2026
+update, the notes say so too (and a suspension or role change says its
+reason wasn't saved), the status history is left out (or, before
+`20261011111000` alone, shows status changes only), and a cancellation's
+reason is optional because it can't be stored.
 
 Staff can't create or invite an account from Admin yet: that needs a
 Supabase Edge Function with the service-role key and an email provider (see
@@ -887,10 +898,11 @@ For each release:
 5. Then apply the migrations the table below marks "Apply AFTER deploying
    the new frontend" (`20261010131000_photo_filenames.sql`).
 
-The live project needs all nineteen, in this order (Cursor's seven
+The live project needs all twenty, in this order (Cursor's seven
 `20261008…` files, then the six `20261009…` ones, which build on them, then
 the five `20261010…` ones: three for the admin back office and two data-only
-catalog fixes, then `20261011110000`, which can go in any time). Apply
+catalog fixes, then `20261011110000` and `20261011111000`, which can go in
+any time). Apply
 `20261008200000` and `20261009100000`–`20261009150000` in one session: the
 price boundary hides `products.variant_prices` and `20261009110000` moves it.
 Each `20261009…` migration ends with a commented reverse-SQL block for
@@ -920,6 +932,9 @@ rolling it back.
     frontend is deployed**, step 5 above)
 19. `20261011110000_order_item_hints.sql` (the checkout names the item a
     refused line is about; any time, after 9)
+20. `20261011111000_profile_role_audit.sql` (role changes in an account's
+    history; any time, after 12; before it, role changes aren't in the
+    history, only their reasons in the internal notes)
 
 Then `supabase/seed/products.sql`, then the frontend, then 18.
 
@@ -944,6 +959,7 @@ Then `supabase/seed/products.sql`, then the frontend, then 18.
 | `20261010130000_catalog_apostrophes.sql` | Data only (AW-064): #163 and #166 get a straight apostrophe in their name and brand ("M&M's", "Reese's"), like every other possessive name in the catalog. Each row changes only while it still has the curly value the seed wrote, so admin edits are kept and a re-run changes nothing. | Apply any time, before or after the frontend: the storefront search treats ’ and ' alike, so both spellings are found before and after. Ids, SKUs and variant labels don't change. |
 | `20261010131000_photo_filenames.sql` | Data only (AW-290): six products' `img` move to the renamed photo files (#21 `p21-speed-stick-mens-deodorant.jpg`, #110 `p110-brillo-basics-dish-liquid.png`, #128 `p128-fabuloso.avif`, #225 `p225-lady-speed-stick-deodorant.webp`, #280 `p280-coastal-motor-oil.jpg`, #292 `p292-electrolit.webp`). Each row changes only while it still names the old file the seed wrote, so a photo an admin has set is kept and a re-run changes nothing. | **Apply AFTER deploying the new frontend.** The frontend deployed before it ships only the old file names, so after this migration it would show "Photo coming soon" for these six products; the new frontend ships only the new files and reads both names (`IMAGE_FILE_ALIASES` in `src/data/catalogAliases.js`). Ids, SKUs and variant labels don't change. |
 | `20261011110000_order_item_hints.sql` | AW-200: recreates the order-line trigger function `enforce_order_item_price()` from `20261009110000`, changing only its refusals: each keeps its message word for word and gets a typed hint (`order_missing`, `product_unavailable`, `invalid_quantity`, `variant_required`, `unknown_variant`; `variant_unavailable` had one) and, as its detail, the line's product id. Still SECURITY DEFINER, revoked from guests and signed-in accounts; Cursor's `order_items_price` trigger is unchanged. A commented Reverse block is at the end. | Apply any time after `20261009110000`. No seed change. The frontend deployed before it shows its generic "couldn't save" message for these refusals either way. The new frontend works before and after: before it, the checkout words these errors from the message text (and names the product only for "Choose a variant for …" and "Unknown variant for …"); after it, it names the product of the refused line from the detail. |
+| `20261011111000_profile_role_audit.sql` | AW-203: `profile_status_log.old_role` and `new_role`; recreates the log trigger function `log_profile_status()` from `20261008193000` so it writes a row when the status or the role changes (`old_status`/`new_status` always, `old_role`/`new_role` only when the role changed, `changed_by` and the note as before). Still SECURITY DEFINER with `search_path = public`, revoked from guests and signed-in accounts; the `profile_status_log_write` trigger, the admin-only read policy and the own-role/status guard (`own_role_status`) are unchanged. A commented Reverse block is at the end. | Apply any time after `20261009140000`. No seed change. The frontend deployed before it doesn't read the new columns. The new frontend works before and after: the account page's Status history asks for the role columns and, without them (42703/PGRST204), shows status changes only; before it, role changes aren't in the history (each one's reason is in the account's internal notes either way). |
 
 ### Later steps
 

@@ -235,16 +235,12 @@ function AccountsList({
                       </select>
                     </td>
                     <td>
-                      {/* An admin must be an approved account (is_admin()), so
+                      {/* A role change asks first, with a reason (AW-203);
                           making a pending or suspended account an admin approves it. */}
                       <select id={accountControlId(p.id, 'role')} aria-label={`Role for ${p.business || p.name}`} value={p.role}
                         disabled={p.id === currentAdminId} aria-disabled={busy(p) || undefined}
                         aria-describedby={p.id === currentAdminId ? 'admin-own-row' : undefined}
-                        onChange={e => {
-                          if (busy(p)) return;
-                          changes.change(p, e.target.value === 'admin' && p.status !== 'approved' ? { role: 'admin', status: 'approved' } : { role: e.target.value },
-                            { kind: 'role', focusId: accountControlId(p.id, 'role') });
-                        }}>
+                        onChange={e => { if (!busy(p)) changes.setRole(p, e.target.value); }}>
                         <option value="customer">customer</option>
                         <option value="admin">admin</option>
                       </select>

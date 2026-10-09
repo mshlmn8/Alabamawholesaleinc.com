@@ -306,3 +306,29 @@ describe('an account’s page (AW-113)', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Alpha Food Mart' })).toBeTruthy();
   });
 });
+
+describe('the status history’s role changes (AW-203)', () => {
+  const lines = () => [...section('Status history').querySelectorAll('.order-timeline-line')].map((p) => p.textContent.replace(/ · .*$/, ''));
+
+  it('reads the role columns, and says who made an account an admin or removed it', async () => {
+    fake.tables.profile_status_log = [
+      { id: 6, profile_id: ALPHA_ID, old_status: 'approved', new_status: 'approved', old_role: 'admin', new_role: 'customer', changed_by: ADMIN_ID, changed_at: '2026-10-04T15:00:00Z' },
+      { id: 5, profile_id: ALPHA_ID, old_status: 'approved', new_status: 'approved', old_role: 'customer', new_role: 'admin', changed_by: ADMIN_ID, changed_at: '2026-10-03T15:00:00Z' },
+      { id: 4, profile_id: ALPHA_ID, old_status: 'pending', new_status: 'approved', old_role: 'customer', new_role: 'admin', changed_by: null, changed_at: '2026-10-02T15:00:00Z' },
+      { id: 3, profile_id: ALPHA_ID, old_status: 'pending', new_status: 'approved', old_role: null, new_role: null, changed_by: ADMIN_ID, changed_at: '2026-10-01T15:00:00Z' },
+    ];
+    await open(`/admin/accounts/${ALPHA_ID}`);
+    expect(fake.find({ table: 'profile_status_log' }).map((c) => c.columns)).toEqual(['id, old_status, new_status, old_role, new_role, changed_by, changed_at']);
+    expect(lines()).toEqual(['Admin access removed by Desk Admin', 'Made an admin by Desk Admin', 'Approved and made an admin', 'Approved by Desk Admin']);
+  });
+
+  it('reads the history without them on a database before 20261011111000', async () => {
+    fake.respond = (request) => (request.table === 'profile_status_log' && String(request.columns).includes('old_role')
+      ? { data: null, error: { code: '42703', message: 'column profile_status_log.old_role does not exist' } } : undefined);
+    await open(`/admin/accounts/${ALPHA_ID}`);
+    expect(fake.find({ table: 'profile_status_log' }).map((c) => c.columns))
+      .toEqual(['id, old_status, new_status, old_role, new_role, changed_by, changed_at', 'id, old_status, new_status, changed_by, changed_at']);
+    expect(lines()).toEqual(['Approved by Desk Admin']);
+    expect(within(section('Status history')).queryByRole('alert')).toBeNull();
+  });
+});

@@ -4,9 +4,11 @@
 //   matchesAccountSearch(profile, text)  the list's search box
 //   contactDraft / contactChanges / validateContact   the contact and store form
 //   loadAccountOrders / ordersSummary                 the account's orders
+//   loadStatusHistory / historyText                   its status and role history
 
 import { fromCents, toCents } from '../../lib/pricing.js';
 import { adminHref } from '../../lib/adminRoutes.js';
+import { statusLabel } from './orderStaff.js';
 
 export const MAX_ACCOUNT_SEARCH = 100;
 
@@ -143,4 +145,29 @@ export function ordersSummary(orders = []) {
 export function dayText(value) {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// The account's status history, newest first (profile_status_log,
+// 20261008193000), with the role changes 20261011111000 adds (AW-203). A
+// database without the role columns answers 42703 (or PGRST204), so it is
+// asked again without them.
+export const HISTORY_LIMIT = 20;
+export const HISTORY_COLUMNS = 'id, old_status, new_status, old_role, new_role, changed_by, changed_at';
+const HISTORY_COLUMNS_BEFORE_ROLES = 'id, old_status, new_status, changed_by, changed_at';
+export async function loadStatusHistory(client, id) {
+  const query = (columns) => client.from('profile_status_log').select(columns).eq('profile_id', id).order('changed_at', { ascending: false }).limit(HISTORY_LIMIT);
+  let result = await query(HISTORY_COLUMNS);
+  if (result?.error && ['42703', 'PGRST204'].includes(String(result.error.code))) result = await query(HISTORY_COLUMNS_BEFORE_ROLES);
+  return result;
+}
+
+// What a history row says: 'Approved', 'Made an admin', 'Admin access
+// removed', or both at once: 'Approved and made an admin'.
+export function historyText(row) {
+  const role = row?.new_role && row.new_role !== row.old_role
+    ? (row.new_role === 'admin' ? 'Made an admin' : 'Admin access removed')
+    : null;
+  const status = row?.new_status && row.new_status !== row.old_status ? statusLabel(row.new_status) : null;
+  if (role && status) return `${status} and ${role[0].toLowerCase()}${role.slice(1)}`;
+  return role || status || statusLabel(row?.new_status) || 'Status changed';
 }

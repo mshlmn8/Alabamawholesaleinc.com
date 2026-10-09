@@ -90,6 +90,9 @@ describe('AdminPage accounts', () => {
     await act(async () => {
       fireEvent.change(screen.getByRole('combobox', { name: 'Role for New Store' }), { target: { value: 'admin' } });
     });
+    // A role change asks first, with a reason (AW-203).
+    fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'Store manager' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Make an admin' })); });
     expect(updates().at(-1)).toEqual({ table: 'profiles', id: 'buyer-2', patch: { role: 'admin', status: 'approved' } });
     db.updateResult = { data: null, error: { code: '42501', message: 'Only your name, phone and store address can be changed here' } };
     // Suspending asks for a reason first (AW-112).
@@ -99,9 +102,10 @@ describe('AdminPage accounts', () => {
     fireEvent.change(screen.getByLabelText('Reason for suspending'), { target: { value: 'Licence expired' } });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Suspend the account' })); });
     expect(screen.getByRole('alert').textContent).toBe('That change to Test Market LLC isn’t allowed.');
-    // The refused change goes back, and no note is written for it.
+    // The refused change goes back, and no note is written for it (only the
+    // role change's).
     expect(screen.getByRole('combobox', { name: 'Status for Test Market LLC' }).value).toBe('approved');
-    expect(fake.find({ table: 'profile_admin_notes' })).toHaveLength(0);
+    expect(fake.find({ table: 'profile_admin_notes' }).map((c) => c.rows.body)).toEqual(['Made an admin: Store manager']);
     db.updateResult = { data: [], error: null };
     await act(async () => {
       fireEvent.change(screen.getByRole('combobox', { name: 'Tier for Test Market LLC' }), { target: { value: 'standard' } });

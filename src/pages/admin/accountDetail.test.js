@@ -1,7 +1,7 @@
 // The account search and the account page's pure parts (AW-113).
 import { describe, expect, it } from 'vitest';
 import {
-  ACCOUNT_ORDER_COLUMNS, accountHref, accountOrdersHref, businessTypes, contactChanges, contactDraft, loadAccountOrders, matchesAccountSearch,
+  ACCOUNT_ORDER_COLUMNS, accountHref, accountOrdersHref, businessTypes, contactChanges, contactDraft, historyText, loadAccountOrders, matchesAccountSearch,
   ordersSummary, validateContact,
 } from './accountDetail.js';
 
@@ -96,5 +96,17 @@ describe('the account’s orders', () => {
   it('links to the account’s page and its orders in Admin -> Orders', () => {
     expect(accountHref(ALPHA.id)).toBe(`/admin/accounts/${ALPHA.id}`);
     expect(accountOrdersHref(ALPHA.id)).toBe(`/admin/orders?status=all&account=${ALPHA.id}`);
+  });
+});
+
+describe('historyText (AW-203)', () => {
+  it('words a status change, a role change, and both at once', () => {
+    expect(historyText({ old_status: 'pending', new_status: 'approved' })).toBe('Approved');
+    expect(historyText({ old_status: 'approved', new_status: 'suspended', old_role: null, new_role: null })).toBe('Suspended');
+    expect(historyText({ old_status: 'approved', new_status: 'approved', old_role: 'customer', new_role: 'admin' })).toBe('Made an admin');
+    expect(historyText({ old_status: 'approved', new_status: 'approved', old_role: 'admin', new_role: 'customer' })).toBe('Admin access removed');
+    expect(historyText({ old_status: 'pending', new_status: 'approved', old_role: 'customer', new_role: 'admin' })).toBe('Approved and made an admin');
+    expect(historyText({ old_status: 'approved', new_status: 'suspended', old_role: 'admin', new_role: 'customer' })).toBe('Suspended and admin access removed');
+    expect(historyText({})).toBe('Status changed');
   });
 });
