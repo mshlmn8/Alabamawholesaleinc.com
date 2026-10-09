@@ -639,7 +639,9 @@ describe('one field system (AW-146, AW-172, AW-147, AW-309)', () => {
 
   it('gives every field label one style', () => {
     const labels = ['.form-grid label', '.contact-grid dt', '.eligibility-form label', '.qr-field span', '.qr-choice span',
-      '.category-sort', '.filter-search', '.doc-upload label', '.filter-panel legend', '.doc-uploads legend', '.order-edit-line label', '.account-note',
+      '.category-sort', '.filter-search', '.doc-upload label', '.filter-panel legend', '.doc-uploads legend',
+      // The application form's group legends (AW-243).
+      '.form-section legend', '.order-edit-line label', '.account-note',
       '.admin-toolbar label'];
     const typography = { 'font-size': 'var(--text-xs)', 'font-weight': '700', 'letter-spacing': 'var(--track-label)', color: 'var(--purple)', 'text-transform': 'uppercase' };
     const shared = all.find((r) => r.selectors.includes('.doc-uploads legend') && declarations(r.body)['text-transform']);

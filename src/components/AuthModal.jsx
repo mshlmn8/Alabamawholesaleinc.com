@@ -58,10 +58,12 @@ const isUnconfirmedEmail = (err) => err?.code === 'email_not_confirmed' || /emai
 // TODO(owner): Approve the consent checkbox wording. The Trade terms / Privacy
 // version it records is TERMS_VERSION in ../data/content.js. (AW-019)
 
+// The three selects start empty and are required, so an answer is one the
+// applicant chose, not a default nobody looked at (AW-091).
 const EMPTY_SIGNUP = {
   email: '', password: '', name: '', business: '', phone: '',
   ein: '', license_no: '', resale_cert_no: '',
-  business_type: 'Convenience Store', state: 'AL', expected_volume: '$5K — $15K',
+  business_type: '', state: '', expected_volume: '',
   // The store's address (AW-092) and the two required boxes (AW-019).
   store_street: '', store_city: '', store_zip: '',
   agreeTerms: false, ageConfirmed: false,
@@ -87,6 +89,9 @@ function Field({ id, label, hint, full = false, children }) {
     </div>
   );
 }
+
+// A select's first, unpickable option, shown until the applicant chooses (AW-091).
+const choose = <option value="" disabled>Select…</option>;
 
 export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, signingOut = false }) {
   const {
@@ -478,12 +483,12 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
 
         {mode === 'signup' && (
           <form onSubmit={handleSignup}>
-            <div className="form-grid">
-              <Field id="aw-su-name" label="Your name">
+            {/* Three groups, each under its legend, then the optional
+                documents (AW-243). */}
+            <fieldset className="form-grid form-section">
+              <legend>Your login</legend>
+              <Field id="aw-su-name" label="Your name" full>
                 <input id="aw-su-name" name="name" value={signup.name} onChange={setU('name')} required autoComplete="name" data-autofocus />
-              </Field>
-              <Field id="aw-su-business" label="Business name">
-                <input id="aw-su-business" name="organization" value={signup.business} onChange={setU('business')} required autoComplete="organization" />
               </Field>
               <Field id="aw-su-email" label="Business email">
                 <input id="aw-su-email" type="email" name="email" value={signup.email} onChange={setU('email')} required autoComplete="email" inputMode="email" />
@@ -491,17 +496,20 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
               <Field id="aw-su-phone" label="Phone">
                 <input id="aw-su-phone" type="tel" name="tel" value={signup.phone} onChange={setU('phone')} required autoComplete="tel" inputMode="tel" />
               </Field>
-              <Field id="aw-su-pass" label="Password" hint="At least 8 characters.">
+              <Field id="aw-su-pass" label="Password" hint="At least 8 characters." full>
                 <input id="aw-su-pass" type="password" name="new-password" value={signup.password} onChange={setU('password')} required minLength={8} autoComplete="new-password" aria-describedby="aw-su-pass-hint" />
               </Field>
-              <Field id="aw-su-type" label="Business type">
-                <select id="aw-su-type" name="business_type" value={signup.business_type} onChange={setU('business_type')} autoComplete="off">{BUSINESS_TYPES.map(o => <option key={o}>{o}</option>)}</select>
+            </fieldset>
+            <fieldset className="form-grid form-section">
+              <legend>Your store</legend>
+              <Field id="aw-su-business" label="Business name" full>
+                <input id="aw-su-business" name="organization" value={signup.business} onChange={setU('business')} required autoComplete="organization" />
               </Field>
-              <Field id="aw-su-ein" label="Federal EIN" hint="9 digits, for example 12-3456789.">
-                <input id="aw-su-ein" name="ein" value={signup.ein} onChange={setU('ein')} required inputMode="numeric" pattern="[0-9]{2}-?[0-9]{7}" title="Enter the 9-digit EIN, for example 12-3456789" placeholder="12-3456789" autoComplete="off" aria-describedby="aw-su-ein-hint" />
+              <Field id="aw-su-type" label="Business type">
+                <select id="aw-su-type" name="business_type" value={signup.business_type} onChange={setU('business_type')} required autoComplete="off">{choose}{BUSINESS_TYPES.map(o => <option key={o}>{o}</option>)}</select>
               </Field>
               <Field id="aw-su-state" label="Store state">
-                <select id="aw-su-state" name="state" value={signup.state} onChange={setU('state')} autoComplete="address-level1">{STATES.map(o => <option key={o}>{o}</option>)}</select>
+                <select id="aw-su-state" name="state" value={signup.state} onChange={setU('state')} required autoComplete="address-level1">{choose}{STATES.map(o => <option key={o}>{o}</option>)}</select>
               </Field>
               <Field id="aw-su-street" label="Store street address" full>
                 <input id="aw-su-street" name="address-line1" value={signup.store_street} onChange={setU('store_street')} required maxLength={200} autoComplete="address-line1" />
@@ -512,6 +520,15 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
               <Field id="aw-su-zip" label="ZIP">
                 <input id="aw-su-zip" name="postal-code" value={signup.store_zip} onChange={setU('store_zip')} required maxLength={5} inputMode="numeric" pattern="[0-9]{5}" autoComplete="postal-code" title="Enter a 5-digit ZIP code" />
               </Field>
+              <Field id="aw-su-volume" label="Expected monthly volume" full>
+                <select id="aw-su-volume" name="expected_volume" value={signup.expected_volume} onChange={setU('expected_volume')} required autoComplete="off">{choose}{VOLUMES.map(o => <option key={o}>{o}</option>)}</select>
+              </Field>
+            </fieldset>
+            <fieldset className="form-grid form-section">
+              <legend>Licensing</legend>
+              <Field id="aw-su-ein" label="Federal EIN" hint="9 digits, for example 12-3456789." full>
+                <input id="aw-su-ein" name="ein" value={signup.ein} onChange={setU('ein')} required inputMode="numeric" pattern="[0-9]{2}-?[0-9]{7}" title="Enter the 9-digit EIN, for example 12-3456789" placeholder="12-3456789" autoComplete="off" aria-describedby="aw-su-ein-hint" />
+              </Field>
               {/* TODO(owner): Is a tobacco license required for every trade account, or only for tobacco, vapor, and nicotine? This field stays required for every application until you decide. (AW-129) */}
               <Field id="aw-su-license" label="State retail tobacco license #" hint="From the state where the store is licensed.">
                 <input id="aw-su-license" name="license_no" value={signup.license_no} onChange={setU('license_no')} required autoComplete="off" aria-describedby="aw-su-license-hint" />
@@ -519,16 +536,13 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
               <Field id="aw-su-resale" label="Resale certificate #" hint="Sales tax resale or exemption certificate.">
                 <input id="aw-su-resale" name="resale_cert_no" value={signup.resale_cert_no} onChange={setU('resale_cert_no')} required autoComplete="off" aria-describedby="aw-su-resale-hint" />
               </Field>
-              <DocumentUploads
-                disabled={submitting || !isBackendConfigured}
-                files={proof}
-                errors={proofErrors}
-                onPick={onProof}
-              />
-              <Field id="aw-su-volume" label="Expected monthly volume" full>
-                <select id="aw-su-volume" name="expected_volume" value={signup.expected_volume} onChange={setU('expected_volume')} autoComplete="off">{VOLUMES.map(o => <option key={o}>{o}</option>)}</select>
-              </Field>
-            </div>
+            </fieldset>
+            <DocumentUploads
+              disabled={submitting || !isBackendConfigured}
+              files={proof}
+              errors={proofErrors}
+              onPick={onProof}
+            />
             {/* Consent and 21+ (AW-019). The policies open in a new tab so the
                 answers typed here stay put. */}
             <div className="consent-block">

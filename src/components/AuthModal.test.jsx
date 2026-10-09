@@ -35,6 +35,13 @@ function setup(initial, props = {}) {
   return { onClose, onSignOut, update, get value() { return value; } };
 }
 
+// The three selects start empty and are required (AW-091).
+const chooseSelects = () => {
+  fireEvent.change(screen.getByLabelText('Business type'), { target: { value: 'Smoke Shop' } });
+  fireEvent.change(screen.getByLabelText('Store state'), { target: { value: 'AL' } });
+  fireEvent.change(screen.getByLabelText('Expected monthly volume'), { target: { value: '$15K — $50K' } });
+};
+
 const signInWith = async () => {
   fireEvent.change(screen.getByLabelText('Business email'), { target: { value: 'buyer@example.test' } });
   fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'test-password-1' } });
@@ -152,11 +159,13 @@ describe('AuthModal application form', () => {
     fireEvent.change(street, { target: { value: '1 Test St' } });
     fireEvent.change(city, { target: { value: 'Birmingham' } });
     fireEvent.change(zip, { target: { value: '35203' } });
+    chooseSelects();
     fireEvent.click(terms);
     fireEvent.click(age);
     await act(async () => { fireEvent.submit(street.closest('form')); });
     expect(signUp).toHaveBeenCalledWith(expect.objectContaining({
       store_street: '1 Test St', store_city: 'Birmingham', store_zip: '35203',
+      business_type: 'Smoke Shop', state: 'AL', expected_volume: '$15K — $50K',
       terms_accepted: true, terms_version: '2026-09', age_confirmed: true,
     }));
   });
@@ -200,11 +209,15 @@ describe('AuthModal application form, more cases (AW-092, AW-019)', () => {
     fill('Store street address', '1 Test Way');
     fill('City', 'Testville');
     fill('ZIP', '35203');
+    fill('Business type', 'Vape Shop');
+    fill('Store state', 'GA');
+    fill('Expected monthly volume', 'Under $5K');
     fireEvent.click(screen.getByRole('checkbox', { name: /I agree to the Trade terms/ }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'I am 21 or older' }));
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Submit application/ })); });
     expect(t.value.signUp).toHaveBeenCalledWith(expect.objectContaining({
-      email: 'new@example.test', name: 'New Buyer', state: 'AL',
+      email: 'new@example.test', name: 'New Buyer', phone: '205-555-0199',
+      business_type: 'Vape Shop', state: 'GA', expected_volume: 'Under $5K',
       store_street: '1 Test Way', store_city: 'Testville', store_zip: '35203',
       terms_accepted: true, age_confirmed: true,
     }));
@@ -712,5 +725,48 @@ describe('AuthModal after the application is sent (AW-260)', () => {
     expect(screen.queryByText('Browse the catalog.')).toBeNull();
     // The action still offers the catalog.
     expect(screen.getByRole('link', { name: 'Browse the catalog' })).toBeTruthy();
+  });
+});
+
+// AW-091: the three selects start empty and must be chosen. AW-243: the form
+// is grouped under three legends, then the optional documents.
+describe('AuthModal application choices and groups (AW-091, AW-243)', () => {
+  it('starts business type, store state and monthly volume empty, with a Select… option nobody can pick back', () => {
+    setup({}, { initialMode: 'application' });
+    for (const label of ['Business type', 'Store state', 'Expected monthly volume']) {
+      const select = screen.getByLabelText(label);
+      expect(select.value, label).toBe('');
+      expect(select.required, label).toBe(true);
+      const first = select.options[0];
+      expect([first.value, first.textContent, first.disabled], label).toEqual(['', 'Select…', true]);
+      // The real choices keep their values.
+      expect(select.options.length, label).toBeGreaterThan(2);
+      expect(select.validity.valueMissing, label).toBe(true);
+    }
+    expect([...screen.getByLabelText('Store state').options].slice(1, 3).map((o) => o.value)).toEqual(['AL', 'GA']);
+  });
+
+  it('counts a chosen select as a typed answer, and an untouched form as none', () => {
+    const t = setup({}, { initialMode: 'application' });
+    fireEvent.change(screen.getByLabelText('Store state'), { target: { value: 'MS' } });
+    fireEvent.click(closeButton());
+    expect(discardBar()).toBeTruthy();
+    expect(t.onClose).not.toHaveBeenCalled();
+  });
+
+  it('groups the fields under Your login, Your store and Licensing, then the optional documents', () => {
+    setup({}, { initialMode: 'application' });
+    const form = screen.getByLabelText('Your name').closest('form');
+    expect([...form.querySelectorAll('fieldset > legend')].map((l) => l.textContent)).toEqual(['Your login', 'Your store', 'Licensing', 'Optional documents']);
+    const fields = (name) => [...screen.getByRole('group', { name }).querySelectorAll('input, select')].map((el) => el.id);
+    expect(fields('Your login')).toEqual(['aw-su-name', 'aw-su-email', 'aw-su-phone', 'aw-su-pass']);
+    expect(fields('Your store')).toEqual(['aw-su-business', 'aw-su-type', 'aw-su-state', 'aw-su-street', 'aw-su-city', 'aw-su-zip', 'aw-su-volume']);
+    expect(fields('Licensing')).toEqual(['aw-su-ein', 'aw-su-license', 'aw-su-resale']);
+    // The password and the EIN each take a row of their own.
+    for (const id of ['aw-su-pass', 'aw-su-ein', 'aw-su-volume', 'aw-su-street']) {
+      expect(document.getElementById(id).closest('.form-section > div').className, id).toBe('full');
+    }
+    expect(document.getElementById('aw-su-name').hasAttribute('data-autofocus')).toBe(true);
+    expect(document.activeElement).toBe(screen.getByLabelText('Your name'));
   });
 });
