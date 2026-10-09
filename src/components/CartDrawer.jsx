@@ -18,7 +18,8 @@
 // On a short screen (a phone in landscape) and in the compact layout (a
 // phone upright) it follows the lines instead, so the fixed foot takes no
 // more height from the list than before (AW-152). After the lines, a note
-// says the cart is kept on this device only (AW-334).
+// says where the cart is kept (AW-334): on this device, or with the account
+// while it is saved there (cartSynced, src/lib/cartSync.js).
 
 import { useEffect, useRef } from 'react';
 import { basketTerms, cartDeviceNote } from '../data/terms.js';
@@ -42,7 +43,7 @@ export const SHORT_DRAWER_QUERY = '(max-height: 31.25em)';
 
 export function CartDrawer({
   open, onClose, items, total, setLine, chooseVariant, removeLine, removeLines, legacy = [], onDismissLegacy,
-  profile, isApprovedBuyer, pricesStatus = 'ready', onLoginClick, isSuspended = false,
+  profile, isApprovedBuyer, pricesStatus = 'ready', onLoginClick, isSuspended = false, cartSynced = false,
 }) {
   const listRef = useRef(null);
   const wasOpen = useRef(open);
@@ -108,7 +109,7 @@ export function CartDrawer({
             </ul>
           )}
           {short && summary}
-          <p className="fine cart-device-note">{cartDeviceNote(Boolean(profile))}</p>
+          <p className="fine cart-device-note">{cartDeviceNote(Boolean(profile), cartSynced)}</p>
         </div>
         <div className="drawer-foot">
           {!short && summary}

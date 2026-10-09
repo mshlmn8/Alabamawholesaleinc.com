@@ -72,11 +72,17 @@ export const basketButtonLabel = (basket, n) => `${basket.label}, ${n.toLocaleSt
 export const basketBadge = (n) => (n > 99 ? '99+' : String(n));
 
 // Where the cart is kept (AW-334): in this browser, one cart per account on
-// this device plus one for guests (src/lib/cartStorage.js), never on the
-// server, so it doesn't follow a buyer to another phone or computer. The
-// drawer and checkout say so. A cart saved with the account is a later step.
+// this device plus one for guests (src/lib/cartStorage.js). A signed-in
+// account's cart is also saved with the account (src/lib/cartSync.js), but
+// only once the database has the carts table and the saved copy was read:
+// `synced` (useCartSync() === 'active'). Until then, and for guests, the
+// drawer and checkout say it stays on this device.
 export const CART_DEVICE_NOTE = Object.freeze({
   account: 'Saved on this device for your account. It won’t show up when you sign in on another phone or computer.',
+  synced: 'Saved with your account. It shows up when you sign in on another phone or computer.',
   guest: 'Saved in this browser only. Items added on another device won’t appear here.',
 });
-export const cartDeviceNote = (signedIn) => (signedIn ? CART_DEVICE_NOTE.account : CART_DEVICE_NOTE.guest);
+export function cartDeviceNote(signedIn, synced = false) {
+  if (!signedIn) return CART_DEVICE_NOTE.guest;
+  return synced ? CART_DEVICE_NOTE.synced : CART_DEVICE_NOTE.account;
+}

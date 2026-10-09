@@ -71,4 +71,12 @@ describe('CartDrawer device note (AW-334)', () => {
     render(drawer({ profile: { id: 'p', status: 'pending' }, items: [] }));
     expect(document.querySelector('.cart-device-note').textContent).toBe(ACCOUNT_NOTE);
   });
+
+  it('says the cart is saved with the account only while it is (cartSynced); a guest’s never is', () => {
+    const view = render(drawer({ profile: { id: 'p', status: 'approved' }, isApprovedBuyer: true, cartSynced: true }));
+    expect(document.querySelector('.cart-device-note').textContent)
+      .toBe('Saved with your account. It shows up when you sign in on another phone or computer.');
+    view.rerender(drawer({ profile: null, cartSynced: true }));
+    expect(document.querySelector('.cart-device-note').textContent).toBe(GUEST_NOTE);
+  });
 });

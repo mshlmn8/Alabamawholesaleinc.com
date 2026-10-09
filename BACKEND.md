@@ -51,13 +51,14 @@ supabase/migrations/20261011111000_profile_role_audit.sql
 supabase/migrations/20261011130000_catalog_names.sql
 supabase/migrations/20261011131000_home_slides.sql
 supabase/migrations/20261012100000_document_storage_lock.sql
+supabase/migrations/20261012110000_carts.sql
 supabase/seed/products.sql
 ```
 
 On a project that is already running, apply only the migrations it doesn't
 have yet, in that order, then the seed, then deploy the frontend (see the
 release checklist at the end of this file). The live project has the files
-up to `20260927180000`; the twenty-three `20261008…`/`20261009…`/`20261010…`/`20261011…`/`20261012…`
+up to `20260927180000`; the twenty-four `20261008…`/`20261009…`/`20261010…`/`20261011…`/`20261012…`
 files are new.
 Review them before applying them; the site keeps working without them (see
 `docs/OWNER-TODO.md` and "Before and after" in the release checklist).
@@ -917,6 +918,35 @@ Staff can't create or invite an account from Admin yet: that needs a
 Supabase Edge Function with the service-role key and an email provider (see
 docs/OWNER-TODO.md, AW-113 and AW-088).
 
+## Saved carts
+
+The cart lives in the browser: one per account on each device, plus one for
+guests (`src/lib/cartStorage.js`, localStorage `aw-cart-v3:<owner>`, the
+lines in the order they were added). From `20261012110000_carts.sql` on, a
+signed-in account's cart is also saved in `public.carts`, so a buyer who
+fills it on a phone finds it on the computer (`src/lib/cartSync.js`, AW-334):
+
+- Once a session is confirmed the site reads the account's row once. On a
+  page load, whichever of the row and the device's copy changed last is kept
+  (the row's `updated_at` against the time the device last changed its
+  copy); the two are never added together. When a buyer signs in with items
+  added as a guest, those items are added to the newer copy once, then saved.
+- Each change is saved about 1.5 seconds after the last one (an upsert of
+  `user_id`, `lines` and `updated_at`), and at once when the tab is hidden. A
+  tab that comes back into view after half a minute reads the row again.
+  Offline nothing is sent; it catches up once the browser is back online.
+- A row holds line keys and quantities only (`[["14", 2], ["1::white-grape",
+  1]]`), never a price, name or note: prices come from `my_prices()` when the
+  cart is shown. Admins don't see carts.
+- Guests' carts are never sent.
+- Until the migration is applied, the read finds no table (404 /
+  `PGRST205`), the site stops trying for that page view, and the drawer and
+  checkout say the cart is kept on this device, as before. Once the read
+  succeeds they say "Saved with your account".
+
+Storing what is in a buyer's cart is a new use of their data: the privacy
+policy doesn't mention it yet (owner question AW-334 in docs/OWNER-TODO.md).
+
 ## Row-level security summary
 
 - **Admins**: `is_admin()` is true only for a profile with role `admin`
@@ -996,6 +1026,10 @@ docs/OWNER-TODO.md, AW-113 and AW-088).
 - **storage `product-images`** (`20261010120000`): public, so anyone loads a
   product photo by its URL; only approved admins add, replace, list or
   remove files.
+- **carts** (`20261012110000`): each signed-in account reads, adds,
+  changes and deletes its own row only (`auth.uid() = user_id`); guests have
+  no privileges; admins see no one's cart. A row is deleted with its
+  account. See "Saved carts".
 - **home_slides** (`20261011131000`): the home page's hero photos. Guests
   and signed-in accounts read the active rows; approved admins read every row
   and add, change and delete them (`updated_at` and `updated_by` follow each
@@ -1082,12 +1116,13 @@ For each release:
   after" below), then publish an older frontend only if it is at or after
   the latest migration still applied.
 
-The live project needs all twenty-three, in this order (Cursor's seven
+The live project needs all twenty-four, in this order (Cursor's seven
 `20261008…` files, then the six `20261009…` ones, which build on them, then
 the five `20261010…` ones: three for the admin back office and two data-only
 catalog fixes, then `20261011110000` and `20261011111000`, which can go in
 any time, then the data-only `20261011130000` and the home page's
-`20261011131000`, then the document lock `20261012100000`, also any time).
+`20261011131000`, then the document lock `20261012100000` and the saved
+carts `20261012110000`, also any time).
 Apply
 `20261008200000` and `20261009100000`–`20261009150000` in one session: the
 price boundary hides `products.variant_prices` and `20261009110000` moves it.
@@ -1127,6 +1162,10 @@ rolling it back.
 23. `20261012100000_document_storage_lock.sql` (stored licence files can't be
     overwritten, and the bucket takes PDF, JPEG and PNG only; any time,
     before or after the frontend, also on its own)
+24. `20261012110000_carts.sql` (a signed-in account's cart is saved with the
+    account and follows it to other devices, see "Saved carts"; any time,
+    before or after the frontend, also on its own: the site feature-detects
+    the table)
 
 Then `supabase/seed/products.sql`, then the frontend, then 18.
 
@@ -1155,6 +1194,7 @@ Then `supabase/seed/products.sql`, then the frontend, then 18.
 | `20261011130000_catalog_names.sql` | Data only (AW-071): one naming style, from each row's own data. Names: "Value" for "Cheap" (#100, #221, #246, #250), no retail price in #12's name ("LooseLeaf wraps 2-pack"), size words in brackets (#132, #133, #190, #290, #291, #335, #336, e.g. "Powerade (big)"), "Faygo bottles 20 oz" (#58), "6-pack beer carriers" (#93), "AA Cellular" (#286), and a product noun from the description for #25, #350 and #355; descriptions of #9, #221, #274, #310 and #311 spelled like their names. The lines under legal review keep their names (decision 2). Each column changes only while it still has the value the seed wrote, so admin edits are kept and a re-run changes nothing. | Apply any time, before or after the frontend: every frontend reads names from the database. Ids, SKUs (the AW-CHEAP-* Quick Reorder codes) and variant labels don't change; order lines keep the name they were placed with. |
 | `20261011131000_home_slides.sql` | The home page's hero photos (see "The homepage"): the `home_slides` table (`img` a bundled `hero_*` file or a `product-images` Storage address, `alt` 1–200 characters, `go_cat`, `nicotine_warning`, `sort` 0–999, `active`, `created_at`, `updated_at`, `updated_by`), readable by everyone for active rows and by approved admins for all, written only by approved admins (RLS with `is_admin()`); the identity sequence and the trigger function are revoked from guests; today's four photos are added, in today's order, when the table is empty. Uploads use the existing `product-images` bucket; storage is unchanged. A commented Reverse block is at the end. | Apply any time, before or after the frontend. No seed change. The frontend deployed before it doesn't read the table. The new frontend works before and after: without it the home page shows the photos bundled with it (the request answers 404 / `PGRST205`) and Admin → Homepage shows those photos read-only with a note that editing needs the update; the rails work either way. |
 | `20261012100000_document_storage_lock.sql` | AW-197, AW-347: drops `application_documents_owner_update`, so no account (pending, approved or suspended) can overwrite or rename a stored licence or resale file, and admins never could; uploads still add new files at `{user id}/{type}/{upload time}-{file}` (renewals included) and the `profile_documents` row upsert keeps the replaced path in `profile_document_history`. The `application-documents` bucket's `allowed_mime_types` becomes PDF, JPEG and PNG (no HEIC/HEIF). Deleting, reading, the layout and the upload cap are unchanged. A commented Reverse block is at the end. | Apply any time, before or after the frontend. No seed change. The new frontend uploads with upsert off and never updates an object, so it works before and after. A frontend built before it uploads with upsert on to a new path each time, which needs only the insert policy, so it keeps working too. HEIC files already stored keep their type and still open; an upload of a new one is refused. |
+| `20261012110000_carts.sql` | AW-334 (see "Saved carts"): the `carts` table, one row per account (`user_id` references `auth.users`, deleted with it; `lines` is a JSON list of `[line key, quantity]` pairs in the order they were added, at most 500, quantities 1 to 100,000, checked by `cart_lines_valid()`, so no price or other value fits; `updated_at`). Row-level security: each signed-in account reads, adds, changes and deletes its own row only; guests have no privileges at all; admins see no one's cart. A commented Reverse block is at the end. | Apply any time, before or after the frontend, also on its own. No seed change. The frontend deployed before it doesn't read the table. The new frontend works before and after: before it, its one read finds the table missing (404 / `PGRST205`), it stops trying for that page view, carts stay on each device, and the drawer and checkout say so; after it, a signed-in account's cart is saved with the account and the drawer and checkout say "Saved with your account". |
 
 ### Later steps
 

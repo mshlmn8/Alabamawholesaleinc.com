@@ -1,6 +1,8 @@
 // One apply label and one basket name per account state (AW-131, AW-132).
 import { describe, expect, it } from 'vitest';
-import { APPLY_INSTEAD, APPLY_LABEL, SIGN_IN_INSTEAD, SIGN_IN_LABEL, basketBadge, basketButtonLabel, basketTerms } from './terms.js';
+import {
+  APPLY_INSTEAD, APPLY_LABEL, CART_DEVICE_NOTE, SIGN_IN_INSTEAD, SIGN_IN_LABEL, basketBadge, basketButtonLabel, basketTerms, cartDeviceNote,
+} from './terms.js';
 
 const KEYS = ['kind', 'noun', 'label', 'title', 'empty', 'items', 'add', 'view', 'cta', 'page', 'submit'];
 
@@ -58,5 +60,14 @@ describe('basketTerms (AW-132)', () => {
         expect(first).toMatch(/^([A-Z][a-z]+|[a-z]+)$/);
       }
     }
+  });
+});
+
+describe('cartDeviceNote (AW-334)', () => {
+  it('says where the cart is kept: this browser for a guest, this device for an account until it is saved with it', () => {
+    expect(cartDeviceNote(false)).toBe(CART_DEVICE_NOTE.guest);
+    expect(cartDeviceNote(false, true)).toBe(CART_DEVICE_NOTE.guest);
+    expect(cartDeviceNote(true)).toBe(CART_DEVICE_NOTE.account);
+    expect(cartDeviceNote(true, true)).toBe('Saved with your account. It shows up when you sign in on another phone or computer.');
   });
 });

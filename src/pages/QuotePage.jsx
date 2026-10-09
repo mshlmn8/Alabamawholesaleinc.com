@@ -23,7 +23,8 @@
 // 2.2.1); it goes when lines come back another way or the cart's owner
 // changes. Under the total, an approved buyer sees how far the order is from
 // the minimum and from free delivery (CartSummary). The page, empty or not,
-// says the cart is kept on this device only (AW-334).
+// says where the cart is kept (AW-334): on this device, or with the account
+// while it is saved there (cartSynced, src/lib/cartSync.js).
 //
 // The catalog may have changed since the page was opened (AW-191, AW-204):
 // Submit first loads it again (checkCart, from App) and stops, naming the
@@ -126,7 +127,7 @@ export function QuotePage({
   items, total, setLine, chooseVariant, removeLine, removeLines, clearCart, restoreLines, owner = null, legacy = [], onDismissLegacy,
   profile, account = profile ? 'ready' : 'signed-out', signedIn = !!profile, onSignIn, onApplyClick, isApprovedBuyer, isBackendConfigured,
   checkCart = null, pricesStatus = 'ready', isSuspended = false,
-  savedReceipt = null, entryKey = null, onSubmitted, loadShipTo = null,
+  savedReceipt = null, entryKey = null, onSubmitted, loadShipTo = null, cartSynced = false,
 }) {
   // A quote, or an order for an approved buyer (AW-132, src/data/terms.js).
   const basket = basketTerms(isApprovedBuyer);
@@ -431,7 +432,7 @@ export function QuotePage({
           {`Add products, then come back to review your ${basket.noun}.`}
         </EmptyState>
         {/* Why items added on a phone aren't here on a computer (AW-334). */}
-        <p className="fine cart-device-note">{cartDeviceNote(signedIn)}</p>
+        <p className="fine cart-device-note">{cartDeviceNote(signedIn, cartSynced)}</p>
         {legacy.length > 0 && (
           <div className="quote-saved-lines">
             <SavedLinesNotice items={legacy} onDismiss={onDismissLegacy} />
@@ -481,7 +482,7 @@ export function QuotePage({
             <p className="cart-counts">{countsLabel(cartCounts(items))}</p>
             <button className="text-link checkout-clear" type="button" onClick={clearAll}>Clear all items</button>
           </div>
-          <p className="fine cart-device-note">{cartDeviceNote(signedIn)}</p>
+          <p className="fine cart-device-note">{cartDeviceNote(signedIn, cartSynced)}</p>
           </fieldset>
         </div>
         {/* Checked before it is sent (AW-173): each problem shows under its

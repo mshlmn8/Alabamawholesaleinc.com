@@ -25,6 +25,7 @@ import { Suspense, lazy, useState, useEffect, useLayoutEffect, useMemo, useRef, 
 import { savedSessionUserId, useAuth } from './lib/auth.jsx';
 import { useCatalog } from './lib/catalog.jsx';
 import { useCart } from './lib/cart.js';
+import { useCartSync } from './lib/cartSync.js';
 import { usePrices } from './lib/prices.jsx';
 import { priceFor } from './lib/pricing.js';
 import { cartOwner, clearGuestCart } from './lib/cartStorage.js';
@@ -184,6 +185,9 @@ export default function App() {
   const owner = cartOwner(auth, savedUserId);
   // Lines are only re-keyed or flagged against the live catalog (AW-083).
   const cart = useCart({ products, priceOf, owner, catalogSettled: catalog.settled });
+  // A signed-in account's cart is also saved with the account, so it follows
+  // the buyer to another device (AW-334), once the database has the table.
+  const cartSynced = useCartSync({ userId: session?.user?.id ?? null, owner }) === 'active';
 
   // The URL is checked against the catalog (AW-188): unknown pages,
   // departments, lines and products render NotFound, and other spellings of
@@ -408,7 +412,7 @@ export default function App() {
                      removeLines={cart.removeLines} clearCart={cart.clearCart} restoreLines={cart.restoreLines} owner={owner} legacy={cart.legacy} onDismissLegacy={cart.dismissLegacy}
                      profile={profile} account={account} signedIn={!!session} onSignIn={openSignin} onApplyClick={openSignup}
                      isApprovedBuyer={isApprovedBuyer} isSuspended={isSuspended} pricesStatus={prices.status} isBackendConfigured={isBackendConfigured} checkCart={checkCart}
-                     savedReceipt={receiptHere} entryKey={location.key} onSubmitted={(receipt) => saveReceipt({ owner, entryKey: location.key, receipt })}
+                     savedReceipt={receiptHere} entryKey={location.key} onSubmitted={(receipt) => saveReceipt({ owner, entryKey: location.key, receipt })} cartSynced={cartSynced}
                      loadShipTo={isBackendConfigured ? loadAccountShipTo : null} />
         );
       case 'account':
@@ -494,7 +498,8 @@ export default function App() {
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} items={cart.items} total={cart.total}
                   setLine={cart.setLine} chooseVariant={cart.chooseVariant} removeLine={cart.removeLine} removeLines={cart.removeLines}
                   legacy={cart.legacy} onDismissLegacy={cart.dismissLegacy}
-                  profile={profile} isApprovedBuyer={isApprovedBuyer} isSuspended={isSuspended} pricesStatus={prices.status} onLoginClick={openCartSignin} />
+                  profile={profile} isApprovedBuyer={isApprovedBuyer} isSuspended={isSuspended} pricesStatus={prices.status} onLoginClick={openCartSignin}
+                  cartSynced={cartSynced} />
       {helpOpen && <HelpDialog signedIn={!!session} onClose={() => setHelpOpen(false)} onApply={() => { setHelpOpen(false); openSignup(); }} />}
       {/* It has its own ModalLayer, so Escape and Back ask before a typed
           application is lost (AW-018). Sign Out closes it outright. Its code

@@ -49,6 +49,11 @@ const POLICIES = {
       // TODO(owner): approve this wording, and say how long application
       // details, license files and the agreement record are kept; no
       // retention period is stated until you do (AW-019).
+      // TODO(owner): Signed-in accounts' carts are now saved with the account
+      // (public.carts: the products and quantities in the cart, no prices),
+      // so they follow the buyer to another device. Should "What we collect"
+      // name it, how long is a saved cart kept, and may a buyer ask for it to
+      // be deleted? The text below is unchanged until you decide. (AW-334)
       { heading: 'What we collect', body: [
         { list: [
           'Application details: your name, business name, phone, business email, business type, store street address, city, state and ZIP, federal EIN, state retail tobacco license number, resale certificate number and expected monthly volume.',
