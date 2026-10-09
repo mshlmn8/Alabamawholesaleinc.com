@@ -458,6 +458,9 @@ p > .text-link { min-height: 0; min-width: 0; }
 /* Not on the placeholder that replaces a photo that failed to load (AW-192). */
 .photo-soon ~ .pack-badge { display: none; }
 .photo-credit { margin: 8px 0 0; font-size: var(--text-xs); line-height: 1.4; color: var(--muted); }
+/* Nor a photo credit under that placeholder: it would credit a photo that is
+   not shown. It comes back with the photo after a reconnect (AW-343). */
+.pd-media:has(.photo-soon) + .photo-credit { display: none; }
 /* The external-link icon after the text of a link that leaves the site (AW-218). */
 .photo-credit a .icon, .doc-admin a .icon { margin-left: .2em; }
 .card-tag { position: absolute; top: 12px; right: 12px; background: var(--button-orange); color: #fff; font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); padding: 5px 8px; z-index: 2; line-height: 1; }

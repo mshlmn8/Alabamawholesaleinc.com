@@ -509,6 +509,11 @@ describe('photo loading states (AW-192, AW-341, AW-345)', () => {
     expect(own('.photo-soon ~ .pack-badge')).toEqual({ display: 'none' });
   });
 
+  it('hides the product page photo credit while the placeholder stands in for the photo', () => {
+    // ProductPage renders figure.pd-figure > .pd-media + figcaption.photo-credit.
+    expect(own('.pd-media:has(.photo-soon) + .photo-credit')).toEqual({ display: 'none' });
+  });
+
   it('keeps the logo slot when the logo fails: the brand in text, as tall as the logo at every header size', () => {
     expect(own('.aw-logo-text > span').color).toBe('var(--orange-dark)');
     expect(own('.aw-logo-text > span').font).toMatch(/^700 [\d.]+rem\/1 var\(--body\)$/);
