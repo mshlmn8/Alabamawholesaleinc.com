@@ -68,6 +68,7 @@ describe('pageMeta', () => {
     expect(title({})).toBe('Orders · Admin · Alabama Wholesale Inc');
     expect(title({ section: 'orders', query: { status: 'all' } })).toBe('Orders · Admin · Alabama Wholesale Inc');
     expect(title({ section: 'orders', id: '11111111-2222-4333-8444-555555555555', view: 'print' })).toBe('Pick list · Admin · Alabama Wholesale Inc');
+    expect(title({ section: 'orders', id: '11111111-2222-4333-8444-555555555555', view: 'print', query: { doc: 'slip' } })).toBe('Packing slip · Admin · Alabama Wholesale Inc');
     expect(title({ section: 'accounts' })).toBe('Accounts · Admin · Alabama Wholesale Inc');
     expect(title({ section: 'accounts', id: '11111111-2222-4333-8444-555555555555' })).toBe('Account details · Admin · Alabama Wholesale Inc');
     expect(title({ section: 'products', query: { q: 'swisher' } })).toBe('Products · Admin · Alabama Wholesale Inc');

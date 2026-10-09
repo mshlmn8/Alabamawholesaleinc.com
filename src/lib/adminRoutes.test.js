@@ -26,6 +26,10 @@ describe('parseAdminPath', () => {
     expect(parse('/admin/Accounts/')).toEqual({ page: 'admin', section: 'accounts', query: {} });
     expect(parse(`/admin/accounts/${UUID.toUpperCase()}`)).toEqual({ page: 'admin', section: 'accounts', id: UUID, query: {} });
     expect(parse(`/admin/orders/${UUID}/print`)).toEqual({ page: 'admin', section: 'orders', id: UUID, view: 'print', query: {} });
+    // The print view takes only ?doc= (AW-110); the list's filters stay with the list.
+    expect(parse(`/admin/orders/${UUID}/print?doc=SLIP&status=all&from=2026-10-01`)).toEqual({ page: 'admin', section: 'orders', id: UUID, view: 'print', query: { doc: 'slip' } });
+    expect(parse(`/admin/orders/${UUID}/print?doc=invoice`).query).toEqual({});
+    expect(parse('/admin/orders?doc=slip').query).toEqual({});
     expect(parse('/admin/products/12')).toEqual({ page: 'admin', section: 'products', id: 12, query: {} });
     expect(parse('/admin/products/new?from=12')).toEqual({ page: 'admin', section: 'products', id: 'new', query: { from: 12 } });
   });
@@ -71,6 +75,8 @@ describe('adminPath and adminQueryString', () => {
       { page: 'admin' },
       { page: 'admin', section: 'orders', query: { status: 'all', from: '2026-10-01', to: '2026-10-07' } },
       { page: 'admin', section: 'orders', id: UUID, view: 'print', query: {} },
+      { page: 'admin', section: 'orders', id: UUID, view: 'print', query: { doc: 'pick' } },
+      { page: 'admin', section: 'orders', id: UUID, view: 'print', query: { doc: 'slip' } },
       { page: 'admin', section: 'accounts', query: {} },
       { page: 'admin', section: 'accounts', id: UUID, query: {} },
       { page: 'admin', section: 'products', query: { q: 'swisher', status: 'inactive', page: 2 } },
@@ -81,5 +87,6 @@ describe('adminPath and adminQueryString', () => {
     expect(pathFor({ page: 'admin', section: 'products', id: 42, query: { q: 'x' } })).toBe('/admin/products/42');
     expect(adminPath({ section: 'nowhere' })).toBe('/admin');
     expect(adminHref({ section: 'orders', query: { status: 'picking' } })).toBe('/admin/orders?status=picking');
+    expect(adminHref({ section: 'orders', id: UUID, view: 'print', query: { doc: 'slip', status: 'all' } })).toBe(`/admin/orders/${UUID}/print?doc=slip`);
   });
 });

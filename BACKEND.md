@@ -43,6 +43,7 @@ supabase/migrations/20261009140000_profile_and_document_boundaries.sql
 supabase/migrations/20261009150000_quote_workflow.sql
 supabase/migrations/20261010120000_admin_product_editor.sql
 supabase/migrations/20261010121000_admin_bulk_products.sql
+supabase/migrations/20261010122000_order_operations.sql
 supabase/seed/products.sql
 ```
 
@@ -630,6 +631,63 @@ a guest's or an unpriced request as a quote, and can still email a quote with
 prices typed in the editor; saving prices and converting say the database
 update is needed.
 
+### Finding, printing and following orders (Admin → Orders)
+
+Admin → Orders (AW-110, AW-111) has a filter row above the status pills:
+
+- **Search orders** looks in the reference, business, contact, email and
+  phone, on the server. What is typed stays on the page and never goes into
+  the address bar (it names people). **Placed from / to** (the days the order
+  was placed, on the admin's computer), **Deliver on** (the requested date) and
+  **Method** (delivery or will-call) go into the address
+  (`/admin/orders?status=…&from=…&to=…&on=…&method=…`), and so does
+  `?account=<profile id>` (the orders of one account). The list still loads the
+  newest 200 that match and counts the status pills within those (it says so
+  when 200 come back); server paging and per-status counts are AW-199.
+- **Print pick list** and **Print packing slip** open
+  `/admin/orders/<id>/print?doc=pick|slip`: the order's facts and its lines
+  by department, sub-line and name, with an empty box to tick, the SKU, the
+  quantity and the sell unit. Neither shows prices. The packing slip adds the
+  store's name and address; both show the customer's notes, never staff notes.
+  Printing hides the site around the sheet.
+- **Export CSV** downloads the orders on screen, one row per order line (ref,
+  dates, kind, status, business, contact, email, phone, delivery, SKU,
+  product, variant, quantity, unit price, line total, subtotal). Cells that
+  would run as a spreadsheet formula are defused. The file holds customers'
+  contact details and prices: keep it private.
+- **Staff notes and history** under each card (loaded when opened): who the
+  order is assigned to (an approved admin), internal notes, and every status
+  and assignment change with who made it and when. Cancelling asks for a
+  reason, which goes in the history.
+- The list keeps itself current: Supabase Realtime tells it about new and
+  changed orders at once, and it also reloads every minute while the tab is
+  visible (and when the tab comes back). **Refresh** reloads now, and
+  "Updated 9:14 AM" says when it last did. Reloads keep the filters, the
+  focus and any quote being edited.
+- Orders placed since the admin last opened Orders are marked **New**, and
+  the header's Admin link and the page title (`(2) Orders · Admin · …`) count
+  the orders that came in since then.
+
+`20261010122000_order_operations.sql` adds what this needs:
+`order_events` (the history, written only by the `orders_log_change`
+trigger), `order_admin_notes` (internal notes), `orders.assigned_to` (a staff
+profile id; the customer can see the id, never a name or a note), an index
+on `orders.preferred_date`, `admin_set_order_status(order, status, note)`
+(admins only; `cancelled` needs a reason, hint `reason_required`; also
+`invalid_status`, `note_too_long`, `order_not_found`, `admin_only`),
+`admin_order_views` with `admin_mark_orders_seen()` (each admin's last visit;
+returns the previous one), and `public.orders` in the `supabase_realtime`
+publication. `orders` now has three foreign keys to `profiles`, so every
+embed from `orders` names `profiles!orders_user_id_fkey(...)`.
+
+Before it, Admin → Orders still searches, filters, prints and exports; status
+changes use the plain update (as before, without a history); the notes panel
+says it needs the update, the "Assigned to" select is hidden, the New marker
+counts from the first time Orders was opened in that tab, there is no header
+count, and the list refreshes every minute instead of at once. Realtime also
+needs the site's Content-Security-Policy to allow
+`wss://<project-ref>.supabase.co` in `connect-src`.
+
 ## Row-level security summary
 
 - **Admins**: `is_admin()` is true only for a profile with role `admin`
@@ -650,6 +708,14 @@ update is needed.
   admins read them, nobody can add, change or delete rows.
 - **profile_admin_notes**: internal notes about an account; admins only (the
   account holder can't read them).
+- **order_events** (`20261010122000`): the history of each order's status and
+  assignment, written only by the `orders_log_change` trigger; admins read it,
+  nobody adds, changes or deletes rows through the API.
+- **order_admin_notes** (`20261010122000`): internal notes about an order;
+  admins read, add and delete them, in their own name only; customers and
+  guests have no access. Notes are 1 to 2000 characters.
+- **admin_order_views** (`20261010122000`): each admin reads only their own
+  last visit to Admin → Orders; only `admin_mark_orders_seen()` writes it.
 - **products**: anyone reads `active = true` rows, and every column except
   `price` (column privileges; `select=*` is refused). Admins read and write
   every row; they read list prices through `admin_product_prices()` and set
@@ -672,7 +738,12 @@ update is needed.
   Guest quotes are stored with `user_id` null. Nobody updates `order_items`
   directly; staff change lines only through `admin_price_order()` and
   `admin_convert_quote()`, which check `is_admin()` and can't be called by
-  guests.
+  guests. Since `20261010122000`, admins also change a status through
+  `admin_set_order_status()` (with a note), every status and assignment
+  change is logged in `order_events`, `orders.assigned_to` names the staff
+  member looking after an order, and `orders` is in the Realtime publication
+  (Realtime applies the same policies: a customer hears only their own
+  orders).
 - **quote_throttle**: no access for guests or signed-in accounts (RLS on, no
   policies, privileges revoked); only `submit_quote` uses it.
 - **pricing_tiers**: readable by admins and approved buyers only;
@@ -742,6 +813,8 @@ rolling it back.
     applied later on its own)
 15. `20261010121000_admin_bulk_products.sql` (Admin → Products' Adjust price
     and Import CSV, and the tier discount check; after 14, also on its own)
+16. `20261010122000_order_operations.sql` (Admin → Orders' history, notes,
+    assignment, new-order marker and Realtime; after 13, also on its own)
 
 Then `supabase/seed/products.sql`, then the frontend.
 
@@ -762,6 +835,7 @@ Then `supabase/seed/products.sql`, then the frontend.
 | `20261009150000_quote_workflow.sql` | One quote workflow (see "Pricing quotes and converting them"): `kind` is `order` only for an approved account's request, as `submit_quote` returns it (existing unpriced requests become quotes); `quoted_by` is set to null when that admin's profile is deleted; `admin_price_order()` and `admin_convert_quote()` check their input, keep an order's status, need every line priced before converting, and refuse guests (EXECUTE revoked from anon), with typed hints. | Apply after `20261009140000`, before the new frontend. The frontend deployed before it doesn't use these functions. The new frontend also works before it (and before `20261008200000`): Admin → Orders offers the old four statuses and says saving prices and converting need the update. |
 | `20261010120000_admin_product_editor.sql` | The product editor (see "The product editor"): `products.id` defaults to the new `products_id_seq`; a SKU is unique whatever its case (`products_sku_upper_key`, skipped with a notice when duplicates exist); `NOT VALID` checks for a name and a brand and a list price of at most 99,999.99; `products.stock_status` (staff only) and `products.featured_rank` (homepage rank), readable like every column but price; a trigger that refuses to delete a product an order line refers to (hint `product_has_orders`); the public `product-images` bucket that only approved admins write to. | Apply after `20261009150000`, then re-apply the regenerated seed (its last statement moves the id sequence past the seeded ids). The frontend deployed before it doesn't read the new columns. The new frontend works before and after: without it, a new product gets the next free id from the editor, stock status, homepage rank and photo upload say they need the update, Delete checks for order lines in the editor only, and the homepage rails follow the tags without a rank. |
 | `20261010121000_admin_bulk_products.sql` | Bulk product changes and tier discounts (see "Bulk changes and CSV" and "How pricing tiers work"): `admin_bulk_adjust_prices(p_ids, p_pct, p_amount, p_variants)` adjusts up to 1000 products' list prices (and their variants' own prices) by a percentage and/or an amount, rounded like `tier_unit_price()`, skipping prices on request, all or nothing (hints `price_out_of_range`, `invalid_input`); `admin_import_products(p_rows)` updates the products matched by SKU in the CSV columns given (name, brand, sell_unit, description, price, tag, active, stock_status, featured_rank), never creating one, all or nothing (hint `unknown_sku`); both are SECURITY DEFINER, check `is_admin()` (42501, hint `admin_only`) and are revoked from guests; `pricing_tiers_discount_range` (`NOT VALID`) keeps a discount from 0 to under 100. A commented Reverse block is at the end. | Apply after `20261010120000`. No seed change. The frontend deployed before it doesn't call these functions. The new frontend works before and after: without it, Adjust price and Import CSV say they need the update and turn themselves off, while Set price, Set tag, Activate, Deactivate, Export CSV and Admin → Pricing work as they are. |
+| `20261010122000_order_operations.sql` | Admin → Orders' operations (see "Finding, printing and following orders"): `order_events` (status and assignment history, written by the `orders_log_change` trigger, admin read only), `order_admin_notes` (internal notes, admins only, 1–2000 characters, in their own name), `orders.assigned_to` (a profile id; the third foreign key from `orders` to `profiles`) with an index, an index on `orders.preferred_date`, `admin_set_order_status(p_order_id, p_status, p_note)` (admins only; a cancellation needs a reason; hints `reason_required`, `invalid_status`, `note_too_long`, `order_not_found`, `admin_only`), `admin_order_views` and `admin_mark_orders_seen()` (each admin's last visit to Orders), and `public.orders` in the `supabase_realtime` publication (skipped where it doesn't exist). Every new table and function is revoked from guests. A commented Reverse block is at the end. | Apply after `20261009150000` (in order after `20261010121000`). No seed change. The frontend deployed before it keeps working: its plain status updates are logged without a note. The new frontend works before and after: without it, status changes use the plain update, "Staff notes and history" says it needs the update, "Assigned to" is hidden, the New marker counts from the first visit in the tab, the header shows no count, and Orders reloads every minute. Realtime also needs `wss://<project-ref>.supabase.co` in the CSP's `connect-src`. |
 
 ### Later steps
 

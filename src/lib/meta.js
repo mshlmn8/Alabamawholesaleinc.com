@@ -58,7 +58,8 @@ function adminTitle(route) {
     if (route.id === 'new') return 'New product';
     return route.id != null ? 'Edit product' : 'Products';
   }
-  return route.view === 'print' ? 'Pick list' : 'Orders';
+  if (route.view === 'print') return route.query?.doc === 'slip' ? 'Packing slip' : 'Pick list';
+  return 'Orders';
 }
 
 // Title, description, canonical path, share image and indexing for a

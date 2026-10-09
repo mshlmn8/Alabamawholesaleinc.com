@@ -3,7 +3,7 @@
 //
 //   /admin                              Orders (exactly { page: 'admin' })
 //   /admin/orders?status=&from=&to=&on=&method=&account=
-//   /admin/orders/:uuid/print           an order's pick list
+//   /admin/orders/:uuid/print?doc=pick|slip   an order's pick list or packing slip
 //   /admin/accounts                     /admin/accounts/:uuid
 //   /admin/products?q=&status=&dept=&sub=&tag=&photo=&unit=&stock=&sort=&dir=&page=
 //   /admin/products/:id                 /admin/products/new?from=:id
@@ -27,6 +27,9 @@ export const LEGACY_ORDER_STATES = ['new', 'contacted', 'fulfilled', 'cancelled'
 export const ORDER_STATUS_FILTERS = [...ORDER_STATES, 'all'];
 export const DEFAULT_ORDER_STATUS = 'new';
 export const ORDER_METHODS = ['delivery', 'willcall'];
+// The print view's sheets (AW-110): the pick list (also without ?doc) and
+// the packing slip.
+export const PRINT_SHEETS = ['pick', 'slip'];
 
 // Products filters. Their meaning belongs to the Products section
 // (src/pages/admin/productList.js); this only says which values a URL may
@@ -89,6 +92,14 @@ const QUERY = {
   },
   pricing: {},
 };
+// A view's own query, in place of its section's (the print view takes only
+// ?doc=; the list's filters stay with the list).
+const VIEW_QUERY = {
+  print: {
+    doc: { read: (v) => oneOf(PRINT_SHEETS)(v.toLowerCase()) },
+  },
+};
+const specOf = (section, view) => (view && VIEW_QUERY[view]) || QUERY[section] || {};
 
 const searchParams = (search) => {
   try {
@@ -98,10 +109,10 @@ const searchParams = (search) => {
   }
 };
 
-// The checked query of a section: only known keys with valid values, and
-// none that equals its default.
-export function parseAdminQuery(section, search) {
-  const spec = QUERY[section] || {};
+// The checked query of a section (or of one of its views): only known keys
+// with valid values, and none that equals its default.
+export function parseAdminQuery(section, search, view = null) {
+  const spec = specOf(section, view);
   const params = searchParams(search);
   const out = {};
   for (const [name, { read, fallback }] of Object.entries(spec)) {
@@ -115,8 +126,8 @@ export function parseAdminQuery(section, search) {
 
 // The query string for a section's filters, keys in a fixed order, defaults
 // and unknown keys left out; '' when there are none.
-export function adminQueryString(section, query = {}) {
-  const spec = QUERY[section] || {};
+export function adminQueryString(section, query = {}, view = null) {
+  const spec = specOf(section, view);
   const params = new URLSearchParams();
   for (const [name, { read, fallback }] of Object.entries(spec)) {
     const raw = query?.[name];
@@ -138,7 +149,7 @@ export function parseAdminPath(rest = [], search = '') {
   if (rest.length === 1) return { page: 'admin', section, query };
   const id = String(rest[1]);
   if (section === 'orders' && rest.length === 3 && isUuid(id) && String(rest[2]).toLowerCase() === 'print') {
-    return { page: 'admin', section, id: id.toLowerCase(), view: 'print', query };
+    return { page: 'admin', section, id: id.toLowerCase(), view: 'print', query: parseAdminQuery(section, search, 'print') };
   }
   if (rest.length !== 2) return { page: 'not-found' };
   if (section === 'accounts' && isUuid(id)) return { page: 'admin', section, id: id.toLowerCase(), query };
@@ -160,7 +171,8 @@ export function adminPath(route = {}) {
 }
 
 // The href of an admin route: its path plus its section's query.
-export const adminHref = (route = {}) => adminPath(route) + (route.section ? adminQueryString(route.section, route.query) : '');
+export const adminHref = (route = {}) => adminPath(route)
+  + (route.section ? adminQueryString(route.section, route.query, route.id != null ? route.view : null) : '');
 
 // The section a route shows: bare /admin is Orders.
 export const adminSection = (route) => (ADMIN_SECTIONS.includes(route?.section) ? route.section : 'orders');

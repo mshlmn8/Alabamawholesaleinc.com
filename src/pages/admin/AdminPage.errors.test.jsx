@@ -13,6 +13,7 @@ vi.mock('../../lib/supabase.js', async () => {
 const { fake } = await import('../../lib/supabase.js');
 const { AdminPage } = await import('./AdminPage.jsx');
 const { STATUS_MS } = await import('./AdminStatus.jsx');
+const { resetOrderStatusForTests } = await import('./OrdersSection.jsx');
 const { navigate } = await import('../../lib/router.js');
 
 const ADMIN = { id: 'admin-1', name: 'Desk Admin', business: 'Alabama Wholesale', role: 'admin', status: 'approved', pricing_tier: 'standard' };
@@ -30,17 +31,23 @@ const FAILURES = {
   expired: { data: null, error: { code: 'PGRST303', message: 'JWT expired' }, status: 401 },
 };
 let writeFailure = null;
+// The live database has no admin_set_order_status (20261010122000): status
+// changes are the plain update.
+let statusFunction = 'missing';
 
 beforeEach(() => {
   act(() => navigate('/admin', { replace: true }));
   fake.reset();
+  resetOrderStatusForTests();
   failing.clear();
   writeFailure = null;
+  statusFunction = 'missing';
   fake.tables = { orders: [ORDER], profiles: [ADMIN, BUYER], products: [KITE], profile_documents: [] };
   fake.rpcData.admin_product_prices = { 2: { list: 12.5, variants: {} } };
   fake.respond = (request) => {
     if (failing.has(request.table || request.name)) return FAILURES.network;
     if (request.op === 'update' && writeFailure) return FAILURES[writeFailure];
+    if (request.name === 'admin_set_order_status' && statusFunction === 'missing') return { data: null, error: { code: 'PGRST202', message: 'Could not find the function' } };
     return undefined;
   };
 });

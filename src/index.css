@@ -716,6 +716,72 @@ p > .text-link { min-height: 0; }
   .variant-row.has-price, .product-photo-body { grid-template-columns: minmax(0, 1fr); }
   .product-editor-actions .product-delete { margin-left: 0; }
 }
+/* Admin -> Orders' operations (AW-110): a wider search box among the
+   filters; a bar with the 200-order note and Export; and each card's "Staff
+   notes and history" (drawn plus and minus, like the SKU details). */
+.admin-toolbar .admin-order-search { flex: 1 1 16rem; }
+.admin-order-search input { width: 100%; }
+.admin-account-filter { margin: -4px 0 12px; }
+.admin-orders-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin: 0 0 12px; }
+.admin-orders-bar .admin-count { margin: 0; }
+.admin-orders-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-left: auto; }
+.order-status-print { display: none; }
+.order-staff { margin: 0 16px 12px; border-top: 1px solid var(--line-soft); }
+.order-staff summary { display: inline-flex; align-items: center; gap: 10px; min-height: var(--tap); cursor: pointer; color: var(--purple); font-size: var(--text-sm); font-weight: 700; list-style: none; }
+.order-staff summary::-webkit-details-marker { display: none; }
+.order-staff summary .icon { width: 1.25rem; height: 1.25rem; padding: 1px; border: 1px solid var(--purple); }
+.order-staff[open] .order-staff-plus, .order-staff:not([open]) .order-staff-minus { display: none; }
+.order-staff-body { display: grid; gap: 14px; padding: 4px 0 6px; }
+.order-staff-body .form-grid { margin: 0; }
+.form-grid.order-assign { grid-template-columns: minmax(0, 20rem); }
+.form-grid.order-note-form { grid-template-columns: minmax(0, 1fr); max-width: 40rem; }
+.order-note-form textarea { width: 100%; }
+.order-timeline { display: grid; gap: 10px; max-width: 45rem; }
+.order-timeline li { padding-left: 12px; border-left: 2px solid var(--line); }
+.order-timeline li.order-timeline-note { border-left-color: var(--purple); }
+.order-timeline-line { margin: 0; font-size: var(--text-sm); font-weight: 600; line-height: 1.5; color: var(--ink); }
+.order-timeline-text { margin: 2px 0 0; font-size: var(--text-sm); line-height: 1.5; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+/* An order's pick list and packing slip (AW-110): the order's facts, then its
+   lines by department with an empty box (drawn, never a glyph) to tick by
+   hand. No prices. */
+.print-sheet { max-width: 60rem; margin-top: 18px; color: var(--ink); }
+.print-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 18px; }
+.print-company { margin: 0 0 6px; font-size: var(--text-sm); color: var(--muted); }
+.print-head h2 { margin: 0 0 12px; font-size: var(--h3); line-height: 1.15; }
+.print-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 8px 20px; margin: 0 0 18px; }
+.print-facts dt { font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted); }
+.print-facts dd { margin: 2px 0 0; font-size: var(--text-base); line-height: 1.45; overflow-wrap: anywhere; }
+.print-lines { width: 100%; border-collapse: collapse; font-size: var(--text-base); }
+.print-lines th, .print-lines td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.print-lines thead th { font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted); }
+.print-lines .num { text-align: right; font-variant-numeric: tabular-nums; }
+.print-group th { padding-top: 14px; font-size: var(--text-sm); font-weight: 700; color: var(--purple); background: var(--paper); }
+.print-lines .print-tick-cell { width: 4.5rem; text-align: center; }
+.print-tick { display: inline-block; width: 1.125rem; height: 1.125rem; border: 2px solid var(--ink); vertical-align: middle; }
+.print-sku { overflow-wrap: anywhere; }
+.print-lines .print-product { width: 45%; }
+.print-name, .print-sub { display: block; }
+.print-sub { font-size: var(--text-xs); color: var(--muted); }
+.print-total { margin: 12px 0 0; font-weight: 700; }
+.print-notes { margin-top: 18px; padding: 12px 14px; border: 1px solid var(--line); }
+.print-notes h3 { margin: 0 0 4px; font: 700 var(--text-xs)/1.4 var(--body); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted); }
+.print-notes p { margin: 0; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 37.5em) {
+  .print-lines th, .print-lines td { padding: 8px 6px; }
+  .print-lines .print-tick-cell { width: 3.5rem; }
+}
+/* Printing an admin page (AW-110). A print view prints the sheet alone: no
+   trade bar, header, footer, admin navigation, notices or buttons. The Orders
+   list prints card by card, the status as text instead of its select. The
+   site-wide print stylesheet is AW-148. */
+@media print {
+  body:has(.print-sheet) :is(.trade-bar, .trade-only, .aw-header, .footer-main, .admin-sections, .site-notices, .page-head, .print-actions, .admin-status) { display: none; }
+  .print-sheet { max-width: none; margin-top: 0; }
+  .print-lines tr { break-inside: avoid; }
+  .order-card { break-inside: avoid; }
+  .order-head select, .order-actions-row, .order-staff { display: none; }
+  .order-status-print { display: inline-block; font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--purple); }
+}
 
 /* ============================ footer ============================ */
 .footer-main { margin-top: calc(var(--section-gap) + 16px); background: var(--purple); color: #fff; padding: 44px 0 0; }

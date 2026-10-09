@@ -1,27 +1,38 @@
-// Admin -> Orders: the order list with its status filter, and each order or
-// quote's card with Cursor's quote editor, Convert and Email (AW-024).
+// Admin -> Orders: the order list with its toolbar (search, dates, method,
+// account; AW-110), status filter and export, and each order or quote's card
+// with Cursor's quote editor, Convert and Email (AW-024), its print links,
+// and its staff notes and history.
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
+import { Link } from '../../lib/router.js';
 import { formatMoney } from '../../lib/format.js';
 import { MISSING_FUNCTION_CODES, lineTotal, tierUnitPrice, toCents, fromCents } from '../../lib/pricing.js';
-import { DEFAULT_ORDER_STATUS, LEGACY_ORDER_STATES, ORDER_STATES } from '../../lib/adminRoutes.js';
+import { DEFAULT_ORDER_STATUS, LEGACY_ORDER_STATES, ORDER_STATES, adminHref } from '../../lib/adminRoutes.js';
+import { Icon } from '../../components/Icon.jsx';
 import { useLeaveGuard } from './useLeaveGuard.js';
 import { adminErrorMessage, checkedWrite, withStatus } from './adminData.js';
 import { LoadProblem } from './AdminStatus.jsx';
+import { ConfirmDialog } from './ConfirmDialog.jsx';
+import { downloadCsv, toCsv } from './csv.js';
+import {
+  ADMIN_ORDER_SELECT, MAX_ORDER_SEARCH, ORDER_LIMIT, hasOrderFilters, isQuote, orderCsvRecords, orderFilters, ordersCsvFileName, ordersQuery,
+} from './orderQueries.js';
+import { hasAssignment, staffName, statusLabel } from './orderStaff.js';
+import { printHref } from './printSheet.js';
+import { OrderStaff } from './OrderStaff.jsx';
 
 // The order statuses (and the owner question about them, AW-024) are in
 // src/lib/adminRoutes.js, which checks the status filter in the URL.
 export { ORDER_STATES, LEGACY_ORDER_STATES };
+// The select string and the quote test live in orderQueries.js (the query
+// and the CSV use them too).
+export { ADMIN_ORDER_SELECT, isQuote };
 
 // The quote workflow is in the database (20261008200000): its orders carry
 // kind. Without it (the live database before the October 2026 update),
 // statuses are the first four and staff can't save prices or convert.
 export const hasQuoteWorkflow = (orders) => (orders || []).some(o => o && 'kind' in o);
-
-// A quote: kind 'quote' (a guest or an account that isn't approved; see
-// 20261009150000). Without kind, a guest's or an unpriced request.
-export const isQuote = (o) => (o?.kind ? o.kind === 'quote' : (o?.user_id == null || o?.subtotal == null));
 
 // What Admin -> Orders says when a save or conversion is refused
 // (20261009150000's hints), or the database has no quote workflow yet.
@@ -40,6 +51,10 @@ export function orderActionError(error) {
     case 'unpriced_lines': return 'Price every line before converting the quote.';
     case 'unknown_account':
     case 'account_mismatch': return 'This quote can’t be moved to that account.';
+    // admin_set_order_status (20261010122000).
+    case 'reason_required': return 'Give a reason for cancelling the order.';
+    case 'invalid_status': return 'That status isn’t one the database accepts. Reload the page.';
+    case 'note_too_long': return 'Keep the reason to 2,000 characters or fewer.';
     // A lost connection, an ended session, a refusal or a missing column
     // (AW-202), else the database's own message.
     default: return adminErrorMessage(error, 'The change wasn’t saved');
@@ -137,46 +152,129 @@ export function orderAccount(o) {
   const business = o.profiles?.business || o.business;
   return [business, o.profiles?.pricing_tier].filter(Boolean).join(' · ') || '—';
 }
-function placedAt(value) {
+export function placedAt(value) {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-// order_items(*): the workflow columns (original_qty, sell_unit) exist only
-// after the October 2026 update. The account is named through its foreign key:
-// since 20261008200000, orders.quoted_by is a second link to profiles, and
-// PostgREST refuses an embed that could follow either (PGRST201).
-export const ADMIN_ORDER_SELECT = '*, order_items(*), profiles!orders_user_id_fkey(business, name, pricing_tier)';
+// A status change: admin_set_order_status() (20261010122000; it logs the
+// change, with a note) and, on a database without it, the checked plain
+// update of before (logged without a note once the migration is in).
+// Returns { error, via: 'rpc' | 'update' }. The missing function is
+// remembered for the rest of the visit.
+let statusFunctionMissing = false;
+export const resetOrderStatusForTests = () => { statusFunctionMissing = false; };
+export async function setOrderStatus(client, order, status, note = null) {
+  if (!statusFunctionMissing) {
+    let result;
+    try {
+      result = await client.rpc('admin_set_order_status', { p_order_id: order.id, p_status: status, p_note: note });
+    } catch (error) {
+      return { error, via: 'rpc' };
+    }
+    if (!result?.error) return { error: null, via: 'rpc' };
+    if (!MISSING_FUNCTION_CODES.includes(result.error.code)) return { error: withStatus(result), via: 'rpc' };
+    statusFunctionMissing = true;
+  }
+  const { error } = await checkedWrite(client.from('orders').update({ status }).eq('id', order.id));
+  return { error, via: 'update' };
+}
 
-// query: the URL's filters (status, AW-118); onQuery writes them.
-// notify: shows what a change did (useAdminStatus).
-export function OrdersTab({ query = {}, onQuery, notify }) {
+// The search box waits this long after typing before it asks the database.
+export const ORDER_SEARCH_DEBOUNCE_MS = 300;
+const METHOD_OPTIONS = [['', 'Any'], ['delivery', 'Delivery'], ['willcall', 'Will-call']];
+export const printLinkId = (orderId, doc) => `print-${doc}-${orderId}`;
+const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+// The filters above the status pills (AW-110). Dates, the method and the
+// account go into the URL; the search (names, emails, phones) stays in the
+// page's state.
+function OrderFilters({ query, onFilter, search, onSearch, clearHref, filtered }) {
+  return (
+    <div className="admin-toolbar admin-order-filters" role="group" aria-label="Filter orders">
+      <label className="admin-order-search">Search orders
+        <input type="search" placeholder="Ref, business, contact, email or phone" maxLength={MAX_ORDER_SEARCH}
+          value={search} onChange={(e) => onSearch?.(e.target.value)} />
+      </label>
+      <label>Placed from
+        <input type="date" value={query.from || ''} max={query.to || undefined} onChange={(e) => onFilter({ from: e.target.value })} />
+      </label>
+      <label>Placed to
+        <input type="date" value={query.to || ''} min={query.from || undefined} onChange={(e) => onFilter({ to: e.target.value })} />
+      </label>
+      <label>Deliver on
+        <input type="date" value={query.on || ''} onChange={(e) => onFilter({ on: e.target.value })} />
+      </label>
+      <label>Method
+        <select value={query.method || ''} onChange={(e) => onFilter({ method: e.target.value })}>
+          {METHOD_OPTIONS.map(([value, label]) => <option key={value || 'any'} value={value}>{label}</option>)}
+        </select>
+      </label>
+      {filtered && <Link className="text-link" to={clearHref} replace scroll={false} onClick={() => onSearch?.('')}>Clear filters</Link>}
+    </div>
+  );
+}
+
+// query: the URL's filters (status, from, to, on, method, account; AW-118);
+// onQuery writes them. search/onSearch: the free-text search, kept by
+// AdminPage (never in the URL). notify: shows what a change did
+// (useAdminStatus). onOpenPrint(href, linkId): a print link was followed. returnFocusId/onReturnFocus: the print link to focus when the
+// list shows again.
+export function OrdersTab({
+  query = {}, onQuery, notify, search = '', onSearch, onOpenPrint, returnFocusId = null, onReturnFocus,
+}) {
   const [orders, setOrders] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [retrying, setRetrying] = useState(false);
   const [statusError, setStatusError] = useState(null);
+  const [admins, setAdmins] = useState(null);
   const filter = query.status || DEFAULT_ORDER_STATUS;
   const [tiers, setTiers] = useState({});
 
+  // The search goes to the database a moment after typing stops.
+  const typed = orderFilters({}, search).search;
+  const [sentSearch, setSentSearch] = useState(typed);
+  useEffect(() => {
+    if (typed === sentSearch) return undefined;
+    const timer = setTimeout(() => setSentSearch(typed), ORDER_SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [typed, sentSearch]);
+  const filters = useMemo(() => orderFilters(query, sentSearch), [query, sentSearch]);
+  const filtersKey = JSON.stringify(filters);
+
   // A failed load says so, with Try again, instead of "No orders" (AW-202);
-  // orders already on screen stay. The newest 200 orders: paging and
+  // orders already on screen stay, and so do the filters, the focus and any
+  // card's open editor (cards are keyed by order id). Only the newest
+  // request's answer is used. ordersQuery keeps the newest 200: paging and
   // per-status counts from the server are AW-199, not built yet.
-  const reload = () => supabase
-    .from('orders')
-    .select(ADMIN_ORDER_SELECT)
-    .order('created_at', { ascending: false })
-    .limit(200)
-    .then((result) => {
-      const error = withStatus(result);
-      setLoadError(error ? adminErrorMessage(error, 'The orders didn’t load') : null);
-      if (!error) setOrders(result.data || []);
-    });
-  useEffect(() => { reload(); }, []);
+  const filtersRef = useRef(filters);
+  useEffect(() => {
+    filtersRef.current = filters;
+  });
+  const requestRef = useRef(0);
+  const reload = useCallback(async () => {
+    const current = filtersRef.current;
+    const request = ++requestRef.current;
+    let result;
+    try {
+      result = await ordersQuery(supabase, current);
+    } catch (error) {
+      result = { error };
+    }
+    if (request !== requestRef.current) return false;
+    const error = withStatus(result || {});
+    setLoadError(error ? adminErrorMessage(error, 'The orders didn’t load') : null);
+    if (error) return false;
+    setOrders(result.data || []);
+    return true;
+  }, []);
+  useEffect(() => { reload(); }, [filtersKey, reload]);
   const retry = async () => {
     setRetrying(true);
     await reload();
     setRetrying(false);
   };
+
   useEffect(() => {
     let cancelled = false;
     supabase.from('pricing_tiers').select('tier,discount_pct').then(({ data, error }) => {
@@ -185,30 +283,89 @@ export function OrdersTab({ query = {}, onQuery, notify }) {
     return () => { cancelled = true; };
   }, []);
 
-  // The changed row is read back: a refusal by row-level security changes
-  // no row and returns no error (AW-202). The list reloads either way, so a
-  // refused status visibly goes back to the saved one, beside the error.
-  const updateStatus = async (order, status) => {
-    setStatusError(null);
-    const { error } = await checkedWrite(supabase.from('orders').update({ status }).eq('id', order.id));
-    if (error) setStatusError(`${order.ref_num}: ${orderActionError(error)}`);
-    else notify?.(`${order.ref_num} is now ${status.replace(/_/g, ' ')}.`);
-    reload();
+  // The approved admins, for "Assigned to" (only when the database has
+  // orders.assigned_to).
+  const assignment = hasAssignment(orders);
+  useEffect(() => {
+    if (!assignment) return undefined;
+    let cancelled = false;
+    supabase.from('profiles').select('id, name, email').eq('role', 'admin').eq('status', 'approved').order('name').then(({ data, error }) => {
+      if (!cancelled) setAdmins(error || !Array.isArray(data) ? [] : data);
+    }, () => {
+      if (!cancelled) setAdmins([]);
+    });
+    return () => { cancelled = true; };
+  }, [assignment]);
+  const assigned = (id, assignedTo, updated) => {
+    setOrders((list) => list?.map((o) => (o.id === id ? { ...o, assigned_to: assignedTo, ...(updated ? { updated_at: updated } : {}) } : o)) ?? list);
   };
 
+  // A status change reloads the list either way, so a refused one visibly
+  // goes back to the saved status, beside the error. A cancellation carries
+  // its reason (ConfirmDialog); without the October 2026 update the reason
+  // has nowhere to go, and the status line says so.
+  const updateStatus = async (order, status, note = null) => {
+    setStatusError(null);
+    const { error, via } = await setOrderStatus(supabase, order, status, note);
+    if (error) setStatusError(`${order.ref_num}: ${orderActionError(error)}`);
+    else {
+      const lost = note && via === 'update' ? ' The reason wasn’t saved: notes and history need the October 2026 database update (see BACKEND.md).' : '';
+      notify?.(`${order.ref_num} is now ${status.replace(/_/g, ' ')}.${lost}`);
+    }
+    reload();
+    return !error;
+  };
+
+  // Back from a print view: its print link takes focus again.
+  useEffect(() => {
+    if (!returnFocusId || !orders) return;
+    const target = document.getElementById(returnFocusId);
+    onReturnFocus?.(null);
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    target.scrollIntoView?.({ block: 'nearest' });
+  }, [returnFocusId, orders, onReturnFocus]);
+
+  const setFilter = (change) => onQuery?.({ ...query, ...change });
+  const filtered = hasOrderFilters(filters) || !!typed;
+  const clearHref = adminHref({ section: 'orders', query: { status: query.status } });
+  const toolbar = (
+    <OrderFilters query={query} onFilter={setFilter} search={search} onSearch={onSearch} clearHref={clearHref} filtered={filtered} />
+  );
+
   if (!orders) {
-    return loadError ? <LoadProblem message={loadError} onRetry={retry} retrying={retrying} /> : <p className="result-note">Loading…</p>;
+    return (
+      <div className="admin-orders">
+        {toolbar}
+        {loadError ? <LoadProblem message={loadError} onRetry={retry} retrying={retrying} /> : <p className="result-note">Loading…</p>}
+      </div>
+    );
   }
   const workflow = hasQuoteWorkflow(orders);
   const states = workflow ? ORDER_STATES : LEGACY_ORDER_STATES;
-  const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter);
-  const filters = [...states, 'all'];
+  const shown = filter === 'all' ? orders : orders.filter(o => o.status === filter);
+  const pills = [...states, 'all'];
+  const accountName = query.account ? (orders.find((o) => o.profiles?.business)?.profiles.business || 'one account') : null;
+
+  // Export CSV: the orders the filters and the status pill show, one row
+  // per line, built in the browser.
+  const exportCsv = () => {
+    const name = ordersCsvFileName();
+    downloadCsv(name, toCsv(orderCsvRecords(shown)));
+    notify?.(`Exported ${plural(shown.length, 'order')} to ${name}.`);
+  };
 
   return (
-    <div>
+    <div className="admin-orders">
+      {toolbar}
+      {accountName && (
+        <p className="result-note admin-account-filter">
+          <span>{`Orders of ${accountName}.`}</span> <Link className="text-link" to={adminHref({ section: 'orders', query: { ...query, account: undefined } })} replace scroll={false}>Show every account</Link>
+        </p>
+      )}
       {loadError && <LoadProblem message={loadError} onRetry={retry} retrying={retrying} />}
       <div className="sub-pills" role="group" aria-label="Order status">
-        {filters.map(s => (
+        {pills.map(s => (
           <button
             key={s}
             type="button"
@@ -220,25 +377,44 @@ export function OrdersTab({ query = {}, onQuery, notify }) {
           </button>
         ))}
       </div>
+      <div className="admin-orders-bar">
+        <p className="result-note admin-count">{orders.length >= ORDER_LIMIT ? `Showing the newest ${ORDER_LIMIT} matching orders.` : ''}</p>
+        <div className="admin-orders-actions">
+          <button className="button xs ghost" type="button" disabled={shown.length === 0} onClick={exportCsv}>Export CSV</button>
+        </div>
+      </div>
       {statusError && <p className="form-error" role="alert">{statusError}</p>}
       {orders.length > 0 && !workflow && (
         <p className="result-note">The quote workflow (more statuses, saving prices, converting quotes) needs the October 2026 database update (see BACKEND.md). Emailing a quote works now.</p>
       )}
 
       <div className="order-list">
-        {filtered.map(o => (
-          <OrderCard key={o.id} order={o} states={states} workflow={workflow} tiers={tiers} onStatus={updateStatus} onReload={reload} notify={notify} />
+        {shown.map(o => (
+          <OrderCard key={o.id} order={o} states={states} workflow={workflow} tiers={tiers} onStatus={updateStatus} onReload={reload} notify={notify}
+            admins={admins} assignment={assignment} onAssigned={assigned} onOpenPrint={onOpenPrint} />
         ))}
       </div>
-      {filtered.length === 0 && !loadError && <p className="result-note">No orders in this state.</p>}
+      {shown.length === 0 && !loadError && (
+        filtered
+          ? (
+            <div className="empty-results">
+              <p>No orders match these filters.</p>
+              <Link className="text-link" to={clearHref} replace scroll={false} onClick={() => onSearch?.('')}>Clear filters</Link>
+            </div>
+          )
+          : <p className="result-note">No orders in this state.</p>
+      )}
     </div>
   );
 }
 
 // One order or quote (AW-024, Cursor's PR #13): staff edit quantities and unit
 // prices (suggested from the list price and the account's tier), email the
-// quote, and convert a priced quote into a confirmed order.
-function OrderCard({ order: o, states, workflow, tiers, onStatus, onReload, notify }) {
+// quote, and convert a priced quote into a confirmed order. AW-110 adds the
+// print links, the cancellation reason and "Staff notes and history".
+function OrderCard({
+  order: o, states, workflow, tiers, onStatus, onReload, notify, admins = null, assignment = false, onAssigned, onOpenPrint,
+}) {
   const quote = isQuote(o);
   const items = o.order_items || [];
   const [draft, setDraft] = useState(null); // the lines being edited, or null
@@ -302,6 +478,22 @@ function OrderCard({ order: o, states, workflow, tiers, onStatus, onReload, noti
     }
   };
 
+  // Cancelling asks for a reason first (admin_set_order_status needs one).
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const chooseStatus = (e) => {
+    const value = e.target.value;
+    if (value === 'cancelled' && o.status !== 'cancelled') setCancelling(true);
+    else onStatus(o, value);
+  };
+  const confirmCancel = async (reason) => {
+    setCancelBusy(true);
+    await onStatus(o, 'cancelled', reason);
+    setCancelBusy(false);
+    setCancelling(false);
+  };
+  const [staffOpen, setStaffOpen] = useState(false);
+
   const unpriced = items.some(it => it.unit_price == null);
   const draftTotal = draft ? linesTotal(draft) : null;
   const options = states.includes(o.status) ? states : [...states, o.status];
@@ -315,9 +507,11 @@ function OrderCard({ order: o, states, workflow, tiers, onStatus, onReload, noti
         <div className="order-title">
           <span className="order-kind">{kindLabel}</span>
           <b className="order-ref">{o.ref_num}</b>
-          <select aria-label={`Status for ${o.ref_num}`} value={o.status} onChange={e => onStatus(o, e.target.value)}>
+          <select aria-label={`Status for ${o.ref_num}`} value={o.status} onChange={chooseStatus}>
             {options.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
           </select>
+          {/* The status as text, for a printed list (the select doesn't print). */}
+          <span className="order-status-print">{statusLabel(o.status)}</span>
         </div>
         <dl className="order-facts">
           <div><dt>Method</dt><dd>{orderMethod(o)}</dd></div>
@@ -333,6 +527,9 @@ function OrderCard({ order: o, states, workflow, tiers, onStatus, onReload, noti
             </dd>
           </div>
           <div><dt>Account</dt><dd>{orderAccount(o)}</dd></div>
+          {o.assigned_to && (
+            <div><dt>Assigned to</dt><dd>{staffName((admins || []).find((a) => a.id === o.assigned_to)) || 'A former admin'}</dd></div>
+          )}
         </dl>
       </div>
       {draft ? (
@@ -387,8 +584,32 @@ function OrderCard({ order: o, states, workflow, tiers, onStatus, onReload, noti
             <span>Convert to order</span><span className="sr-only">{` ${o.ref_num}`}</span>
           </button>
         )}
+        {/* AW-110: the order's pick list and packing slip, on their own page. */}
+        <Link id={printLinkId(o.id, 'pick')} className="button ghost" to={printHref(o.id, 'pick')} onClick={() => onOpenPrint?.(printHref(o.id, 'pick'), printLinkId(o.id, 'pick'))}>
+          <span>Print pick list</span><span className="sr-only">{` for ${o.ref_num}`}</span>
+        </Link>
+        <Link id={printLinkId(o.id, 'slip')} className="button ghost" to={printHref(o.id, 'slip')} onClick={() => onOpenPrint?.(printHref(o.id, 'slip'), printLinkId(o.id, 'slip'))}>
+          <span>Print packing slip</span><span className="sr-only">{` for ${o.ref_num}`}</span>
+        </Link>
       </div>
       {workflow && quote && !draft && unpriced && <p className="order-notes">Price every line to convert this quote to an order.</p>}
+      {/* Internal: notes, assignment and history load when this is opened. */}
+      <details className="order-staff" open={staffOpen} onToggle={(e) => setStaffOpen(e.currentTarget.open)}>
+        <summary>
+          <Icon name="plus" className="order-staff-plus" />
+          <Icon name="minus" className="order-staff-minus" />
+          <span>Staff notes and history</span><span className="sr-only">{` for ${o.ref_num}`}</span>
+        </summary>
+        {staffOpen && <OrderStaff order={o} admins={admins} assignment={assignment} onAssigned={onAssigned} notify={notify} />}
+      </details>
+      {cancelling && (
+        <ConfirmDialog
+          title={`Cancel ${o.ref_num}?`}
+          body="The order moves to cancelled. Say why: the reason goes in its history, which only staff see."
+          confirmLabel="Cancel the order" cancelLabel="Keep it" reasonLabel="Reason for cancelling" busy={cancelBusy}
+          onConfirm={confirmCancel} onCancel={() => setCancelling(false)}
+        />
+      )}
     </article>
   );
 }

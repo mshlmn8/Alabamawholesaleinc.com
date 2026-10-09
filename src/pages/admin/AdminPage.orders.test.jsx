@@ -15,7 +15,7 @@ const { fake } = await import('../../lib/supabase.js');
 const {
   AdminPage, approvalEmail, hasQuoteWorkflow, isQuote, orderActionError, orderEmail, parseOrderLines, suggestedUnitPrice,
 } = await import('./AdminPage.jsx');
-const { orderAccount, orderMethod, orderTotal, requestedDate } = await import('./OrdersSection.jsx');
+const { orderAccount, orderMethod, orderTotal, requestedDate, resetOrderStatusForTests } = await import('./OrdersSection.jsx');
 const { navigate, useRoute } = await import('../../lib/router.js');
 
 // The admin page as App renders it: its route follows the URL.
@@ -55,6 +55,7 @@ const db = { orders: [], profiles: [], rpcError: {}, updateError: null };
 beforeEach(() => {
   act(() => navigate('/admin', { replace: true }));
   fake.reset();
+  resetOrderStatusForTests();
   db.orders = [guestQuote(), tradeOrder()];
   db.profiles = [ADMIN];
   db.rpcError = {};
@@ -218,7 +219,8 @@ describe('Admin orders with the quote workflow', () => {
     expect(rpcCalls('admin_convert_quote')[0]).toEqual(['admin_convert_quote', { p_order_id: 'o-guest', p_user_id: null }]);
   });
 
-  it('shows a refused status change', async () => {
+  it('shows a refused status change (the plain update, without the October 2026 function)', async () => {
+    db.rpcError.admin_set_order_status = MISSING;
     db.updateError = { code: '23514', message: 'violates check constraint' };
     await openOrders();
     await act(async () => {

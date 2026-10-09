@@ -5,13 +5,17 @@
 // and re-exports the sections' helpers.
 //
 // Each section has its own URL (AW-118, src/lib/adminRoutes.js): /admin
-// (Orders), /admin/orders?status=…, /admin/accounts, /admin/products?q=…,
-// /admin/pricing (the tier discounts, AW-114).
+// (Orders), /admin/orders?status=…, /admin/orders/:id/print?doc=pick|slip
+// (AW-110), /admin/accounts, /admin/products?q=…, /admin/pricing (the tier
+// discounts, AW-114).
 // Every admin URL is the same page to the router (pageKey 'admin'), so moving
 // between sections and filters keeps the scroll position and focus, and Back
 // returns to the previous section. A detail view (the product editor,
-// /admin/products/:id and /new) moves focus itself, and hands back a
-// returnFocusId that its list focuses when it shows again.
+// /admin/products/:id and /new; an order's print view) moves focus itself,
+// and hands back a returnFocusId that its list focuses when it shows again.
+//
+// The Orders search is kept here, not in the URL (it names people), so it
+// survives a visit to a print view.
 
 import { useEffect, useState } from 'react';
 import { Link, navigate } from '../../lib/router.js';
@@ -22,6 +26,7 @@ import { OrdersTab } from './OrdersSection.jsx';
 import { AccountsTab } from './AccountsSection.jsx';
 import { ProductsTab } from './ProductsSection.jsx';
 import { PricingTab } from './PricingSection.jsx';
+import { PrintSheet } from './PrintSheet.jsx';
 import { AdminStatus, useAdminStatus } from './AdminStatus.jsx';
 
 export {
@@ -57,9 +62,25 @@ export function AdminPage({
   // The control a section's list focuses when a detail view closes (e.g. the
   // Edit link of the product just saved).
   const [returnFocusId, setReturnFocusId] = useState(null);
+  // Orders: the search box, and the print view the list opened
+  // ({ path, linkId }), so Back from it goes back in history to the list.
+  const [orderSearch, setOrderSearch] = useState('');
+  const [printFrom, setPrintFrom] = useState(null);
   // A filter change replaces the history entry and keeps the scroll position.
   // options.force: the change keeps any unsaved edit, so it skips the leave guard.
   const setQuery = (next, options = {}) => navigate(adminHref({ section, query: next }), { replace: true, scroll: false, ...options });
+  // Back from a print view: back in history when the list opened it (the
+  // list's filters and scroll position come back), else the link's own
+  // navigation; either way the print link that opened it takes focus.
+  const leavePrint = (event) => {
+    if (printFrom) setReturnFocusId(printFrom.linkId);
+    const back = printFrom && printFrom.path === window.location.pathname;
+    setPrintFrom(null);
+    if (back) {
+      event.preventDefault();
+      window.history.back();
+    }
+  };
   // The address bar shows only the checked query: keys the section doesn't
   // know (a pasted ?email=…) and default values are dropped from it too.
   useEffect(() => {
@@ -139,7 +160,14 @@ export function AdminPage({
         })}
       </nav>
 
-      {section === 'orders' && <OrdersTab query={query} onQuery={setQuery} notify={status.show} />}
+      {section === 'orders' && route.view === 'print' && route.id != null && (
+        <PrintSheet orderId={route.id} doc={query.doc} listHref={adminHref({ section: 'orders', query: lastQuery.orders })} onBack={leavePrint} />
+      )}
+      {section === 'orders' && !detail && (
+        <OrdersTab query={query} onQuery={setQuery} notify={status.show} search={orderSearch} onSearch={setOrderSearch}
+          onOpenPrint={(href, linkId) => setPrintFrom({ path: href.split('?')[0], linkId })}
+          returnFocusId={returnFocusId} onReturnFocus={setReturnFocusId} />
+      )}
       {section === 'accounts' && <AccountsTab currentAdminId={profile.id} notify={status.show} />}
       {section === 'products' && (
         <ProductsTab route={route} query={query} onQuery={setQuery} onCatalogChange={onCatalogChange} notify={status.show}
