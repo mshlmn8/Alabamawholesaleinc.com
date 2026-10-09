@@ -29,8 +29,7 @@ import { brandLabel, catLabel } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
-import { Picture } from '../components/Picture.jsx';
-import { MissingPhoto } from '../components/MissingPhoto.jsx';
+import { ProductPhoto } from '../components/ProductPhoto.jsx';
 import { photoCredit, photoCreditSource } from '../data/photoCredits.js';
 import { ProductCard } from '../components/ProductCard.jsx';
 import { NicotineWarning } from '../components/NicotineWarning.jsx';
@@ -95,7 +94,7 @@ export function ProductPage({
         <figure className="pd-figure">
           <div className="pd-media">
             {p.tag && <span className={`card-tag ${p.tag === 'NEW' ? 'new' : ''}`}>{p.tag}</span>}
-            {p.picture ? <Picture picture={p.picture} alt={p.name} sizes={SIZES.detail} priority /> : <MissingPhoto name={p.name} />}
+            <ProductPhoto product={p} sizes={SIZES.detail} priority />
             {p.picture && p.sharedPhoto && p.sellUnit && <span className="pack-badge">{p.sellUnit}</span>}
           </div>
           {credit && (

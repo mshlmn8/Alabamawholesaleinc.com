@@ -25,8 +25,7 @@ import { brandLabel } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { announce } from '../lib/announce.js';
-import { Picture } from './Picture.jsx';
-import { MissingPhoto } from './MissingPhoto.jsx';
+import { ProductPhoto } from './ProductPhoto.jsx';
 import { NicotineWarning } from './NicotineWarning.jsx';
 import { showsNicotineWarning } from '../lib/regulated.js';
 import { Icon } from './Icon.jsx';
@@ -85,7 +84,7 @@ export function ProductCard({ p, profile, isApprovedBuyer, priceOf = NO_PRICES, 
         <div className="card-block">
           <span className="block-label">{p.cat}</span>
           {p.tag && <span className={`card-tag ${p.tag === 'NEW' ? 'new' : ''}`}>{p.tag}</span>}
-          {p.picture ? <Picture picture={p.picture} alt={p.name} sizes={SIZES.card} /> : <MissingPhoto name={p.name} />}
+          <ProductPhoto product={p} sizes={SIZES.card} />
           {/* TODO(owner): A correct photo for each product that shares a file with a different size or pack. (AW-136) */}
           {p.picture && p.sharedPhoto && p.sellUnit && <span className="pack-badge">{p.sellUnit}</span>}
         </div>

@@ -84,7 +84,7 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, pric
               <Link className="content-card" key={c.key} to={dept(c.key)}>
                 <div className="card-block">
                   <span className="block-label">DEPARTMENT</span>
-                  {preview?.picture ? <Picture picture={preview.picture} alt="" sizes={SIZES.card} /> : <span className="card-initials">{String(c.count).padStart(2, '0')}</span>}
+                  {preview?.picture ? <Picture picture={preview.picture} alt="" sizes={SIZES.card} fallback={<span className="card-initials">{String(c.count).padStart(2, '0')}</span>} /> : <span className="card-initials">{String(c.count).padStart(2, '0')}</span>}
                 </div>
                 <p className="card-kicker">{`${c.subs.length} PRODUCT LINES · ${c.count} SKUs`}</p>
                 <h3>{c.label}</h3>

@@ -464,6 +464,61 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
   });
 });
 
+// Photos while they load and when they fail (AW-192, AW-341, AW-345). Picture
+// and Thumb add .is-loaded once a photo is in, and swap a failed photo for its
+// placeholder in the markup; these rules cover the moments in between.
+describe('photo loading states (AW-192, AW-341, AW-345)', () => {
+  const all = rules(css);
+  const own = (selector) => declarations(all.find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+  const ruleWith = (selector) => all.find((r) => r.selectors.includes(selector));
+
+  it('never paints alt text over a tile, a thumbnail, the hero or a collection card', () => {
+    for (const s of ['.card-block img', '.pd-media img', '.sr-thumb img', '.drawer-line .thumb img', '.home-carousel-slide img', '.editorial-card img.bg']) {
+      expect(all.some((r) => r.selectors.includes(s) && declarations(r.body).color === 'transparent'), s).toBe(true);
+    }
+  });
+
+  it('fades in lazy photos only, so the product page photo and the first hero slide are never hidden', () => {
+    const fade = ruleWith('.card-block img[loading="lazy"]:not(.is-loaded)');
+    expect(fade.selectors).toEqual(['.card-block img[loading="lazy"]:not(.is-loaded)', '.pd-media img[loading="lazy"]:not(.is-loaded)']);
+    expect(declarations(fade.body)).toEqual({ opacity: '0' });
+    // No other rule hides a photo.
+    for (const r of all.filter((x) => declarations(x.body).opacity === '0')) {
+      for (const s of r.selectors.filter((x) => /^img\b|\simg\b/.test(x))) expect(s).toMatch(/img\[loading="lazy"\]:not\(\.is-loaded\)$/);
+    }
+    // One transition list on the card photo, with the hover zoom.
+    expect(own('.card-block img').transition).toBe('opacity .2s ease, transform .2s ease');
+    expect(own('.pd-media img').transition).toBe('opacity .2s ease');
+  });
+
+  it('shows a sheen, in tokens, only on a tile whose photo is still on its way', () => {
+    const sheen = ruleWith('.card-block:has(img:not(.is-loaded))');
+    expect(sheen.selectors).toEqual(['.card-block:has(img:not(.is-loaded))', '.pd-media:has(img:not(.is-loaded))']);
+    const d = declarations(sheen.body);
+    expect(d.background).toBe('linear-gradient(100deg, var(--tile) 40%, var(--paper) 50%, var(--tile) 60%) var(--tile)');
+    expect(d).toMatchObject({ 'background-size': '200% 100%', animation: 'aw-sheen 1.2s linear infinite' });
+    expect(css).toMatch(/@keyframes aw-sheen \{ to \{ background-position: -200% 0; \} \}/);
+    // ":not(:has(img.is-loaded))" would also match the placeholder tiles, which have no img.
+    expect(css).not.toMatch(/:not\(:has\(/);
+    // The reduced-motion rule stops it.
+    const reduced = mediaBlocks(css).find((b) => b.prelude === '(prefers-reduced-motion:reduce)');
+    expect(rules(reduced.body).find((r) => r.selectors.includes('*'))?.body).toMatch(/animation: none !important/);
+  });
+
+  it('hides the sell-unit badge on the placeholder of a photo that failed', () => {
+    expect(own('.photo-soon ~ .pack-badge')).toEqual({ display: 'none' });
+  });
+
+  it('keeps the logo slot when the logo fails: the brand in text, as tall as the logo at every header size', () => {
+    expect(own('.aw-logo-text > span').color).toBe('var(--orange-dark)');
+    expect(own('.aw-logo-text > span').font).toMatch(/^700 [\d.]+rem\/1 var\(--body\)$/);
+    expect(own('.aw-logo-text > small').color).toBe('var(--purple)');
+    const heights = (selector, property) => all.filter((r) => r.selectors.join(', ') === selector).map((r) => declarations(r.body)[property]);
+    expect(heights('.aw-logo img', 'height')).toEqual(['72px', '64px', '48px', '42px']);
+    expect(heights('.aw-logo-text', 'min-height')).toEqual(heights('.aw-logo img', 'height'));
+  });
+});
+
 // WCAG relative luminance and contrast ratio of two #rgb/#rrggbb colours.
 const luminance = (hex) => {
   const full = hex.length === 4 ? `#${[...hex.slice(1)].map((c) => c + c).join('')}` : hex;

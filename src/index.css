@@ -204,6 +204,11 @@ input[type="search"]:focus-visible, .aw-search input:focus-visible { outline-off
 .aw-menu-toggle { display: none; }
 .aw-logo { flex: 0 0 auto; padding: 0; line-height: 0; display: block; background: none; border: 0; text-align: left; }
 .aw-logo img { display: block; height: 72px; width: auto; max-width: 96px; object-fit: contain; }
+/* The brand in text when the logo photo fails to load (AW-341), as tall as
+   the logo would be: the name in text orange, the line under it in purple. */
+.aw-logo-text { display: flex; flex-direction: column; justify-content: center; min-height: 72px; white-space: nowrap; }
+.aw-logo-text > span { font: 700 1.75rem/1 var(--body); letter-spacing: -.075rem; color: var(--orange-dark); }
+.aw-logo-text > small { font: 700 var(--text-xs)/1.4 var(--body); letter-spacing: var(--track-eyebrow); color: var(--purple); margin-top: 4px; }
 /* The header search box takes the field border, fill, corner and text size
    (AW-146, AW-172); it stays 48px tall as the site's main search. */
 .aw-search { position: relative; flex: 1; display: flex; min-height: 48px; min-width: 0; border: 1px solid var(--field-border); background: var(--field-bg); border-radius: var(--field-radius); }
@@ -428,7 +433,17 @@ p > .text-link { min-height: 0; min-width: 0; }
 /* A photo is never drawn larger than its own pixel size (AW-073): its width
    comes from the img width attribute (the largest rendition, never wider than
    the source), and the tile only scales it down. */
-.card-block img { position: absolute; inset: 14px; margin: auto; height: auto; max-width: calc(100% - 28px); max-height: calc(100% - 28px); object-fit: contain; transition: transform .2s ease; }
+.card-block img { position: absolute; inset: 14px; margin: auto; height: auto; max-width: calc(100% - 28px); max-height: calc(100% - 28px); object-fit: contain; transition: opacity .2s ease, transform .2s ease; }
+/* Photos while they load and when they fail (AW-192, AW-345; Picture and
+   Thumb add .is-loaded). Alt text never paints over the tile labels. A lazy
+   photo fades in once it is loaded and its tile shows a sheen until then;
+   eager photos (the product page photo, the first hero slide) are never
+   hidden, so the largest paint is not held back. A failed photo is replaced
+   by its placeholder, which has no img, so the sheen stops. */
+.card-block img, .pd-media img, .sr-thumb img, .drawer-line .thumb img, .home-carousel-slide img, .editorial-card img.bg { color: transparent; }
+.card-block img[loading="lazy"]:not(.is-loaded), .pd-media img[loading="lazy"]:not(.is-loaded) { opacity: 0; }
+.card-block:has(img:not(.is-loaded)), .pd-media:has(img:not(.is-loaded)) { background: linear-gradient(100deg, var(--tile) 40%, var(--paper) 50%, var(--tile) 60%) var(--tile); background-size: 200% 100%; animation: aw-sheen 1.2s linear infinite; }
+@keyframes aw-sheen { to { background-position: -200% 0; } }
 /* "Photo coming soon" (AW-029). */
 .photo-soon { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; max-width: 100%; padding: 16px; text-align: center; color: var(--ink); }
 .photo-soon-mark { flex-shrink: 0; color: var(--muted); }
@@ -440,6 +455,8 @@ p > .text-link { min-height: 0; min-width: 0; }
 .pd-media .photo-soon-label { font-size: var(--text-lg); }
 /* The sell unit on a photo other rows share (AW-136). */
 .pack-badge { position: absolute; left: 12px; bottom: 12px; z-index: 2; max-width: calc(100% - 24px); background: var(--purple); color: #fff; font-size: var(--text-xs); font-weight: 700; line-height: 1.3; padding: 4px 8px; }
+/* Not on the placeholder that replaces a photo that failed to load (AW-192). */
+.photo-soon ~ .pack-badge { display: none; }
 .photo-credit { margin: 8px 0 0; font-size: var(--text-xs); line-height: 1.4; color: var(--muted); }
 /* The external-link icon after the text of a link that leaves the site (AW-218). */
 .photo-credit a .icon, .doc-admin a .icon { margin-left: .2em; }
@@ -613,7 +630,7 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .pd-media { position: relative; background: var(--tile); border: 1px solid var(--line); aspect-ratio: 1.05; display: grid; place-items: center; overflow: hidden; }
 /* Out of the grid (a <picture>'s <source> would take a grid row), centred,
    and never wider than the photo's own pixels (AW-073). */
-.pd-media img { position: absolute; inset: 34px; margin: auto; height: auto; max-width: calc(100% - 68px); max-height: calc(100% - 68px); object-fit: contain; }
+.pd-media img { position: absolute; inset: 34px; margin: auto; height: auto; max-width: calc(100% - 68px); max-height: calc(100% - 68px); object-fit: contain; transition: opacity .2s ease; }
 .pd-media .card-initials { font-size: 7.5rem; }
 .pd-info h1 { font-size: clamp(2.375rem, 1.5rem + 2.5vw, 3.5rem); margin-bottom: 8px; }
 .pd-info .pd-brand { font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); color: var(--orange-dark); text-transform: uppercase; margin: 0 0 16px; }
@@ -928,6 +945,8 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .footer-grid { grid-template-columns: 1fr 1fr; }
   .aw-masthead { gap: 28px; }
   .aw-logo img { height: 64px; }
+  .aw-logo-text { min-height: 64px; }
+  .aw-logo-text > span { font-size: 1.625rem; }
   .aw-navigation { gap: 23px; }
   .aw-category-toggle { flex-basis: 175px; padding-inline: 16px; }
   .aw-discovery-nav { gap: 21px; }
@@ -948,6 +967,11 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .aw-menu-toggle .icon { font-size: 1.5rem; }
   .aw-logo { order: 1; margin: 0; }
   .aw-logo img { height: 48px; }
+  /* The narrower display face keeps the text logo beside the account
+     actions down to 360px wide when signed in. */
+  .aw-logo-text { min-height: 48px; }
+  .aw-logo-text > span { font-size: 1.25rem; }
+  .aw-logo-text > small { margin-top: 2px; font-family: var(--display); letter-spacing: var(--track-label); }
   .aw-account-actions { order: 2; margin-left: auto; gap: 4px; }
   .aw-account-name { max-width: 120px; }
   :root { --field-font: 1rem; --field-h-compact: var(--field-h); }
@@ -1026,6 +1050,7 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
 }
 @media (max-width: 22.5em) {
   .aw-logo img { height: 42px; }
+  .aw-logo-text { min-height: 42px; }
   .aw-menu-toggle span:last-child { display: none; }
 }
 @media(prefers-reduced-motion:reduce) {

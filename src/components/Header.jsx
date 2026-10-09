@@ -14,7 +14,17 @@ import { catLabel } from '../lib/format.js';
 import { Link, navigate, useLocation } from '../lib/router.js';
 import { MobileMenu } from './MobileMenu.jsx';
 import { Icon } from './Icon.jsx';
-import { MissingPhoto } from './MissingPhoto.jsx';
+import { Thumb } from './Thumb.jsx';
+import { useImageStatus } from '../lib/useImageStatus.js';
+
+// The logo photo, or the brand in text when it fails to load (AW-341). The
+// photo is 320px square, so its width and height reserve the slot before it
+// loads; the link around it carries the name.
+function Logo() {
+  const { status, attempt, ref, onLoad, onError } = useImageStatus();
+  if (status === 'failed') return <span className="aw-logo-text"><span>Alabama</span><small>WHOLESALE INC.</small></span>;
+  return <img key={attempt} ref={ref} src={IMG.logo} alt="" width="320" height="320" onLoad={onLoad} onError={onError} />;
+}
 
 export function Header({ cartCount, onCart, products, departments, user, isAdmin, onLoginClick, onSignupClick, onLogout, signingOut = false, onHelp }) {
   const [megaOpen, setMegaOpen] = useState(false);
@@ -105,7 +115,7 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
           <span>Menu</span>
         </button>
         <Link className="aw-logo" to="/" onClick={closeMenus} aria-label="Alabama Wholesale home">
-          <img src={IMG.logo} alt="" />
+          <Logo />
         </Link>
         <form className="aw-search" role="search" onSubmit={submitSearch}>
           <input type="search" value={query} placeholder={`Search ${products.length} SKUs — cigars, disposables, candy, drinks…`}
@@ -123,7 +133,7 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
                 {hits.length === 0 && <p>Try a brand (Geekbar, Backwoods, BIC) or a line (&quot;energy drinks&quot;, &quot;wraps&quot;).</p>}
                 {hits.map(p => (
                   <Link key={p.id} to={{ page: 'product', productId: p.id }} onClick={pickResult}>
-                    <span className="sr-thumb">{p.img ? <img src={p.img} alt="" loading="lazy" /> : <MissingPhoto compact />}</span>
+                    <span className="sr-thumb"><Thumb src={p.img} /></span>
                     <span><strong>{p.name}</strong><small>{`${catLabel(p.cat)} · ${p.sub} · ${p.sku}`}</small></span>
                   </Link>
                 ))}
