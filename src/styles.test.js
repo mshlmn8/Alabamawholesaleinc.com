@@ -41,8 +41,23 @@ const isField = (selector) => /^(input|select|textarea)\b|^\.doc-file(?![\w-])/.
 const rootBlocks = rules(css).filter((r) => r.selectors.length === 1 && r.selectors[0] === ':root');
 const root = declarations(rootBlocks[0].body);
 const outsideRoot = css.replace(/:root\s*\{[^{}]*\}/g, '');
-// The stylesheet with every @media block (and its nested rules) taken out.
-const outsideMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '');
+// The stylesheet with every @media block taken out, with its nested rules and
+// nested @media blocks (a hover block inside the compact block, AW-160).
+const withoutMedia = (source) => {
+  const re = /@media[^{]*\{/g;
+  let out = '', from = 0, m;
+  while ((m = re.exec(source))) {
+    let depth = 1, i = re.lastIndex;
+    for (; i < source.length && depth; i++) {
+      if (source[i] === '{') depth++;
+      else if (source[i] === '}') depth--;
+    }
+    out += source.slice(from, m.index);
+    from = re.lastIndex = i;
+  }
+  return out + source.slice(from);
+};
+const outsideMedia = withoutMedia(css);
 
 // Every `@media` prelude, e.g. '(max-width: 37.5em)'.
 const mediaPreludes = [...css.matchAll(/@media\s*([^{]+?)\s*\{/g)].map((m) => m[1]);
@@ -333,6 +348,122 @@ describe('one button system and drawn icons (AW-143, AW-298, AW-293, AW-218)', (
   });
 });
 
+// Interaction states (AW-145, AW-160, AW-175, AW-302): hover only where there
+// is a mouse, a pressed state for touch, the selected state in forced colours,
+// and 44px targets on touch screens.
+describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
+  const RULE = /([^{};]+)\{([^{}]*)\}/g;
+  const blocks = mediaBlocks(css);
+  const hoverBlocks = blocks.filter((b) => b.prelude === '(hover: hover)');
+  // The stylesheet without what the hover blocks hold, nested blocks included.
+  const outsideHover = hoverBlocks.reduceRight((text, b) => text.slice(0, b.start) + text.slice(b.end), css);
+  const hoverRules = hoverBlocks.flatMap((b) => rules(b.body));
+  const coarseBlocks = blocks.filter((b) => b.prelude === '(pointer: coarse)');
+  const coarseRules = coarseBlocks.flatMap((b) => rules(b.body));
+  const compact = blocks.find((b) => b.prelude === MOBILE_QUERY && b.body.includes('.aw-search > button {'));
+  const inHover = (selector) => declarations(hoverRules.find((r) => r.selectors.includes(selector))?.body ?? '');
+  const outside = (selector) => declarations(rules(outsideHover).find((r) => r.selectors.includes(selector))?.body ?? '');
+  const own = (selector) => declarations(rules(css).find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+
+  it('keeps every :hover inside @media (hover: hover), so a tap leaves no hover colour behind', () => {
+    expect(hoverBlocks.length).toBeGreaterThan(15);
+    expect(rules(outsideHover).flatMap((r) => r.selectors).filter((s) => s.includes(':hover'))).toEqual([]);
+    expect(outsideHover).not.toMatch(/:hover/);
+    // The compact search button's hover is nested in the compact block, whose
+    // prelude stays MOBILE_QUERY.
+    expect(compact.body).toMatch(/@media \(hover: hover\) \{\s*\.aw-search > button:hover \{/);
+  });
+
+  it('keeps the open categories toggle the lighter purple without hover', () => {
+    expect(outside('.aw-category-toggle[aria-expanded="true"]')).toEqual({ background: 'var(--purple-hover)' });
+    expect(rules(outsideHover).find((r) => r.selectors.includes('.aw-category-toggle[aria-expanded="true"]')).selectors).toHaveLength(1);
+    expect(inHover('.aw-category-toggle:hover')).toEqual({ background: 'var(--purple-hover)' });
+  });
+
+  it('shows a mouse that cards, tiles, collection cards, the mega-menu feature, nav links, chips and the pricing prompt are clickable', () => {
+    for (const s of ['.card-link:hover .card-block', 'a.content-card:hover .card-block']) expect(inHover(s), s).toEqual({ 'border-color': 'var(--purple)' });
+    for (const s of ['.card-link:hover h3', 'a.content-card:hover h3']) expect(inHover(s), s).toEqual({ 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' });
+    for (const s of ['.card-link:hover .card-block img', 'a.content-card:hover .card-block img']) expect(inHover(s), s).toEqual({ transform: 'scale(1.03)' });
+    // One transition list on the card photo (a later fade adds to it); the
+    // reduced-motion rule removes it.
+    expect(own('.card-block img').transition).toMatch(/(^|, )transform \.2s ease(,|$)/);
+    expect(inHover('.editorial-card:hover .text-link')).toEqual({ 'text-decoration-thickness': '2px' });
+    expect(inHover('.editorial-card:hover img.bg')).toEqual({ opacity: '.36' });
+    expect(inHover('.aw-menu-feature:hover')).toEqual({ background: 'var(--purple-hover)' });
+    for (const s of ['.section-head > a:hover', '.aw-utility a:hover', '.sku-details summary:hover']) expect(inHover(s), s).toEqual({ color: 'var(--orange-dark)' });
+    expect(inHover('.variant-chips button:not(:disabled):not([aria-pressed="true"]):hover')).toEqual({ 'border-color': 'var(--purple)' });
+    expect(inHover('button.filter-signin:hover')).toEqual({ 'border-left-color': 'var(--purple)' });
+    expect(inHover('button.filter-signin:hover span')).toEqual({ 'text-decoration-thickness': '2px' });
+    // Keyboard focus underlines the card title too, outside the hover blocks.
+    for (const s of ['.card-link:focus-visible h3', 'a.content-card:focus-visible h3']) expect(outside(s), s).toMatchObject({ 'text-decoration': 'underline' });
+  });
+
+  it('never turns a link orange on a purple surface', () => {
+    const purple = /^(\.trade-bar|\.footer|\.contact-strip|\.editorial-card|\.aw-menu-feature|\.age-gate|\.fda-note)/;
+    const onPurple = hoverRules.filter((r) => r.selectors.some((s) => purple.test(s)));
+    expect(onPurple.length).toBeGreaterThan(3);
+    for (const { selectors, body } of onPurple) expect(body, selectors.join(', ')).not.toMatch(/--orange/);
+  });
+
+  it('gives tappable controls a pressed state outside the hover blocks that never hides the selected one', () => {
+    const pressed = {
+      '.sub-pill:not(.active):active': 'var(--paper)',
+      '.variant-chips button:not(:disabled):not([aria-pressed="true"]):active': 'var(--line)',
+      '.dept-jump a:active': 'var(--paper)',
+      '.policy-nav a:active': 'var(--line)',
+      '.menu-group a:active': 'var(--paper)',
+      '.menu-group button:not(:disabled):active': 'var(--paper)',
+      '.filter-toggle:active': 'var(--purple-hover)',
+      '.active-filters > li > button:not(.text-link):active': 'var(--purple-hover)',
+      '.aw-category-toggle:active': 'var(--purple-hover)',
+      '.aw-search > button:active': 'var(--line)',
+    };
+    for (const [selector, background] of Object.entries(pressed)) expect(outside(selector), selector).toEqual({ background });
+    // The compact layout's purple search button presses to the lighter purple.
+    expect(declarations(rules(compact.body).find((r) => r.selectors.join() === '.aw-search > button:active').body)).toEqual({ background: 'var(--purple-hover)' });
+  });
+
+  it('shows the chosen variant, line, admin tab and policy page in the system highlight in forced colours', () => {
+    const forced = blocks.find((b) => b.prelude === '(forced-colors: active)');
+    const selected = rules(forced.body).find((r) => r.selectors.includes('.sub-pill.active'));
+    expect(selected.selectors).toEqual(['.variant-chips button[aria-pressed="true"]', '.sub-pill.active', '.sub-pill[aria-current="page"]', 'nav.policy-nav a[aria-current="page"]']);
+    expect(declarations(selected.body)).toEqual({ 'forced-color-adjust': 'none', background: 'Highlight', color: 'HighlightText', 'border-color': 'Highlight' });
+    const ring = rules(forced.body).find((r) => r.selectors.includes('.sub-pill.active:focus-visible'));
+    expect(declarations(ring.body)).toEqual({ 'outline-color': 'CanvasText' });
+    // The menu and filter icons are SVG strokes in currentColor, so they take the forced text colour.
+    expect(read('src/components/Icon.jsx')).toMatch(/stroke="currentColor"/);
+  });
+
+  it('makes the small controls 44px targets on touch screens, after their own rules, links in a sentence excepted', () => {
+    expect(declarations(coarseRules.find((r) => r.selectors.join() === ':root').body)).toMatchObject({ '--tap-sm': 'var(--tap)' });
+    // Everything sized with --tap-sm follows it.
+    for (const s of ['.button.sm', '.icon-btn', '.sub-pill', '.variant-chips button', '.price-login', '.filter-panel fieldset label', '.card-meta']) {
+      expect(Object.values(own(s)).join(' '), s).toMatch(/var\(--tap-sm\)/);
+    }
+    const TOUCH = ['.trade-bar a', '.trade-bar button', '.aw-menu-footer a', '.aw-logo', '.aw-department a', '.text-link', '.crumbs li', '.crumbs a',
+      '.active-filters > li > button', '.filter-heading .text-link', '.footer-grid button', '.footer-grid .footer-link', '.footer-grid p > a', 'a.info-lead',
+      '.policy-nav a', '.dept-jump a', '.sku-details summary'];
+    const at = (source, offset = 0) => [...source.matchAll(RULE)].map((m) => ({ selectors: splitList(m[1]), body: m[2], index: offset + m.index }));
+    const touchRules = coarseBlocks.flatMap((b) => at(b.body, b.start));
+    const inAnyBlock = (index) => blocks.some((b) => index >= b.start && index < b.end);
+    const baseRules = at(css).filter((r) => !inAnyBlock(r.index));
+    for (const selector of TOUCH) {
+      const touch = touchRules.find((r) => r.selectors.includes(selector));
+      expect(declarations(touch?.body ?? ''), selector).toMatchObject({ 'min-height': 'var(--tap)' });
+      // Later than the control's own min-height, so it wins at the same specificity.
+      for (const base of baseRules.filter((r) => r.selectors.includes(selector) && 'min-height' in declarations(r.body))) {
+        expect(touch.index, selector).toBeGreaterThan(base.index);
+      }
+    }
+    // A link inside a sentence and the collection cards' link stay inline.
+    expect(own('p > .text-link')).toEqual({ 'min-height': '0', 'min-width': '0' });
+    expect(own('.editorial-card .text-link')).toMatchObject({ 'min-height': '0' });
+    // The stepper's count has a width, so the stepper is as wide as its
+    // buttons need and they keep their size wherever there is room.
+    expect(own('.stepper b')).toMatchObject({ flex: '0 1 2.5rem', width: '2.5rem', 'min-width': '1.5em' });
+  });
+});
+
 // WCAG relative luminance and contrast ratio of two #rgb/#rrggbb colours.
 const luminance = (hex) => {
   const full = hex.length === 4 ? `#${[...hex.slice(1)].map((c) => c + c).join('')}` : hex;
@@ -578,6 +709,12 @@ describe('one link style (AW-297)', () => {
     for (const selector of ['.trade-bar a, .trade-bar button', '.footer-grid a', '.footer-policies a', '.aw-utility a', '.sku-details summary']) {
       expect(ruleFor(selector), selector).toMatchObject({ 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' });
     }
+  });
+
+  it('thickens the underline of every text link with a mouse only, on light and purple surfaces alike', () => {
+    const hover = mediaBlocks(css).filter((b) => b.prelude === '(hover: hover)').flatMap((b) => rules(b.body)).find((r) => r.selectors.includes('.form-error a:hover'));
+    expect(hover.selectors).toEqual(LINKS.map((s) => (s === '.text-link' ? '.text-link:not(:disabled):hover' : `${s}:hover`)));
+    expect(declarations(hover.body)).toEqual({ 'text-decoration-thickness': '2px' });
   });
 
   it('colours the section links and underlines the footer navigation like the footer phone and email', () => {
