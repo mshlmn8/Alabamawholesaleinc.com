@@ -14,12 +14,18 @@
 // Titles are in sentence case, the same words as the page's h1 (AW-131,
 // LEFT-1): 'Contact & visit', 'All products · Wholesale catalog'. Product,
 // department and line names are names and keep their own capitals.
+//
+// Department, line and product pages also carry their breadcrumb trail as
+// BreadcrumbList structured data (AW-320): a <script type="application/ld+json"
+// id="aw-breadcrumbs"> next to index.html's business and website nodes. A
+// data block runs nothing, so the Content-Security-Policy needs no hash for it.
 
 import { COMPANY, HOME_PITCH, HOME_TITLE, HOURS, ORDER_MINIMUM, hoursLine } from '../data/content.js';
 import { APPLY_LABEL, TRADE_ACCOUNT_LABEL, basketTerms } from '../data/terms.js';
 import { ADMIN_GATE_HEADINGS } from './accountStatus.js';
 import { POLICY_TITLES, POLICY_INTROS } from '../pages/support/policyText.js';
 import { resetTitle } from '../pages/support/resetView.js';
+import { catalogCrumbs } from './crumbs.js';
 import { topLines } from './departments.js';
 import { brandLabel, catLabel, formatMoney, sharesDepartmentName } from './format.js';
 import { underLegalReview } from './merchandising.js';
@@ -205,8 +211,8 @@ export const APPLY_TITLES = {
   suspended: 'Account on hold',
 };
 
-// Title, description, canonical path, share image and indexing for a
-// resolved route (see resolveRoute in routes.js).
+// Title, description, canonical path, share image, breadcrumb trail and
+// indexing for a resolved route (see resolveRoute in routes.js).
 export function pageMeta(route, products, departments) {
   const meta = pageText(route, products, departments);
   const noindex = NOINDEX_PAGES.includes(route.page);
@@ -215,9 +221,17 @@ export function pageMeta(route, products, departments) {
     // Filters are not separate pages: the canonical URL has no query string.
     path: noindex ? null : pathFor(route),
     image: meta.image || null,
+    breadcrumbs: noindex ? null : meta.breadcrumbs || null,
     noindex,
   };
 }
+
+// A catalog page's trail (catalogCrumbs) as [{ name, path }]: each crumb's
+// own path, and the page's for the last one.
+const trailOf = (items, ownPath) => items.map((item) => ({
+  name: item.label,
+  path: item.to ? (typeof item.to === 'string' ? item.to : pathFor(item.to)) : ownPath,
+}));
 
 function pageText(route, products, departments) {
   const site = COMPANY.name;
@@ -253,6 +267,7 @@ function pageText(route, products, departments) {
         p.sku ? `SKU ${p.sku}.` : '',
       ]),
       image: imageOf(p, p.name),
+      breadcrumbs: trailOf(catalogCrumbs({ category: p.cat, sub: p.sub || null, product: p }), pathFor(route)),
     };
   }
   // After a save, /quote shows the receipt (App sets route.received, AW-022);
@@ -296,6 +311,7 @@ function categoryText(route, products, departments, site) {
   const rows = route.sub ? inDept.filter(p => p.sub === route.sub) : inDept;
   const preview = rows.find(p => p.img);
   const scope = route.sub ? `${route.sub} · ${label}` : label;
+  const breadcrumbs = trailOf(catalogCrumbs({ category: route.category, sub: route.sub || null }), pathFor(route));
   if (route.sub) {
     const brands = brandsByCount(rows);
     // Products with no brand of their own also make it '… and more'.
@@ -310,6 +326,7 @@ function categoryText(route, products, departments, site) {
       title: fitTitle([route.sub, sharesDepartmentName(route.category, route.sub) ? '' : label, site]),
       description: fitSentences([first, SIGN_IN]),
       image: imageOf(preview, scope),
+      breadcrumbs,
     };
   }
   const count = dept?.count ?? inDept.length;
@@ -324,6 +341,7 @@ function categoryText(route, products, departments, site) {
     title: fitTitle([label, 'Wholesale catalog', site]),
     description: fitSentences([first, SIGN_IN]),
     image: imageOf(preview, scope),
+    breadcrumbs,
   };
 }
 
@@ -331,6 +349,23 @@ function categoryText(route, products, departments, site) {
 export const absoluteUrl = (url, base = SITE_URL) => {
   try { return new URL(url, `${base}/`).href; } catch { return `${base}/`; }
 };
+
+// The id of the page's BreadcrumbList script in the head (AW-320).
+export const BREADCRUMBS_ID = 'aw-breadcrumbs';
+
+// A pageMeta() trail as schema.org BreadcrumbList structured data, every
+// item an absolute URL on SITE_URL (AW-320).
+export function breadcrumbList(trail, base = SITE_URL) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: trail.map((crumb, i) => ({ '@type': 'ListItem', position: i + 1, name: crumb.name, item: absoluteUrl(crumb.path, base) })),
+  };
+}
+
+// JSON for the inside of a <script> element: every '<' escaped, so no name
+// in it can close the element or open a comment.
+export const scriptJson = (value) => JSON.stringify(value).replace(/</g, '\\u003c');
 
 function setMeta(attr, key, content) {
   let el = document.head.querySelector(`meta[${attr}="${key}"]`);
@@ -360,9 +395,26 @@ function setCanonical(href) {
   el.setAttribute('href', href);
 }
 
+// The BreadcrumbList script in the head: written for a page with a trail,
+// removed for any other.
+function setBreadcrumbs(trail) {
+  let el = document.getElementById(BREADCRUMBS_ID);
+  if (!trail?.length) {
+    el?.remove();
+    return;
+  }
+  if (!el) {
+    el = document.createElement('script');
+    el.type = 'application/ld+json';
+    el.id = BREADCRUMBS_ID;
+    document.head.appendChild(el);
+  }
+  el.textContent = scriptJson(breadcrumbList(trail));
+}
+
 // Writes a pageMeta() result into the document head. A product share image
 // is resolved on the current origin, where this build's hashed file exists.
-export function applyPageMeta({ title, description, path = null, image = null, noindex = false }) {
+export function applyPageMeta({ title, description, path = null, image = null, breadcrumbs = null, noindex = false }) {
   document.title = title;
   const url = path ? absoluteUrl(path) : null;
   setMeta('name', 'description', description);
@@ -380,4 +432,5 @@ export function applyPageMeta({ title, description, path = null, image = null, n
   setMeta('property', 'og:image:alt', img.alt);
   setMeta('name', 'twitter:image', img.url);
   setMeta('name', 'robots', noindex ? 'noindex' : null);
+  setBreadcrumbs(breadcrumbs);
 }

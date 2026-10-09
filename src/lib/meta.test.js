@@ -8,8 +8,8 @@ import { PRODUCTS } from '../data/products.js';
 import { departmentsFor } from './departments.js';
 import { brandLabel } from './format.js';
 import {
-  APPLY_TITLES, applyPageMeta, clip, DEFAULT_IMAGE, fitSentences, fitTitle, HOME_DESCRIPTION, inSentence, lineInSentence, nameHasBrand, pageMeta,
-  sentencesOf, SITE_URL,
+  APPLY_TITLES, applyPageMeta, BREADCRUMBS_ID, breadcrumbList, clip, DEFAULT_IMAGE, fitSentences, fitTitle, HOME_DESCRIPTION, inSentence, lineInSentence, nameHasBrand, pageMeta,
+  scriptJson, sentencesOf, SITE_URL,
 } from './meta.js';
 import { normalizeSearchText } from './search.js';
 
@@ -218,6 +218,22 @@ describe('pageMeta', () => {
     expect(pageMeta({ page: 'category', category: 'TOBACCO', sub: 'Cigars', query: { ...EMPTY, q: 'kite' } }, products, departments).path).toBe('/category/tobacco/cigars');
     expect(pageMeta({ page: 'product', productId: 7 }, products, departments).path).toBe('/product/7');
     expect(pageMeta({ page: 'contact' }, products, departments).path).toBe('/contact');
+  });
+
+  it('gives department, line and product pages their breadcrumb trail, the visible one (AW-320)', () => {
+    const trail = (route) => pageMeta(route, products, departments).breadcrumbs;
+    const top = [{ name: 'Home', path: '/' }, { name: 'All products', path: '/catalog' }];
+    expect(trail({ page: 'category', category: 'TOBACCO', sub: null, query: EMPTY })).toEqual([...top, { name: 'Tobacco', path: '/category/tobacco' }]);
+    // Filters are not part of the trail's links.
+    expect(trail({ page: 'category', category: 'TOBACCO', sub: 'Cigars', query: { ...EMPTY, q: 'kite', sort: 'brand' } })).toEqual([
+      ...top, { name: 'Tobacco', path: '/category/tobacco' }, { name: 'Cigars', path: '/category/tobacco/cigars' },
+    ]);
+    expect(trail({ page: 'product', productId: 7 })).toEqual([
+      ...top, { name: 'Tobacco', path: '/category/tobacco' }, { name: 'Cigarettes', path: '/category/tobacco/cigarettes' }, { name: 'Kite', path: '/product/7' },
+    ]);
+    for (const route of [{ page: 'home' }, { page: 'contact' }, { page: 'catalog' }, { page: 'quote' }, { page: 'search', q: 'kite' }, { page: 'not-found', kind: 'product' }, { page: 'product', productId: 999 }]) {
+      expect([route.page, trail(route)]).toEqual([route.page, null]);
+    }
   });
 
   it('uses the product photo as the share image', () => {
@@ -441,6 +457,34 @@ describe('applyPageMeta', () => {
     applyPageMeta({ title: 'Home', description: 'D', path: '/' });
     expect(head('meta[name="robots"]')).toBeNull();
     expect(head('link[rel="canonical"]', 'href')).toBe(`${SITE_URL}/`);
+  });
+
+  it('writes, updates and removes the page’s BreadcrumbList (AW-320)', () => {
+    const script = () => document.getElementById(BREADCRUMBS_ID);
+    const trail = [{ name: 'Home', path: '/' }, { name: 'Tobacco', path: '/category/tobacco' }];
+    applyPageMeta({ title: 'Tobacco', description: 'D', path: '/category/tobacco', breadcrumbs: trail });
+    expect(script().type).toBe('application/ld+json');
+    expect(script().parentElement).toBe(document.head);
+    expect(JSON.parse(script().textContent)).toEqual({
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/` },
+        { '@type': 'ListItem', position: 2, name: 'Tobacco', item: `${SITE_URL}/category/tobacco` },
+      ],
+    });
+    applyPageMeta({ title: 'Kite', description: 'D', path: '/product/7', breadcrumbs: [...trail, { name: 'Kite </script><b>', path: '/product/7' }] });
+    expect(document.querySelectorAll(`#${BREADCRUMBS_ID}`)).toHaveLength(1);
+    expect(script().textContent).not.toContain('<');
+    expect(JSON.parse(script().textContent).itemListElement[2]).toEqual({ '@type': 'ListItem', position: 3, name: 'Kite </script><b>', item: `${SITE_URL}/product/7` });
+    applyPageMeta({ title: 'Contact', description: 'D', path: '/contact' });
+    expect(script()).toBeNull();
+  });
+
+  it('builds the BreadcrumbList on any origin, and its JSON never closes its script', () => {
+    expect(breadcrumbList([{ name: 'Home', path: '/' }], 'https://example.org').itemListElement[0].item).toBe('https://example.org/');
+    expect(scriptJson({ a: '</script><!--' })).toBe('{"a":"\\u003c/script>\\u003c!--"}');
+    expect(JSON.parse(scriptJson({ a: '</script>' }))).toEqual({ a: '</script>' });
   });
 
   it('reads one SITE_URL, the production domain unless VITE_SITE_URL is set', () => {

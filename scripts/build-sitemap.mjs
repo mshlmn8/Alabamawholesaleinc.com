@@ -8,6 +8,10 @@
 // one SITE_URL (VITE_SITE_URL, else the production domain). <lastmod> is the
 // date of the last commit, or today outside a git checkout.
 //
+// It also writes dist/robots.txt, whose Sitemap line names the same origin
+// (AW-052); public/robots.txt is the production origin's copy for the dev
+// server.
+//
 // products.js resolves photos through Vite-only import.meta.glob, so the
 // catalog is loaded through Vite's SSR module loader (as in build-seed.mjs).
 
@@ -16,6 +20,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { hrefFor, siteUrl } from '../src/lib/routes.js';
+import { robotsTxt } from './site-url.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -79,7 +84,8 @@ async function main() {
   const out = path.join(ROOT, 'dist', 'sitemap.xml');
   await fs.mkdir(path.dirname(out), { recursive: true });
   await fs.writeFile(out, sitemapXml({ base, paths, lastmod: lastCommitDate() }));
-  console.log(`build-sitemap: wrote ${paths.length} URLs on ${base} to ${path.relative(ROOT, out)}`);
+  await fs.writeFile(path.join(ROOT, 'dist', 'robots.txt'), robotsTxt(base));
+  console.log(`build-sitemap: wrote ${paths.length} URLs on ${base} to ${path.relative(ROOT, out)}, and robots.txt`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {

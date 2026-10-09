@@ -27,7 +27,14 @@ points at it.
 
 Optional: `VITE_SITE_URL` sets the public origin used for canonical links,
 share tags and the sitemap. It defaults to `https://alabamawholesaleinc.com`;
-set it only if the site moves to another domain.
+set it only if the site moves to another domain. It reaches every absolute
+URL a crawler reads without running the app (AW-052): `index.html`'s share
+image (`og:image`, `twitter:image`) and structured data
+(`scripts/site-url.mjs`, a Vite plugin), `dist/robots.txt`'s `Sitemap` line
+and `dist/sitemap.xml` (`scripts/build-sitemap.mjs`). `public/robots.txt` is
+the production domain's copy, for the dev server only.
+
+<!-- TODO(owner): Register the production domain (or name the final one), connect it in Netlify as the primary domain with HTTPS, add the www name so Netlify redirects it to the primary one, and set the Supabase Auth Site URL once the domain resolves. (AW-052) -->
 
 ## Page paths and 404s
 

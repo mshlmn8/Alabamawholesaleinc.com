@@ -76,30 +76,50 @@
       setTimeout(function () { var b = document.querySelector('#root .boot'); if (b) b.classList.add('slow'); }, 8000);
     </script>
 
-    <!-- LocalBusiness structured data -->
+    <!-- Structured data (AW-320): the business, a WholesaleStore, and the
+         website it publishes. Name, phone, email, address and hours match
+         COMPANY and HOURS in src/data/content.js, and hasMap is a Google Maps
+         search for that address (src/boot-shell.test.js checks them).
+         Category, line and product pages add a BreadcrumbList
+         (#aw-breadcrumbs, src/lib/meta.js). The origin is replaced by
+         VITE_SITE_URL's when it is set (scripts/site-url.mjs, AW-052). -->
     <!-- TODO(owner): Latitude and longitude of the warehouse, plus the Google Business and social profile URLs. (AW-320) -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "LocalBusiness",
-      "name": "Alabama Wholesale Inc",
-      "url": "https://alabamawholesaleinc.com/",
-      "image": "https://alabamawholesaleinc.com/og.jpg",
-      "telephone": "+1-205-354-4473",
-      "email": "Alabamawholesaleinc@gmail.com",
-      "address": {
-        "@type": "PostalAddress",
-        "streetAddress": "613 Graymont Ave N",
-        "addressLocality": "Birmingham",
-        "addressRegion": "AL",
-        "postalCode": "35203",
-        "addressCountry": "US"
-      },
-      "openingHoursSpecification": [
-        { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"], "opens": "07:00", "closes": "18:00" },
-        { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Saturday","Sunday"], "opens": "08:00", "closes": "17:30" }
-      ],
-      "areaServed": ["Alabama","Georgia","Mississippi"]
+      "@graph": [
+        {
+          "@type": "WholesaleStore",
+          "@id": "https://alabamawholesaleinc.com/#business",
+          "name": "Alabama Wholesale Inc",
+          "url": "https://alabamawholesaleinc.com/",
+          "logo": "https://alabamawholesaleinc.com/icon-512.png",
+          "image": "https://alabamawholesaleinc.com/og.jpg",
+          "telephone": "+1-205-354-4473",
+          "email": "Alabamawholesaleinc@gmail.com",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "613 Graymont Ave N",
+            "addressLocality": "Birmingham",
+            "addressRegion": "AL",
+            "postalCode": "35203",
+            "addressCountry": "US"
+          },
+          "hasMap": "https://www.google.com/maps/search/?api=1&query=613%20Graymont%20Ave%20N%2C%20Birmingham%2C%20AL%2035203",
+          "openingHoursSpecification": [
+            { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"], "opens": "07:00", "closes": "18:00" },
+            { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Saturday","Sunday"], "opens": "08:00", "closes": "17:30" }
+          ],
+          "areaServed": ["Alabama","Georgia","Mississippi"]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://alabamawholesaleinc.com/#website",
+          "url": "https://alabamawholesaleinc.com/",
+          "name": "Alabama Wholesale Inc",
+          "publisher": { "@id": "https://alabamawholesaleinc.com/#business" }
+        }
+      ]
     }
     </script>
   </head>

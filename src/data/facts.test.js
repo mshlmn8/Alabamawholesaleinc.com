@@ -125,9 +125,10 @@ describe('open now (AW-275)', () => {
 
 describe('index.html and the web manifest agree with content.js (AW-283)', () => {
   const html = read('index.html');
+  // The business node of the structured data's @graph (AW-320).
   const ldJson = () => {
     const match = /<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(html);
-    return JSON.parse(match[1]);
+    return JSON.parse(match[1])['@graph'].find((node) => node['@type'] === 'WholesaleStore');
   };
   const digits = (text) => String(text).replace(/\D/g, '');
   const textOf = (fragment) => fragment.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');

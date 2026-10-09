@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react';
 import { backendEnvError } from './scripts/build-env.mjs';
 import { chunkUrlsPlugin } from './scripts/chunk-urls.mjs';
 import { netlifyResponse, pathHeaders, previewHeaders, readNetlifyHeaders, readNetlifyRedirects } from './scripts/netlify-headers.mjs';
+import { siteUrlPlugin } from './scripts/site-url.mjs';
 
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
 
@@ -79,8 +80,9 @@ export default defineConfig(({ command, mode }) => {
 
   return {
     // chunkUrlsPlugin (build only): the files src/lib/chunks.js fetches
-    // ahead, written into the built code (NEW-006).
-    plugins: [react(), chunkUrlsPlugin(), previewPathHeaders(), previewRedirects()],
+    // ahead, written into the built code (NEW-006). siteUrlPlugin: index.html's
+    // share image and structured data on VITE_SITE_URL's origin (AW-052).
+    plugins: [react(), siteUrlPlugin(), chunkUrlsPlugin(), previewPathHeaders(), previewRedirects()],
     server: {
       port: 3000,
       // CI and Playwright runs must not try to open a browser (preview.open

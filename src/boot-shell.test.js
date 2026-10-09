@@ -84,3 +84,44 @@ describe('index.html boot shell', () => {
     expect(html).toContain(`"telephone": "+1-${COMPANY.phoneRaw.slice(2, 5)}-${COMPANY.phoneRaw.slice(5, 8)}-${COMPANY.phoneRaw.slice(8)}"`);
   });
 });
+
+// The structured data (AW-320): one @graph with the business, a
+// WholesaleStore with its own @id, logo and map link, and the website it
+// publishes. Geo coordinates and sameAs profiles wait for the owner.
+describe('index.html structured data', () => {
+  const graph = () => JSON.parse(between('<script type="application/ld+json">', '</script>').slice('<script type="application/ld+json">'.length))['@graph'];
+  const SITE = 'https://alabamawholesaleinc.com';
+
+  it('describes the business as a WholesaleStore with an @id, logo and map link', () => {
+    const business = graph().find((node) => node['@type'] === 'WholesaleStore');
+    expect(business).toMatchObject({
+      '@id': `${SITE}/#business`,
+      name: COMPANY.name,
+      url: `${SITE}/`,
+      logo: `${SITE}/icon-512.png`,
+      image: `${SITE}/og.jpg`,
+      email: COMPANY.email,
+      address: { streetAddress: COMPANY.addressStreet, addressLocality: COMPANY.addressCity, addressRegion: COMPANY.addressState, postalCode: COMPANY.addressZip },
+      hasMap: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(COMPANY.addressShort)}`,
+    });
+    // Owner facts, not invented (TODO(owner) AW-320).
+    expect(business.geo).toBeUndefined();
+    expect(business.sameAs).toBeUndefined();
+  });
+
+  it('names the website, published by the business', () => {
+    expect(graph().find((node) => node['@type'] === 'WebSite')).toEqual({
+      '@type': 'WebSite',
+      '@id': `${SITE}/#website`,
+      url: `${SITE}/`,
+      name: COMPANY.name,
+      publisher: { '@id': `${SITE}/#business` },
+    });
+    expect(graph()).toHaveLength(2);
+  });
+
+  it('names a logo the build renders', () => {
+    // scripts/build-images.mjs renders /icon-512.png from src/assets/logo.jpg.
+    expect(readFileSync(resolve(process.cwd(), 'scripts/build-images.mjs'), 'utf8')).toContain("path.join(PUBLIC_DIR, 'icon-512.png')");
+  });
+});

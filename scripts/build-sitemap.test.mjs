@@ -38,8 +38,9 @@ describe('sitemapXml', () => {
 });
 
 describe('robots.txt', () => {
-  it('points at the generated sitemap on the production domain', () => {
+  it('points at the generated sitemap on the production domain (the build writes it for VITE_SITE_URL, AW-052)', () => {
     const robots = readFileSync(resolve(process.cwd(), 'public/robots.txt'), 'utf8');
     expect(robots).toContain(`Sitemap: ${DEFAULT_SITE_URL}/sitemap.xml`);
+    expect(readFileSync(resolve(process.cwd(), 'scripts/build-sitemap.mjs'), 'utf8')).toContain("path.join(ROOT, 'dist', 'robots.txt'), robotsTxt(base)");
   });
 });
