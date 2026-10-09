@@ -1125,3 +1125,13 @@ describe('All products page (AW-068, AW-069, AW-229)', () => {
     expect(base('.sku-list small')['font-size']).toBe('var(--text-xs)');
   });
 });
+
+describe('product photo zoom on phones (AW-236)', () => {
+  const inBlock = (prelude) => mediaBlocks(css).filter((b) => b.prelude === prelude).flatMap((b) => rules(b.body));
+  const own = (selector) => declarations(inBlock('(max-width: 37.5em)').find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+
+  it('lets the enlarged photo take the screen’s width, so it is never smaller than the photo on the page', () => {
+    expect(own('.overlay.pd-zoom-overlay')).toEqual({ padding: '0' });
+    expect(own('.dialog.pd-zoom-dialog')).toEqual({ 'max-width': '100%', padding: '8px 8px 12px' });
+  });
+});

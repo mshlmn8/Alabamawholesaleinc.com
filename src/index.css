@@ -787,6 +787,12 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .pd-zoom-dialog picture { display: block; max-width: 100%; }
 .pd-zoom-dialog img { display: block; width: auto; height: auto; max-width: 100%; max-height: min(80vh, calc(100dvh - 11rem)); }
 .pd-zoom-dialog .photo-credit { align-self: stretch; width: 0; min-width: 100%; margin: 0; }
+/* On a phone the enlarged photo takes the screen's width, so it is never
+   smaller than the photo on the page. */
+@media (max-width: 37.5em) {
+  .overlay.pd-zoom-overlay { padding: 0; }
+  .dialog.pd-zoom-dialog { max-width: 100%; padding: 8px 8px 12px; }
+}
 /* One measure for the whole column (AW-237): the description, chips, price
    rules and quantity row end at the same right edge. */
 .pd-info { max-width: 32.5rem; }

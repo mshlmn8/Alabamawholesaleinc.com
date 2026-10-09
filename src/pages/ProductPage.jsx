@@ -257,7 +257,7 @@ export function ProductPage({
         <ModalLayer onClose={closeZoom}>
           {/* Backdrop click is a mouse shortcut; Escape, Back (ModalLayer) and the Close button are the other ways out. */}
           {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-          <div className="overlay" onClick={closeZoom}>
+          <div className="overlay pd-zoom-overlay" onClick={closeZoom}>
             {/* Keeps clicks inside the dialog from reaching the backdrop. */}
             {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
             <div className="dialog pd-zoom-dialog scale-in" role="dialog" aria-modal="true" aria-label={`Photo of ${p.name}`} onClick={(e) => e.stopPropagation()}>
