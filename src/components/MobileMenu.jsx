@@ -12,7 +12,7 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
   return (
     <ModalLayer onClose={onClose} className="aw-menu-layer">
       <div className="overlay" aria-hidden="true" onClick={onClose} />
-      <aside className="drawer drawer-left" role="dialog" aria-modal="true" aria-labelledby="aw-mobile-menu-title" id="aw-mobile-menu">
+      <div className="drawer drawer-left" role="dialog" aria-modal="true" aria-labelledby="aw-mobile-menu-title" id="aw-mobile-menu">
         <div className="drawer-head">
           <h2 id="aw-mobile-menu-title">Menu</h2>
           <button className="icon-btn" type="button" onClick={onClose} aria-label="Close menu"><Icon name="close" /></button>
@@ -58,7 +58,7 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
             {!user && <button className="button" type="button" onClick={go.signup}>Apply for a trade account</button>}
           </div>
         </div>
-      </aside>
+      </div>
     </ModalLayer>
   );
 }

@@ -268,6 +268,21 @@ describe('breakpoints in em, one compact-layout condition (AW-162, AW-151)', () 
   });
 });
 
+describe('the page frame (AW-166, AW-167, AW-315)', () => {
+  const rule = (selector) => declarations(rules(css).find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+
+  it('shows the trade bar in its DOM order, with no scrolling ticker', () => {
+    for (const { selector, value } of declared('order')) expect(selector, `order: ${value}`).not.toMatch(/trade|announcement/);
+    expect(css).not.toMatch(/\.ticker|@keyframes tick\b|\.trade-only\s*\{/);
+  });
+
+  it('keeps the skip link above the window until it has focus, then fixed in the corner above the header', () => {
+    expect(rule('.skip-link')).toMatchObject({ position: 'fixed', 'min-height': 'var(--tap)' });
+    expect(Number(rule('.skip-link')['z-index'])).toBeGreaterThan(Number(rule('.aw-header')['z-index']));
+    expect(rule('.skip-link:focus')).toEqual({ transform: 'none' });
+  });
+});
+
 // Every `@media` block's prelude and the text between its braces (nested
 // rules included), with the offsets of that text in the source.
 const mediaBlocks = (source) => {

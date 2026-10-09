@@ -84,7 +84,7 @@ Output goes to `dist/`; `npm run preview` serves it locally, with the security h
 | Logo | `IMG` in `src/data/theme.js` |
 | Hero photos | `HERO_SLIDES` in `src/data/content.js` |
 | Address, phone, hours, email | `COMPANY` in `src/data/content.js` |
-| Top ticker | `ANNOUNCEMENTS` in `src/data/content.js` |
+| Trade bar announcements | `ANNOUNCEMENTS` in `src/data/content.js`, after the trade notice (`TRADE_NOTICE` in `src/components/TradeBar.jsx`) |
 | Departments and sub-lines | `NAV_CATEGORIES` in `src/data/products.js` |
 | The 368 products | `PRODUCTS` in `src/data/products.js` |
 | Account and admin styles | the `account / admin` block in `src/index.css` |

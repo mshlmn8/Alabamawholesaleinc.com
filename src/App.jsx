@@ -60,6 +60,17 @@ const CATALOG_KINDS = ['product', 'department', 'line'];
 const SIGNED_OUT_PAGE = '/';
 const SIGNED_OUT_PAGE_KEY = pageKeyFor({ pathname: SIGNED_OUT_PAGE });
 
+// The skip link (AW-166) focuses <main> and brings it into view, as following
+// '#main' would, but leaves the address alone: the router reads a hash as an
+// anchor on the page.
+const skipToMain = (event) => {
+  event.preventDefault();
+  const main = document.getElementById('main');
+  if (!main) return;
+  main.focus({ preventScroll: true });
+  main.scrollIntoView?.({ block: 'start' });
+};
+
 export default function App() {
   const age = useAgeGate();
   const gated = !age.confirmed;
@@ -354,15 +365,20 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <TradeBar onApplyClick={openSignup} />
+      {/* The page's one banner landmark (AW-314): the skip link, first in the
+          tab order (AW-166), the trade bar and the header. */}
+      <header className="site-header">
+        <a className="skip-link" href="#main" onClick={skipToMain}>Skip to main content</a>
+        <TradeBar onApplyClick={openSignup} />
 
-      <Header
-        cartCount={cart.count} onCart={() => setCartOpen(true)}
-        products={products} departments={departments}
-        user={user} isAdmin={isAdmin} adminUnseen={adminUnseen}
-        onLoginClick={openSignin} onSignupClick={openSignup} onLogout={signOutHere} signingOut={signingOut}
-        onHelp={() => setHelpOpen(true)}
-      />
+        <Header
+          cartCount={cart.count} onCart={() => setCartOpen(true)}
+          products={products} departments={departments}
+          user={user} isAdmin={isAdmin} adminUnseen={adminUnseen}
+          onLoginClick={openSignin} onSignupClick={openSignup} onLogout={signOutHere} signingOut={signingOut}
+          onHelp={() => setHelpOpen(true)}
+        />
+      </header>
 
       {/* tabIndex -1: the fallback focus target after a page change (AW-041). */}
       <main className="container" id="main" tabIndex={-1}>

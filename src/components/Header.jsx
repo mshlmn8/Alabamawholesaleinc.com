@@ -8,6 +8,9 @@
 // The search box is HeaderSearch, a combobox (AW-171). The Categories menu,
 // like the search list, closes when focus moves to a control outside it
 // (AW-165), on Escape, on a click outside and on a page change.
+//
+// Its root is a <div>: App puts it in the page's one <header> landmark, with
+// the skip link and the trade bar (AW-314).
 
 import { useState, useEffect, useRef } from 'react';
 import { IMG } from '../data/theme.js';
@@ -99,7 +102,7 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
   };
 
   return (
-    <header className="aw-header container">
+    <div className="aw-header container">
       <div className="aw-utility">
         <span>ALABAMA WHOLESALE INC.</span>
         <span>{COMPANY.addressShort} · <a href={`tel:${COMPANY.phoneRaw}`}>{COMPANY.phone}</a></span>
@@ -154,7 +157,7 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
           <Icon name="grid" />Categories<Icon name="chevron-down" className="aw-chevron" />
         </button>
         {megaOpen && (
-          <section className="aw-mega-menu" id="aw-mega-menu" aria-labelledby="aw-menu-heading" ref={megaMenuRef} onBlur={onMegaBlur}>
+          <div className="aw-mega-menu" id="aw-mega-menu" ref={megaMenuRef} onBlur={onMegaBlur}>
             <div className="aw-menu-heading">
               <div><p className="eyebrow">WHOLESALE CATALOG</p><h2 id="aw-menu-heading">Browse by department.</h2></div>
               <button className="icon-btn" type="button" aria-label="Close categories" onClick={closeMega}><Icon name="close" /></button>
@@ -177,7 +180,7 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
               <Link to="/catalog" onClick={closeMenus}>View full catalog</Link>
               <span>{`${departments.length} departments · ${products.length} products`}</span>
             </div>
-          </section>
+          </div>
         )}
         <nav className="aw-discovery-nav" aria-label="Main navigation">
           <Link to="/#new-arrivals" onClick={closeMenus}><span className="aw-new-dot" aria-hidden="true"></span>New Arrivals</Link>
@@ -189,6 +192,6 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
           <button type="button" onClick={() => runNav(onHelp)}>Help <Icon name="help" /></button>
         </div>
       </div>
-    </header>
+    </div>
   );
 }

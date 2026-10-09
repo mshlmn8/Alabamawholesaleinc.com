@@ -222,7 +222,7 @@ export function CategoryPage({
       {isMobile && filtersOpen && (
         <ModalLayer onClose={closeFilters} className="aw-filter-layer">
           <div className="overlay" aria-hidden="true" onClick={closeFilters} />
-          <aside className="drawer filter-drawer" role="dialog" aria-modal="true" aria-labelledby="aw-filter-title" id="aw-filter-drawer">
+          <div className="drawer filter-drawer" role="dialog" aria-modal="true" aria-labelledby="aw-filter-title" id="aw-filter-drawer">
             <div className="drawer-head">
               <h2 id="aw-filter-title">Filter &amp; Sort</h2>
               <button className="icon-btn" type="button" onClick={closeFilters} aria-label="Close filters"><Icon name="close" /></button>
@@ -237,7 +237,7 @@ export function CategoryPage({
                 <button className="button" type="button" onClick={closeFilters}><span>{`Show ${items.length} item${items.length === 1 ? '' : 's'}`}</span></button>
               </div>
             </div>
-          </aside>
+          </div>
         </ModalLayer>
       )}
 

@@ -184,14 +184,30 @@ input[type="search"]:focus-visible { outline-offset: -3px; }
 .app-shell { min-height: 100vh; }
 
 /* ============================ top bars ============================ */
+/* The page's one <header> landmark (AW-314): the skip link, the trade bar and
+   the header. The skip link (AW-166) waits above the window until it has
+   focus, then shows over the top-left corner, above the header; fixed, so it
+   shows however far the page is scrolled. */
+.site-header { background: #fff; }
+.skip-link { position: fixed; top: 8px; left: 8px; z-index: 70; display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 16px; background: #fff; color: var(--purple); border: 2px solid var(--purple); font-size: var(--text-sm); font-weight: 700; text-decoration: underline; text-underline-offset: var(--link-offset); transform: translateY(-200%); }
+.skip-link:focus { transform: none; }
 .trade-bar { background: var(--purple); color: #fff; font-size: var(--text-xs); letter-spacing: var(--track-label); font-weight: 600; }
-.trade-bar .container { display: flex; justify-content: space-between; align-items: center; gap: 20px; min-height: 34px; }
+.trade-bar .container { display: flex; justify-content: space-between; align-items: center; gap: 20px; min-height: 2.25rem; }
 .trade-bar a, .trade-bar button { flex: 0 0 auto; display: inline-flex; align-items: center; min-height: 34px; white-space: nowrap; font-size: var(--text-xs); letter-spacing: 0; font-weight: 600; text-decoration: underline; text-underline-offset: var(--link-offset); background: none; border: 0; color: #fff; padding: 0; }
-.trade-bar .trade-call { display: none; }
-.ticker { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; }
-.ticker span { display: inline-block; padding-right: 60px; animation: tick 36s linear infinite; }
-@keyframes tick { to { transform: translateX(-50%); } }
-.trade-only { background: var(--cream); color: var(--purple); font-size: var(--text-xs); letter-spacing: var(--track-label); font-weight: 700; text-align: center; padding: 6px 14px; border-bottom: 1px solid var(--line); }
+/* The announcements (AW-167, TradeBar.jsx): the pause toggle, then the
+   messages. They share one grid cell and only the current one is opaque, so
+   the bar is as tall as the longest message at this width (at the default
+   text size one line from 68.75em, at most two below), never cuts one off
+   and doesn't move when it changes. The change fades, except with reduced
+   motion. */
+.announcements { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; }
+.announcement-list { display: grid; align-items: center; flex: 1 1 auto; min-width: 0; padding-block: 4px; line-height: 1.4; }
+.announcement-list li { grid-area: 1 / 1; opacity: 0; pointer-events: none; transition: opacity .4s ease; }
+.announcement-list li.is-current { opacity: 1; pointer-events: auto; }
+.trade-bar .icon-btn { display: inline-grid; place-items: center; flex: none; width: 2rem; height: 2rem; min-height: 0; border: 1px solid var(--on-dark-line); background: transparent; color: #fff; font-size: 1rem; }
+@media (hover: hover) {
+  .trade-bar .icon-btn:not(:disabled):hover { background: var(--on-dark-fill); }
+}
 
 /* ============================ header ============================ */
 .aw-header { position: relative; z-index: 20; background: #fff; }
@@ -296,6 +312,7 @@ input[type="search"]:focus-visible { outline-offset: -3px; }
    links are 44px targets; a mouse keeps the compact sizes. */
 @media (pointer: coarse) {
   .trade-bar a, .trade-bar button, .aw-menu-footer a { min-height: var(--tap); }
+  .trade-bar .icon-btn { width: var(--tap); height: var(--tap); }
   .aw-logo { display: flex; align-items: center; justify-content: center; min-width: var(--tap); min-height: var(--tap); }
   .aw-department a { display: flex; align-items: center; min-height: var(--tap); padding-block: 0; }
 }
@@ -1286,8 +1303,14 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
 @media (max-width: 53.125em), (hover: none) and (pointer: coarse) and (max-height: 31.25em) {
   .container { width: calc(100% - 32px); }
   .aw-utility, .aw-navigation, .aw-desktop-only, .aw-account-or, .aw-account-actions .aw-desktop-only { display: none; }
-  .trade-bar .container { gap: 14px; }
-  .trade-bar .trade-call { display: inline-flex; }
+  /* The announcements take the first row, and Apply and Call share the
+     second; large text wraps them rather than scrolling the page sideways
+     (AW-162, AW-311). */
+  .trade-bar .container { flex-wrap: wrap; gap: 0 14px; }
+  .announcements { flex-basis: 100%; }
+  /* Untracked, the longest message takes two lines on a 390px phone, not three. */
+  .announcement-list { letter-spacing: 0; }
+  .trade-bar a, .trade-bar button { flex: 0 1 auto; white-space: normal; text-align: left; }
   .aw-masthead { flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 6px 0 12px; min-height: 0; }
   .aw-menu-toggle { display: inline-flex; align-items: center; gap: 8px; order: 0; min-height: var(--tap); min-width: var(--tap); padding: 0 8px 0 4px; margin-left: -4px; border: 0; background: none; color: var(--purple); font-size: var(--text-sm); font-weight: 700; }
   .aw-menu-toggle .icon { font-size: 1.5rem; }
@@ -1337,13 +1360,6 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .qr-status:empty { display: none; }
 }
 @media (max-width: 37.5em) {
-  /* Large text wraps the two links instead of scrolling the page sideways
-     (AW-162; the fix planned as AW-311). */
-  .trade-bar .container { min-height: 36px; justify-content: space-between; flex-wrap: wrap; row-gap: 0; }
-  .trade-bar a, .trade-bar button { flex: 0 1 auto; white-space: normal; text-align: left; }
-  .ticker { display: none; }
-  .trade-bar button { order: 0; }
-  .trade-bar .trade-call { order: 1; }
   .home-hero-copy { padding: 24px; }
   .home-hero h1 { font-size: 2.625rem; }
   .home-hero-text { font-size: var(--text-base); margin-bottom: 20px; }

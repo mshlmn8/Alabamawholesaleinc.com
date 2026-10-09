@@ -39,7 +39,7 @@ export function Footer({ departments, onLoginClick, onApplyClick }) {
         </div>
         <div className="footer-legal">
           <p>{`© 2026 ${COMPANY.name}. All rights reserved.`}</p>
-          <nav className="footer-policies" aria-label="Customer policies">
+          <nav className="footer-policies" aria-label="Policies">
             <Link to="/shipping">Delivery</Link>
             <Link to="/privacy">Privacy</Link>
             <Link to="/terms">Trade terms</Link>

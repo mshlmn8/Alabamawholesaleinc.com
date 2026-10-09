@@ -56,7 +56,7 @@ export function CartDrawer({
   return (
     <ModalLayer onClose={onClose}>
       <div className="overlay overlay-soft" aria-hidden="true" onClick={onClose} />
-      <aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title">
+      <div className="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title">
         <div className="drawer-head">
           <h2 id="cart-title">Your order</h2>
           <button className="icon-btn" type="button" onClick={onClose} aria-label="Close cart"><Icon name="close" /></button>
@@ -95,7 +95,7 @@ export function CartDrawer({
           )}
           <p className="fine drawer-fine">{`The minimum order is ${formatMoney(ORDER_MINIMUM)}. Free delivery over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} applies on a delivery route in AL, MS & GA. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
         </div>
-      </aside>
+      </div>
     </ModalLayer>
   );
 }
