@@ -6,8 +6,10 @@
 //                   explained on that page instead.
 //   link-confirmed  a sign-up confirmation link signed the buyer in; an
 //                   account under review is pointed at its status (AW-016)
-//   session-ended   the session ended without a sign-out in this tab (AW-048);
-//                   the cart switched to the guest cart with it (AW-189)
+//   session-ended   the session ended without a sign-out in this tab (AW-048),
+//                   also one saved here that no longer refreshes when the page
+//                   loads (NEW-046); the cart switched to the guest cart with
+//                   it (AW-189). Worded for staff on /admin (NEW-044).
 //   connection      a saved session could not be refreshed: Supabase is out
 //                   of reach
 //   no-profile      signed in, but the account's profile did not load
@@ -90,14 +92,21 @@ export function accountNotices(state, act) {
     notices.push(linkConfirmedNotice(state, act));
   }
   if (state.sessionEnded) {
+    // On /admin the session was staff's, not a buyer's (NEW-044): no word of
+    // pricing or orders, and no Sign in of its own, since the admin page's
+    // sign-in panel is right below. The profile goes with the session, so
+    // the page, not the role, says whose session it was.
+    const admin = state.routePage === 'admin';
     notices.push({
       id: 'session-ended',
       tone: 'warn',
       title: 'Your session has ended',
       // The account's cart is put away with the session and comes back when
       // the buyer signs in again (AW-189).
-      text: 'Sign in again to see your account pricing and the items you added, and to place orders.',
-      actions: [{ id: 'sign-in', label: 'Sign in', onClick: act.signIn }],
+      text: admin
+        ? 'Sign in again to continue.'
+        : 'Sign in again to see your account pricing and the items you added, and to place orders.',
+      actions: admin ? [] : [{ id: 'sign-in', label: 'Sign in', onClick: act.signIn }],
       onDismiss: act.dismissSessionEnded,
     });
   }

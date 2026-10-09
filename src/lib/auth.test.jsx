@@ -1,12 +1,12 @@
 // The AuthProvider (AW-187, AW-186, AW-047, AW-048, AW-337, AW-015) against
 // a fake Supabase client: nothing here talks to a network.
 import { useEffect } from 'react';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AUTH_STORAGE_KEY } from './supabase.js';
 import { accountState, AuthProvider, clearStoredSession, PENDING_PROFILE_POLL_MS, PROFILE_REFRESH_MIN_MS, useAuth } from './auth.jsx';
 import { TERMS_VERSION } from '../data/content.js';
-import { AUTH_REQUEST_TIMEOUT_MS } from './network.js';
+import { AUTH_REQUEST_TIMEOUT_MS, REQUEST_TIMEOUT_MS } from './network.js';
 
 const retryable = () => Object.assign(new Error('Failed to fetch'), { name: 'AuthRetryableFetchError', status: 0 });
 
@@ -46,14 +46,22 @@ function fakeClient({ session = null, getSessionError = null, profiles = {}, sig
       updateUser: vi.fn(async () => ({ error: null })),
     },
     from: vi.fn(() => {
-      const query = { id: null };
+      const query = { id: null, signal: null };
       const builder = {
         select: () => builder,
         eq: (_col, value) => { query.id = value; return builder; },
+        abortSignal: (signal) => { query.signal = signal; return builder; },
         maybeSingle: async () => {
           client.profileCalls += 1;
-          const row = typeof profiles[query.id] === 'function' ? profiles[query.id]() : profiles[query.id];
+          const row = typeof profiles[query.id] === 'function' ? profiles[query.id](query) : profiles[query.id];
           if (row === 'error') return { data: null, error: { message: 'boom' } };
+          // A request that never answers, but gives up when its signal
+          // aborts, as postgrest-js does: an error, not a throw.
+          if (row === 'hang') {
+            return new Promise((resolve) => {
+              query.signal?.addEventListener('abort', () => resolve({ data: null, error: { message: 'TimeoutError: The request took too long.', code: '' } }));
+            });
+          }
           return { data: row ?? null, error: null };
         },
       };
@@ -71,8 +79,8 @@ function Probe({ id }) {
   useEffect(() => { if (id === 'main') seen.auth = auth; });
   return <p data-testid={id}>{`${auth.account}|${auth.profile?.status || '-'}|${auth.session?.user?.id || '-'}`}</p>;
 }
-const renderWith = (client, link = null) => render(
-  <AuthProvider client={client} link={link}>
+const renderWith = (client, link = null, { hadSavedSession = false } = {}) => render(
+  <AuthProvider client={client} link={link} hadSavedSession={hadSavedSession}>
     <Probe id="main" /><Probe id="modal" /><Probe id="documents" />
   </AuthProvider>,
 );
@@ -109,7 +117,7 @@ describe('AuthProvider', () => {
     let release;
     const gate = new Promise((resolve) => { release = resolve; });
     const client = fakeClient({ session: makeSession(), profiles: {} });
-    client.from = vi.fn(() => ({ select() { return this; }, eq() { return this; }, maybeSingle: async () => { await gate; return { data: { id: 'u1', status: 'approved' }, error: null }; } }));
+    client.from = vi.fn(() => ({ select() { return this; }, eq() { return this; }, abortSignal() { return this; }, maybeSingle: async () => { await gate; return { data: { id: 'u1', status: 'approved' }, error: null }; } }));
     renderWith(client);
     await waitFor(() => expect(seen.auth.session?.user.id).toBe('u1'));
     expect(seen.auth.account).toBe('loading');
@@ -160,6 +168,37 @@ describe('AuthProvider', () => {
     await waitFor(() => expect(seen.auth.account).toBe('no-profile'));
     expect(seen.auth.profileError).toBe('missing');
     expect(seen.auth.session).not.toBeNull();
+  });
+
+  it('gives up on a profile request that never answers, so the page can offer Try again (NEW-013)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let row = 'hang';
+    const signals = [];
+    const client = fakeClient({ session: makeSession(), profiles: { u1: (query) => { signals.push(query.signal); return row; } } });
+    renderWith(client);
+    await waitFor(() => expect(seen.auth.session?.user.id).toBe('u1'));
+    expect(seen.auth.account).toBe('loading');
+    expect(signals[0]?.aborted).toBe(false);
+    await act(async () => { await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS); });
+    expect(signals[0].aborted).toBe(true);
+    expect(seen.auth.profileReady).toBe(true);
+    expect(seen.auth.profileError).toBe('failed');
+    expect(seen.auth.account).toBe('no-profile');
+    // A refresh that hangs as well still settles, which frees the next one.
+    let result;
+    await act(async () => {
+      const pending = seen.auth.refreshProfile();
+      await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
+      result = await pending;
+    });
+    expect(result).toEqual({ data: null, error: 'failed' });
+    expect(client.profileCalls).toBe(2);
+    expect(seen.auth.profileRefreshing).toBe(false);
+    row = { id: 'u1', status: 'approved' };
+    await act(async () => { await seen.auth.refreshProfile(); });
+    expect(client.profileCalls).toBe(3);
+    expect(seen.auth.account).toBe('ready');
+    expect(seen.auth.profileError).toBeNull();
   });
 
   it('signs out of this browser only by default and says so (AW-337)', async () => {
@@ -243,6 +282,45 @@ describe('AuthProvider', () => {
     expect(client.auth.signOut).not.toHaveBeenCalled();
     expect(result.ok).toBe(false);
     expect(seen.auth.connectionProblem).toBe(false);
+  });
+
+  // A saved session revoked elsewhere ("Sign out of all devices", a password
+  // change): supabase-js can't refresh it when the page loads (NEW-046).
+  const revoked = () => Object.assign(new Error('Invalid Refresh Token: Refresh Token Not Found'), { name: 'AuthApiError', status: 400, code: 'refresh_token_not_found' });
+
+  it('says a saved session that can no longer be refreshed has ended, when the page loads (NEW-046)', async () => {
+    const client = fakeClient({ getSessionError: revoked() });
+    renderWith(client, null, { hadSavedSession: true });
+    await waitFor(() => expect(seen.auth.loading).toBe(false));
+    expect(seen.auth.sessionEnded).toBe(true);
+    expect(seen.auth.account).toBe('signed-out');
+    expect(seen.auth.connectionProblem).toBe(false);
+  });
+
+  it('also when supabase-js sends SIGNED_OUT while it checks the saved session (NEW-046)', async () => {
+    const client = fakeClient();
+    client.auth.getSession = vi.fn(async () => {
+      client.emit('SIGNED_OUT', null);
+      return { data: { session: null }, error: null };
+    });
+    renderWith(client, null, { hadSavedSession: true });
+    await waitFor(() => expect(seen.auth.loading).toBe(false));
+    expect(seen.auth.sessionEnded).toBe(true);
+  });
+
+  it('says nothing to a visitor without a saved session, and a saved one out of reach is a connection problem (NEW-046)', async () => {
+    const guest = fakeClient({ getSessionError: revoked() });
+    renderWith(guest);
+    await waitFor(() => expect(seen.auth.loading).toBe(false));
+    expect(seen.auth.sessionEnded).toBe(false);
+    expect(seen.auth.account).toBe('signed-out');
+    cleanup();
+
+    const offline = fakeClient({ getSessionError: retryable() });
+    renderWith(offline, null, { hadSavedSession: true });
+    await waitFor(() => expect(seen.auth.loading).toBe(false));
+    expect(seen.auth.connectionProblem).toBe(true);
+    expect(seen.auth.sessionEnded).toBe(false);
   });
 
   it('signs a recovery link in once and reports it (AW-015)', async () => {
@@ -405,5 +483,28 @@ describe('resendConfirmation', () => {
     expect(client.auth.resend).toHaveBeenCalledWith({
       type: 'signup', email: 'new@example.test', options: { emailRedirectTo: `${window.location.origin}/` },
     });
+  });
+});
+
+// The saved session is noted as the module loads, before supabase-js can
+// refresh it and clear a revoked one (NEW-046).
+describe('BOOT_HAD_SESSION (NEW-046)', () => {
+  afterEach(() => {
+    vi.doUnmock('./supabase.js');
+    vi.resetModules();
+  });
+
+  it('is read when auth.jsx loads', async () => {
+    // No real client here: it would try to refresh the saved session.
+    vi.doMock('./supabase.js', () => ({ supabase: null, AUTH_STORAGE_KEY, isBackendConfigured: false }));
+    window.localStorage.setItem(AUTH_STORAGE_KEY, '{"access_token":"x"}');
+    vi.resetModules();
+    const saved = await import('./auth.jsx');
+    // Cleared later (supabase-js removing a revoked session): still noted.
+    window.localStorage.clear();
+    expect(saved.BOOT_HAD_SESSION).toBe(true);
+    vi.resetModules();
+    const none = await import('./auth.jsx');
+    expect(none.BOOT_HAD_SESSION).toBe(false);
   });
 });

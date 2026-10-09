@@ -7,6 +7,7 @@ import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider, SIGN_OUT_TIMEOUT_MS, useAuth } from './auth.jsx';
 import { isRateLimitError } from './errors.js';
+import { AUTH_REQUEST_TIMEOUT_MS } from './network.js';
 
 function makeSession(token = 'tok-1') {
   return { access_token: token, refresh_token: `r-${token}`, expires_at: 4102444800, user: { id: 'u1', email: 'buyer@example.test' } };
@@ -58,6 +59,7 @@ function fakeClient({ signIn = null, update = null, others = null } = {}) {
       const builder = {
         select: () => builder,
         eq: () => builder,
+        abortSignal: () => builder,
         maybeSingle: async () => {
           client.profileCalls += 1;
           return { data: { id: 'u1', status: 'approved' }, error: null };
@@ -181,6 +183,21 @@ describe('updatePassword (AW-349)', () => {
       result = await pending;
     });
     expect(result).toEqual({ othersSignedOut: false });
+    expect(seen.auth.account).toBe('ready');
+  });
+
+  it('gives up on a save that never answers with code "timeout", and signs nobody out (LEFT-3)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const client = fakeClient({ update: () => new Promise(() => {}) });
+    await signedIn(client);
+    let caught;
+    await act(async () => {
+      const pending = seen.auth.updatePassword('new-pass-123').catch((e) => e);
+      await vi.advanceTimersByTimeAsync(AUTH_REQUEST_TIMEOUT_MS);
+      caught = await pending;
+    });
+    expect(caught).toMatchObject({ name: 'TimeoutError', code: 'timeout' });
+    expect(client.auth.signOut).not.toHaveBeenCalled();
     expect(seen.auth.account).toBe('ready');
   });
 

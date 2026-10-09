@@ -23,9 +23,11 @@
 
 // submit_quote (src/lib/orders.js): the server prices and saves every line.
 export const QUOTE_SUBMIT_TIMEOUT_MS = 25000;
-// Reads a page waits on: order history, the licence documents list.
+// Reads a page waits on: order history, the licence documents list, the
+// signed-in account's profile (NEW-013).
 export const REQUEST_TIMEOUT_MS = 20000;
-// Sign-in, the application, reset and confirmation emails (src/lib/auth.jsx).
+// Sign-in, the application, reset and confirmation emails, and saving a new
+// password (src/lib/auth.jsx).
 export const AUTH_REQUEST_TIMEOUT_MS = 20000;
 
 const TIMEOUT_TEXT = 'The request took too long.';

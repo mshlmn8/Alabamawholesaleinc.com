@@ -15,7 +15,8 @@
 //   refreshProfile()     loads the profile again. It also runs when the tab comes
 //                        back into view (at most once a minute) and every few
 //                        minutes while the account is pending, so an approval
-//                        shows without a reload.
+//                        shows without a reload. Every profile request gives
+//                        up after REQUEST_TIMEOUT_MS as 'failed' (NEW-013).
 //   sessionEnded         the session ended without a sign-out in this tab: it
 //                        expired or was revoked, or the buyer signed out in
 //                        another tab (AW-048)
@@ -43,7 +44,8 @@
 //                        sessions on other devices; this one stays signed in.
 //                        Resolves to { othersSignedOut }: false when that last
 //                        step failed or timed out, which never fails the change
-//                        (AW-349)
+//                        (AW-349). Saving gives up after AUTH_REQUEST_TIMEOUT_MS
+//                        with the same 'timeout' error (LEFT-3).
 //   recovery, linkError, linkChecking, linkConfirmed, dismissLink
 //                        the email link the page was opened with (AW-015,
 //                        src/lib/authLink.js)
@@ -56,7 +58,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase as defaultClient, AUTH_STORAGE_KEY } from './supabase.js';
 import { RESET_PASSWORD_PATH } from './authLink.js';
-import { AUTH_REQUEST_TIMEOUT_MS, withTimeout } from './network.js';
+import { AUTH_REQUEST_TIMEOUT_MS, REQUEST_TIMEOUT_MS, timeoutSignal, withTimeout } from './network.js';
 import { TERMS_VERSION } from '../data/content.js';
 
 const UNAVAILABLE = 'Account access is temporarily unavailable. Please call or email the trade desk.';
@@ -114,6 +116,16 @@ export function hasStoredSession(storage = localStore()) {
   }
 }
 
+// Whether this browser held a saved session when the page loaded (NEW-046).
+// Read once, as this module loads: supabase.js has created the client by
+// then, but its first refresh of that session is still to come (nothing
+// asynchronous runs while the page's modules load). A saved session that
+// then fails to refresh for good (revoked by "Sign out of all devices" or a
+// password change elsewhere) ends in the same "Your session has ended"
+// notice as one that ends in an open tab; a first-time guest has none and
+// gets nothing.
+export const BOOT_HAD_SESSION = hasStoredSession();
+
 // The user id of the session supabase-js has saved in this browser, or null.
 // Read before that session is checked, so the cart can show the right
 // account's lines from the first render (AW-189); it grants nothing.
@@ -141,13 +153,24 @@ export function clearStoredSession(storage = localStore()) {
   }
 }
 
+// The account's profile row: { data, error: null | 'missing' | 'failed' }.
+// It gives up after REQUEST_TIMEOUT_MS (NEW-013), so a profile request that
+// never answers ends as 'failed' (the account pages then offer Try again and
+// Sign out) instead of 'Loading your account…' for good, and a refresh
+// always settles. postgrest-js answers a timed-out or aborted request with
+// an error (network.js), which counts as 'failed' like any other.
 async function fetchProfile(client, id) {
+  const t = timeoutSignal(REQUEST_TIMEOUT_MS);
   try {
-    const { data, error } = await client.from('profiles').select('*').eq('id', id).maybeSingle();
+    const { data, error } = await client.from('profiles').select('*').eq('id', id).abortSignal(t.signal).maybeSingle();
     if (error) return { data: null, error: 'failed' };
     return data ? { data, error: null } : { data: null, error: 'missing' };
   } catch {
+    // Thrown rather than answered: a fetch that failed or gave up, from a
+    // client that rejects instead of answering with an error.
     return { data: null, error: 'failed' };
+  } finally {
+    t.clear();
   }
 }
 
@@ -185,7 +208,9 @@ function initialLinkState(link, backend) {
 
 export const AuthContext = createContext(null);
 
-export function AuthProvider({ client = defaultClient, link = null, children }) {
+// hadSavedSession: the browser held a saved session at page load
+// (BOOT_HAD_SESSION; tests pass their own).
+export function AuthProvider({ client = defaultClient, link = null, hadSavedSession = BOOT_HAD_SESSION, children }) {
   const backend = !!client;
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(backend);
@@ -195,7 +220,12 @@ export function AuthProvider({ client = defaultClient, link = null, children }) 
   const [profileState, setProfileState] = useState(EMPTY_PROFILE);
 
   // Read by event handlers only.
-  const hadSessionRef = useRef(false); // a session exists, or a saved one could not be refreshed
+  // A session exists, a saved one could not be refreshed, or one was saved
+  // when the page loaded and hasn't been checked yet (NEW-046): losing it
+  // then is "Your session has ended", not a silent drop to guest. Never set
+  // from the effect below, which can run after supabase-js has already
+  // cleared a revoked session.
+  const hadSessionRef = useRef(hadSavedSession);
   const ownSignOutRef = useRef(false); // signOut() in this tab is running
   const unreachableRef = useRef(false);
   const userIdRef = useRef(null);
@@ -484,23 +514,22 @@ export function AuthProvider({ client = defaultClient, link = null, children }) 
   // scope 'others' fires no SIGNED_OUT here. A failure (offline, or no answer
   // in SIGN_OUT_TIMEOUT_MS) only makes othersSignedOut false, because the
   // password is already saved.
+  // Saving the password gives up after AUTH_REQUEST_TIMEOUT_MS like the other
+  // auth calls (LEFT-3): the page then says it is taking too long (code
+  // 'timeout', friendlyAuthError) and its button works again. auth-js can't
+  // cancel the request, so a late answer may still save the password; a
+  // second try then gets same_password, which the page explains.
   const updatePassword = useCallback(async (password, { signOutOthers = true } = {}) => {
     if (!client) throw new Error(UNAVAILABLE);
-    const { error } = await client.auth.updateUser({ password });
+    const { error } = await withTimeout(client.auth.updateUser({ password }), AUTH_REQUEST_TIMEOUT_MS);
     if (error) throw error;
     let othersSignedOut = false;
     if (signOutOthers) {
-      let timer = 0;
       try {
-        const timeout = new Promise((resolve) => {
-          timer = window.setTimeout(() => resolve({ error: new Error('Sign-out timed out') }), SIGN_OUT_TIMEOUT_MS);
-        });
-        const result = await Promise.race([client.auth.signOut({ scope: 'others' }), timeout]);
+        const result = await withTimeout(client.auth.signOut({ scope: 'others' }), SIGN_OUT_TIMEOUT_MS);
         othersSignedOut = !result?.error;
       } catch {
         othersSignedOut = false;
-      } finally {
-        window.clearTimeout(timer);
       }
     }
     // The reset link has done its job. Cleared last, so a reset page doesn't

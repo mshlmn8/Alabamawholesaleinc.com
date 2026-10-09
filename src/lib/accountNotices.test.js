@@ -93,6 +93,20 @@ describe('accountNotices', () => {
     expect(a.signIn).toHaveBeenCalled();
   });
 
+  it('words an ended staff session on /admin for staff, and leaves the sign-in to the admin page (NEW-044)', () => {
+    const [notice] = accountNotices({ sessionEnded: true, routePage: 'admin', account: 'signed-out' }, act());
+    expect(notice).toMatchObject({ id: 'session-ended', tone: 'warn', title: 'Your session has ended', text: 'Sign in again to continue.' });
+    expect(notice.text).not.toMatch(/pricing|items|orders/);
+    expect(notice.actions).toEqual([]);
+    expect(typeof notice.onDismiss).toBe('function');
+    // Every other page keeps the buyer's wording and its Sign in.
+    for (const routePage of ['home', 'category', 'quote', 'account']) {
+      const [buyer] = accountNotices({ sessionEnded: true, routePage }, act());
+      expect(buyer.text, routePage).toMatch(/account pricing/);
+      expect(buyer.actions.map((x) => x.label)).toEqual(['Sign in']);
+    }
+  });
+
   it('offers to sign out when the account service is out of reach (AW-047)', () => {
     const a = act();
     const [notice] = accountNotices({ connectionProblem: true }, a);

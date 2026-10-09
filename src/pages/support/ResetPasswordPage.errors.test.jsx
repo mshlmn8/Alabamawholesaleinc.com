@@ -3,6 +3,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResetPasswordPage } from './ResetPasswordPage.jsx';
+import { timeoutError } from '../../lib/network.js';
+import { OFFLINE_MESSAGE, slowMessage } from '../../lib/errors.js';
 
 const SESSION = { access_token: 't', user: { id: 'u1', email: 'buyer@example.test' } };
 const auth = (updatePassword) => ({
@@ -38,6 +40,24 @@ describe('ResetPasswordPage errors (AW-084)', () => {
   it('asks to sign in again when the session ended', async () => {
     const missing = Object.assign(new Error('Auth session missing!'), { name: 'AuthSessionMissingError', status: 400 });
     expect(await save(vi.fn(async () => { throw missing; }))).toBe('Your session ended. Sign in again.');
+  });
+
+  // updatePassword gives up after AUTH_REQUEST_TIMEOUT_MS (LEFT-3): the
+  // shared "taking too long" sentence, or the offline one, and Save works again.
+  it('says a save that took too long is taking too long, and lets it be tried again', async () => {
+    expect(await save(vi.fn(async () => { throw timeoutError(); }))).toBe(slowMessage('Password reset'));
+    const button = screen.getByRole('button', { name: 'Save new password' });
+    expect(button.disabled).toBe(false);
+  });
+
+  it('says the browser is offline when it is', async () => {
+    const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    try {
+      expect(await save(vi.fn(async () => { throw timeoutError(); }))).toBe(OFFLINE_MESSAGE);
+    } finally {
+      online.mockRestore();
+    }
+    expect(screen.getByRole('button', { name: 'Save new password' }).disabled).toBe(false);
   });
 
   it('falls back to its own sentence for anything else', async () => {
