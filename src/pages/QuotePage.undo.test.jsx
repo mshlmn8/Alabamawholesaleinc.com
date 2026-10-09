@@ -149,6 +149,17 @@ describe('QuotePage: clear all and undo (AW-082)', () => {
       .toBe('Saved on this device for your account. It won’t show up when you sign in on another phone or computer.');
   });
 
+  it('says where the cart is kept on the empty page too, after the button (AW-334)', () => {
+    const view = render(<Harness />);
+    const button = screen.getByRole('link', { name: 'Browse catalog' });
+    expect(button.nextElementSibling.matches('p.fine.cart-device-note')).toBe(true);
+    expect(button.nextElementSibling.textContent).toBe('Saved in this browser only. Items added on another device won’t appear here.');
+    view.rerender(<Harness owner={A} profile={PROFILE} />);
+    expect(document.querySelectorAll('.cart-device-note')).toHaveLength(1);
+    expect(document.querySelector('.cart-device-note').textContent)
+      .toBe('Saved on this device for your account. It won’t show up when you sign in on another phone or computer.');
+  });
+
   it('offers no undo when clearCart gives nothing back (an older caller)', () => {
     render(
       <main>

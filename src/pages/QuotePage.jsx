@@ -22,8 +22,8 @@
 // focuses the first one's quantity. The offer has no time limit (WCAG
 // 2.2.1); it goes when lines come back another way or the cart's owner
 // changes. Under the total, an approved buyer sees how far the order is from
-// the minimum and from free delivery (CartSummary). The page says the cart
-// is kept on this device only (AW-334).
+// the minimum and from free delivery (CartSummary). The page, empty or not,
+// says the cart is kept on this device only (AW-334).
 //
 // The catalog may have changed since the page was opened (AW-191, AW-204):
 // Submit first loads it again (checkCart, from App) and stops, naming the
@@ -373,6 +373,8 @@ export function QuotePage({
         )}
         <p>{`Add products, then come back to review your ${basket.noun}.`}</p>
         <Link className="button" to="/catalog">Browse catalog</Link>
+        {/* Why items added on a phone aren't here on a computer (AW-334). */}
+        <p className="fine cart-device-note">{cartDeviceNote(signedIn)}</p>
         {legacy.length > 0 && (
           <div className="quote-saved-lines">
             <SavedLinesNotice items={legacy} onDismiss={onDismissLegacy} />

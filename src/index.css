@@ -776,6 +776,9 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 /* The empty page's undo offer after "Clear all items" (AW-082), as wide as
    the line under it. */
 .cart-cleared { max-width: 560px; margin: 0 auto 1.25rem; }
+/* The empty page's note that the cart is kept on this device (AW-334), under
+   its button and as wide as the undo offer. */
+.is-centered > .cart-device-note { max-width: 560px; margin: 1.25rem auto 0; }
 .checkout-form-title { font-size: var(--h3); margin: 0 0 4px; line-height: 1; }
 .checkout-form-grid { margin-top: 12px; }
 .checkout-total { margin-top: 18px; }
