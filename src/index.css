@@ -775,7 +775,7 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .pd-info .pd-desc { color: var(--muted); font-size: var(--text-base); line-height: 1.7; max-width: none; }
 .pd-info .pd-unit { margin: 0 0 14px; max-width: none; font-weight: 600; }
 /* The SKU, for everyone (AW-234), above the fine print. */
-.pd-info .pd-sku { margin: 0 0 14px; font-size: var(--text-sm); color: var(--ink); }
+.pd-info .pd-sku { margin: 10px 0 14px; font-size: var(--text-sm); color: var(--ink); }
 .pd-info .pd-sku span { font-weight: 600; }
 .pd-info .pd-fine { font-size: var(--text-sm); }
 .pd-price { margin: 22px 0; padding: 18px 0; border-block: 1px solid var(--line); }
