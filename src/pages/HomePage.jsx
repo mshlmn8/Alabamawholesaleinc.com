@@ -9,7 +9,7 @@ import { DEPARTMENT_PHOTOS, FREE_DELIVERY_THRESHOLD } from '../data/content.js';
 import { APPLY_LABEL } from '../data/terms.js';
 import { accountView, tradeAccountPanel } from '../lib/accountStatus.js';
 import { topLines } from '../lib/departments.js';
-import { formatMoneyShort } from '../lib/format.js';
+import { formatMoneyShort, productCount } from '../lib/format.js';
 import { tierPriceNote } from '../lib/pricing.js';
 import { useHomeSlides } from '../lib/homeSlides.js';
 import { homeRails } from '../lib/merchandising.js';
@@ -182,7 +182,7 @@ export function HomePage({
                 </div>
                 <div className="dept-tile-body">
                   <h3><Link className="dept-tile-link" to={dept(c.key)}>{c.label}</Link></h3>
-                  <p className="dept-tile-count">{parts([count(c.count, 'product', 'products'), count(c.subs.length, 'product line', 'product lines')])}</p>
+                  <p className="dept-tile-count">{parts([productCount(c.count), count(c.subs.length, 'product line', 'product lines')])}</p>
                   <p className="dept-tile-lines">{parts(topLines(products, c.key))}</p>
                 </div>
               </div>

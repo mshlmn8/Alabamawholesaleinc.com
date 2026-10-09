@@ -7,6 +7,7 @@ import { COMPANY } from '../data/content.js';
 import { APPLY_LABEL, SIGN_IN_LABEL } from '../data/terms.js';
 import { Link, useRoute } from '../lib/router.js';
 import { currentFor } from '../lib/navCurrent.js';
+import { productCount } from '../lib/format.js';
 import { ModalLayer } from './ModalLayer.jsx';
 import { Icon } from './Icon.jsx';
 import { AdminUnseenBadge } from './AdminUnseenBadge.jsx';
@@ -64,7 +65,7 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
             <button type="button" onClick={go.help}>Help</button>
           </nav>
           <div className="menu-contact">
-            <p>{COMPANY.addressShort}<br /><span>{`${departments.length} departments · ${products.length} SKUs`}</span></p>
+            <p>{COMPANY.addressShort}<br /><span>{`${departments.length} departments · ${productCount(products.length)}`}</span></p>
             <a className="button ghost" href={`tel:${COMPANY.phoneRaw}`}>Call {COMPANY.phone}</a>
             {!user && <button className="button" type="button" onClick={go.signup}>{APPLY_LABEL}</button>}
           </div>

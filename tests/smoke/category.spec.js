@@ -53,11 +53,11 @@ test('a brand filter narrows the department, and the line counts follow it (AW-0
     await expect(page.getByRole('dialog')).toBeHidden();
     await expect(page).toHaveURL(/\/category\/tobacco\/wraps-and-leafs\?brand=swisher-sweets$/);
   } else {
-    await expect(page.locator('.result-note')).toHaveText('Showing 6 of 68 items');
+    await expect(page.locator('.result-note')).toHaveText('Showing 6 of 68 products');
     await expect(page.getByRole('link', { name: 'Cigarettes (0)' })).toHaveClass(/is-empty/);
     await page.getByRole('link', { name: 'Wraps & Leafs (2)' }).click();
   }
-  await expect(page.locator('.result-note')).toHaveText('Showing 2 of 22 items in Wraps & Leafs');
+  await expect(page.locator('.result-note')).toHaveText('Showing 2 of 22 products in Wraps & Leafs');
   await expect(page.getByRole('button', { name: 'Remove filter Brand: Swisher Sweets' })).toBeVisible();
   expect(errors).toEqual([]);
 });

@@ -32,6 +32,7 @@ import { Icon } from './Icon.jsx';
 import { useImageStatus } from '../lib/useImageStatus.js';
 import { topLines } from '../lib/departments.js';
 import { currentFor } from '../lib/navCurrent.js';
+import { productCount } from '../lib/format.js';
 
 // The logo photo, or the brand in text when it fails to load (AW-341). The
 // photo is 320px square, so its width and height reserve the slot before it
@@ -215,7 +216,7 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
             </div>
             <div className="aw-menu-footer">
               <Link to="/catalog" onClick={closeMenus} aria-current={currentFor(raw, '/catalog')}>View full catalog</Link>
-              <span>{`${departments.length} departments · ${products.length} products`}</span>
+              <span>{`${departments.length} departments · ${productCount(products.length)}`}</span>
             </div>
           </div>
         )}

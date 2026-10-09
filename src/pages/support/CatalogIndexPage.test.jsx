@@ -94,7 +94,9 @@ describe('CatalogIndexPage', () => {
     expect(skuNames(section('Tobacco'))).toEqual([
       'Bestseller cigars', 'Deal wraps', 'Last cigars', 'New papers', 'No-photo bestseller', 'Ranked wraps', 'Untagged cigars',
     ]);
-    expect(section('Tobacco').querySelector('details.sku-details > summary').textContent).toBe('All 7 Tobacco SKUs');
+    // 'SKU' only where the codes are listed; the count says products (NEW-056).
+    expect(section('Tobacco').querySelector('details.sku-details > summary').textContent).toBe('SKU list: all 7 Tobacco products');
+    expect(section('Tobacco').querySelector('.dept-head .eyebrow').textContent).toBe('DEPARTMENT 01 · 7 products');
   });
 
   it('leaves a department without a photographed product with its lines, link and SKU list', () => {

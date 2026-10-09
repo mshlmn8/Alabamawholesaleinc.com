@@ -23,7 +23,7 @@ import { useMediaQuery, MOBILE_QUERY } from '../lib/useMediaQuery.js';
 import { matchesQuery } from '../lib/search.js';
 import { variantCount } from '../lib/lines.js';
 import { featuredOrder } from '../lib/merchandising.js';
-import { brandLabel, catLabel, sharesDepartmentName } from '../lib/format.js';
+import { brandLabel, catLabel, productCount, sharesDepartmentName } from '../lib/format.js';
 import { tierPriceNote } from '../lib/pricing.js';
 import { SIZES } from '../lib/images.js';
 import { Link, navigate } from '../lib/router.js';
@@ -37,7 +37,6 @@ import { EmptyState } from '../components/EmptyState.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
 import { PricingNotice } from '../components/PricingNotice.jsx';
 import { Icon } from '../components/Icon.jsx';
-import { SkuCount } from '../components/SkuCount.jsx';
 
 // TODO(owner): What do the DEAL and PREMIUM tags mean for buyers (the actual deal terms and premium criteria), or should those tags be removed? (AW-139)
 const TAG_OPTIONS = [
@@ -178,6 +177,8 @@ export function CategoryPage({
   const cat = departments.find(c => c.key === category);
   const deptLabel = catLabel(category);
   const inCategory = products.filter(p => p.cat === category);
+  // The department's count, for its eyebrow ('DEPARTMENT · 68 products').
+  const deptCount = cat?.count ?? inCategory.length;
   const activeSub = sub || null;
   const inScope = activeSub ? inCategory.filter(p => p.sub === activeSub) : inCategory;
   const { tags, variants: hasVariants } = query;
@@ -313,7 +314,7 @@ export function CategoryPage({
   // Phones show the note without the line's name (AW-158, .result-scope).
   const resultNote = (
     <p className="result-note" role="status" ref={noteRef} tabIndex={-1}>
-      Showing <strong>{items.length}</strong> <span>{`of ${inScope.length} item${inScope.length === 1 ? '' : 's'}${activeSub ? ' ' : ''}`}</span><span className="result-scope">{activeSub ? `in ${activeSub}` : ''}</span>
+      Showing <strong>{items.length}</strong> <span>{`of ${productCount(inScope.length)}${activeSub ? ' ' : ''}`}</span><span className="result-scope">{activeSub ? `in ${activeSub}` : ''}</span>
     </p>
   );
   const sortControl = (
@@ -426,13 +427,13 @@ export function CategoryPage({
         {/* A line page names the line, its department and its own count
             (AW-226); a line named like its department, just the count (NEW-029). */}
         <p className="eyebrow">{activeSub
-          ? `${sharesDepartmentName(category, activeSub) ? '' : `${deptLabel} · `}${plural(inScope.length, 'product')}`
-          : <SkuCount lead="DEPARTMENT · " count={String(cat?.count ?? inCategory.length).padStart(2, '0')} />}</p>
+          ? `${sharesDepartmentName(category, activeSub) ? '' : `${deptLabel} · `}${productCount(inScope.length)}`
+          : `DEPARTMENT · ${productCount(deptCount, String(deptCount).padStart(2, '0'))}`}</p>
         <h1>{activeSub || deptLabel}</h1>
         {/* An approved buyer is also told whose prices the cards show, from my_prices() (AW-107). */}
         <p>{`${activeSub
-          ? `Wholesale ${deptLabel.toLowerCase()} for licensed retail accounts: ${plural(inScope.length, 'product')} in ${activeSub}.`
-          : `Wholesale ${deptLabel.toLowerCase()} for licensed retail accounts: ${plural(inCategory.length, 'product')}${lines.length ? ` in ${plural(lines.length, 'product line')}` : ''}.`}${isApprovedBuyer ? ` ${tierPriceNote(priceTier)}` : ''}`}</p>
+          ? `Wholesale ${deptLabel.toLowerCase()} for licensed retail accounts: ${productCount(inScope.length)} in ${activeSub}.`
+          : `Wholesale ${deptLabel.toLowerCase()} for licensed retail accounts: ${productCount(inCategory.length)}${lines.length ? ` in ${plural(lines.length, 'product line')}` : ''}.`}${isApprovedBuyer ? ` ${tierPriceNote(priceTier)}` : ''}`}</p>
         <nav className="sub-pills" ref={pillsRef} aria-label={`${deptLabel} product lines`} onFocus={revealPill}>
           <Link className={`sub-pill${!activeSub ? ' active' : ''}${filtered.length ? '' : ' is-empty'}`} to={here({ sub: null })} scroll={false} aria-current={!activeSub ? 'page' : undefined}>{`All (${filtered.length})`}</Link>
           {lines.map(({ sub: s, count }) => (
@@ -479,7 +480,7 @@ export function CategoryPage({
             <div className="drawer-foot">
               <div className="drawer-actions">
                 {activeFilterCount > 0 && <button className="text-link" type="button" onClick={() => clearFilters({ drawer: true })}>{`Clear all (${activeFilterCount})`}</button>}
-                <button className="button" type="button" onClick={closeFilters}><span>{`Show ${items.length} item${items.length === 1 ? '' : 's'}`}</span></button>
+                <button className="button" type="button" onClick={closeFilters}><span>{`Show ${productCount(items.length)}`}</span></button>
               </div>
             </div>
           </div>

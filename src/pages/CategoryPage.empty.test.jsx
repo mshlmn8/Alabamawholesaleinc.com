@@ -88,7 +88,7 @@ describe('CategoryPage with no matches (AW-299)', () => {
     expect(url()).toBe('/category/tobacco?q=swisher');
     expect(box()).toBeNull();
     expect(document.activeElement).toBe(document.querySelector('.result-note'));
-    expect(document.querySelector('.result-note').textContent).toBe('Showing 1 of 2 items');
+    expect(document.querySelector('.result-note').textContent).toBe('Showing 1 of 2 products');
   });
 
   it('offers no department link where the department has no matches either', () => {

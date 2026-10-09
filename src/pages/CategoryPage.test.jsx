@@ -51,7 +51,7 @@ describe('CategoryPage', () => {
   it('reads the product line, search, sort and filters from the URL', () => {
     act(() => navigate('/category/tobacco/cigars?sort=name-asc&tags=bestseller', { replace: true }));
     render(<Harness />);
-    expect(note()).toBe('Showing 1 of 2 items in Cigars');
+    expect(note()).toBe('Showing 1 of 2 products in Cigars');
     expect(screen.getByRole('checkbox', { name: 'Bestsellers (1)' }).checked).toBe(true);
     expect(screen.getByLabelText('Sort by').value).toBe('name-asc');
     // The pill counts what it shows with the bestseller filter (AW-225).
@@ -66,7 +66,7 @@ describe('CategoryPage', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Has flavors or variants' }));
     expect(url()).toBe('/category/tobacco?sort=variants&tags=new&variants=1');
     expect(window.history.length).toBe(length);
-    expect(note()).toBe('Showing 0 of 3 items');
+    expect(note()).toBe('Showing 0 of 3 products');
     fireEvent.click(screen.getByRole('button', { name: 'Clear all (2)' }));
     expect(url()).toBe('/category/tobacco?sort=variants');
     expect(window.history.length).toBe(length);
@@ -89,7 +89,7 @@ describe('CategoryPage', () => {
     act(() => vi.advanceTimersByTime(300));
     expect(url()).toBe('/category/tobacco?q=kite');
     expect(box.value).toBe('kite ');
-    expect(note()).toBe('Showing 1 of 3 items');
+    expect(note()).toBe('Showing 1 of 3 products');
     vi.useRealTimers();
   });
 
@@ -100,7 +100,7 @@ describe('CategoryPage', () => {
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
     expect(screen.getByRole('searchbox', { name: 'Search in Tobacco' }).value).toBe('swisher');
-    expect(note()).toBe('Showing 1 of 3 items');
+    expect(note()).toBe('Showing 1 of 3 products');
   });
 
   it('searches with the catalog search rules: a straight apostrophe finds a curly one (AW-064)', () => {
@@ -109,7 +109,7 @@ describe('CategoryPage', () => {
     render(<Harness list={list} />);
     expect(screen.getByRole('searchbox', { name: 'Search in Candies' }).value).toBe("reese's");
     expect(cardNames()).toEqual(['Reese’s']);
-    expect(note()).toBe('Showing 1 of 2 items');
+    expect(note()).toBe('Showing 1 of 2 products');
   });
 
   it('sorts by the buyer’s prices, products without one last (AW-003)', () => {
@@ -241,9 +241,9 @@ describe('CategoryPage', () => {
   it('starts another department without the old filters (AW-228)', () => {
     act(() => navigate('/category/tobacco?tags=new', { replace: true }));
     render(<Harness />);
-    expect(note()).toBe('Showing 1 of 3 items');
+    expect(note()).toBe('Showing 1 of 3 products');
     act(() => navigate('/category/candies'));
-    expect(note()).toBe('Showing 1 of 1 item');
+    expect(note()).toBe('Showing 1 of 1 product');
     expect(screen.getByRole('checkbox', { name: 'New (1)' }).checked).toBe(false);
   });
 
@@ -358,20 +358,20 @@ describe('CategoryPage brand filter (AW-067)', () => {
     const length = window.history.length;
     fireEvent.click(screen.getByRole('checkbox', { name: 'Game (3)' }));
     expect(url()).toBe('/category/tobacco?brand=game');
-    expect(note()).toBe('Showing 3 of 14 items');
+    expect(note()).toBe('Showing 3 of 14 products');
     expect(cardNames().sort()).toEqual(['Game blunt', 'Game cigarillo', 'Game leaf']);
     expect(screen.getByRole('button', { name: 'Remove filter Brand: Game' })).toBeTruthy();
     // Brand counts leave the brands out, so picking one changes none of them.
     fireEvent.click(screen.getByRole('checkbox', { name: 'Swisher Sweets (2)' }));
     expect(url()).toBe('/category/tobacco?brand=game,swisher-sweets');
-    expect(note()).toBe('Showing 5 of 14 items');
+    expect(note()).toBe('Showing 5 of 14 products');
     expect(brandLabels().slice(0, 2)).toEqual(['Game (3)', 'Swisher Sweets (2)']);
     expect(window.history.length).toBe(length);
     fireEvent.click(screen.getByRole('button', { name: 'Remove filter Brand: Game' }));
     expect(url()).toBe('/category/tobacco?brand=swisher-sweets');
     fireEvent.click(screen.getByRole('button', { name: 'Clear all (1)' }));
     expect(url()).toBe('/category/tobacco');
-    expect(note()).toBe('Showing 14 of 14 items');
+    expect(note()).toBe('Showing 14 of 14 products');
   });
 
   it('reads brands from the URL: a picked brand stays listed, at (0) where the line has none; unknown ones are ignored', () => {
@@ -382,9 +382,9 @@ describe('CategoryPage brand filter (AW-067)', () => {
     expect(screen.getByRole('checkbox', { name: 'Zig-Zag (1)' }).checked).toBe(true);
     act(() => navigate('/category/tobacco/wraps?brand=backwoods', { replace: true }));
     expect(screen.getByRole('checkbox', { name: 'Backwoods (0)' }).checked).toBe(true);
-    expect(note()).toBe('Showing 0 of 7 items in Wraps');
+    expect(note()).toBe('Showing 0 of 7 products in Wraps');
     act(() => navigate('/category/tobacco?brand=nope,assorted', { replace: true }));
-    expect(note()).toBe('Showing 14 of 14 items');
+    expect(note()).toBe('Showing 14 of 14 products');
     expect(screen.queryByRole('list', { name: 'Active filters' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Show all 10 brands' })).toBeTruthy();
   });
@@ -458,7 +458,7 @@ describe('CategoryPage line pages (AW-226)', () => {
 
   it('keeps the department head on the department page', () => {
     render(<Branded />);
-    expect(head()).toEqual({ eyebrow: 'DEPARTMENT · 14 SKUs', h1: 'Tobacco', intro: 'Wholesale tobacco for licensed retail accounts: 14 products in 2 product lines.' });
+    expect(head()).toEqual({ eyebrow: 'DEPARTMENT · 14 products', h1: 'Tobacco', intro: 'Wholesale tobacco for licensed retail accounts: 14 products in 2 product lines.' });
     expect(crumbs().map((c) => `${c.tag}:${c.text}`)).toEqual(['A:Home', 'A:All products', 'SPAN:Tobacco']);
   });
 
@@ -508,6 +508,8 @@ describe('CategoryPage on phones (AW-223)', () => {
     expect(radios[0].checked).toBe(true);
     // The brand facet is in the drawer too.
     expect(within(drawer).getByRole('checkbox', { name: 'Game (3)' }).checked).toBe(true);
+    // Its button counts products, as the result note does (NEW-056).
+    expect(within(drawer).getByRole('button', { name: 'Show 3 products' })).toBeTruthy();
     const length = window.history.length;
     fireEvent.click(within(lines).getByRole('radio', { name: 'Wraps (2)' }));
     expect(url()).toBe('/category/tobacco/wraps?brand=game');
@@ -544,10 +546,10 @@ describe('CategoryPage on a phone (AW-158, AW-157)', () => {
     // The Filter & Sort badge keeps the count.
     expect(document.querySelector('.filter-toggle .filter-count').textContent).toBe(', 3 active');
     // The phone note leaves the line to screen readers, which still hear it.
-    expect(note()).toBe('Showing 1 of 2 items in Cigars');
+    expect(note()).toBe('Showing 1 of 2 products in Cigars');
     expect(document.querySelector('.result-note .result-scope').textContent).toBe('in Cigars');
     fireEvent.click(screen.getByRole('button', { name: 'Remove filter Cigars' }));
-    expect(note()).toBe('Showing 1 of 3 items');
+    expect(note()).toBe('Showing 1 of 3 products');
     expect(document.querySelector('.result-note .result-scope').textContent).toBe('');
   });
 

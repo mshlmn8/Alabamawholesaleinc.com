@@ -1,6 +1,7 @@
 // Printing (AW-148). The print stylesheet (the last @media print block in
-// src/index.css) does the layout; this opens what CSS can't: the "All N …
-// SKUs" lists on /catalog are closed <details>, and paper can't open them.
+// src/index.css) does the layout; this opens what CSS can't: the "SKU list:
+// all N … products" lists on /catalog are closed <details>, and paper can't
+// open them.
 // Before the browser prints, every closed SKU list opens and is marked;
 // afterwards the marked ones close again, so the page looks as it did. A
 // list the buyer opened stays open. Only .sku-details: other <details> (the

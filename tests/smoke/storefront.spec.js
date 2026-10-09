@@ -228,7 +228,7 @@ test.describe('after age confirmation', () => {
     if (phone) await page.getByRole('button', { name: /Filter & Sort/ }).click();
     await page.getByRole('checkbox', { name: 'Bestsellers' }).check();
     await page.getByLabel('Sort by').selectOption('name-desc');
-    if (phone) await page.getByRole('dialog').getByRole('button', { name: /^Show \d+ items?/ }).click();
+    if (phone) await page.getByRole('dialog').getByRole('button', { name: /^Show \d+ products?/ }).click();
     await expect(page).toHaveURL(/\/category\/candies\?sort=name-desc&tags=bestseller$/);
     const note = await page.locator('.result-note').textContent();
     await page.evaluate(() => window.scrollTo(0, 500));
@@ -305,9 +305,9 @@ test.describe('after age confirmation', () => {
       await translate(page);
       await page.getByRole('link', { name: /^Cigarettes \(/ }).click();
       await page.getByRole('link', { name: /^Cigars & Cigarillos \(/ }).click();
-      await expect(page.locator('.result-note')).toHaveText(/Showing (\d+) of \1 items in Cigars & Cigarillos/);
+      await expect(page.locator('.result-note')).toHaveText(/Showing (\d+) of \1 products in Cigars & Cigarillos/);
       await page.getByRole('link', { name: /^All \(/ }).click();
-      await expect(page.locator('.result-note')).toHaveText(/Showing 68 of 68 items$/);
+      await expect(page.locator('.result-note')).toHaveText(/Showing 68 of 68 products$/);
       await expect(page.getByRole('heading', { level: 1, name: 'Tobacco' })).toBeVisible();
       expect(errors).toEqual([]);
     });

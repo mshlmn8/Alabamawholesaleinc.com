@@ -69,7 +69,7 @@ describe('firstControlIn, focusInPlace and focusLost (NEW-005)', () => {
   });
 
   it('focuses without scrolling, making a plain element focusable first', () => {
-    html('<p id="note" role="status">Showing 3 of 3 items</p><button id="b">x</button>');
+    html('<p id="note" role="status">Showing 3 of 3 products</p><button id="b">x</button>');
     const note = document.getElementById('note');
     const focus = vi.spyOn(note, 'focus');
     expect(focusInPlace(note)).toBe(true);

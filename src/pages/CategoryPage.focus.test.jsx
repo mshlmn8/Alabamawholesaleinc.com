@@ -80,7 +80,7 @@ describe('focus after a filter change (NEW-005)', () => {
     press(screen.getByRole('button', { name: 'Clear all (1)' }));
     expect(url()).toBe('/category/tobacco');
     expect(document.activeElement).toBe(note());
-    expect(note().textContent).toBe('Showing 3 of 3 items');
+    expect(note().textContent).toBe('Showing 3 of 3 products');
   });
 
   it('keeps focus in the phone drawer after its Clear all: on the drawer’s first control', () => {

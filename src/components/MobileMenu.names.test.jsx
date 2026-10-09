@@ -5,6 +5,7 @@ import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { PRODUCTS } from '../data/products.js';
 import { departmentsFor } from '../lib/departments.js';
+import { productCount } from '../lib/format.js';
 import { MobileMenu } from './MobileMenu.jsx';
 
 const noop = () => {};
@@ -24,5 +25,14 @@ describe('MobileMenu department counts', () => {
       expect(count.children[1].className).toBe('sr-only');
       expect(count.children[1].textContent).toBe(' products');
     }
+  });
+
+  // The same count words as the desktop menu's footer (AW-217, NEW-056).
+  it('counts the catalog in products at its foot, as the desktop menu does', () => {
+    render(<MobileMenu onClose={noop} onFollowLink={noop} departments={departments} products={PRODUCTS} user={null} isAdmin={false} go={go} />);
+    const line = document.querySelector('.menu-contact p span');
+    expect(line.textContent).toBe(`${departments.length} departments · ${PRODUCTS.length} products`);
+    expect(line.textContent).not.toMatch(/SKU/);
+    expect([productCount(1), productCount(2), productCount(2, '02')]).toEqual(['1 product', '2 products', '02 products']);
   });
 });

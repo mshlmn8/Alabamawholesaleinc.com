@@ -21,6 +21,12 @@ const CAT_LABEL = {
 };
 export const catLabel = (c) => CAT_LABEL[c] || c;
 
+// A catalog count, in the site's one word for it (AW-217, NEW-056):
+// '68 products', '1 product', on the department and line pages, /catalog,
+// the menus and the home tiles. `shown` prints the number another way, such
+// as a department page's zero-padded '02'. 'SKU' is kept for lists of codes.
+export const productCount = (n, shown = String(n)) => `${shown} ${Number(n) === 1 ? 'product' : 'products'}`;
+
 // A product line named like its department (Motor Oil's 'Motor Oil' line,
 // NEW-029), ignoring case: its title, trail and eyebrow name the department
 // once. Renaming the line is the owner's call (AW-134).
