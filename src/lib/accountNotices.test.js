@@ -120,6 +120,9 @@ describe('accountNotices', () => {
     expect(ids(accountNotices({ account: 'no-profile', routePage: 'quote' }, act()))).toEqual(['no-profile']);
     expect(accountNotices({ account: 'no-profile', routePage: 'account' }, act())).toEqual([]);
     expect(accountNotices({ account: 'no-profile', routePage: 'admin' }, act())).toEqual([]);
+    // /apply offers Try again and Sign out itself (NEW-002).
+    expect(accountNotices({ account: 'no-profile', routePage: 'apply' }, act())).toEqual([]);
+    expect(ids(accountNotices({ account: 'no-profile', routePage: 'category' }, act()))).toEqual(['no-profile']);
   });
 
   it('shows the sign-out result (AW-336)', () => {

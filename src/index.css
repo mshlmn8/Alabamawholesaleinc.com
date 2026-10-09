@@ -818,6 +818,9 @@ p > .text-link { min-height: 0; min-width: 0; }
 .pricing-notice { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; margin: 0 0 var(--block-gap); }
 .pricing-notice > p { flex: 1 1 16em; margin: 0; }
 .pricing-notice-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+/* While the account is checked (NEW-002), the guest notice's actions hold
+   their place unseen, so the notice that follows keeps the grid still. */
+.pricing-notice-actions.is-placeholder { visibility: hidden; }
 /* Stuck below the header, and never taller than the window: on a short or
    zoomed window the panel scrolls (AW-312). Positioned, so its sr-only text
    stays inside it; the 18px padding keeps the focus rings in view. No
@@ -951,6 +954,9 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
    phone number stays on one line. */
 .pd-price.is-locked p a { overflow-wrap: anywhere; }
 .pd-price.is-locked a[href^="tel:"] { white-space: nowrap; }
+/* While the account is checked (NEW-002), an unseen copy of the pending
+   line's link keeps the slot about the height the price or lock takes. */
+.pd-price-hold { visibility: hidden; }
 /* "Choose a flavor" names the chips, which are one required choice (AW-235);
    adding before a choice shows the error right under them (AW-074). */
 .pd-variant-label { margin: 14px 0 0; }
@@ -2286,6 +2292,10 @@ ul.sub-pills { list-style: none; padding: 0; }
    and keeps it 8px from the edge inside the callout's 1rem padding. */
 .site-notice-close { margin: -8px -8px -8px 0; }
 .account-loading { margin: 6px 0 0; }
+/* /apply while the account is checked (NEW-002): about the height of the
+   status and documents panels that usually follow, so the contact strip and
+   footer start out of view instead of jumping down when they arrive. */
+.apply-checking { min-height: 28rem; }
 .account-problem { margin-top: 12px; max-width: 640px; }
 .account-problem p { margin: 0; }
 .account-problem .dialog-actions { margin-top: 12px; }

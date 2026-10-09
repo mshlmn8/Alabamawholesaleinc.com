@@ -14,7 +14,9 @@
 // A line page is headed by the line (AW-226).
 //
 // Pricing is explained once, by the PricingNotice above the grid (AW-224):
-// the intro describes the department and the filters hold only filters.
+// the intro describes the department and the filters hold only filters. It
+// follows `account` (useAuth's), so a signed-in buyer whose profile is still
+// loading is never offered Sign in (NEW-002).
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useMediaQuery, MOBILE_QUERY } from '../lib/useMediaQuery.js';
@@ -115,7 +117,7 @@ function byPrice(priceOf, direction) {
 }
 
 export function CategoryPage({
-  category, sub, query = EMPTY_CATEGORY_QUERY, products, departments, profile, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off',
+  category, sub, query = EMPTY_CATEGORY_QUERY, products, departments, profile, account, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off',
   priceTier = null, cart, addLine, decLine, onLoginClick, onApplyClick,
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -401,7 +403,7 @@ export function CategoryPage({
           {/* The cards' h3 names sit under an h2 in both layouts (AW-313):
               the compact layout has no Filters heading. */}
           <h2 className="sr-only">Products</h2>
-          <PricingNotice profile={profile} isApprovedBuyer={isApprovedBuyer} onLoginClick={onLoginClick} onApplyClick={onApplyClick} />
+          <PricingNotice profile={profile} account={account} isApprovedBuyer={isApprovedBuyer} onLoginClick={onLoginClick} onApplyClick={onApplyClick} />
           {items.length > 0 ? (
             <div className="card-grid category-card-grid">
               {/* The first row (three cards, two on phones) loads at once, and

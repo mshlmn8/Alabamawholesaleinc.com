@@ -63,7 +63,7 @@ import {
   informativeVariant, isVariantAvailable, lineKey, requiresVariantChoice, variantAxis, variantList, variantSku,
 } from '../lib/lines.js';
 import { lineTotal, pctText, priceLabel, tierName, variantPriceRange } from '../lib/pricing.js';
-import { PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
+import { CHECKING_ACCOUNT_TEXT, PRICES_NEED_PROFILE, PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
 import { brandLabel, catLabel, formatMoney } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
@@ -96,7 +96,7 @@ function PhotoCreditText({ credit, creditSource }) {
 }
 
 export function ProductPage({
-  productId, profile, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', listOf = NO_PRICES, priceTier = null,
+  productId, profile, account = profile ? 'ready' : 'signed-out', isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', listOf = NO_PRICES, priceTier = null,
   cart, addLine, decLine, products, onLoginClick, onApplyClick, savedQty = 0,
 }) {
   const [desiredQty, setDesiredQty] = useState(() => savedQty || 1);
@@ -158,6 +158,26 @@ export function ProductPage({
   const qtyTotal = isApprovedBuyer && shown.unit != null && !shown.from
     ? `${desiredQty.toLocaleString('en-US')} × ${formatMoney(shown.unit)} = ${formatMoney(lineTotal(shown.unit, desiredQty))}`
     : '';
+  // What the price slot says without a price. The account decides first
+  // (NEW-002): Sign in and Apply only when nobody is signed in; while the
+  // account is checked, a status in the shape of the pending line (the
+  // height an approved price takes too, so the add row stays put); and when
+  // the profile didn't load, one line, which the site notice's Try again
+  // explains.
+  let lockedPrice = null;
+  if (!isApprovedBuyer) {
+    if (onHold) {
+      lockedPrice = <p>{PRICE_LOCK.suspended.line} <CallOrEmail after=" and a trade rep will help you sort it out." /></p>;
+    } else if (account === 'loading') {
+      lockedPrice = <><p role="status">{CHECKING_ACCOUNT_TEXT}</p><div className="text-link pd-price-hold" aria-hidden="true">View approval status</div></>;
+    } else if (account === 'no-profile') {
+      lockedPrice = <p>{PRICES_NEED_PROFILE}</p>;
+    } else if (profile) {
+      lockedPrice = <><p>{PRICE_LOCK.pending.line}</p><Link className="text-link" to="/account">View approval status</Link></>;
+    } else {
+      lockedPrice = <><p>Wholesale prices show here for approved trade accounts.</p><button className="button ghost" type="button" onClick={onLoginClick}>Sign in to see wholesale prices</button><button className="text-link" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button></>;
+    }
+  }
   const chipFor = (v) => chipsRef.current?.querySelectorAll('[role="radio"]')[variants.indexOf(v)] || null;
   const choose = (v) => {
     setChosenVariant(v);
@@ -241,21 +261,15 @@ export function ProductPage({
           {choiceRequired && <p className="in-cart-note">{`Add each ${axis.noun} you want separately.`}</p>}
           {savedQty > 0 && <p className="pd-saved">{`From your last visit: quantity ${savedQty}.${choiceRequired ? ` Choose a ${axis.noun}, then add it.` : ''}`}</p>}
           {/* No price yet (AW-133): a sentence and the one way forward, never a word in price type. */}
-          <div className={isApprovedBuyer ? 'pd-price' : 'pd-price is-locked'}>
-            {isApprovedBuyer
-              ? (
-                <>
-                  <b>{priceLabel(shown.unit, pricesStatus, { from: shown.from })}</b>
-                  <span>{shown.unit != null && tier ? `${tier} price` : 'Wholesale unit price'}</span>
-                  {showSaving && <span className="pd-save">list <s>{formatMoney(list)}</s> · you save <strong>{pctText(discountPct)}</strong></span>}
-                  {/* The SKU is the .pd-sku line above, for everyone (AW-234). */}
-                </>
-              )
-              : onHold
-              ? <p>{PRICE_LOCK.suspended.line} <CallOrEmail after=" and a trade rep will help you sort it out." /></p>
-              : profile
-              ? <><p>{PRICE_LOCK.pending.line}</p><Link className="text-link" to="/account">View approval status</Link></>
-              : <><p>Wholesale prices show here for approved trade accounts.</p><button className="button ghost" type="button" onClick={onLoginClick}>Sign in to see wholesale prices</button><button className="text-link" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button></>}
+          <div className={lockedPrice ? 'pd-price is-locked' : 'pd-price'}>
+            {lockedPrice || (
+              <>
+                <b>{priceLabel(shown.unit, pricesStatus, { from: shown.from })}</b>
+                <span>{shown.unit != null && tier ? `${tier} price` : 'Wholesale unit price'}</span>
+                {showSaving && <span className="pd-save">list <s>{formatMoney(list)}</s> · you save <strong>{pctText(discountPct)}</strong></span>}
+                {/* The SKU is the .pd-sku line above, for everyone (AW-234). */}
+              </>
+            )}
           </div>
           {p.sellUnit && <p className="pd-unit">{`Sold by the ${p.sellUnit} — quantity 1 is one ${p.sellUnit}.`}</p>}
           <div className="qty-row">

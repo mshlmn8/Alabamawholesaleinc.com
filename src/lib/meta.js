@@ -187,11 +187,13 @@ function adminTitle(route) {
 }
 
 // The application page's title follows the account (AW-098): App sets
-// route.applyAs to 'loading' or accountStatus(profile). Without it, the
-// page is the one a visitor, or a search engine, sees.
+// route.applyAs to 'loading', 'no-profile' (signed in, the profile didn't
+// load: NEW-002) or accountStatus(profile). Without it, the page is the one
+// a visitor, or a search engine, sees.
 export const APPLY_TITLES = {
   guest: APPLY_LABEL,
   loading: 'Trade Account',
+  'no-profile': 'Trade account',
   pending: 'Application Under Review',
   approved: 'Your Trade Account',
   suspended: 'Account On Hold',

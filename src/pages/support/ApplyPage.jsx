@@ -6,7 +6,9 @@
 // an applicant under review sees where the application stands; an approved
 // account is pointed at the catalog and its account; an account on hold is
 // told who to call. While the account loads the page says nothing it might
-// have to take back. App titles the page the same way (meta.js, route.applyAs).
+// have to take back, and a signed-in account whose profile didn't load is
+// offered Try again and Sign out, never the guest's Apply and Sign in
+// (NEW-002). App titles the page the same way (meta.js, route.applyAs).
 
 import { COMPANY } from '../../data/content.js';
 import { APPLICATION_CHECKLIST } from '../../data/onboarding.js';
@@ -15,31 +17,35 @@ import { APPLY_LABEL, SIGN_IN_INSTEAD } from '../../data/terms.js';
 import { ServiceUnavailable } from '../../components/ServiceUnavailable.jsx';
 import { ApplicationDocuments } from '../../components/DocumentUploads.jsx';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
-import { AccountLoading } from '../../components/AccountStatus.jsx';
+import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
 import { Link } from '../../lib/router.js';
 import { accountStatusLabel } from '../../lib/accountLabels.js';
 import { PageHead, SupportLayout, ContactStrip } from './SupportShell.jsx';
 
 const INTRO_21 = 'Alabama Wholesale sells exclusively to licensed retail businesses — 21+, no consumer sales.';
 
-// Per view ('guest', 'loading' and the three account statuses): the eyebrow,
-// the h1 and the contact strip. A strip left out is the default one.
+// Per view ('guest', 'loading', 'no-profile' and the three account
+// statuses): the eyebrow, the h1 and the contact strip. A strip left out is
+// the default one.
 const VIEWS = {
   guest: { eyebrow: 'OPEN AN ACCOUNT', title: APPLY_LABEL, strip: { eyebrow: 'RATHER TALK IT THROUGH?', title: 'Apply with a trade rep' } },
   loading: { eyebrow: 'TRADE ACCOUNT', title: 'Trade account' },
+  'no-profile': { eyebrow: 'TRADE ACCOUNT', title: 'Your trade account' },
   pending: { eyebrow: 'APPLICATION UNDER REVIEW', title: 'Your trade account', strip: { eyebrow: 'QUESTIONS ABOUT YOUR APPLICATION?', title: 'Talk to a trade rep' } },
   approved: { eyebrow: 'ACCOUNT ACTIVE', title: 'Your trade account' },
   suspended: { eyebrow: 'ACCOUNT ON HOLD', title: 'Your trade account', strip: { eyebrow: 'ACCOUNT ON HOLD?', title: 'Talk to a trade rep' } },
 };
 
 // The view for an account: 'loading' until the session and profile are
-// known, then accountStatus() ('guest' also when the profile didn't load).
+// known, 'no-profile' when it is signed in but its profile didn't load
+// (NEW-002), then accountStatus().
 export function applyView(profile, account) {
-  return account === 'loading' ? 'loading' : accountStatus(profile);
+  if (account === 'loading' || account === 'no-profile') return account;
+  return accountStatus(profile);
 }
 
 function ApplyIntro({ view }) {
-  if (view === 'loading') return <p>{INTRO_21}</p>;
+  if (view === 'loading' || view === 'no-profile') return <p>{INTRO_21}</p>;
   if (view === 'pending') {
     return <p>Your application is with a trade rep. Here is where it stands, and the license documents you can add while you wait.</p>;
   }
@@ -58,7 +64,12 @@ function ApplyIntro({ view }) {
   return <p>{`${INTRO_21} Here is what to have ready, and what happens after you apply.`}</p>;
 }
 
-export function ApplyPage({ profile, account = profile ? 'ready' : 'signed-out', isBackendConfigured, onApplyClick, onLoginClick, onResetClick }) {
+// onRetry, retrying, onSignOut and signingOut are App's accountProps, for a
+// profile that didn't load.
+export function ApplyPage({
+  profile, account = profile ? 'ready' : 'signed-out', isBackendConfigured, onApplyClick, onLoginClick, onResetClick,
+  onRetry, retrying = false, onSignOut, signingOut = false,
+}) {
   // A signed-in applicant's status, not the application checklist, while
   // their account loads (AW-186).
   const loadingAccount = account === 'loading';
@@ -85,7 +96,11 @@ export function ApplyPage({ profile, account = profile ? 'ready' : 'signed-out',
       </PageHead>
       <SupportLayout current="apply">
 
-      {loadingAccount && <AccountLoading text="Checking for your application…" />}
+      {/* Holds about the room the status and documents take, so they don't
+          push the page down when the account arrives (NEW-002). */}
+      {loadingAccount && <div className="apply-checking"><AccountLoading text="Checking for your application…" /></div>}
+
+      {view === 'no-profile' && <AccountProblem onRetry={onRetry} retrying={retrying} onSignOut={onSignOut} signingOut={signingOut} />}
 
       {profile && <StatusPanel profile={profile} />}
 

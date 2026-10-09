@@ -139,13 +139,39 @@ describe('ApplyPage for each account state', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'On hold' })).toBeTruthy();
   });
 
-  it('keeps the guest view for a signed-in account whose profile did not load', () => {
-    page({ account: 'no-profile' });
-    expect(eyebrow()).toBe('OPEN AN ACCOUNT');
+  // A signed-in account's profile still loading, or failed: never the
+  // guest's Apply and Sign in (NEW-002).
+  it('offers no guest Apply or Sign in while a signed-in account’s profile loads', () => {
+    page({ profile: null, account: 'loading' });
+    expect(h1()).toBe('Trade account');
+    expect(startButtons()).toHaveLength(0);
+    expect(screen.queryByRole('button', { name: 'Already have an account? Sign in' })).toBeNull();
+  });
+
+  it('offers Try again and Sign out to a signed-in account whose profile did not load (NEW-002)', () => {
+    const onRetry = vi.fn();
+    const onSignOut = vi.fn();
+    const view = page({ profile: null, account: 'no-profile', onRetry, onSignOut });
+    expect(eyebrow()).toBe('TRADE ACCOUNT');
+    expect(h1()).toBe('Your trade account');
+    expect(intro()).toBe('Alabama Wholesale sells exclusively to licensed retail businesses — 21+, no consumer sales.');
+    expect(strip()).toEqual(['QUESTIONS?', 'Talk to the warehouse']);
+    expect(startButtons()).toHaveLength(0);
+    expect(screen.queryByRole('button', { name: 'Already have an account? Sign in' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Application checklist' })).toBeNull();
+    expect(screen.getByText(/didn’t load/).closest('.account-problem')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    expect(onSignOut).toHaveBeenCalledTimes(1);
+    view.rerender(<ApplyPage profile={null} account="no-profile" isBackendConfigured onRetry={onRetry} retrying onSignOut={onSignOut} signingOut />);
+    expect(screen.getByRole('button', { name: 'Trying again…' }).disabled).toBe(true);
+    expect(screen.getByRole('button', { name: 'Signing out…' }).disabled).toBe(true);
   });
 
   it('chooses the view from the account', () => {
     expect(applyView(null, 'loading')).toBe('loading');
+    expect(applyView(null, 'no-profile')).toBe('no-profile');
     expect(applyView({ status: 'approved' }, 'loading')).toBe('loading');
     expect(applyView(null, 'signed-out')).toBe('guest');
     expect(applyView({ status: 'suspended' }, 'ready')).toBe('suspended');

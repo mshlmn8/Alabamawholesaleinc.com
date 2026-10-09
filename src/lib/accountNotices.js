@@ -13,7 +13,8 @@
 //   connection      a saved session could not be refreshed: Supabase is out
 //                   of reach
 //   no-profile      signed in, but the account's profile did not load
-//                   (AW-089); /account and /admin explain it in the page
+//                   (AW-089); /account, /admin and /apply (NEW-002) explain it
+//                   in the page
 //   signed-out      the result of Sign Out (AW-336), on the page it led to
 
 // Said when a buyer signs out with items in the cart: the cart is kept for
@@ -80,6 +81,10 @@ function linkConfirmedNotice(state, act) {
   };
 }
 
+// Pages that say themselves when the profile didn't load, with Try again
+// and Sign out (AccountProblem): no site notice there as well.
+const PAGES_EXPLAINING_PROFILE = ['account', 'admin', 'apply'];
+
 // state: { linkError, linkConfirmed, sessionEnded, connectionProblem, account,
 //          profileStatus, routePage, signOutText, signingOut, retrying }
 // act:   { signIn, requestReset, signOutHere, retryProfile, dismissLink,
@@ -120,7 +125,7 @@ export function accountNotices(state, act) {
       onDismiss: act.dismissConnectionProblem,
     });
   }
-  if (state.account === 'no-profile' && state.routePage !== 'account' && state.routePage !== 'admin') {
+  if (state.account === 'no-profile' && !PAGES_EXPLAINING_PROFILE.includes(state.routePage)) {
     notices.push({
       id: 'no-profile',
       tone: 'warn',

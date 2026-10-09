@@ -62,8 +62,9 @@ export function SearchPage({ q = '', products, departments, ...cardProps }) {
 
       {ready && result.total > 0 && (
         <>
-          {/* Pricing is explained once, above the grid (AW-224). */}
-          <PricingNotice profile={cardProps.profile} isApprovedBuyer={cardProps.isApprovedBuyer} onLoginClick={cardProps.onLoginClick} onApplyClick={cardProps.onApplyClick} />
+          {/* Pricing is explained once, above the grid (AW-224), as the account stands (NEW-002). */}
+          <PricingNotice profile={cardProps.profile} account={cardProps.account} isApprovedBuyer={cardProps.isApprovedBuyer}
+                         onLoginClick={cardProps.onLoginClick} onApplyClick={cardProps.onApplyClick} />
           {/* The cards' h3 titles sit under an h2, as on department pages. */}
           <h2 className="sr-only">Products</h2>
           <div className="card-grid" ref={grid}>

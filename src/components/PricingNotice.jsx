@@ -9,16 +9,37 @@
 //   suspended  "Ordering is paused on this account." with the trade desk's
 //              phone and email, never "wait for approval" (AW-101)
 //
+// The account decides first (NEW-002; useAuth's account, through App's
+// cardProps): the guest's Sign in and Apply only when nobody is signed in.
+//   loading    the session or the profile is still being checked: "Checking
+//              your account…" in the guest notice's shape, its actions row
+//              kept but invisible, so the notice that follows doesn't move
+//              the grid
+//   no-profile signed in, but the profile didn't load: nothing here; the
+//              site notice says so, with Try again and Sign out
+//
 // The cards themselves say "Pricing after approval" (or "Account on hold")
 // as plain text, with no tab stop of their own. The sentences are
 // accountStatus.js's PRICE_LOCK lines, and the labels src/data/terms.js's.
 import { APPLY_LABEL, SIGN_IN_LABEL } from '../data/terms.js';
-import { PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
+import { CHECKING_ACCOUNT_TEXT, PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
 import { Link } from '../lib/router.js';
 import { CallOrEmail } from './ContactLinks.jsx';
 
-export function PricingNotice({ profile, isApprovedBuyer, onLoginClick, onApplyClick }) {
-  if (isApprovedBuyer) return null;
+export function PricingNotice({ profile, account = profile ? 'ready' : 'signed-out', isApprovedBuyer, onLoginClick, onApplyClick }) {
+  if (isApprovedBuyer || account === 'no-profile') return null;
+  if (account === 'loading') {
+    return (
+      <div className="callout info pricing-notice">
+        <p role="status">{CHECKING_ACCOUNT_TEXT}</p>
+        {/* Holds the guest notice's height (NEW-002): never read out, never a tab stop. */}
+        <div className="pricing-notice-actions is-placeholder" aria-hidden="true">
+          <span className="button sm">{SIGN_IN_LABEL}</span>
+          <span className="text-link">{APPLY_LABEL}</span>
+        </div>
+      </div>
+    );
+  }
   const status = accountStatus(profile);
   if (status === 'suspended') {
     return (

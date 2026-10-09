@@ -76,6 +76,34 @@ describe('ProductPage price slot without a price (AW-133)', () => {
     expect(within(info()).queryByRole('link', { name: 'View approval status' })).toBeNull();
   });
 
+  // A signed-in account's profile still loading, or failed (NEW-002): never
+  // the guest's Sign in and Apply.
+  it('says the account is being checked while it loads, with nothing to press', () => {
+    render(page({ account: 'loading' }));
+    expect(slot().className).toBe('pd-price is-locked');
+    expect(slot().querySelector('b')).toBeNull();
+    const status = within(slot()).getByRole('status');
+    expect(status.textContent).toBe('Checking your account…');
+    const hold = slot().querySelector('.pd-price-hold');
+    expect(hold.getAttribute('aria-hidden')).toBe('true');
+    expect(slot().querySelectorAll('button, a')).toHaveLength(0);
+    expect(within(info()).queryByRole('button', { name: /sign in|apply/i })).toBeNull();
+  });
+
+  it('says prices need the account details when the profile didn’t load', () => {
+    render(page({ account: 'no-profile' }));
+    expect(slot().className).toBe('pd-price is-locked');
+    expect(slot().querySelector('b')).toBeNull();
+    expect(slot().textContent).toBe('Prices need your account details.');
+    expect(slot().querySelectorAll('button, a')).toHaveLength(0);
+    expect(within(info()).queryByRole('button', { name: /sign in|apply/i })).toBeNull();
+  });
+
+  it('offers Sign in only when nobody is signed in', () => {
+    render(page({ account: 'signed-out' }));
+    expect(within(slot()).getByRole('button', { name: 'Sign in to see wholesale prices' })).toBeTruthy();
+  });
+
   it('keeps the price itself for an approved buyer', () => {
     render(page({ profile: APPROVED, isApprovedBuyer: true, priceOf: () => 12.25, pricesStatus: 'ready' }));
     expect(slot().className).toBe('pd-price');

@@ -44,3 +44,10 @@ export const PRICE_LOCK = {
     detail: 'Ordering is paused on this account — call the trade desk.',
   },
 };
+
+// Before a signed-in account's profile is known (auth.jsx's account
+// 'loading'), a price lock says this instead of guessing (NEW-002); a profile
+// that didn't load ('no-profile') gets PRICES_NEED_PROFILE where a price
+// goes, and the site notice offers Try again.
+export const CHECKING_ACCOUNT_TEXT = 'Checking your account…';
+export const PRICES_NEED_PROFILE = 'Prices need your account details.';

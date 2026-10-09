@@ -210,7 +210,8 @@ export default function App() {
   // new since the last visit on /admin (AW-111), the account's state on
   // /apply ('Application Under Review', AW-098) and what /reset-password
   // shows ('Password Updated', AW-255).
-  const applyAs = account === 'loading' ? 'loading' : accountStatus(profile);
+  // A signed-in account whose profile didn't load isn't a guest (NEW-002).
+  const applyAs = account === 'loading' || account === 'no-profile' ? account : accountStatus(profile);
   // The reset page's view belongs to the page that reported it.
   if (resetShown && resetShown.pageKey !== location.pageKey) setResetShown(null);
   const resetAs = resetShown?.view || null;
@@ -361,9 +362,12 @@ export default function App() {
     return { ok: true, items: cart.itemsFor(latest.products, latestPriceOf) };
   };
 
-  // Product cards need the account, its prices, the cart and the add/step actions.
+  // Product cards need the account, its prices, the cart and the add/step
+  // actions. account and signedIn let the pricing notice and the product
+  // page tell a signed-in buyer whose profile is still loading (or didn't
+  // load) from a guest, so they never offer Sign in to one (NEW-002).
   const cardProps = {
-    profile, isApprovedBuyer, priceOf, pricesStatus: prices.status, priceTier, listOf,
+    profile, account, signedIn: !!session, isApprovedBuyer, priceOf, pricesStatus: prices.status, priceTier, listOf,
     cart: cart.cart, addLine: cart.addLine, decLine: cart.decLine, onLoginClick: openSignin, onApplyClick: openSignup,
   };
   // Account pages wait for the session and profile instead of flashing a
@@ -376,7 +380,7 @@ export default function App() {
   const renderRoute = () => {
     switch (route.page) {
       case 'home':
-        return <HomePage products={products} departments={departments} {...cardProps} onApplyClick={openSignup} signedIn={!!session} />;
+        return <HomePage products={products} departments={departments} {...cardProps} onApplyClick={openSignup} />;
       case 'product':
         return (
           <ProductPage key={route.productId} productId={route.productId} products={products} {...cardProps} onApplyClick={openSignup}
@@ -413,7 +417,7 @@ export default function App() {
       case 'catalog':
         return (
           <CatalogIndexPage products={products} departments={departments} profile={profile} isApprovedBuyer={isApprovedBuyer}
-                            onLoginClick={openSignin} signedIn={!!session} {...cardProps} />
+                            onLoginClick={openSignin} {...cardProps} />
         );
       case 'contact':
         return <ContactPage onApplyClick={openApplication} />;
@@ -425,7 +429,7 @@ export default function App() {
         return <PolicyPage kind={route.page} />;
       case 'apply':
         return (
-          <ApplyPage profile={profile} account={account} isBackendConfigured={isBackendConfigured}
+          <ApplyPage {...accountProps} isBackendConfigured={isBackendConfigured}
                      onApplyClick={openApplication} onLoginClick={openSignin} onResetClick={openReset} />
         );
       case 'reset-password':

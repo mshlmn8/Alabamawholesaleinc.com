@@ -277,7 +277,7 @@ describe('pageMeta for /apply (AW-098)', () => {
   it('titles the application page by the account’s state, with one description and canonical path', () => {
     const guest = pageMeta({ page: 'apply' }, products, departments);
     expect(guest).toMatchObject({ title: 'Apply for a trade account · Alabama Wholesale Inc', path: '/apply', noindex: false });
-    const titles = Object.fromEntries(['guest', 'loading', 'pending', 'approved', 'suspended'].map((applyAs) => {
+    const titles = Object.fromEntries(['guest', 'loading', 'no-profile', 'pending', 'approved', 'suspended'].map((applyAs) => {
       const meta = pageMeta({ page: 'apply', applyAs }, products, departments);
       expect(meta).toMatchObject({ description: guest.description, path: '/apply', noindex: false });
       return [applyAs, meta.title];
@@ -285,6 +285,8 @@ describe('pageMeta for /apply (AW-098)', () => {
     expect(titles).toEqual({
       guest: 'Apply for a trade account · Alabama Wholesale Inc',
       loading: 'Trade Account · Alabama Wholesale Inc',
+      // Signed in, but the profile didn't load: not the guest's 'Apply' (NEW-002).
+      'no-profile': 'Trade account · Alabama Wholesale Inc',
       pending: 'Application Under Review · Alabama Wholesale Inc',
       approved: 'Your Trade Account · Alabama Wholesale Inc',
       suspended: 'Account On Hold · Alabama Wholesale Inc',
