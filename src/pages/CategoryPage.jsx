@@ -13,6 +13,7 @@ import { useMediaQuery, MOBILE_QUERY } from '../lib/useMediaQuery.js';
 import { matchesQuery } from '../lib/search.js';
 import { variantCount } from '../lib/lines.js';
 import { catLabel } from '../lib/format.js';
+import { tierPriceNote } from '../lib/pricing.js';
 import { Link, navigate } from '../lib/router.js';
 import { EMPTY_CATEGORY_QUERY } from '../lib/routes.js';
 import { PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
@@ -57,7 +58,7 @@ function byPrice(priceOf, direction) {
 
 export function CategoryPage({
   category, sub, query = EMPTY_CATEGORY_QUERY, products, departments, profile, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off',
-  cart, addLine, decLine, onLoginClick,
+  priceTier = null, cart, addLine, decLine, onLoginClick,
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const isMobile = useMediaQuery(MOBILE_QUERY);
@@ -192,7 +193,8 @@ export function CategoryPage({
         <Breadcrumbs items={[HOME_CRUMB, { label: catLabel(category), to: here({ sub: null }) }, ...(activeSub ? [{ label: activeSub }] : [])]} />
         <p className="eyebrow">{`DEPARTMENT · ${String(cat?.count ?? inCategory.length).padStart(2, '0')} SKUs`}</p>
         <h1>{catLabel(category)}</h1>
-        <p>{`Wholesale ${catLabel(category).toLowerCase()} for licensed retail accounts. ${isApprovedBuyer ? 'Your tier pricing is shown on each card.' : (status === 'suspended' ? lock.detail : lock.line)}`}</p>
+        {/* An approved buyer is told whose prices the cards show, from my_prices() (AW-107). */}
+        <p>{`Wholesale ${catLabel(category).toLowerCase()} for licensed retail accounts. ${isApprovedBuyer ? tierPriceNote(priceTier) : (status === 'suspended' ? lock.detail : lock.line)}`}</p>
         <nav className="sub-pills" aria-label={`${catLabel(category)} product lines`}>
           <Link className={`sub-pill ${!activeSub ? 'active' : ''}`} to={here({ sub: null })} scroll={false} aria-current={!activeSub ? 'page' : undefined}>{`All (${inCategory.length})`}</Link>
           {(cat?.subs || []).map(s => {

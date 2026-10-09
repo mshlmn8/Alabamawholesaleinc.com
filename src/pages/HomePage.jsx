@@ -7,6 +7,7 @@
 import { DEPARTMENT_PHOTOS, FREE_DELIVERY_THRESHOLD } from '../data/content.js';
 import { topLines } from '../lib/departments.js';
 import { formatMoneyShort } from '../lib/format.js';
+import { tierPriceNote } from '../lib/pricing.js';
 import { homeRails } from '../lib/merchandising.js';
 import { heroImage, SIZES } from '../lib/images.js';
 import { showsNicotineWarning } from '../lib/regulated.js';
@@ -52,7 +53,7 @@ export function departmentPhoto(products, deptKey) {
   return null;
 }
 
-export function HomePage({ products, departments, profile, isApprovedBuyer, priceOf, pricesStatus, cart, addLine, decLine, onLoginClick, onApplyClick, signedIn = false }) {
+export function HomePage({ products, departments, profile, isApprovedBuyer, priceOf, pricesStatus, priceTier = null, cart, addLine, decLine, onLoginClick, onApplyClick, signedIn = false }) {
   // The home rails leave the SKU off the card; category, search and product
   // pages keep it (AW-060).
   const card = (p) => (
@@ -62,6 +63,8 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, pric
   // TODO(owner): Which products are really new and which are bestsellers, plus dedicated hero and department images? (AW-056)
   // Tags and homepage rank (AW-119), RAIL_LENGTH cards each (AW-061).
   const { newArrivals, bestsellers } = homeRails(products, { limit: RAIL_LENGTH, hasPhoto });
+  // Whose prices the rails show, for an approved buyer (AW-107).
+  const priceNote = isApprovedBuyer ? <p className="result-note">{tierPriceNote(priceTier)}</p> : null;
 
   return (
     <>
@@ -122,7 +125,7 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, pric
 
       <section className="section" id="new-arrivals">
         <div className="section-head">
-          <div><p className="eyebrow">FRESH INVENTORY</p><h2>New arrivals</h2></div>
+          <div><p className="eyebrow">FRESH INVENTORY</p><h2>New arrivals</h2>{priceNote}</div>
           <Link to={dept('NOVELTIES')}>Shop novelties</Link>
         </div>
         <div className="card-grid">
@@ -132,7 +135,7 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, pric
 
       <section className="section" id="bestsellers">
         <div className="section-head">
-          <div><p className="eyebrow">PROVEN MOVERS</p><h2>Bestsellers</h2></div>
+          <div><p className="eyebrow">PROVEN MOVERS</p><h2>Bestsellers</h2>{priceNote}</div>
           <Link to={dept('TOBACCO')}>Shop tobacco</Link>
         </div>
         <div className="card-grid">

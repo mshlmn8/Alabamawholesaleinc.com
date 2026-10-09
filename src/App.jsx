@@ -103,6 +103,11 @@ export default function App() {
   // no approved account, prices still loading, or price on request (AW-003).
   const prices = usePrices();
   const priceOf = useMemo(() => (id, variant) => priceFor(prices.prices, id, variant)?.unit ?? null, [prices.prices]);
+  // The buyer's tier as my_prices() gives it, for saying what the prices on
+  // screen are (AW-107, AW-265); null until the prices are in.
+  const priceTier = useMemo(() => (prices.prices
+    ? { tier: prices.prices.tier, label: prices.prices.tierLabel, discountPct: prices.prices.discountPct }
+    : null), [prices.prices]);
   // Each account on this device has its own cart, and guests share one
   // (AW-189). While the saved session is being checked, or can't be
   // refreshed because Supabase is out of reach, it is that session's
@@ -291,7 +296,7 @@ export default function App() {
 
   // Product cards need the account, its prices, the cart and the add/step actions.
   const cardProps = {
-    profile, isApprovedBuyer, priceOf, pricesStatus: prices.status,
+    profile, isApprovedBuyer, priceOf, pricesStatus: prices.status, priceTier,
     cart: cart.cart, addLine: cart.addLine, decLine: cart.decLine, onLoginClick: openSignin,
   };
   // Account pages wait for the session and profile instead of flashing a

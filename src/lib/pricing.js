@@ -177,6 +177,54 @@ export function priceLabel(unit, status, { from = false } = {}) {
   return PRICE_ON_REQUEST;
 }
 
+// The buyer's tier, for saying what the prices on screen are (AW-107,
+// AW-265). Everything comes from my_prices() (or the legacy path above):
+// App passes { tier, label, discountPct } from usePrices().prices, and
+// there is no tier table here.
+//   tierName('silver')                     'Silver'
+//   pctText(5), pctText(2.5)               '5%', '2.5%'
+//   tierDiscountText({ tier: 'silver', discountPct: 5 })
+//                                          'Silver · 5% off list'
+//   tierPriceNote(same)                    'Prices shown are your Silver
+//                                          tier prices, 5% off list.'
+// A tier without a discount is named alone ('Standard'). The tier's key is
+// used rather than its label, which may already name the discount
+// ('Silver (5% off)').
+export function tierName(tier) {
+  const text = String(tier ?? '').replace(/[-_]+/g, ' ').trim();
+  return text ? text[0].toUpperCase() + text.slice(1) : '';
+}
+
+export function pctText(pct) {
+  const n = Number(pct);
+  return Number.isFinite(n) ? `${Number(n.toFixed(2))}%` : '';
+}
+
+const discountOf = (priceTier) => {
+  const n = Number(priceTier?.discountPct);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+};
+
+export function tierDiscountText(priceTier) {
+  if (!priceTier) return '';
+  const name = tierName(priceTier.tier);
+  const pct = discountOf(priceTier);
+  if (!pct) return name;
+  return [name, `${pctText(pct)} off list`].filter(Boolean).join(' · ');
+}
+
+// The one-line caption over an approved buyer's cards (category intro, the
+// home rails). Without the tier (prices still loading) it says only that the
+// prices are the account's.
+export function tierPriceNote(priceTier) {
+  const name = tierName(priceTier?.tier);
+  if (!name) return 'Prices shown are your account prices.';
+  const pct = discountOf(priceTier);
+  return pct
+    ? `Prices shown are your ${name} tier prices, ${pctText(pct)} off list.`
+    : `Prices shown are your ${name} tier prices.`;
+}
+
 // The estimated total for an approved buyer's lines. When no line that
 // counts toward it (one that can be ordered as it stands: not waiting for
 // its variant, AW-103) has a price yet, it says why instead of showing $0.00.
