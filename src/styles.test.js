@@ -145,11 +145,15 @@ describe('one heading colour (AW-294)', () => {
   // The one exception: the footer's column labels are h2s since AW-313, in the
   // small lilac capitals of the purple footer they always were.
   const EXCEPTIONS = { '.footer-grid h2': 'var(--on-dark-muted)' };
+  // On paper (AW-148) a purple surface loses its fill, and its white
+  // headings print in ink.
+  const printBlocks = () => mediaBlocks(css).filter((b) => b.prelude === 'print');
 
   it('sets h1 and h2 purple in one rule, and only white on purple surfaces elsewhere', () => {
     const shared = rules(css).find((r) => r.selectors.join(',') === 'h1,h2');
     expect(declarations(shared.body).color).toBe('var(--purple)');
-    for (const { selectors, body } of rules(css)) {
+    const screen = printBlocks().reduceRight((text, b) => text.slice(0, b.start) + text.slice(b.end), css);
+    for (const { selectors, body } of rules(screen)) {
       const color = declarations(body).color;
       if (!color || selectors.join(',') === 'h1,h2') continue;
       for (const selector of selectors) {
@@ -158,6 +162,14 @@ describe('one heading colour (AW-294)', () => {
         else expect(`${selector} { color: ${color} }`).toMatch(/color: #fff \}$/);
       }
     }
+  });
+
+  it('prints the headings of purple surfaces in ink, and sets no other heading colour on paper', () => {
+    const inPrint = printBlocks().flatMap((b) => rules(b.body)).flatMap(({ selectors, body }) => {
+      const color = declarations(body).color;
+      return color ? selectors.filter((s) => /^h[12]\b/.test(lastCompound(s))).map((s) => [s, color]) : [];
+    });
+    expect(inPrint).toEqual([['.age-gate h2', 'var(--ink)'], ['.contact-strip h2', 'var(--ink)'], ['.editorial-card.purple h2', 'var(--ink)']]);
   });
 });
 
@@ -402,10 +414,14 @@ describe('one button system and drawn icons (AW-143, AW-298, AW-293, AW-218)', (
     }
   });
 
-  it('draws icons as SVG, not text: the breadcrumb slash and the error mark are the only generated text', () => {
-    // Step counters are zero-padded (AW-296); the error mark is the ringed '!' (AW-295).
+  it('draws icons as SVG, not text: the breadcrumb slash, the error mark and printed link addresses are the only generated text', () => {
+    // Step counters are zero-padded (AW-296); the error mark is the ringed '!'
+    // (AW-295); on paper an outside link or an email button prints where it
+    // goes (AW-148).
     const glyphs = declared('content').filter(({ value }) => !/^(''|counter\([\w-]+, decimal-leading-zero\))$/.test(value));
-    expect(glyphs.map(({ selector }) => selector)).toEqual(['.crumbs li + li::before', '.form-error:not(:empty)::before']);
+    expect(glyphs.map(({ selector }) => selector)).toEqual(['.crumbs li + li::before', '.form-error:not(:empty)::before',
+      'a[href^="http"]::after, a.button[href^="mailto:"]::after']);
+    expect(glyphs[2].value).toBe('" (" attr(href) ")"');
     expect(css).not.toMatch(/[↗→⊞⌄×✓−]/);
     expect(rule('.icon')).toMatchObject({ width: '1em', height: '1em', flex: 'none', 'vertical-align': '-.125em' });
   });
@@ -958,6 +974,86 @@ describe('the footer columns and their headings (AW-305, AW-313)', () => {
     // The contact column is found by its class, not by its place among the columns.
     expect(code(read('src/components/Footer.jsx'))).toMatch(/<div className="footer-contact">\s*<h2>Contact<\/h2>/);
     expect(css).not.toMatch(/\.footer-grid > div:last-child/);
+  });
+});
+
+// Every page on paper (AW-148): the last @media print block, after the admin
+// sheets' (AW-110) and the receipt's (AW-022), which keep their own rules.
+describe('the print stylesheet (AW-148)', () => {
+  const printBlocks = () => mediaBlocks(css).filter((b) => b.prelude === 'print');
+  const site = () => printBlocks().at(-1);
+  const inSite = () => rules(site().body);
+  const hidden = () => inSite().filter((r) => declarations(r.body).display === 'none').flatMap((r) => r.selectors);
+  const own = (selector) => declarations(inSite().find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+
+  it('comes last, after the admin and receipt print blocks, which name the one header', () => {
+    const blocks = printBlocks();
+    expect(blocks).toHaveLength(3);
+    expect(blocks[0].body).toMatch(/body:has\(\.print-sheet\) :is\(\.site-header, /);
+    expect(blocks[1].body).toMatch(/body:has\(\.receipt-head\) :is\(\.site-header, /);
+    // Nothing after the site-wide block.
+    expect(css.slice(site().end + 1).trim()).toBe('');
+    expect(css).not.toMatch(/\.trade-only/);
+  });
+
+  it('gives the site’s pages half-inch margins and leaves the receipt and the admin sheets on the browser’s page', () => {
+    expect(declarations(rules(css).find((r) => r.selectors.join() === '@page site').body)).toEqual({ margin: '.5in' });
+    expect(own('body')).toEqual({ page: 'site' });
+    expect(own('body:has(.receipt-head, .print-sheet)')).toEqual({ page: 'auto' });
+    expect(own('body:has(.receipt-head, .print-sheet) .print-letterhead')).toEqual({ display: 'none' });
+  });
+
+  it('leaves off the header, notices, toast, dialogs, footer links and every control', () => {
+    for (const s of ['.site-header', '.site-notices', '#aw-toasts', '#aw-layers > :not(.age-gate-layer)', '.footer-grid', '.footer-policies', '.policy-nav',
+      '.qty-row', '.card-add', '.price-login', '.stepper button', '.filter-toggle', '.category-filters', '.active-filters', '.dept-jump', '.eligibility-form',
+      '.home-carousel-toggle', '.home-carousel-prev', '.home-carousel-next', '.home-carousel-dots', '.home-hero-actions', '.checkout-clear', '.drawer-remove',
+      '.dialog-actions', '.search-form', 'button.button', 'button.text-link', '.icon-btn']) {
+      expect(hidden(), s).toContain(s);
+    }
+    // The letterhead is for paper only.
+    expect(ruleFor('.print-letterhead')).toEqual({ display: 'none' });
+    expect(own('.print-letterhead')).toMatchObject({ display: 'flex' });
+  });
+
+  it('never hides the FDA statement: in ink, inside a thin ink rule', () => {
+    for (const s of hidden()) expect(s, s).not.toMatch(/nicotine-warning|fda-note/);
+    expect(own('.nicotine-warning, .fda-note .nicotine-warning')).toMatchObject({ background: 'none', color: 'var(--ink)', border: '1px solid var(--ink)' });
+    expect(own('.fda-note')).toMatchObject({ background: 'none', color: 'var(--ink)' });
+  });
+
+  it('prints purple and cream surfaces as ink on white with a thin rule, and adds no shadow', () => {
+    const ink = inSite().find((r) => r.selectors.includes('.contact-strip') && declarations(r.body).border);
+    expect(ink.selectors).toEqual(expect.arrayContaining(['.contact-strip', '.editorial-card.purple', '.dept-tile', '.category-toolbar', '.status-pill', '.status-pill.cancelled']));
+    expect(declarations(ink.body)).toEqual({ background: 'none', color: 'var(--ink)', border: '1px solid var(--line)' });
+    expect(site().body).not.toMatch(/box-shadow/);
+  });
+
+  it('keeps cards, callouts and sections whole, and headings with what follows them', () => {
+    const whole = inSite().find((r) => r.selectors.includes('.content-card') && declarations(r.body)['break-inside'] === 'avoid');
+    expect(whole.selectors).toEqual(expect.arrayContaining(['.content-card', '.dept-tile', '.info-card', '.callout', '.support-block', '.policy-body section',
+      '.checklist-card', '.contact-strip', '.sku-list li']));
+    expect(own('h1, h2, h3, .eyebrow, .dept-head')).toEqual({ 'break-after': 'avoid' });
+    expect(own('.footer-main')).toMatchObject({ 'break-before': 'avoid', 'break-inside': 'avoid' });
+  });
+
+  it('overrides the compact layout a Letter page falls into: wrapped pills, four cards a row, the photo beside the product', () => {
+    expect(own('.sub-pills')).toEqual({ 'flex-wrap': 'wrap', overflow: 'visible', 'margin-inline': '0', padding: '0' });
+    expect(own('.card-grid, .category-card-grid')['grid-template-columns']).toBe('repeat(4, minmax(0, 1fr))');
+    expect(own('.pd-grid')['grid-template-columns']).toBe('3in minmax(0, 1fr)');
+    expect(own('.catalog-layout, .checkout-grid')).toEqual({ display: 'block' });
+    // After every compact block, so it wins at the same specificity.
+    const compactEnds = mediaBlocks(css).filter((b) => b.prelude === MOBILE_QUERY).map((b) => b.end);
+    expect(site().start).toBeGreaterThan(Math.max(...compactEnds));
+  });
+
+  it('prints where an outside link or an email button goes', () => {
+    expect(own('a[href^="http"]::after, a.button[href^="mailto:"]::after')).toMatchObject({ content: '" (" attr(href) ")"', 'font-size': 'var(--text-xs)' });
+  });
+
+  it('opens the SKU lists for printing from main.jsx, next to the DOM guards', () => {
+    const main = code(read('src/main.jsx'));
+    expect(main).toMatch(/installDomGuards\(\);\s*installPrintHelpers\(\);/);
+    expect(code(read('src/App.jsx'))).toMatch(/<div className="app-shell">\s*<PrintLetterhead \/>/);
   });
 });
 

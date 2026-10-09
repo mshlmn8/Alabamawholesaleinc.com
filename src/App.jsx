@@ -32,6 +32,7 @@ import { AgeGate } from './components/AgeGate.jsx';
 import { TradeBar } from './components/TradeBar.jsx';
 import { Header } from './components/Header.jsx';
 import { Footer } from './components/Footer.jsx';
+import { PrintLetterhead } from './components/PrintLetterhead.jsx';
 import { CartDrawer } from './components/CartDrawer.jsx';
 import { HelpDialog } from './components/HelpDialog.jsx';
 import { AuthModal } from './components/AuthModal.jsx';
@@ -370,6 +371,8 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      {/* On paper only, above the page, in place of the header (AW-148). */}
+      <PrintLetterhead />
       {/* The page's one banner landmark (AW-314): the skip link, first in the
           tab order (AW-166), the trade bar and the header. On tall wide
           windows it sticks, its trade bar scrolled away (AW-153). */}

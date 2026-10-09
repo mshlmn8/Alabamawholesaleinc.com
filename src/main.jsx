@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import { ErrorBoundary } from './components/ErrorBoundary.jsx';
 import { installDomGuards } from './lib/domGuard.js';
+import { installPrintHelpers } from './lib/print.js';
 import { takeAuthLink } from './lib/authLink.js';
 import { AuthProvider } from './lib/auth.jsx';
 import { CatalogProvider } from './lib/catalog.jsx';
@@ -12,6 +13,8 @@ import './index.css';
 
 // Before React touches the DOM: translated pages must not crash it (AW-039).
 installDomGuards();
+// Printing opens /catalog's SKU lists, and closes them again after (AW-148).
+installPrintHelpers();
 
 // A Supabase email link ('#access_token=…', '#error=…') is read and removed
 // from the address first (AW-015), so neither the legacy redirect below nor
