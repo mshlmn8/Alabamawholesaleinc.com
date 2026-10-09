@@ -30,6 +30,13 @@
 // `npm run seed`, which only inserts new ids; a change to a row that is
 // already in the database needs an UPDATE data migration (AW-032).
 //
+// A new row's id must be above the live database's
+// `select max(id) from public.products`, not just above the ids in this file:
+// Admin -> Products gives new products ids from the same sequence
+// (products_id_seq). A row whose id staff already used is skipped by the
+// seed (it raises a notice naming the id), and a new row with a SKU another
+// product already has stops the seed with an error (NEW-022).
+//
 // TODO(owner): After legal review, which of Kratom & Kava, Mushroom Products,
 // Detox, Wellness Pills, and the Honey & Energy enhancement items should be
 // delisted, de-featured, or kept? Do not change those lines until then. (AW-001)

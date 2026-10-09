@@ -111,6 +111,36 @@ and `storage` schemas, then runs the RLS and function assertions in
 CI runs it on every pull request. Add a test file there with each new
 migration.
 
+### Tracking which migrations ran (Supabase CLI)
+
+Migrations pasted into the SQL editor leave no record of which ones ran, and
+the first two files are not safe to run twice (`create table`, `create
+policy`). To let the Supabase CLI keep that record, set it up once, from the
+repository root, with the [Supabase CLI](https://supabase.com/docs/guides/cli)
+installed and logged in (`supabase login`):
+
+1. `supabase init` writes `supabase/config.toml` (commit it; it holds no
+   secret). Keep the existing `supabase/migrations`, `supabase/seed` and
+   `supabase/tests` folders as they are.
+2. `supabase link --project-ref <ref>`, where `<ref>` is the project's
+   reference ID (**Project Settings → General**). It asks for the database
+   password.
+3. `supabase migration list` shows each file under Local and, once applied
+   through the CLI, under Remote. Files applied in the SQL editor show no
+   Remote entry yet.
+4. For every file already applied in the SQL editor (today the six up to
+   `20260927180000`, plus any later ones applied the same way), record it
+   without running it:
+   `supabase migration repair --status applied <version> [<version> …]`, with
+   each file's timestamp as the version (for example `20260927180000`). Run
+   `supabase migration list` again: every applied file must show a Remote
+   entry. A file left out would run again on the next push.
+5. From then on, `supabase db push` applies the files the project doesn't
+   have yet, in order, and records them. It asks before applying. Take the
+   dump first (release checklist, step 2).
+
+Never edit a migration that has been applied anywhere; add a new file.
+
 `supabase/seed/products.sql` is generated from `src/data/products.js` by
 `npm run seed`. It is **insert-only**: a product whose id is already in the
 table is left exactly as it is (`on conflict (id) do nothing`), so
@@ -120,6 +150,20 @@ file when products are added to `src/data/products.js`. A correction to a
 product that is already in the database (a new name, SKU, variant list or
 photo) ships as an idempotent `update public.products … where id = …` data
 migration in `supabase/migrations/`, next to the `products.js` edit.
+
+**Ids of new products (NEW-022).** Admin → Products gives each product it
+creates the next id from `products_id_seq`, the same id space the rows in
+`src/data/products.js` use. So a new row in `products.js` needs an id above
+the live `select max(id) from public.products`, not just above the file's
+own ids. The seed checks this before it inserts anything: a seed id the
+table already has under another SKU is skipped and named in a notice ("Seed
+rows skipped: …"; the database keeps its row, and the bundled catalog and the
+database then disagree about that id), and a new seed id whose SKU another
+product already uses (in any case, with or without surrounding spaces) stops
+the file with an error that names the SKU and both ids ("Seed not applied:
+…"), before any row is inserted. Apply the file as one script (the SQL
+editor does; with psql, `psql -v ON_ERROR_STOP=1 --single-transaction -f
+supabase/seed/products.sql`), so nothing after that error runs.
 
 The seed has no `price` column: prices are set only in the database (see
 "Loading your list prices" below), and a product the seed adds starts with
@@ -519,7 +563,11 @@ product from a copy; **Delete** removes one that no order refers to.
 it needs:
 
 - **New products** take the next id from `products_id_seq`, the column's new
-  default. The seed moves the sequence past the ids it inserts.
+  default. The seed moves the sequence past the ids it inserts. Rows added
+  to `src/data/products.js` share that id space, so a new one needs an id
+  above the live `select max(id) from public.products` (see "Ids of new
+  products" in section 2; the seed names an id staff already took, and stops
+  on a SKU they already used).
 - **Checks**: a SKU is used by one product only, whatever its case or
   surrounding spaces (the unique index `products_sku_upper_key`, created only
   when the table has no such duplicates; otherwise the migration prints a
@@ -957,6 +1005,19 @@ docs/OWNER-TODO.md, AW-113 and AW-088).
 
 ## Resetting
 
+> **Destructive.** `drop schema public cascade` permanently deletes every
+> table in `public` and every row in it: all orders and quotes with their
+> lines and history, every profile with its application answers, approval
+> record, status history and internal notes, the licence document records,
+> the list prices, the tier discounts and the catalog. There is no undo
+> without a backup. Never run it on the production project to fix a
+> problem; restore a dump or run a migration's reverse SQL instead (see
+> "Rolling back" in the release checklist).
+
+Only on a project whose data can be thrown away, and only after taking a
+dump of it (release checklist, step 2) and checking that the dump files are
+not empty:
+
 ```sql
 drop schema public cascade;
 create schema public;
@@ -964,7 +1025,9 @@ create schema public;
 ```
 
 `auth.users` lives in a separate schema and is preserved — you'll want to
-delete those manually if you want a fully blank slate.
+delete those manually if you want a fully blank slate. Files in Storage
+(`application-documents`, `product-images`) stay too, but their
+`profile_documents` rows are gone.
 
 ## Release checklist
 
@@ -972,13 +1035,52 @@ The live project gets database changes before the frontend that uses them.
 For each release:
 
 1. Run `npm run test:db` (and `npm test`) on the release commit.
-2. In the SQL editor, apply each migration below that the project doesn't
-   have yet, in order.
-3. Apply `supabase/seed/products.sql` (regenerated by `npm run seed`). It only
-   inserts products whose id is new.
-4. Deploy the frontend.
-5. Then apply the migrations the table below marks "Apply AFTER deploying
+2. **Before applying any migration, take a dump** of the live database and
+   keep it outside the repository (it holds customers' personal data and
+   licence records; never commit it). With the CLI linked (above), name the
+   files after the date and the first migration they precede, for example:
+
+   ```bash
+   mkdir -p ~/aw-db-backups
+   supabase db dump --linked -f ~/aw-db-backups/2026-10-12-pre-20261012100000-schema.sql
+   supabase db dump --linked --data-only -f ~/aw-db-backups/2026-10-12-pre-20261012100000-data.sql
+   ```
+
+   `supabase db dump` writes the schema only unless `--data-only` is given,
+   so take both, and check that neither file is empty. On the Pro plan the
+   Dashboard also keeps daily backups (**Database → Backups**; owner
+   question AW-213 covers the plan), but the latest can be up to a day old,
+   so take the dump as well. Files in Storage are not in a database dump.
+3. Apply each migration below that the project doesn't have yet, in order:
+   in the SQL editor, or with `supabase db push` once tracking is set up
+   ("Tracking which migrations ran").
+4. Apply `supabase/seed/products.sql` (regenerated by `npm run seed`). It only
+   inserts products whose id is new; read its notice if it prints one, and
+   it stops, inserting nothing, on a new row whose SKU another product
+   already uses ("Ids of new products" in section 2).
+5. Deploy the frontend.
+6. Then apply the migrations the table below marks "Apply AFTER deploying
    the new frontend" (`20261010131000_photo_filenames.sql`).
+
+**Rolling back.** The frontend and the database roll back separately:
+
+- **Frontend:** Netlify → **Deploys** → an older deploy → **Publish deploy**.
+  Publish only a deploy built from a commit at or after the latest migration
+  applied to the live project (the commit that added that migration file, or
+  a later one). An older build can call functions, columns or policies that
+  the applied migrations changed or removed: a frontend from before
+  `20260925120000`, for example, inserts orders directly, which that
+  migration forbids, so every quote would fail. See NETLIFY-DEPLOY.md.
+- **Database:** there are no down-migrations. Rolling a migration back means
+  running the commented Reverse SQL at the end of its file (every file from
+  `20261009100000` on has one; read it first, as some changes, such as data
+  moved or stripped, aren't put back), or restoring the dump from step 2,
+  which also undoes every order, application and edit made since. The files
+  before `20261009100000` have no Reverse SQL: for those, the dump is the
+  way back. Roll the database back first, while the current frontend stays
+  published (it works before and after its migrations; see "Before and
+  after" below), then publish an older frontend only if it is at or after
+  the latest migration still applied.
 
 The live project needs all twenty-three, in this order (Cursor's seven
 `20261008…` files, then the six `20261009…` ones, which build on them, then
@@ -1013,7 +1115,7 @@ rolling it back.
     assignment, new-order marker and Realtime; after 13, also on its own)
 17. `20261010130000_catalog_apostrophes.sql` (data only; any time)
 18. `20261010131000_photo_filenames.sql` (data only; **after the new
-    frontend is deployed**, step 5 above)
+    frontend is deployed**, step 6 above)
 19. `20261011110000_order_item_hints.sql` (the checkout names the item a
     refused line is about; any time, after 9)
 20. `20261011111000_profile_role_audit.sql` (role changes in an account's

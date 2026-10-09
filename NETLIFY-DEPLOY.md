@@ -141,9 +141,31 @@ inline scripts.
 
 The build fails unless `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set
 in the Netlify environment (scope "All", so deploy previews get them too).
+Until there is a separate project for previews (owner question AW-213 in
+`docs/OWNER-TODO.md`), deploy previews and branch deploys use the production
+database: an application or quote sent from a preview is real.
 [BACKEND.md](BACKEND.md) covers the variables and the Supabase auth URL
-settings (section 4), the database migrations (section 2) and the first-run
-sanity check (section 5).
+settings (section 4), the database migrations (section 2), the first-run
+sanity check (section 5) and the release checklist: database changes go in
+before the frontend that uses them, after a dump.
+
+### Rolling back a deploy
+
+**Deploys → an older deploy → Publish deploy** puts an earlier build back
+live, but only a build at or after the latest migration applied to the live
+database is safe to publish: one built from the commit that added
+that migration (`supabase/migrations/<timestamp>_….sql`) or a later commit.
+An older build can depend on what a later migration changed or removed (a
+build from before `20260925120000` inserts orders directly, which that
+migration forbids, so every quote would fail). Each deploy's page names its
+commit; compare it with the newest migration the project has (`supabase
+migration list`, or BACKEND.md's release checklist).
+
+Publishing an older deploy never changes the database. Rolling the database
+back means running that migration's commented Reverse SQL (at the end of
+every file from `20261009100000` on) or restoring the dump taken before it
+(BACKEND.md, "Release checklist", step 2, and "Rolling back"); the dump also
+undoes every order and application made since.
 
 ## Netlify Forms
 
