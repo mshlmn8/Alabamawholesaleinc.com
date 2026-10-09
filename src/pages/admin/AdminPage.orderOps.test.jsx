@@ -142,13 +142,13 @@ describe('status changes', () => {
     await act(async () => { fireEvent.change(screen.getByRole('combobox', { name: 'Status for ALW-O-BBBB222233' }), { target: { value: 'picking' } }); });
     expect(fake.find({ kind: 'rpc', name: 'admin_set_order_status' }).map((c) => c.args)).toEqual([{ p_order_id: ORDER_ID, p_status: 'picking', p_note: null }]);
     expect(fake.find({ op: 'update' })).toHaveLength(0);
-    expect(screen.getByRole('status').textContent).toBe('ALW-O-BBBB222233 is now picking.');
+    expect(screen.getByRole('status').textContent).toBe('ALW-O-BBBB222233 marked Picking.');
   });
 
   it('ask for a reason before cancelling, and send it', async () => {
     await open();
     await act(async () => { fireEvent.change(screen.getByRole('combobox', { name: 'Status for ALW-O-BBBB222233' }), { target: { value: 'cancelled' } }); });
-    const dialog = screen.getByRole('alertdialog', { name: 'Cancel ALW-O-BBBB222233?' });
+    const dialog = screen.getByRole('alertdialog', { name: 'Cancel ALW-O-BBBB222233 for Test Market LLC?' });
     expect(fake.find({ kind: 'rpc', name: 'admin_set_order_status' })).toHaveLength(0);
     await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel the order' })); });
     expect(within(dialog).getByText('Enter reason for cancelling to continue.')).toBeTruthy();
@@ -173,7 +173,7 @@ describe('status changes', () => {
     fireEvent.change(screen.getByLabelText('Reason for cancelling'), { target: { value: 'Duplicate order' } });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Cancel the order' })); });
     expect(fake.find({ op: 'update' }).map((c) => c.patch)).toEqual([{ status: 'cancelled' }]);
-    expect(screen.getByRole('status').textContent).toBe('ALW-O-BBBB222233 is now cancelled. The reason wasn’t saved: notes and history need the October 2026 database update (see BACKEND.md).');
+    expect(screen.getByRole('status').textContent).toBe('ALW-O-BBBB222233 marked Cancelled. The reason wasn’t saved: notes and history need the October 2026 database update (see BACKEND.md).');
     // The missing function is not asked for again.
     await act(async () => { fireEvent.change(screen.getByRole('combobox', { name: 'Status for ALW-O-BBBB222233' }), { target: { value: 'contacted' } }); });
     expect(fake.find({ kind: 'rpc', name: 'admin_set_order_status' })).toHaveLength(1);

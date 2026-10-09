@@ -113,7 +113,7 @@ describe('checked writes (AW-202)', () => {
     writeFailure = 'no rows';
     const select = screen.getByRole('combobox', { name: 'Status for ALW-O-AAAA111122' });
     await act(async () => { fireEvent.change(select, { target: { value: 'picking' } }); });
-    expect(fake.find({ op: 'update' })[0]).toMatchObject({ table: 'orders', patch: { status: 'picking' }, returning: 'id' });
+    expect(fake.find({ op: 'update' })[0]).toMatchObject({ table: 'orders', patch: { status: 'picking' }, returning: 'id, status, updated_at' });
     expect(screen.getByRole('alert').textContent).toBe('ALW-O-AAAA111122: The change wasn’t saved. Try again.');
     expect(screen.getByRole('combobox', { name: 'Status for ALW-O-AAAA111122' }).value).toBe('new');
   });
@@ -124,7 +124,7 @@ describe('checked writes (AW-202)', () => {
     await act(async () => {
       fireEvent.change(screen.getByRole('combobox', { name: 'Status for ALW-O-AAAA111122' }), { target: { value: 'contacted' } });
     });
-    expect(statusText()).toBe('ALW-O-AAAA111122 is now contacted.');
+    expect(statusText()).toBe('ALW-O-AAAA111122 marked Contacted.');
     await act(async () => { vi.advanceTimersByTime(STATUS_MS); });
     expect(statusText()).toBe('');
   });

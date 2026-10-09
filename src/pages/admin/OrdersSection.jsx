@@ -19,7 +19,7 @@ import { downloadCsv, toCsv } from './csv.js';
 import {
   ADMIN_ORDER_SELECT, MAX_ORDER_SEARCH, ORDER_LIMIT, hasOrderFilters, isQuote, orderCsvRecords, orderFilters, ordersCsvFileName, ordersQuery,
 } from './orderQueries.js';
-import { hasAssignment, staffName, statusLabel } from './orderStaff.js';
+import { MAX_NOTE, hasAssignment, staffName, statusLabel } from './orderStaff.js';
 import { isNewSince, ordersActivity } from './ordersSeen.js';
 import { useLiveOrders } from './liveOrders.js';
 import { printHref } from './printSheet.js';
@@ -163,24 +163,27 @@ export function placedAt(value) {
 // A status change: admin_set_order_status() (20261010122000; it logs the
 // change, with a note) and, on a database without it, the checked plain
 // update of before (logged without a note once the migration is in).
-// Returns { error, via: 'rpc' | 'update' }. The missing function is
-// remembered for the rest of the visit.
+// Returns { error, via: 'rpc' | 'update', row: { id, status, updated_at } }.
+// The missing function is remembered for the rest of the visit
+// (orderStatusFunctionMissing(): the cancel dialog then says a reason can't
+// be stored).
 let statusFunctionMissing = false;
 export const resetOrderStatusForTests = () => { statusFunctionMissing = false; };
+export const orderStatusFunctionMissing = () => statusFunctionMissing;
 export async function setOrderStatus(client, order, status, note = null) {
   if (!statusFunctionMissing) {
     let result;
     try {
       result = await client.rpc('admin_set_order_status', { p_order_id: order.id, p_status: status, p_note: note });
     } catch (error) {
-      return { error, via: 'rpc' };
+      return { error, via: 'rpc', row: null };
     }
-    if (!result?.error) return { error: null, via: 'rpc' };
-    if (!MISSING_FUNCTION_CODES.includes(result.error.code)) return { error: withStatus(result), via: 'rpc' };
+    if (!result?.error) return { error: null, via: 'rpc', row: result?.data && typeof result.data === 'object' ? result.data : null };
+    if (!MISSING_FUNCTION_CODES.includes(result.error.code)) return { error: withStatus(result), via: 'rpc', row: null };
     statusFunctionMissing = true;
   }
-  const { error } = await checkedWrite(client.from('orders').update({ status }).eq('id', order.id));
-  return { error, via: 'update' };
+  const { data, error } = await checkedWrite(client.from('orders').update({ status }).eq('id', order.id), 'id, status, updated_at');
+  return { error, via: 'update', row: Array.isArray(data) ? data[0] ?? null : null };
 }
 
 // The search box waits this long after typing before it asks the database.
@@ -188,6 +191,9 @@ export const ORDER_SEARCH_DEBOUNCE_MS = 300;
 const METHOD_OPTIONS = [['', 'Any'], ['delivery', 'Delivery'], ['willcall', 'Will-call']];
 const timeFormat = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
 export const printLinkId = (orderId, doc) => `print-${doc}-${orderId}`;
+// An order card's status select (focused again after Undo).
+export const orderStatusId = (orderId) => `order-status-${orderId}`;
+const NO_IDS = new Set();
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 // The filters above the status pills (AW-110). Dates, the method and the
@@ -250,6 +256,19 @@ export function OrdersTab({
   const filters = useMemo(() => orderFilters(query, sentSearch), [query, sentSearch]);
   const filtersKey = JSON.stringify(filters);
 
+  // Status changes on their way (id -> the status shown meanwhile, AW-112):
+  // a reload keeps showing it, and the card's select takes no other change.
+  const savingRef = useRef(new Map());
+  const [saving, setSaving] = useState(NO_IDS);
+  // Orders moved out of the status on screen: they stay, tagged "Moved to
+  // …", until Refresh or another filter; the live reloads keep them.
+  const movedKey = `${filter}|${filtersKey}`;
+  const [moved, setMoved] = useState({ key: null, ids: NO_IDS });
+  // Another filter forgets them (so coming back to this one doesn't bring
+  // them back).
+  if (moved.key !== null && moved.key !== movedKey) setMoved({ key: null, ids: NO_IDS });
+  const movedIds = moved.key === movedKey ? moved.ids : NO_IDS;
+
   // A failed load says so, with Try again, instead of "No orders" (AW-202);
   // orders already on screen stay, and so do the filters, the focus and any
   // card's open editor (cards are keyed by order id). Only the newest
@@ -290,7 +309,8 @@ export function OrdersTab({
       }
     }
     lastLoad.current = { key, newest: Math.max(newest, last.key === key ? last.newest ?? 0 : 0) };
-    setOrders(rows);
+    const pending = savingRef.current;
+    setOrders(pending.size ? rows.map((row) => (pending.has(row.id) ? { ...row, status: pending.get(row.id) } : row)) : rows);
     setUpdatedAt(new Date());
     return true;
   }, []);
@@ -306,7 +326,10 @@ export function OrdersTab({
     setRefreshing(true);
     const ok = await reload();
     setRefreshing(false);
-    if (ok) notify?.(`Orders updated at ${timeFormat.format(new Date())}.`);
+    if (ok) {
+      setMoved({ key: null, ids: NO_IDS });
+      notify?.(`Orders updated at ${timeFormat.format(new Date())}.`);
+    }
   };
 
   useEffect(() => {
@@ -334,20 +357,43 @@ export function OrdersTab({
     setOrders((list) => list?.map((o) => (o.id === id ? { ...o, assigned_to: assignedTo, ...(updated ? { updated_at: updated } : {}) } : o)) ?? list);
   };
 
-  // A status change reloads the list either way, so a refused one visibly
-  // goes back to the saved status, beside the error. A cancellation carries
-  // its reason (ConfirmDialog); without the October 2026 update the reason
-  // has nowhere to go, and the status line says so.
-  const updateStatus = async (order, status, note = null) => {
+  // A status change shows at once (AW-112): the card takes the new status
+  // where it is (no reload), stays in this filter tagged "Moved to …", and
+  // its select keeps the focus. One request per order at a time. A refused
+  // change goes back to the saved status, beside the error. The status line
+  // offers Undo, which puts the previous status back the same way (not into
+  // or out of cancelled: cancelling asks for a reason). A cancellation
+  // carries its reason (ConfirmDialog); without the October 2026 update the
+  // reason has nowhere to go, and the status line says so.
+  const updateStatus = async (order, status, note = null, { undoable = true } = {}) => {
+    if (savingRef.current.has(order.id)) return false;
+    const previous = order.status;
+    if (status === previous) return true;
+    const patchStatus = (value, extra = {}) => setOrders((list) => list?.map((o) => (o.id === order.id ? { ...o, status: value, ...extra } : o)) ?? list);
+    savingRef.current.set(order.id, status);
+    setSaving(new Set(savingRef.current.keys()));
     setStatusError(null);
-    const { error, via } = await setOrderStatus(supabase, order, status, note);
-    if (error) setStatusError(`${order.ref_num}: ${orderActionError(error)}`);
-    else {
-      const lost = note && via === 'update' ? ' The reason wasn’t saved: notes and history need the October 2026 database update (see BACKEND.md).' : '';
-      notify?.(`${order.ref_num} is now ${status.replace(/_/g, ' ')}.${lost}`);
+    patchStatus(status);
+    setMoved((m) => ({ key: movedKey, ids: new Set([...(m.key === movedKey ? m.ids : []), order.id]) }));
+    const { error, via, row } = await setOrderStatus(supabase, order, status, note);
+    savingRef.current.delete(order.id);
+    setSaving(new Set(savingRef.current.keys()));
+    if (error) {
+      patchStatus(previous);
+      setStatusError(`${order.ref_num}: ${orderActionError(error)}`);
+      return false;
     }
-    reload();
-    return !error;
+    // The new updated_at: an open "Staff notes and history" loads the change.
+    if (row?.updated_at) patchStatus(status, { updated_at: row.updated_at });
+    const lost = note && via === 'update' ? ' The reason wasn’t saved: notes and history need the October 2026 database update (see BACKEND.md).' : '';
+    const canUndo = undoable && status !== 'cancelled' && previous !== 'cancelled';
+    notify?.(`${order.ref_num} marked ${statusLabel(status)}.${lost}`, canUndo ? {
+      undo: () => {
+        document.getElementById(orderStatusId(order.id))?.focus();
+        updateStatus({ ...order, status }, previous, null, { undoable: false });
+      },
+    } : undefined);
+    return true;
   };
 
   // Back from a print view: its print link takes focus again.
@@ -379,7 +425,7 @@ export function OrdersTab({
   }
   const workflow = hasQuoteWorkflow(orders);
   const states = workflow ? ORDER_STATES : LEGACY_ORDER_STATES;
-  const shown = filter === 'all' ? orders : orders.filter(o => o.status === filter);
+  const shown = filter === 'all' ? orders : orders.filter(o => o.status === filter || movedIds.has(o.id));
   const pills = [...states, 'all'];
   const accountName = query.account ? (orders.find((o) => o.profiles?.business)?.profiles.business || 'one account') : null;
 
@@ -429,7 +475,8 @@ export function OrdersTab({
       <div className="order-list">
         {shown.map(o => (
           <OrderCard key={o.id} order={o} states={states} workflow={workflow} tiers={tiers} onStatus={updateStatus} onReload={reload} notify={notify}
-            isNew={isNewSince(o, since)} admins={admins} assignment={assignment} onAssigned={assigned} onOpenPrint={onOpenPrint} />
+            isNew={isNewSince(o, since)} admins={admins} assignment={assignment} onAssigned={assigned} onOpenPrint={onOpenPrint}
+            saving={saving.has(o.id)} movedTo={filter !== 'all' && movedIds.has(o.id) && o.status !== filter ? o.status : null} />
         ))}
       </div>
       {shown.length === 0 && !loadError && (
@@ -450,9 +497,12 @@ export function OrdersTab({
 // prices (suggested from the list price and the account's tier), email the
 // quote, and convert a priced quote into a confirmed order. AW-110 adds the
 // print links, the cancellation reason and "Staff notes and history";
-// AW-111 the New marker (isNew).
+// AW-111 the New marker (isNew). AW-112: saving (a status change is on its
+// way: the select takes no other), movedTo (the status the card moved to,
+// out of the filter on screen).
 function OrderCard({
   order: o, states, workflow, tiers, onStatus, onReload, notify, isNew = false, admins = null, assignment = false, onAssigned, onOpenPrint,
+  saving = false, movedTo = null,
 }) {
   const quote = isQuote(o);
   const items = o.order_items || [];
@@ -517,20 +567,26 @@ function OrderCard({
     }
   };
 
-  // Cancelling asks for a reason first (admin_set_order_status needs one).
-  const [cancelling, setCancelling] = useState(false);
+  // Cancelling asks for a reason first (admin_set_order_status needs one);
+  // the select keeps the saved status until it is confirmed, and Keep it or
+  // Escape gives it the focus back (ModalLayer). On a database without the
+  // function the reason can't be stored, so the dialog says so and doesn't
+  // require it.
+  const [cancelling, setCancelling] = useState(null); // { reasonStored }
   const [cancelBusy, setCancelBusy] = useState(false);
   const chooseStatus = (e) => {
     const value = e.target.value;
-    if (value === 'cancelled' && o.status !== 'cancelled') setCancelling(true);
+    if (saving) return;
+    if (value === 'cancelled' && o.status !== 'cancelled') setCancelling({ reasonStored: !orderStatusFunctionMissing() });
     else onStatus(o, value);
   };
   const confirmCancel = async (reason) => {
     setCancelBusy(true);
     await onStatus(o, 'cancelled', reason);
     setCancelBusy(false);
-    setCancelling(false);
+    setCancelling(null);
   };
+  const business = o.profiles?.business || o.business || o.contact;
   const [staffOpen, setStaffOpen] = useState(false);
 
   const unpriced = items.some(it => it.unit_price == null);
@@ -547,9 +603,10 @@ function OrderCard({
           {isNew && <span className="order-new"><span>New</span><span className="sr-only"> since your last visit</span></span>}
           <span className="order-kind">{kindLabel}</span>
           <b className="order-ref">{o.ref_num}</b>
-          <select aria-label={`Status for ${o.ref_num}`} value={o.status} onChange={chooseStatus}>
+          <select id={orderStatusId(o.id)} aria-label={`Status for ${o.ref_num}`} value={o.status} aria-disabled={saving || undefined} onChange={chooseStatus}>
             {options.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
           </select>
+          {movedTo && <span className="order-moved">{`Moved to ${statusLabel(movedTo)}`}</span>}
           {/* The status as text, for a printed list (the select doesn't print). */}
           <span className="order-status-print">{statusLabel(o.status)}</span>
         </div>
@@ -645,10 +702,14 @@ function OrderCard({
       </details>
       {cancelling && (
         <ConfirmDialog
-          title={`Cancel ${o.ref_num}?`}
-          body="The order moves to cancelled. Say why: the reason goes in its history, which only staff see."
-          confirmLabel="Cancel the order" cancelLabel="Keep it" reasonLabel="Reason for cancelling" busy={cancelBusy}
-          onConfirm={confirmCancel} onCancel={() => setCancelling(false)}
+          title={business ? `Cancel ${o.ref_num} for ${business}?` : `Cancel ${o.ref_num}?`}
+          body={cancelling.reasonStored
+            ? 'The order moves to cancelled. Say why: the reason goes in its history, which only staff see.'
+            : 'The order moves to cancelled. A reason can’t be stored until the October 2026 database update (see BACKEND.md), so it is optional.'}
+          confirmLabel="Cancel the order" cancelLabel="Keep it"
+          reasonLabel={cancelling.reasonStored ? 'Reason for cancelling' : 'Reason for cancelling (optional)'} reasonOptional={!cancelling.reasonStored}
+          reasonMax={MAX_NOTE} busy={cancelBusy}
+          onConfirm={confirmCancel} onCancel={() => { if (!cancelBusy) setCancelling(null); }}
         />
       )}
     </article>

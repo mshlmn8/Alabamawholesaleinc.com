@@ -752,12 +752,16 @@ p > .text-link { min-height: 0; }
 /* Admin -> Accounts' search, its business links and contact links, and an
    account's own page (AW-113): the business and a status pill, then two
    columns from 68.75em (status, contact form and verification; documents,
-   internal notes, orders and history). */
+   internal notes, orders and history). A change on its way (AW-112) fades
+   the select it came from; aria-disabled, not disabled, keeps the focus on
+   it. A moved order card says where it went. */
 .admin-toolbar .admin-account-search { flex: 1 1 18rem; max-width: 32rem; }
 .admin-account-search input { width: 100%; }
 .account-link, .order-account-link { color: var(--purple); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: break-word; }
 .account-contact { display: grid; gap: 2px; min-width: 10rem; }
 .account-contact a, .account-detail-contact a { color: var(--purple); text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+:where(.aw-table, .order-head, .form-grid) select[aria-disabled="true"] { opacity: var(--disabled-opacity); cursor: progress; }
+.order-moved { display: inline-block; padding: 2px 8px; border: 1px solid var(--purple); color: var(--purple); font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; }
 .account-detail { margin-top: 18px; }
 .account-detail-back, .account-orders-link { margin: 0 0 6px; }
 .account-detail-back .text-link, .account-orders-link .text-link { min-height: var(--tap); }
