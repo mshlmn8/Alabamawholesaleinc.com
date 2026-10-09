@@ -15,9 +15,10 @@
 //
 // Above the total, the cart's summary (CartSummary, AW-238): lines and units,
 // and an approved buyer's progress to the order minimum and free delivery.
-// On a short screen (a phone in landscape) it follows the lines instead, so
-// the fixed foot takes no more height from the list than before. After the
-// lines, a note says the cart is kept on this device only (AW-334).
+// On a short screen (a phone in landscape) and in the compact layout (a
+// phone upright) it follows the lines instead, so the fixed foot takes no
+// more height from the list than before (AW-152). After the lines, a note
+// says the cart is kept on this device only (AW-334).
 
 import { useEffect, useRef } from 'react';
 import { basketTerms, cartDeviceNote } from '../data/terms.js';
@@ -26,7 +27,7 @@ import { LINE_CONTROL, focusLineSoon, keepFocusNear, neighbourKey } from '../lib
 import { totalLabel } from '../lib/pricing.js';
 import { variantExcludedText } from '../lib/cart.js';
 import { Link, focusPageHeading } from '../lib/router.js';
-import { useMediaQuery } from '../lib/useMediaQuery.js';
+import { MOBILE_QUERY, useMediaQuery } from '../lib/useMediaQuery.js';
 import { CallOrEmail } from './ContactLinks.jsx';
 import { ModalLayer } from './ModalLayer.jsx';
 import { CartLine } from './CartLine.jsx';
@@ -44,7 +45,10 @@ export function CartDrawer({
 }) {
   const listRef = useRef(null);
   const wasOpen = useRef(open);
-  const short = useMediaQuery(SHORT_DRAWER_QUERY);
+  // The summary goes after the lines where the list needs the room (AW-152).
+  const shortScreen = useMediaQuery(SHORT_DRAWER_QUERY);
+  const compact = useMediaQuery(MOBILE_QUERY);
+  const short = shortScreen || compact;
   useEffect(() => {
     const closed = wasOpen.current && !open;
     wasOpen.current = open;
