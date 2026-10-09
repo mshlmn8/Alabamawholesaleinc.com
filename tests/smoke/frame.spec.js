@@ -6,6 +6,7 @@
 // on Playwright's fake clock, so nothing waits for real seconds.
 import { test, expect } from '@playwright/test';
 import { serveCatalog } from './catalog.js';
+import { GUEST_CART, cartValue } from './cartStore.js';
 
 const AGE_KEY = 'aw-age-verified'; // STORAGE.age in src/data/content.js
 const ageRecord = (at) => JSON.stringify({ ok: true, at });
@@ -186,6 +187,92 @@ test.describe('the sticky header and the department page', () => {
     // Using them never scrolled the page: the header's own controls never
     // count as hidden under it.
     expect(await page.evaluate(() => window.scrollY)).toBe(2500);
+    expect(errors).toEqual([]);
+  });
+
+  // Resolves once the page has held still for 250ms: the browser's smooth
+  // scroll to a focused control, and any correction after it, are over.
+  const settled = (page) => page.evaluate(() => new Promise((done) => {
+    let y = window.scrollY;
+    let since = performance.now();
+    const check = () => {
+      if (window.scrollY !== y) { y = window.scrollY; since = performance.now(); }
+      if (performance.now() - since > 250) done();
+      else requestAnimationFrame(check);
+    };
+    requestAnimationFrame(check);
+  }));
+  const focused = (page) => page.evaluate(() => {
+    const el = document.activeElement;
+    const r = el.getBoundingClientRect();
+    const header = document.querySelector('.site-header');
+    return {
+      name: el.getAttribute('aria-label') || el.labels?.[0]?.textContent.trim() || el.textContent.trim(),
+      top: r.top, bottom: r.bottom, y: window.scrollY,
+      inBar: !!el.closest('.trade-bar'), inHeader: header.contains(el), inMain: !!el.closest('main'), inForm: !!el.closest('main form'),
+      headerBottom: header.getBoundingClientRect().bottom,
+    };
+  });
+
+  test('Shift+Tab into the trade bar shows it, and the page stays put (NEW-017)', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'phone', 'the 1440 layout');
+    const errors = trackErrors(page);
+    await page.goto('/category/tobacco');
+    await expect(page.locator('main h1')).toHaveText('Tobacco');
+    await page.evaluate(() => window.scrollTo({ top: 1500, behavior: 'instant' }));
+    await page.waitForFunction(() => window.scrollY === 1500);
+    const banner = page.getByRole('banner');
+    const barHeight = (await rect(banner.locator('.trade-bar'))).height;
+    await banner.getByRole('combobox', { name: 'Search products' }).focus();
+    const inBar = [];
+    for (let i = 0; i < 4; i++) {
+      await page.keyboard.press('Shift+Tab');
+      await settled(page);
+      const now = await focused(page);
+      if (now.inBar) {
+        inBar.push(now.name);
+        // The whole control is on screen.
+        expect(now.top, now.name).toBeGreaterThanOrEqual(0);
+        expect(now.bottom, now.name).toBeLessThanOrEqual(page.viewportSize().height);
+      }
+      expect(Math.abs(now.y - 1500), now.name).toBeLessThanOrEqual(barHeight);
+    }
+    expect(inBar).toContain('Pause announcements');
+    expect(inBar).toContain('Call (205) 354-4473');
+    // Back in the masthead, the trade bar scrolls away again.
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await expect(banner.getByRole('link', { name: 'Alabama Wholesale home' })).toBeFocused();
+    await expect(banner.locator('.trade-bar')).not.toBeInViewport();
+    expect(errors).toEqual([]);
+  });
+
+  test('Shift+Tab back through checkout never leaves a field under the stuck header (NEW-018)', async ({ page, context }, testInfo) => {
+    test.skip(testInfo.project.name === 'phone', 'the wide layouts');
+    const errors = trackErrors(page);
+    await context.addInitScript(([key, cart]) => {
+      try { if (!localStorage.getItem(key)) localStorage.setItem(key, cart); } catch { /* storage blocked */ }
+    }, [GUEST_CART, cartValue({ 14: 2, 2: 3 })]);
+    for (const size of [{ width: 1440, height: 900 }, { width: 1920, height: 1080 }]) {
+      await page.setViewportSize(size);
+      await page.goto('/quote');
+      await expect(page.getByRole('heading', { level: 1, name: 'Request a quote' })).toBeVisible();
+      await page.locator('footer').getByRole('link').first().focus();
+      await settled(page);
+      const fields = [];
+      // From the footer back through the form, to the cart lines before it.
+      for (let i = 0; i < 40; i++) {
+        await page.keyboard.press('Shift+Tab');
+        await settled(page);
+        const now = await focused(page);
+        if (now.inHeader || (fields.length && !now.inForm)) break;
+        if (!now.inForm) continue;
+        fields.push(now.name);
+        expect(now.top, `${now.name} at ${size.width}x${size.height}`).toBeGreaterThanOrEqual(now.headerBottom - 1);
+      }
+      expect(fields).toContain('Notes (optional)');
+    }
     expect(errors).toEqual([]);
   });
 

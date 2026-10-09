@@ -205,6 +205,13 @@ input[type="search"]:focus-visible { outline-offset: -3px; }
    transform, filter or contain here: the skip link is fixed to the window. */
 @media (min-width: 53.13em) and (min-height: 37.5em) {
   .site-header { position: sticky; top: calc(-1 * var(--trade-bar-h)); z-index: 20; }
+  /* While focus is in the trade bar the whole header shows, so its controls
+     are never focused out of sight above the window and Shift+Tab doesn't
+     throw the page about (NEW-017, WCAG 2.4.11). stickyHeader.js sets the
+     class in focusin; :has() does the same without script, in a rule of its
+     own (NEW-019). */
+  .site-header.is-revealed { top: 0; }
+  .site-header:has(.trade-bar:focus-within) { top: 0; }
   /* Anchors, the skip link and keyboard focus land below the stuck header
      (WCAG 2.4.11). The offset is on the page's content, not scroll-padding on
      <html>: that would count the header's own controls as hidden under it,

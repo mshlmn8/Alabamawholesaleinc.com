@@ -5,7 +5,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { MOBILE_QUERY } from './lib/useMediaQuery.js';
-import { STICKY_HEADER_QUERY } from './lib/stickyHeader.js';
+import { REVEALED_CLASS, STICKY_HEADER_QUERY } from './lib/stickyHeader.js';
 
 // Vitest runs from the repository root.
 const read = (file) => readFileSync(resolve(process.cwd(), file), 'utf8');
@@ -344,6 +344,13 @@ describe('the sticky header and what sticks under it (AW-153, AW-300, AW-312, AW
     for (const property of ['transform', 'filter', 'contain', 'will-change', 'perspective']) {
       expect(declared(property).filter(({ selector }) => /(^|, )(\.site-header|\.app-shell|body|html)$/.test(selector)), property).toEqual([]);
     }
+  });
+
+  it('shows the whole header, trade bar included, while focus is in the trade bar (NEW-017)', () => {
+    expect(inBlocks(STICKY_HEADER_QUERY, `.site-header.${REVEALED_CLASS}`)).toEqual([{ top: '0' }]);
+    // The same without script, in a rule of its own: a browser without :has()
+    // drops only that rule (NEW-019).
+    expect(inBlocks(STICKY_HEADER_QUERY, '.site-header:has(.trade-bar:focus-within)')).toEqual([{ top: '0' }]);
   });
 
   it('lands anchors and keyboard focus below the stuck header, and never counts the header as hidden under itself', () => {
