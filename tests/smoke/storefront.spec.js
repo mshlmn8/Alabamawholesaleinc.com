@@ -776,8 +776,11 @@ test.describe('product photo frame', () => {
       expect(Math.min(m.top, m.bottom, m.left, m.right), `#${id}`).toBeGreaterThanOrEqual(20);
       expect(Math.abs(m.top - m.bottom), `#${id}`).toBeLessThanOrEqual(2);
       expect(Math.abs(m.left - m.right), `#${id}`).toBeLessThanOrEqual(2);
-      // Scaled to fit along its long side, not shrunk further.
-      expect(shape === 'tall' ? m.top : m.left, `#${id}`).toBeLessThanOrEqual(36);
+      // Scaled to fit the frame, not shrunk further. The pipeline frames every
+      // product photo in a window of the card's 1.1 aspect around the product
+      // (AW-287), so the rendition itself is never tall: whichever side of
+      // the frame limits it, that side sits at the inset.
+      expect(Math.min(m.top, m.left), `#${id} (${shape})`).toBeLessThanOrEqual(36);
     }
     expect(errors).toEqual([]);
   });
