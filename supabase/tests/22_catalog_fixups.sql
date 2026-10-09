@@ -1,5 +1,6 @@
 -- Catalog fix-ups (20261012130000_catalog_fixups.sql): SKUs (AW-135), names
--- (AW-071, NEW-023) and the brand's spelling in five descriptions (AW-075).
+-- (AW-071, NEW-023), the brand's spelling in five descriptions (AW-075) and
+-- two sell units (AW-136).
 --
 -- After the migrations and the seed, the rows have the values
 -- src/data/products.js gives them. The migration's updates, run again, change
@@ -48,6 +49,9 @@ begin
   get diagnostics n = row_count; total := total + n;
   update public.products set description = 'Backwoods True Wraps from the wraps and leaf line in our Tobacco department. Three flavors: Original, Vanilla and Aromatic.' where id = 260 and description = 'Backwoods true wraps from the wraps and leaf line in our Tobacco department. Three flavors: Original, Vanilla and Aromatic.';
   get diagnostics n = row_count; total := total + n;
+  -- (d) Sell units (AW-136).
+  update public.products set sell_unit = 'single' where id in (16, 340) and sell_unit = '';
+  get diagnostics n = row_count; total := total + n;
   return total;
 end $fn$;
 
@@ -65,12 +69,13 @@ create or replace function pg_temp.p22_old() returns void language sql as $fn$
   update public.products set description = replace(description, 'Pure Eyes from', 'Pure eyes from') where id = 193;
   update public.products set description = replace(description, 'Lil Leaf wraps', 'Lil leaf wraps') where id = 213;
   update public.products set description = replace(description, 'Backwoods True Wraps', 'Backwoods true wraps') where id = 260;
+  update public.products set sell_unit = '' where id in (16, 340);
 $fn$;
 
 -- The columns the migration changes, on the rows it changes.
 create or replace function pg_temp.p22_rows() returns text language sql as $fn$
   select string_agg(format('%s|%s|%s|%s|%s', id, sku, name, description, sell_unit), E'\n' order by id)
-  from public.products where id in (13, 65, 83, 90, 121, 143, 183, 193, 213, 260, 350)
+  from public.products where id in (13, 16, 65, 83, 90, 121, 143, 183, 193, 213, 260, 340, 350)
 $fn$;
 
 do $$
@@ -105,6 +110,12 @@ begin
   assert (select description like 'Lil Leaf wraps from %' and brand = 'Lil Leaf' from public.products where id = 213), '#213 Lil Leaf';
   assert (select description like 'Backwoods True Wraps from %' and name = 'Backwoods True Wraps' from public.products where id = 260), '#260 Backwoods True Wraps';
 
+  -- (d) Sold as singles, as the descriptions say (AW-136); the 5-packs whose
+  -- photo they share keep theirs.
+  assert (select count(*) from public.products where id in (16, 340) and sell_unit = 'single' and description like '%sold as singles%') = 2,
+    '#16 and #340 are sold by the single';
+  assert (select count(*) from public.products where id in (11, 77) and sell_unit = '5-pack') = 2, '#11 and #77 are 5-packs';
+
   -- Run again over the seed: nothing changes.
   assert pg_temp.p22_apply() = 0, 'a re-run changes no row';
   assert pg_temp.p22_rows() = seeded, 'and no value';
@@ -112,7 +123,7 @@ begin
   -- Over the live database's values: the same result, once.
   perform pg_temp.p22_old();
   assert pg_temp.p22_rows() <> seeded, 'the old values are back';
-  assert pg_temp.p22_apply() = 12, 'four codes, two names and six descriptions change';
+  assert pg_temp.p22_apply() = 14, 'four codes, two names, six descriptions and two sell units change';
   assert pg_temp.p22_rows() = seeded, 'to the seed''s values';
   assert pg_temp.p22_apply() = 0, 'and a second run changes nothing';
 
@@ -122,11 +133,15 @@ begin
   update public.products set sku = 'AW-DM-STAFF' where id = 83;
   update public.products set name = 'Uncle Al''s cookies (staff)' where id = 350;
   update public.products set description = '' where id = 193;
-  assert pg_temp.p22_apply() = 9, 'the other nine change';
+  update public.products set sell_unit = 'pack of 1' where id = 340;
+  assert pg_temp.p22_apply() = 10, 'the other ten change';
   assert (select sku from public.products where id = 83) = 'AW-DM-STAFF', 'a code staff changed stays';
   assert (select name from public.products where id = 350) = 'Uncle Al''s cookies (staff)', 'so does a name staff changed';
   assert (select description from public.products where id = 193) = '', 'and a blank description';
+  assert (select sell_unit from public.products where id = 340) = 'pack of 1', 'and a sell unit staff set';
+  assert (select sell_unit from public.products where id = 16) = 'single', 'while a blank one is filled';
   update public.products set sku = 'AW-DUTCH-MASTERS' where id = 83;
+  update public.products set sell_unit = 'single' where id = 340;
   update public.products set name = 'Uncle Al''s' where id = 350;
   update public.products set description = 'Pure Eyes from the OTC and health line in our Merchandise department.' where id = 193;
   assert pg_temp.p22_rows() = seeded, 'put back';
@@ -135,7 +150,7 @@ begin
   perform pg_temp.p22_old();
   insert into public.products (id, name, brand, cat, sub, sku, active)
   values (92201, 'P22 staff cutlery', 'P22', 'GROCERY', 'Paper & Plastic', ' aw-plastic-cutlery ', true);
-  assert pg_temp.p22_apply() = 11, 'everything else changes';
+  assert pg_temp.p22_apply() = 13, 'everything else changes';
   assert (select sku from public.products where id = 121) = 'AW-PLASTIC', '#121 keeps its old code while another product has the new one';
   delete from public.products where id = 92201;
   assert pg_temp.p22_apply() = 1, 'and takes it once that product is gone';

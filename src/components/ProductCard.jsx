@@ -7,7 +7,8 @@
 // means when the product has a sell unit (AW-031).
 //
 // From Cursor's PR #13: a product without a photo shows "Photo coming soon"
-// (AW-029); a photo other rows share is badged with this row's sell unit
+// (AW-029); a photo other rows share is badged with this row's sell unit, or
+// else the size word in its name, and its alt calls it representative
 // (AW-136); the placeholder brand "Assorted" isn't printed (AW-286); the
 // buttons say "Select options", "Add to quote" or "Add to order", and an add
 // shows "Added" for a moment and is announced (AW-057).
@@ -45,8 +46,8 @@
 //
 // Nothing is printed over the photo (AW-055): the tag (BESTSELLER, NEW, DEAL,
 // PREMIUM) is a chip in the kicker line beside the product line, and the
-// department isn't repeated on the card. Only the sell-unit badge (AW-136)
-// stays on the photo. The photo is lazy unless the page says `eager`; the
+// department isn't repeated on the card. Only the badge on a shared photo
+// (its sell unit or size word, AW-136) stays on the photo. The photo is lazy unless the page says `eager`; the
 // first card of a department page is also `priority` (AW-323).
 //
 // Without trade pricing (a guest, or an account not approved) the card says
@@ -61,7 +62,7 @@ import {
 } from '../lib/lines.js';
 import { PRICE_FAILED_SENTENCE, priceDidNotLoad, priceLabel, variantPriceRange } from '../lib/pricing.js';
 import { PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
-import { brandLabel } from '../lib/format.js';
+import { brandLabel, sharedPhotoBadge } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { announce } from '../lib/announce.js';
@@ -162,12 +163,14 @@ export function ProductCard({
     else if (n < qty) decLine(key, qty - n);
   };
   const titleId = useId();
+  // A photo other rows share says which of them this is (AW-136).
+  const badge = p.sharedPhoto ? sharedPhotoBadge(p) : '';
   return (
     <article className="content-card" aria-labelledby={titleId}>
       <div className="card-block">
         <ProductPhoto product={p} sizes={SIZES.card} priority={priority} loading={eager ? 'eager' : 'lazy'} />
         {/* TODO(owner): A correct photo for each product that shares a file with a different size or pack. (AW-136) */}
-        {p.picture && p.sharedPhoto && p.sellUnit && <span className="pack-badge">{p.sellUnit}</span>}
+        {p.picture && p.sharedPhoto && badge && <span className="pack-badge">{badge}</span>}
       </div>
       <p className="card-kicker"><span>{p.sub}</span>{p.tag && <span className={`card-tag${p.tag === 'NEW' ? ' new' : ''}`}>{p.tag}</span>}</p>
       <h3 id={titleId}><Link className="card-link" to={productRoute}>{p.name}</Link></h3>

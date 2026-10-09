@@ -21,6 +21,7 @@ const DB_TEST = read('supabase/tests/22_catalog_fixups.sql');
 // #350's is the name 20261011130000_catalog_names.sql gave it.
 const BEFORE = {
   13: { description: 'Havana leaf wraps from the wraps and leaf line in our Tobacco department. Eight flavors: Milk cookies, Sweet aromatic, Strawberry, 8 Miles, Russian cream, Purple, Yellow and Honey bourbon.' },
+  16: { sell_unit: '' },
   65: { name: 'RAZ Vue Full kit', description: 'RAZ Vue Full kit from the disposable vape line in our Novelties department.' },
   83: { sku: 'AW-DUTCH-MASTER' },
   90: { sku: 'AW-BAGS' },
@@ -30,6 +31,7 @@ const BEFORE = {
   193: { description: 'Pure eyes from the OTC and health line in our Merchandise department.' },
   213: { description: 'Lil leaf wraps from the wraps and leaf line in our Tobacco department. Stocked in one variety: Original.' },
   260: { description: 'Backwoods true wraps from the wraps and leaf line in our Tobacco department. Three flavors: Original, Vanilla and Aromatic.' },
+  340: { sell_unit: '' },
   350: { name: "Uncle Al's cookies" },
 };
 const COLUMNS = { sku: 'sku', name: 'name', description: 'description', sell_unit: 'sellUnit' };

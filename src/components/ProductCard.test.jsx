@@ -105,6 +105,26 @@ describe('ProductCard', () => {
     expect(document.querySelector('.pack-badge')).toBeNull();
   });
 
+  it('badges a shared photo with the size word in the name when there is no sell unit, and calls it representative (AW-136)', () => {
+    const picture = { src: '/x.jpg', srcSet: '', webpSrcSet: '', width: 320, height: 320 };
+    const mamba = { ...base, id: 190, name: 'Mamba (small)', variants: [], picture };
+    const view = render(card({ ...mamba, sharedPhoto: true, sellUnit: '' }));
+    expect(document.querySelector('.pack-badge').textContent).toBe('small');
+    expect(document.querySelector('.card-block img').getAttribute('alt')).toBe('Mamba (small) (representative photo)');
+    // The sell unit comes first.
+    view.rerender(card({ ...mamba, sharedPhoto: true, sellUnit: 'box of 24' }));
+    expect(document.querySelector('.pack-badge').textContent).toBe('box of 24');
+    // No word and no sell unit: nothing extra on a card (the product page has the note).
+    view.rerender(card({ ...mamba, name: 'Gain dish liquid', sharedPhoto: true, sellUnit: '' }));
+    expect(document.querySelector('.pack-badge')).toBeNull();
+    expect(document.querySelector('.photo-note')).toBeNull();
+    expect(document.querySelector('.card-block img').getAttribute('alt')).toBe('Gain dish liquid (representative photo)');
+    // A photo of its own: the name as it is, no badge.
+    view.rerender(card({ ...mamba, sharedPhoto: false, sellUnit: '' }));
+    expect(document.querySelector('.pack-badge')).toBeNull();
+    expect(document.querySelector('.card-block img').getAttribute('alt')).toBe('Mamba (small)');
+  });
+
   it('doesn’t print the placeholder brand "Assorted" (AW-286)', () => {
     render(card({ ...base, brand: 'Assorted', variants: ['S', 'M'], variantAxis: 'Size' }));
     expect(detail()).toBe('2 sizes · AW-SS');

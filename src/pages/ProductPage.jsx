@@ -66,6 +66,9 @@
 // From Cursor's PR #13: "Photo coming soon" without a photo (AW-029), the
 // sell unit badged on a photo other rows share (AW-136), the Wikimedia credit
 // under the photo (AW-033), and no placeholder brand "Assorted" (AW-286).
+// A shared photo without a sell unit is badged with the size word in the
+// name, or else captioned "Photo shows a related pack or size.", and its alt
+// calls it representative (AW-136).
 
 import { useRef, useState } from 'react';
 import {
@@ -73,7 +76,7 @@ import {
 } from '../lib/lines.js';
 import { PRICE_FAILED_SENTENCE, lineTotal, pctText, priceDidNotLoad, priceLabel, tierName, variantPriceRange } from '../lib/pricing.js';
 import { CHECKING_ACCOUNT_TEXT, PRICES_NEED_PROFILE, PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
-import { brandLabel, catLabel, formatMoney } from '../lib/format.js';
+import { SHARED_PHOTO_NOTE, brandLabel, catLabel, formatMoney, photoAlt, sharedPhotoBadge } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { APPLY_LABEL } from '../data/terms.js';
@@ -102,6 +105,17 @@ function PhotoCreditText({ credit, creditSource }) {
     <>
       <span>{credit}</span>
       {creditSource && <> <a href={creditSource} target="_blank" rel="noopener noreferrer">Wikimedia Commons<Icon name="external" /><span className="sr-only"> (opens in a new tab)</span></a></>}
+    </>
+  );
+}
+
+// The line under the photo, and under the enlarged one: a shared photo's note
+// (AW-136), then the credit (AW-033).
+function PhotoCaption({ note, credit, creditSource }) {
+  return (
+    <>
+      {note && <span className="photo-note">{credit ? `${note} ` : note}</span>}
+      {credit && <PhotoCreditText credit={credit} creditSource={creditSource} />}
     </>
   );
 }
@@ -147,6 +161,11 @@ export function ProductPage({
   const brand = brandLabel(p.brand);
   const credit = p.picture ? photoCredit(p) : '';
   const creditSource = photoCreditSource(p);
+  // A photo other rows share shows a sibling (AW-136): its badge says which
+  // row this is, from the sell unit or the name; with neither, the caption
+  // says the photo shows a related pack or size.
+  const badge = p.picture && p.sharedPhoto ? sharedPhotoBadge(p) : '';
+  const photoNote = p.picture && p.sharedPhoto && !badge ? SHARED_PHOTO_NOTE : '';
   // An account on hold is told ordering is paused and who to call, not that
   // pricing waits for approval (AW-101).
   const onHold = !isApprovedBuyer && accountStatus(profile) === 'suspended';
@@ -257,11 +276,11 @@ export function ProductPage({
             <ProductPhoto product={p} sizes={SIZES.detail} priority />
             {/* Focused on click too (Safari doesn't), so closing the dialog brings focus back here. */}
             {p.picture?.src && <button type="button" className="pd-zoom" aria-label={`Enlarge photo of ${p.name}`} onClick={(e) => { e.currentTarget.focus(); setZoomOpen(true); }} />}
-            {p.picture && p.sharedPhoto && p.sellUnit && <span className="pack-badge">{p.sellUnit}</span>}
+            {badge && <span className="pack-badge">{badge}</span>}
           </div>
-          {credit && (
+          {(photoNote || credit) && (
             <figcaption className="photo-credit">
-              <PhotoCreditText credit={credit} creditSource={creditSource} />
+              <PhotoCaption note={photoNote} credit={credit} creditSource={creditSource} />
             </figcaption>
           )}
         </figure>
@@ -341,8 +360,8 @@ export function ProductPage({
             <div className="dialog pd-zoom-dialog scale-in" role="dialog" aria-modal="true" aria-label={`Photo of ${p.name}`} onClick={(e) => e.stopPropagation()}>
               <button className="icon-btn" type="button" onClick={closeZoom} aria-label="Close"><Icon name="close" /></button>
               {/* Sized to the largest rendition, so the browser loads it (AW-236). */}
-              <Picture picture={p.picture} alt={p.name} sizes={p.picture.width ? `${p.picture.width}px` : undefined} loading="eager" />
-              {credit && <p className="photo-credit"><PhotoCreditText credit={credit} creditSource={creditSource} /></p>}
+              <Picture picture={p.picture} alt={photoAlt(p)} sizes={p.picture.width ? `${p.picture.width}px` : undefined} loading="eager" />
+              {(photoNote || credit) && <p className="photo-credit"><PhotoCaption note={photoNote} credit={credit} creditSource={creditSource} /></p>}
             </div>
           </div>
         </ModalLayer>

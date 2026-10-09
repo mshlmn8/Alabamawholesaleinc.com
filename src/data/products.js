@@ -16,7 +16,7 @@
 //   sellUnit     what quantity 1 means, only when the product's own name or
 //                description states it (e.g. "5-pack", "25-count box",
 //                "box of 200", "jar"); never guessed, and empty renders nothing
-//                TODO(owner): What is the sell unit (each, box of N, case of N, or a size) of each product that has none yet? 326 of the 368 rows are empty; npm run seed prints the count. (AW-031)
+//                TODO(owner): What is the sell unit (each, box of N, case of N, or a size) of each product that has none yet? 322 of the 368 rows are empty; npm run seed prints the count. (AW-031)
 //   img          photo filename in ../assets/products, or null while a photo is
 //                still needed. Resolved to a responsive set by ../lib/images.js.
 //   description  written from the name, brand, department and variants only
@@ -112,7 +112,7 @@ export const CATALOG = [
     description: "Kite mentholated cigarette tobacco pouches for roll-your-own customers." },
   { id:  15, name: "Royal Blunts mini", brand: "Royal Blunts", cat: "TOBACCO", sub: "Cigars & Cigarillos", sku: "AW-ROYAL-BLUNTS-MINI", sellUnit: "", variantAxis: "Variety", variants: ["Naked", "Sweet", "OGK"], img: "p15-royal-blunts-mini.jpg", tag: null,
     description: "Royal Blunts mini from the cigar and cigarillo line in our Tobacco department. Three varieties: Naked, Sweet and OGK." },
-  { id:  16, name: "Backwoods cigars singles", brand: "Backwoods", cat: "TOBACCO", sub: "Cigars & Cigarillos", sku: "AW-BACKWOODS-SINGLES", sellUnit: "", variantAxis: "Variety", variants: ["Russian cream", "Honey berry", "Sweet aromatic", "Original"], img: "backwoods_5pk.webp", tag: null,
+  { id:  16, name: "Backwoods cigars singles", brand: "Backwoods", cat: "TOBACCO", sub: "Cigars & Cigarillos", sku: "AW-BACKWOODS-SINGLES", sellUnit: "single", variantAxis: "Variety", variants: ["Russian cream", "Honey berry", "Sweet aromatic", "Original"], img: "backwoods_5pk.webp", tag: null,
     description: "Backwoods natural leaf cigars sold as singles. Four varieties: Russian cream, Honey berry, Sweet aromatic and Original." },
   { id:  17, name: "Black & Mild cigars 25-count", brand: "Black & Mild", cat: "TOBACCO", sub: "Cigars & Cigarillos", sku: "AW-B-M-25CT", sellUnit: "25-count box", variantAxis: "Variety", variants: ["Regular", "Woodtip", "Sweet", "Sweet woodtip", "Casino", "Casino woodtip", "Wine", "Wine woodtip"], img: "b_m_25ct.webp", tag: null,
     description: "Black & Mild pipe-tobacco cigars in the 25-count upright box. Eight varieties: Regular, Woodtip, Sweet, Sweet woodtip, Casino, Casino woodtip, Wine and Wine woodtip." },
@@ -808,7 +808,7 @@ export const CATALOG = [
     description: "Grabba Leaf whole tobacco leaf. Four varieties: Big, Small, Small yellow and Big yellow." },
   { id: 339, name: "Billionaire hemp wraps", brand: "Billionaire", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-BILLIONAIRE-WRAPS", sellUnit: "", variants: ["Russian cream"], img: "billionaire_wraps.jpg", tag: null,
     description: "Billionaire hemp wraps. Stocked in one variety: Russian cream." },
-  { id: 340, name: "Slapwoods cigar wraps singles", brand: "Slapwoods", cat: "TOBACCO", sub: "Cigars & Cigarillos", sku: "AW-SLAPWOODS-SINGLES", sellUnit: "", variants: ["Russian cream"], img: "slapwoods_5pk.webp", tag: null,
+  { id: 340, name: "Slapwoods cigar wraps singles", brand: "Slapwoods", cat: "TOBACCO", sub: "Cigars & Cigarillos", sku: "AW-SLAPWOODS-SINGLES", sellUnit: "single", variants: ["Russian cream"], img: "slapwoods_5pk.webp", tag: null,
     description: "Slapwoods natural leaf cigar wraps sold as singles. Stocked in one variety: Russian cream." },
   // TODO(owner): Is this Wellness Pills item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
   { id: 341, name: "Silly dots pills", brand: "Silly Dots", cat: "NOVELTIES", sub: "Wellness Pills", sku: "AW-SILLY-DOTS-PILLS", sellUnit: "", variants: ["Cherry"], img: null, tag: null,
@@ -872,9 +872,11 @@ export const CATALOG = [
 // img becomes the small JPEG URL (thumbnails, plain <img>), picture the
 // responsive WebP/JPEG set rendered by <Picture>.
 // Photo files more than one row uses (AW-136). sharedPhoto marks the rows, so
-// a card or product page can badge a shared photo with the row's sell unit;
-// the live catalog is marked the same way (hydrateProducts in
-// ../lib/catalog.jsx).
+// a card or product page can badge a shared photo with the row's sell unit,
+// or else the size or format word its name has (photoSizeWord in
+// ../lib/format.js); a product page without either says the photo shows a
+// related pack or size, and the photo's alt calls it representative. The live
+// catalog is marked the same way (hydrateProducts in ../lib/catalog.jsx).
 export const SHARED_IMAGES = sharedImageFiles(CATALOG);
 export const PRODUCTS = CATALOG.map((p) => ({ ...p, ...productImage(p.img), sharedPhoto: SHARED_IMAGES.has(p.img) }));
 

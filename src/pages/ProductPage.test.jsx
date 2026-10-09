@@ -287,6 +287,49 @@ describe('ProductPage trail and related row (AW-230, AW-231)', () => {
   });
 });
 
+// A photo other rows share (AW-136).
+describe('ProductPage shared photos (AW-136)', () => {
+  const PICTURE = { src: '/img/x--640x582.jpg', srcSet: '', webpSrcSet: '', width: 640, height: 582 };
+  const row = (extra) => [{ ...P[0], id: 7, variants: [], picture: PICTURE, sharedPhoto: true, sellUnit: '', ...extra }];
+  const shared = (extra) => page({ productId: 7, products: row(extra) });
+  const badge = () => document.querySelector('.pd-media .pack-badge')?.textContent ?? null;
+  const caption = () => document.querySelector('figure.pd-figure > figcaption')?.textContent ?? null;
+
+  it('badges the photo with the sell unit, else the size word in the name', () => {
+    const view = render(shared({ name: 'Backwoods cigars singles', sellUnit: 'single' }));
+    expect(badge()).toBe('single');
+    expect(caption()).toBeNull();
+    view.rerender(shared({ name: 'Gatorade (big)' }));
+    expect(badge()).toBe('big');
+    expect(caption()).toBeNull();
+  });
+
+  it('says the photo shows a related pack or size when there is neither, under the photo and in the enlarged view', () => {
+    render(shared({ name: "Uncle Al's" }));
+    expect(badge()).toBeNull();
+    expect(caption()).toBe('Photo shows a related pack or size.');
+    expect(document.querySelector('figure.pd-figure > figcaption.photo-credit .photo-note')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: "Enlarge photo of Uncle Al's" }));
+    const dialog = screen.getByRole('dialog', { name: "Photo of Uncle Al's" });
+    expect(dialog.querySelector('.photo-credit').textContent).toBe('Photo shows a related pack or size.');
+    expect(dialog.querySelector('img').getAttribute('alt')).toBe("Uncle Al's (representative photo)");
+  });
+
+  it('calls a shared photo representative, and leaves a photo of its own alone', () => {
+    const view = render(shared({ name: 'Gatorade (big)' }));
+    expect(document.querySelector('.pd-media img').getAttribute('alt')).toBe('Gatorade (big) (representative photo)');
+    view.rerender(shared({ name: 'Gatorade (big)', sharedPhoto: false }));
+    expect(document.querySelector('.pd-media img').getAttribute('alt')).toBe('Gatorade (big)');
+    expect(badge()).toBeNull();
+    expect(caption()).toBeNull();
+    // No photo: "Photo coming soon", with no badge or note.
+    view.rerender(shared({ name: "Uncle Al's", picture: null }));
+    expect(document.querySelector('.pd-media .photo-soon')).not.toBeNull();
+    expect(badge()).toBeNull();
+    expect(caption()).toBeNull();
+  });
+});
+
 // The photo opens larger in a dialog (AW-236).
 describe('ProductPage photo zoom (AW-236)', () => {
   const PICTURE = {
