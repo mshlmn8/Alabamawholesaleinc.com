@@ -237,8 +237,10 @@ export function ApplicationDocuments({ disabled = false, status = 'pending' }) {
         next.push(saved);
         return next;
       });
-      const rows = await listProfileDocuments(session.user.id);
-      if (tokens.current[type] !== token) return;
+      // The file is in: a list that doesn't load now (or takes too long)
+      // keeps the saved row instead of calling the upload failed (AW-195).
+      const rows = await listProfileDocuments(session.user.id).catch(() => null);
+      if (tokens.current[type] !== token || !rows) return;
       setRecords(current => {
         const latest = new Map((current || []).map(row => [row.document_type, row]));
         for (const row of rows) {
