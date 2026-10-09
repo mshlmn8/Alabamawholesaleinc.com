@@ -754,11 +754,17 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
    and never wider than the photo's own pixels (AW-073). */
 .pd-media img { position: absolute; inset: 34px; margin: auto; height: auto; max-width: calc(100% - 68px); max-height: calc(100% - 68px); object-fit: contain; transition: opacity .2s ease; }
 .pd-media .card-initials { font-size: 7.5rem; }
+/* One measure for the whole column (AW-237): the description, chips, price
+   rules and quantity row end at the same right edge. */
+.pd-info { max-width: 32.5rem; }
 .pd-info h1 { font-size: clamp(2.375rem, 1.5rem + 2.5vw, 3.5rem); margin-bottom: 8px; }
 .pd-info .pd-brand { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); color: var(--orange-dark); text-transform: uppercase; margin: 0 0 16px; }
-.pd-info .pd-desc { color: var(--muted); font-size: var(--text-base); line-height: 1.7; max-width: 480px; }
-.pd-info .pd-unit { margin: 0 0 14px; max-width: 480px; font-weight: 600; }
-.pd-info .pd-fine { font-size: var(--text-xs); }
+.pd-info .pd-desc { color: var(--muted); font-size: var(--text-base); line-height: 1.7; max-width: none; }
+.pd-info .pd-unit { margin: 0 0 14px; max-width: none; font-weight: 600; }
+/* The SKU, for everyone (AW-234), above the fine print. */
+.pd-info .pd-sku { margin: 0 0 14px; font-size: var(--text-sm); color: var(--ink); }
+.pd-info .pd-sku span { font-weight: 600; }
+.pd-info .pd-fine { font-size: var(--text-sm); }
 .pd-price { margin: 22px 0; padding: 18px 0; border-block: 1px solid var(--line); }
 .pd-price b { font: 700 2.125rem/1 var(--display); color: var(--purple); }
 .pd-price span { display: block; font-size: var(--text-xs); letter-spacing: var(--track-label); color: var(--muted); text-transform: uppercase; margin-top: 6px; }
@@ -1738,7 +1744,7 @@ ul.sub-pills { list-style: none; padding: 0; }
 .drawer-line.is-unavailable .thumb { opacity: .55; }
 .drawer-line.is-unavailable .info small, .drawer-line .line-flag { color: var(--danger); }
 .drawer-line .line-flag { font-weight: 600; }
-.pd-info .pd-saved { margin: 0 0 14px; max-width: 480px; font-weight: 600; }
+.pd-info .pd-saved { margin: 0 0 14px; max-width: none; font-weight: 600; }
 /* A variant marked not available (AW-030): its chip on the product page, and
    the add button of a card whose only variant it is. The text says so too. */
 .variant-chips button:disabled { border-style: dashed; color: var(--muted); cursor: not-allowed; }

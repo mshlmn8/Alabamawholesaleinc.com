@@ -885,8 +885,8 @@ describe('one callout, and status colours for errors and success (AW-295)', () =
     }
     expect(seen).toBeGreaterThan(8);
     expect(ruleFor('.support-alert')).toEqual({ margin: '0 0 22px', 'font-size': 'var(--text-base)' });
-    expect(ruleFor('.pd-info .pd-unit')).toEqual({ margin: '0 0 14px', 'max-width': '480px', 'font-weight': '600' });
-    expect(ruleFor('.pd-info .pd-saved')).toEqual({ margin: '0 0 14px', 'max-width': '480px', 'font-weight': '600' });
+    expect(ruleFor('.pd-info .pd-unit')).toEqual({ margin: '0 0 14px', 'max-width': 'none', 'font-weight': '600' });
+    expect(ruleFor('.pd-info .pd-saved')).toEqual({ margin: '0 0 14px', 'max-width': 'none', 'font-weight': '600' });
   });
 
   it('keeps the status panel and the pricing prompt boxes, in the status and callout colours', () => {

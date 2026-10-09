@@ -23,6 +23,9 @@
 // before a choice shows "Select a flavor…" under the chips and puts focus on
 // the first variant that can be chosen.
 //
+// The SKU follows the chosen variant for every visitor (AW-234), and the info
+// column keeps one measure (AW-237, index.css).
+//
 // The quantity to add is typed or stepped (QuantityInput, AW-013), and
 // a bare cart line of this product (AW-011) doesn't count as "Already in"
 // any variant.
@@ -166,7 +169,9 @@ export function ProductPage({
           <h1>{p.name}</h1>
           <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()}${brand ? ` from ${brand}` : ''}.`}</p>
           {p.sellUnit && <p className="pd-unit">{`Sold by the ${p.sellUnit} — quantity 1 is one ${p.sellUnit}.`}</p>}
-          <p className="pd-desc pd-fine">{`SKU ${p.sku}. Supplied to licensed retail businesses for lawful resale. Next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
+          {/* The SKU for everyone, and the chosen variant's once there is one (AW-234). */}
+          <p className="pd-sku">SKU <span>{variantSku(p.sku, selected)}</span></p>
+          <p className="pd-desc pd-fine">{`Supplied to licensed retail businesses for lawful resale. Next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
           {choiceRequired && <p id="pd-variant-label" className="pd-variant-label">{`Choose a ${axis.noun}`}</p>}
           {choiceRequired && (
             // eslint-disable-next-line jsx-a11y/interactive-supports-focus -- the radios inside take focus (roving tabindex); the group only hears their keys

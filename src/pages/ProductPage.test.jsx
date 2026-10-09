@@ -121,6 +121,20 @@ describe('ProductPage variants (AW-233, AW-128, AW-030)', () => {
     expect(addLine).not.toHaveBeenCalled();
   });
 
+  it('shows the SKU to every visitor, and the chosen variant’s once there is one (AW-234)', () => {
+    const sku = () => document.querySelector('.pd-sku').textContent;
+    const view = render(page({}));
+    expect(sku()).toBe('SKU AW-SS');
+    fireEvent.click(screen.getByRole('radio', { name: 'Red' }));
+    expect(sku()).toBe('SKU AW-SS-RED');
+    // The fine print no longer starts with it; the rest of the sentence is unchanged.
+    expect(document.querySelector('.pd-fine').textContent).toMatch(/^Supplied to licensed retail businesses for lawful resale\. /);
+    view.rerender(page({ profile: { id: 'p', status: 'pending' } }));
+    expect(sku()).toBe('SKU AW-SS-RED');
+    view.rerender(page({ products: [product({ name: 'Garcia y Vega cigars', sku: 'AW-GARCIA-VEGA', variants: ['Green'] })] }));
+    expect(sku()).toBe('SKU AW-GARCIA-VEGA-GREEN');
+  });
+
   it('says what quantity 1 means when the product has a sell unit (AW-031)', () => {
     const view = render(page({ products: [product({ sellUnit: 'box of 200' })] }));
     expect(screen.getByText('Sold by the box of 200 — quantity 1 is one box of 200.')).toBeTruthy();
