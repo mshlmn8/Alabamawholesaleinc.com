@@ -923,6 +923,12 @@ describe('one number marker for ordered steps (AW-296)', () => {
     expect(code(read('src/pages/support/ApplyPage.jsx'))).not.toMatch(/padStart\(2/);
     expect(code(read('src/pages/support/DeliveryPage.jsx'))).not.toMatch(/\d\d · [A-Z]/);
   });
+
+  it('marks checklist items with one plain square, not a ticked box that looks already done (AW-250)', () => {
+    expect(ruleFor('.checklist li::before')).toMatchObject({ content: "''", width: '.5rem', height: '.5rem', background: 'var(--purple)' });
+    expect(all.filter((r) => r.selectors.some((s) => /\.checklist\b.*::after/.test(s))).map((r) => r.selectors.join(', '))).toEqual([]);
+    expect(all.filter((r) => r.selectors.some((s) => /^\.checklist(\.big)? li/.test(s))).map((r) => r.body).join('')).not.toMatch(/--orange|rotate/);
+  });
 });
 
 describe('no inline styles (AW-301)', () => {

@@ -1518,16 +1518,14 @@ address.info-lead-small { font-style: normal; }
    link in that sentence, like p > .text-link. */
 .next-steps span > .text-link { min-height: 0; min-width: 0; font-size: inherit; }
 .checklist { list-style: none; margin: 0; padding: 0; }
-.checklist li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
-/* The orange box, and on it a check drawn with two borders, not a text
-   glyph (AW-293). Both sit in the first column; the text fills the second. */
-.checklist li::before { content: ''; grid-column: 1; grid-row: 1 / 3; width: 20px; height: 20px; margin-top: 1px; background: var(--orange); border-radius: 2px; }
-.checklist li::after { content: ''; grid-column: 1; grid-row: 1; justify-self: start; width: 10px; height: 6px; margin: 6px 0 0 5px; border: solid #fff; border-width: 0 0 2px 2px; transform: rotate(-45deg); }
+.checklist li { display: grid; grid-template-columns: .5rem minmax(0, 1fr); gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+/* A plain square bullet in the first column, level with the title, not a
+   ticked box: the items are things to have ready, not things already done
+   (AW-250). */
+.checklist li::before { content: ''; grid-column: 1; grid-row: 1 / 3; width: .5rem; height: .5rem; margin-top: .4375rem; background: var(--purple); }
 .checklist b { font-size: var(--text-base); color: var(--purple); }
 .checklist span { font-size: var(--text-sm); line-height: 1.6; color: var(--muted); }
-.checklist.big li { grid-template-columns: 26px minmax(0, 1fr); padding: 14px 0; }
-.checklist.big li::before { width: 24px; height: 24px; }
-.checklist.big li::after { width: 12px; height: 7px; margin: 7px 0 0 6px; }
+.checklist.big li { padding: 14px 0; }
 .checklist.big b { font-size: .9375rem; }
 .checklist.big span { font-size: var(--text-base); }
 .checklist-heading { font-size: 1.375rem; color: var(--purple); margin: 0 0 8px; }

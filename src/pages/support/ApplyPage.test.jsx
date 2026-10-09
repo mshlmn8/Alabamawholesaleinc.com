@@ -1,6 +1,6 @@
 // The application page's checklist and steps (AW-296): the checklist items
-// carry the drawn check box, not a number as well; the steps are the numbered
-// list. The status panels and the service notice take the status and callout
+// carry a plain bullet, not a number or a ticked box (AW-250), and include
+// the optional document photos; the steps are the numbered list. The status panels and the service notice take the status and callout
 // colours through their classes (AW-295).
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -21,6 +21,8 @@ describe('ApplyPage', () => {
     const titles = [...card.querySelectorAll('.checklist li > b')].map((b) => b.textContent);
     expect(titles).toEqual(APPLICATION_CHECKLIST.map((item) => item.title));
     for (const title of titles) expect(title).not.toMatch(/^\d|·/);
+    // The form's optional uploads are on the list too, marked optional (AW-250).
+    expect(titles).toContain('Photos of your license and resale certificate (optional)');
   });
 
   it('numbers the three steps with the ordered list, not in the text', () => {
