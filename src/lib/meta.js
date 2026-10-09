@@ -49,6 +49,17 @@ const NOT_FOUND = {
 // (AW-204, App.jsx).
 const CATALOG_PENDING = { product: 'product', department: 'department', line: 'product line' };
 
+// The admin section or view a title names (AW-118). Never a name or email:
+// titles end up in history, bookmarks and screen-sharing.
+function adminTitle(route) {
+  if (route.section === 'accounts') return route.id ? 'Account details' : 'Accounts';
+  if (route.section === 'products') {
+    if (route.id === 'new') return 'New product';
+    return route.id != null ? 'Edit product' : 'Products';
+  }
+  return route.view === 'print' ? 'Pick list' : 'Orders';
+}
+
 // Title, description, canonical path, share image and indexing for a
 // resolved route (see resolveRoute in routes.js).
 export function pageMeta(route, products, departments) {
@@ -99,7 +110,7 @@ function pageText(route, products, departments) {
   }
   if (route.page === 'quote') return { title: `Checkout · ${site}`, description: `Review your items and submit a wholesale quote or order to ${site}. Minimum order $500.00.` };
   if (route.page === 'account') return { title: `My Account · ${site}`, description: `Your ${site} trade account: order history, reorders and quick entry by SKU.` };
-  if (route.page === 'admin') return { title: `Admin · ${site}`, description: `Catalog and account administration for ${site}.` };
+  if (route.page === 'admin') return { title: `${adminTitle(route)} · Admin · ${site}`, description: `Catalog and account administration for ${site}.` };
   // Support pages (src/pages/support/).
   if (route.page === 'catalog') return { title: `All Products · Wholesale Catalog · ${site}`, description: clip(`Every department and product line ${site} stocks — ${products.length} wholesale SKUs for licensed retailers, from the Birmingham warehouse.`) };
   if (route.page === 'contact') return { title: `Contact & Visit · ${site}`, description: clip(`Call ${COMPANY.phone}, email ${COMPANY.email}, or visit ${COMPANY.addressShort}. ${COMPANY.hoursLine1}, ${COMPANY.hoursLine2}.`) };

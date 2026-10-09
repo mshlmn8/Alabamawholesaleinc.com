@@ -63,6 +63,19 @@ describe('pageMeta', () => {
     expect(pageMeta({ page: 'not-found' }, products, departments).description).not.toBe(HOME_DESCRIPTION);
   });
 
+  it('titles each admin section and view, without names (AW-118)', () => {
+    const title = (route) => pageMeta({ page: 'admin', ...route }, products, departments).title;
+    expect(title({})).toBe('Orders · Admin · Alabama Wholesale Inc');
+    expect(title({ section: 'orders', query: { status: 'all' } })).toBe('Orders · Admin · Alabama Wholesale Inc');
+    expect(title({ section: 'orders', id: '11111111-2222-4333-8444-555555555555', view: 'print' })).toBe('Pick list · Admin · Alabama Wholesale Inc');
+    expect(title({ section: 'accounts' })).toBe('Accounts · Admin · Alabama Wholesale Inc');
+    expect(title({ section: 'accounts', id: '11111111-2222-4333-8444-555555555555' })).toBe('Account details · Admin · Alabama Wholesale Inc');
+    expect(title({ section: 'products', query: { q: 'swisher' } })).toBe('Products · Admin · Alabama Wholesale Inc');
+    expect(title({ section: 'products', id: 'new' })).toBe('New product · Admin · Alabama Wholesale Inc');
+    expect(title({ section: 'products', id: 12 })).toBe('Edit product · Admin · Alabama Wholesale Inc');
+    expect(pageMeta({ page: 'admin', section: 'products', id: 12 }, products, departments)).toMatchObject({ noindex: true, path: null });
+  });
+
   it('titles a catalog page that is still loading, or did not load (AW-204)', () => {
     expect(pageMeta({ page: 'not-found', kind: 'product', catalog: 'loading' }, products, departments)).toMatchObject({ title: 'Loading product… · Alabama Wholesale Inc', noindex: true });
     expect(pageMeta({ page: 'not-found', kind: 'line', catalog: 'error' }, products, departments).title).toBe('Couldn’t load this product line · Alabama Wholesale Inc');

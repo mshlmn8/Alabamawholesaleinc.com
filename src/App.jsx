@@ -291,7 +291,7 @@ export default function App() {
                        onSignOutEverywhere={() => handleLogout({ scope: 'global' })} />
         );
       case 'admin':
-        return <AdminPage {...accountProps} onCatalogChange={() => { catalog.refresh(); }} />;
+        return <AdminPage {...accountProps} route={route} onCatalogChange={() => { catalog.refresh(); }} />;
       case 'catalog':
         return (
           <CatalogIndexPage products={products} departments={departments} profile={profile} isApprovedBuyer={isApprovedBuyer}

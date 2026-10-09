@@ -1,36 +1,18 @@
 // The admin page for an approved admin only (AW-352), and the Accounts tab's
 // approval record, documents for every status, the admin's own row and
-// refused changes (AW-197, AW-352). Its fake client also answers the
-// pricing_tiers and read-back queries.
+// refused changes (AW-197, AW-352), with the fake client (fakeSupabase.js).
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const db = vi.hoisted(() => ({ profiles: [], documents: [], updates: [], updateResult: null }));
-
-vi.mock('../../lib/supabase.js', () => {
-  const result = (table) => {
-    if (table === 'profiles') return { data: db.profiles, error: null };
-    if (table === 'profile_documents') return { data: db.documents, error: null };
-    if (table === 'pricing_tiers') return { data: [{ tier: 'standard', discount_pct: 0 }, { tier: 'silver', discount_pct: 5 }], error: null };
-    return { data: [], error: null };
-  };
-  const from = (table) => {
-    let patch = null;
-    const q = {
-      select: () => q,
-      order: () => q,
-      limit: () => q,
-      eq: (_col, id) => { if (patch) db.updates.push({ table, id, patch }); return q; },
-      update: (next) => { patch = next; return q; },
-      then: (resolve, reject) => Promise.resolve(patch ? (db.updateResult || { data: [{ id: 'x' }], error: null }) : result(table)).then(resolve, reject),
-    };
-    return q;
-  };
-  const storage = { from: () => ({ createSignedUrl: async (path) => ({ data: { signedUrl: `https://files.example.test/${path}` }, error: null }) }) };
-  return { supabase: { from, storage, rpc: async () => ({ data: {}, error: null }) }, isBackendConfigured: true, AUTH_STORAGE_KEY: 'aw-auth' };
+vi.mock('../../lib/supabase.js', async () => {
+  const { createFakeSupabase } = await import('./fakeSupabase.js');
+  const fake = createFakeSupabase();
+  return { supabase: fake.client, fake, isBackendConfigured: true, AUTH_STORAGE_KEY: 'aw-auth' };
 });
 
+const { fake } = await import('../../lib/supabase.js');
 const { AdminPage, approvalLine } = await import('./AdminPage.jsx');
+const { navigate } = await import('../../lib/router.js');
 
 const ADMIN = { id: 'admin-1', name: 'Olive Owner', business: 'Alabama Wholesale', email: 'owner@example.test', role: 'admin', status: 'approved', pricing_tier: 'standard', created_at: '2026-01-01T00:00:00Z' };
 const APPROVED = {
@@ -39,16 +21,24 @@ const APPROVED = {
 };
 const PENDING = { id: 'buyer-2', name: 'New Buyer', business: 'New Store', email: 'new@example.test', role: 'customer', status: 'pending', pricing_tier: 'standard', created_at: '2026-09-02T00:00:00Z' };
 
+const db = { profiles: [], updateResult: null };
+
 beforeEach(() => {
+  act(() => navigate('/admin', { replace: true }));
+  fake.reset();
   db.profiles = [ADMIN, APPROVED, PENDING];
-  db.documents = [{ profile_id: 'buyer-1', document_type: 'tobacco_license', storage_path: 'buyer-1/tobacco_license/l.pdf', original_filename: 'l.pdf', uploaded_at: '2026-09-02T00:00:00Z' }];
-  db.updates = [];
   db.updateResult = null;
+  fake.tables = {
+    profiles: db.profiles,
+    profile_documents: [{ profile_id: 'buyer-1', document_type: 'tobacco_license', storage_path: 'buyer-1/tobacco_license/l.pdf', original_filename: 'l.pdf', uploaded_at: '2026-09-02T00:00:00Z' }],
+    pricing_tiers: [{ tier: 'standard', discount_pct: 0 }, { tier: 'silver', discount_pct: 5 }],
+  };
+  fake.respond = (request) => (request.op === 'update' && db.updateResult ? db.updateResult : undefined);
 });
+const updates = () => fake.find({ op: 'update' }).map(({ table, filters, patch }) => ({ table, id: filters.find(([name]) => name === 'eq')[2], patch }));
 
 async function openAccounts(profile = ADMIN) {
-  render(<AdminPage profile={profile} account="ready" />);
-  await act(async () => { fireEvent.click(screen.getByRole('tab', { name: 'Accounts' })); });
+  await act(async () => { render(<AdminPage profile={profile} account="ready" route={{ page: 'admin', section: 'accounts', query: {} }} />); });
   return screen.findByRole('table');
 }
 const rowOf = (business) => screen.getByRole('cell', { name: business }).closest('tr');
@@ -58,7 +48,7 @@ describe('AdminPage access (AW-352)', () => {
     for (const status of ['suspended', 'pending']) {
       const view = render(<AdminPage profile={{ ...ADMIN, status }} account="ready" />);
       expect(screen.getByText('Your admin access is on hold. Contact the owner.')).toBeTruthy();
-      expect(screen.queryByRole('tablist')).toBeNull();
+      expect(screen.queryByRole('navigation', { name: 'Admin sections' })).toBeNull();
       view.unmount();
     }
   });
@@ -66,7 +56,7 @@ describe('AdminPage access (AW-352)', () => {
   it('keeps customers out', () => {
     render(<AdminPage profile={{ ...APPROVED }} account="ready" />);
     expect(screen.getByText(/Your account doesn’t have access/)).toBeTruthy();
-    expect(screen.queryByRole('tablist')).toBeNull();
+    expect(screen.queryByRole('navigation', { name: 'Admin sections' })).toBeNull();
   });
 });
 
@@ -96,7 +86,7 @@ describe('AdminPage accounts', () => {
     await act(async () => {
       fireEvent.change(screen.getByRole('combobox', { name: 'Role for New Store' }), { target: { value: 'admin' } });
     });
-    expect(db.updates.at(-1)).toEqual({ table: 'profiles', id: 'buyer-2', patch: { role: 'admin', status: 'approved' } });
+    expect(updates().at(-1)).toEqual({ table: 'profiles', id: 'buyer-2', patch: { role: 'admin', status: 'approved' } });
     db.updateResult = { data: null, error: { code: '42501', message: 'Only your name, phone and store address can be changed here' } };
     await act(async () => {
       fireEvent.change(screen.getByRole('combobox', { name: 'Status for Test Market LLC' }), { target: { value: 'suspended' } });

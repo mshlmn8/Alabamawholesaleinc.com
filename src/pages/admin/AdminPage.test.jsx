@@ -5,38 +5,15 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const db = vi.hoisted(() => ({ profiles: [], orders: [], updates: [], updateError: null }));
-vi.mock('../../lib/supabase.js', () => {
-  const from = (table) => {
-    const result = () => ({ data: table === 'profiles' ? db.profiles : db.orders, error: null });
-    const builder = {
-      select: () => builder,
-      order: () => builder,
-      limit: () => builder,
-      // The page reads the changed row back: update().eq().select('id').
-      update: (patch) => ({
-        eq: (_col, id) => ({
-          select: async () => {
-            db.updates.push({ table, id, patch });
-            return db.updateError ? { data: null, error: db.updateError } : { data: [{ id }], error: null };
-          },
-        }),
-      }),
-      then: (resolve, reject) => Promise.resolve(result()).then(resolve, reject),
-    };
-    return builder;
-  };
-  return { supabase: { from }, isBackendConfigured: true };
+vi.mock('../../lib/supabase.js', async () => {
+  const { createFakeSupabase } = await import('./fakeSupabase.js');
+  const fake = createFakeSupabase();
+  return { supabase: fake.client, fake, isBackendConfigured: true, AUTH_STORAGE_KEY: 'aw-auth' };
 });
-vi.mock('../../lib/documents.js', async (original) => ({
-  ...(await original()),
-  listAllProfileDocuments: vi.fn(async () => [
-    { profile_id: 'p-approved', document_type: 'tobacco_license', storage_path: 'p-approved/tobacco_license/1-licence.pdf' },
-  ]),
-  createDocumentViewUrl: vi.fn(async () => 'https://example.test/signed'),
-}));
 
+const { fake } = await import('../../lib/supabase.js');
 const { AdminPage } = await import('./AdminPage.jsx');
+const { navigate } = await import('../../lib/router.js');
 
 const ADMIN = { id: 'admin-1', name: 'Desk Admin', role: 'admin', status: 'approved' };
 const APPROVED = {
@@ -48,17 +25,25 @@ const APPROVED = {
 };
 // A row from a live database without the 2026-10-08 columns.
 const PENDING = { id: 'p-pending', business: 'Bravo Tobacco Outlet', name: 'Bea Bravo', email: 'bravo@example.test', status: 'pending', pricing_tier: 'standard', role: 'customer' };
+let updateError = null;
 
 beforeEach(() => {
-  db.profiles = [APPROVED, PENDING, ADMIN];
-  db.orders = [];
-  db.updates = [];
-  db.updateError = null;
+  act(() => navigate('/admin', { replace: true }));
+  fake.reset();
+  fake.tables = {
+    profiles: [APPROVED, PENDING, ADMIN],
+    orders: [],
+    profile_documents: [{ profile_id: 'p-approved', document_type: 'tobacco_license', storage_path: 'p-approved/tobacco_license/1-licence.pdf' }],
+  };
+  updateError = null;
+  fake.respond = (request) => (request.op === 'update' && updateError ? { data: null, error: updateError } : undefined);
 });
 
+const updates = () => fake.find({ op: 'update' }).map(({ table, filters, patch }) => ({ table, id: filters.find(([name]) => name === 'eq')[2], patch }));
+
 async function openAccounts() {
-  render(<AdminPage profile={ADMIN} account="ready" />);
-  await act(async () => { fireEvent.click(screen.getByRole('tab', { name: 'Accounts' })); });
+  await act(async () => { render(<AdminPage profile={ADMIN} account="ready" route={{ page: 'admin', section: 'accounts', query: {} }} />); });
+  expect(screen.getByRole('link', { name: 'Accounts' }).getAttribute('aria-current')).toBe('page');
 }
 // jsdom drops the space before an sr-only span in accessible names.
 const named = (label, business) => new RegExp(`^${label} ?for ${business}$`);
@@ -95,21 +80,21 @@ describe('Admin accounts', () => {
   });
 
   it('shows dashes for answers the live database does not have yet, and explains a note it cannot save', async () => {
-    db.updateError = { code: 'PGRST204', message: "Could not find the 'verification_note' column of 'profiles' in the schema cache" };
+    updateError = { code: 'PGRST204', message: "Could not find the 'verification_note' column of 'profiles' in the schema cache" };
     await openAccounts();
     fireEvent.click(within(rowFor('Bravo Tobacco Outlet')).getByRole('button', { name: named('Details', 'Bravo Tobacco Outlet') }));
     const details = within(document.getElementById('account-details-p-pending'));
     expect(details.getAllByText('—').length).toBeGreaterThan(5);
     fireEvent.change(details.getByLabelText('Verification note'), { target: { value: 'Called the store' } });
     await act(async () => { fireEvent.click(details.getByRole('button', { name: 'Save note' })); });
-    expect(db.updates.at(-1)).toEqual({ table: 'profiles', id: 'p-pending', patch: { verification_note: 'Called the store' } });
+    expect(updates().at(-1)).toEqual({ table: 'profiles', id: 'p-pending', patch: { verification_note: 'Called the store' } });
     expect(screen.getByRole('alert').textContent).toMatch(/needs the October 2026 database update/);
   });
 });
 
 describe('Admin orders', () => {
   it('shows the licence answers a guest gave with a tobacco quote', async () => {
-    db.orders = [{
+    fake.tables.orders = [{
       id: 'o1', ref_num: 'ALW-Q-12345', status: 'new', created_at: '2026-10-08T15:00:00Z', business: 'Guest Mart', contact: 'Gus', email: 'g@example.test',
       phone: '205-000-0002', ship_street: '2 Guest Rd', ship_city: 'Hoover', ship_state: 'AL', ship_zip: '35244',
       license_no: 'TL-9', resale_cert_no: 'RC-9', purchasers_21: true, order_items: [],

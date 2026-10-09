@@ -1,11 +1,18 @@
 // Admin dashboard: orders, account approvals, product catalog edits.
 // All write paths use the row-level-security policies in 20260517000001_rls_policies.sql.
 // The sections live in OrdersSection.jsx, AccountsSection.jsx and
-// ProductsSection.jsx; this file is the access gate and the section switch,
+// ProductsSection.jsx; this file is the access gate and the section links,
 // and re-exports the sections' helpers.
+//
+// Each section has its own URL (AW-118, src/lib/adminRoutes.js): /admin
+// (Orders), /admin/orders?status=…, /admin/accounts, /admin/products?q=….
+// Every admin URL is the same page to the router (pageKey 'admin'), so moving
+// between sections and filters keeps the scroll position and focus, and Back
+// returns to the previous section.
 
 import { useState } from 'react';
-import { Link } from '../../lib/router.js';
+import { Link, navigate } from '../../lib/router.js';
+import { adminHref, adminSection } from '../../lib/adminRoutes.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
 import { OrdersTab } from './OrdersSection.jsx';
@@ -19,19 +26,28 @@ export {
 export { approvalEmail, approvalLine } from './AccountsSection.jsx';
 export { loadAdminProducts } from './ProductsSection.jsx';
 
-const TABS = [
+const SECTIONS = [
   { id: 'orders', label: 'Orders' },
   { id: 'accounts', label: 'Accounts' },
   { id: 'products', label: 'Products' },
 ];
+const NO_QUERY = Object.freeze({});
 
+// route: the admin route (parseAdminPath); bare /admin shows Orders.
 // onCatalogChange: a product was edited; the storefront loads the catalog
 // again so this tab shows the edit at once (AW-191).
 export function AdminPage({
   profile, account = profile ? 'ready' : 'signed-out', onSignIn, onRetry, retrying = false, onSignOut, signingOut = false,
-  onCatalogChange,
+  onCatalogChange, route = { page: 'admin' },
 }) {
-  const [tab, setTab] = useState('orders');
+  const section = adminSection(route);
+  const query = route.query || NO_QUERY;
+  // Each section's last filters, so its link brings them back after a visit
+  // to another section.
+  const [lastQuery, setLastQuery] = useState({});
+  if (lastQuery[section] !== query) setLastQuery({ ...lastQuery, [section]: query });
+  // A filter change replaces the history entry and keeps the scroll position.
+  const setQuery = (next) => navigate(adminHref({ section, query: next }), { replace: true, scroll: false });
 
   // While auth loads, a real admin sees "Loading", not "access denied"
   // (AW-087). Not a dead end otherwise (AW-232): signed-out visitors can sign
@@ -86,24 +102,25 @@ export function AdminPage({
         <p>Orders, account approvals, and catalog edits.</p>
       </div>
 
-      <div className="sub-pills" role="tablist" aria-label="Admin sections">
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            className={`sub-pill ${tab === t.id ? 'active' : ''}`}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <nav className="sub-pills admin-sections" aria-label="Admin sections">
+        {SECTIONS.map(s => {
+          const current = s.id === section;
+          return (
+            <Link
+              key={s.id}
+              to={adminHref({ section: s.id, query: current ? query : lastQuery[s.id] })}
+              className={`sub-pill${current ? ' active' : ''}`}
+              aria-current={current ? 'page' : undefined}
+            >
+              {s.label}
+            </Link>
+          );
+        })}
+      </nav>
 
-      {tab === 'orders' && <OrdersTab />}
-      {tab === 'accounts' && <AccountsTab currentAdminId={profile.id} />}
-      {tab === 'products' && <ProductsTab onCatalogChange={onCatalogChange} />}
+      {section === 'orders' && <OrdersTab query={query} onQuery={setQuery} />}
+      {section === 'accounts' && <AccountsTab currentAdminId={profile.id} />}
+      {section === 'products' && <ProductsTab query={query} onQuery={setQuery} onCatalogChange={onCatalogChange} />}
     </section>
   );
 }

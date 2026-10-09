@@ -18,6 +18,9 @@
 // (/category/TOBACCO, /category/DRINKS%20%26%20BAGS) resolves and is
 // redirected to the canonical slug.
 
+// The admin sections' URLs are in ./adminRoutes.js.
+import { adminHref, adminPath, parseAdminPath } from './adminRoutes.js';
+
 // The production origin. VITE_SITE_URL overrides it (see src/lib/meta.js and
 // scripts/build-sitemap.mjs); this is the domain the site already uses.
 // TODO(owner): Register the production domain and connect it in Netlify; VITE_SITE_URL overrides this. (AW-052)
@@ -123,6 +126,7 @@ export function parseUrl({ pathname = '/', search = '' } = {}) {
     return { page: 'not-found', kind: rest.length ? 'page' : 'department' };
   }
   if (section === 'search' && rest.length === 0) return { page: 'search', q: (searchParams(search).get('q') || '').slice(0, 200) };
+  if (section === 'admin') return parseAdminPath(rest, search);
   if (SIMPLE_PAGES.includes(section) && rest.length === 0) return { page: section };
   return { page: 'not-found' };
 }
@@ -178,6 +182,7 @@ export function pathFor(route) {
     case 'product': return `/product/${route.productId}`;
     case 'category': return `/category/${slugify(route.category)}${route.sub ? `/${slugify(route.sub)}` : ''}`;
     case 'search': return '/search';
+    case 'admin': return adminPath(route);
     case 'not-found': return null;
     default: return SIMPLE_PAGES.includes(route?.page) ? `/${route.page}` : '/';
   }
@@ -187,6 +192,7 @@ export function pathFor(route) {
 export function hrefFor(route) {
   const path = pathFor(route) ?? '/';
   if (route?.page === 'category') return path + categoryQueryString(route.query);
+  if (route?.page === 'admin') return adminHref(route);
   if (route?.page === 'search') {
     const q = String(route.q || '').trim();
     return q ? `${path}?${new URLSearchParams({ q })}` : path;

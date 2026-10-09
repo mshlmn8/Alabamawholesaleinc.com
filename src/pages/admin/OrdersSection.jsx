@@ -5,13 +5,11 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { formatMoney } from '../../lib/format.js';
 import { MISSING_FUNCTION_CODES, lineTotal, tierUnitPrice, toCents, fromCents } from '../../lib/pricing.js';
+import { DEFAULT_ORDER_STATUS, LEGACY_ORDER_STATES, ORDER_STATES } from '../../lib/adminRoutes.js';
 
-// The order statuses. The quote workflow (AW-024; Cursor's
-// 20261008200000) adds quoted ... out_for_delivery; a database without it
-// accepts only the first four (LEGACY_ORDER_STATES).
-// TODO(owner): Confirm how quotes should work: should staff price and answer guest quotes and convert them to orders, and should orders go through 'quoted' and 'confirmed' stages before picking? (AW-024)
-export const ORDER_STATES = ['new', 'contacted', 'quoted', 'confirmed', 'picking', 'ready', 'out_for_delivery', 'fulfilled', 'cancelled'];
-export const LEGACY_ORDER_STATES = ['new', 'contacted', 'fulfilled', 'cancelled'];
+// The order statuses (and the owner question about them, AW-024) are in
+// src/lib/adminRoutes.js, which checks the status filter in the URL.
+export { ORDER_STATES, LEGACY_ORDER_STATES };
 
 // The quote workflow is in the database (20261008200000): its orders carry
 // kind. Without it (the live database before the October 2026 update),
@@ -117,11 +115,12 @@ export function orderEmail(order, lines, quote = isQuote(order)) {
 // PostgREST refuses an embed that could follow either (PGRST201).
 export const ADMIN_ORDER_SELECT = '*, order_items(*), profiles!orders_user_id_fkey(business, name, pricing_tier)';
 
-export function OrdersTab() {
+// query: the URL's filters (status, AW-118); onQuery writes them.
+export function OrdersTab({ query = {}, onQuery }) {
   const [orders, setOrders] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [statusError, setStatusError] = useState(null);
-  const [filter, setFilter] = useState('new');
+  const filter = query.status || DEFAULT_ORDER_STATUS;
   const [tiers, setTiers] = useState({});
 
   const reload = () => {
@@ -160,13 +159,14 @@ export function OrdersTab() {
   return (
     <div>
       {loadError && <p className="form-error" role="alert">{loadError}</p>}
-      <div className="sub-pills" aria-label="Order status">
+      <div className="sub-pills" role="group" aria-label="Order status">
         {filters.map(s => (
           <button
             key={s}
             type="button"
+            aria-pressed={filter === s}
             className={`sub-pill ${filter === s ? 'active' : ''}`}
-            onClick={() => setFilter(s)}
+            onClick={() => onQuery?.({ ...query, status: s })}
           >
             {`${s.replace(/_/g, ' ')} (${orders.filter(o => s === 'all' || o.status === s).length})`}
           </button>

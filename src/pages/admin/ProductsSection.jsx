@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { formatMoney } from '../../lib/format.js';
 import { MISSING_FUNCTION_CODES } from '../../lib/pricing.js';
+import { MAX_PRODUCT_QUERY } from '../../lib/adminRoutes.js';
 
 // The product columns the Products tab shows. Not price: admins read list
 // prices through admin_product_prices() (AW-003).
@@ -39,12 +40,35 @@ function parsePriceInput(text) {
   return Number.isFinite(n) && n >= 0 ? { ok: true, price: Math.round(n * 100) / 100 } : { ok: false, price: null };
 }
 
-export function ProductsTab({ onCatalogChange }) {
+// How long the search box waits after typing stops before it writes ?q=.
+export const SEARCH_DEBOUNCE_MS = 300;
+
+// query: the URL's filters (q, AW-118); onQuery writes them.
+export function ProductsTab({ query = {}, onQuery, onCatalogChange }) {
   const [rows, setRows] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [editing, setEditing] = useState(null);
   const [saveError, setSaveError] = useState(null);
-  const [search, setSearch] = useState('');
+  // The search box filters as you type and keeps ?q= in step a moment later,
+  // so a reload, a bookmark or Back shows the same search. `seen` is the q
+  // last read from the URL: a new one (Back, Forward, the section link) goes
+  // into the box, the box's own writes don't come back into it.
+  const urlSearch = query.q || '';
+  const [search, setSearch] = useState(urlSearch);
+  const [seen, setSeen] = useState(urlSearch);
+  if (urlSearch !== seen) {
+    setSeen(urlSearch);
+    setSearch(urlSearch);
+  }
+  useEffect(() => {
+    const next = search.trim().slice(0, MAX_PRODUCT_QUERY).trim();
+    if (next === urlSearch || !onQuery) return undefined;
+    const timer = setTimeout(() => {
+      setSeen(next);
+      onQuery({ ...query, q: next, page: undefined });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [search, urlSearch, query, onQuery]);
 
   const reload = () => {
     loadAdminProducts(supabase).then(({ rows: next, error }) => {
@@ -77,10 +101,11 @@ export function ProductsTab({ onCatalogChange }) {
 
   if (!rows) return <p className="result-note">Loading…</p>;
 
-  const filtered = !search ? rows : rows.filter(r =>
-    r.name.toLowerCase().includes(search.toLowerCase()) ||
-    r.brand.toLowerCase().includes(search.toLowerCase()) ||
-    r.sku.toLowerCase().includes(search.toLowerCase())
+  const needle = search.trim().toLowerCase();
+  const filtered = !needle ? rows : rows.filter(r =>
+    String(r.name || '').toLowerCase().includes(needle) ||
+    String(r.brand || '').toLowerCase().includes(needle) ||
+    String(r.sku || '').toLowerCase().includes(needle)
   );
 
   return (

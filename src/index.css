@@ -304,6 +304,7 @@ h2 { font-size: var(--h2); margin-bottom: 0; }
 @media (pointer: coarse) {
   .button.xs { min-height: var(--tap); }
   .stepper button { width: var(--tap); height: var(--tap); }
+  .admin-sections .sub-pill { min-height: var(--tap); }
 }
 /* Pressed. */
 .button:not(:disabled):active, .icon-btn:not(:disabled):active, .stepper button:not(:disabled):active { transform: translateY(1px); filter: brightness(.95); }
