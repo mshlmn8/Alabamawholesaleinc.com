@@ -36,7 +36,8 @@
 // from 1.
 //
 // The detail line wraps between its values, never inside a SKU (AW-304,
-// TextParts).
+// TextParts); a SKU longer than the card ends in an ellipsis, whole in the
+// text and in its title.
 //
 // Feedback (AW-042, AW-072): an add shows the toast ("Added … to your
 // quote", with "View quote"), which is also what is read out, once
@@ -72,7 +73,7 @@ import { ProductPhoto } from './ProductPhoto.jsx';
 import { NicotineWarning } from './NicotineWarning.jsx';
 import { showsNicotineWarning } from '../lib/regulated.js';
 import { QuantityInput } from './QuantityInput.jsx';
-import { TextParts } from './TextParts.jsx';
+import { TextParts, joinParts } from './TextParts.jsx';
 
 const NO_PRICES = () => null;
 
@@ -94,7 +95,7 @@ export function cardDetailParts(p, { sku = true } = {}) {
 }
 
 export function cardDetail(p, options) {
-  return cardDetailParts(p, options).join(' · ');
+  return joinParts(cardDetailParts(p, options));
 }
 
 export function ProductCard({
@@ -175,7 +176,7 @@ export function ProductCard({
       </div>
       <p className="card-kicker"><span>{p.sub}</span>{p.tag && <span className={`card-tag${p.tag === 'NEW' ? ' new' : ''}`}>{p.tag}</span>}</p>
       <h3 id={titleId}><Link className="card-link" to={productRoute}>{p.name}</Link></h3>
-      <p className="card-detail"><TextParts parts={cardDetailParts(p, { sku: showSku })} /></p>
+      <p className="card-detail"><TextParts parts={cardDetailParts(p, { sku: showSku })} code={showSku ? p.sku : null} /></p>
       {showsNicotineWarning(p) && <NicotineWarning compact />}
       <span className="card-meta card-actions">
         {isApprovedBuyer && priceDidNotLoad(shown.unit, pricesStatus) ? (

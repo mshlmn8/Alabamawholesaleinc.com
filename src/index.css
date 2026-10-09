@@ -597,8 +597,10 @@ p > .text-link { min-height: 0; min-width: 0; }
 .card-link { color: inherit; }
 .card-link::after { content: ''; position: absolute; inset: 0; }
 /* Its own stacking context, so the sell-unit badge on the photo stays under
-   the link. */
-.card-block { aspect-ratio: 1.1; display: grid; place-items: center; margin-bottom: 14px; position: relative; overflow: hidden; background: var(--tile); border: 1px solid var(--line); isolation: isolate; }
+   the link. A size container (its width comes from the card and its height
+   from the aspect ratio, never from what is in it), so "Photo coming soon"
+   can fit itself to the tile (NEW-083). */
+.card-block { aspect-ratio: 1.1; display: grid; place-items: center; margin-bottom: 14px; position: relative; overflow: hidden; background: var(--tile); border: 1px solid var(--line); isolation: isolate; container-type: size; }
 .card-initials { font: 500 3.625rem/1 var(--display); color: var(--initials); letter-spacing: -.125rem; }
 /* A photo is never drawn larger than its own pixel size (AW-073): its width
    comes from the img width attribute (the largest rendition, never wider than
@@ -623,6 +625,14 @@ p > .text-link { min-height: 0; min-width: 0; }
 .photo-soon.is-compact .photo-soon-mark { width: 22px; height: 22px; }
 .pd-media .photo-soon-mark { width: 48px; height: 48px; }
 .pd-media .photo-soon-label { font-size: var(--text-lg); }
+/* A card's tile shorter than the placeholder with the name (a phone's two
+   columns, print's four) shows the mark and "Photo coming soon" only: the
+   name would be cut mid-line, and the card's title says it just below
+   (NEW-083). The product page's placeholder is not in a size container, so
+   it keeps the name. */
+@container (max-height: 10.5rem) {
+  .card-block .photo-soon-name { display: none; }
+}
 /* The sell unit, or the size word in the name, on a photo other rows share (AW-136). */
 .pack-badge { position: absolute; left: 12px; bottom: 12px; z-index: 2; max-width: calc(100% - 24px); background: var(--purple); color: #fff; font-size: var(--text-xs); font-weight: 700; line-height: 1.3; padding: 4px 8px; }
 /* Not on the placeholder that replaces a photo that failed to load (AW-192). */
@@ -639,7 +649,10 @@ p > .text-link { min-height: 0; min-width: 0; }
    4.5:1. As tall as the kicker's line, so tagged and untagged cards match. */
 .card-tag { display: inline-block; background: var(--button-orange); color: #fff; font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); padding: 3px 6px; line-height: 1; }
 .card-tag.new { background: var(--purple); }
-.card-kicker { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); color: var(--orange-dark); margin: 0 0 6px; text-transform: uppercase; }
+/* The product line and the tag wrap between them; a single word wider than a
+   phone's card at a large text size ("DISPOSABLE", "BESTSELLER") breaks
+   rather than widen the page (NEW-001). */
+.card-kicker { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); color: var(--orange-dark); margin: 0 0 6px; text-transform: uppercase; overflow-wrap: anywhere; }
 /* Names stop at two lines (AW-154); the link and its name keep the whole name. */
 .content-card h3 { font: 600 .9375rem/1.4 var(--body); letter-spacing: -.0125rem; margin: 0 0 5px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .card-detail { color: var(--muted); font-size: var(--text-sm); line-height: 1.5; margin: 0 0 10px; }
@@ -648,6 +661,18 @@ p > .text-link { min-height: 0; min-width: 0; }
    only when it alone is wider than the line. */
 .text-parts { display: flex; flex-wrap: wrap; column-gap: .25em; }
 .text-parts > span { min-width: 0; }
+/* A product code (TextParts' code: cards, cart and quote lines, header search
+   results) never breaks at its hyphens (AW-304): one longer than the line,
+   as some 22-29 character SKUs are on a phone's card, ends in an ellipsis.
+   The whole code stays in the text and in its title. */
+.sku-part { display: inline-block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+/* With large browser text on a phone (a screen narrower than 18.75em, about
+   125% text at 360px) the ellipsis would leave only a few characters of a
+   code, so it wraps at its hyphens instead and all of it stays on screen
+   (WCAG 1.4.4). */
+@media (max-width: 18.75em) {
+  .sku-part { white-space: normal; }
+}
 .card-meta { color: var(--purple); font-size: var(--text-sm); font-weight: 600; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 10px; min-height: var(--tap-sm); margin-top: auto; position: relative; z-index: 1; }
 /* The price or pricing lock takes the room beside the add control, down to
    8em; a narrower card puts the control under it rather than breaking the
@@ -655,8 +680,11 @@ p > .text-link { min-height: 0; min-width: 0; }
 .card-meta > :first-child { flex: 1 1 8em; min-width: 0; }
 /* The add and choose controls are at least as wide as the widest label,
    "Select options", so the price and the control wrap together across a grid
-   row and the action rows start level (AW-215). */
-.card-add { min-width: 7.75rem; }
+   row and the action rows start level (AW-215), but never wider than the
+   card: at a larger browser text size 7.75rem is wider than a phone's card,
+   and the control would spill over the next card and off the screen
+   (NEW-001). */
+.card-add { min-width: min(7.75rem, 100%); }
 /* "Added" after an add (AW-057): under the control, in the grid gap, so the
    card doesn't grow. */
 .card-actions { position: relative; }
@@ -669,7 +697,12 @@ p > .text-link { min-height: 0; min-width: 0; }
 /* An approved buyer's price that didn't load (NEW-054): a sentence in body
    type like the lock text, on its own line above the control. */
 .card-meta .card-price-failed { flex-basis: 100%; color: var(--ink); font-weight: 400; font-size: var(--text-xs); line-height: 1.4; }
-/* An approved buyer's price, larger than the name, and what it buys (AW-107). */
+/* An approved buyer's price, larger than the name, and what it buys (AW-107).
+   Every price block keeps room for the 'per <unit>' line, so the figures of
+   a grid row line up whether or not a card has a sell unit (AW-107,
+   NEW-039): the figure's line, the small's margin and its line. The lock
+   and failed-price lines are not .card-price, so they keep their height. */
+.card-price { min-height: calc(1.25rem * 1.05 + .125rem + var(--text-xs) * 1.3); }
 .card-price b { display: block; font: 700 1.25rem/1.05 var(--display); color: var(--purple); }
 .card-price small { display: block; margin-top: .125rem; font: 400 var(--text-xs)/1.3 var(--body); color: var(--muted); }
 /* On touch screens a card's stepper keeps its 44px buttons in a phone's
@@ -1956,7 +1989,10 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .content-card h3 { font-size: var(--text-base); }
   .card-actions { flex-direction: column; align-items: stretch; gap: 8px; }
   .card-actions > :first-child { flex-basis: auto; }
-  .card-add { width: 100%; }
+  /* At a larger text size the label and the pricing lock wrap inside the
+     card rather than widen it (NEW-001). */
+  .card-actions > * { min-width: 0; max-width: 100%; }
+  .card-add { width: 100%; white-space: normal; text-align: center; }
   .card-stepper { width: 100%; justify-content: space-between; }
   .card-stepper input { flex: 1 1 auto; }
   .dept-tile-media img { inset: 8px; max-width: calc(100% - 16px); max-height: calc(100% - 16px); }
@@ -2256,6 +2292,9 @@ address.info-lead-small { font-style: normal; }
    instead of becoming the compact layout's sideways scroller, which this
    selector outranks, and line up with the heading. */
 .dept-section .sub-pills { flex-wrap: wrap; overflow: visible; padding: 0; margin: 14px 0 12px; }
+/* A pill wider than the row, at a large text size, wraps its name rather
+   than widen the page (NEW-001). */
+.dept-section .sub-pill { white-space: normal; }
 /* The department's row of cards and the link to all of it (AW-068). */
 .dept-section .card-grid { margin-top: 22px; }
 .dept-more { display: flex; margin: 14px 0 2px; }

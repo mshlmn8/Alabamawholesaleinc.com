@@ -8,8 +8,9 @@ const item = { lineKey: '14', productId: 14, variant: null, needsVariant: false,
 const handlers = () => ({ onSetQty: vi.fn(), onRemove: vi.fn(), onChoose: vi.fn(), onChooseVariant: vi.fn() });
 const renderLine = (props) => render(<ul><CartLine {...props} /></ul>);
 // The SKU line is in parts that wrap between them (TextParts, AW-304): the
-// small that reads as this text.
-const detailLine = (text) => screen.getByText((_, el) => el.matches('.info > small') && el.textContent === text);
+// small that reads as this text. Its separators hold a no-break space before
+// the dot (NEW-082), compared here as a plain space.
+const detailLine = (text) => screen.getByText((_, el) => el.matches('.info > small') && el.textContent.replace(/\u00a0/g, ' ') === text);
 
 afterEach(() => vi.useRealTimers());
 
@@ -52,6 +53,15 @@ describe('CartLine', () => {
     expect(remove.getAttribute('type')).toBe('button');
     expect(remove.textContent).toBe('Remove');
     expect(remove.querySelector('svg')).toBeNull();
+  });
+
+  it('keeps the SKU whole as the line’s code part, its title the whole code (AW-304)', () => {
+    renderLine({ item: { ...item, sku: 'AW-MENTAL-HEALTH-PREROLLS-2PK', sellUnit: '2-pack' }, layout: 'checkout', showPrice: true, ...handlers() });
+    const code = document.querySelector('.info .sku-part');
+    expect(code.textContent).toBe('AW-MENTAL-HEALTH-PREROLLS-2PK\u00a0· ');
+    expect(code.getAttribute('title')).toBe('AW-MENTAL-HEALTH-PREROLLS-2PK');
+    expect(document.querySelectorAll('.sku-part')).toHaveLength(1);
+    expect(detailLine('AW-MENTAL-HEALTH-PREROLLS-2PK · Sold by the 2-pack · $12.34 each')).toBeTruthy();
   });
 
   it('checkout layout: "each" price and a line total', () => {

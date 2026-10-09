@@ -726,6 +726,57 @@ describe('cards with a stretched link (AW-170, AW-154, AW-304, AW-303)', () => {
     expect(own('.text-parts > span')).toEqual({ 'min-width': '0' });
   });
 
+  // A product code never breaks at its hyphens: a long one ends in an
+  // ellipsis, except with large text on a phone, where it wraps so all of it
+  // stays on screen (AW-304).
+  it('keeps a product code whole, ending a long one in an ellipsis, wrapping it only with large text (AW-304)', () => {
+    expect(own('.sku-part')).toEqual({ display: 'inline-block', 'max-width': '100%', 'white-space': 'nowrap', overflow: 'hidden', 'text-overflow': 'ellipsis', 'vertical-align': 'bottom' });
+    expect(inBlock('(max-width: 18.75em)', '.sku-part')).toEqual([{ 'white-space': 'normal' }]);
+    expect(css.indexOf('@media (max-width: 18.75em)')).toBeGreaterThan(css.indexOf('.sku-part {'));
+  });
+
+  // At a larger browser text size the add control and the pricing lock wrap
+  // inside a phone's card instead of spilling over the next card and off the
+  // screen (NEW-001); the kicker and the catalog's line pills wrap too.
+  it('keeps the card controls inside the card at a larger text size (NEW-001)', () => {
+    expect(own('.card-add')).toEqual({ 'min-width': 'min(7.75rem, 100%)' });
+    expect(inBlock('(max-width: 37.5em)', '.card-add')).toEqual([{ width: '100%', 'white-space': 'normal', 'text-align': 'center' }]);
+    expect(inBlock('(max-width: 37.5em)', '.card-actions > *')).toEqual([{ 'min-width': '0', 'max-width': '100%' }]);
+    expect(own('.card-kicker')).toMatchObject({ 'overflow-wrap': 'anywhere' });
+    expect(own('.dept-section .sub-pill')).toEqual({ 'white-space': 'normal' });
+  });
+
+  // Every approved price block keeps room for its 'per <unit>' line, so the
+  // figures of a grid row line up (AW-107, NEW-039): the figure's line, the
+  // small's margin and its line.
+  it('lines up the price figures of a grid row, with or without a sell unit (AW-107, NEW-039)', () => {
+    const b = own('.card-price b'), small = own('.card-price small');
+    expect(b.font).toBe('700 1.25rem/1.05 var(--display)');
+    expect(small).toMatchObject({ 'margin-top': '.125rem', font: '400 var(--text-xs)/1.3 var(--body)' });
+    expect(own('.card-price')).toEqual({ 'min-height': 'calc(1.25rem * 1.05 + .125rem + var(--text-xs) * 1.3)' });
+    // The lock and failed-price lines keep their own height.
+    for (const s of ['.card-meta .lock', '.card-meta .card-price-failed']) expect(own(s), s).not.toHaveProperty('min-height');
+  });
+
+  // A card tile too short for "Photo coming soon" with the name shows the
+  // mark and the label only; the product page keeps the name (NEW-083).
+  it('leaves the name out of a placeholder on a short card tile (NEW-083)', () => {
+    expect(own('.card-block')).toMatchObject({ 'container-type': 'size', 'aspect-ratio': '1.1' });
+    const block = /@container \(max-height: 10\.5rem\) \{([^{}]*\{[^{}]*\})\s*\}/.exec(css);
+    expect(block).not.toBeNull();
+    expect(rules(block[1]).map((r) => [r.selectors.join(', '), declarations(r.body)])).toEqual([['.card-block .photo-soon-name', { display: 'none' }]]);
+    // Nothing else is a size container, so the product page's placeholder keeps its name.
+    expect(declared('container-type').filter(({ value }) => value === 'size').map(({ selector }) => selector)).toEqual(['.card-block']);
+  });
+
+  // On touch screens a card's stepper keeps its 44px buttons in a phone's
+  // card: the quantity box gives way first (AW-302). The Help dialog's phone
+  // and email are 44px targets.
+  it('keeps a card stepper’s buttons and the Help dialog’s links 44px on touch screens (AW-302)', () => {
+    expect(inBlock('(pointer: coarse)', '.card-meta .stepper input')).toEqual([{ 'flex-shrink': '1000', 'min-width': '3ch' }]);
+    expect(inBlock('(pointer: coarse)', '.dialog dd a')).toEqual([{ display: 'inline-flex', 'align-items': 'center', 'min-height': 'var(--tap)' }]);
+  });
+
   it('keeps a section link on one line on phones, the heading wrapping instead (AW-303)', () => {
     expect(inBlock('(max-width: 37.5em)', '.section-head > a')).toEqual([{ 'white-space': 'normal', 'max-width': 'none' }]);
     expect(inBlock('(max-width: 37.5em)', '.section-head > :first-child')).toEqual([{ flex: '1 1 10em', 'min-width': '0' }]);

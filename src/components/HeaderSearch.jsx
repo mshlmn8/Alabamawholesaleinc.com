@@ -28,12 +28,16 @@
 //   masthead sticks and is stuck already, the box is as high as it goes and
 //   the page stays put (AW-153).
 // It never changes the page title (AW-338).
+// - A result's department, line and SKU wrap between them, and a SKU longer
+//   than the row ends in an ellipsis instead of breaking at its hyphens
+//   (TextParts, AW-304).
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MIN_QUERY_LENGTH, searchProducts } from '../lib/search.js';
 import { catLabel } from '../lib/format.js';
 import { Link, navigate, parseUrl, useLocation } from '../lib/router.js';
 import { Icon } from './Icon.jsx';
+import { TextParts } from './TextParts.jsx';
 import { Thumb } from './Thumb.jsx';
 
 // Products listed in the dropdown.
@@ -243,7 +247,7 @@ export function HeaderSearch({ products, isMobile = false, onOpen }) {
                 <Link key={p.id} to={{ page: 'product', productId: p.id }} role="option" id={optionId(i)} aria-selected={i === current} tabIndex={-1}
                       onMouseDown={keepFocus} onClick={pickProduct}>
                   <span className="sr-thumb"><Thumb src={p.img} /></span>
-                  <span><strong>{p.name}</strong><small>{`${catLabel(p.cat)} · ${p.sub} · ${p.sku}`}</small></span>
+                  <span><strong>{p.name}</strong><small><TextParts parts={[catLabel(p.cat), p.sub, p.sku]} code={p.sku} /></small></span>
                 </Link>
               ))}
               {seeAll && (

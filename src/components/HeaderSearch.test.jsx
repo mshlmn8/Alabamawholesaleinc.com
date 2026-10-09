@@ -4,6 +4,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PRODUCTS } from '../data/products.js';
 import { navigate } from '../lib/router.js';
+import { catLabel } from '../lib/format.js';
 import { searchProducts } from '../lib/search.js';
 import { HeaderSearch, SEARCH_PREVIEW, STATUS_DELAY_MS, headerStuck } from './HeaderSearch.jsx';
 
@@ -58,6 +59,18 @@ describe('combobox semantics (AW-171)', () => {
       expect(option.getAttribute('tabindex')).toBe('-1');
       expect(option.getAttribute('aria-selected')).toBe('false');
     }
+  });
+
+  it('gives each result its department, line and SKU as parts that wrap between them, the SKU kept whole (AW-304)', () => {
+    renderSearch();
+    type('mental health');
+    const { items } = searchProducts(PRODUCTS, 'mental health');
+    const first = options()[0];
+    const parts = [...first.querySelectorAll('small > .text-parts > span')];
+    expect(parts.map((span) => span.textContent.replace(/\u00a0/g, ' ').trim())).toEqual([`${catLabel(items[0].cat)} ·`, `${items[0].sub} ·`, items[0].sku]);
+    const code = first.querySelector('.sku-part');
+    expect(code).toBe(parts[2]);
+    expect(code.getAttribute('title')).toBe(items[0].sku);
   });
 
   it('shows no listbox when nothing matches, and says so', () => {

@@ -26,7 +26,7 @@ describe('CartDrawer totals (AW-103)', () => {
   it('shows "each" and a line total, and a total of the lines that can be ordered', () => {
     render(drawer([KITE]));
     // The detail line wraps between its values (AW-304): one span each.
-    expect(screen.getByText((_, el) => el.matches('.info > small') && el.textContent === 'AW-KITE · $13.40 each')).toBeTruthy();
+    expect(screen.getByText((_, el) => el.matches('.info > small') && el.textContent === 'AW-KITE\u00a0· $13.40 each')).toBeTruthy();
     expect(document.querySelector('.drawer-line .line-total').textContent).toBe('$40.20');
     expect(totalRow()).toBe('Estimated total$40.20');
     expect(note()).toBeNull();

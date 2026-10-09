@@ -18,6 +18,7 @@ import { Icon } from '../components/Icon.jsx';
 import { Picture } from '../components/Picture.jsx';
 import { HomeHero } from '../components/HomeHero.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
+import { PART_SEPARATOR } from '../components/TextParts.jsx';
 
 const EDITORIAL_BG = heroImage('hero_candy.jpg');
 
@@ -32,8 +33,10 @@ const dept = (category) => ({ page: 'category', category });
 const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 // A tile's text in parts (inline blocks in index.css): on a narrow tile it
 // wraps between "68 products ·" and "7 product lines", not inside them, and
-// a part wraps at its own spaces only when it is wider than the tile.
-const parts = (list) => list.map((part, i) => <span key={part}>{i < list.length - 1 ? `${part} · ` : part}</span>);
+// a part wraps at its own spaces only when it is wider than the tile. The
+// dot is held to the part's last word by a no-break space, so it never
+// starts a line on its own (NEW-082, as TextParts).
+const parts = (list) => list.map((part, i) => <span key={part}>{i < list.length - 1 ? `${part}${PART_SEPARATOR}` : part}</span>);
 
 // Products without a photo stay off the home rails until a packshot exists
 // (AW-029, Cursor PR #13); they are still in their department.

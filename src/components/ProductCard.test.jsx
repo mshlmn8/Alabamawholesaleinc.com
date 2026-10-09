@@ -18,7 +18,9 @@ const base = { id: 1, name: 'Swisher Sweets cigarillos', brand: 'Swisher Sweets'
 const card = (p, props = {}) => (
   <ProductCard p={p} profile={null} isApprovedBuyer={false} cart={{}} addLine={vi.fn()} decLine={vi.fn()} onLoginClick={vi.fn()} {...props} />
 );
-const detail = () => document.querySelector('.card-detail').textContent;
+// The detail line as it reads: its separators hold a no-break space before
+// the dot (NEW-082), compared here as a plain space.
+const detail = () => document.querySelector('.card-detail').textContent.replace(/\u00a0/g, ' ');
 const price = () => document.querySelector('.card-meta > span:first-child').textContent;
 const APPROVED = { profile: { id: 'a', status: 'approved' }, isApprovedBuyer: true, pricesStatus: 'ready' };
 
@@ -382,11 +384,18 @@ describe('ProductCard structure', () => {
     expect(order).toEqual(['card-link', 'button ghost sm card-add']);
   });
 
-  it('shows the detail line as parts that wrap between them, reading as one line (AW-304)', () => {
+  it('shows the detail line as parts that wrap between them, reading as one line (AW-304, NEW-082)', () => {
     render(card({ ...base, variants: ['Red', 'Grape'], variantAxis: 'Flavor', sellUnit: '5-pack' }));
     const parts = [...document.querySelectorAll('.card-detail > .text-parts > span')].map((span) => span.textContent);
-    expect(parts).toEqual(['Swisher Sweets · ', '2 flavors · ', 'Sold by the 5-pack · ', 'AW-SS']);
-    expect(detail()).toBe(cardDetail({ ...base, variants: ['Red', 'Grape'], variantAxis: 'Flavor', sellUnit: '5-pack' }));
+    // A no-break space holds each dot to its part's last word (NEW-082).
+    expect(parts).toEqual(['Swisher Sweets\u00a0· ', '2 flavors\u00a0· ', 'Sold by the 5-pack\u00a0· ', 'AW-SS']);
+    expect(document.querySelector('.card-detail').textContent).toBe(cardDetail({ ...base, variants: ['Red', 'Grape'], variantAxis: 'Flavor', sellUnit: '5-pack' }));
+    // The SKU is the code part: it never breaks at its hyphens, and its title
+    // holds all of it (AW-304).
+    const code = document.querySelector('.card-detail .sku-part');
+    expect(code.textContent).toBe('AW-SS');
+    expect(code.getAttribute('title')).toBe('AW-SS');
+    expect(document.querySelectorAll('.card-detail .sku-part')).toHaveLength(1);
     expect(cardDetailParts({ ...base, variants: [] }, { sku: false })).toEqual(['Swisher Sweets']);
   });
 });

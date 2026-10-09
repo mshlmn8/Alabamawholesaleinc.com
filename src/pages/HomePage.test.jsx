@@ -85,7 +85,7 @@ describe('HomePage rails', () => {
 
   it('keeps the SKU on cards everywhere else', () => {
     const p = { brand: 'Swisher Sweets', sku: 'AW-SS', variants: [] };
-    expect(cardDetail(p)).toBe('Swisher Sweets · AW-SS');
+    expect(cardDetail(p)).toBe('Swisher Sweets\u00a0· AW-SS');
     expect(cardDetail(p, { sku: false })).toBe('Swisher Sweets');
   });
 });
@@ -195,11 +195,13 @@ describe('HomePage department tiles', () => {
       expect(links[0].parentElement.matches('.dept-tile-body > h3')).toBe(true);
       expect(within(tile).getByRole('link', { name: d.label }).getAttribute('href')).toBe(hrefFor({ page: 'category', category: d.key }));
       expect(tile.querySelector('.dept-tile-body h3').textContent).toBe(d.label);
-      expect(tile.querySelector('.dept-tile-count').textContent).toBe(`${d.count} products · ${d.subs.length} product lines`);
-      expect(tile.querySelector('.dept-tile-lines').textContent).toBe(topLines(PRODUCTS, d.key).join(' · '));
+      // A no-break space holds each dot to the last word before it, so a
+      // narrow tile never starts a line with a lone dot (NEW-082).
+      expect(tile.querySelector('.dept-tile-count').textContent).toBe(`${d.count} products\u00a0· ${d.subs.length} product lines`);
+      expect(tile.querySelector('.dept-tile-lines').textContent).toBe(topLines(PRODUCTS, d.key).join('\u00a0· '));
       // Each part wraps as a unit, its separator dot with it.
       const lines = [...tile.querySelectorAll('.dept-tile-lines > span')].map((span) => span.textContent);
-      expect(lines).toEqual(topLines(PRODUCTS, d.key).map((line, j, all) => (j < all.length - 1 ? `${line} · ` : line)));
+      expect(lines).toEqual(topLines(PRODUCTS, d.key).map((line, j, all) => (j < all.length - 1 ? `${line}\u00a0· ` : line)));
       // Only the photo is in the frame.
       expect(tile.querySelector('.dept-tile-media').textContent).toBe('');
       const img = tile.querySelector('.dept-tile-media img');

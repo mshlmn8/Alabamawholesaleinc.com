@@ -2,6 +2,9 @@
 // "Photo coming soon" and the product name, in place of the old grey
 // initials. `compact` is for the small cart, checkout and search thumbnails,
 // which only fit the picture mark; the product name is printed beside them.
+// On a card whose tile is too short for the name (a phone's two columns,
+// print's four), index.css leaves the name out (@container on .card-block,
+// NEW-083): it would be cut mid-line, and the card's title says it.
 // TODO(owner): Packshots for the products that have no photo, starting with Dubai chocolate #342 and the Grocery items. (AW-029)
 
 function PhotoMark() {
