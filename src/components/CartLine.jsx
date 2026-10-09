@@ -7,6 +7,8 @@
 //
 // The quantity is the shared QuantityInput (AW-013): typed or stepped, 1 to
 // 100,000; onSetQty(n) gets the new quantity. − stops at 1; Remove removes.
+// Its buttons carry the line's name, variant included ("Decrease quantity of
+// Cigarillos — Red", NEW-086), like the box and Remove beside them.
 // Remove is a worded text button at the end of the quantity row, so it
 // doesn't look like the drawer's close × just above it (AW-306); its name
 // says which line ("Remove Kite").
@@ -116,7 +118,8 @@ export function CartLine({ item: it, layout = 'drawer', showPrice, pricesStatus 
       ) : choose ? (
         <Link className="text-link choose" to={productPage} onClick={onChoose}>Choose variant</Link>
       ) : gone ? null : (
-        <QuantityInput className="qty" value={it.qty} onChange={(n) => onSetQty?.(n)} label={`Quantity of ${it.name}`} groupLabel={`${it.name} quantity`} />
+        <QuantityInput className="qty" value={it.qty} onChange={(n) => onSetQty?.(n)} label={`Quantity of ${it.name}`} groupLabel={`${it.name} quantity`}
+                       itemName={it.name} />
       )}
       {priced && !it.needsVariant && <b className="line-total">{formatMoney(lineTotal(it.price, it.qty))}</b>}
       <button className="text-link drawer-remove" type="button" onClick={onRemove} aria-label={`Remove ${it.name}`}>Remove</button>

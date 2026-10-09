@@ -106,6 +106,57 @@ describe('QuantityInput', () => {
     expect(onChange).toHaveBeenCalledWith(1);
   });
 
+  it('keeps focus when − reaches 1 or + reaches the most: it moves to the box (AW-042)', () => {
+    const onChange = vi.fn();
+    render(<Holder start={2} max={3} onChange={onChange} />);
+    minus().focus();
+    fireEvent.click(minus());
+    expect(minus().disabled).toBe(true);
+    expect(document.activeElement).toBe(box());
+    // The box shows the new quantity, and leaving it changes nothing more.
+    expect(box().value).toBe('1');
+    fireEvent.blur(box());
+    expect(onChange.mock.calls).toEqual([[1]]);
+    expect(spoken()).toBe('Quantity 1');
+
+    plus().focus();
+    fireEvent.click(plus());
+    expect(plus().disabled).toBe(false);
+    expect(document.activeElement).toBe(plus());
+    fireEvent.click(plus());
+    expect(plus().disabled).toBe(true);
+    expect(document.activeElement).toBe(box());
+    expect(box().value).toBe('3');
+    expect(onChange.mock.calls).toEqual([[1], [2], [3]]);
+  });
+
+  it('after a tap, keeps focus on the other button instead, so a phone’s keyboard stays shut', () => {
+    render(<Holder start={2} />);
+    minus().focus();
+    fireEvent.pointerDown(minus(), { pointerType: 'touch' });
+    fireEvent.click(minus(), { detail: 1 });
+    expect(box().value).toBe('1');
+    expect(document.activeElement).toBe(plus());
+  });
+
+  it('leaves focus alone when the button didn’t have it (Safari doesn’t focus a clicked button)', () => {
+    render(<Holder start={2} />);
+    fireEvent.click(minus(), { detail: 1 });
+    expect(box().value).toBe('1');
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it('names − and + after the line when given its name (NEW-086)', () => {
+    const view = render(<QuantityInput value={2} onChange={() => {}} onRemove={() => {}} removeLabel="Remove Kite" label="Quantity of Kite" groupLabel="Kite quantity" itemName="Kite" />);
+    const group = screen.getByRole('group', { name: 'Kite quantity' });
+    expect([...group.querySelectorAll('button')].map((b) => b.getAttribute('aria-label')))
+      .toEqual(['Decrease quantity of Kite', 'Increase quantity of Kite']);
+    // At 1, − is the line's Remove, as before.
+    view.rerender(<QuantityInput value={1} onChange={() => {}} onRemove={() => {}} removeLabel="Remove Kite" label="Quantity of Kite" groupLabel="Kite quantity" itemName="Kite" />);
+    expect(screen.getByRole('button', { name: 'Remove Kite' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Increase quantity of Kite' })).toBeTruthy();
+  });
+
   it('follows the quantity it is given while it doesn’t have focus', () => {
     const view = render(<QuantityInput value={3} onChange={() => {}} label="Quantity" groupLabel="Q" />);
     view.rerender(<QuantityInput value={7} onChange={() => {}} label="Quantity" groupLabel="Q" />);

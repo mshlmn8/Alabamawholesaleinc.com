@@ -21,8 +21,8 @@ describe('CartLine', () => {
     const total = document.querySelector('.line-total');
     expect(total.tagName).toBe('B');
     expect(total.textContent).toBe('$493.60');
-    fireEvent.click(screen.getByRole('button', { name: 'Increase quantity' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Decrease quantity' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Increase quantity of Kite' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Decrease quantity of Kite' }));
     fireEvent.click(screen.getByRole('button', { name: 'Remove Kite' }));
     expect(h.onSetQty.mock.calls).toEqual([[41], [39]]);
     expect(h.onRemove).toHaveBeenCalledTimes(1);
@@ -37,7 +37,7 @@ describe('CartLine', () => {
     fireEvent.change(input, { target: { value: '48' } });
     expect(h.onSetQty).toHaveBeenCalledWith(48);
     view.rerender(<ul><CartLine item={{ ...item, qty: 1 }} layout="checkout" {...h} /></ul>);
-    expect(screen.getByRole('button', { name: 'Decrease quantity' }).disabled).toBe(true);
+    expect(screen.getByRole('button', { name: 'Decrease quantity of Kite' }).disabled).toBe(true);
     expect(screen.queryByRole('button', { name: 'Remove Kite' })).toBeTruthy();
   });
 

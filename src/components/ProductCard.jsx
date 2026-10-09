@@ -194,7 +194,7 @@ export function ProductCard({
           <button className="button ghost sm card-add" type="button" disabled>Not available<span className="sr-only">{`, ${p.name}`}</span></button>
         ) : qty > 0 ? (
           <QuantityInput ref={stepperRef} className="card-stepper" value={qty} onChange={setQty} onRemove={remove} removeLabel={`Remove ${p.name}`}
-                         label={`Quantity of ${p.name}`} groupLabel={`${p.name} quantity`} />
+                         label={`Quantity of ${p.name}`} groupLabel={`${p.name} quantity`} itemName={p.name} />
         ) : (
           <button ref={addRef} className="button ghost sm card-add" type="button" onClick={add} onPointerDown={(event) => { pressedWith.current = event.pointerType; }}>
             <span>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</span><span className="sr-only">{`, ${p.name}`}</span>

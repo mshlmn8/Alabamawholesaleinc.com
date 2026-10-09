@@ -204,8 +204,8 @@ describe('ProductCard add control', () => {
     const group = screen.getByRole('group', { name: 'Kite cigarette tobacco quantity' });
     expect(group.className).toBe('stepper card-stepper');
     expect(screen.getByRole('textbox', { name: 'Quantity of Kite cigarette tobacco' }).value).toBe('4');
-    fireEvent.click(screen.getByRole('button', { name: 'Increase quantity' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Decrease quantity' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Increase quantity of Kite cigarette tobacco' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Decrease quantity of Kite cigarette tobacco' }));
     expect(addLine).toHaveBeenCalledWith(14, null, 1);
     expect(decLine).toHaveBeenCalledWith('14', 1);
     // The + and − are drawn icons, not text.
@@ -228,7 +228,7 @@ describe('ProductCard add control', () => {
   it('removes the product from 1 with −, named for the product', () => {
     const decLine = vi.fn();
     addCard({ cart: { 14: 1 }, decLine });
-    expect(screen.queryByRole('button', { name: 'Decrease quantity' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Decrease quantity/ })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Remove Kite cigarette tobacco' }));
     expect(decLine).toHaveBeenCalledWith('14', 1);
   });
@@ -312,7 +312,7 @@ describe('ProductCard feedback', () => {
     const add = screen.getByRole('button', { name: 'Add to quote, Kite cigarette tobacco' });
     fireEvent.pointerDown(add, { pointerType: 'touch' });
     fireEvent.click(add);
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Increase quantity' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Increase quantity of Kite cigarette tobacco' }));
   });
 
   it('announces a removal with − at 1 and puts focus back on the add button', () => {

@@ -89,7 +89,7 @@ describe('CartDrawer', () => {
   it('sets a line’s quantity by its key (AW-013)', () => {
     const setLine = vi.fn();
     render(drawer({ profile: null, isApprovedBuyer: false, setLine }));
-    fireEvent.click(screen.getByRole('button', { name: 'Increase quantity' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Increase quantity of Kite cigarette tobacco' }));
     expect(setLine).toHaveBeenCalledWith('14', 3);
   });
 });

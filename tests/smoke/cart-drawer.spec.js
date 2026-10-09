@@ -114,3 +114,24 @@ test('an empty cart offers the catalog, with no total or fine print, and the lin
   await expect(page.locator('main h1')).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test('stepping a line down to 1 keeps focus in the drawer, and the steppers name their line (AW-042, NEW-086)', async ({ page, context }) => {
+  const errors = trackErrors(page);
+  await context.addInitScript(([key, value]) => {
+    try { if (!sessionStorage.getItem('smoke-cart')) { localStorage.setItem(key, value); sessionStorage.setItem('smoke-cart', '1'); } } catch { /* storage blocked */ }
+  }, [GUEST_CART, JSON.stringify({ 14: 2, 45: 2 })]);
+  await page.goto('/category/grocery');
+  await cartButton(page).click();
+  const drawer = page.getByRole('dialog', { name: 'Your quote' });
+  const minus = drawer.getByRole('button', { name: 'Decrease quantity of Kite cigarette tobacco', exact: true });
+  await minus.focus();
+  await page.keyboard.press('Enter');
+  // − is off at 1, and focus went to the line's quantity, still in the dialog.
+  await expect(minus).toBeDisabled();
+  await expect(drawer.getByRole('textbox', { name: 'Quantity of Kite cigarette tobacco' })).toBeFocused();
+  await expect(drawer.getByRole('textbox', { name: 'Quantity of Kite cigarette tobacco' })).toHaveValue('1');
+  // Each line's buttons say which line they change.
+  await expect(drawer.getByRole('button', { name: 'Increase quantity of Argo corn starch', exact: true })).toBeVisible();
+  await expect(drawer.getByRole('button', { name: 'Decrease quantity', exact: true })).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
