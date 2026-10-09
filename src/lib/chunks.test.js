@@ -187,19 +187,27 @@ describe('whenOnline (NEW-006)', () => {
 });
 
 describe('the reload that recovers a file that didn’t download (NEW-006)', () => {
+  // What the reload brings: a fresh document with the flag still set.
+  const reloaded = () => setReloadForTests(reload);
+
   it('reloads once per address, and again once a page has rendered', () => {
     online(true);
     window.history.replaceState(null, '', '/contact?x=1');
     expect(reloadForChunkError()).toBe(true);
     expect(reload).toHaveBeenCalledTimes(1);
     expect(window.sessionStorage.getItem(CHUNK_RELOAD_KEY)).toBe('/contact?x=1');
+    // A second failure before the reload happens waits for it.
+    expect(reloadForChunkError()).toBe(true);
+    expect(reload).toHaveBeenCalledTimes(1);
     // The reloaded page failed too: no second reload, the page says so.
+    reloaded();
     expect(reloadForChunkError()).toBe(false);
     expect(reload).toHaveBeenCalledTimes(1);
     // Another address may reload once.
     window.history.replaceState(null, '', '/quote');
     expect(reloadForChunkError()).toBe(true);
     expect(reload).toHaveBeenCalledTimes(2);
+    reloaded();
     clearChunkReload();
     expect(window.sessionStorage.getItem(CHUNK_RELOAD_KEY)).toBeNull();
     expect(reloadForChunkError()).toBe(true);
@@ -253,7 +261,10 @@ describe('loadPage and loadDialog (NEW-006)', () => {
     const first = loadPage('contact', failing);
     expect(await settled(first)).toBe('pending');
     expect(reload).toHaveBeenCalledTimes(1);
+    // Another failure meanwhile waits for that reload too.
+    expect(await settled(loadPage('contact', failing))).toBe('pending');
     // After the reload the flag is set: the error reaches the page's boundary.
+    setReloadForTests(reload);
     await expect(loadPage('contact', failing)).rejects.toThrow(NOT_LOADED);
     expect(reload).toHaveBeenCalledTimes(1);
   });
@@ -306,6 +317,7 @@ describe('installChunkRecovery (NEW-006)', () => {
     expect(preloadError().defaultPrevented).toBe(true);
     expect(reload).toHaveBeenCalledTimes(1);
     // Already reloaded for this address: Vite throws, the page says so.
+    setReloadForTests(reload);
     expect(preloadError().defaultPrevented).toBe(false);
     expect(reload).toHaveBeenCalledTimes(1);
     remove();
@@ -321,7 +333,7 @@ describe('installChunkRecovery (NEW-006)', () => {
     expect(reload).not.toHaveBeenCalled();
     fail(new TypeError(NOT_LOADED));
     await expect(dialog).rejects.toThrow(NOT_LOADED);
-    // With no dialog loading, a page's file reloads again.
+    // With no dialog loading, a page's file reloads.
     expect(preloadError().defaultPrevented).toBe(true);
     remove();
   });

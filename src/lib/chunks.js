@@ -144,16 +144,22 @@ const whenLoadable = (name) => (isOnline() || isWarm(name) ? Promise.resolve() :
 export const CHUNK_RELOAD_KEY = 'aw-chunk-reload';
 const reloadNow = () => window.location.reload();
 let reloadPage = reloadNow;
-// jsdom's location.reload can't be replaced; tests pass their own.
+// A reload this document already started: later failures wait for it.
+let reloadStarted = false;
+// jsdom's location.reload can't be replaced; tests pass their own. It also
+// stands for the next document: no reload started yet.
 export function setReloadForTests(reload) {
   reloadPage = reload || reloadNow;
+  reloadStarted = false;
 }
 
 // Reloads the page to recover a file that didn't download, at most once per
 // address: the flag names the address reloaded for, and a page that
 // rendered clears it. Offline, or without sessionStorage to keep the flag
-// in (no way to stop a loop), it doesn't. Returns true when it reloads.
+// in (no way to stop a loop), it doesn't. Returns true when it reloads, or
+// a reload is already under way.
 export function reloadForChunkError() {
+  if (reloadStarted) return true;
   if (typeof window === 'undefined' || !isOnline()) return false;
   const here = window.location.pathname + window.location.search;
   try {
@@ -162,6 +168,7 @@ export function reloadForChunkError() {
   } catch {
     return false;
   }
+  reloadStarted = true;
   reloadPage();
   return true;
 }
