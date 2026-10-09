@@ -17,7 +17,9 @@ export const DELIVERY_STATES = [
   { code: 'GA', name: 'Georgia' },
 ];
 
+// States off the delivery routes, for the service-area check.
+// TODO(owner): Do any delivery routes reach Tennessee or another state not listed? Tennessee shows as outside the routes until you say. (AW-270)
 export const OTHER_STATES = [
   ['AR', 'Arkansas'], ['FL', 'Florida'], ['KY', 'Kentucky'], ['LA', 'Louisiana'], ['NC', 'North Carolina'],
-  ['SC', 'South Carolina'], ['TX', 'Texas'], ['VA', 'Virginia'], ['XX', 'Another state'],
+  ['SC', 'South Carolina'], ['TN', 'Tennessee'], ['TX', 'Texas'], ['VA', 'Virginia'], ['XX', 'Another state'],
 ].map(([code, name]) => ({ code, name }));

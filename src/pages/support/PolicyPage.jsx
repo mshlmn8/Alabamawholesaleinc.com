@@ -3,7 +3,7 @@
 import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM, POLICIES_UPDATED } from '../../data/content.js';
 import { formatMoney, formatMoneyShort } from '../../lib/format.js';
 import { Link } from '../../lib/router.js';
-import { CallOrEmail, PhoneLink, EmailLink } from '../../components/ContactLinks.jsx';
+import { CallOrEmail } from '../../components/ContactLinks.jsx';
 import { PageHead, SupportLayout, ContactStrip, POLICY_LINKS } from './SupportShell.jsx';
 
 // Shared with TERMS_VERSION, the version an application accepts (AW-019).
@@ -61,6 +61,7 @@ const POLICIES = {
           'To prepare quotes, process orders, and contact you about them.',
         ] },
       ] },
+      // TODO(owner): This section repeats the contact strip below it; it stays as privacy-policy wording until you approve the contact method for access or deletion requests (AW-027), and may then go. (AW-276)
       { heading: 'Contact the trade desk', body: [
         <>Questions about what we collect: <CallOrEmail before="call" after="." /></>,
       ] },
@@ -127,9 +128,8 @@ export function PolicyPage({ kind }) {
               ))}
             </section>
           ))}
-          <p className="support-note">
-            <span>{policy.updated ? `Last updated ${UPDATED}. ` : ''}</span>Questions about this policy? Call <PhoneLink /> or email <EmailLink />.
-          </p>
+          {/* The contact strip right below has the phone and email (AW-276). */}
+          {policy.updated && <p className="support-note">{`Last updated ${UPDATED}.`}</p>}
         </article>
       </SupportLayout>
       <ContactStrip />
