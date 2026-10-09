@@ -89,14 +89,14 @@ describe('failed loads (AW-202)', () => {
     expect(within(row).getAllByText('Not on file')).toHaveLength(2);
   });
 
-  it('Products: shows the error and Try again, never "0 of 0 products"', async () => {
+  it('Products: shows the error and Try again, never "0 products"', async () => {
     failing.add('products');
     await open('products');
     expect(screen.getByRole('alert').textContent).toMatch(/^The products didn’t load/);
-    expect(screen.queryByText(/of 0 products/)).toBeNull();
+    expect(screen.queryByText(/0 products/)).toBeNull();
     failing.delete('products');
     await tryAgain();
-    expect(screen.getByText('1 of 1 products')).toBeTruthy();
+    expect(screen.getByText('1 product')).toBeTruthy();
   });
 });
 

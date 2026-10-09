@@ -27,11 +27,14 @@ export const ORDER_STATUS_FILTERS = [...ORDER_STATES, 'all'];
 export const DEFAULT_ORDER_STATUS = 'new';
 export const ORDER_METHODS = ['delivery', 'willcall'];
 
-// Products filters. Their meaning belongs to the Products section; this only
-// says which values a URL may carry.
+// Products filters. Their meaning belongs to the Products section
+// (src/pages/admin/productList.js); this only says which values a URL may
+// carry. photo=none and unit=none are the 'No photo' and 'No sell unit'
+// toggles (AW-115).
 export const PRODUCT_STATUSES = ['active', 'inactive'];
 export const PRODUCT_TAGS = ['bestseller', 'new', 'deal', 'premium', 'none'];
-export const PRODUCT_PHOTO = ['yes', 'no'];
+export const PRODUCT_PHOTO = ['none'];
+export const PRODUCT_UNITS = ['none'];
 export const PRODUCT_SORTS = ['id', 'name', 'brand', 'category', 'price', 'updated'];
 export const SORT_DIRECTIONS = ['asc', 'desc'];
 export const MAX_PRODUCT_QUERY = 100;
@@ -76,7 +79,7 @@ const QUERY = {
     sub: { read: (v) => key(60)(v.toLowerCase()) },
     tag: { read: (v) => oneOf(PRODUCT_TAGS)(v.toLowerCase()) },
     photo: { read: (v) => oneOf(PRODUCT_PHOTO)(v.toLowerCase()) },
-    unit: { read: (v) => key(30)(v.toLowerCase()) },
+    unit: { read: (v) => oneOf(PRODUCT_UNITS)(v.toLowerCase()) },
     stock: { read: (v) => key(30)(v.toLowerCase()) },
     sort: { read: (v) => oneOf(PRODUCT_SORTS)(v.toLowerCase()) },
     dir: { read: (v) => oneOf(SORT_DIRECTIONS)(v.toLowerCase()) },

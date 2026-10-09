@@ -43,8 +43,8 @@ describe('parseAdminPath', () => {
     expect(parseAdminQuery('orders', '?status=lost')).toEqual({});
     // Accounts take nothing from the URL: their search names people.
     expect(parseAdminQuery('accounts', '?q=alice@example.test&status=pending')).toEqual({});
-    expect(parseAdminQuery('products', `?q=+swisher+&status=inactive&dept=drinks-and-bags&sub=Energy-Drinks&tag=NEW&photo=no&unit=box&stock=low_stock&sort=price&dir=desc&page=3&from=12&x=1`))
-      .toEqual({ q: 'swisher', status: 'inactive', dept: 'drinks-and-bags', sub: 'energy-drinks', tag: 'new', photo: 'no', unit: 'box', stock: 'low_stock', sort: 'price', dir: 'desc', page: 3, from: 12 });
+    expect(parseAdminQuery('products', `?q=+swisher+&status=inactive&dept=drinks-and-bags&sub=Energy-Drinks&tag=NEW&photo=None&unit=none&stock=low_stock&sort=price&dir=desc&page=3&from=12&x=1`))
+      .toEqual({ q: 'swisher', status: 'inactive', dept: 'drinks-and-bags', sub: 'energy-drinks', tag: 'new', photo: 'none', unit: 'none', stock: 'low_stock', sort: 'price', dir: 'desc', page: 3, from: 12 });
     expect(parseAdminQuery('products', '?page=1&dept=../etc&sort=evil&q=')).toEqual({});
     expect(parseAdminQuery('products', `?q=${'a'.repeat(140)}`).q).toHaveLength(100);
     expect(() => parseAdminQuery('orders', '?status=%E0%A4%A')).not.toThrow();

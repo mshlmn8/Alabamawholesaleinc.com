@@ -90,7 +90,7 @@ describe('the products list (AW-023)', () => {
     };
     await renderAdmin();
     expect(fake.find({ table: 'products', op: 'select' }).map((r) => r.columns)).toEqual(ADMIN_COLUMN_STEPS);
-    expect(screen.getByText('3 of 3 products')).toBeTruthy();
+    expect(screen.getByText('3 products · 1 inactive')).toBeTruthy();
     await openEditor('Kite');
     // The fields of the missing columns say so; "can't be ordered" and the
     // variant prices are not offered.

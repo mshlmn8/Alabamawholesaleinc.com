@@ -337,7 +337,9 @@ describe('one field system (AW-146, AW-172, AW-147, AW-309)', () => {
   // (.eligibility-form input) and the admin quote editor (.order-edit-line).
   // The admin verification note is an .aw-table input.
   const FIELD_CONTROLS = ['.form-grid :is(input, select, textarea)', '.filter-search input', '.category-sort select', '.eligibility-form :is(input, select)',
-    '.qr-field input', '.qr-choice select', '.order-head select', '.order-edit-line input', '.aw-table :is(input, select)', '.doc-file'];
+    '.qr-field input', '.qr-choice select', '.order-head select', '.order-edit-line input', '.aw-table :is(input, select)', '.doc-file',
+    // The admin lists' filter rows (AW-115).
+    '.admin-toolbar :is(input, select)'];
   const EXCLUDE = ':not([type=checkbox]):not([type=radio])';
   // The selector list inside `:where(:is(<list>)<suffix>)`, or null.
   const innerList = (selector, suffix) => {
@@ -428,7 +430,8 @@ describe('one field system (AW-146, AW-172, AW-147, AW-309)', () => {
 
   it('gives every field label one style', () => {
     const labels = ['.form-grid label', '.contact-grid dt', '.eligibility-form label', '.qr-field span', '.qr-choice span',
-      '.category-sort', '.filter-search', '.doc-upload label', '.filter-panel legend', '.doc-uploads legend', '.order-edit-line label', '.account-note'];
+      '.category-sort', '.filter-search', '.doc-upload label', '.filter-panel legend', '.doc-uploads legend', '.order-edit-line label', '.account-note',
+      '.admin-toolbar label'];
     const typography = { 'font-size': 'var(--text-xs)', 'font-weight': '700', 'letter-spacing': 'var(--track-label)', color: 'var(--purple)', 'text-transform': 'uppercase' };
     const shared = all.find((r) => r.selectors.includes('.doc-uploads legend') && declarations(r.body)['text-transform']);
     expect(shared.selectors).toEqual(labels);

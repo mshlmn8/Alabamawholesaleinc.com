@@ -3,18 +3,28 @@
 // /admin/products/:id and /admin/products/new (AW-023). The rows are loaded
 // once here and shared by both, so coming back from the editor shows the
 // list at once, where it was.
+//
+// The list (AW-115) filters by status, department, sub-line, tag, stock
+// status, no photo and no sell unit, searches the name, brand, SKU,
+// department, sub-line and id, sorts by ID, name, brand, price or last
+// change, and shows 50 rows a page; all of it lives in the URL
+// (productList.js, adminRoutes.js). Inactive products are greyed, with an
+// Inactive pill.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { formatMoney } from '../../lib/format.js';
 import { productImage } from '../../lib/images.js';
 import { MISSING_FUNCTION_CODES } from '../../lib/pricing.js';
-import { MAX_PRODUCT_QUERY } from '../../lib/adminRoutes.js';
+import { MAX_PRODUCT_QUERY, adminHref } from '../../lib/adminRoutes.js';
 import { Link, navigate } from '../../lib/router.js';
 import { MissingPhoto } from '../../components/MissingPhoto.jsx';
+import { Icon } from '../../components/Icon.jsx';
 import { adminErrorMessage, withStatus } from './adminData.js';
 import { LoadProblem } from './AdminStatus.jsx';
 import { ProductEditor } from './ProductEditor.jsx';
+import { PRODUCT_TAGS, STOCK_LABELS, STOCK_STATUSES } from './productForm.js';
+import { ariaSort, countText, departmentOptions, filterSortPage, hasFilters, isInactive, nextSort } from './productList.js';
 
 // The product columns Admin -> Products reads. Never price: admins read list
 // prices through admin_product_prices() (AW-003).
@@ -129,7 +139,7 @@ export function ProductsTab({ route = {}, query = {}, onQuery, onCatalogChange, 
   }
   return (
     <ProductsList
-      rows={data.rows} loadError={loadError} onRetry={retry} retrying={retrying} query={query} onQuery={onQuery}
+      rows={data.rows} columns={data.columns} loadError={loadError} onRetry={retry} retrying={retrying} query={query} onQuery={onQuery}
       onOpen={setOpenedFrom} returnFocusId={returnFocusId} onReturnFocus={onReturnFocus}
     />
   );
@@ -144,7 +154,96 @@ function Thumb({ img }) {
     : <span className="product-thumb"><MissingPhoto compact /></span>;
 }
 
-function ProductsList({ rows, loadError, onRetry, retrying, query, onQuery, onOpen, returnFocusId, onReturnFocus }) {
+// The list's columns; those with a `sort` have a sort button in their header
+// (AW-115).
+const COLUMNS = [
+  { label: 'ID', sort: 'id' },
+  { label: 'Photo' },
+  { label: 'Name', sort: 'name' },
+  { label: 'Brand', sort: 'brand' },
+  { label: 'Category' },
+  { label: 'Price', sort: 'price' },
+  { label: 'Tag' },
+  { label: 'Active' },
+  { label: 'Updated', sort: 'updated' },
+];
+const TAG_OPTIONS = [['', 'Any tag'], ['none', 'No tag'], ...PRODUCT_TAGS.map((tag) => [tag.toLowerCase(), tag])];
+const productsHref = (query) => adminHref({ section: 'products', query });
+const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+// When a product was last changed: 'Oct 1, 2026'.
+function Updated({ value }) {
+  const time = value ? Date.parse(value) : NaN;
+  if (Number.isNaN(time)) return <span>—</span>;
+  return <time dateTime={value}>{dateFormat.format(time)}</time>;
+}
+
+// A column header: a button that sorts by the column, with aria-sort on the
+// sorted one (AW-115).
+function SortHeader({ column, query, onQuery }) {
+  const sorted = ariaSort(query, column.sort);
+  return (
+    <th aria-sort={sorted}>
+      <button className="sort-button" type="button" onClick={() => onQuery?.(nextSort(query, column.sort))}>
+        <span>{column.label}</span>
+        {sorted && <Icon name="chevron-down" className={sorted === 'ascending' ? 'sort-icon is-ascending' : 'sort-icon'} />}
+      </button>
+    </th>
+  );
+}
+
+// Status, department, sub-line, tag and stock status, and the No photo and
+// No sell unit toggles (AW-115). Each change goes into the URL at once.
+function ProductFilters({ query, onFilter, departments, stock, clearHref, filtered }) {
+  const dept = departments.find((d) => d.value === query.dept) || null;
+  return (
+    <div className="admin-toolbar" role="group" aria-label="Filter products">
+      <label>Status
+        <select value={query.status || ''} onChange={(e) => onFilter({ status: e.target.value })}>
+          <option value="">All</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </label>
+      <label>Department
+        <select value={dept ? dept.value : ''} onChange={(e) => onFilter({ dept: e.target.value, sub: undefined })}>
+          <option value="">All departments</option>
+          {departments.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+        </select>
+      </label>
+      <label>Sub-line
+        <select value={dept && query.sub ? query.sub : ''} disabled={!dept} onChange={(e) => onFilter({ sub: e.target.value })}>
+          <option value="">{dept ? 'All sub-lines' : 'Choose a department first'}</option>
+          {(dept?.subs || []).map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+        </select>
+      </label>
+      <label>Tag
+        <select value={query.tag || ''} onChange={(e) => onFilter({ tag: e.target.value })}>
+          {TAG_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
+      </label>
+      {stock && (
+        <label>Stock
+          <select value={query.stock || ''} onChange={(e) => onFilter({ stock: e.target.value })}>
+            <option value="">Any stock status</option>
+            {STOCK_STATUSES.map((s) => <option key={s} value={s}>{STOCK_LABELS[s]}</option>)}
+          </select>
+        </label>
+      )}
+      <label className="admin-toggle">
+        <input type="checkbox" checked={query.photo === 'none'} onChange={(e) => onFilter({ photo: e.target.checked ? 'none' : undefined })} />
+        No photo
+      </label>
+      <label className="admin-toggle">
+        <input type="checkbox" checked={query.unit === 'none'} onChange={(e) => onFilter({ unit: e.target.checked ? 'none' : undefined })} />
+        No sell unit
+      </label>
+      {filtered && <Link className="text-link" to={clearHref} replace scroll={false}>Clear filters</Link>}
+    </div>
+  );
+}
+
+function ProductsList({ rows, columns, loadError, onRetry, retrying, query, onQuery, onOpen, returnFocusId, onReturnFocus }) {
   // The search box filters as you type and keeps ?q= in step a moment later,
   // so a reload, a bookmark or Back shows the same search. `seen` is the q
   // last read from the URL: a new one (Back, Forward, the section link) goes
@@ -166,6 +265,33 @@ function ProductsList({ rows, loadError, onRetry, retrying, query, onQuery, onOp
     return () => clearTimeout(timer);
   }, [search, urlSearch, query, onQuery]);
 
+  // The filters, sort and page of the URL, with the search as typed.
+  const listQuery = useMemo(() => ({ ...query, q: search }), [query, search]);
+  const result = useMemo(() => filterSortPage(rows || [], listQuery), [rows, listQuery]);
+  const departments = useMemo(() => departmentOptions(rows || []), [rows]);
+  const filtered = hasFilters(listQuery);
+
+  // A page past the end (a bookmark from a longer list) shows the last page,
+  // and the address bar says so. A moment later: AdminPage's own address-bar
+  // effect runs after this one in the same commit, with the route this
+  // render was for.
+  useEffect(() => {
+    if (!rows || !query.page || query.page === result.page || !onQuery) return undefined;
+    const timer = setTimeout(() => onQuery({ ...query, page: result.page }, { force: true }), 0);
+    return () => clearTimeout(timer);
+  }, [rows, query, result.page, onQuery]);
+
+  // Previous / Next move to the top of the new page: the count line takes
+  // focus (the link that was clicked may be gone, on the first or last page).
+  const countRef = useRef(null);
+  const paged = useRef(false);
+  useEffect(() => {
+    if (!paged.current) return;
+    paged.current = false;
+    countRef.current?.focus({ preventScroll: true });
+    countRef.current?.scrollIntoView?.({ block: 'start' });
+  }, [result.page]);
+
   // Back from the editor: focus returns to the Edit link of the product that
   // was open (or to New product), once the rows are on screen.
   useEffect(() => {
@@ -181,13 +307,11 @@ function ProductsList({ rows, loadError, onRetry, retrying, query, onQuery, onOp
     return loadError ? <LoadProblem message={loadError} onRetry={onRetry} retrying={retrying} /> : <p className="result-note">Loading…</p>;
   }
 
-  const needle = search.trim().toLowerCase();
-  const filtered = !needle ? rows : rows.filter(r =>
-    String(r.name || '').toLowerCase().includes(needle) ||
-    String(r.brand || '').toLowerCase().includes(needle) ||
-    String(r.sku || '').toLowerCase().includes(needle)
-  );
   const open = (href) => () => onOpen?.(href);
+  // A filter change starts again at page 1.
+  const setFilter = (change) => onQuery?.({ ...query, ...change, page: undefined });
+  const clearHref = productsHref({ sort: query.sort, dir: query.dir });
+  const onPage = () => { paged.current = true; };
 
   return (
     <div>
@@ -197,47 +321,73 @@ function ProductsList({ rows, loadError, onRetry, retrying, query, onQuery, onOp
         </label>
         <Link id={NEW_PRODUCT_LINK_ID} className="button" to={editorHref('new')} onClick={open(editorHref('new'))}>New product</Link>
       </div>
-      <p className="result-note">{`${filtered.length} of ${rows.length} products`}</p>
+      <ProductFilters query={query} onFilter={setFilter} departments={departments} stock={!!columns?.has('stock_status')}
+        clearHref={clearHref} filtered={filtered} />
+      <p className="result-note admin-count" ref={countRef} tabIndex={-1}>{countText(result, rows.length, filtered)}</p>
       {loadError && <LoadProblem message={loadError} onRetry={onRetry} retrying={retrying} />}
-      <div className="table-scroll">
-        <table className="aw-table">
-          <thead>
-            <tr>
-              {['ID', 'Photo', 'Name', 'Brand', 'Category', 'Price', 'Tag', 'Active'].map(h => (
-                <th key={h}>{h}</th>
-              ))}
-              <th><span className="sr-only">Actions</span></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.slice(0, 200).map(p => (
-              <tr key={p.id}>
-                <td>{p.id}</td>
-                <td className="product-thumb-cell"><Thumb img={p.img} /></td>
-                <td>{p.name}</td>
-                <td>{p.brand}</td>
-                <td className="muted">{`${p.cat} / ${p.sub}`}</td>
-                <td className="price">{p.price != null ? formatMoney(p.price) : 'On request'}</td>
-                <td>{p.tag || '—'}</td>
-                <td>{p.active ? 'Yes' : 'No'}</td>
-                <td>
-                  <div className="inline-actions">
-                    <Link id={editLinkId(p.id)} className="button xs ghost" to={editorHref(p.id)} onClick={open(editorHref(p.id))}>
-                      <span>Edit</span><span className="sr-only">{` ${p.name}`}</span>
-                    </Link>
-                    {p.active && (
-                      <Link className="button xs text" to={`/product/${p.id}`}>
-                        <span>View on site</span><span className="sr-only">{`: ${p.name}`}</span>
-                      </Link>
-                    )}
-                  </div>
-                </td>
+      {result.total === 0 ? (
+        <div className="empty-results">
+          <p>No products match these filters.</p>
+          <Link className="text-link" to={clearHref} replace scroll={false}>Clear filters</Link>
+        </div>
+      ) : (
+        <div className="table-scroll">
+          <table className="aw-table admin-products">
+            <thead>
+              <tr>
+                {COLUMNS.map((column) => (column.sort
+                  ? <SortHeader key={column.label} column={column} query={query} onQuery={onQuery} />
+                  : <th key={column.label}>{column.label}</th>))}
+                <th><span className="sr-only">Actions</span></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {filtered.length > 200 && <p className="result-note">Showing first 200 — narrow the search to see others.</p>}
+            </thead>
+            <tbody>
+              {result.pageRows.map(p => {
+                const inactive = isInactive(p);
+                return (
+                  <tr key={p.id} className={inactive ? 'inactive' : undefined}>
+                    <td>{p.id}</td>
+                    <td className="product-thumb-cell"><Thumb img={p.img} /></td>
+                    <td>{p.name}</td>
+                    <td>{p.brand}</td>
+                    <td className="muted">{`${p.cat} / ${p.sub}`}</td>
+                    <td className="price">{p.price != null ? formatMoney(p.price) : 'On request'}</td>
+                    <td>
+                      {p.tag ? <span>{p.tag}</span> : <span>—</span>}
+                      {p.tag && inactive && <span className="muted"> (not shown)</span>}
+                    </td>
+                    <td>{inactive ? <span className="admin-pill">Inactive</span> : <span>Yes</span>}</td>
+                    <td className="muted"><Updated value={p.updated_at} /></td>
+                    <td>
+                      <div className="inline-actions">
+                        <Link id={editLinkId(p.id)} className="button xs ghost" to={editorHref(p.id)} onClick={open(editorHref(p.id))}>
+                          <span>Edit</span><span className="sr-only">{` ${p.name}`}</span>
+                        </Link>
+                        {!inactive && (
+                          <Link className="button xs text" to={`/product/${p.id}`}>
+                            <span>View on site</span><span className="sr-only">{`: ${p.name}`}</span>
+                          </Link>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {result.pages > 1 && (
+        <nav className="admin-pager" aria-label="Product pages">
+          {result.page > 1 && (
+            <Link className="button xs ghost" to={productsHref({ ...query, page: result.page - 1 })} scroll={false} onClick={onPage}>Previous page</Link>
+          )}
+          <p className="admin-pager-text">{`Page ${result.page} of ${result.pages}`}</p>
+          {result.page < result.pages && (
+            <Link className="button xs ghost" to={productsHref({ ...query, page: result.page + 1 })} scroll={false} onClick={onPage}>Next page</Link>
+          )}
+        </nav>
+      )}
     </div>
   );
 }
