@@ -555,21 +555,27 @@ test.describe('tobacco and vapor', () => {
     expect(errors).toEqual([]);
   });
 
-  test('the vape hero slide shows the statement below its controls, not under the photo', async ({ page }) => {
+  test('the vape hero slide shows the statement under the photo, uncovered, and keeps its space on the others', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/');
     const carousel = page.locator('.home-carousel');
-    await carousel.getByRole('button', { name: 'Pause' }).click();
-    await carousel.getByRole('button', { name: 'Next slide' }).click();
     const warning = carousel.locator('.nicotine-warning');
+    await expect(warning).toBeHidden();
+    const spaceBefore = await page.locator('.home-carousel-warning').boundingBox();
+    await carousel.getByRole('button', { name: 'Next slide' }).click();
+    await expect(warning).toBeVisible();
     await expect(warning).toHaveText(FDA);
     // Every photo stays inside the stage; one that grew past it covered the
-    // controls and this statement on phones and tablets.
-    const overflow = await carousel.locator('.home-carousel-slide').evaluateAll((slides) => slides.map((slide) => {
-      const img = slide.querySelector('img');
-      return img ? Math.round(img.getBoundingClientRect().bottom - slide.getBoundingClientRect().bottom) : 0;
-    }));
-    expect(Math.max(...overflow)).toBeLessThanOrEqual(0);
+    // controls and this statement on phones and tablets (AW-036).
+    const overflow = await carousel.locator('.home-carousel-stage').evaluate((stage) => {
+      const s = stage.getBoundingClientRect();
+      return [...stage.querySelectorAll('.home-carousel-slide img')].map((img) => {
+        const r = img.getBoundingClientRect();
+        return Math.max(s.top - r.top, r.bottom - s.bottom, s.left - r.left, r.right - s.right);
+      });
+    });
+    expect(overflow.length).toBeGreaterThan(0);
+    expect(Math.max(...overflow)).toBeLessThanOrEqual(0.5);
     await warning.scrollIntoViewIfNeeded();
     const covered = await warning.evaluate((el) => {
       const r = el.getBoundingClientRect();
@@ -577,8 +583,11 @@ test.describe('tobacco and vapor', () => {
       return !el.contains(hit);
     });
     expect(covered).toBe(false);
+    // The statement takes the same space whichever slide shows, so nothing moves.
+    const spaceAfter = await page.locator('.home-carousel-warning').boundingBox();
+    expect(Math.round(spaceAfter.height)).toBe(Math.round(spaceBefore.height));
     await carousel.getByRole('button', { name: 'Next slide' }).click();
-    await expect(warning).toHaveCount(0);
+    await expect(warning).toBeHidden();
     expect(errors).toEqual([]);
   });
 
@@ -592,6 +601,30 @@ test.describe('tobacco and vapor', () => {
     await expect(page.getByRole('checkbox', { name: /all purchasers are 21\+/ })).toHaveAttribute('required', '');
     await expect(page.getByRole('button', { name: 'Have an account? Sign in' })).toBeVisible();
     await page.getByRole('button', { name: 'New? Apply for a trade account' }).click();
+    await expect(page.getByRole('dialog', { name: /Apply for an account/ })).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+});
+
+// The home page opens with its h1, the pitch and both calls to action on the
+// first screen (AW-004), on desktop and on a phone.
+test.describe('home hero', () => {
+  test.beforeEach(async ({ context }) => {
+    await context.addInitScript(([key, value]) => {
+      try { localStorage.setItem(key, value); } catch { /* storage blocked */ }
+    }, [AGE_KEY, ageRecord(Date.now())]);
+  });
+
+  test('shows the page\'s only h1 and both calls to action without scrolling', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/');
+    const hero = page.locator('.home-hero');
+    await expect(page.locator('h1')).toHaveCount(1);
+    await expect(hero.getByRole('heading', { level: 1, name: 'Wholesale for licensed retailers.' })).toBeInViewport({ ratio: 1 });
+    await expect(hero.getByRole('button', { name: 'Apply for a trade account' })).toBeInViewport({ ratio: 1 });
+    await expect(hero.getByRole('link', { name: 'Browse the catalog' })).toBeInViewport({ ratio: 1 });
+    await expect(page.locator('.home-carousel-slide.is-active')).toHaveAttribute('aria-label', '1 of 4: Candies');
+    await hero.getByRole('button', { name: 'Apply for a trade account' }).click();
     await expect(page.getByRole('dialog', { name: /Apply for an account/ })).toBeVisible();
     expect(errors).toEqual([]);
   });

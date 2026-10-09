@@ -7,7 +7,7 @@
 // only the /search?q= results page names its query, clipped and noindex
 // (AW-007, AW-338).
 
-import { COMPANY } from '../data/content.js';
+import { COMPANY, HOME_PITCH } from '../data/content.js';
 import { POLICY_TITLES, POLICY_INTROS } from '../pages/support/PolicyPage.jsx';
 import { brandLabel, catLabel } from './format.js';
 import { NOINDEX_PAGES, pathFor, siteUrl } from './routes.js';
@@ -16,7 +16,8 @@ import { MIN_QUERY_LENGTH } from './search.js';
 export const SITE_URL = siteUrl(import.meta.env.VITE_SITE_URL);
 export const DEFAULT_IMAGE = { url: `${SITE_URL}/og.jpg`, width: 1200, height: 630, alt: `${COMPANY.name} logo` };
 
-export const HOME_DESCRIPTION = 'Wholesale tobacco, vapes, candy, drinks, grocery and motor oil for licensed retailers. Next-day delivery on our routes in Alabama, Mississippi and Georgia from our Birmingham warehouse.';
+// The home page's h1 supporting line, word for word (AW-004).
+export const HOME_DESCRIPTION = HOME_PITCH;
 
 export const clip = (text, max = 155) => {
   const t = String(text || '').replace(/\s+/g, ' ').trim();

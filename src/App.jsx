@@ -262,7 +262,7 @@ export default function App() {
   const renderRoute = () => {
     switch (route.page) {
       case 'home':
-        return <HomePage products={products} departments={departments} {...cardProps} onApplyClick={openSignup} />;
+        return <HomePage products={products} departments={departments} {...cardProps} onApplyClick={openSignup} signedIn={!!session} />;
       case 'product':
         return (
           <ProductPage key={route.productId} productId={route.productId} products={products} {...cardProps} onApplyClick={openSignup}

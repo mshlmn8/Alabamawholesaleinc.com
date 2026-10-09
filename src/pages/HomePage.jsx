@@ -1,12 +1,12 @@
-// Home: hero carousel, new arrivals, collections, bestsellers, services,
-// departments and the account application steps.
+// Home: the split hero (h1, pitch, calls to action and the photo carousel),
+// new arrivals, collections, bestsellers, services, departments and the
+// account application steps.
 
-import { HERO_SLIDES } from '../data/content.js';
 import { NEW_ARRIVALS_IDS } from '../data/products.js';
 import { heroImage, SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { Picture } from '../components/Picture.jsx';
-import { HeroCarousel } from '../components/HeroCarousel.jsx';
+import { HomeHero } from '../components/HomeHero.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
 
 const EDITORIAL_BG = heroImage('hero_candy.jpg');
@@ -17,7 +17,7 @@ const dept = (category) => ({ page: 'category', category });
 // (AW-029, Cursor PR #13); they are still in their department.
 export const hasPhoto = (p) => Boolean(p?.picture?.src || p?.img);
 
-export function HomePage({ products, departments, profile, isApprovedBuyer, priceOf, pricesStatus, cart, addLine, decLine, onLoginClick, onApplyClick }) {
+export function HomePage({ products, departments, profile, isApprovedBuyer, priceOf, pricesStatus, cart, addLine, decLine, onLoginClick, onApplyClick, signedIn = false }) {
   const card = (p) => (
     <ProductCard key={p.id} p={p} profile={profile} isApprovedBuyer={isApprovedBuyer} priceOf={priceOf} pricesStatus={pricesStatus} cart={cart}
                  addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} />
@@ -28,7 +28,7 @@ export function HomePage({ products, departments, profile, isApprovedBuyer, pric
 
   return (
     <>
-      <HeroCarousel slides={HERO_SLIDES} />
+      <HomeHero signedIn={signedIn} onApplyClick={onApplyClick} />
 
       <section className="section" id="new-arrivals">
         <div className="section-head">

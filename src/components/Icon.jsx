@@ -10,6 +10,8 @@
 const PATHS = {
   external: 'M7 17 17 7M9 7h8v8',
   'chevron-down': 'M6 9l6 6 6-6',
+  'chevron-left': 'M15 6l-6 6 6 6',
+  'chevron-right': 'M9 6l6 6-6 6',
   close: 'M6 6l12 12M18 6 6 18',
   minus: 'M5 12h14',
   plus: 'M12 5v14M5 12h14',
@@ -20,6 +22,9 @@ const PATHS = {
   grid: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
   help: 'M3 12a9 9 0 1 0 18 0 9 9 0 1 0-18 0M9.1 9a3 3 0 0 1 5.8 1c0 2-2.9 2.4-2.9 3.6M12 17h.01',
   alert: 'M3 12a9 9 0 1 0 18 0 9 9 0 1 0-18 0M12 7.5v5M12 16.5h.01',
+  // The home carousel's previous/next and pause/play controls (AW-054, AW-168).
+  pause: 'M9 6v12M15 6v12',
+  play: 'M8 5.5v13l10-6.5z',
 };
 
 export const ICON_NAMES = Object.keys(PATHS);
