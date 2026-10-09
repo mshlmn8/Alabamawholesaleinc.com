@@ -88,6 +88,15 @@ describe('AuthModal store state and volume (AW-282)', () => {
     }
   });
 
+  it('says nothing while no state is chosen (an empty default, AW-091)', () => {
+    setup('application');
+    fireEvent.change(state(), { target: { value: 'TX' } });
+    expect(hint()).toBeTruthy();
+    fireEvent.change(state(), { target: { value: '' } });
+    expect(hint()).toBeNull();
+    expect(state().hasAttribute('aria-describedby')).toBe(false);
+  });
+
   it('sends the chosen code, and the volume as it was stored before', async () => {
     const value = setup('application');
     fireEvent.change(state(), { target: { value: 'TX' } });

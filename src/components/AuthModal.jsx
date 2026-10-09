@@ -41,11 +41,12 @@ const BUSINESS_TYPES = ['Convenience Store','Smoke Shop','Vape Shop','Liquor Sto
 const VOLUMES = ['Under $5K','$5K — $15K','$15K — $50K','$50K — $100K','$100K+'];
 const volumeLabel = (value) => value.replace(' — ', '–');
 // A store outside the delivery routes is told how orders would reach it,
-// instead of the list offering only nearby states and 'Other' (AW-282).
+// instead of the list offering only nearby states and 'Other' (AW-282). No
+// state chosen yet (an empty default) is no store off the routes.
 // TODO(owner): Do you accept trade accounts from stores outside AL, MS and GA, for will-call only? (AW-282)
 const ROUTE_STATE_NAMES = DELIVERY_ROUTE_STATES.map(stateName);
 const ROUTE_STATES_TEXT = `${ROUTE_STATE_NAMES.slice(0, -1).join(', ')} and ${ROUTE_STATE_NAMES.at(-1)}`;
-const outOfAreaHint = (code) => (DELIVERY_ROUTE_STATES.includes(code)
+const outOfAreaHint = (code) => (!code || DELIVERY_ROUTE_STATES.includes(code)
   ? null
   : `Our delivery routes cover ${ROUTE_STATES_TEXT}. For a store in ${stateName(code) || 'another state'}, ask the trade desk how orders would reach you.`);
 
