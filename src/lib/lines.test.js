@@ -416,6 +416,73 @@ describe('the bundled catalog and its aliases', () => {
   });
 });
 
+describe('the codes 20261012130000_catalog_fixups.sql completes (AW-135)', () => {
+  // [id, old code, new code, a variant]
+  const FIXED = [
+    [83, 'AW-DUTCH-MASTER', 'AW-DUTCH-MASTERS', 'Gold'],
+    [90, 'AW-BAGS', 'AW-T-SHIRT-BAGS', '1/8'],
+    [121, 'AW-PLASTIC', 'AW-PLASTIC-CUTLERY', 'Assorted cutlery'],
+    [143, 'AW-RED-BULL-12OZ', 'AW-REDBULL-12OZ', 'White peach'],
+  ];
+  // The live database until the migration is applied: the old codes.
+  const OLD_BY_ID = new Map(FIXED.map(([id, oldSku]) => [id, oldSku]));
+  const LIVE = PRODUCTS.map((p) => (OLD_BY_ID.has(p.id) ? { ...p, sku: OLD_BY_ID.get(p.id) } : p));
+  const ok = (res) => [res.status, res.product?.id, res.variant];
+
+  it('gives each product its new code in the bundle, with an alias from the old one', () => {
+    for (const [id, oldSku, newSku] of FIXED) {
+      expect(PRODUCTS.find((p) => p.id === id).sku).toBe(newSku);
+      expect(SKU_ALIASES[oldSku]).toBe(newSku);
+    }
+  });
+
+  it('finds the product by the old code, the new code and a variant code built from either, on both catalogs', () => {
+    for (const catalog of [PRODUCTS, LIVE]) {
+      for (const [id, oldSku, newSku, label] of FIXED) {
+        const where = `${catalog === LIVE ? 'live' : 'bundle'} #${id}`;
+        for (const code of [oldSku, newSku, oldSku.toLowerCase(), ` ${newSku.replace(/-/g, ' ')} `]) {
+          const res = resolveSkuLine(catalog, code);
+          expect([where, code, res.status, res.product?.id]).toEqual([where, code, 'choose-variant', id]);
+        }
+        for (const base of [oldSku, newSku]) {
+          const code = variantSku(base, label);
+          expect([where, code, ...ok(resolveSkuLine(catalog, code))]).toEqual([where, code, 'ok', id, label]);
+        }
+        // The answer to "which variant?" works the same way.
+        expect([where, ...ok(resolveSkuLine(catalog, oldSku, { variant: label }))]).toEqual([where, 'ok', id, label]);
+      }
+    }
+  });
+
+  it('reorders a saved line by its old code, with or without the product id', () => {
+    const order = { order_items: [
+      { product_id: 83, variant: null, sku: 'AW-DUTCH-MASTER-GOLD', qty: 2 },
+      { product_id: null, variant: null, sku: 'AW-RED-BULL-12OZ-WHITE-PEACH', qty: 3 },
+      { product_id: 121, variant: 'Forks', sku: 'AW-PLASTIC-FORKS', qty: 1 },
+      { product_id: null, variant: null, sku: 'AW-BAGS-1-10', qty: 4 },
+    ] };
+    for (const catalog of [PRODUCTS, LIVE]) {
+      expect(linesFromOrder(order, catalog)).toEqual({
+        lines: [
+          { productId: 83, variant: 'Gold', qty: 2 },
+          { productId: 143, variant: 'White peach', qty: 3 },
+          { productId: 121, variant: 'Forks', qty: 1 },
+          { productId: 90, variant: '1/10', qty: 4 },
+        ],
+        unavailable: [],
+        needsVariant: 0,
+      });
+    }
+  });
+
+  it('leaves the codes that share a prefix with them alone', () => {
+    // #144-#146 are AW-REDBULL-8OZ/-16OZ/-20OZ; none of them is a variant of #143.
+    expect(ok(resolveSkuLine(PRODUCTS, 'AW-REDBULL-16OZ'))).toEqual(['ok', 145, null]);
+    expect(resolveSkuLine(PRODUCTS, 'AW-REDBULL-8OZ')).toMatchObject({ status: 'choose-variant', product: { id: 144 } });
+    expect(resolveSkuLine(PRODUCTS, 'AW-DUTCH')).toMatchObject({ status: 'not-found' });
+  });
+});
+
 describe('stored keys that name the same line', () => {
   it('come back as one item with the quantities added, before storage is merged', () => {
     const products = [

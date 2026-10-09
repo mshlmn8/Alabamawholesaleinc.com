@@ -5,8 +5,8 @@
 // (src/lib/lines.js). When a SKU or a variant label changes, the old key has
 // to keep working: in carts stored in browsers, in the codes buyers copy from
 // their order history, and while the live database still has the old values
-// (until the owner applies supabase/migrations/20261009120000_catalog_corrections.sql,
-// the storefront reads the old labels and SKUs from Supabase and the new ones
+// (until the owner applies supabase/migrations/20261009120000_catalog_corrections.sql
+// and 20261012130000_catalog_fixups.sql, the storefront reads the old labels and SKUs from Supabase and the new ones
 // from this bundle). So every alias is an equivalence, used in both
 // directions: an old key finds the new label, and a new key finds the old
 // label on a product that still has it.
@@ -19,7 +19,11 @@
 // exists. Never reuse an old code or slug for a different product or variant.
 
 // Old product SKU -> the SKU it became (AW-135): codes that were cut at 17
-// characters or ended in a hyphen, misspelled codes, and #329's bare 'AW-RAW'.
+// characters or ended in a hyphen, misspelled codes, and #329's bare 'AW-RAW'
+// (20261009120000_catalog_corrections.sql); then #83's 'AW-DUTCH-MASTER' (the
+// brand is Dutch Masters), #143's 'AW-RED-BULL-12OZ' (written like #144-#146's
+// AW-REDBULL-*), and the bare #90 'AW-BAGS' and #121 'AW-PLASTIC', which now
+// name their product (20261012130000_catalog_fixups.sql).
 // A variant's SKU is its product's SKU plus the variant slug, so old variant
 // codes follow their product's entry.
 // TODO(owner): Does the business have its own item codes or UPCs that the site should use instead of these AW- codes? (AW-135)
@@ -34,7 +38,9 @@ export const SKU_ALIASES = Object.freeze({
   'AW-RAZ-VUE-FULL-K': 'AW-RAZ-VUE-FULL-KIT', // #65
   'AW-SHROOM-PUFF-DI': 'AW-SHROOM-PUFF-DISPOSABLE', // #69
   'AW-SHROOM-PUFF-GU': 'AW-SHROOM-PUFF-GUMMIES', // #72
+  'AW-DUTCH-MASTER': 'AW-DUTCH-MASTERS', // #83 (20261012130000)
   'AW-GOOD-TIMES-FLA': 'AW-GOOD-TIMES-FLAT', // #84
+  'AW-BAGS': 'AW-T-SHIRT-BAGS', // #90 (20261012130000)
   'AW-6PK-BEER-CARRI': 'AW-6PK-BEER-CARRIERS', // #93
   'AW-TRASH-CAN-LINE': 'AW-TRASH-CAN-LINERS', // #95
   'AW-PEAK-ANTIFREEZ': 'AW-PEAK-ANTIFREEZE', // #99
@@ -44,12 +50,14 @@ export const SKU_ALIASES = Object.freeze({
   'AW-BRILLO-DISHWAS': 'AW-BRILLO-DISH-LIQUID', // #110
   'AW-IRISH-SPRING-S': 'AW-IRISH-SPRING-SOAP', // #116
   'AW-AWESOME-LAUNDR': 'AW-AWESOME-LAUNDRY', // #117
+  'AW-PLASTIC': 'AW-PLASTIC-CUTLERY', // #121 (20261012130000)
   'AW-FABULOUSO': 'AW-FABULOSO', // #128
   'AW-HOME-AIR-FRESH': 'AW-HOME-AIR-FRESHENERS', // #129
   'AW-BRILLO-BASICS-': 'AW-BRILLO-BASICS', // #130
   'AW-RUBBING-ALCOHO': 'AW-RUBBING-ALCOHOL', // #134
   'AW-CHARCOAL-LIGHT': 'AW-CHARCOAL-LIGHTER', // #138
   'AW-TROPICANA-SMAL': 'AW-TROPICANA-SMALL', // #140
+  'AW-RED-BULL-12OZ': 'AW-REDBULL-12OZ', // #143 (20261012130000), like #144-#146
   'AW-WHITE-LONG-SLE': 'AW-WHITE-LONG-SLEEVE', // #153
   'AW-BLACK-LONG-SLE': 'AW-BLACK-LONG-SLEEVE', // #154
   'AW-CHICO-STICK-JA': 'AW-CHICK-O-STICK-JAR', // #175

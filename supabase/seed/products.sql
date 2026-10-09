@@ -110,14 +110,14 @@ begin
       , (80, 'AW-SS-WRAPS')
       , (81, 'AW-SS-TWIN-PACK')
       , (82, 'AW-POMPOM')
-      , (83, 'AW-DUTCH-MASTER')
+      , (83, 'AW-DUTCH-MASTERS')
       , (84, 'AW-GOOD-TIMES-FLAT')
       , (85, 'AW-ZIGZAG-WRAPS')
       , (86, 'AW-SENECA')
       , (87, 'AW-OLD-TYME')
       , (88, 'AW-TROPICAL-FANTASY')
       , (89, 'AW-FAYGO-CANS')
-      , (90, 'AW-BAGS')
+      , (90, 'AW-T-SHIRT-BAGS')
       , (91, 'AW-PAPER-BAGS')
       , (92, 'AW-REGISTER-PAPER')
       , (93, 'AW-6PK-BEER-CARRIERS')
@@ -148,7 +148,7 @@ begin
       , (118, 'AW-FOAM-PLATES')
       , (119, 'AW-FOAM-BOWLS')
       , (120, 'AW-FOAM-CUPS')
-      , (121, 'AW-PLASTIC')
+      , (121, 'AW-PLASTIC-CUTLERY')
       , (122, 'AW-4PK-TISSUES')
       , (123, 'AW-PAPER-TOWELS')
       , (124, 'AW-SINGLE-TISSUES')
@@ -170,7 +170,7 @@ begin
       , (140, 'AW-TROPICANA-SMALL')
       , (141, 'AW-TROPICAL-FANTASY-ALOE')
       , (142, 'AW-CALYPSO')
-      , (143, 'AW-RED-BULL-12OZ')
+      , (143, 'AW-REDBULL-12OZ')
       , (144, 'AW-REDBULL-8OZ')
       , (145, 'AW-REDBULL-16OZ')
       , (146, 'AW-REDBULL-20OZ')
@@ -500,14 +500,14 @@ insert into public.products (id, name, brand, cat, sub, sku, variants, variant_a
   (80, 'Swisher Sweets Leaf Wraps', 'Swisher Sweets', 'TOBACCO', 'Wraps & Leafs', 'AW-SS-WRAPS', '["Red","Peach","Irish cream"]'::jsonb, 'Flavor', 'ss_wraps.webp', null, true, 'Swisher Sweets Leaf natural tobacco leaf wraps. Three flavors: Red, Peach and Irish cream.', ''),
   (81, 'Swisher Sweets Mini twin pack', 'Swisher Sweets', 'TOBACCO', 'Cigars & Cigarillos', 'AW-SS-TWIN-PACK', '["Mini diamond","Mini red","Red","Diamond"]'::jsonb, 'Variety', 'ss_twin_pack_mini.jpg', null, true, 'Swisher Sweets twin packs, mixing Mini and regular cigarillos. Four varieties: Mini diamond, Mini red, Red and Diamond.', 'twin pack'),
   (82, 'Pom Pom cigarillos', 'Pom Pom', 'TOBACCO', 'Cigars & Cigarillos', 'AW-POMPOM', '["Red","Green"]'::jsonb, 'Color', 'pompom.jpg', 'DEAL', true, 'Pom Pom cigarillos from the cigar and cigarillo line in our Tobacco department. Two colors: Red and Green.', ''),
-  (83, 'Dutch Masters cigarillos', 'Dutch Masters', 'TOBACCO', 'Cigars & Cigarillos', 'AW-DUTCH-MASTER', '["Gold","Honey","Java","Blue","Diamond","Silver","Irish fusion","OG fusion"]'::jsonb, 'Variety', 'dutch_master.jpg', null, true, 'Dutch Masters cigarillos in 2-count pouches. Eight varieties: Gold, Honey, Java, Blue, Diamond, Silver, Irish fusion and OG fusion.', ''),
+  (83, 'Dutch Masters cigarillos', 'Dutch Masters', 'TOBACCO', 'Cigars & Cigarillos', 'AW-DUTCH-MASTERS', '["Gold","Honey","Java","Blue","Diamond","Silver","Irish fusion","OG fusion"]'::jsonb, 'Variety', 'dutch_master.jpg', null, true, 'Dutch Masters cigarillos in 2-count pouches. Eight varieties: Gold, Honey, Java, Blue, Diamond, Silver, Irish fusion and OG fusion.', ''),
   (84, 'Good Times Flat Wraps', 'Good Times', 'TOBACCO', 'Wraps & Leafs', 'AW-GOOD-TIMES-FLAT', '["Natural","Diamond","Vanilla","Fruit punch","Mango","Strawberry kiwi","Chocolate"]'::jsonb, 'Flavor', 'good_times_flat_wraps.jpg', null, true, 'Good Times Flat Wraps, flavored flat cigar wraps. Seven flavors: Natural, Diamond, Vanilla, Fruit punch, Mango, Strawberry kiwi and Chocolate.', ''),
   (85, 'Zig-Zag wraps', 'Zig-Zag', 'TOBACCO', 'Wraps & Leafs', 'AW-ZIGZAG-WRAPS', '["Straight up","Grape","Melon","Mango"]'::jsonb, 'Flavor', 'zigzag_wraps.webp', null, true, 'Zig-Zag cigar wraps in the counter display. Four flavors: Straight up, Grape, Melon and Mango.', ''),
   (86, 'Seneca cigarettes', 'Seneca', 'TOBACCO', 'Cigarettes', 'AW-SENECA', '["Menthol 100","Menthol short","Red 100","Red short","Silver 100","Silver short","Blue 100","Blue short"]'::jsonb, 'Variety', 'seneca_120.png', null, true, 'Seneca cigarettes in 100s and shorts. Eight varieties: Menthol 100, Menthol short, Red 100, Red short, Silver 100, Silver short, Blue 100 and Blue short.', ''),
   (87, 'Old Tyme soda', 'Old Tyme', 'DRINKS & BAGS', 'Sodas', 'AW-OLD-TYME', '["Fruit punch","Blue","Mango","Pineapple","Grape","Purple passion","Pina colada","Strawberry kiwi"]'::jsonb, 'Flavor', null, null, true, 'Old Tyme soda from the soda line in our Drinks & Bags department. Eight flavors: Fruit punch, Blue, Mango, Pineapple, Grape, Purple passion, Pina colada and Strawberry kiwi.', ''),
   (88, 'Tropical Fantasy', 'Tropical Fantasy', 'DRINKS & BAGS', 'Juices & Teas', 'AW-TROPICAL-FANTASY', '["Blue","Fruit punch","Grape","Pineapple","Strawberry lemonade","Kiwi strawberry","Green","Lemonade"]'::jsonb, 'Flavor', 'p88-tropical-fantasy.jpg', null, true, 'Tropical Fantasy fruit drinks. Eight flavors: Blue, Fruit punch, Grape, Pineapple, Strawberry lemonade, Kiwi strawberry, Green and Lemonade.', ''),
   (89, 'Faygo cans', 'Faygo', 'DRINKS & BAGS', 'Sodas', 'AW-FAYGO-CANS', '["Cola","Fruit punch","Redpop","Pineapple","Peach","Kiwi strawberry","Moon mist","Lemon twist"]'::jsonb, 'Flavor', 'faygo_bottles_20oz.jpg', null, true, 'Faygo soda in cans. Eight flavors: Cola, Fruit punch, Redpop, Pineapple, Peach, Kiwi strawberry, Moon mist and Lemon twist.', ''),
-  (90, 'Plastic T-shirt bags', 'Assorted', 'DRINKS & BAGS', 'Bags & Carriers', 'AW-BAGS', '["1/6","1/8","1/10"]'::jsonb, 'Size', null, null, true, 'Plastic T-shirt carry-out bags. Three sizes: 1/6, 1/8 and 1/10.', ''),
+  (90, 'Plastic T-shirt bags', 'Assorted', 'DRINKS & BAGS', 'Bags & Carriers', 'AW-T-SHIRT-BAGS', '["1/6","1/8","1/10"]'::jsonb, 'Size', null, null, true, 'Plastic T-shirt carry-out bags. Three sizes: 1/6, 1/8 and 1/10.', ''),
   (91, 'Paper bags', 'Assorted', 'DRINKS & BAGS', 'Bags & Carriers', 'AW-PAPER-BAGS', '["#1","#2","#4"]'::jsonb, 'Size', 'paper_bags_2.webp', null, true, 'Kraft paper bags. Three sizes: #1, #2 and #4.', ''),
   (92, 'Register paper rolls', 'Assorted', 'DRINKS & BAGS', 'Bags & Carriers', 'AW-REGISTER-PAPER', '["Big","Small","EBT","Credit card","Fuel pump"]'::jsonb, 'Type', null, null, true, 'Register and terminal paper rolls. Five types: Big, Small, EBT, Credit card and Fuel pump.', ''),
   (93, '6-pack beer carriers', 'Assorted', 'DRINKS & BAGS', 'Bags & Carriers', 'AW-6PK-BEER-CARRIERS', '[]'::jsonb, null, null, null, true, '6-pack beer carriers, from the bags and carriers line in our Drinks & Bags department.', ''),
@@ -538,7 +538,7 @@ insert into public.products (id, name, brand, cat, sub, sku, variants, variant_a
   (118, 'Foam plates', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-FOAM-PLATES', '["Big","Small"]'::jsonb, 'Size', null, null, true, 'Foam plates from the paper and plastic line in our Grocery department. Two sizes: Big and Small.', ''),
   (119, 'Foam bowls', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-FOAM-BOWLS', '[]'::jsonb, null, null, null, true, 'Foam bowls from the paper and plastic line in our Grocery department.', ''),
   (120, 'Foam cups', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-FOAM-CUPS', '["20 oz","16 oz","12 oz","8 oz"]'::jsonb, 'Size', 'foam_cups.jpg', null, true, 'Insulated foam cups. Four sizes: 20 oz, 16 oz, 12 oz and 8 oz.', ''),
-  (121, 'Plastic cutlery', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-PLASTIC', '["Spoons","Forks","Assorted cutlery"]'::jsonb, 'Type', null, null, true, 'Plastic cutlery from the paper and plastic line in our Grocery department. Three types: Spoons, Forks and Assorted cutlery.', ''),
+  (121, 'Plastic cutlery', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-PLASTIC-CUTLERY', '["Spoons","Forks","Assorted cutlery"]'::jsonb, 'Type', null, null, true, 'Plastic cutlery from the paper and plastic line in our Grocery department. Three types: Spoons, Forks and Assorted cutlery.', ''),
   (122, 'Bath tissue 4-pack', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-4PK-TISSUES', '[]'::jsonb, null, '4pk_tissues.avif', null, true, 'Bath tissue in 4-roll packs, stocked by the case.', '4-pack'),
   (123, 'Paper towels', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-PAPER-TOWELS', '[]'::jsonb, null, 'paper_towels.jpg', null, true, 'Paper towel rolls, sold by the case.', 'case'),
   (124, 'Bath tissue single rolls', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-SINGLE-TISSUES', '[]'::jsonb, null, 'single_tissues.jpg', null, true, 'Bath tissue in single rolls, sold by the case.', 'case'),
@@ -560,7 +560,7 @@ insert into public.products (id, name, brand, cat, sub, sku, variants, variant_a
   (140, 'Tropicana juice (small)', 'Tropicana', 'DRINKS & BAGS', 'Juices & Teas', 'AW-TROPICANA-SMALL', '["Orange","Pineapple orange","Grape","Cranberry","Kiwi strawberry lemonade","Ruby red"]'::jsonb, 'Flavor', 'p140-tropicana-juice-small.jpg', null, true, 'Tropicana juice in the small bottle. Six flavors: Orange, Pineapple orange, Grape, Cranberry, Kiwi strawberry lemonade and Ruby red.', ''),
   (141, 'Tropical Fantasy Aloe Vera', 'Tropical Fantasy', 'DRINKS & BAGS', 'Juices & Teas', 'AW-TROPICAL-FANTASY-ALOE', '["Watermelon","Strawberry","Mango","Peach","Pineapple","Original"]'::jsonb, 'Flavor', null, null, true, 'Tropical Fantasy aloe vera drinks. Six flavors: Watermelon, Strawberry, Mango, Peach, Pineapple and Original.', ''),
   (142, 'Calypso lemonade', 'Calypso', 'DRINKS & BAGS', 'Juices & Teas', 'AW-CALYPSO', '["Tropical mango","Original","Paradise punch","Kiwi lemonade"]'::jsonb, 'Flavor', 'p142-calypso-lemonade.jpg', null, true, 'Calypso lemonade. Four flavors: Tropical mango, Original, Paradise punch and Kiwi lemonade.', ''),
-  (143, 'Red Bull 12 oz', 'Red Bull', 'DRINKS & BAGS', 'Energy Drinks', 'AW-RED-BULL-12OZ', '["Regular","Watermelon","Yellow","White peach","Wild berries","Green","White","Sugar free"]'::jsonb, 'Variety', 'p143-red-bull-12oz.jpg', 'BESTSELLER', true, 'Red Bull energy drink in 12 oz cans. Eight varieties: Regular, Watermelon, Yellow, White peach, Wild berries, Green, White and Sugar free.', ''),
+  (143, 'Red Bull 12 oz', 'Red Bull', 'DRINKS & BAGS', 'Energy Drinks', 'AW-REDBULL-12OZ', '["Regular","Watermelon","Yellow","White peach","Wild berries","Green","White","Sugar free"]'::jsonb, 'Variety', 'p143-red-bull-12oz.jpg', 'BESTSELLER', true, 'Red Bull energy drink in 12 oz cans. Eight varieties: Regular, Watermelon, Yellow, White peach, Wild berries, Green, White and Sugar free.', ''),
   (144, 'Red Bull 8 oz', 'Red Bull', 'DRINKS & BAGS', 'Energy Drinks', 'AW-REDBULL-8OZ', '["Regular","Watermelon","Yellow","White peach","Wild berries","Green","White","Sugar free"]'::jsonb, 'Variety', 'p144-red-bull-8oz.jpg', null, true, 'Red Bull energy drink in 8 oz cans. Eight varieties: Regular, Watermelon, Yellow, White peach, Wild berries, Green, White and Sugar free.', ''),
   (145, 'Red Bull 16 oz', 'Red Bull', 'DRINKS & BAGS', 'Energy Drinks', 'AW-REDBULL-16OZ', '[]'::jsonb, null, 'p145-red-bull-16oz.jpg', null, true, 'Red Bull energy drink in 16 oz cans, from the energy drink line in our Drinks & Bags department.', ''),
   (146, 'Red Bull 20 oz', 'Red Bull', 'DRINKS & BAGS', 'Energy Drinks', 'AW-REDBULL-20OZ', '[]'::jsonb, null, 'p146-red-bull-20oz.jpg', null, true, 'Red Bull energy drink in 20 oz cans, from the energy drink line in our Drinks & Bags department.', ''),

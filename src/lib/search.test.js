@@ -122,7 +122,8 @@ describe('searchProducts on the catalog', () => {
 
   it('matches spacing variants of names and SKUs (AW-064)', () => {
     expect(ids('redbull')).toEqual(expect.arrayContaining([143, 144, 145, 146]));
-    expect(byId(143).sku).toBe('AW-RED-BULL-12OZ');
+    expect(byId(143).sku).toBe('AW-REDBULL-12OZ');
+    expect(ids('AW-RED-BULL-12OZ')).toContain(143);
     expect(ids('geekbar').length).toBeGreaterThan(0);
   });
 

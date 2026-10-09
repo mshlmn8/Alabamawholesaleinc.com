@@ -53,13 +53,14 @@ supabase/migrations/20261011131000_home_slides.sql
 supabase/migrations/20261012100000_document_storage_lock.sql
 supabase/migrations/20261012110000_carts.sql
 supabase/migrations/20261012120000_product_description_hidden.sql
+supabase/migrations/20261012130000_catalog_fixups.sql
 supabase/seed/products.sql
 ```
 
 On a project that is already running, apply only the migrations it doesn't
 have yet, in that order, then the seed, then deploy the frontend (see the
 release checklist at the end of this file). The live project has the files
-up to `20260927180000`; the twenty-five `20261008…`/`20261009…`/`20261010…`/`20261011…`/`20261012…`
+up to `20260927180000`; the twenty-six `20261008…`/`20261009…`/`20261010…`/`20261011…`/`20261012…`
 files are new.
 Review them before applying them; the site keeps working without them (see
 `docs/OWNER-TODO.md` and "Before and after" in the release checklist).
@@ -1133,14 +1134,15 @@ For each release:
   after" below), then publish an older frontend only if it is at or after
   the latest migration still applied.
 
-The live project needs all twenty-five, in this order (Cursor's seven
+The live project needs all twenty-six, in this order (Cursor's seven
 `20261008…` files, then the six `20261009…` ones, which build on them, then
 the five `20261010…` ones: three for the admin back office and two data-only
 catalog fixes, then `20261011110000` and `20261011111000`, which can go in
 any time, then the data-only `20261011130000` and the home page's
 `20261011131000`, then the document lock `20261012100000` and the saved
 carts `20261012110000`, also any time, then "Show no description"
-`20261012120000`, with or after `20261010120000`).
+`20261012120000`, with or after `20261010120000`, then the data-only
+catalog fix-ups `20261012130000`, any time).
 Apply
 `20261008200000` and `20261009100000`–`20261009150000` in one session: the
 price boundary hides `products.variant_prices` and `20261009110000` moves it.
@@ -1187,6 +1189,8 @@ rolling it back.
 25. `20261012120000_product_description_hidden.sql` (Admin → Products' "Show
     no description", see "The product editor"; with or after 14, before or
     after the frontend: the site feature-detects the column)
+26. `20261012130000_catalog_fixups.sql` (data only; any time, best with or
+    after the new frontend, whose Quick Reorder reads the old SKUs too)
 
 Then `supabase/seed/products.sql`, then the frontend, then 18.
 
@@ -1217,6 +1221,7 @@ Then `supabase/seed/products.sql`, then the frontend, then 18.
 | `20261012100000_document_storage_lock.sql` | AW-197, AW-347: drops `application_documents_owner_update`, so no account (pending, approved or suspended) can overwrite or rename a stored licence or resale file, and admins never could; uploads still add new files at `{user id}/{type}/{upload time}-{file}` (renewals included) and the `profile_documents` row upsert keeps the replaced path in `profile_document_history`. The `application-documents` bucket's `allowed_mime_types` becomes PDF, JPEG and PNG (no HEIC/HEIF). Deleting, reading, the layout and the upload cap are unchanged. A commented Reverse block is at the end. | Apply any time, before or after the frontend. No seed change. The new frontend uploads with upsert off and never updates an object, so it works before and after. A frontend built before it uploads with upsert on to a new path each time, which needs only the insert policy, so it keeps working too. HEIC files already stored keep their type and still open; an upload of a new one is refused. |
 | `20261012110000_carts.sql` | AW-334 (see "Saved carts"): the `carts` table, one row per account (`user_id` references `auth.users`, deleted with it; `lines` is a JSON list of `[line key, quantity]` pairs in the order they were added, at most 500, quantities 1 to 100,000, checked by `cart_lines_valid()`, so no price or other value fits; `updated_at`). Row-level security: each signed-in account reads, adds, changes and deletes its own row only; guests have no privileges at all; admins see no one's cart. A commented Reverse block is at the end. | Apply any time, before or after the frontend, also on its own. No seed change. The frontend deployed before it doesn't read the table. The new frontend works before and after: before it, its one read finds the table missing (404 / `PGRST205`), it stops trying for that page view, carts stay on each device, and the drawer and checkout say so; after it, a signed-in account's cart is saved with the account and the drawer and checkout say "Saved with your account". |
 | `20261012120000_product_description_hidden.sql` | AW-023 (see "The product editor"): `products.description_hidden` (boolean, not null, default false), readable by guests and signed-in accounts like every products column but price; only approved admins change it (`products_admin_write`). When it is true the product page shows no description at all, instead of the bundled description a blank one falls back to; the stored text is kept. A commented Reverse block is at the end. | Apply with or after `20261010120000`, before or after the frontend. No seed change (the seed leaves the column out, so every row keeps the default). The frontend deployed before it doesn't read the column. The new frontend works before and after: the storefront asks for it together with `featured_rank` and, on a database without it (42703), reads the catalog without both (so with `20261010120000` applied and this one not, the homepage rails follow the tags without a rank); Admin → Products offers "Show no description" only once its load sees the column. |
+| `20261012130000_catalog_fixups.sql` | Data only (AW-135): four SKUs completed, each with an alias from its old code in `src/data/catalogAliases.js`: #83 `AW-DUTCH-MASTERS` (was `AW-DUTCH-MASTER`), #90 `AW-T-SHIRT-BAGS` (was `AW-BAGS`), #121 `AW-PLASTIC-CUTLERY` (was `AW-PLASTIC`) and #143 `AW-REDBULL-12OZ` (was `AW-RED-BULL-12OZ`, now written like #144–#146). Each column changes only while it still has the value the seed wrote, and a SKU only while no other product has the new code (any case), so admin edits are kept and a re-run changes nothing. A commented Reverse block is at the end. | Apply any time, also on its own; best with or after the new frontend. The new frontend reads both codes, so Quick Reorder, stored carts and Reorder from order history work before and after; the frontend deployed before it knows only the codes in the database. Order lines keep the code they were placed with. |
 
 ### Later steps
 
