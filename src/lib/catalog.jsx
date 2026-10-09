@@ -81,7 +81,12 @@ export const CATALOG_BASE_COLUMNS = 'id,name,brand,cat,sub,sku,variants,img,tag,
 // 20261010120000_admin_product_editor.sql. It is a tier of its own, tried
 // first, so a database without it still gets every variant column.
 // (stock_status, from the same file, is staff only for now: AW-023.)
-export const CATALOG_RANKED_COLUMNS = `${CATALOG_COLUMNS},featured_rank`;
+// description_hidden, staff's "Show no description" (AW-023), comes with
+// 20261012120000_product_description_hidden.sql, which goes in with or after
+// 20261010120000; it rides in the same tier rather than adding a round trip
+// to every load of a database without either (NEW-024), so a database with
+// 20261010120000 but not 20261012120000 is read without featured_rank.
+export const CATALOG_RANKED_COLUMNS = `${CATALOG_COLUMNS},featured_rank,description_hidden`;
 // What a load tries, in order, while the database answers 42703 (a column
 // it doesn't have, i.e. a missing migration). '*' works only on a database
 // from before 20261009100000, where every column is readable.
@@ -144,7 +149,10 @@ export function hydrateProducts(rows, bundled = STATIC_BY_ID) {
       variants: Array.isArray(p.variants) ? p.variants : [],
       variantAxis: p.variant_axis || p.variantAxis || local?.variantAxis || '',
       unavailableVariants: Array.isArray(p.unavailable_variants) ? p.unavailable_variants : [],
-      description: p.description || local?.description || '',
+      // Staff can show no description at all (AW-023): an empty one alone
+      // takes the bundled copy's, as rows saved before 20260927120000 have ''.
+      description: p.description_hidden === true ? '' : (p.description || local?.description || ''),
+      descriptionHidden: p.description_hidden === true,
       sellUnit: p.sell_unit || p.sellUnit || local?.sellUnit || '',
       // Staff's homepage rank (AW-119); null without one or before
       // 20261010120000. Read by src/lib/merchandising.js.

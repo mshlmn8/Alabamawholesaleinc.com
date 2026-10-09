@@ -47,8 +47,9 @@ export const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
 
 // Columns a database may not have yet: the editor leaves them out of a save
 // when the load didn't see them, and drops them when a save says one is
-// missing (42703 / PGRST204).
-export const OPTIONAL_COLUMNS = ['stock_status', 'featured_rank', 'variant_axis', 'unavailable_variants'];
+// missing (42703 / PGRST204). description_hidden comes with
+// 20261012120000_product_description_hidden.sql (AW-023).
+export const OPTIONAL_COLUMNS = ['stock_status', 'featured_rank', 'variant_axis', 'unavailable_variants', 'description_hidden'];
 
 const text = (value) => (value == null ? '' : String(value));
 const trim = (value) => text(value).trim();
@@ -99,6 +100,9 @@ export function draftFromRow(row, listPrice = null, variantPrices = {}) {
     sku: text(row?.sku),
     sellUnit: text(row?.sell_unit),
     description: text(row?.description),
+    // "Show no description" (AW-023): the storefront then shows none at all,
+    // not the bundled one it shows for a blank description.
+    descriptionHidden: row?.description_hidden === true,
     variants: labels.map((label, i) => {
       const has = prices.has(lower(label));
       return variantEntry(i + 1, label, {
@@ -156,6 +160,7 @@ export function productValues(draft, departments = []) {
     sku: normalizeSku(draft.sku),
     sell_unit: trim(draft.sellUnit),
     description: trim(draft.description),
+    description_hidden: !!draft.descriptionHidden,
     variants,
     variant_axis: variants.length > 1 ? (draft.variantAxis || null) : null,
     unavailable_variants: draft.variants.filter((v) => v.unavailable).map((v) => trim(v.label)),
@@ -223,7 +228,7 @@ function comparable(draft) {
   return {
     ...draft,
     name: trim(draft.name), brand: trim(draft.brand), sku: trim(draft.sku), sellUnit: trim(draft.sellUnit),
-    description: trim(draft.description), img: trim(draft.img), newSub: trim(draft.newSub),
+    description: trim(draft.description), descriptionHidden: !!draft.descriptionHidden, img: trim(draft.img), newSub: trim(draft.newSub),
     priceText: amount(draft.priceText), rankText: trim(draft.rankText),
     variants: draft.variants.map((v) => ({ key: v.key, label: trim(v.label), unavailable: !!v.unavailable, price: amount(v.priceText) })),
     nextKey: 0,

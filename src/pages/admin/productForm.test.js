@@ -141,7 +141,7 @@ describe('patchFromDraft', () => {
     expect(patchFromDraft({ ...original, priceText: '12.5' }, original)).toEqual({});
     expect(patchFromDraft({ ...original, priceText: '' }, original)).toEqual({ price: null });
     const all = patchFromDraft(draft, null);
-    expect(Object.keys(all).sort()).toEqual(['active', 'brand', 'cat', 'description', 'featured_rank', 'img', 'name', 'price', 'sell_unit',
+    expect(Object.keys(all).sort()).toEqual(['active', 'brand', 'cat', 'description', 'description_hidden', 'featured_rank', 'img', 'name', 'price', 'sell_unit',
       'sku', 'stock_status', 'sub', 'tag', 'unavailable_variants', 'variant_axis', 'variants'].sort());
     expect(all).not.toHaveProperty('flavors');
     expect(all).not.toHaveProperty('id');
@@ -161,13 +161,31 @@ describe('patchFromDraft', () => {
   });
 
   it('leaves out the optional columns the database doesn’t have', () => {
-    expect(OPTIONAL_COLUMNS).toEqual(['stock_status', 'featured_rank', 'variant_axis', 'unavailable_variants']);
-    const draft = { ...kite(), name: 'Kite 2', rankText: '3', stockStatus: 'low' };
+    expect(OPTIONAL_COLUMNS).toEqual(['stock_status', 'featured_rank', 'variant_axis', 'unavailable_variants', 'description_hidden']);
+    const draft = { ...kite(), name: 'Kite 2', rankText: '3', stockStatus: 'low', descriptionHidden: true };
     const legacy = new Set(['id', 'name', 'brand', 'cat', 'sub', 'sku', 'tag', 'active', 'variants', 'img']);
     expect(patchFromDraft(draft, kite(), { columns: legacy })).toEqual({ name: 'Kite 2' });
     expect(Object.keys(patchFromDraft(draft, null, { columns: legacy }))).not.toEqual(expect.arrayContaining(['stock_status']));
+    expect(Object.keys(patchFromDraft(draft, null, { columns: legacy }))).not.toContain('description_hidden');
     // The price is never a selected column, and is always written.
     expect(patchFromDraft({ ...draft, priceText: '1' }, kite(), { columns: legacy })).toEqual({ name: 'Kite 2', price: 1 });
+  });
+});
+
+describe('“Show no description” (AW-023)', () => {
+  it('loads, compares and saves description_hidden, keeping the text', () => {
+    const original = draftFromRow({ ...KITE, description: 'Wrong text', description_hidden: false }, 12.5);
+    expect(original.descriptionHidden).toBe(false);
+    expect(draftFromRow(KITE, null).descriptionHidden).toBe(false);
+    expect(draftFromRow({ ...KITE, description_hidden: true }, null).descriptionHidden).toBe(true);
+    const hidden = { ...original, descriptionHidden: true };
+    expect(draftChanged(hidden, original)).toBe(true);
+    expect(patchFromDraft(hidden, original)).toEqual({ description_hidden: true });
+    expect(productValues(hidden)).toMatchObject({ description: 'Wrong text', description_hidden: true });
+    expect(patchFromDraft(hidden, original, { columns: new Set(['id', 'name', 'description', 'description_hidden']) })).toEqual({ description_hidden: true });
+    // A copy keeps it.
+    expect(duplicateDraft({ ...KITE, description_hidden: true }, null).descriptionHidden).toBe(true);
+    expect(emptyDraft().descriptionHidden).toBe(false);
   });
 });
 

@@ -45,9 +45,11 @@ import { CsvError, downloadCsv, parseCsv, toCsv } from './csv.js';
 const ADMIN_PRODUCT_COLUMNS = 'id,name,brand,cat,sub,sku,tag,active';
 // What the load tries, in order, while the database answers 42703 (a column
 // it doesn't have yet): everything the editor edits; then without
+// description_hidden (before 20261012120000, AW-023); then without
 // stock_status and featured_rank (before 20261010120000); then without
 // variant_axis and unavailable_variants (before 20261009110000).
 export const ADMIN_COLUMN_STEPS = [
+  `${ADMIN_PRODUCT_COLUMNS},updated_at,description,sell_unit,variants,variant_axis,unavailable_variants,img,stock_status,featured_rank,description_hidden`,
   `${ADMIN_PRODUCT_COLUMNS},updated_at,description,sell_unit,variants,variant_axis,unavailable_variants,img,stock_status,featured_rank`,
   `${ADMIN_PRODUCT_COLUMNS},updated_at,description,sell_unit,variants,variant_axis,unavailable_variants,img`,
   `${ADMIN_PRODUCT_COLUMNS},updated_at,description,sell_unit,variants,img`,

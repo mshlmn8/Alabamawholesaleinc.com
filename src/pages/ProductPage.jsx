@@ -313,8 +313,10 @@ export function ProductPage({
               screen of a laptop (AW-163). */}
           <p className="pd-sku">SKU <span>{variantSku(p.sku, selected)}</span></p>
           {/* The description and fine print after the price and the add row, so
-              those are in the first screen on a phone (AW-163). */}
-          <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()}${brand ? ` from ${brand}` : ''}.`}</p>
+              those are in the first screen on a phone (AW-163). Staff can show
+              none at all (AW-023, "Show no description"): then neither the
+              stored or bundled text nor the generic sentence. */}
+          {!p.descriptionHidden && <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()}${brand ? ` from ${brand}` : ''}.`}</p>}
           <p className="pd-desc pd-fine">{`Supplied to licensed retail businesses for lawful resale. Next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
         </div>
       </div>

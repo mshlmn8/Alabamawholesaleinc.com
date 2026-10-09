@@ -239,6 +239,48 @@ describe('saving (AW-023, AW-116, AW-202)', () => {
     expect(statusText()).toBe('Saved Kite tobacco. Stock status: not saved, needs the October 2026 database update (see BACKEND.md).');
   });
 
+  it('“Show no description” saves description_hidden and keeps the text (AW-023)', async () => {
+    fake.tables.products = [SWISHER, { ...KITE, description: 'Wrong text', description_hidden: false }, OLD];
+    await renderAdmin();
+    await openEditor('Kite');
+    const box = field(/^Show no description/);
+    expect(box.checked).toBe(false);
+    expect(document.getElementById('product-description-hint').textContent).toBe('Leave blank to show the standard description. To show none at all, tick “Show no description”.');
+    fireEvent.click(box);
+    await submit();
+    expect(updates().map((r) => r.patch)).toEqual([{ description_hidden: true }]);
+    expect(statusText()).toBe('Saved Kite.');
+  });
+
+  it('“Show no description” is not offered before 20261012120000, and a save the database answers PGRST204 for it says so (AW-023)', async () => {
+    fake.respond = (request) => {
+      if (request.table !== 'products') return undefined;
+      if (request.op === 'update' && 'description_hidden' in (request.patch || {})) {
+        return { data: null, error: { code: 'PGRST204', message: 'Could not find the \'description_hidden\' column of \'products\' in the schema cache' }, status: 400 };
+      }
+      return undefined;
+    };
+    await renderAdmin();
+    await openEditor('Kite');
+    // The load saw the column (the fake answers every select): offered.
+    fireEvent.change(field('Name'), { target: { value: 'Kite tobacco' } });
+    fireEvent.click(field(/^Show no description/));
+    await submit();
+    expect(updates().map((r) => r.patch)).toEqual([{ name: 'Kite tobacco', description_hidden: true }, { name: 'Kite tobacco' }]);
+    expect(statusText()).toBe('Saved Kite tobacco. “Show no description”: not saved, needs the October 2026 database update (see BACKEND.md).');
+  });
+
+  it('a database without description_hidden is read one step down, with every other column, and the box isn’t there (AW-023)', async () => {
+    fake.respond = (request) => (request.table === 'products' && request.op === 'select' && /description_hidden/.test(request.columns)
+      ? { data: null, error: { code: '42703', message: 'column products.description_hidden does not exist' } } : undefined);
+    await renderAdmin();
+    expect(fake.find({ table: 'products', op: 'select' }).map((r) => r.columns)).toEqual(ADMIN_COLUMN_STEPS.slice(0, 2));
+    await openEditor('Kite');
+    expect(screen.queryByLabelText(/Show no description/)).toBeNull();
+    expect(document.getElementById('product-description-hint').textContent).toBe('Leave blank to show the standard description.');
+    expect(field('Stock status').disabled).toBe(false);
+  });
+
   it('a new product is inserted without an id, and once more with the next id when the database has no id default (23502)', async () => {
     fake.respond = (request) => {
       if (request.table !== 'products' || request.op !== 'insert') return undefined;

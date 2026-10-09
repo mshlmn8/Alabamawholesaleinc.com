@@ -507,3 +507,20 @@ describe('ProductPage while the live catalog is checked (AW-232)', () => {
     expect(screen.queryByText(CHECKING_AVAILABILITY_TEXT)).toBeNull();
   });
 });
+
+describe('ProductPage and “Show no description” (AW-023)', () => {
+  const descs = () => [...document.querySelectorAll('.pd-desc')].map((n) => n.className);
+
+  it('shows the description, or the generic sentence without one', () => {
+    const view = render(page({ products: [{ ...P[0], variants: [], description: 'Foil pouches.' }] }));
+    expect(screen.getByText('Foil pouches.').className).toBe('pd-desc');
+    view.rerender(page({ products: [{ ...P[0], variants: [], description: '' }] }));
+    expect(screen.getByText('Wholesale cigars & cigarillos from Swisher Sweets.').className).toBe('pd-desc');
+  });
+
+  it('shows no description line at all, not even the generic one, when staff hid it; the fine print stays', () => {
+    render(page({ products: [{ ...P[0], variants: [], description: '', descriptionHidden: true }] }));
+    expect(descs()).toEqual(['pd-desc pd-fine']);
+    expect(screen.queryByText(/^Wholesale cigars/)).toBeNull();
+  });
+});

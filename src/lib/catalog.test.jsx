@@ -142,7 +142,8 @@ describe('loadCatalog', () => {
   });
 
   it('asks for the homepage rank first, and reads a database without it through the variant columns (AW-119)', async () => {
-    expect(CATALOG_COLUMN_FALLBACKS).toEqual([`${CATALOG_COLUMNS},featured_rank`, CATALOG_COLUMNS, CATALOG_BASE_COLUMNS, '*']);
+    // With staff's "Show no description" (AW-023, 20261012120000) in the same tier.
+    expect(CATALOG_COLUMN_FALLBACKS).toEqual([`${CATALOG_COLUMNS},featured_rank,description_hidden`, CATALOG_COLUMNS, CATALOG_BASE_COLUMNS, '*']);
     expect(CATALOG_RANKED_COLUMNS.split(',')).not.toContain('stock_status');
     const missing = { data: null, error: { message: 'column products.featured_rank does not exist', code: '42703' } };
     const before = fakeClient({ respond: (q, n, serve) => (q.columns.split(',').includes('featured_rank') ? missing : serve(q)) });
@@ -299,6 +300,24 @@ describe('hydrateProducts', () => {
     const [own] = hydrateProducts([row(bundled.id, { sell_unit: '5-pack' })]);
     expect(own.description).toBe(`About ${bundled.id}`);
     expect(own.sellUnit).toBe('5-pack');
+  });
+
+  it('shows no description at all for a row staff marked "Show no description" (AW-023)', () => {
+    const bundled = BUNDLED.find((p) => p.description);
+    const [hidden, blank, own, old] = hydrateProducts([
+      row(bundled.id, { description_hidden: true }),
+      row(bundled.id, { description: '', description_hidden: true }),
+      row(bundled.id, { description_hidden: false }),
+      // A database without the column (before 20261012120000).
+      row(bundled.id, { description: '' }),
+    ]);
+    expect(hidden).toMatchObject({ description: '', descriptionHidden: true });
+    expect(blank).toMatchObject({ description: '', descriptionHidden: true });
+    expect(own).toMatchObject({ description: `About ${bundled.id}`, descriptionHidden: false });
+    expect(old).toMatchObject({ description: bundled.description, descriptionHidden: false });
+    // Only the ranked tier names it; the older lists stay as they were.
+    expect(CATALOG_RANKED_COLUMNS.split(',')).toContain('description_hidden');
+    for (const columns of CATALOG_COLUMN_FALLBACKS.slice(1)) expect(columns.split(',')).not.toContain('description_hidden');
   });
 
   it('maps the variant axis and availability, taking the bundled axis when the row has none (AW-128, AW-030)', () => {

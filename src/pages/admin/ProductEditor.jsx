@@ -3,7 +3,9 @@
 // (?from=<id> starts from a copy). Every column of a product, its variants
 // with their own prices and "can't be ordered", its photo (uploaded to the
 // product-images bucket, or a bundled file name or URL), stock status,
-// homepage rank, and delete.
+// homepage rank, "Show no description" (description_hidden, 20261012120000:
+// the product page then has none, not the bundled one a blank description
+// gets), and delete.
 //
 // It is a real <form> inside .form-grid, so the shared field system styles
 // it and Enter saves. Escape, Cancel and the editor's own links ask before
@@ -51,7 +53,10 @@ const constraintOf = (error) => /constraint "([^"]+)"/.exec(errorText(error))?.[
 
 export const UPDATE_NOTE = 'needs the October 2026 database update (see BACKEND.md)';
 export const PHOTO_BUCKET_MISSING = 'Photo upload needs the October 2026 database update; enter a file name or URL instead.';
-const COLUMN_NAMES = { stock_status: 'Stock status', featured_rank: 'Homepage rank', variant_axis: 'What the variants differ by', unavailable_variants: '“Can’t be ordered”' };
+const COLUMN_NAMES = {
+  stock_status: 'Stock status', featured_rank: 'Homepage rank', variant_axis: 'What the variants differ by', unavailable_variants: '“Can’t be ordered”',
+  description_hidden: '“Show no description”',
+};
 
 // The checks (20261009100000, 20261009110000, 20261010120000) a refused save
 // names, and the field each belongs to.
@@ -447,6 +452,8 @@ export function ProductEditor({ id, fromId = null, rows, columns, loadError, onR
   const previewBroken = !!previewSrc && previewSrc === brokenSrc;
   const disabled = !!busy;
   const unavailableColumn = has('unavailable_variants');
+  // Only when the load saw the column (20261012120000, AW-023).
+  const hideDescriptionColumn = !!columns?.has('description_hidden');
   const copying = isNew && fromId != null && rows.some((r) => r.id === fromId);
 
   return (
@@ -537,9 +544,17 @@ export function ProductEditor({ id, fromId = null, rows, columns, loadError, onR
           <label htmlFor="product-description">Description</label>
           <textarea id="product-description" rows={5} value={draft.description}
             aria-invalid={invalid('description')} aria-describedby={describedBy('product-description', true)} onChange={(e) => set('description', e.target.value)} />
-          <small className="field-hint" id="product-description-hint">Leave blank to show the standard description.</small>
+          <small className="field-hint" id="product-description-hint">{hideDescriptionColumn
+            ? 'Leave blank to show the standard description. To show none at all, tick “Show no description”.'
+            : 'Leave blank to show the standard description.'}</small>
           <p className="form-error" id="product-description-error">{err('description')}</p>
         </div>
+        {hideDescriptionColumn && (
+          <div className="full consent">
+            <input id="product-description-hidden" type="checkbox" checked={draft.descriptionHidden} onChange={(e) => set('descriptionHidden', e.target.checked)} />
+            <label htmlFor="product-description-hidden">Show no description: the product page has none (the text above is kept)</label>
+          </div>
+        )}
 
         <div className="full product-variants">
           <h3 id="product-variants-title">Variants</h3>
