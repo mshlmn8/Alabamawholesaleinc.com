@@ -190,6 +190,74 @@ describe('bulk updates (AW-114)', () => {
   });
 });
 
+describe('focus after a confirmed change (NEW-004, AW-114)', () => {
+  // Inside <main>, so the page-heading fallback is there to take focus, as
+  // on the site: before the fix the count line's focus came too early and
+  // the closing dialog then sent focus to the h1.
+  const renderInMain = async (path = '/admin/products') => {
+    act(() => navigate(path, { replace: true }));
+    await act(async () => { render(<main><RoutedAdmin profile={ADMIN} account="ready" onCatalogChange={onCatalogChange} /></main>); });
+  };
+  const count = () => document.querySelector('.admin-count');
+  // jsdom doesn't focus a clicked button: focus it first, as a browser does.
+  const press = async (button) => {
+    button.focus();
+    await act(async () => { fireEvent.click(button); });
+  };
+  const settleDialog = () => act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+
+  it('hands focus to the count line after a bulk tag change, as the bar that opened the confirmation is gone', async () => {
+    await renderInMain();
+    await tick('Swisher 1');
+    await tick('Swisher 4');
+    await press(within(bar()).getByRole('button', { name: 'Set tag' }));
+    await act(async () => { fireEvent.change(within(bar()).getByLabelText('New tag'), { target: { value: 'NEW' } }); });
+    await press(within(bar()).getAllByRole('button', { name: 'Set tag' }).find((b) => b.type === 'submit'));
+    expect(within(confirmDialog()).getByRole('heading').textContent).toBe('Set the tag of 2 products?');
+    await press(within(confirmDialog()).getByRole('button', { name: 'Tag 2 products' }));
+    await settleDialog();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Change the selected products' })).toBeNull();
+    expect(document.activeElement).toBe(count());
+  });
+
+  it('gives focus back to the button that opened the confirmation when it is cancelled or refused', async () => {
+    await renderInMain();
+    await tick('Swisher 1');
+    const activate = within(bar()).getByRole('button', { name: 'Activate' });
+    await press(activate);
+    await press(within(confirmDialog()).getByRole('button', { name: 'Cancel' }));
+    await settleDialog();
+    expect(document.activeElement).toBe(activate);
+    fake.respond = () => ({ data: [], error: null });
+    await press(activate);
+    await press(within(confirmDialog()).getByRole('button', { name: 'Activate 1 product' }));
+    await settleDialog();
+    expect(within(bar()).getByRole('alert')).toBeTruthy();
+    expect(document.activeElement).toBe(activate);
+  });
+
+  it('hands focus to the count line after an import’s Update n products, and to Import CSV after Cancel', async () => {
+    fake.rpcData.admin_import_products = 1;
+    await renderInMain();
+    const input = document.querySelector('input[type=file]');
+    const choose = async (text) => {
+      await act(async () => { fireEvent.change(input, { target: { files: [new File([text], 'products-edit.csv', { type: 'text/csv' })] } }); });
+      await waitFor(() => expect(screen.getByRole('heading', { name: 'Import products-edit.csv' })).toBeTruthy());
+    };
+    await choose('sku,tag\nAW-B1,NEW\n');
+    const preview = screen.getByRole('region', { name: /^Import / });
+    await press(within(preview).getByRole('button', { name: 'Cancel' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Import CSV' }));
+    await choose('sku,tag\nAW-B1,NEW\n');
+    await press(within(screen.getByRole('region', { name: /^Import / })).getByRole('button', { name: 'Import 1 change' }));
+    await press(within(confirmDialog()).getByRole('button', { name: 'Update 1 product' }));
+    await settleDialog();
+    expect(screen.queryByRole('region', { name: /^Import / })).toBeNull();
+    expect(document.activeElement).toBe(count());
+  });
+});
+
 describe('adjusting prices (AW-114)', () => {
   const openAdjust = async (value, mode = 'pct') => {
     await act(async () => { fireEvent.click(within(bar()).getByRole('button', { name: 'Adjust price' })); });

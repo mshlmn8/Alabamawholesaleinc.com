@@ -38,10 +38,15 @@ export function importError(error) {
 
 // plan: importPlan's result (or { error }); fileName: the file chosen.
 // missing: admin_import_products is missing; onMissing records it.
-// onApplied(patches, message); onCancel closes the preview.
-export function ImportPreview({ plan, fileName, missing = false, onMissing, onApplied, onCancel }) {
+// onApplied(patches, message); onCancel closes the preview. returnFocus: a
+// ref to what takes focus after an import, as the preview closes with it
+// (the list's count line, NEW-004).
+export function ImportPreview({ plan, fileName, missing = false, onMissing, onApplied, onCancel, returnFocus = null }) {
   const id = useId();
   const headingRef = useRef(null);
+  // Filled in only when the import went through: a cancelled or refused
+  // confirmation gives focus back to the Import button.
+  const doneFocus = useRef(null);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -67,6 +72,7 @@ export function ImportPreview({ plan, fileName, missing = false, onMissing, onAp
     }
     const now = new Date().toISOString();
     const patches = new Map(plan.changes.map((change) => [change.id, { ...change.patch, updated_at: now }]));
+    doneFocus.current = returnFocus?.current ?? null;
     onApplied?.(patches, `Updated ${plural(Number(data ?? plan.changes.length), 'product')} from ${fileName}`);
   };
 
@@ -169,7 +175,7 @@ export function ImportPreview({ plan, fileName, missing = false, onMissing, onAp
         <ConfirmDialog
           title={`Update ${plural(plan.changes.length, 'product')}?`}
           body={`The changes listed are saved together: if the database refuses one, none is saved. Approved buyers see new prices on their next page load; orders already saved keep their prices.`}
-          confirmLabel={busy ? 'Saving…' : `Update ${plural(plan.changes.length, 'product')}`} busy={busy}
+          confirmLabel={busy ? 'Saving…' : `Update ${plural(plan.changes.length, 'product')}`} busy={busy} returnFocus={doneFocus}
           onConfirm={apply} onCancel={() => { if (!busy) setConfirm(false); }}
         />
       )}

@@ -351,6 +351,7 @@ function ProductsList({
 
   // Import CSV: the file is read and checked here, then previewed.
   const fileRef = useRef(null);
+  const importButton = useRef(null);
   const [importing, setImporting] = useState(null); // { fileName, plan }
   const chooseFile = async (event) => {
     const file = event.target.files?.[0];
@@ -368,6 +369,12 @@ function ProductsList({
     }
     setImporting({ fileName: file.name, plan });
   };
+  // Cancel or Close: focus goes back to Import CSV (the count line when the
+  // database turned Import off).
+  const closeImport = () => {
+    setImporting(null);
+    (importButton.current?.disabled ? countRef.current : importButton.current)?.focus();
+  };
 
   // Export CSV: the selection, or every row the filters show, in the list's
   // order. Built in the browser; nothing is fetched.
@@ -380,13 +387,14 @@ function ProductsList({
     notify?.(`Exported ${plural(list.length, 'product')} to ${name}`);
   };
 
-  // After a bulk change or an import, the selection goes and the count line
-  // takes focus (the bar that had it is gone).
+  // After a bulk change or an import, the selection goes, and with it the
+  // bar or the preview that opened the confirmation. Its ConfirmDialog hands
+  // focus to the count line as it closes (returnFocus, NEW-004): focusing it
+  // here would do nothing, as the dialog still holds the page inert.
   const afterChange = (patches, message) => {
     setSelected(new Set());
     setImporting(null);
     onApplied?.(patches, message);
-    countRef.current?.focus({ preventScroll: true });
   };
 
   // A page past the end (a bookmark from a longer list) shows the last page,
@@ -440,7 +448,7 @@ function ProductsList({
           <button className="button ghost" type="button" disabled={!result.total && !selected.size} onClick={exportCsv}>
             {selected.size ? `Export ${selected.size} selected` : 'Export CSV'}
           </button>
-          <button className="button ghost" type="button" disabled={missing.import} aria-describedby={missing.import ? 'import-missing' : undefined}
+          <button className="button ghost" type="button" ref={importButton} disabled={missing.import} aria-describedby={missing.import ? 'import-missing' : undefined}
             onClick={() => fileRef.current?.click()}>Import CSV</button>
           <input ref={fileRef} type="file" accept=".csv,text/csv" hidden aria-label="CSV file to import" onChange={chooseFile} />
           <Link id={NEW_PRODUCT_LINK_ID} className="button" to={editorHref('new')} onClick={open(editorHref('new'))}>New product</Link>
@@ -450,7 +458,7 @@ function ProductsList({
       {importing && (
         <ImportPreview
           plan={importing.plan} fileName={importing.fileName} missing={missing.import} onMissing={() => onMissing?.('import')}
-          onApplied={afterChange} onCancel={() => { setImporting(null); fileRef.current?.focus(); }}
+          onApplied={afterChange} onCancel={closeImport} returnFocus={countRef}
         />
       )}
       <ProductFilters query={query} onFilter={setFilter} departments={departments} stock={!!columns?.has('stock_status')}
@@ -460,7 +468,7 @@ function ProductsList({
       {loadError && <LoadProblem message={loadError} onRetry={onRetry} retrying={retrying} />}
       {selected.size > 0 && (
         <BulkBar rows={selectedRows} adjustMissing={missing.adjust} onAdjustMissing={() => onMissing?.('adjust')}
-          onApplied={afterChange} onClear={clearSelection} />
+          onApplied={afterChange} onClear={clearSelection} returnFocus={countRef} />
       )}
       {rows.length === 0 ? (
         // An empty catalog is not a filter's doing (AW-268); a failed load

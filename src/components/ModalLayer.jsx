@@ -8,6 +8,12 @@
 // button then closes it through its onClose, like the × button, instead of
 // changing the page underneath. Pass historyEntry={false} for a layer that
 // Back must not dismiss.
+//
+// returnFocus: a ref to the element that takes focus when the layer closes,
+// before its openers, read at close time. A dialog whose action removes its
+// opener (a confirmed bulk change resets the bar that opened it) points it
+// at what stays (NEW-004). Focus handed back this way, or to the fallbacks,
+// never scrolls the page.
 
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -108,27 +114,32 @@ function ensureListener() {
 
 // Focuses el if it can still take focus: still on the page, and neither
 // hidden (display:none, such as the menu toggle on desktop) nor inert, which
-// the browser refuses.
-function takesFocus(el) {
+// the browser refuses. preventScroll: focus it where it is, without
+// scrolling the page to it.
+function takesFocus(el, { preventScroll = false } = {}) {
   if (!el || el === document.body || !el.isConnected || typeof el.focus !== 'function') return false;
-  el.focus();
+  el.focus(preventScroll ? { preventScroll: true } : undefined);
   return document.activeElement === el;
 }
 
-// Hands focus back along the chain of openers (AW-249). Menu -> Help ->
-// 'Apply for a trade account' unmounts the first two openers, so the walk goes on
-// to the first one still on the page. With none left, focus goes to the phone
-// menu button when it shows, else to the page's heading, never to <body>.
+// Hands focus back: to the layer's returnFocus element when it names one
+// still on the page (NEW-004), else along the chain of openers (AW-249).
+// Menu -> Help -> 'Apply for a trade account' unmounts the first two
+// openers, so the walk goes on to the first one still on the page. With none
+// left, focus goes to the phone menu button when it shows, else to the
+// page's heading, never to <body>; neither moves the page (a confirmed
+// change far down a long list once threw the reader back to the top).
 // While a lower layer stays open, focus stays inside that layer.
 function restoreFocus(entry) {
-  if (entry.openers.some(takesFocus)) return;
+  if (takesFocus(entry.returnFocus?.current, { preventScroll: true })) return;
+  if (entry.openers.some((el) => takesFocus(el))) return;
   const top = stack[stack.length - 1];
   if (top?.container) {
     (focusables(top.container)[0] || top.container).focus({ preventScroll: true });
     return;
   }
   const menuToggle = document.querySelector('.aw-menu-toggle');
-  if (menuToggle && isVisible(menuToggle) && takesFocus(menuToggle)) return;
+  if (menuToggle && isVisible(menuToggle) && takesFocus(menuToggle, { preventScroll: true })) return;
   focusPageHeading();
 }
 
@@ -136,7 +147,7 @@ function restoreFocus(entry) {
 // moves focus. A layer opened from inside another layer (Help -> Apply, cart
 // -> sign in) also keeps that layer's openers, in case it closes at the same
 // time: the chain runs from the nearest opener out to the one on the page.
-function createEntry(onClose) {
+function createEntry(onClose, returnFocus) {
   const active = document.activeElement;
   const fromLayer = portalRoot && portalRoot.contains(active);
   const below = stack[stack.length - 1];
@@ -145,20 +156,24 @@ function createEntry(onClose) {
   return {
     openers,
     onClose,
+    returnFocus,
     container: null,
     lastInside: null,
     pageMoveAtOpen: lastPageMove(),
   };
 }
 
-export function ModalLayer({ onClose, initialFocus, className = '', historyEntry = true, children }) {
+export function ModalLayer({ onClose, initialFocus, returnFocus = null, className = '', historyEntry = true, children }) {
   const ref = useRef(null);
   // This layer's record on the module-level stack; mutable on purpose, so it
   // lives in a ref that is created once, on the first render.
   const entryRef = useRef(null);
-  if (entryRef.current === null) entryRef.current = createEntry(onClose);
-  // Escape always calls the latest onClose.
-  useLayoutEffect(() => { entryRef.current.onClose = onClose; });
+  if (entryRef.current === null) entryRef.current = createEntry(onClose, returnFocus);
+  // Escape always calls the latest onClose; closing reads the latest returnFocus.
+  useLayoutEffect(() => {
+    entryRef.current.onClose = onClose;
+    entryRef.current.returnFocus = returnFocus;
+  });
 
   useEffect(() => {
     const entry = entryRef.current;

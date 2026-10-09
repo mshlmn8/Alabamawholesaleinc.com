@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ModalLayer } from './ModalLayer.jsx';
 
@@ -119,17 +119,56 @@ describe('ModalLayer', () => {
     expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Page title' }));
   });
 
-  it('prefers the phone menu button when it shows and no opener is left (AW-249)', () => {
+  it('prefers the phone menu button when it shows and no opener is left, without scrolling to it (AW-249, NEW-004)', () => {
     const toggle = document.createElement('button');
     toggle.className = 'aw-menu-toggle';
     document.body.appendChild(toggle);
     // jsdom has no layout: report a box, as a shown button has.
     toggle.getClientRects = () => [{ width: 44, height: 44 }];
+    const focus = vi.spyOn(toggle, 'focus');
     render(<Chain dropMenuButton />);
     openChain();
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(document.activeElement).toBe(toggle);
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
     toggle.remove();
+  });
+
+  // NEW-004: a confirmed change removes the control that opened the dialog;
+  // returnFocus names what stays, and it is read when the layer closes.
+  function Confirm() {
+    const [open, setOpen] = useState(false);
+    const [opener, setOpener] = useState(true);
+    const countRef = useRef(null);
+    const done = useRef(null);
+    return (
+      <>
+        <main><h1>Products</h1><p ref={countRef} tabIndex={-1}>50 of 368 products</p></main>
+        {opener && <button type="button" onClick={() => { done.current = null; setOpen(true); }}>Set tag</button>}
+        {open && (
+          <ModalLayer onClose={() => setOpen(false)} returnFocus={done}>
+            <div role="alertdialog" aria-label="Confirm">
+              <button type="button" onClick={() => { done.current = countRef.current; setOpen(false); setOpener(false); }}>Tag 2 products</button>
+              <button type="button" onClick={() => setOpen(false)}>Cancel</button>
+            </div>
+          </ModalLayer>
+        )}
+      </>
+    );
+  }
+
+  it('hands focus to returnFocus’s element when it holds one at close, without scrolling, else to the opener (NEW-004)', () => {
+    render(<Confirm />);
+    press('Set tag');
+    press('Cancel');
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Set tag' }));
+    const count = screen.getByText('50 of 368 products');
+    const focus = vi.spyOn(count, 'focus');
+    press('Set tag');
+    press('Tag 2 products');
+    expect(screen.queryByRole('button', { name: 'Set tag' })).toBeNull();
+    expect(document.activeElement).toBe(count);
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
   });
 
   it('keeps focus inside a layer that stays open when its openers are gone', () => {

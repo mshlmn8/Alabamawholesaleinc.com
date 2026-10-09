@@ -11,9 +11,11 @@
 // migration it says it needs the update and turns itself off. After a change
 // the rows are patched where they are (no reload of the catalog), the
 // storefront is told (onCatalogChange) and the status line says what
-// happened.
+// happened. The bar goes with the selection, so a confirmed change hands
+// focus to `returnFocus` (the list's count line) rather than to the
+// button that opened the confirmation (NEW-004).
 
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { formatMoney } from '../../lib/format.js';
 import { MISSING_FUNCTION_CODES } from '../../lib/pricing.js';
@@ -67,9 +69,12 @@ const ACTIONS = [
 // rows: the selected products. adjustMissing: admin_bulk_adjust_prices is
 // missing (PGRST202/42883 seen), onAdjustMissing records it. onApplied(patches,
 // message): patches is a Map of id -> the changed columns. onClear empties
-// the selection.
-export function BulkBar({ rows, adjustMissing = false, onAdjustMissing, onApplied, onClear }) {
+// the selection. returnFocus: a ref to what takes focus after a change.
+export function BulkBar({ rows, adjustMissing = false, onAdjustMissing, onApplied, onClear, returnFocus = null }) {
   const id = useId();
+  // Filled in only when a change went through, so a cancelled or refused
+  // confirmation still gives focus back to the button that opened it.
+  const doneFocus = useRef(null);
   const [open, setOpen] = useState(null);
   const [priceText, setPriceText] = useState('');
   const [mode, setMode] = useState('pct');
@@ -95,6 +100,7 @@ export function BulkBar({ rows, adjustMissing = false, onAdjustMissing, onApplie
   // The confirmation for an action, or a field error instead.
   const review = (action) => {
     setError(null);
+    doneFocus.current = null;
     if (count > MAX_BULK) {
       setError(`Choose at most ${MAX_BULK} products for one change.`);
       return;
@@ -174,6 +180,7 @@ export function BulkBar({ rows, adjustMissing = false, onAdjustMissing, onApplie
       const updated = Number(data?.updated ?? preview?.changes.length ?? 0);
       const skipped = Number(data?.skipped ?? 0);
       reset();
+      doneFocus.current = returnFocus?.current ?? null;
       onApplied?.(patches, `Updated ${plural(updated, 'product')}${skipped ? `; ${skipped} on request skipped` : ''}`);
       return;
     }
@@ -186,6 +193,7 @@ export function BulkBar({ rows, adjustMissing = false, onAdjustMissing, onApplie
     }
     const changed = new Map(data.map((row) => [row.id, { ...plan.patch, updated_at: row.updated_at || now }]));
     reset();
+    doneFocus.current = returnFocus?.current ?? null;
     onApplied?.(changed, changed.size < ids.length
       ? `Updated ${changed.size} of ${products}; the others weren’t changed (reload the list to see them)`
       : `Updated ${products}`);
@@ -314,7 +322,7 @@ export function BulkBar({ rows, adjustMissing = false, onAdjustMissing, onApplie
 
       {confirm && (
         <ConfirmDialog
-          title={confirm.title} body={confirm.body} confirmLabel={busy ? 'Saving…' : confirm.label} busy={busy}
+          title={confirm.title} body={confirm.body} confirmLabel={busy ? 'Saving…' : confirm.label} busy={busy} returnFocus={doneFocus}
           onConfirm={apply} onCancel={() => { if (!busy) setConfirm(null); }}
         />
       )}
