@@ -67,6 +67,11 @@ describe('getSearchMatches', () => {
 });
 
 describe('searchProducts on the catalog', () => {
+  it('spells the bundled names and brands with straight apostrophes (AW-064)', () => {
+    expect(PRODUCTS.filter((p) => /[’‘]/.test(`${p.name} ${p.brand}`)).map((p) => p.id)).toEqual([]);
+    expect([byId(163).name, byId(166).name]).toEqual(["M&M's", "Reese's"]);
+  });
+
   it('finds apostrophe names however the apostrophe is typed (AW-064)', () => {
     expect(ids("reese's")[0]).toBe(166);
     expect(ids('reese’s')[0]).toBe(166);
