@@ -28,7 +28,7 @@ const B = { id: 'b', business: 'Bravo Tobacco Outlet', name: 'Bea Bravo', email:
 
 function page(props) {
   const base = {
-    items: ITEMS, total: 20, addLine: vi.fn(), decLine: vi.fn(), removeLine: vi.fn(), clearCart: vi.fn(),
+    items: ITEMS, total: 20, setLine: vi.fn(), removeLine: vi.fn(), clearCart: vi.fn(),
     isBackendConfigured: true, onSignIn: vi.fn(),
   };
   return <QuotePage {...base} {...props} />;
@@ -93,6 +93,21 @@ describe('QuotePage and the account', () => {
     expect(screen.getByText('2 units')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Remove unavailable items' }));
     expect(removeLines).toHaveBeenCalledWith(['999']);
+  });
+
+  it('blocks a quantity the database would refuse, as a guard (AW-013)', () => {
+    render(page({ items: [{ ...ITEMS[0], qty: 150000 }], profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true }));
+    expect(screen.getByRole('alert').textContent).toBe('Quantities must be a whole number from 1 to 100,000.');
+    expect(submit().disabled).toBe(true);
+  });
+
+  it('sets a line’s quantity on the page (AW-013)', () => {
+    const setLine = vi.fn();
+    render(page({ setLine, profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true }));
+    const input = screen.getByRole('textbox', { name: 'Quantity of Kite cigarette tobacco' });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: '48' } });
+    expect(setLine).toHaveBeenCalledWith('14', 48);
   });
 
   it('lists an old cart’s products that need a variant, also when the cart is empty (AW-354)', () => {

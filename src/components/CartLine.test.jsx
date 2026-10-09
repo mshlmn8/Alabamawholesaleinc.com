@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { CartLine } from './CartLine.jsx';
 
 const item = { lineKey: '14', productId: 14, variant: null, needsVariant: false, name: 'Kite', sku: 'AW-KITE', qty: 40, img: null, price: 12.34 };
-const handlers = () => ({ onInc: vi.fn(), onDec: vi.fn(), onRemove: vi.fn(), onChoose: vi.fn() });
+const handlers = () => ({ onSetQty: vi.fn(), onRemove: vi.fn(), onChoose: vi.fn() });
 const renderLine = (props) => render(<ul><CartLine {...props} /></ul>);
 
 describe('CartLine', () => {
@@ -16,9 +16,21 @@ describe('CartLine', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Increase quantity' }));
     fireEvent.click(screen.getByRole('button', { name: 'Decrease quantity' }));
     fireEvent.click(screen.getByRole('button', { name: 'Remove Kite' }));
-    expect(h.onInc).toHaveBeenCalledTimes(1);
-    expect(h.onDec).toHaveBeenCalledTimes(1);
+    expect(h.onSetQty.mock.calls).toEqual([[41], [39]]);
     expect(h.onRemove).toHaveBeenCalledTimes(1);
+  });
+
+  it('takes a typed quantity, stops − at 1 and leaves removing to the × (AW-013)', () => {
+    const h = handlers();
+    const view = renderLine({ item, layout: 'checkout', showPrice: false, ...h });
+    const input = screen.getByRole('textbox', { name: 'Quantity of Kite' });
+    expect(input.value).toBe('40');
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: '48' } });
+    expect(h.onSetQty).toHaveBeenCalledWith(48);
+    view.rerender(<ul><CartLine item={{ ...item, qty: 1 }} layout="checkout" {...h} /></ul>);
+    expect(screen.getByRole('button', { name: 'Decrease quantity' }).disabled).toBe(true);
+    expect(screen.queryByRole('button', { name: 'Remove Kite' })).toBeTruthy();
   });
 
   it('uses the shared stepper and a round icon button to remove, with drawn icons (AW-143, AW-293)', () => {
@@ -103,3 +115,4 @@ describe('CartLine', () => {
     expect(screen.queryByText(/\$/)).toBeNull();
   });
 });
+

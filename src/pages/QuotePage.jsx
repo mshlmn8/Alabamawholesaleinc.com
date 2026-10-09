@@ -9,7 +9,8 @@
 //
 // Lines that can no longer be ordered (AW-083) are listed with a notice and
 // block the submit until they are removed; products from an older cart that
-// still need a variant (AW-354) are listed at the top.
+// still need a variant (AW-354) are listed at the top. Quantities are typed
+// or stepped, 1 to 100,000 (AW-013).
 //
 // The catalog may have changed since the page was opened (AW-191, AW-204):
 // Submit first loads it again (checkCart, from App) and stops, naming the
@@ -36,6 +37,7 @@ import { useState } from 'react';
 import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../data/content.js';
 import { QUOTE_ERROR_GENERIC, quoteErrorField, quoteErrorMessage, submitOrder, todayInBirmingham } from '../lib/orders.js';
 import { cartChanges, describeCartChanges } from '../lib/cart.js';
+import { QTY_RANGE_TEXT, isOrderableQty } from '../lib/quantity.js';
 import { formatMoney, formatMoneyShort } from '../lib/format.js';
 import { totalLabel } from '../lib/pricing.js';
 import { cartNeedsTobaccoLicense } from '../lib/regulated.js';
@@ -48,13 +50,16 @@ import { AccountLoading } from '../components/AccountStatus.jsx';
 import { initialQuoteForm, quoteFormForAccount } from '../lib/quoteForm.js';
 
 const UNAVAILABLE_ERROR = 'Remove the items that are no longer available before you submit.';
+// Never shown for a cart read from storage, which is repaired on read; a
+// guard in case a quantity the database would refuse gets through (AW-013).
+const QTY_ERROR = `Quantities must be ${QTY_RANGE_TEXT}.`;
 
 // Identifies what the buyer is looking at: which lines, how many, whether
 // each can be ordered and at what price.
 const itemsSignature = (items) => items.map((it) => `${it.lineKey}|${it.qty}|${it.unavailable || ''}|${it.needsVariant ? 1 : 0}|${it.price ?? ''}`).join(',');
 
 export function QuotePage({
-  items, total, addLine, decLine, removeLine, removeLines, clearCart, legacy = [], onDismissLegacy,
+  items, total, setLine, removeLine, removeLines, clearCart, legacy = [], onDismissLegacy,
   profile, account = profile ? 'ready' : 'signed-out', signedIn = !!profile, onSignIn, onApplyClick, isApprovedBuyer, isBackendConfigured,
   checkCart = null, pricesStatus = 'ready', isSuspended = false,
 }) {
@@ -107,6 +112,7 @@ export function QuotePage({
   const orderable = items.filter(it => !it.unavailable);
   const totalUnits = orderable.reduce((s, i) => s + i.qty, 0);
   const needsVariant = items.some(it => it.needsVariant);
+  const invalidQty = orderable.some(it => !isOrderableQty(it.qty));
   const willCall = data.delivery === 'willcall';
   // The tobacco license answers (AW-014): asked of a visitor who isn't an
   // approved buyer when a line needs them (not of a suspended account, which
@@ -117,7 +123,7 @@ export function QuotePage({
   const pricedBelowMinimum = isApprovedBuyer && pricesStatus !== 'loading' && Number(total) < ORDER_MINIMUM;
   // What keeps the submit button off (apart from a send in progress). The
   // minimum note says "you can still submit" only when nothing does (AW-076).
-  const submitBlocked = isSuspended || !isBackendConfigured || needsVariant || unavailable.length > 0 || lostOrdering;
+  const submitBlocked = isSuspended || !isBackendConfigured || needsVariant || unavailable.length > 0 || invalidQty || lostOrdering;
   let submitLabel = isApprovedBuyer ? 'Submit order' : 'Submit quote request';
   if (phase === 'checking') submitLabel = 'Checking the catalog…';
   else if (phase === 'sending') submitLabel = 'Sending…';
@@ -141,6 +147,10 @@ export function QuotePage({
     }
     if (unavailable.length) {
       setSubmitError(UNAVAILABLE_ERROR);
+      return;
+    }
+    if (invalidQty) {
+      setSubmitError(QTY_ERROR);
       return;
     }
     setPhase('checking');
@@ -251,7 +261,7 @@ export function QuotePage({
           <ul className="checkout-lines" aria-label="Items in this request">
             {items.map(it => (
               <CartLine key={it.lineKey} item={it} layout="checkout" showPrice={isApprovedBuyer} pricesStatus={pricesStatus}
-                        onInc={() => addLine(it.productId, it.variant)} onDec={() => decLine(it.lineKey)}
+                        onSetQty={(n) => setLine(it.lineKey, n)}
                         onRemove={() => removeLine(it.lineKey)} />
             ))}
           </ul>
@@ -320,6 +330,7 @@ export function QuotePage({
           {!isBackendConfigured && <p className="form-error" role="status"><CallOrEmail before="Quote requests can’t be saved right now. Call" after=" and the trade desk will write it up with you." /></p>}
           {needsVariant && <p className="form-error" role="alert">Choose a variant for every product that has more than one.</p>}
           {unavailable.length > 0 && <p className="form-error" role="alert">{UNAVAILABLE_ERROR}</p>}
+          {invalidQty && <p className="form-error" role="alert">{QTY_ERROR}</p>}
           {changeText && <p className="form-error" role="alert">{changeText}</p>}
           {submitError && <p className="form-error" id="quote-submit-error" role="alert">{typeof submitError === 'string' ? submitError : <CallOrEmail before={submitError.before} after={submitError.after} />}</p>}
           {lostOrdering && (

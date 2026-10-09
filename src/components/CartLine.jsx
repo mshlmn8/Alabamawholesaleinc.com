@@ -1,7 +1,11 @@
 // One cart line, shared by the cart drawer and the checkout page (AW-331):
-// thumbnail, name and SKU, the quantity stepper (or "Choose variant" for a
-// product still missing its variant) and remove. The checkout layout adds
-// "each" to the unit price, a separate variant note and the line total.
+// thumbnail, name and SKU, the quantity (or "Choose variant" for a product
+// still missing its variant) and remove. The checkout layout adds "each" to
+// the unit price, a separate variant note and the line total.
+//
+// The quantity is the shared QuantityInput (AW-013): typed or stepped, 1 to
+// 100,000; onSetQty(n) gets the new quantity. − stops at 1; the × removes.
+//
 // "Choose variant" is a link to the product page; onChoose runs when it is
 // followed (the drawer closes itself).
 //
@@ -22,8 +26,9 @@ import { lineTotal, priceLabel } from '../lib/pricing.js';
 import { Link } from '../lib/router.js';
 import { Icon } from './Icon.jsx';
 import { MissingPhoto } from './MissingPhoto.jsx';
+import { QuantityInput } from './QuantityInput.jsx';
 
-export function CartLine({ item: it, layout = 'drawer', showPrice, pricesStatus = 'ready', onInc, onDec, onRemove, onChoose }) {
+export function CartLine({ item: it, layout = 'drawer', showPrice, pricesStatus = 'ready', onSetQty, onRemove, onChoose }) {
   const checkout = layout === 'checkout';
   const gone = !!it.unavailable;
   const priced = showPrice && it.price != null && !gone;
@@ -49,11 +54,7 @@ export function CartLine({ item: it, layout = 'drawer', showPrice, pricesStatus 
       {choose ? (
         <Link className="text-link choose" to={{ page: 'product', productId: it.productId }} onClick={onChoose}>Choose variant</Link>
       ) : gone ? null : (
-        <span className="stepper qty" role="group" aria-label={`${it.name} quantity`}>
-          <button type="button" onClick={onDec} aria-label="Decrease quantity"><Icon name="minus" /></button>
-          <b aria-live="polite">{it.qty}</b>
-          <button type="button" onClick={onInc} aria-label="Increase quantity"><Icon name="plus" /></button>
-        </span>
+        <QuantityInput className="qty" value={it.qty} onChange={(n) => onSetQty?.(n)} label={`Quantity of ${it.name}`} groupLabel={`${it.name} quantity`} />
       )}
       {checkout && priced && <b className="line-total">{formatMoney(lineTotal(it.price, it.qty))}</b>}
       <button className="icon-btn drawer-remove" type="button" onClick={onRemove} aria-label={`Remove ${it.name}`}><Icon name="close" /></button>

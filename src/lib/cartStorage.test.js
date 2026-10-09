@@ -6,7 +6,7 @@ import { STORAGE } from '../data/content.js';
 import { PRODUCTS } from '../data/products.js';
 import {
   GUEST, OLD_CART_KEY, ORPHAN_KEYS, adoptGuestCart, cartKey, cartOwner, clearGuestCart, legacyListKey, mergeCarts,
-  migrateLegacyCart, readCart, readLegacyList, resetCartStoreForTests, sanitizeCart, sanitizeLegacyList,
+  mergeLegacyLists, migrateLegacyCart, readCart, readLegacyList, resetCartStoreForTests, sanitizeCart, sanitizeLegacyList,
   splitOldCart, subscribeCart, takeFromLegacyList, updateCart, validLineKey, validQty, writeCart,
 } from './cartStorage.js';
 
@@ -43,6 +43,20 @@ describe('shape checks (AW-045)', () => {
   it('accepts whole quantities of 1 or more, also as numeric strings', () => {
     expect([3, '3', 2.9, ' 4 '].map(validQty)).toEqual([3, 3, 2, 4]);
     expect([0, -1, 0.5, NaN, Infinity, 1e300, '', 'x', '1e3', null, true, {}, [2]].map(validQty)).toEqual(Array(13).fill(null));
+  });
+
+  it('repairs a stored quantity over the database’s 100,000 limit to the limit (AW-013)', () => {
+    expect([1e9, '150000', 100000, 100001].map(validQty)).toEqual([100000, 100000, 100000, 100000]);
+    // The finding's cart: a fraction and a billion.
+    expect(sanitizeCart({ '1::diamond': 2.5, 366: 1e9 })).toEqual({ '1::diamond': 2, 366: 100000 });
+    // Duplicate keys add up only to the limit.
+    expect(sanitizeCart({ '1::Red': 60000, '1::red': 60000 })).toEqual({ '1::red': 100000 });
+    expect(sanitizeLegacyList([{ productId: 1, qty: 60000 }, { productId: 1, qty: 60000 }])).toEqual([{ productId: 1, qty: 100000 }]);
+  });
+
+  it('reads the finding’s stored cart as 2 and 100,000', () => {
+    window.localStorage.setItem(cartKey(GUEST), JSON.stringify({ '1::diamond': 2.5, 366: 1e9 }));
+    expect(readCart(GUEST)).toEqual({ '1::diamond': 2, 366: 100000 });
   });
 
   it('accepts product ids and variant slugs only', () => {
@@ -227,5 +241,15 @@ describe('one cart per account (AW-189)', () => {
   it('merges carts by sum or by the larger quantity', () => {
     expect(mergeCarts({ 14: 2, 20: 1 }, { 14: 3, 1: 1 })).toEqual({ 14: 5, 20: 1, 1: 1 });
     expect(mergeCarts({ 14: 2, 20: 1 }, { 14: 3, 1: 1 }, 'max')).toEqual({ 14: 3, 20: 1, 1: 1 });
+  });
+
+  it('never merges past 100,000 a line (AW-013)', () => {
+    expect(mergeCarts({ 14: 70000 }, { 14: 40000 })).toEqual({ 14: 100000 });
+    expect(mergeLegacyLists([{ productId: 1, qty: 70000 }], [{ productId: 1, qty: 40000 }])).toEqual([{ productId: 1, qty: 100000 }]);
+    // A guest cart joining an account's at sign-in.
+    writeCart(GUEST, { 14: 70000 });
+    writeCart(A, { 14: 40000 });
+    adoptGuestCart(A);
+    expect(readCart(A)).toEqual({ 14: 100000 });
   });
 });

@@ -163,14 +163,34 @@ describe('ProductCard add control', () => {
     addCard({ cart: { 14: 4 }, addLine, decLine });
     const group = screen.getByRole('group', { name: 'Kite cigarette tobacco quantity' });
     expect(group.className).toBe('stepper card-stepper');
-    expect(group.querySelector('b').textContent).toBe('4');
+    expect(screen.getByRole('textbox', { name: 'Quantity of Kite cigarette tobacco' }).value).toBe('4');
     fireEvent.click(screen.getByRole('button', { name: 'Increase quantity' }));
     fireEvent.click(screen.getByRole('button', { name: 'Decrease quantity' }));
-    expect(addLine).toHaveBeenCalledWith(14, null);
-    expect(decLine).toHaveBeenCalledWith('14');
+    expect(addLine).toHaveBeenCalledWith(14, null, 1);
+    expect(decLine).toHaveBeenCalledWith('14', 1);
     // The + and − are drawn icons, not text.
     expect(group.querySelectorAll('button svg.icon')).toHaveLength(2);
     expect(group.querySelector('button').textContent).toBe('');
+  });
+
+  it('takes a typed quantity as a change from the cart’s, with the same two actions (AW-013)', () => {
+    const addLine = vi.fn();
+    const decLine = vi.fn();
+    addCard({ cart: { 14: 4 }, addLine, decLine });
+    const input = screen.getByRole('textbox', { name: 'Quantity of Kite cigarette tobacco' });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: '48' } });
+    expect(addLine).toHaveBeenCalledWith(14, null, 44);
+    fireEvent.change(input, { target: { value: '2' } });
+    expect(decLine).toHaveBeenCalledWith('14', 2);
+  });
+
+  it('removes the product from 1 with −, named for the product', () => {
+    const decLine = vi.fn();
+    addCard({ cart: { 14: 1 }, decLine });
+    expect(screen.queryByRole('button', { name: 'Decrease quantity' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Kite cigarette tobacco' }));
+    expect(decLine).toHaveBeenCalledWith('14', 1);
   });
 
   it('still asks guests to sign in for pricing', () => {

@@ -84,11 +84,43 @@ test.describe('with the age confirmed', () => {
     await expect(saved).toContainText('Quantity 3');
     await saved.getByRole('link', { name: /Choose a variant for Swisher/ }).click();
     await expect(page).toHaveURL(/\/product\/1$/);
-    await expect(page.getByRole('group', { name: 'Quantity to add' }).locator('b')).toHaveText('3');
+    await expect(page.getByRole('group', { name: 'Quantity to add' }).locator('input')).toHaveValue('3');
     await page.locator('.variant-chips button').first().click();
     await addButton(page).click();
     await expect(cartButton(page)).toHaveAccessibleName('Cart, 4 items');
     expect(JSON.parse(await stored(page, GUEST_LEGACY))).toEqual([{ productId: 162, qty: 2 }]);
+    expect(errors).toEqual([]);
+  });
+
+  test('a typed quantity goes in whole, and stops at 100,000 (AW-013)', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/product/14');
+    const group = page.getByRole('group', { name: 'Quantity to add' });
+    await expect(group.getByRole('button', { name: 'Decrease quantity' })).toBeDisabled();
+    const input = group.getByRole('textbox');
+    await input.fill('48');
+    await addButton(page).click();
+    expect(JSON.parse(await stored(page, GUEST_CART))).toEqual({ 14: 48 });
+    await expect(cartButton(page)).toHaveAccessibleName('Cart, 48 items');
+
+    // In the cart, a number over the limit comes down to it.
+    await cartButton(page).click();
+    const line = page.getByRole('dialog', { name: 'Your order' }).getByRole('textbox', { name: 'Quantity of Kite cigarette tobacco' });
+    await line.fill('150000');
+    await line.press('Enter');
+    await expect(line).toHaveValue('100000');
+    expect(JSON.parse(await stored(page, GUEST_CART))).toEqual({ 14: 100000 });
+    expect(errors).toEqual([]);
+  });
+
+  test('a stored fraction and a billion are read as 2 and 100,000 (AW-013)', async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto('/');
+    await page.evaluate((k) => localStorage.setItem(k, JSON.stringify({ '1::red': 2.5, 366: 1e9 })), GUEST_CART);
+    await page.goto('/quote');
+    await expect(page.getByRole('textbox', { name: 'Quantity of Swisher Sweets cigarillos — Red' })).toHaveValue('2');
+    await expect(page.getByRole('textbox', { name: /^Quantity of Garcia y Vega cigars/ })).toHaveValue('100000');
+    await expect(cartButton(page)).toHaveAccessibleName('Cart, 100002 items');
     expect(errors).toEqual([]);
   });
 

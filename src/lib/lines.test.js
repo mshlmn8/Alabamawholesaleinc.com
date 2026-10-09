@@ -85,6 +85,12 @@ describe('stored carts', () => {
     const cart = { 14: 2, '1::red': 1 };
     expect(normalizeCart(cart, P)).toBe(cart);
   });
+
+  it('never adds two stored keys of one line past 100,000 (AW-013)', () => {
+    const products = [{ id: 20, sku: 'AW-ONE', name: 'One', variants: ['Only'] }];
+    expect(resolveCartItems({ 20: 60000, '20::only': 60000 }, products)[0].qty).toBe(100000);
+    expect(normalizeCart({ 20: 60000, '20::only': 60000 }, products)).toEqual({ '20::only': 100000 });
+  });
 });
 
 describe('variants (AW-332, AW-128, AW-233, AW-030, AW-031)', () => {

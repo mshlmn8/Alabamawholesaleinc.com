@@ -8,6 +8,7 @@ import { PRODUCTS as BUNDLED_PRODUCTS } from '../data/products.js';
 import { isVariantAvailable, lineKey, requiresVariantChoice, normalizeCart, resolveCartItems } from './lines.js';
 import { sumLines } from './pricing.js';
 import { formatMoney } from './format.js';
+import { MAX_QTY, addableQty, clampQty } from './quantity.js';
 import {
   EMPTY_CART, EMPTY_LIST, GUEST, adoptGuestCart, migrateLegacyCart, readCart, readLegacyList, subscribeCart,
   takeFromLegacyList, updateCart, writeLegacyList,
@@ -26,27 +27,44 @@ export function addableLineKey(products, productId, variant) {
   return lineKey(product.id, variant || null);
 }
 
-export const incrementLine = (cart, key, n = 1) => ({ ...cart, [key]: (Number(cart[key]) || 0) + n });
+// Quantities stay whole numbers from 1 to MAX_QTY, the database's limit
+// (src/lib/quantity.js, AW-013): adds and merges stop at it.
+export const incrementLine = (cart, key, n = 1) => ({ ...cart, [key]: Math.min(MAX_QTY, (Number(cart[key]) || 0) + n) });
 
 // Batch add for reorders. Unlike a single add, a multi-variant product without
 // a variant is kept as a bare line so the buyer can choose it in the cart.
+// A quantity that isn't a whole number of 1 or more is skipped, not rounded
+// (AW-100).
 export function mergeLines(cart, products, lines) {
   const next = { ...cart };
   for (const line of lines || []) {
     const product = products.find(p => Number(p.id) === Number(line.productId));
-    const n = Math.floor(Number(line.qty));
-    if (!product || product.active === false || !(n > 0)) continue;
+    const n = addableQty(line.qty);
+    if (!product || product.active === false || n == null) continue;
     const key = lineKey(product.id, line.variant || null);
-    next[key] = (Number(next[key]) || 0) + n;
+    next[key] = Math.min(MAX_QTY, (Number(next[key]) || 0) + n);
   }
   return next;
 }
 
-export function decrementLine(cart, key) {
+// n fewer of a line (1 by default); the line goes at 0.
+export function decrementLine(cart, key, n = 1) {
+  const step = Math.floor(Number(n));
+  if (!(step >= 1)) return cart;
   const next = { ...cart };
-  const v = (Number(next[key]) || 0) - 1;
+  const v = (Number(next[key]) || 0) - step;
   if (v <= 0) delete next[key]; else next[key] = v;
   return next;
+}
+
+// A typed quantity for a line already in the cart, brought into range. Less
+// than 1 changes nothing (removing is its own action), and neither does a
+// line that is gone (another tab removed it).
+export function setLineQuantity(cart, key, n) {
+  const value = Number(n);
+  if (!(value >= 1) || !Object.prototype.hasOwnProperty.call(cart, key)) return cart;
+  const qty = clampQty(value);
+  return Number(cart[key]) === qty ? cart : { ...cart, [key]: qty };
 }
 
 export function deleteLine(cart, key) {
@@ -166,10 +184,17 @@ export function resolveLegacyList(list, products) {
 // changes.
 //
 // Returns { cart, count, items, total, legacy, addLine, addLines, decLine,
-// removeLine, removeLines, clearCart, dismissLegacy, itemsFor }. items carry
-// needsVariant and unavailable flags (src/lib/lines.js); legacy is the old
-// cart's list of products to choose a variant for. The actions write
-// through to storage at once, so they belong in event handlers.
+// setLine, removeLine, removeLines, clearCart, dismissLegacy, itemsFor }. items carry needsVariant and unavailable flags
+// (src/lib/lines.js); legacy is the old cart's list of products to choose a
+// variant for. The actions write through to storage at once, so they belong
+// in event handlers. Quantities follow src/lib/quantity.js (AW-013):
+//   addLine(productId, variant, n = 1)  { key, qty, capped } (qty is the
+//                                       line's quantity now; capped when the
+//                                       limit cut the add short), or null
+//                                       when nothing could be added
+//   decLine(key, n = 1)                 n fewer; the line goes at 0
+//   setLine(key, n)                     a typed quantity, clamped; below 1
+//                                       changes nothing
 // itemsFor(products, priceOf) prices the cart as stored now against another
 // product list and prices, e.g. the catalog and prices loaded again right
 // before a submit (AW-191); it also reads storage, so it is for event
@@ -209,19 +234,28 @@ export function useCart({ products, priceOf = NO_PRICES, owner = GUEST, catalogS
 
   const addLine = (productId, variant, n = 1) => {
     const key = addableLineKey(products, productId, variant);
-    if (!key) return;
-    update(c => incrementLine(c, key, n));
+    const want = addableQty(n);
+    if (!key || want == null) return null;
+    let before = 0;
+    const next = update(c => {
+      before = Number(c[key]) || 0;
+      return incrementLine(c, key, want);
+    });
+    const qty = Number(next[key]) || 0;
+    const added = Math.max(0, qty - before);
     // Adding a product on the old cart's list (with the variant it needed)
     // uses up that much of its saved quantity.
-    takeFromLegacyList(owner, productId, n);
+    if (added > 0) takeFromLegacyList(owner, productId, added);
+    return { key, qty, capped: added < want };
   };
   const addLines = (lines) => update(c => mergeLines(c, products, lines));
-  const decLine = (key) => update(c => decrementLine(c, key));
+  const decLine = (key, n = 1) => update(c => decrementLine(c, key, n));
+  const setLine = (key, n) => update(c => setLineQuantity(c, key, n));
   const removeLine = (key) => update(c => deleteLine(c, key));
   const removeLines = (keys) => update(c => keys.reduce(deleteLine, c));
   const clearCart = () => updateCart(owner, () => ({}));
   const dismissLegacy = () => writeLegacyList(owner, []);
   const itemsFor = (nextProducts, nextPriceOf = priceOf) => priceCartItems(readCart(owner), nextProducts, nextPriceOf, { settled: true, known: BUNDLED_PRODUCTS });
 
-  return { cart, count, items, total, legacy, addLine, addLines, decLine, removeLine, removeLines, clearCart, dismissLegacy, itemsFor };
+  return { cart, count, items, total, legacy, addLine, addLines, decLine, setLine, removeLine, removeLines, clearCart, dismissLegacy, itemsFor };
 }

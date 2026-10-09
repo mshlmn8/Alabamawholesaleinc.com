@@ -8,7 +8,7 @@ import { ProductPage } from './ProductPage.jsx';
 
 const P = [{ id: 1, sku: 'AW-SS', name: 'Swisher Sweets cigarillos', brand: 'Swisher Sweets', cat: 'TOBACCO', sub: 'Cigars & Cigarillos', variants: ['Diamond', 'Red'] }];
 const page = (props) => <ProductPage productId={1} products={P} cart={{}} addLine={vi.fn()} decLine={vi.fn()} profile={null} isApprovedBuyer={false} {...props} />;
-const qty = () => screen.getByRole('group', { name: 'Quantity to add' }).querySelector('b').textContent;
+const qty = () => screen.getByRole('group', { name: 'Quantity to add' }).querySelector('input').value;
 
 const pd = () => document.querySelector('.pd-price').textContent;
 const APPROVED = { id: 'a', status: 'approved' };
@@ -143,5 +143,25 @@ describe('ProductPage and a saved quantity', () => {
     render(page({}));
     expect(qty()).toBe('1');
     expect(screen.queryByText(/From your last visit/)).toBeNull();
+  });
+});
+
+describe('ProductPage quantity (AW-013)', () => {
+  it('can’t go below 1, and takes a typed quantity', () => {
+    const addLine = vi.fn(() => ({ key: '1::red', qty: 48, capped: false }));
+    render(page({ addLine }));
+    const group = screen.getByRole('group', { name: 'Quantity to add' });
+    expect(group.className).toBe('stepper');
+    expect(screen.getByRole('button', { name: 'Decrease quantity' }).disabled).toBe(true);
+    const input = screen.getByRole('textbox', { name: 'Quantity of Swisher Sweets cigarillos to add' });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: '48' } });
+    fireEvent.blur(input);
+    expect(qty()).toBe('48');
+    expect(screen.getByRole('button', { name: 'Decrease quantity' }).disabled).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Red' }));
+    fireEvent.click(screen.getByRole('button', { name: /Add to quote/ }));
+    expect(addLine).toHaveBeenCalledWith(1, 'Red', 48);
+    expect(qty()).toBe('1');
   });
 });

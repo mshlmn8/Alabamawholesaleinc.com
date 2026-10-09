@@ -16,6 +16,8 @@
 // disabled chip that says so (AW-030). A product with one variant has no
 // chips; its variant shows as text when the name doesn't already say it.
 //
+// The quantity to add is typed or stepped (QuantityInput, AW-013).
+//
 // From Cursor's PR #13: "Photo coming soon" without a photo (AW-029), the
 // sell unit badged on a photo other rows share (AW-136), the Wikimedia credit
 // under the photo (AW-033), and no placeholder brand "Assorted" (AW-286).
@@ -36,6 +38,9 @@ import { ProductCard } from '../components/ProductCard.jsx';
 import { NicotineWarning } from '../components/NicotineWarning.jsx';
 import { showsNicotineWarning } from '../lib/regulated.js';
 import { Icon } from '../components/Icon.jsx';
+import { QuantityInput } from '../components/QuantityInput.jsx';
+import { announce } from '../lib/announce.js';
+import { maxPerLineText } from '../lib/quantity.js';
 
 const NO_PRICES = () => null;
 
@@ -82,7 +87,9 @@ export function ProductPage({
       return;
     }
     if (soleUnavailable) return;
-    addLine(p.id, selected, desiredQty);
+    const added = addLine(p.id, selected, desiredQty);
+    // The line was already near the limit (AW-013): say what it holds now.
+    if (added?.capped) announce(`${maxPerLineText()} This line now has ${added.qty.toLocaleString('en-US')}.`);
     setDesiredQty(1);
   };
 
@@ -132,11 +139,8 @@ export function ProductPage({
               : <><b>Sign in</b><span>Wholesale pricing is visible to approved trade accounts</span></>}
           </div>
           <div className="qty-row">
-            <div className="stepper" role="group" aria-label="Quantity to add">
-              <button type="button" onClick={() => setDesiredQty(q => Math.max(1, q - 1))} aria-label="Decrease quantity"><Icon name="minus" /></button>
-              <b aria-live="polite">{desiredQty}</b>
-              <button type="button" onClick={() => setDesiredQty(q => q + 1)} aria-label="Increase quantity"><Icon name="plus" /></button>
-            </div>
+            {/* Typed or stepped, 1 to 100,000 (AW-013). */}
+            <QuantityInput value={desiredQty} onChange={setDesiredQty} min={1} label={`Quantity of ${p.name} to add`} groupLabel="Quantity to add" />
             <button className="button" type="button" onClick={handleAdd} disabled={(choiceRequired && !chosen) || soleUnavailable}><span>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</span></button>
           </div>
           {qty > 0 && <p className="in-cart-note"><span>{`Already in ${isApprovedBuyer ? 'order' : 'quote'}: `}</span><strong>{qty}</strong><span>{selected ? ` · ${selected}` : ''}</span></p>}

@@ -1,6 +1,6 @@
 // The cart drawer's total note and actions per account state, including a
 // suspended account (AW-201).
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { CartDrawer } from './CartDrawer.jsx';
 import { COMPANY } from '../data/content.js';
@@ -9,7 +9,7 @@ const ITEMS = [{ lineKey: '14', productId: 14, variant: null, name: 'Kite cigare
 
 function drawer(props) {
   const base = {
-    open: true, onClose: vi.fn(), items: ITEMS, total: 0, addLine: vi.fn(), decLine: vi.fn(), removeLine: vi.fn(), removeLines: vi.fn(),
+    open: true, onClose: vi.fn(), items: ITEMS, total: 0, setLine: vi.fn(), removeLine: vi.fn(), removeLines: vi.fn(),
     onLoginClick: vi.fn(),
   };
   return <CartDrawer {...base} {...props} />;
@@ -39,5 +39,12 @@ describe('CartDrawer', () => {
     const paused = document.querySelector('.drawer-paused');
     expect(paused.textContent).toMatch(/^Ordering is paused on this account\. Call \(205\) 354-4473 or email .* and a trade rep will help you sort it out\.$/);
     expect(paused.querySelector(`a[href="tel:${COMPANY.phoneRaw}"]`)).toBeTruthy();
+  });
+
+  it('sets a line’s quantity by its key (AW-013)', () => {
+    const setLine = vi.fn();
+    render(drawer({ profile: null, isApprovedBuyer: false, setLine }));
+    fireEvent.click(screen.getByRole('button', { name: 'Increase quantity' }));
+    expect(setLine).toHaveBeenCalledWith('14', 3);
   });
 });

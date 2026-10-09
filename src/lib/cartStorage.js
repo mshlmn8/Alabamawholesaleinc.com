@@ -29,6 +29,7 @@
 
 import { STORAGE } from '../data/content.js';
 import { parseLineKey, variantList, variantSlug } from './lines.js';
+import { MAX_QTY } from './quantity.js';
 
 export const GUEST = 'guest';
 // Keys written by earlier versions of the site.
@@ -46,13 +47,19 @@ const isPlainObject = (value) => !!value && typeof value === 'object' && !Array.
   && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
 
 // A whole quantity of 1 or more, or null. Numeric strings count (older
-// builds stored whatever the stepper produced).
+// builds stored whatever the stepper produced). A stored fraction is rounded
+// down and a quantity over the database's limit comes back as MAX_QTY
+// (AW-013), so a damaged cart is repaired on read instead of failing at
+// submit.
 export function validQty(value) {
   if (typeof value !== 'number' && typeof value !== 'string') return null;
   if (typeof value === 'string' && !/^\s*\d+(\.\d+)?\s*$/.test(value)) return null;
   const n = Math.floor(Number(value));
-  return Number.isSafeInteger(n) && n >= 1 ? n : null;
+  return Number.isSafeInteger(n) && n >= 1 ? Math.min(n, MAX_QTY) : null;
 }
+
+// Two quantities of one line added up, never past the limit (AW-013).
+const addQty = (a, b) => Math.min(MAX_QTY, a + b);
 
 // '12' or '12::white-grape' for a valid key (the slug in its canonical form),
 // or null.
@@ -71,7 +78,7 @@ export function sanitizeCart(value) {
   for (const [rawKey, rawQty] of Object.entries(value)) {
     const key = validLineKey(rawKey);
     const qty = validQty(rawQty);
-    if (key && qty) cart[key] = (cart[key] || 0) + qty;
+    if (key && qty) cart[key] = addQty(cart[key] || 0, qty);
   }
   return cart;
 }
@@ -86,7 +93,7 @@ export function sanitizeLegacyList(value) {
     const productId = Number(entry.productId);
     const qty = validQty(entry.qty);
     if (!Number.isSafeInteger(productId) || productId < 1 || !qty) continue;
-    byProduct.set(productId, (byProduct.get(productId) || 0) + qty);
+    byProduct.set(productId, addQty(byProduct.get(productId) || 0, qty));
   }
   return [...byProduct].map(([productId, qty]) => ({ productId, qty }));
 }
@@ -98,7 +105,7 @@ export function mergeCarts(a, b, mode = 'sum') {
   const next = { ...a };
   for (const [key, qty] of Object.entries(b)) {
     const had = Number(next[key]) || 0;
-    next[key] = mode === 'max' ? Math.max(had, qty) : had + qty;
+    next[key] = mode === 'max' ? Math.max(had, qty) : addQty(had, qty);
   }
   return next;
 }
@@ -107,7 +114,7 @@ export function mergeLegacyLists(a, b, mode = 'sum') {
   const byProduct = new Map(a.map((entry) => [entry.productId, entry.qty]));
   for (const { productId, qty } of b) {
     const had = byProduct.get(productId) || 0;
-    byProduct.set(productId, mode === 'max' ? Math.max(had, qty) : had + qty);
+    byProduct.set(productId, mode === 'max' ? Math.max(had, qty) : addQty(had, qty));
   }
   return [...byProduct].map(([productId, qty]) => ({ productId, qty }));
 }

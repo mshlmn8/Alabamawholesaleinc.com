@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   NO_PRICES, addableLineKey, cartChanges, cartCount, cartTotal, decrementLine, deleteLine, describeCartChanges, incrementLine, mergeLines,
-  priceCartItems,
+  priceCartItems, setLineQuantity,
 } from './cart.js';
 
 const P = [
@@ -53,12 +53,42 @@ describe('line updates', () => {
     const next = mergeLines({ 14: 1 }, P, [
       { productId: 14, qty: 2 },
       { productId: 1, variant: null, qty: 3 },
+      // Not a whole number: skipped, not rounded down (AW-100).
       { productId: 1, variant: 'Red', qty: 1.7 },
+      { productId: 1, variant: 'Diamond', qty: '4' },
       { productId: 40, qty: 1 },
       { productId: 99, qty: 1 },
       { productId: 20, variant: 'Only', qty: 0 },
     ]);
-    expect(next).toEqual({ 14: 3, 1: 3, '1::red': 1 });
+    expect(next).toEqual({ 14: 3, 1: 3, '1::diamond': 4 });
+  });
+
+  it('never goes past 100,000 a line when adding or merging (AW-013)', () => {
+    expect(incrementLine({ 14: 99999 }, '14', 5)).toEqual({ 14: 100000 });
+    expect(incrementLine({}, '14', 1e9)).toEqual({ 14: 100000 });
+    expect(mergeLines({ 14: 99990 }, P, [{ productId: 14, qty: 20 }, { productId: 20, variant: 'Only', qty: 150000 }]))
+      .toEqual({ 14: 100000, '20::only': 100000 });
+  });
+
+  it('takes n off a line, 1 by default, and removes it at 0', () => {
+    expect(decrementLine({ 14: 12 }, '14', 5)).toEqual({ 14: 7 });
+    expect(decrementLine({ 14: 12 }, '14', 12)).toEqual({});
+    expect(decrementLine({ 14: 12 }, '14', 40)).toEqual({});
+    const cart = { 14: 3 };
+    expect(decrementLine(cart, '14', 0)).toBe(cart);
+    expect(decrementLine(cart, '14', NaN)).toBe(cart);
+  });
+
+  it('sets a typed quantity, clamped, and never removes or adds a line', () => {
+    const cart = { 14: 3, '1::red': 2 };
+    expect(setLineQuantity(cart, '14', 48)).toEqual({ 14: 48, '1::red': 2 });
+    expect(setLineQuantity(cart, '14', 150000)).toEqual({ 14: 100000, '1::red': 2 });
+    expect(setLineQuantity(cart, '14', 2.9)).toEqual({ 14: 2, '1::red': 2 });
+    for (const n of [0, -4, NaN, '']) expect(setLineQuantity(cart, '14', n)).toBe(cart);
+    // A line removed meanwhile (another tab) does not come back.
+    expect(setLineQuantity(cart, '20::only', 5)).toBe(cart);
+    expect(setLineQuantity(cart, '14', 3)).toBe(cart);
+    expect(cart).toEqual({ 14: 3, '1::red': 2 });
   });
 
   it('counts units', () => {

@@ -284,12 +284,14 @@ h2 { font-size: var(--h2); margin-bottom: 0; }
 .button:disabled { opacity: var(--disabled-opacity); cursor: not-allowed; }
 /* Round icon-only button: dialog, menu and search closes, removing a cart line. */
 .icon-btn { display: inline-grid; place-items: center; flex-shrink: 0; width: var(--tap-sm); height: var(--tap-sm); padding: 0; border: 1px solid var(--line); border-radius: 50%; background: #fff; color: var(--purple); font-size: 1.25rem; }
-/* Quantity stepper (cards, product page, cart): − value +. */
+/* Quantity stepper (cards, product page, cart): − typed quantity +
+   (QuantityInput, AW-013). */
 /* It never overflows a narrow card or cart line at a large text size (AW-162):
-   the buttons give way first, the count keeps room for its digits. */
+   the buttons give way first. The box is a field (the field rules below draw
+   it) wide enough for 100000; layout only here. */
 .stepper { display: inline-flex; align-items: center; flex-shrink: 0; max-width: 100%; border: 1px solid var(--line); background: #fff; }
 .stepper button { display: grid; place-items: center; flex: 0 1 auto; min-width: 0; width: var(--tap-sm); height: var(--tap-sm); padding: 0; border: 0; background: #fff; color: var(--purple); font-size: 1.25rem; }
-.stepper b { flex: 0 1 2.5rem; min-width: 1.5em; text-align: center; font-size: var(--text-sm); color: var(--purple); }
+.stepper input { width: calc(6ch + 1.5rem + 2px); min-width: 0; flex: 0 1 auto; text-align: center; }
 .icon-btn:disabled, .stepper button:disabled { opacity: var(--disabled-opacity); cursor: not-allowed; }
 @media (hover: hover) {
   .button:not(:disabled):hover { background: var(--orange-dark); border-color: var(--orange-dark); }
@@ -544,14 +546,16 @@ p > .text-link { min-height: 0; }
 .quick-reorder { border: 1px solid var(--line); background: var(--paper); padding: 20px 22px 22px; }
 .qr-help { margin: 0 0 6px; font-size: var(--text-sm); line-height: 1.7; color: var(--muted); max-width: 640px; }
 .qr-help code { font: 600 var(--text-xs)/1 var(--body); color: var(--purple); background: #fff; border: 1px solid var(--line); padding: 3px 6px; }
-.qr-row { display: grid; grid-template-columns: minmax(0, 1.2fr) 84px minmax(0, 1.6fr) auto; gap: 8px 16px; align-items: end; padding: 14px 0; border-bottom: 1px solid var(--line); }
+/* The quantity column fits 100000 beside the number box's spin buttons (AW-100). */
+.qr-row { display: grid; grid-template-columns: minmax(0, 1.2fr) 6.5rem minmax(0, 1.6fr) auto; gap: 8px 16px; align-items: end; padding: 14px 0; border-bottom: 1px solid var(--line); }
 .qr-rows .qr-row:last-child { border-bottom: 0; }
 .qr-field span, .qr-choice span { display: block; margin-bottom: 6px; }
 .qr-field input, .qr-choice select { width: 100%; }
 .qr-field input { text-transform: uppercase; }
 .qr-field input::placeholder { text-transform: none; }
 /* As tall as the fields beside it, so a one-line match sits level with them. */
-.qr-status { min-height: var(--field-h); display: flex; align-items: center; }
+/* The match and, below it, a quantity problem (AW-100), centred on the row. */
+.qr-status { min-height: var(--field-h); display: flex; flex-direction: column; justify-content: center; }
 .qr-status > * { width: 100%; }
 .qr-match, .qr-problem { margin: 0; font-size: var(--text-sm); line-height: 1.4; }
 .qr-match b { display: block; color: var(--purple); }
@@ -668,14 +672,15 @@ p > .text-link { min-height: 0; }
    (--field-font), so iOS Safari does not zoom into a focused field. The rules
    sit inside :where(), at zero specificity, so each control's own rule (its
    width, the SKU's capitals) still applies. Checkboxes and radios keep theirs.
-   Placeholders are muted at full opacity from the reset. */
-:where(:is(.form-grid :is(input, select, textarea), .filter-search input, .category-sort select, .eligibility-form :is(input, select), .qr-field input, .qr-choice select, .order-head select, .order-edit-line input, .aw-table :is(input, select), .doc-file):not([type=checkbox]):not([type=radio])) {
+   Placeholders are muted at full opacity from the reset. The quantity box in
+   every stepper (AW-013) is a field too, compact-height like the admin's. */
+:where(:is(.form-grid :is(input, select, textarea), .filter-search input, .category-sort select, .eligibility-form :is(input, select), .qr-field input, .qr-choice select, .order-head select, .order-edit-line input, .aw-table :is(input, select), .doc-file, .stepper input):not([type=checkbox]):not([type=radio])) {
   min-height: var(--field-h); padding: 0 .75rem; border: 1px solid var(--field-border); border-radius: var(--field-radius);
   background-color: var(--field-bg); color: var(--ink); font-size: var(--field-font); font-weight: 400; letter-spacing: 0; text-transform: none;
 }
-:where(:is(.aw-table :is(input, select), .order-head select):not([type=checkbox]):not([type=radio])) { min-height: var(--field-h-compact); }
+:where(:is(.aw-table :is(input, select), .order-head select, .stepper input):not([type=checkbox]):not([type=radio])) { min-height: var(--field-h-compact); }
 /* The border turns purple under the global focus ring. */
-:where(:is(.form-grid :is(input, select, textarea), .filter-search input, .category-sort select, .eligibility-form :is(input, select), .qr-field input, .qr-choice select, .order-head select, .order-edit-line input, .aw-table :is(input, select), .doc-file):focus) { border-color: var(--purple); }
+:where(:is(.form-grid :is(input, select, textarea), .filter-search input, .category-sort select, .eligibility-form :is(input, select), .qr-field input, .qr-choice select, .order-head select, .order-edit-line input, .aw-table :is(input, select), .doc-file, .stepper input):focus) { border-color: var(--purple); }
 /* Selects draw the same box in every engine (AW-309): no native menulist, which
    in WebKit dropped the padding and rounded the corners, and the site's
    chevron instead (a file, not a data: URI, so the CSP needs no data: images).
@@ -851,7 +856,7 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .card-actions > :first-child { flex-basis: auto; }
   .card-add { width: 100%; }
   .card-stepper { width: 100%; justify-content: space-between; }
-  .card-stepper b { flex: 1; }
+  .card-stepper input { flex: 1 1 auto; }
   .editorials { grid-template-columns: 1fr; gap: 16px; }
   .editorial-card { padding: 24px; }
   .footer-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }

@@ -7,6 +7,7 @@
 // direction, old key to new label and new key to old label.
 
 import { SKU_ALIASES, VARIANT_ALIASES } from '../data/catalogAliases.js';
+import { MAX_QTY } from './quantity.js';
 
 // Object.hasOwn is newer than the browsers the build targets (Safari 14).
 const has = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
@@ -289,7 +290,8 @@ export function linesFromOrder(order, products) {
 export function normalizeCart(cart, products) {
   const source = cart && typeof cart === 'object' && !Array.isArray(cart) ? cart : {};
   const next = {};
-  const add = (key, n) => { next[key] = (next[key] || 0) + n; };
+  // Two keys that become one never add up past the limit (AW-013).
+  const add = (key, n) => { next[key] = Math.min(MAX_QTY, (next[key] || 0) + n); };
   for (const [key, qty] of Object.entries(source)) {
     const n = Number(qty);
     if (!Number.isFinite(n) || n <= 0) continue;
@@ -414,7 +416,7 @@ export function resolveCartItems(cart, products, { settled = true, known = [] } 
   const byKey = new Map();
   for (const item of resolved) {
     const same = byKey.get(item.lineKey);
-    if (same) same.qty += item.qty;
+    if (same) same.qty = Math.min(MAX_QTY, same.qty + item.qty);
     else byKey.set(item.lineKey, item);
   }
   return [...byKey.values()];
