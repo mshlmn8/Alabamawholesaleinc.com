@@ -143,6 +143,63 @@ describe('searchProducts on the catalog', () => {
     for (const p of PRODUCTS.filter((x) => x.cat === 'CANDIES')) expect(candy).toContain(p.id);
   });
 
+  // NEW-027: a word that names a product line ranks that line with the
+  // names it starts, ahead of products that merely carry the word.
+  it('ranks the line a query names with name matches: "disposables" lists the Disposable Vapes first (NEW-027)', () => {
+    const first8 = searchProducts(PRODUCTS, 'disposables', { limit: 8 }).items;
+    const vapes = PRODUCTS.filter((p) => p.sub === 'Disposable Vapes').map((p) => p.id);
+    expect(vapes.length).toBeGreaterThanOrEqual(8);
+    expect(first8.every((p) => p.sub === 'Disposable Vapes')).toBe(true);
+    const all = ids('disposables');
+    const gloves = all.indexOf(362);
+    expect(byId(362).name).toBe('Disposable gloves');
+    expect(gloves).toBeGreaterThan(-1);
+    for (const id of vapes) expect(all.indexOf(id), `#${id}`).toBeLessThan(gloves);
+    // The singular reads the same.
+    expect(ids('disposable')).toEqual(all);
+  });
+
+  it('keeps a name the query spells out first: "disposable gloves" (NEW-027)', () => {
+    expect(ids('disposable gloves')[0]).toBe(362);
+    expect(ids('Disposable Gloves')[0]).toBe(362);
+  });
+
+  it('lists the drink lines of Drinks & Bags ahead of "Champ Detox drink" for "drinks" (NEW-027)', () => {
+    const list = searchProducts(PRODUCTS, 'drinks').items;
+    const champ = list.findIndex((p) => p.id === 217);
+    expect(byId(217).name).toBe('Champ Detox drink');
+    expect(champ).toBeGreaterThan(0);
+    const before = list.slice(0, champ);
+    expect(before.every((p) => p.cat === 'DRINKS & BAGS' && /Drinks$/.test(p.sub))).toBe(true);
+    for (const p of PRODUCTS.filter((x) => x.sub === 'Energy Drinks')) expect(list.indexOf(p), p.name).toBeLessThan(champ);
+  });
+
+  it('names a line by whole words only: "gum" lifts Gum & Mints, not Sweets & Gummies (NEW-027)', () => {
+    const list = searchProducts(PRODUCTS, 'gum').items;
+    const line = list.filter((p) => p.sub === 'Gum & Mints');
+    expect(line.length).toBeGreaterThan(0);
+    expect(list.slice(0, line.length)).toEqual(line);
+    expect(list.findIndex((p) => p.sub === 'Sweets & Gummies')).toBe(line.length);
+  });
+
+  it('gives a line under legal review no lift (NEW-027, AW-001)', () => {
+    const rows = [
+      { id: 1, name: 'Plain pills', brand: 'X', cat: 'NOVELTIES', sub: 'Wellness Pills', sku: 'AW-1', variants: [] },
+      { id: 2, name: 'Aspirin', brand: 'Y', cat: 'MERCHANDISE', sub: 'Pain Pills', sku: 'AW-2', variants: [] },
+      { id: 3, name: 'Calm', brand: 'Z', cat: 'NOVELTIES', sub: 'Wellness Pills', sku: 'AW-3', variants: [] },
+    ];
+    // 'pills' names both lines; only the line that isn't under review is lifted.
+    expect(ids('pills', rows)).toEqual([2, 1, 3]);
+  });
+
+  it('still puts an exact SKU first', () => {
+    const rows = [
+      { id: 1, name: 'Mint gum', brand: 'X', cat: 'CANDIES', sub: 'Gum & Mints', sku: 'AW-MINT-GUM', variants: [] },
+      { id: 2, name: 'Breath strips', brand: 'Y', cat: 'CANDIES', sub: 'Sweets', sku: 'AW-GUM', variants: [] },
+    ];
+    expect(ids('gum', rows)).toEqual([2, 1]);
+  });
+
   it('tolerates one typo when nothing matches exactly (AW-064)', () => {
     const result = searchProducts(PRODUCTS, 'snikers');
     expect(result.items.map((p) => p.brand)).toContain('Snickers');

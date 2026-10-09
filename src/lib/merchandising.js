@@ -25,14 +25,13 @@
 // Pure: no React, no network. HomePage passes its own hasPhoto.
 
 import { NEW_ARRIVALS_IDS } from '../data/products.js';
+import { underLegalReview } from './legalReview.js';
+
+// The legal-review lines (AW-001) live in legalReview.js, which search.js
+// also reads; they are exported from here as before.
+export { LEGAL_REVIEW_IDS, LEGAL_REVIEW_SUBS, underLegalReview } from './legalReview.js';
 
 export const RAIL_LIMIT = 8;
-
-// The lines the AW-001 legal-review question names (docs/OWNER-TODO.md):
-// these sub-lines, and the enhancement items of Merchandise -> Honey & Energy.
-export const LEGAL_REVIEW_SUBS = ['Kratom & Kava', 'Mushroom Products', 'Detox', 'Wellness Pills'];
-export const LEGAL_REVIEW_IDS = [28, 265, 266, 321, 322, 332];
-export const underLegalReview = (p) => LEGAL_REVIEW_SUBS.includes(p?.sub) || LEGAL_REVIEW_IDS.includes(Number(p?.id));
 
 // The same rule as HomePage's hasPhoto, which HomePage passes in.
 const photoOf = (p) => Boolean(p?.picture?.src || p?.img);

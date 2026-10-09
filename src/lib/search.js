@@ -20,13 +20,20 @@
 //   related  any one query word matches; flagged `related`.
 // Inside a tier, an exact SKU comes first, then name, brand, SKU,
 // department/line and variant matches (a whole word in the name before the
-// start of one: "cigar" lists cigars before cigarettes), then the name.
+// start of one: "cigar" lists cigars before cigarettes), then the name. A
+// query whose every word is a whole word of a product line's name ranks that
+// line with the names it starts (NEW-027): "disposables" lists the
+// Disposable Vapes before "Disposable gloves", "gum" the Gum & Mints line
+// before "Gummy …". A query of two or more words that starts a name stays
+// ahead of such a line ("disposable gloves"). A line under legal review
+// (AW-001) gets no such lift: it stays where it was.
 //
 // Pure and Node-safe: no React, no DOM. The prepared search records are
 // cached per products array and per product (WeakMaps), so typing re-reads
 // nothing but the query.
 
 import { catLabel } from './format.js';
+import { underLegalReview } from './legalReview.js';
 import { variantList, variantSku } from './lines.js';
 
 // Shorter queries list nothing (the header and /search say so).
@@ -115,6 +122,8 @@ function prepare(product) {
     name,
     nameCompact: compactOf(name),
     nameWords: new Set(nameTokens),
+    // No line lift for a line under legal review (AW-001, legalReview.js).
+    lineWords: new Set(underLegalReview(product) ? [] : tokensOf([product.sub])),
     brandCompact: compactOf(brand),
     skuCompact,
     skuBare: withoutPrefix(skuCompact),
@@ -210,6 +219,13 @@ function fieldsFor(record, term, typo) {
   return bits;
 }
 
+// Score weights (see the top of the file). A line the query names (LINE)
+// outweighs everything a one-word query can earn from a product's name: its
+// start (100), every word (60), whole words (10) and the SKU that repeats
+// the name (30). An exact SKU outweighs everything else.
+const EXACT_SKU = 1000;
+const LINE = 200;
+
 // How a record matches a parsed query in one tier, or null.
 function evaluate(record, q, tier) {
   const typo = tier === 'typo';
@@ -224,12 +240,18 @@ function evaluate(record, q, tier) {
 
   const all = (bit) => hits.length > 0 && hits.every((h) => h & bit);
   const any = (bit) => hits.some((h) => h & bit);
+  const whole = (words) => hits.length > 0 && q.terms.every((t) => words.has(t.word) || words.has(t.stem));
+  const nameStart = record.name.startsWith(q.norm) || compactName;
   let score = 0;
   if (q.compact === record.skuCompact || q.compact === record.skuBare
-      || record.variantSkus.some((s) => s === q.compact || withoutPrefix(s) === q.compact)) score += 200;
-  if (record.name.startsWith(q.norm) || compactName) score += 100;
+      || record.variantSkus.some((s) => s === q.compact || withoutPrefix(s) === q.compact)) score += EXACT_SKU;
+  if (nameStart) score += 100;
+  // The query names the product's line (NEW-027): every word is a whole
+  // word of it ('gum' names Gum & Mints, not Sweets & Gummies). Two or more
+  // words that start the name name the product, and keep it ahead.
+  if (whole(record.lineWords) || (nameStart && q.terms.length > 1)) score += LINE;
   if (all(NAME) || compactName) score += 60;
-  if (hits.length > 0 && q.terms.every((t) => record.nameWords.has(t.word) || record.nameWords.has(t.stem))) score += 10;
+  if (whole(record.nameWords)) score += 10;
   if (all(BRAND) || compactBrand) score += 40;
   if (any(SKU) || compactSku) score += 30;
   if (any(DEPT)) score += 15;
