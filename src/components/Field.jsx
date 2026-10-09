@@ -23,7 +23,10 @@
 // then its running-text label. `full` spans both columns of .form-grid;
 // `className` adds others to the field's box (the quote form's 'half').
 // A control that lays itself out (PasswordField) reads its message with
-// useFieldError(id) and renders the same p#<id>-error.
+// useFieldError(id) and renders the same p#<id>-error. `error` is a message
+// the page sets after the server refused the field's value (an email already
+// in use, NEW-003), shown in the same place; the form's own message wins
+// while there is one.
 // Messages come from src/lib/fieldErrors.js. Required fields are not marked
 // one by one: the form says 'All fields are required unless marked
 // optional.' and the others say '(optional)'.
@@ -98,8 +101,8 @@ export function useFieldError(id) {
   return errors[id] || '';
 }
 
-export function Field({ id, label, hint, full = false, optional = false, inline = false, className, children }) {
-  const error = useFieldError(id);
+export function Field({ id, label, hint, full = false, optional = false, inline = false, className, error: refusal = '', children }) {
+  const error = useFieldError(id) || refusal;
   const hintId = hint ? `${id}-hint` : null;
   const errorId = `${id}-error`;
   const child = Children.only(children);

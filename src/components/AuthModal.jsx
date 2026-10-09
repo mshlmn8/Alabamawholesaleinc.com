@@ -41,6 +41,7 @@ import { isTimeoutError } from '../lib/network.js';
 import { friendlyAuthError } from '../lib/authErrors.js';
 import { PHONE_ERROR, PHONE_EXAMPLE, PHONE_PATTERN, PHONE_TITLE, usPhone } from '../lib/phone.js';
 import { Link, restoreOverlayEntry } from '../lib/router.js';
+import { announce } from '../lib/announce.js';
 import { APPLICATION_CHECKLIST } from '../data/onboarding.js';
 import { DELIVERY_ROUTE_STATES } from '../data/quoteRules.js';
 import { APPLY_INSTEAD, APPLY_LABEL, SIGN_IN_INSTEAD } from '../data/terms.js';
@@ -86,6 +87,18 @@ const SIGNED_OUT_MODES = ['signin', 'reset', 'reset-sent', 'unconfirmed'];
 const SIGNED_IN_MODES = ['checking', 'status', 'profile-error'];
 
 const isUnconfirmedEmail = (err) => err?.code === 'email_not_confirmed' || /email not confirmed/i.test(err?.message || '');
+
+// The field a refused submit is about, by the error's code (NEW-003): a weak
+// password is the password's fault; a taken, unknown or mistyped email the
+// email's. Focus goes there when the refusal took it from the submit button.
+// An unconfirmed email opens a step of its own, whose heading takes focus.
+const EMAIL_CODES = new Set(['invalid_credentials', 'user_already_exists', 'email_exists', 'email_address_invalid', 'validation_failed']);
+function refusedField(err, { email, password }) {
+  const code = typeof err?.code === 'string' ? err.code : '';
+  if (password && (code === 'weak_password' || err?.name === 'AuthWeakPasswordError')) return password;
+  if (email && EMAIL_CODES.has(code)) return email;
+  return null;
+}
 
 // TODO(owner): Approve the consent checkbox wording. The Trade terms / Privacy
 // version it records is TERMS_VERSION in ../data/content.js. (AW-019)
@@ -143,10 +156,20 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
   const [mode, setMode] = useState(initialMode === 'signup' ? 'checklist' : initialMode === 'application' ? 'signup' : initialMode);
   const [afterSignup, setAfterSignup] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // Counts the sends that have ended, so the focus effect below runs after
+  // each one, even one refused so fast that `submitting` never showed true.
+  const [sendsEnded, setSendsEnded] = useState(0);
+  const endSend = () => { setSubmitting(false); setSendsEnded((n) => n + 1); };
   const [error, setError] = useState(null);
   const [signin, setSignin] = useState({ email: '', password: '' });
-  const [resetEmail, setResetEmail] = useState('');
+  // Opened for a reset while signed in ('Forgot it?' on /reset-password),
+  // the link is for this account: its email is filled in (NEW-067).
+  const [resetEmail, setResetEmail] = useState(() => (initialMode === 'reset' && session?.user?.email) || '');
   const [signup, setSignup] = useState(EMPTY_SIGNUP);
+  // The application's refusal that is about one field, { id, message },
+  // said under that field until it changes (NEW-003).
+  const [signupRefusal, setSignupRefusal] = useState(null);
+  const refusalFor = (id) => (signupRefusal?.id === id ? signupRefusal.message : '');
   const [proof, setProof] = useState({});
   const [proofErrors, setProofErrors] = useState({});
   // Files chosen on an application that returned no session, held until
@@ -171,10 +194,17 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
   const dialogRef = useRef(null);
   const keepEditingRef = useRef(null);
   const resendRef = useRef(null);
+  // The submit button of the form on show (sign-in, application or reset).
+  const submitRef = useRef(null);
   // Where focus was when the discard bar opened, for Keep editing.
   const focusBeforeConfirm = useRef(null);
-  // A resend is running; see the focus effect below.
-  const resending = useRef(false);
+  // A send is running, and how it started: { kind: 'resend' } (Resend or
+  // Send again) or { kind: 'submit', fromButton } (a form, from its focused
+  // submit button or not); and the field a refusal is about, { id, message }
+  // with the message when it is said under that field. See the focus effect
+  // below.
+  const submittingFrom = useRef(null);
+  const refusedAt = useRef(null);
   // The session the application's files went up with, for Try again; and
   // whether the held files have been sent.
   const proofSession = useRef(null);
@@ -224,18 +254,47 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
     return () => window.clearTimeout(id);
   }, [mode]);
 
-  // A Resend or Send again button disabled (or hidden) while it had focus
-  // drops focus to <body> (Chrome) or leaves it on a dead control. When the
-  // send has finished, focus goes back to it if it can be used again (it
-  // failed), else to the dialog's heading.
+  // Where focus goes when a send has finished (NEW-003). A button disabled
+  // (or hidden) while it had focus drops focus to <body> (Chrome) or leaves
+  // it on a dead control.
+  // - A refusal said under its field (the application's email already in
+  //   use, or a weak password) works like the form's own check: that field
+  //   takes focus, and its message is read out if it already had focus.
+  // - Otherwise focus stays where it is, unless it was lost that way. Then,
+  //   after Resend or Send again, it goes to that button if it can be used
+  //   again (it failed), else to the dialog's heading; after Sign in or Send
+  //   reset link pressed with focus on it, to the field the refusal is about
+  //   (refusedField), else back to the button, scrolled into view.
+  // A step that changed has already focused its heading, and Enter pressed in
+  // a field leaves focus there.
   useEffect(() => {
-    if (!resending.current || submitting) return;
-    resending.current = false;
+    const from = submittingFrom.current;
+    if (!from || submitting) return;
+    submittingFrom.current = null;
+    const refusal = refusedAt.current;
+    refusedAt.current = null;
+    const dialog = dialogRef.current;
     const active = document.activeElement;
-    if (active && active !== document.body && !active.disabled && dialogRef.current?.contains(active)) return;
-    const button = resendRef.current;
-    (button && !button.disabled ? button : titleRef.current)?.focus({ preventScroll: true });
-  }, [submitting, cooling, resetCooling]);
+    const usable = (el) => (el && el.isConnected && !el.disabled ? el : null);
+    const field = usable(refusal ? dialog?.querySelector(`#${refusal.id}`) : null);
+    if (refusal?.message && field) {
+      if (field === active) announce(refusal.message);
+      else field.focus();
+      return;
+    }
+    if (active && active !== document.body && !active.disabled && dialog?.contains(active)) return;
+    if (from.kind === 'resend') {
+      (usable(resendRef.current) || titleRef.current)?.focus({ preventScroll: true });
+    } else if (from.fromButton) {
+      (field || usable(submitRef.current) || titleRef.current)?.focus();
+    }
+  }, [submitting, sendsEnded]);
+  // A form is sending: note whether its submit button has the focus that
+  // `disabled` is about to drop (NEW-003).
+  const noteSubmitFocus = () => {
+    submittingFrom.current = { kind: 'submit', fromButton: !!submitRef.current && document.activeElement === submitRef.current };
+    refusedAt.current = null;
+  };
 
   // Held files go up once, when a session for the email that applied
   // appears while 'Check your inbox' is open (AW-085).
@@ -293,24 +352,29 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
 
   const setS = (k) => (e) => setSignin({ ...signin, [k]: e.target.value });
   const setU = (k) => (e) => setSignup({ ...signup, [k]: e.target.value });
-  const switchMode = (next) => { setError(null); setMode(next); };
+  const switchMode = (next) => { setError(null); setSignupRefusal(null); setMode(next); };
 
   const handleSignin = async (e) => {
     e.preventDefault();
+    noteSubmitFocus();
     setSubmitting(true); setError(null);
     try { await signIn(signin); setMode('checking'); }
     catch (err) {
       // An account whose confirmation link expired (AW-015) can ask for a new one.
       if (isUnconfirmedEmail(err)) { setResent(false); setMode('unconfirmed'); }
       // Supabase's own text is never shown (AW-084).
-      else setError(friendlyAuthError(err, { what: 'Account sign-in', fallback: 'We couldn’t sign you in. Try again in a moment.' }));
+      else {
+        const id = refusedField(err, { email: 'aw-email' });
+        refusedAt.current = id && { id };
+        setError(friendlyAuthError(err, { what: 'Account sign-in', fallback: 'We couldn’t sign you in. Try again in a moment.' }));
+      }
     }
-    finally { setSubmitting(false); }
+    finally { endSend(); }
   };
 
   // Sends the sign-up confirmation email to `email` again (AW-015, AW-016).
   const handleResend = async (email) => {
-    resending.current = true;
+    submittingFrom.current = { kind: 'resend' };
     setSubmitting(true); setError(null);
     try {
       await resendConfirmation(email);
@@ -321,7 +385,7 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
       setError(isRateLimitError(err)
         ? RESEND_RATE_LIMITED
         : friendlyAuthError(err, { what: 'Email confirmation', fallback: 'We couldn’t send a new confirmation link. Try again in a moment.' }));
-    } finally { setSubmitting(false); }
+    } finally { endSend(); }
   };
 
   const retryProfile = () => {
@@ -347,6 +411,8 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
     // validateSignup has said so under the field; this is only a guard.
     const phone = usPhone(signup.phone);
     if (!phone) return;
+    noteSubmitFocus();
+    setSignupRefusal(null);
     setSubmitting(true);
     try {
       const data = await signUp({
@@ -374,10 +440,19 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
     catch (err) {
       // A timed-out application may have gone through (AW-194): its
       // confirmation email says so.
-      setError(isTimeoutError(err) ? APPLICATION_TIMEOUT_MESSAGE
-        : friendlyAuthError(err, { what: 'The online application', fallback: 'We couldn’t send your application. Try again in a moment.' }));
+      const message = isTimeoutError(err) ? APPLICATION_TIMEOUT_MESSAGE
+        : friendlyAuthError(err, { what: 'The online application', fallback: 'We couldn’t send your application. Try again in a moment.' });
+      // An email already in use, or a weak password, is said under that
+      // field, which takes focus (NEW-003); anything else in the form's alert.
+      const id = refusedField(err, { email: 'aw-su-email', password: 'aw-su-pass' });
+      if (id) {
+        refusedAt.current = { id, message };
+        setSignupRefusal({ id, message });
+      } else {
+        setError(message);
+      }
     }
-    finally { setSubmitting(false); }
+    finally { endSend(); }
   };
 
   // Try again for the application's files that didn't upload: only those,
@@ -403,7 +478,8 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
   // again on 'Check your inbox'. Each send starts the minute before Send
   // again can be used (AW-259).
   const sendResetLink = async (again) => {
-    if (again) resending.current = true;
+    if (again) submittingFrom.current = { kind: 'resend' };
+    else noteSubmitFocus();
     setSubmitting(true); setError(null);
     try {
       await resetPassword(resetEmail);
@@ -411,10 +487,12 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
       startResetCooling();
       setMode('reset-sent');
     } catch (err) {
+      const id = again ? null : refusedField(err, { email: 'aw-reset-email' });
+      refusedAt.current = id && { id };
       setError(again && isRateLimitError(err)
         ? RESEND_RATE_LIMITED
         : friendlyAuthError(err, { what: 'Password reset', fallback: 'We couldn’t send the reset link. Try again in a moment.' }));
-    } finally { setSubmitting(false); }
+    } finally { endSend(); }
   };
   const handleReset = (e) => {
     e.preventDefault();
@@ -559,7 +637,7 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
             </div>
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
-              <button className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Signing in…' : 'Sign in'}</span></button>
+              <button ref={submitRef} className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Signing in…' : 'Sign in'}</span></button>
               <button className="text-link" type="button" onClick={() => { setResetEmail(signin.email || resetEmail); switchMode('reset'); }}>Forgot password?</button>
               <button className="text-link" type="button" onClick={() => switchMode('checklist')}>{APPLY_INSTEAD}</button>
             </div>
@@ -615,7 +693,7 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
         )}
 
         {mode === 'signup' && (
-          <ValidatedForm onSubmit={handleSignup} validate={validateSignup}>
+          <ValidatedForm onSubmit={handleSignup} validate={validateSignup} onChange={(e) => { if (signupRefusal && e.target.id === signupRefusal.id) setSignupRefusal(null); }}>
             <p className="form-note">All fields are required unless marked optional.</p>
             {/* Three groups, each under its legend, then the optional
                 documents (AW-243). */}
@@ -624,7 +702,7 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
               <Field id="aw-su-name" label="Your name" full>
                 <input id="aw-su-name" name="name" value={signup.name} onChange={setU('name')} required autoComplete="name" data-autofocus />
               </Field>
-              <Field id="aw-su-email" label="Business email">
+              <Field id="aw-su-email" label="Business email" error={refusalFor('aw-su-email')}>
                 <input id="aw-su-email" type="email" name="email" value={signup.email} onChange={setU('email')} required autoComplete="email" inputMode="email" />
               </Field>
               <Field id="aw-su-phone" label="Phone" hint="Ten digits, the number we should call about this account.">
@@ -633,7 +711,7 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
                   required autoComplete="tel" inputMode="tel" placeholder={PHONE_EXAMPLE} pattern={PHONE_PATTERN} title={PHONE_TITLE}
                 />
               </Field>
-              <PasswordField id="aw-su-pass" className="full" label="Password" name="new-password" value={signup.password} onChange={setU('password')} required minLength={PASSWORD_MIN_LENGTH} autoComplete="new-password" showRule />
+              <PasswordField id="aw-su-pass" className="full" label="Password" name="new-password" value={signup.password} onChange={setU('password')} required minLength={PASSWORD_MIN_LENGTH} autoComplete="new-password" showRule error={refusalFor('aw-su-pass')} />
             </fieldset>
             <fieldset className="form-grid form-section">
               <legend>Your store</legend>
@@ -693,7 +771,7 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
             </div>
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
-              <button className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Submitting…' : 'Submit application'}</span></button>
+              <button ref={submitRef} className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Submitting…' : 'Submit application'}</span></button>
               <button className="text-link" type="button" onClick={() => switchMode('checklist')}>Back to the checklist</button>
               <button className="text-link" type="button" onClick={() => switchMode('signin')}>{SIGN_IN_INSTEAD}</button>
             </div>
@@ -773,7 +851,7 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
             </div>
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
-              <button className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Sending…' : 'Send reset link'}</span></button>
+              <button ref={submitRef} className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Sending…' : 'Send reset link'}</span></button>
               <button className="text-link" type="button" onClick={backToSignin}>Back to sign in</button>
             </div>
           </ValidatedForm>

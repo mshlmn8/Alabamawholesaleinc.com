@@ -9,7 +9,9 @@
 //
 // In a ValidatedForm (./Field.jsx, AW-173) it shows its own message the way
 // a Field does: p#<id>-error under the box, aria-invalid, and the error's id
-// in aria-describedby.
+// in aria-describedby. `error` is a message the page sets after the server
+// refused the box's value (a wrong current password, NEW-026), shown in that
+// same place; the form's own message wins while there is one.
 
 import { useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Icon } from './Icon.jsx';
@@ -22,7 +24,7 @@ const RULE_MET = `${RULE}: done`;
 
 export function PasswordField({
   id, label, value, onChange, autoComplete, required = false, minLength, hint, showRule = false, inputRef, className,
-  'aria-describedby': describedByMore, ...inputProps
+  error: refusal = '', 'aria-describedby': describedByMore, ...inputProps
 }) {
   const [shown, setShown] = useState(false);
   const input = useRef(null);
@@ -39,7 +41,7 @@ export function PasswordField({
   }, []);
 
   const met = String(value ?? '').length >= PASSWORD_MIN_LENGTH;
-  const error = useFieldError(id);
+  const error = useFieldError(id) || refusal;
   // The hint and rule, then anything the caller adds (an error's id), then
   // the form's own message.
   const describedBy = [hint && `${id}-hint`, showRule && `${id}-rule`, describedByMore, error && `${id}-error`].filter(Boolean).join(' ') || undefined;

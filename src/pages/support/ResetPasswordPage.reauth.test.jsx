@@ -1,7 +1,7 @@
 // /reset-password asks a signed-in account for its current password before a
 // new one is saved, unless a reset link opened it, and says whether the
 // account's other devices were signed out (AW-349).
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ResetPasswordPage } from './ResetPasswordPage.jsx';
 
@@ -58,21 +58,45 @@ describe('ResetPasswordPage, signed in without a reset link (AW-349)', () => {
     expect(auth.updatePassword).not.toHaveBeenCalled();
   });
 
-  it('saves nothing when the current password is wrong, and points at that field', async () => {
+  it('saves nothing when the current password is wrong, and says so under that field (NEW-026)', async () => {
     const wrong = authError('That isn’t the current password for this account.', { code: 'wrong_password' });
     const { auth } = page({ verifyPassword: vi.fn(async () => { throw wrong; }) });
     fill({ current: 'not-it' });
     const current = screen.getByLabelText('Current password');
-    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('That isn’t the current password for this account.'));
+    const message = document.getElementById('reset-current-error');
+    await waitFor(() => expect(message.textContent).toBe('That isn’t the current password for this account.'));
     expect(auth.verifyPassword).toHaveBeenCalledWith('not-it');
     expect(auth.updatePassword).not.toHaveBeenCalled();
     expect(current.getAttribute('aria-invalid')).toBe('true');
-    expect(current.getAttribute('aria-describedby')).toBe('reset-error');
-    expect(screen.getByRole('alert').id).toBe('reset-error');
-    expect(document.activeElement).toBe(current);
-    // Typing again clears the mark.
+    expect(current.getAttribute('aria-describedby')).toBe('reset-current-error');
+    // Inside the Current password field, under its box and above 'Forgot it?',
+    // not in the page-level line after the whole form (which stays empty).
+    const field = current.closest('.pw-wrap').parentElement;
+    expect(field.contains(message)).toBe(true);
+    expect(field.querySelector('label').textContent).toBe('Current password');
+    const forgot = screen.getByRole('button', { name: 'Forgot it? Email me a reset link' });
+    expect(message.compareDocumentPosition(forgot) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(document.getElementById('reset-error').textContent).toBe('');
+    expect(document.getElementById('reset-confirm-error').textContent).toBe('');
+    await waitFor(() => expect(document.activeElement).toBe(current));
+    // Typing again clears the mark and the message.
     type('Current password', 'old-pass-1');
     expect(current.hasAttribute('aria-invalid')).toBe(false);
+    expect(current.hasAttribute('aria-describedby')).toBe(false);
+    expect(message.textContent).toBe('');
+  });
+
+  it('reads the wrong-password message out when Current password already had focus (NEW-026)', async () => {
+    const wrong = authError('Wrong', { code: 'wrong_password' });
+    page({ verifyPassword: vi.fn(async () => { throw wrong; }) });
+    type('Current password', 'not-it');
+    type('New password', 'new-pass-123');
+    type('Confirm new password', 'new-pass-123');
+    const current = screen.getByLabelText('Current password');
+    current.focus();
+    await act(async () => { fireEvent.submit(current.closest('form')); });
+    expect(document.activeElement).toBe(current);
+    await waitFor(() => expect(document.getElementById('aw-announcer').textContent).toBe('That isn’t the current password for this account.'));
   });
 
   it('asks to wait after too many tries', async () => {

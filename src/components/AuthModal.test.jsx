@@ -468,11 +468,12 @@ describe('AuthModal error messages (AW-084)', () => {
     expect(alert().textContent).toMatch(/^Account sign-in is unavailable right now\. Call .+ or email .+ and a trade rep will help you\.$/);
   });
 
+  // Both are about one field, so they are said under it (NEW-003).
   it('tells an applicant whose email is taken to sign in or reset, never “User already registered”', async () => {
     setup({ signUp: vi.fn(async () => { throw apiError('User already registered', 'user_already_exists', 422); }) }, { initialMode: 'application' });
     fillApplication();
     await act(async () => { fireEvent.submit(screen.getByLabelText('Business email').closest('form')); });
-    expect(alert().textContent).toBe('An account already uses this email. Sign in or reset your password.');
+    expect(document.getElementById('aw-su-email-error').textContent).toBe('An account already uses this email. Sign in or reset your password.');
     expect(screen.queryByText(/User already registered/)).toBeNull();
   });
 
@@ -481,7 +482,7 @@ describe('AuthModal error messages (AW-084)', () => {
     setup({ signUp: vi.fn(async () => { throw weak; }) }, { initialMode: 'application' });
     fillApplication();
     await act(async () => { fireEvent.submit(screen.getByLabelText('Business email').closest('form')); });
-    expect(alert().textContent).toBe('Choose a stronger password: at least 8 characters.');
+    expect(document.getElementById('aw-su-pass-error').textContent).toBe('Choose a stronger password: at least 8 characters.');
   });
 
   it('asks for a minute’s wait when the reset email is refused, never Supabase’s seconds count', async () => {

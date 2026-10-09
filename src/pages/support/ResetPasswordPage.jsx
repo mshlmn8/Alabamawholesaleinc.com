@@ -10,10 +10,13 @@
 // and, through onViewChange, the tab title all follow it.
 //
 // A short or mismatched password is named under the field it is about, which
-// takes focus (AW-173, ValidatedForm's validate).
+// takes focus (AW-173, ValidatedForm's validate). So is a current password
+// the server says is wrong (NEW-026); p#reset-error is for the server's other
+// answers (too many tries, timeouts, failures).
 
 import { useEffect, useRef, useState } from 'react';
 import { AUTH_ERROR_TEXT, friendlyAuthError } from '../../lib/authErrors.js';
+import { announce } from '../../lib/announce.js';
 import { isRateLimitError } from '../../lib/errors.js';
 import { ServiceUnavailable } from '../../components/ServiceUnavailable.jsx';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
@@ -46,6 +49,10 @@ function linkProblem(linkError) {
 // Auth servers send no code, only the 422 and its message.
 const isSamePassword = (err) => err?.code === 'same_password'
   || (err?.status === 422 && /different from the old password/i.test(err?.message || ''));
+const isWeakPassword = (err) => err?.code === 'weak_password' || err?.name === 'AuthWeakPasswordError';
+
+// Said under Current password when the server says it is wrong (NEW-026).
+export const WRONG_CURRENT_PASSWORD = 'That isn’t the current password for this account.';
 
 // onSignOut is App's Sign Out, which also clears the guest cart, the receipt
 // and the age confirmation: never auth.signOut here. onViewChange(view) lets
@@ -58,9 +65,16 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick, onSignOu
   const [error, setError] = useState(null);
   const [currentWrong, setCurrentWrong] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Counts the saves that have ended, for the focus effect (NEW-003).
+  const [savesEnded, setSavesEnded] = useState(0);
   const [done, setDone] = useState(false);
   const [othersSignedOut, setOthersSignedOut] = useState(false);
   const currentRef = useRef(null);
+  const submitRef = useRef(null);
+  // A save that is running: whether Save had focus when it started (the
+  // `disabled` it gets drops that focus to <body> in Chrome), and the field
+  // a refusal is about. See the effect below (NEW-003).
+  const saveFocus = useRef(null);
 
   // A short or mismatched new password is named under its field (AW-173);
   // an empty current password gets the field's own 'Enter current password'.
@@ -76,6 +90,8 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick, onSignOu
     setCurrentWrong(false);
     // validate() has checked these already; a guard only.
     if (password.length < PASSWORD_MIN_LENGTH || password !== confirm) return;
+    const save = { fromButton: !!submitRef.current && document.activeElement === submitRef.current, field: null };
+    saveFocus.current = save;
     setSaving(true);
     try {
       if (!recovery) {
@@ -83,9 +99,9 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick, onSignOu
           await verifyPassword(current);
         } catch (err) {
           if (err?.code === 'wrong_password') {
-            setError('That isn’t the current password for this account.');
+            // Said under Current password, which takes focus (NEW-026).
             setCurrentWrong(true);
-            currentRef.current?.focus();
+            save.field = 'reset-current';
             return;
           }
           if (isRateLimitError(err) || err?.code === 'over_request_rate_limit') {
@@ -99,14 +115,38 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick, onSignOu
       setOthersSignedOut(result?.othersSignedOut === true);
       setDone(true);
     } catch (err) {
+      // A new password the server refused: the cursor goes back to it.
+      if (isSamePassword(err) || isWeakPassword(err)) save.field = 'reset-password';
       // Supabase's own text is never shown (AW-084).
       setError(isSamePassword(err)
         ? AUTH_ERROR_TEXT.samePassword
         : friendlyAuthError(err, { what: 'Password reset', fallback: 'We couldn’t update the password. Try again in a moment.' }));
     } finally {
       setSaving(false);
+      setSavesEnded((n) => n + 1);
     }
   };
+  // When a save is refused, focus goes where it can be acted on (NEW-003):
+  // a wrong current password always to that field, once its message is on
+  // the page (and the message is read out if the field already had focus);
+  // otherwise, only if Save had focus and lost it, to the new password the
+  // server refused, else back to Save. A saved password's panel takes focus
+  // in the effect further down.
+  useEffect(() => {
+    const save = saveFocus.current;
+    if (saving || !save) return;
+    saveFocus.current = null;
+    if (done) return;
+    const field = save.field ? document.getElementById(save.field) : null;
+    const active = document.activeElement;
+    if (save.field === 'reset-current') {
+      if (field && field === active) announce(WRONG_CURRENT_PASSWORD);
+      else field?.focus();
+      return;
+    }
+    if (!save.fromButton || (active && active !== document.body && !active.disabled)) return;
+    (field || submitRef.current)?.focus();
+  }, [saving, done, savesEnded]);
 
   const view = resetView({ isBackendConfigured, done, session, loading, linkChecking, linkError });
   const head = resetHead(view, { linkChecking });
@@ -192,8 +232,10 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick, onSignOu
           {/* The current password first, without a reset link (AW-349). */}
           {!recovery && (
             <div className="full">
+              {/* A wrong one is said in p#reset-current-error, under the box
+                  and above 'Forgot it?' (NEW-026). */}
               <PasswordField id="reset-current" label="Current password" value={current} onChange={(e) => { setCurrent(e.target.value); setCurrentWrong(false); }} required autoComplete="current-password" inputRef={currentRef}
-                aria-invalid={currentWrong || undefined} aria-describedby={currentWrong ? 'reset-error' : undefined} />
+                error={currentWrong ? WRONG_CURRENT_PASSWORD : ''} />
               <button className="text-link" type="button" onClick={onRequestReset}>Forgot it? Email me a reset link</button>
             </div>
           )}
@@ -203,7 +245,7 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick, onSignOu
         </div>
         <p className="form-error" id="reset-error" role="alert">{error}</p>
         <div className="dialog-actions">
-          <button className="button" type="submit" disabled={saving}><span>{saving ? 'Saving…' : 'Save new password'}</span></button>
+          <button ref={submitRef} className="button" type="submit" disabled={saving}><span>{saving ? 'Saving…' : 'Save new password'}</span></button>
           {/* My account, where the session shows; not history.back(), which can leave the site. */}
           <Link className="text-link" to="/account">Cancel</Link>
           {recovery && (

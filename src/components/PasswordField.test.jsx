@@ -85,4 +85,20 @@ describe('PasswordField (AW-248)', () => {
     // No autocorrect or spellcheck on a shown password.
     expect([input.getAttribute('autocapitalize'), input.getAttribute('spellcheck')]).toEqual(['none', 'false']);
   });
+
+  it('shows a refusal the page sets as its own message, under the box (NEW-026)', () => {
+    const { rerender } = render(<Form error="That isn’t the current password for this account." showRule />);
+    const input = screen.getByLabelText('Password');
+    const message = document.getElementById('pw-error');
+    expect(message.textContent).toBe('That isn’t the current password for this account.');
+    expect(message.className).toBe('form-error field-error');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(input.getAttribute('aria-describedby')).toBe('pw-rule pw-error');
+    // Under the box, inside the field's own wrapper.
+    expect(input.closest('.pw-wrap').parentElement.contains(message)).toBe(true);
+    rerender(<Form error="" showRule />);
+    expect(message.textContent).toBe('');
+    expect(input.hasAttribute('aria-invalid')).toBe(false);
+    expect(input.getAttribute('aria-describedby')).toBe('pw-rule');
+  });
 });
