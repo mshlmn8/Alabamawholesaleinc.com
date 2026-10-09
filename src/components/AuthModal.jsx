@@ -297,10 +297,17 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
   };
 
   // Held files go up once, when a session for the email that applied
-  // appears while 'Check your inbox' is open (AW-085).
+  // appears (AW-085): a confirmation in this browser while 'Check your inbox'
+  // is open, or a sign-in here from that step, on any step after it
+  // (NEW-015). The status step then says how the upload went.
   const heldEmail = signup.email.trim().toLowerCase();
   const sessionEmail = String(session?.user?.email || '').toLowerCase();
-  const heldReady = mode === 'sent' && proofWaiting && !!session?.user?.id && sessionEmail !== '' && sessionEmail === heldEmail;
+  const applicantSession = afterSignup && !!session?.user?.id && sessionEmail !== '' && sessionEmail === heldEmail;
+  const heldReady = proofWaiting && applicantSession;
+  // Once the applicant's session has reached this tab, the email is
+  // confirmed: 'Check your inbox' says so and stops offering Resend (NEW-015).
+  const [emailConfirmed, setEmailConfirmed] = useState(false);
+  if (applicantSession && !emailConfirmed) setEmailConfirmed(true);
   useEffect(() => {
     if (!heldReady || heldSent.current) return;
     heldSent.current = true;
@@ -319,11 +326,33 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
   // until the application is sent or a sign-in here makes it moot.
   const touched = Object.keys(EMPTY_SIGNUP).some((k) => signup[k] !== EMPTY_SIGNUP[k]) || Object.values(proof).some(Boolean);
   const dirty = touched && !afterSignup && !SIGNED_IN_MODES.includes(mode);
-  if (confirming && !dirty) setConfirming(false);
+  // Held documents not sent yet are guarded too (NEW-015): they live only in
+  // this dialog, so closing it loses them. Once their upload has started,
+  // closing no longer stops it.
+  const heldUnsent = proofWaiting && !heldReady;
+  const guarded = dirty || heldUnsent;
+  if (confirming && !guarded) setConfirming(false);
   // The bar's first button takes focus, which also scrolls the bar into view.
+  // A bar that goes away by itself (the documents started uploading) hands
+  // focus to the heading if it had it.
+  const barShown = useRef(false);
   useEffect(() => {
-    if (confirming) keepEditingRef.current?.focus();
+    if (confirming) {
+      barShown.current = true;
+      keepEditingRef.current?.focus();
+      return;
+    }
+    if (!barShown.current) return;
+    barShown.current = false;
+    const active = document.activeElement;
+    if (!active || active === document.body || !dialogRef.current?.contains(active)) titleRef.current?.focus({ preventScroll: true });
   }, [confirming]);
+  // Resend and Sign in go from 'Check your inbox' once the email is
+  // confirmed here; focus on one of them moves to the heading.
+  useEffect(() => {
+    const active = document.activeElement;
+    if (mode === 'sent' && emailConfirmed && (!active || active === document.body)) titleRef.current?.focus({ preventScroll: true });
+  }, [mode, emailConfirmed, applicantSession]);
 
   const keepEditing = () => {
     setConfirming(false);
@@ -334,14 +363,15 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
     target?.focus();
   };
   // ×, Escape, Back, Done: close, unless that would throw away typed
-  // answers. Then the bar asks first, and a second Escape or Back answers
-  // Keep editing. restoreOverlayEntry() puts back the history entry Back
-  // took, so the next Back still belongs to the dialog (AW-065).
+  // answers or documents not sent yet. Then the bar asks first, and a second
+  // Escape or Back answers Keep editing (Keep it open). restoreOverlayEntry()
+  // puts back the history entry Back took, so the next Back still belongs to
+  // the dialog (AW-065).
   const requestClose = () => {
     if (confirming) {
       keepEditing();
       restoreOverlayEntry();
-    } else if (dirty) {
+    } else if (guarded) {
       focusBeforeConfirm.current = document.activeElement;
       setConfirming(true);
       restoreOverlayEntry();
@@ -582,7 +612,7 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
     // Backdrop click is a mouse shortcut; Escape (ModalLayer) and the Close button are the keyboard paths.
     // With typed answers it does nothing: a stray click must not end the application (AW-018).
     // eslint-disable-next-line jsx-a11y/click-events-have-key-events
-    <div className="overlay" onClick={dirty ? undefined : onClose}>
+    <div className="overlay" onClick={guarded ? undefined : onClose}>
       {/* Keeps clicks inside the dialog from reaching the backdrop. */}
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
       <div className="dialog scale-in" role="dialog" aria-modal="true" aria-labelledby="auth-title" ref={dialogRef} onClick={(e) => e.stopPropagation()}>
@@ -594,10 +624,12 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
         </div>
         {confirming && (
           <div className="notice discard-confirm" role="group" aria-labelledby="aw-discard-title">
-            <p id="aw-discard-title">Discard your application? What you’ve typed will be lost.</p>
+            <p id="aw-discard-title">{dirty
+              ? 'Discard your application? What you’ve typed will be lost.'
+              : 'Your documents haven’t been sent. Close anyway? You can add them from My account.'}</p>
             <div className="discard-actions">
-              <button ref={keepEditingRef} className="button ghost sm" type="button" aria-describedby="aw-discard-title" onClick={keepEditing}>Keep editing</button>
-              <button className="button sm" type="button" onClick={onClose}>Discard</button>
+              <button ref={keepEditingRef} className="button ghost sm" type="button" aria-describedby="aw-discard-title" onClick={keepEditing}>{dirty ? 'Keep editing' : 'Keep it open'}</button>
+              <button className="button sm" type="button" onClick={onClose}>{dirty ? 'Discard' : 'Close anyway'}</button>
             </div>
           </div>
         )}
@@ -782,7 +814,12 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
           <>
             <h3 className="checklist-heading">What happens next</h3>
             <ol className="next-steps">
-              <li><b>Confirm your email.</b><span>Open the link in that email. Not there after a few minutes? Check your spam folder. Already have an account with this email? <button className="text-link" type="button" onClick={signInWithApplication}>Sign in instead</button>.</span></li>
+              {/* Done once the applicant's session reaches this tab (NEW-015). */}
+              {emailConfirmed ? (
+                <li><b>Email confirmed.</b><span>Thanks. Your account is active.</span></li>
+              ) : (
+                <li><b>Confirm your email.</b><span>Open the link in that email. Not there after a few minutes? Check your spam folder. Already have an account with this email? <button className="text-link" type="button" onClick={signInWithApplication}>Sign in instead</button>.</span></li>
+              )}
               <li><b>We review your application.</b><span>A trade rep checks your EIN, state retail tobacco license and resale certificate.</span></li>
               {/* The application went with a checked number (AW-247), shown as sent. */}
               <li><b>You hear from us.</b><span>{`We’ll email you or call ${usPhone(signup.phone)?.formatted ?? signup.phone} when your account is approved. Wholesale pricing and ordering unlock then.`}</span></li>
@@ -793,17 +830,21 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
             )}
             {proofLine}
             {proofProblem}
-            {/* No email? Send it again, once a minute (AW-016). */}
-            <div className="resend">
-              <button ref={resendRef} className="text-link" type="button" onClick={() => handleResend(signup.email)} disabled={submitting || cooling || !isBackendConfigured}>
-                <span>{submitting ? 'Sending…' : 'Resend confirmation email'}</span>
-              </button>
-              <p className="checklist-note" role="status">{resendStatus}</p>
-            </div>
+            {/* No email? Send it again, once a minute (AW-016). Not once the
+                email is confirmed (NEW-015). */}
+            {!emailConfirmed && (
+              <div className="resend">
+                <button ref={resendRef} className="text-link" type="button" onClick={() => handleResend(signup.email)} disabled={submitting || cooling || !isBackendConfigured}>
+                  <span>{submitting ? 'Sending…' : 'Resend confirmation email'}</span>
+                </button>
+                <p className="checklist-note" role="status">{resendStatus}</p>
+              </div>
+            )}
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
               <button className="button" type="button" onClick={requestClose} data-autofocus>Done</button>
-              <button className="text-link" type="button" onClick={signInWithApplication}>Sign in</button>
+              {/* Signed in as the applicant already: nothing to sign in to. */}
+              {!applicantSession && <button className="text-link" type="button" onClick={signInWithApplication}>Sign in</button>}
             </div>
           </>
         )}

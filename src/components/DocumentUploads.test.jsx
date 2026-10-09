@@ -307,6 +307,23 @@ describe('ApplicationDocuments when the list doesn’t load (AW-195)', () => {
     for (const input of document.querySelectorAll('input[type=file]')) expect(input.closest('fieldset').disabled).toBe(false);
   });
 
+  it('moves focus to the panel’s heading on Try again, not <body> (NEW-048)', async () => {
+    docs.rows = [LICENSE];
+    docs.listFails = 1;
+    panel();
+    await screen.findByRole('alert');
+    const retry = screen.getByRole('button', { name: 'Try again' });
+    retry.focus();
+    fireEvent.click(retry);
+    // The alert and its button are gone.
+    expect(retry.isConnected).toBe(false);
+    const heading = screen.getByRole('heading', { name: 'License documents' });
+    expect(heading.getAttribute('tabindex')).toBe('-1');
+    expect(document.activeElement).toBe(heading);
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('1 of 2 documents received.'));
+    expect(document.activeElement).toBe(heading);
+  });
+
   it('tries again by itself when the connection comes back', async () => {
     const onLine = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     docs.rows = [LICENSE, RESALE];

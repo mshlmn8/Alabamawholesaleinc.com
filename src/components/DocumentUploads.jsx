@@ -303,18 +303,25 @@ export function ApplicationDocuments({ disabled = false, status = 'pending', id 
     return () => { cancelled = true; };
   }, [isBackendConfigured, userId, loadKey]);
 
-  // Try again: 'Checking…' until the list answers.
-  const retryLoad = () => {
+  // 'Checking…' until the list answers.
+  const reload = () => {
     setLoadError(false);
     setRecords(null);
     setLoadKey(key => key + 1);
+  };
+  // Try again goes away with its alert, so focus moves to the panel's
+  // heading first, not to <body> (NEW-048).
+  const headingRef = useRef(null);
+  const retryLoad = () => {
+    headingRef.current?.focus();
+    reload();
   };
   // Back online after a failed load: try again by itself.
   const online = useOnlineStatus();
   const [wasOnline, setWasOnline] = useState(online);
   if (wasOnline !== online) {
     setWasOnline(online);
-    if (online && loadError) retryLoad();
+    if (online && loadError) reload();
   }
 
   const setDoc = (type, next) => setDocs(prev => ({ ...prev, [type]: { ...IDLE, ...next } }));
@@ -379,7 +386,7 @@ export function ApplicationDocuments({ disabled = false, status = 'pending', id 
   return (
     <section className="doc-panel" id={id} aria-labelledby="proof-title">
       {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-      <h2 id="proof-title">License documents</h2>
+      <h2 id="proof-title" ref={headingRef} tabIndex={-1}>License documents</h2>
       {/* Always rendered, so the count is announced when it changes. */}
       <p className="doc-summary" role="status">{summary}</p>
       {loadError && (

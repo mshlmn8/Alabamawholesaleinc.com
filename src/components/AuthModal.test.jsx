@@ -997,6 +997,114 @@ describe('AuthModal application documents (AW-085)', () => {
     expect(proofLine().textContent).toBe('Your resale certificate is uploaded.');
   });
 
+  // NEW-015: the held files are not dropped by Done, × or Sign in, and the
+  // inbox step follows a confirmation that reaches this tab.
+  const heldBar = () => screen.queryByRole('group', { name: /^Your documents haven’t been sent\./ });
+  const firstStep = () => document.querySelector('[role="dialog"] .next-steps li').textContent;
+
+  it('uploads the held files when the applicant signs in from Check your inbox, and the status step says how it went (NEW-015)', async () => {
+    const t = await apply(vi.fn(async () => ({ session: null })));
+    fireEvent.click(document.querySelector('[role="dialog"] .dialog-actions .text-link'));
+    expect(screen.getByRole('heading', { name: 'Sign in' })).toBeTruthy();
+    expect(document.getElementById('aw-email').value).toBe('New@Example.test');
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'test-password-1' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Sign in' })); });
+    expect(screen.getByRole('heading', { name: 'Signing you in…' })).toBeTruthy();
+    // The sign-in's session is the applicant's: the held files go up now.
+    t.update({ session: NEW });
+    await act(async () => {});
+    expect(uploadSelectedProof).toHaveBeenCalledTimes(1);
+    expect(uploadSelectedProof).toHaveBeenCalledWith(NEW, { tobacco_license: license, resale_certificate: resale });
+    t.update({ profileReady: true, profile: { id: 'u-new', status: 'pending', email: 'new@example.test' } });
+    expect(screen.getByRole('heading', { name: 'Your account is pending approval' })).toBeTruthy();
+    expect(proofLine().textContent).toBe('Your documents are uploaded.');
+    // Nothing is held any more, so Close closes.
+    fireEvent.click(closeButton());
+    expect(t.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a held file that failed on the status step after that sign-in, with Try again (NEW-015)', async () => {
+    proofMock.fail = { tobacco_license: TOO_LARGE };
+    const t = await apply(vi.fn(async () => ({ session: null })));
+    fireEvent.click(document.querySelector('[role="dialog"] .dialog-actions .text-link'));
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'test-password-1' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Sign in' })); });
+    t.update({ session: NEW });
+    await act(async () => {});
+    t.update({ profileReady: true, profile: { id: 'u-new', status: 'pending', email: 'new@example.test' } });
+    expect(proofLine().textContent).toBe('Your resale certificate is uploaded. Your state retail tobacco license didn’t upload.');
+    expect(screen.getByText('State retail tobacco license: license.pdf')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy();
+  });
+
+  it('says Email confirmed and stops offering Resend when the confirmation reaches the open step (NEW-015)', async () => {
+    const t = await apply(vi.fn(async () => ({ session: null })));
+    expect(firstStep()).toMatch(/^Confirm your email\./);
+    const resend = screen.getByRole('button', { name: 'Resend confirmation email' });
+    resend.focus();
+    t.update({ session: NEW });
+    await act(async () => {});
+    expect(uploadSelectedProof).toHaveBeenCalledTimes(1);
+    expect(proofLine().textContent).toBe('Your documents are uploaded.');
+    expect(firstStep()).toBe('Email confirmed.Thanks. Your account is active.');
+    expect(screen.queryByRole('button', { name: 'Resend confirmation email' })).toBeNull();
+    // Signed in as the applicant: no Sign in to offer.
+    expect(document.querySelector('[role="dialog"] .dialog-actions').textContent).toBe('Done');
+    // Focus on Resend, now gone, went to the heading, not <body>.
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Check your inbox' }));
+    // A later sign-out elsewhere doesn't make the email unconfirmed.
+    t.update({ session: null });
+    expect(firstStep()).toBe('Email confirmed.Thanks. Your account is active.');
+    expect(screen.queryByRole('button', { name: 'Resend confirmation email' })).toBeNull();
+  });
+
+  it('says Email confirmed for an application without documents too (NEW-015)', async () => {
+    const t = setup({ signUp: vi.fn(async () => ({ session: null })) }, { initialMode: 'application' });
+    fillApplication();
+    await act(async () => { fireEvent.submit(screen.getByLabelText('Business email').closest('form')); });
+    t.update({ session: { access_token: 'n', user: { id: 'u-new', email: 'new@example.test' } } });
+    expect(firstStep()).toBe('Email confirmed.Thanks. Your account is active.');
+    expect(uploadSelectedProof).not.toHaveBeenCalled();
+  });
+
+  it('asks before Done, × or Escape drop documents that are not sent yet (NEW-015)', async () => {
+    const t = await apply(vi.fn(async () => ({ session: null })));
+    const done = screen.getByRole('button', { name: 'Done' });
+    done.focus();
+    fireEvent.click(done);
+    expect(t.onClose).not.toHaveBeenCalled();
+    expect(heldBar().textContent).toBe('Your documents haven’t been sent. Close anyway? You can add them from My account.Keep it openClose anyway');
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Keep it open' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it open' }));
+    expect(heldBar()).toBeNull();
+    expect(document.activeElement).toBe(done);
+    // A stray click on the backdrop does nothing either.
+    fireEvent.click(document.querySelector('.overlay'));
+    expect(t.onClose).not.toHaveBeenCalled();
+    fireEvent.click(closeButton());
+    expect(heldBar()).toBeTruthy();
+    pressEscape();
+    expect(heldBar()).toBeNull();
+    pressEscape();
+    expect(heldBar()).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Close anyway' }));
+    expect(t.onClose).toHaveBeenCalledTimes(1);
+    expect(uploadSelectedProof).not.toHaveBeenCalled();
+  });
+
+  it('drops the question once the documents start uploading, with focus on the heading (NEW-015)', async () => {
+    const t = await apply(vi.fn(async () => ({ session: null })));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Keep it open' }));
+    t.update({ session: NEW });
+    await act(async () => {});
+    expect(heldBar()).toBeNull();
+    expect(uploadSelectedProof).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Check your inbox' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(t.onClose).toHaveBeenCalledTimes(1);
+  });
+
   it('points View account status at the documents on My account', () => {
     const t = setup();
     t.update({ session: SESSION, profileReady: true, profile: { id: 'u1', status: 'pending', email: 'buyer@example.test' } });
