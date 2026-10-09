@@ -107,6 +107,9 @@ test('a recovery link opens /reset-password once, and the site stays usable (AW-
   await expect(page.getByRole('heading', { level: 1, name: 'Choose a new password' })).toBeVisible();
   await expect(page.getByRole('form', { name: 'Set a new password' })).toContainText(`For ${PROFILE.email}`);
   await expect(page.getByText('RESET LINK CONFIRMED')).toBeVisible();
+  // The link signed the account in: the form says so, and the cursor is in the new password (AW-253, AW-256).
+  await expect(page.getByLabel('New password', { exact: true })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Cancel and sign out' })).toBeVisible();
   await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('link', { name: 'Home' }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('heading', { name: 'Choose a new password' })).toHaveCount(0);

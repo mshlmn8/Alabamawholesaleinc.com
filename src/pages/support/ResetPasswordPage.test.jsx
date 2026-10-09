@@ -1,11 +1,21 @@
 // /reset-password follows one state (AW-255): the head, the body and the
 // view App titles the page by. The checking view waits before it shows
-// (AW-263); the form names the account on its own line (AW-262). The page
-// takes `auth` as a prop, so no provider is needed.
+// (AW-263); the form names the account on its own line (AW-262), says when a
+// link signed the account in and offers to sign out again (AW-253); focus
+// moves to the new password after a check and to the result after a save
+// (AW-256). The page takes `auth` as a prop, so no provider is needed.
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PASSWORD_MIN_LENGTH } from '../../components/PasswordField.jsx';
 import { CHECKING_DELAY_MS, ResetPasswordPage } from './ResetPasswordPage.jsx';
+
+// The router's location: 'load' for a page that was loaded, 'push' for one
+// navigated to (the router has then focused its h1).
+const where = vi.hoisted(() => ({ action: 'load' }));
+vi.mock('../../lib/router.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  useLocation: () => ({ action: where.action }),
+}));
 
 const SESSION = { access_token: 't', user: { id: 'u1', email: 'buyer@example.test' } };
 const AUTH = { session: null, loading: false, recovery: false, linkError: null, linkChecking: false, isBackendConfigured: true, updatePassword: vi.fn() };
@@ -20,7 +30,7 @@ const STATES = {
 };
 
 function page(state, { auth: extra, ...props } = {}) {
-  const handlers = { onRequestReset: vi.fn(), onLoginClick: vi.fn(), onViewChange: vi.fn() };
+  const handlers = { onRequestReset: vi.fn(), onLoginClick: vi.fn(), onSignOut: vi.fn(), onViewChange: vi.fn() };
   const authFor = (name) => ({ ...AUTH, ...STATES[name], ...extra });
   const view = render(<ResetPasswordPage auth={authFor(state)} {...handlers} {...props} />);
   const rerender = (next) => view.rerender(<ResetPasswordPage auth={authFor(next)} {...handlers} {...props} />);
@@ -40,6 +50,7 @@ async function save(password = 'a-new-password-1') {
 
 let warn;
 beforeEach(() => {
+  where.action = 'load';
   warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 });
 afterEach(() => {
@@ -117,12 +128,91 @@ describe('ResetPasswordPage checking (AW-263)', () => {
   });
 });
 
-describe('ResetPasswordPage form (AW-262)', () => {
+describe('ResetPasswordPage form (AW-262, AW-253)', () => {
   it('names the account under the heading, not in it', () => {
     page('signedIn');
     expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Set a new password');
     const account = document.querySelector('.reset-account');
     expect(account.textContent).toBe('For buyer@example.test');
     expect(account.querySelector('strong').textContent).toBe('buyer@example.test');
+  });
+
+  it('says a reset link signed the account in, and offers to sign out again', () => {
+    const { onSignOut } = page('recovery');
+    expect(document.querySelector('.reset-form .eyebrow').textContent).toBe('RESET LINK CONFIRMED');
+    const hint = document.getElementById('reset-link-hint');
+    expect(hint.textContent).toMatch(/^Opening this link signed you in on this device\./);
+    expect(screen.getByRole('form').getAttribute('aria-describedby')).toBe('reset-link-hint');
+    // Cancel leads to My account, where the session shows.
+    expect(screen.getByRole('link', { name: 'Cancel' }).getAttribute('href')).toBe('/account');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel and sign out' }));
+    expect(onSignOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('says it is signing out while it does', () => {
+    page('recovery', { signingOut: true });
+    const button = screen.getByRole('button', { name: 'Signing out…' });
+    expect(button.disabled).toBe(true);
+  });
+
+  it('offers only Cancel, to My account, when signed in without a link', () => {
+    page('signedIn');
+    expect(document.querySelector('.reset-form .eyebrow').textContent).toBe('YOUR ACCOUNT');
+    expect(document.getElementById('reset-link-hint')).toBeNull();
+    expect(screen.getByRole('form').hasAttribute('aria-describedby')).toBe(false);
+    expect(screen.getByRole('link', { name: 'Cancel' }).getAttribute('href')).toBe('/account');
+    expect(screen.queryByRole('button', { name: 'Cancel and sign out' })).toBeNull();
+  });
+
+  it('puts Supabase’s refusals in its own words (AW-084)', async () => {
+    const same = Object.assign(new Error('New password should be different from the old password.'), { name: 'AuthApiError', code: 'same_password', status: 422 });
+    page('signedIn', { auth: { updatePassword: vi.fn(async () => { throw same; }) } });
+    await save();
+    expect(screen.getByRole('alert').textContent).toBe('Choose a password you haven’t used on this account.');
+  });
+});
+
+describe('ResetPasswordPage focus and announcements (AW-256)', () => {
+  it('moves focus to the new password once the link has been checked', () => {
+    where.action = 'push';
+    const { rerender } = page('checkingLink');
+    // The router focused the h1 after the navigation.
+    const h1 = document.querySelector('h1');
+    h1.setAttribute('tabindex', '-1');
+    h1.focus();
+    rerender('recovery');
+    expect(document.activeElement).toBe(screen.getByLabelText('New password'));
+    expect(screen.getByLabelText('New password').hasAttribute('data-autofocus')).toBe(false);
+  });
+
+  it('focuses the new password on a page that was loaded onto the form', () => {
+    page('recovery');
+    expect(document.activeElement).toBe(screen.getByLabelText('New password'));
+  });
+
+  it('leaves the router’s focus on the h1 after a navigation onto the form', () => {
+    where.action = 'push';
+    page('signedIn');
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it('does not take focus that moved elsewhere during the check', () => {
+    where.action = 'push';
+    const outside = document.createElement('button');
+    document.body.appendChild(outside);
+    const { rerender } = page('checkingLink');
+    outside.focus();
+    rerender('recovery');
+    expect(document.activeElement).toBe(outside);
+    outside.remove();
+  });
+
+  it('announces a saved password and moves focus to it', async () => {
+    page('recovery', { auth: { updatePassword: vi.fn(async () => {}) } });
+    await save();
+    const heading = screen.getByRole('heading', { level: 2, name: 'New password saved' });
+    expect(document.activeElement).toBe(heading);
+    expect(heading.getAttribute('tabindex')).toBe('-1');
+    expect(heading.closest('.status-panel').getAttribute('role')).toBe('status');
   });
 });

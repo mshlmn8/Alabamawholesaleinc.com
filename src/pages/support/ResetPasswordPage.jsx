@@ -9,12 +9,12 @@
 // What it shows is one state, resetView() (AW-255): the page head, the body
 // and, through onViewChange, the tab title all follow it.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { friendlyAuthError } from '../../lib/authErrors.js';
 import { ServiceUnavailable } from '../../components/ServiceUnavailable.jsx';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
 import { PASSWORD_MIN_LENGTH, PasswordField } from '../../components/PasswordField.jsx';
-import { Link } from '../../lib/router.js';
+import { Link, useLocation } from '../../lib/router.js';
 import { PageHead } from './SupportShell.jsx';
 import { resetHead, resetView } from './resetView.js';
 
@@ -37,8 +37,10 @@ function linkProblem(linkError) {
   };
 }
 
-// onViewChange(view) lets App title the page.
-export function ResetPasswordPage({ auth, onRequestReset, onLoginClick, onViewChange }) {
+// onSignOut is App's Sign Out, which also clears the guest cart, the receipt
+// and the age confirmation: never auth.signOut here. onViewChange(view) lets
+// App title the page.
+export function ResetPasswordPage({ auth, onRequestReset, onLoginClick, onSignOut, signingOut = false, onViewChange }) {
   const { session, loading, recovery, linkError, linkChecking, updatePassword, isBackendConfigured } = auth;
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -70,15 +72,40 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick, onViewCh
     return () => window.clearTimeout(timer);
   }, [view]);
 
+  // Focus follows the state (AW-256). Once the link or the account has been
+  // checked, the cursor goes to the new password, unless focus has moved
+  // elsewhere meanwhile. App remounts the page when the session arrives (it
+  // is keyed by account), so the form also takes focus when it is the first
+  // view of a page that was loaded rather than navigated to: the email link
+  // and a reload. After a navigation the router has focused the h1, and the
+  // form leaves it there. A saved password moves focus from the Save button,
+  // which is gone, to the panel that says so.
+  const loaded = useLocation().action === 'load';
+  const sectionRef = useRef(null);
+  const passRef = useRef(null);
+  const doneRef = useRef(null);
+  const shownView = useRef(null);
+  useEffect(() => {
+    const previous = shownView.current;
+    shownView.current = view;
+    if (previous === view) return;
+    if (view === 'done') {
+      doneRef.current?.focus();
+    } else if (view === 'form' && (previous === 'checking' || (previous === null && loaded))) {
+      const active = document.activeElement;
+      if (!active || active === document.body || active.id === 'main' || sectionRef.current?.contains(active)) passRef.current?.focus();
+    }
+  }, [view, loaded]);
+
   let body = null;
   if (view === 'unavailable') {
     body = <ServiceUnavailable what="Password reset" className="form-error support-alert" />;
   } else if (view === 'done') {
     body = (
-      <div className="status-panel status-approved">
+      <div className="status-panel status-approved" role="status">
         <div>
           <p className="eyebrow">ALL SET</p>
-          <h2>New password saved</h2>
+          <h2 ref={doneRef} tabIndex={-1}>New password saved</h2>
           <p>You are signed in with your new password. Use it the next time you sign in.</p>
         </div>
         <div className="contact-strip-actions">
@@ -96,21 +123,32 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick, onViewCh
       </div>
     );
   } else if (view === 'form') {
-    // The email on a line of its own that wraps anywhere (AW-262).
+    // The email on a line of its own that wraps anywhere (AW-262). A reset
+    // link signed the account in on this device: the form says so, and
+    // offers to sign out again (AW-253).
     body = (
-      <form className="reset-form" onSubmit={handleSubmit} aria-labelledby="reset-form-title">
+      <form className="reset-form" onSubmit={handleSubmit} aria-labelledby="reset-form-title" aria-describedby={recovery ? 'reset-link-hint' : undefined}>
         <p className="eyebrow">{recovery ? 'RESET LINK CONFIRMED' : 'YOUR ACCOUNT'}</p>
         <h2 id="reset-form-title">Set a new password</h2>
         <p className="reset-account">For <strong>{session.user?.email}</strong></p>
+        {recovery && (
+          <p className="field-hint" id="reset-link-hint">Opening this link signed you in on this device. Save a new password, or choose ‘Cancel and sign out’.</p>
+        )}
         <div className="form-grid">
           {/* Show/Hide and the length rule as it is typed (AW-248). */}
-          <PasswordField id="reset-password" className="full" label="New password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={PASSWORD_MIN_LENGTH} autoComplete="new-password" showRule data-autofocus />
+          <PasswordField id="reset-password" className="full" label="New password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={PASSWORD_MIN_LENGTH} autoComplete="new-password" showRule inputRef={passRef} />
           <PasswordField id="reset-confirm" className="full" label="Confirm new password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={PASSWORD_MIN_LENGTH} autoComplete="new-password" />
         </div>
         <p className="form-error" role="alert">{error}</p>
         <div className="dialog-actions">
           <button className="button" type="submit" disabled={saving}><span>{saving ? 'Saving…' : 'Save new password'}</span></button>
-          <Link className="text-link" to="/">Cancel</Link>
+          {/* My account, where the session shows; not history.back(), which can leave the site. */}
+          <Link className="text-link" to="/account">Cancel</Link>
+          {recovery && (
+            <button className="text-link" type="button" onClick={onSignOut} disabled={signingOut}>
+              <span>{signingOut ? 'Signing out…' : 'Cancel and sign out'}</span>
+            </button>
+          )}
         </div>
       </form>
     );
@@ -146,7 +184,7 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick, onViewCh
   }
 
   return (
-    <section className="support-page">
+    <section className="support-page" ref={sectionRef}>
       <PageHead crumb="Password reset" eyebrow={head.eyebrow} title={head.h1}>
         {head.intro && <p>{head.intro}</p>}
       </PageHead>

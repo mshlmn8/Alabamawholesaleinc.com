@@ -356,7 +356,11 @@ export default function App() {
         );
       case 'reset-password':
         // Keyed by account: signing out ends a finished or half-done reset (AW-015).
-        return <ResetPasswordPage key={session?.user?.id || 'guest'} auth={auth} onRequestReset={openReset} onLoginClick={openSignin} onViewChange={onResetView} />;
+        // 'Cancel and sign out' is the ordinary Sign Out (AW-253).
+        return (
+          <ResetPasswordPage key={session?.user?.id || 'guest'} auth={auth} onRequestReset={openReset} onLoginClick={openSignin}
+                             onSignOut={signOutHere} signingOut={signingOut} onViewChange={onResetView} />
+        );
       default:
         return (
           <NotFoundPage key={routeKey(route)} kind={route.kind} category={route.category} products={products} departments={departments}
