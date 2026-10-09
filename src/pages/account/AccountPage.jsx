@@ -15,6 +15,7 @@ import { Link } from '../../lib/router.js';
 import { lineTotal } from '../../lib/pricing.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
+import { CallOrEmail } from '../../components/ContactLinks.jsx';
 import { QuickReorder } from './QuickReorder.jsx';
 
 const STATUS_CLASS = {
@@ -38,6 +39,13 @@ const STATUS_LABEL = {
 };
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+// Order history that didn't load (AW-084): what to do, never the database's
+// own message.
+export const ORDERS_LOAD_ERROR = 'We couldn’t load your orders. Refresh the page, or';
+export function OrdersLoadError() {
+  return <p className="form-error"><span>{ORDERS_LOAD_ERROR}</span> <CallOrEmail before="call" after="." /></p>;
+}
 
 // The note under an order after Reorder, as one string (AW-039).
 const reorderMessage = (note, target) => (note.lines > 0
@@ -63,7 +71,7 @@ export function AccountPage({
       .eq('user_id', profileId)
       .order('created_at', { ascending: false })
       .then(({ data, error }) => {
-        if (error) setError(error.message);
+        if (error) setError(error);
         else setOrders(data || []);
       });
   }, [profileId]);
@@ -156,7 +164,7 @@ export function AccountPage({
           </div>
         </div>
 
-        {error && <p className="form-error">{`Couldn't load orders: ${error}`}</p>}
+        {error && <OrdersLoadError />}
         {orders === null && !error && <p className="result-note">Loading…</p>}
         {orders && orders.length === 0 && (
           <div className="empty-results">

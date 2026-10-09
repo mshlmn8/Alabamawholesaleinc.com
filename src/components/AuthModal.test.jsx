@@ -4,7 +4,7 @@
 // application (AW-018). The dialog renders in its own ModalLayer (a portal
 // on document.body), which screen queries still reach.
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthContext } from '../lib/auth.jsx';
 import { AuthModal, CHECKING_TIMEOUT_MS, RESEND_COOLDOWN_MS, RESEND_RATE_LIMITED } from './AuthModal.jsx';
 
@@ -384,3 +384,63 @@ describe('AuthModal resends the confirmation email (AW-016)', () => {
   });
 });
 
+
+// Supabase's own text never reaches the dialog (AW-084): each failure says
+// what to do in the site's words.
+describe('AuthModal error messages (AW-084)', () => {
+  const apiError = (message, code, status, extra = {}) => Object.assign(new Error(message), { name: 'AuthApiError', code, status, ...extra });
+  const alert = () => screen.getAllByRole('alert').find((el) => el.textContent);
+  let warn;
+  beforeEach(() => { warn = vi.spyOn(console, 'warn').mockImplementation(() => {}); });
+  afterEach(() => warn.mockRestore());
+
+  it('says the email and password don’t match, never “Invalid login credentials”', async () => {
+    setup({ signIn: vi.fn(async () => { throw apiError('Invalid login credentials', 'invalid_credentials', 400); }) });
+    await signInWith();
+    expect(alert().textContent).toBe('That email and password don’t match. Try again or reset your password.');
+    expect(screen.queryByText(/Invalid login credentials/)).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Sign in' })).toBeTruthy();
+    expect(warn).toHaveBeenCalledWith('[auth]', 'invalid_credentials');
+  });
+
+  it('falls back to its own sentence for an error it doesn’t know', async () => {
+    setup({ signIn: vi.fn(async () => { throw apiError('Database error querying schema', 'unexpected_failure', 400); }) });
+    await signInWith();
+    expect(alert().textContent).toBe('We couldn’t sign you in. Try again in a moment.');
+    expect(screen.queryByText(/Database error/)).toBeNull();
+  });
+
+  it('says sign-in is unavailable, with the trade desk, when the network fails', async () => {
+    setup({ signIn: vi.fn(async () => { throw Object.assign(new TypeError('Failed to fetch'), { name: 'AuthRetryableFetchError', status: 0 }); }) });
+    await signInWith();
+    expect(alert().textContent).toMatch(/^Account sign-in is unavailable right now\. Call .+ or email .+ and a trade rep will help you\.$/);
+  });
+
+  it('tells an applicant whose email is taken to sign in or reset, never “User already registered”', async () => {
+    setup({ signUp: vi.fn(async () => { throw apiError('User already registered', 'user_already_exists', 422); }) }, { initialMode: 'application' });
+    await act(async () => { fireEvent.submit(screen.getByLabelText('Business email').closest('form')); });
+    expect(alert().textContent).toBe('An account already uses this email. Sign in or reset your password.');
+    expect(screen.queryByText(/User already registered/)).toBeNull();
+  });
+
+  it('says what a weak password needs', async () => {
+    const weak = Object.assign(new Error('Password should be at least 8 characters.'), { name: 'AuthWeakPasswordError', code: 'weak_password', status: 422, reasons: ['length'] });
+    setup({ signUp: vi.fn(async () => { throw weak; }) }, { initialMode: 'application' });
+    await act(async () => { fireEvent.submit(screen.getByLabelText('Business email').closest('form')); });
+    expect(alert().textContent).toBe('Choose a stronger password: at least 8 characters.');
+  });
+
+  it('asks for a minute’s wait when the reset email is refused, never Supabase’s seconds count', async () => {
+    setup({ resetPassword: vi.fn(async () => { throw apiError('For security purposes, you can only request this after 49 seconds.', 'over_email_send_rate_limit', 429); }) }, { initialMode: 'reset' });
+    fireEvent.change(screen.getByLabelText('Business email'), { target: { value: 'buyer@example.test' } });
+    await act(async () => { fireEvent.submit(screen.getByLabelText('Business email').closest('form')); });
+    expect(alert().textContent).toBe('Please wait a minute before trying again.');
+    expect(screen.queryByText(/49 seconds/)).toBeNull();
+  });
+
+  it('keeps the unconfirmed-email step and the resend wording', async () => {
+    setup({ signIn: vi.fn(async () => { throw apiError('Email not confirmed', 'email_not_confirmed', 400); }) });
+    await signInWith();
+    expect(screen.getByRole('heading', { name: 'Confirm your email first' })).toBeTruthy();
+  });
+});

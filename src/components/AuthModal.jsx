@@ -22,7 +22,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth.jsx';
 import { COMPANY, TERMS_VERSION } from '../data/content.js';
-import { describeError, isRateLimitError } from '../lib/errors.js';
+import { isRateLimitError } from '../lib/errors.js';
+import { friendlyAuthError } from '../lib/authErrors.js';
 import { Link, restoreOverlayEntry } from '../lib/router.js';
 import { APPLICATION_CHECKLIST } from '../data/onboarding.js';
 import { DOCUMENT_TYPES, documentErrorMessage, uploadSelectedProof } from '../lib/documents.js';
@@ -212,7 +213,8 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
     catch (err) {
       // An account whose confirmation link expired (AW-015) can ask for a new one.
       if (isUnconfirmedEmail(err)) { setResent(false); setMode('unconfirmed'); }
-      else setError(describeError(err, 'Account sign-in', 'Sign-in failed'));
+      // Supabase's own text is never shown (AW-084).
+      else setError(friendlyAuthError(err, { what: 'Account sign-in', fallback: 'We couldn’t sign you in. Try again in a moment.' }));
     }
     finally { setSubmitting(false); }
   };
@@ -229,7 +231,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
     } catch (err) {
       setError(isRateLimitError(err)
         ? RESEND_RATE_LIMITED
-        : describeError(err, 'Email confirmation', 'We couldn’t send a new confirmation link'));
+        : friendlyAuthError(err, { what: 'Email confirmation', fallback: 'We couldn’t send a new confirmation link. Try again in a moment.' }));
     } finally { setSubmitting(false); }
   };
 
@@ -266,7 +268,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
       setMode(data?.session ? 'status' : 'sent');
       if (uploadError) setError(uploadError);
     }
-    catch (err) { setError(describeError(err, 'The online application', 'Sign-up failed')); }
+    catch (err) { setError(friendlyAuthError(err, { what: 'The online application', fallback: 'We couldn’t send your application. Try again in a moment.' })); }
     finally { setSubmitting(false); }
   };
 
@@ -274,7 +276,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
     e.preventDefault();
     setSubmitting(true); setError(null);
     try { await resetPassword(resetEmail); setMode('reset-sent'); }
-    catch (err) { setError(describeError(err, 'Password reset', 'We couldn’t send the reset link')); }
+    catch (err) { setError(friendlyAuthError(err, { what: 'Password reset', fallback: 'We couldn’t send the reset link. Try again in a moment.' })); }
     finally { setSubmitting(false); }
   };
 

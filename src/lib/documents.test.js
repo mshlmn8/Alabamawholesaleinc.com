@@ -31,8 +31,10 @@ vi.mock('./supabase.js', () => {
 });
 
 const {
-  DOCUMENTS_REFUSED_MESSAGE, createDocumentViewUrl, documentErrorMessage, isDocumentPermissionError, openDocument, uploadProfileDocument,
+  DOCUMENTS_REFUSED_MESSAGE, DOCUMENT_UPLOAD_FAILED_MESSAGE, FILE_TOO_LARGE_MESSAGE, FILE_TYPE_MESSAGE,
+  createDocumentViewUrl, documentErrorMessage, isDocumentPermissionError, openDocument, uploadProfileDocument,
 } = await import('./documents.js');
+const { unavailableMessage } = await import('./errors.js');
 
 const SESSION = { user: { id: 'u1' } };
 const file = (name) => ({ name, type: 'application/pdf', size: 1000 });
@@ -75,6 +77,44 @@ describe('documentErrorMessage', () => {
 
   it('keeps the old message for other failures', () => {
     expect(documentErrorMessage(new Error('That file is over the 10 MB limit.'))).not.toBe(DOCUMENTS_REFUSED_MESSAGE);
+  });
+
+  // AW-084: Storage's and the database's own text never reaches the applicant.
+  it('names the size limit for a file Storage finds too large', () => {
+    expect(documentErrorMessage({ statusCode: '413', status: 400, error: 'Payload too large', message: 'The object exceeded the maximum allowed size' })).toBe(FILE_TOO_LARGE_MESSAGE);
+    expect(documentErrorMessage({ status: 413, message: 'Request Entity Too Large' })).toBe(FILE_TOO_LARGE_MESSAGE);
+    expect(documentErrorMessage({ status: 400, message: 'The object exceeded the maximum allowed size' })).toBe(FILE_TOO_LARGE_MESSAGE);
+    expect(FILE_TOO_LARGE_MESSAGE).toBe('That file is over the 10 MB limit.');
+  });
+
+  it('names the file types for a type Storage refuses', () => {
+    expect(documentErrorMessage({ statusCode: '415', status: 400, error: 'invalid_mime_type', message: 'mime type image/heic-sequence is not supported' })).toBe(FILE_TYPE_MESSAGE);
+    expect(documentErrorMessage({ status: 400, message: 'mime type text/plain is not supported' })).toBe(FILE_TYPE_MESSAGE);
+    expect(FILE_TYPE_MESSAGE).toBe('Use a PDF, JPG, PNG, or HEIC file.');
+  });
+
+  it('says the upload service is unavailable when the network or server fails', () => {
+    expect(documentErrorMessage(new TypeError('Failed to fetch'))).toBe(unavailableMessage('Document upload'));
+    expect(documentErrorMessage({ statusCode: '500', status: 500, message: 'Internal Server Error' })).toBe(unavailableMessage('Document upload'));
+  });
+
+  it('shows this file’s own check, and the generic sentence for anything else', async () => {
+    const err = await uploadProfileDocument(SESSION, 'tobacco_license', { name: 'big.pdf', type: 'application/pdf', size: 11 * 1024 * 1024 }).catch((e) => e);
+    expect(documentErrorMessage(err)).toBe(FILE_TOO_LARGE_MESSAGE);
+    const wrong = await uploadProfileDocument(SESSION, 'tobacco_license', { name: 'notes.txt', type: 'text/plain', size: 10 }).catch((e) => e);
+    expect(documentErrorMessage(wrong)).toBe(FILE_TYPE_MESSAGE);
+    expect(mock.calls).toEqual([]);
+    for (const raw of [
+      { code: '23505', message: 'duplicate key value violates unique constraint "profile_documents_pkey"' },
+      { code: 'invalid_file', message: 'Something injected' },
+      new Error('Unknown document.'),
+      {},
+      null,
+    ]) {
+      const text = documentErrorMessage(raw);
+      expect([DOCUMENT_UPLOAD_FAILED_MESSAGE, FILE_TYPE_MESSAGE]).toContain(text);
+      expect(text).not.toMatch(/duplicate|injected|Unknown document/);
+    }
   });
 });
 

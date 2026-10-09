@@ -9,7 +9,7 @@
 // 24 hours (AW-207).
 
 import { supabase } from './supabase.js';
-import { describeError } from './errors.js';
+import { isNetworkError, unavailableMessage } from './errors.js';
 
 export const DOCUMENT_BUCKET = 'application-documents';
 export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
@@ -54,19 +54,41 @@ export function isDocumentPermissionError(err) {
   return code === '42501' || status === '403' || /row-level security/i.test(String(err.message || ''));
 }
 
+// What a picked file that can't be sent says, here and from Storage.
+export const FILE_MISSING_MESSAGE = 'Choose a PDF, JPG, PNG, or HEIC file.';
+export const FILE_TYPE_MESSAGE = 'Use a PDF, JPG, PNG, or HEIC file.';
+export const FILE_TOO_LARGE_MESSAGE = 'That file is over the 10 MB limit.';
+export const DOCUMENT_UPLOAD_FAILED_MESSAGE = 'That file did not upload. You can try again, or send proof later.';
+const FILE_MESSAGES = [FILE_MISSING_MESSAGE, FILE_TYPE_MESSAGE, FILE_TOO_LARGE_MESSAGE];
+
+// Storage answers a too-large or wrong-type file with its own status code
+// (often inside an HTTP 400) and English text.
+const storageStatus = (err) => [err?.statusCode, err?.status].map((v) => String(v ?? ''));
+
+// The sentence for a failed upload (AW-084). Never the error's own text:
+// Storage's and the database's messages ('new row violates row-level security
+// policy', 'mime type image/heic-sequence is not supported') mean nothing to
+// an applicant.
 export function documentErrorMessage(err) {
   if (isDocumentPermissionError(err)) return DOCUMENTS_REFUSED_MESSAGE;
-  return describeError(err, 'Document upload', 'That file did not upload. You can try again, or send proof later.');
+  // This file's own check (uploadProfileDocument), before anything is sent.
+  if (err?.code === 'invalid_file') return FILE_MESSAGES.find((text) => text === err.message) || FILE_TYPE_MESSAGE;
+  const message = String(err?.message || '');
+  const status = storageStatus(err);
+  if (status.includes('413') || /exceeded the maximum allowed size|payload too large/i.test(message)) return FILE_TOO_LARGE_MESSAGE;
+  if (status.includes('415') || err?.code === 'invalid_mime_type' || /mime type/i.test(message)) return FILE_TYPE_MESSAGE;
+  if (isNetworkError(err) || Number(err?.status) >= 500) return unavailableMessage('Document upload');
+  return DOCUMENT_UPLOAD_FAILED_MESSAGE;
 }
 
 export function validateDocumentFile(file) {
-  if (!file) return 'Choose a PDF, JPG, PNG, or HEIC file.';
+  if (!file) return FILE_MISSING_MESSAGE;
   const ext = (file.name || '').split('.').pop()?.toLowerCase();
   const mime = (file.type || '').toLowerCase();
   const extOk = ALLOWED_EXT.has(ext);
   const mimeOk = !mime || mime === 'application/octet-stream' || ALLOWED_MIME.has(mime);
-  if (!extOk || !mimeOk) return 'Use a PDF, JPG, PNG, or HEIC file.';
-  if (file.size > MAX_DOCUMENT_BYTES) return 'That file is over the 10 MB limit.';
+  if (!extOk || !mimeOk) return FILE_TYPE_MESSAGE;
+  if (file.size > MAX_DOCUMENT_BYTES) return FILE_TOO_LARGE_MESSAGE;
   return null;
 }
 
@@ -118,7 +140,7 @@ export async function uploadProfileDocument(session, documentType, file) {
     throw new Error('Unknown document.');
   }
   const problem = validateDocumentFile(file);
-  if (problem) throw new Error(problem);
+  if (problem) throw Object.assign(new Error(problem), { code: 'invalid_file' });
 
   const userId = session.user.id;
   // A new object name keeps the previous file in the bucket when a license is renewed.

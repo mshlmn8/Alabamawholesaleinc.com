@@ -7,7 +7,7 @@
 // and shows the signed-out view, not "link expired".
 
 import { useState } from 'react';
-import { describeError } from '../../lib/errors.js';
+import { friendlyAuthError } from '../../lib/authErrors.js';
 import { ServiceUnavailable } from '../../components/ServiceUnavailable.jsx';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
 import { Link } from '../../lib/router.js';
@@ -43,7 +43,8 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
     if (password !== confirm) { setError('The two passwords don’t match.'); return; }
     setSaving(true);
     try { await updatePassword(password); setDone(true); }
-    catch (err) { setError(describeError(err, 'Password reset', 'We couldn’t update the password.')); }
+    // Supabase's own text is never shown (AW-084).
+    catch (err) { setError(friendlyAuthError(err, { what: 'Password reset', fallback: 'We couldn’t update the password. Try again in a moment.' })); }
     finally { setSaving(false); }
   };
 
