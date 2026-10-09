@@ -1,7 +1,8 @@
 // The support pages' CSS contract, read from src/index.css as text like
 // src/styles.test.js: the help and policy nav marks the current page by more
 // than colour (AW-273), the policy text and intros keep a readable measure
-// (AW-121), and the nav and content share one layout (AW-122).
+// (AW-121), the nav and content share one layout (AW-122), and the contact
+// cards' headings and email (AW-278, AW-120).
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -60,7 +61,7 @@ describe('help and policy nav (AW-122, AW-273)', () => {
 
   it('lets the content column shrink and its grids fit the narrower column', () => {
     expect(rule(outside, '.support-layout-main')).toEqual({ 'min-width': '0' });
-    expect(rule(outside, ':where(.support-layout) .info-card')).toMatchObject({ flex: '1 1 15rem' });
+    expect(rule(outside, ':where(.support-layout) .info-card')).toMatchObject({ flex: '1 1 16.5rem' });
     expect(rule(outside, ':where(.support-layout) .support-columns, :where(.support-layout) .apply-layout'))
       .toEqual({ 'grid-template-columns': 'repeat(auto-fit, minmax(min(20rem, 100%), 1fr))' });
     // One column in the compact layout, as before.
@@ -82,5 +83,20 @@ describe('readable measure (AW-121)', () => {
     const intro = rule(outside, '.support-page .page-head > p:not([class])');
     expect(intro['font-size']).toBe('var(--text-lg)');
     expect(rem(intro['max-width'])).toBeLessThanOrEqual(36);
+  });
+});
+
+describe('contact cards (AW-278, AW-120)', () => {
+  it('styles an h2 eyebrow like the paragraph ones, colour from its context', () => {
+    // The body face and line height instead of the display heading's; no
+    // colour of its own (one heading colour, AW-294).
+    expect(rule(outside, 'h2.eyebrow')).toEqual({ 'font-family': 'var(--body)', 'line-height': 'inherit' });
+    expect(rule(outside, '.info-card h2:not(.eyebrow)')).toEqual({ 'font-size': 'var(--h3)', margin: '0' });
+    expect(rule(outside, '.info-card .eyebrow')).toMatchObject({ color: 'var(--orange-dark)', margin: '0' });
+  });
+
+  it('breaks the email mid-word only when half of it cannot fit a line', () => {
+    expect(rule(outside, '.info-lead')).not.toHaveProperty('word-break');
+    expect(rule(outside, '.info-lead-small')).toMatchObject({ 'overflow-wrap': 'anywhere' });
   });
 });

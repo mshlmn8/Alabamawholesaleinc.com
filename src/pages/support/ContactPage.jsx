@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { COMPANY, HOURS, TIME_ZONE_LABEL, TIME_ZONE_NAME, hoursRange, openStatusNow } from '../../data/content.js';
 import { Link } from '../../lib/router.js';
 import { Icon } from '../../components/Icon.jsx';
+import { EmailText } from '../../components/ContactLinks.jsx';
 import { PageHead, SupportLayout, DIRECTIONS_URL } from './SupportShell.jsx';
 
 // 'Open now · closes 6:00 PM CT' or 'Closed · opens 8:00 AM CT' (AW-275),
@@ -33,19 +34,19 @@ export function ContactPage({ onApplyClick }) {
 
       <div className="info-grid">
         <article className="info-card">
-          <p className="eyebrow">CALL</p>
+          <h2 className="eyebrow">Call</h2>
           <a className="info-lead" href={`tel:${COMPANY.phoneRaw}`}>{COMPANY.phone}</a>
           <p>Trade desk, orders, will-call and account questions. Tap the number to call from your phone.</p>
           <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Call now</a>
         </article>
         <article className="info-card">
-          <p className="eyebrow">EMAIL</p>
-          <a className="info-lead info-lead-small" href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>
+          <h2 className="eyebrow">Email</h2>
+          <a className="info-lead info-lead-small" href={`mailto:${COMPANY.email}`}><EmailText /></a>
           <p>Applications, quotes, invoices and anything you would rather put in writing. Include your business name and phone number.</p>
           <a className="button ghost" href={`mailto:${COMPANY.email}`}>Email the trade desk</a>
         </article>
         <article className="info-card">
-          <p className="eyebrow">VISIT</p>
+          <h2 className="eyebrow">Visit</h2>
           <address className="info-lead info-lead-small">{COMPANY.addressLine1}<br />{COMPANY.addressLine2}</address>
           <p>Warehouse and will-call counter in Birmingham. Open the directions in your maps app for turn-by-turn navigation.</p>
           <a className="button ghost" href={DIRECTIONS_URL} target="_blank" rel="noopener noreferrer">Get directions<Icon name="external" /><span className="sr-only"> (opens in a new tab)</span></a>
