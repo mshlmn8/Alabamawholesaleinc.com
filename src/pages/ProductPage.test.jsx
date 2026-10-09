@@ -47,6 +47,20 @@ describe('ProductPage prices', () => {
     view.rerender(page({ profile: { id: 'p', status: 'pending' }, priceOf }));
     expect(pd()).toBe('PendingPricing unlocks after your account is approved');
   });
+
+  it('tells an account on hold ordering is paused, with the trade desk’s number and its account status (AW-101)', () => {
+    const view = render(page({ profile: { id: 's', status: 'suspended' }, priceOf: () => 12.25 }));
+    expect(pd()).toBe('On holdOrdering is paused on this account.');
+    const call = screen.getByRole('link', { name: /^Call / });
+    expect(call.getAttribute('href')).toMatch(/^tel:/);
+    expect(call.className).toBe('text-link');
+    expect(screen.getByRole('link', { name: 'View account status' }).getAttribute('href')).toBe('/account');
+    expect(screen.queryByRole('link', { name: 'View approval status' })).toBeNull();
+    // An applicant under review keeps its own wording, and no call link.
+    view.rerender(page({ profile: { id: 'p', status: 'pending' } }));
+    expect(screen.getByRole('link', { name: 'View approval status' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /^Call / })).toBeNull();
+  });
 });
 
 describe('ProductPage variants (AW-233, AW-128, AW-030)', () => {

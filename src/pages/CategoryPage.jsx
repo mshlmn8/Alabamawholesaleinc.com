@@ -15,6 +15,7 @@ import { variantCount } from '../lib/lines.js';
 import { catLabel } from '../lib/format.js';
 import { Link, navigate } from '../lib/router.js';
 import { EMPTY_CATEGORY_QUERY } from '../lib/routes.js';
+import { PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 import { ModalLayer } from '../components/ModalLayer.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
@@ -87,6 +88,10 @@ export function CategoryPage({
   const { tags, variants: hasVariants } = query;
   const featured = featuredOptions(inScope, tags);
   const sort = query.sort.startsWith('price-') && !isApprovedBuyer ? 'featured' : query.sort;
+  // Why there are no prices: not signed in, waiting for approval, or on hold
+  // (AW-101). An account on hold is told to call, not to wait.
+  const status = accountStatus(profile);
+  const lock = PRICE_LOCK[status] || PRICE_LOCK.pending;
   const needle = query.q.trim().toLowerCase();
   let items = inScope.filter(p => {
     if (tags.length && !tags.includes(p.tag)) return false;
@@ -176,7 +181,7 @@ export function CategoryPage({
         <label><input type="checkbox" checked={hasVariants} onChange={(e) => setFilters({ variants: e.target.checked })} /> <span>Has flavors or variants</span></label>
       </fieldset>
       {!profile && <button className="filter-signin" type="button" onClick={onLoginClick}><b>Wholesale pricing is locked</b><span>Sign in to see your account pricing.</span></button>}
-      {profile && !isApprovedBuyer && <p className="filter-signin"><b>Pricing after approval</b><span>Your account is not approved for trade pricing yet.</span></p>}
+      {profile && !isApprovedBuyer && <p className="filter-signin"><b>{lock.short}</b><span>{lock.detail}</span></p>}
     </div>
   );
   const closeFilters = () => setFiltersOpen(false);
@@ -187,7 +192,7 @@ export function CategoryPage({
         <Breadcrumbs items={[HOME_CRUMB, { label: catLabel(category), to: here({ sub: null }) }, ...(activeSub ? [{ label: activeSub }] : [])]} />
         <p className="eyebrow">{`DEPARTMENT · ${String(cat?.count ?? inCategory.length).padStart(2, '0')} SKUs`}</p>
         <h1>{catLabel(category)}</h1>
-        <p>{`Wholesale ${catLabel(category).toLowerCase()} for licensed retail accounts. ${isApprovedBuyer ? 'Your tier pricing is shown on each card.' : profile ? 'Pricing unlocks after your account is approved.' : 'Sign in to see your wholesale pricing.'}`}</p>
+        <p>{`Wholesale ${catLabel(category).toLowerCase()} for licensed retail accounts. ${isApprovedBuyer ? 'Your tier pricing is shown on each card.' : (status === 'suspended' ? lock.detail : lock.line)}`}</p>
         <nav className="sub-pills" aria-label={`${catLabel(category)} product lines`}>
           <Link className={`sub-pill ${!activeSub ? 'active' : ''}`} to={here({ sub: null })} scroll={false} aria-current={!activeSub ? 'page' : undefined}>{`All (${inCategory.length})`}</Link>
           {(cat?.subs || []).map(s => {

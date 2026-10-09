@@ -1,5 +1,6 @@
-// Order history that didn't load says what to do, never the database's own
-// message (AW-084).
+// My account for an account on hold (AW-101): why nothing can be ordered and
+// who to call. And order history that didn't load says what to do, never the
+// database's own message (AW-084).
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -18,8 +19,29 @@ vi.mock('../../lib/supabase.js', () => {
 const { AccountPage, ORDERS_LOAD_ERROR } = await import('./AccountPage.jsx');
 
 const PROFILE = { id: 'u1', business: 'Test Market LLC', name: 'Test Buyer', email: 'buyer@example.test', status: 'approved', role: 'customer', pricing_tier: 'silver' };
+const PAUSED = /^Ordering is paused on this account\. Call .+ or email .+ and a trade rep will help you sort it out\.$/;
 
 beforeEach(() => { mock.result = { data: [], error: null }; });
+
+describe('AccountPage for an account on hold (AW-101)', () => {
+  it('says ordering is paused, with the trade desk’s phone and email, right after the stats', async () => {
+    render(<AccountPage profile={{ ...PROFILE, status: 'suspended' }} account="ready" products={[]} />);
+    const notice = screen.getByText((_, el) => el?.tagName === 'P' && PAUSED.test(el.textContent));
+    expect(notice.className).toBe('notice');
+    expect(notice.previousElementSibling.className).toBe('account-stats');
+    expect([...notice.querySelectorAll('a')].map((a) => a.getAttribute('href'))).toEqual([expect.stringMatching(/^tel:/), expect.stringMatching(/^mailto:/)]);
+    expect(await screen.findByText('No orders yet')).toBeTruthy();
+  });
+
+  it('shows no such notice to approved or pending accounts', async () => {
+    for (const status of ['approved', 'pending']) {
+      const view = render(<AccountPage profile={{ ...PROFILE, status }} account="ready" products={[]} />);
+      expect(screen.queryByText(/Ordering is paused/)).toBeNull();
+      await screen.findByText('No orders yet');
+      view.unmount();
+    }
+  });
+});
 
 describe('AccountPage order history that did not load (AW-084)', () => {
   it('says what to do, with the trade desk, and never the database’s message', async () => {

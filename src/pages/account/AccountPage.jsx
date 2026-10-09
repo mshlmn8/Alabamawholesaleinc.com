@@ -130,6 +130,12 @@ export function AccountPage({
         <Stat label="Role" value={profile.role} />
       </div>
 
+      {/* A suspended account is told why nothing can be ordered, and who to
+          call (AW-101): the sentence the cart and checkout use. */}
+      {profile.status === 'suspended' && (
+        <p className="notice">Ordering is paused on this account. <CallOrEmail after=" and a trade rep will help you sort it out." /></p>
+      )}
+
       {/* Licence proof stays reachable after approval (AW-254). */}
       <p className="notice">License and resale documents: <Link className="text-link" to="/apply">view or replace</Link></p>
 

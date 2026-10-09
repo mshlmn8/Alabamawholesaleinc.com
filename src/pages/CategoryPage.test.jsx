@@ -112,6 +112,27 @@ describe('CategoryPage', () => {
     expect(cardPrices()).toEqual(['Loading price…', 'Loading price…', 'Loading price…']);
   });
 
+  it('tells each account without prices why: guest, under review or on hold (AW-101)', () => {
+    const intro = () => document.querySelector('.page-head h1 + p').textContent;
+    const sidebar = () => document.querySelector('.filter-signin').textContent;
+    const view = render(<Harness />);
+    expect(intro()).toBe('Wholesale tobacco for licensed retail accounts. Sign in to see your wholesale pricing.');
+    expect(sidebar()).toBe('Wholesale pricing is locked' + 'Sign in to see your account pricing.');
+    view.unmount();
+    const pending = render(<CategoryPage category="TOBACCO" products={products} departments={departments} profile={{ id: 'p', status: 'pending' }} isApprovedBuyer={false}
+                                         cart={{}} addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} />);
+    expect(intro()).toBe('Wholesale tobacco for licensed retail accounts. Pricing unlocks after your account is approved.');
+    expect(sidebar()).toBe('Pricing after approval' + 'Your account is not approved for trade pricing yet.');
+    pending.unmount();
+    render(<CategoryPage category="TOBACCO" products={products} departments={departments} profile={{ id: 's', status: 'suspended' }} isApprovedBuyer={false}
+                         cart={{}} addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} />);
+    expect(intro()).toBe('Wholesale tobacco for licensed retail accounts. Ordering is paused on this account — call the trade desk.');
+    expect(sidebar()).toBe('Account on hold' + 'Ordering is paused on this account — call the trade desk.');
+    expect(document.querySelector('.filter-signin').tagName).toBe('P');
+    expect([...document.querySelectorAll('.card-meta .lock')].map((el) => el.textContent)).toEqual(['Account on hold', 'Account on hold', 'Account on hold']);
+    expect(document.body.textContent).not.toMatch(/after approval|unlocks after/);
+  });
+
   it('offers no price sort, and shows no price, to guests', () => {
     act(() => navigate('/category/tobacco?sort=price-low', { replace: true }));
     render(<Harness />);

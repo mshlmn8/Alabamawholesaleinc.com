@@ -547,9 +547,20 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
                 </ul>
               </>
             )}
+            {/* On hold, calling or emailing the trade desk is the one thing
+                to do, so those are the actions (AW-097). */}
             <div className="dialog-actions">
-              <Link className="button" to="/account" onClick={onClose} data-autofocus>View account status</Link>
-              <Link className="text-link" to="/catalog" onClick={onClose}>Browse the catalog</Link>
+              {status === 'suspended' ? (
+                <>
+                  <a className="button" href={`tel:${COMPANY.phoneRaw}`} data-autofocus>{`Call ${COMPANY.phone}`}</a>
+                  <a className="button ghost" href={`mailto:${COMPANY.email}`}>Email the trade desk</a>
+                </>
+              ) : (
+                <>
+                  <Link className="button" to="/account" onClick={onClose} data-autofocus>View account status</Link>
+                  <Link className="text-link" to="/catalog" onClick={onClose}>Browse the catalog</Link>
+                </>
+              )}
               <button className="text-link" type="button" onClick={requestClose}>Close</button>
             </div>
           </>

@@ -5,6 +5,7 @@
 import { Link } from '../../lib/router.js';
 import { variantAxis, variantCount } from '../../lib/lines.js';
 import { brandLabel } from '../../lib/format.js';
+import { PRICE_LOCK, accountStatus } from '../../lib/accountStatus.js';
 import { Icon } from '../../components/Icon.jsx';
 import { PageHead } from './SupportShell.jsx';
 
@@ -12,11 +13,14 @@ const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
 export function CatalogIndexPage({ products, departments, isApprovedBuyer, profile, onLoginClick }) {
   const lines = departments.reduce((n, d) => n + d.subs.length, 0);
+  // An account on hold is told ordering is paused, not to wait for approval (AW-101).
+  const status = accountStatus(profile);
+  const lockLine = status === 'suspended' ? PRICE_LOCK.suspended.detail : PRICE_LOCK.pending.line;
 
   return (
     <section className="support-page catalog-index">
       <PageHead crumb="All products" eyebrow={`FULL ASSORTMENT · ${departments.length} DEPARTMENTS · ${products.length} SKUs`} title="All products">
-        <p>{`Every department and product line we stock, in one place. Jump to a department, open a line, or expand the full SKU list. ${isApprovedBuyer ? 'Your account pricing shows on every product.' : profile ? 'Pricing unlocks after your account is approved.' : 'Sign in to see wholesale pricing.'}`}</p>
+        <p>{`Every department and product line we stock, in one place. Jump to a department, open a line, or expand the full SKU list. ${isApprovedBuyer ? 'Your account pricing shows on every product.' : profile ? lockLine : 'Sign in to see wholesale pricing.'}`}</p>
       </PageHead>
 
       <nav className="dept-jump" aria-label="Jump to department">

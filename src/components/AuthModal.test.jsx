@@ -444,3 +444,39 @@ describe('AuthModal error messages (AW-084)', () => {
     expect(screen.getByRole('heading', { name: 'Confirm your email first' })).toBeTruthy();
   });
 });
+
+// An account on hold can only call or email the trade desk, so those are its
+// actions; 'View account status' is for an applicant under review (AW-097).
+describe('AuthModal status step actions (AW-097)', () => {
+  const showStatus = (status) => {
+    const t = setup();
+    t.update({ session: SESSION, profileReady: true, profile: { id: 'u1', status, email: 'buyer@example.test' } });
+    return t;
+  };
+  const actions = () => [...document.querySelector('[role="dialog"] .dialog-actions').children]
+    .map((el) => [el.tagName.toLowerCase(), el.className, el.textContent, el.getAttribute('href')]);
+
+  it('offers Call and Email the trade desk, then Close, to an account on hold', () => {
+    const t = showStatus('suspended');
+    expect(screen.getByRole('heading', { name: 'Your account needs attention' })).toBeTruthy();
+    const [call, email, close] = actions();
+    expect(call).toEqual(['a', 'button', expect.stringMatching(/^Call /), expect.stringMatching(/^tel:/)]);
+    expect(email).toEqual(['a', 'button ghost', 'Email the trade desk', expect.stringMatching(/^mailto:/)]);
+    expect(close).toEqual(['button', 'text-link', 'Close', null]);
+    expect(actions()).toHaveLength(3);
+    expect(screen.getByRole('link', { name: /^Call / }).hasAttribute('data-autofocus')).toBe(true);
+    expect(screen.queryByRole('link', { name: 'View account status' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Browse the catalog' })).toBeNull();
+    // The links in the description are the trade desk's phone and email.
+    const desc = document.querySelector('[role="dialog"] > .desc');
+    expect([...desc.querySelectorAll('a')].map((a) => a.getAttribute('href'))).toEqual([expect.stringMatching(/^tel:/), expect.stringMatching(/^mailto:/)]);
+    fireEvent.click(screen.getByText('Close', { selector: '.dialog-actions > button.text-link' }));
+    expect(t.onClose).toHaveBeenCalled();
+  });
+
+  it('keeps View account status and Browse the catalog for an applicant under review', () => {
+    showStatus('pending');
+    expect(actions().map(([, , text]) => text)).toEqual(['View account status', 'Browse the catalog', 'Close']);
+    expect(screen.queryByRole('link', { name: 'Email the trade desk' })).toBeNull();
+  });
+});

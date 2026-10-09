@@ -29,6 +29,7 @@ import {
   isVariantAvailable, lineKey, parseLineKey, requiresVariantChoice, variantAxis, variantCount, variantList,
 } from '../lib/lines.js';
 import { priceLabel, variantPriceRange } from '../lib/pricing.js';
+import { PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
 import { brandLabel } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
@@ -140,7 +141,8 @@ export function ProductCard({ p, profile, isApprovedBuyer, priceOf = NO_PRICES, 
         {isApprovedBuyer ? (
           <span>{priceLabel(shown.unit, pricesStatus, { from: shown.from })}</span>
         ) : profile ? (
-          <span className="lock">Pricing after approval</span>
+          // A suspended account is on hold, not waiting for approval (AW-101).
+          <span className="lock">{(PRICE_LOCK[accountStatus(profile)] || PRICE_LOCK.pending).short}</span>
         ) : (
           <button className="text-link price-login" type="button" onClick={onLoginClick}>Sign in for pricing</button>
         )}

@@ -33,6 +33,8 @@ import {
   informativeVariant, isVariantAvailable, lineKey, requiresVariantChoice, variantAxis, variantList, variantSku,
 } from '../lib/lines.js';
 import { priceLabel, variantPriceRange } from '../lib/pricing.js';
+import { PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
+import { COMPANY } from '../data/content.js';
 import { brandLabel, catLabel } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
@@ -82,6 +84,9 @@ export function ProductPage({
   const brand = brandLabel(p.brand);
   const credit = p.picture ? photoCredit(p) : '';
   const creditSource = photoCreditSource(p);
+  // An account on hold is told ordering is paused and who to call, not that
+  // pricing waits for approval (AW-101).
+  const onHold = !isApprovedBuyer && accountStatus(profile) === 'suspended';
   let shown = { unit: null, from: false };
   if (isApprovedBuyer) {
     shown = choiceRequired && !selected
@@ -148,6 +153,8 @@ export function ProductPage({
           <div className="pd-price">
             {isApprovedBuyer
               ? <><b>{priceLabel(shown.unit, pricesStatus, { from: shown.from })}</b><span>{`Wholesale unit price · ${variantSku(p.sku, selected)}`}</span></>
+              : onHold
+              ? <><b>On hold</b><span>{PRICE_LOCK.suspended.line}</span></>
               : profile
               ? <><b>Pending</b><span>Pricing unlocks after your account is approved</span></>
               : <><b>Sign in</b><span>Wholesale pricing is visible to approved trade accounts</span></>}
@@ -166,7 +173,8 @@ export function ProductPage({
           )}
           {profile && !isApprovedBuyer && (
             <div className="dialog-actions compact-actions">
-              <Link className="text-link" to="/account">View approval status</Link>
+              {onHold && <a className="text-link" href={`tel:${COMPANY.phoneRaw}`}>{`Call ${COMPANY.phone}`}</a>}
+              <Link className="text-link" to="/account">{onHold ? 'View account status' : 'View approval status'}</Link>
             </div>
           )}
         </div>

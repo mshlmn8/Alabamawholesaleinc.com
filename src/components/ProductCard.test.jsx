@@ -214,6 +214,13 @@ describe('ProductCard add control', () => {
     expect(screen.queryByRole('button', { name: /Sign in for pricing/ })).toBeNull();
     expect(screen.getByText('Pricing after approval').className).toBe('lock');
   });
+
+  it('tells an account on hold it is on hold, not that pricing comes after approval (AW-101)', () => {
+    addCard({ profile: { status: 'suspended', pricing_tier: 'silver' } });
+    expect(screen.getByText('Account on hold').className).toBe('lock');
+    expect(screen.queryByText(/after approval/)).toBeNull();
+    expect(screen.queryByRole('button', { name: /Sign in for pricing/ })).toBeNull();
+  });
 });
 
 // Feedback and focus (AW-042, AW-072): the add shows the toast, which is the

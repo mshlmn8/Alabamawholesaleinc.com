@@ -23,4 +23,15 @@ describe('CatalogIndexPage', () => {
     expect(row('Kite')).toBe('Kite · Cigarettes · AW-KITE');
     expect(screen.queryByText(/1 variants/)).toBeNull();
   });
+
+  it('says why there are no prices: guest, under review or on hold (AW-101)', () => {
+    const intro = () => document.querySelector('.page-head h1 + p').textContent;
+    const props = { products, departments: departmentsFor(products), isApprovedBuyer: false, onLoginClick: () => {} };
+    const view = render(<CatalogIndexPage {...props} profile={null} />);
+    expect(intro()).toMatch(/ Sign in to see wholesale pricing\.$/);
+    view.rerender(<CatalogIndexPage {...props} profile={{ id: 'p', status: 'pending' }} />);
+    expect(intro()).toMatch(/ Pricing unlocks after your account is approved\.$/);
+    view.rerender(<CatalogIndexPage {...props} profile={{ id: 's', status: 'suspended' }} />);
+    expect(intro()).toMatch(/ Ordering is paused on this account — call the trade desk\.$/);
+  });
 });
