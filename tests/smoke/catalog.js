@@ -38,8 +38,12 @@ let cached = null;
 export function seedRows() {
   if (cached) return cached.map((r) => ({ ...r }));
   const sql = readFileSync(SEED, 'utf8');
-  const columns = /insert into public\.products \(([^)]+)\) values/.exec(sql)[1].split(',').map((c) => c.trim());
-  cached = sql.split('\n')
+  const insert = /insert into public\.products \(([^)]+)\) values/.exec(sql);
+  const columns = insert[1].split(',').map((c) => c.trim());
+  // Only the insert's own rows: the id and SKU guard before it (NEW-022) and
+  // the sequence footer after it are not products.
+  const end = sql.indexOf('\non conflict (id) do nothing;', insert.index);
+  cached = sql.slice(insert.index, end === -1 ? undefined : end).split('\n')
     .filter((line) => /^\s+\(\d+,/.test(line))
     .map((line) => {
       const values = parseValues(line.trim().replace(/^\(/, '').replace(/\),?$/, ''));

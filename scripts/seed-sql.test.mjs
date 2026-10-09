@@ -124,8 +124,14 @@ describe('seedSql guard (NEW-022)', () => {
     expect((await products()).map((p) => p.id)).toEqual([3, 4, 5]);
   });
 
-  it('quotes SKUs safely and seeds the documented columns', () => {
+  it('quotes SKUs safely, and no guard line starts like a product row', () => {
     expect(seedGuardSql([row(7, "AW-O'BRIEN")])).toContain("(7, 'AW-O''BRIEN')");
+    // tests/smoke/catalog.js reads the seed's product rows by that shape.
+    const guard = seedGuardSql([row(1, 'AW-1'), row(2, 'AW-2'), row(3, 'AW-3')]);
+    expect(guard.split('\n').filter((line) => /^\s+\(\d+,/.test(line))).toEqual([]);
+    expect(guard).toMatch(/^ {4}values \(1, 'AW-1'\)\n {6}, \(2, 'AW-2'\)\n {6}, \(3, 'AW-3'\)$/m);
+    const rowLines = seedSql([row(1, 'AW-1'), row(2, 'AW-2')]).split('\n').filter((line) => /^\s+\(\d+,/.test(line));
+    expect(rowLines).toHaveLength(2);
     expect(COLUMNS).toEqual(['id', 'name', 'brand', 'cat', 'sub', 'sku', 'variants', 'variant_axis', 'img', 'tag', 'active', 'description', 'sell_unit']);
   });
 });

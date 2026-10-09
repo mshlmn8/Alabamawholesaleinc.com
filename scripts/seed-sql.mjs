@@ -48,9 +48,12 @@ function rowSql(p) {
 }
 
 // The guard (NEW-022), above. Runs before the insert, in the same statement
-// batch, so its exception stops the file before any row goes in.
+// batch, so its exception stops the file before any row goes in. Its (id,
+// SKU) list is written with leading commas, so no line of it starts like a
+// product row ("  (12, …"): tests/smoke/catalog.js and other tools read the
+// insert's rows line by line.
 export function seedGuardSql(rows) {
-  const pairs = rows.map((p) => `      (${Number(p.id)}, ${requiredText(p.sku)})`).join(',\n');
+  const pairs = rows.map((p, i) => `${i === 0 ? '    values ' : '      , '}(${Number(p.id)}, ${requiredText(p.sku)})`).join('\n');
   return [
     '-- Ids and SKUs (NEW-022): Admin -> Products takes new ids from products_id_seq, the',
     '-- id space products.js rows use. A seed id that is already in the table under another',
@@ -64,7 +67,6 @@ export function seedGuardSql(rows) {
     '  v_taken text;',
     'begin',
     '  with seed (id, sku) as (',
-    '    values',
     pairs,
     '  )',
     '  select',
