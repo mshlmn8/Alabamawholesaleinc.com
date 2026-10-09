@@ -53,21 +53,21 @@ describe('resetHead and resetTitle', () => {
   });
 
   it('names what each view shows', () => {
-    expect(resetHead('request')).toMatchObject({ h1: 'Reset your password', title: 'Reset Password' });
+    expect(resetHead('request')).toMatchObject({ h1: 'Reset your password', title: 'Reset password' });
     expect(resetHead('unavailable')).toMatchObject({ h1: 'Reset your password', intro: null });
     expect(resetHead('checking', { linkChecking: true })).toMatchObject({ h1: 'Checking your reset link', intro: null });
     expect(resetHead('checking')).toMatchObject({ h1: 'Loading your account', intro: null });
     expect(resetHead('form')).toMatchObject({ h1: 'Choose a new password' });
-    expect(resetHead('done')).toMatchObject({ h1: 'Password updated', intro: null, title: 'Password Updated' });
-    expect(resetHead('link-invalid')).toMatchObject({ h1: 'Link not valid', intro: null, title: 'Reset Link Not Valid' });
+    expect(resetHead('done')).toMatchObject({ h1: 'Password updated', intro: null, title: 'Password updated' });
+    expect(resetHead('link-invalid')).toMatchObject({ h1: 'Link not valid', intro: null, title: 'Reset link not valid' });
     expect(resetHead('mystery')).toEqual(RESET_HEADS.request);
   });
 
   it('titles the page by the view, and as first seen without one', () => {
-    expect(resetTitle('done')).toBe('Password Updated');
-    expect(resetTitle('link-invalid')).toBe('Reset Link Not Valid');
-    for (const name of ['unavailable', 'request', 'checking', 'form']) expect(resetTitle(name)).toBe('Reset Password');
-    expect(resetTitle(undefined)).toBe('Reset Password');
-    expect(resetTitle('mystery')).toBe('Reset Password');
+    expect(resetTitle('done')).toBe('Password updated');
+    expect(resetTitle('link-invalid')).toBe('Reset link not valid');
+    for (const name of ['unavailable', 'request', 'checking', 'form']) expect(resetTitle(name)).toBe('Reset password');
+    expect(resetTitle(undefined)).toBe('Reset password');
+    expect(resetTitle('mystery')).toBe('Reset password');
   });
 });

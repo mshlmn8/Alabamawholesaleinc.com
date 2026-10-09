@@ -10,9 +10,13 @@
 // Titles stay within 60 characters and descriptions within 155, the lengths
 // search results show (AW-318, AW-319): fitTitle() leaves out optional parts
 // and fitSentences() whole sentences, so neither ends mid-phrase.
+//
+// Titles are in sentence case, the same words as the page's h1 (AW-131,
+// LEFT-1): 'Contact & visit', 'All products · Wholesale catalog'. Product,
+// department and line names are names and keep their own capitals.
 
 import { COMPANY, HOME_PITCH, HOME_TITLE, HOURS, ORDER_MINIMUM, hoursLine } from '../data/content.js';
-import { APPLY_LABEL, basketTerms } from '../data/terms.js';
+import { APPLY_LABEL, TRADE_ACCOUNT_LABEL, basketTerms } from '../data/terms.js';
 import { POLICY_TITLES, POLICY_INTROS } from '../pages/support/policyText.js';
 import { resetTitle } from '../pages/support/resetView.js';
 import { topLines } from './departments.js';
@@ -189,14 +193,15 @@ function adminTitle(route) {
 // The application page's title follows the account (AW-098): App sets
 // route.applyAs to 'loading', 'no-profile' (signed in, the profile didn't
 // load: NEW-002) or accountStatus(profile). Without it, the page is the one
-// a visitor, or a search engine, sees.
+// a visitor, or a search engine, sees. Sentence case, like every title and
+// the page's own h1 (AW-131).
 export const APPLY_TITLES = {
   guest: APPLY_LABEL,
-  loading: 'Trade Account',
-  'no-profile': 'Trade account',
-  pending: 'Application Under Review',
-  approved: 'Your Trade Account',
-  suspended: 'Account On Hold',
+  loading: TRADE_ACCOUNT_LABEL,
+  'no-profile': TRADE_ACCOUNT_LABEL,
+  pending: 'Application under review',
+  approved: 'Your trade account',
+  suspended: 'Account on hold',
 };
 
 // Title, description, canonical path, share image and indexing for a
@@ -261,10 +266,10 @@ function pageText(route, products, departments) {
     return { title: `${unseen}${adminTitle(route)} · Admin · ${site}`, description: `Catalog and account administration for ${site}.` };
   }
   // Support pages (src/pages/support/).
-  if (route.page === 'catalog') return { title: `All Products · Wholesale Catalog · ${site}`, description: clip(`Every department and product line ${site} stocks — ${products.length} wholesale SKUs for licensed retailers, from the Birmingham warehouse.`) };
+  if (route.page === 'catalog') return { title: `All products · Wholesale catalog · ${site}`, description: clip(`Every department and product line ${site} stocks — ${products.length} wholesale SKUs for licensed retailers, from the Birmingham warehouse.`) };
   // Short enough that both hours lines fit whole (the email is on the page).
-  if (route.page === 'contact') return { title: `Contact & Visit · ${site}`, description: clip(`Call ${COMPANY.phone} or visit ${COMPANY.addressShort}. ${HOURS.map(r => hoursLine(r, { nowrap: false })).join(', ')}.`) };
-  if (route.page === 'delivery') return { title: `Delivery & Service Area · ${site}`, description: 'Next-day delivery on our own trucks when your stop is on a route in Alabama, Mississippi or Georgia, plus will-call pickup at the Birmingham warehouse.' };
+  if (route.page === 'contact') return { title: `Contact & visit · ${site}`, description: clip(`Call ${COMPANY.phone} or visit ${COMPANY.addressShort}. ${HOURS.map(r => hoursLine(r, { nowrap: false })).join(', ')}.`) };
+  if (route.page === 'delivery') return { title: `Delivery & service area · ${site}`, description: 'Next-day delivery on our own trucks when your stop is on a route in Alabama, Mississippi or Georgia, plus will-call pickup at the Birmingham warehouse.' };
   if (POLICY_TITLES[route.page]) return { title: `${POLICY_TITLES[route.page]} · ${site}`, description: clip(POLICY_INTROS[route.page]) };
   if (route.page === 'apply') return { title: `${APPLY_TITLES[route.applyAs] || APPLY_TITLES.guest} · ${site}`, description: `What licensed retailers need to open an ${site} trade account: EIN, state retail tobacco license, resale certificate and store details.` };
   // The reset page's title follows what it shows (AW-255): App sets
@@ -310,7 +315,7 @@ function categoryText(route, products, departments, site) {
     return `Wholesale ${inSentence(label)} for licensed retailers: ${productCount(count)}${across}.`;
   });
   return {
-    title: fitTitle([label, 'Wholesale Catalog', site]),
+    title: fitTitle([label, 'Wholesale catalog', site]),
     description: fitSentences([first, SIGN_IN]),
     image: imageOf(preview, scope),
   };

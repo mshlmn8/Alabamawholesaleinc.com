@@ -220,8 +220,8 @@ export default function App() {
   // The title names a saved receipt ('Quote received', AW-022) on /quote, or
   // else its heading once the account is known (AW-132), the count of orders
   // new since the last visit on /admin (AW-111), the account's state on
-  // /apply ('Application Under Review', AW-098) and what /reset-password
-  // shows ('Password Updated', AW-255).
+  // /apply ('Application under review', AW-098) and what /reset-password
+  // shows ('Password updated', AW-255).
   // A signed-in account whose profile didn't load isn't a guest (NEW-002).
   const applyAs = accountView(profile, account);
   // The reset page's view belongs to the page that reported it.

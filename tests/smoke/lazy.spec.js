@@ -159,7 +159,7 @@ test('a page opened from a link shows the loading view, then its heading takes f
   await expect(page.locator('main .page-loading [role="status"]')).toHaveText('Loading…');
   await expect(page.locator('main h1')).toHaveCount(0);
   // The title is already the new page's, and <main> holds focus meanwhile.
-  await expect(page).toHaveTitle(/^Delivery & Service Area · /);
+  await expect(page).toHaveTitle(/^Delivery & service area · /);
   await expect(page.locator('main#main')).toBeFocused();
   release();
   const heading = page.getByRole('heading', { level: 1 });

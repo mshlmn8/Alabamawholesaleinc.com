@@ -24,7 +24,8 @@ export function resetView({ isBackendConfigured, done, session, loading, linkChe
 }
 
 const EYEBROW = 'PASSWORD HELP';
-export const RESET_TITLE = 'Reset Password';
+// Tab titles are in sentence case, like the h1s (AW-131).
+export const RESET_TITLE = 'Reset password';
 
 // The page head and tab title for each view. intro null: none.
 // The 8 is PASSWORD_MIN_LENGTH (src/components/PasswordField.jsx); the page
@@ -44,8 +45,8 @@ export const RESET_HEADS = {
     intro: 'Pick a password of at least 8 characters that you don’t use anywhere else.',
     title: RESET_TITLE,
   },
-  done: { eyebrow: EYEBROW, h1: 'Password updated', intro: null, title: 'Password Updated' },
-  'link-invalid': { eyebrow: EYEBROW, h1: 'Link not valid', intro: null, title: 'Reset Link Not Valid' },
+  done: { eyebrow: EYEBROW, h1: 'Password updated', intro: null, title: 'Password updated' },
+  'link-invalid': { eyebrow: EYEBROW, h1: 'Link not valid', intro: null, title: 'Reset link not valid' },
 };
 
 // The head for a view. While no link is being checked, 'checking' is the

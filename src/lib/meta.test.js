@@ -48,7 +48,7 @@ describe('clip, fitSentences and fitTitle (AW-319)', () => {
   it('leaves out optional title parts from the last one back, then the site name, never cutting the page name', () => {
     expect(fitTitle(['Cigars', 'Tobacco', 'Site'], 60)).toBe('Cigars · Tobacco · Site');
     expect(fitTitle(['Cigars', 'Tobacco', 'Site'], 16)).toBe('Cigars · Site');
-    expect(fitTitle(['Cigars', 'Tobacco', 'Wholesale Catalog', 'Site'], 25)).toBe('Cigars · Tobacco · Site');
+    expect(fitTitle(['Cigars', 'Tobacco', 'Wholesale catalog', 'Site'], 25)).toBe('Cigars · Tobacco · Site');
     expect(fitTitle(['A long product name', 'Brand', 'Site'], 20)).toBe('A long product name');
     expect(fitTitle(['A much too long product name', 'Brand', 'Site'], 10)).toBe('A much too long product name');
     expect(fitTitle(['Kite', '', 'Site'])).toBe('Kite · Site');
@@ -79,11 +79,45 @@ describe('pageMeta', () => {
     expect(pageMeta({ page: 'home' }, products, departments)).toMatchObject({ title: 'Wholesale Tobacco, Vapes & Candy · Alabama Wholesale Inc', description: HOME_DESCRIPTION, path: '/', noindex: false });
     expect(pageMeta({ page: 'category', category: 'TOBACCO', sub: 'Cigars', query: EMPTY }, products, departments).title).toBe('Cigars · Tobacco · Alabama Wholesale Inc');
     expect(pageMeta({ page: 'category', category: 'TOBACCO', sub: null, query: EMPTY }, products, departments)).toMatchObject({
-      title: 'Tobacco · Wholesale Catalog · Alabama Wholesale Inc',
+      title: 'Tobacco · Wholesale catalog · Alabama Wholesale Inc',
       description: 'Wholesale tobacco for licensed retailers: 68 products across Cigarettes and more. Sign in for account pricing.',
     });
     expect(pageMeta({ page: 'product', productId: 7 }, products, departments).title).toBe('Kite · Alabama Wholesale Inc');
     expect(pageMeta({ page: 'privacy' }, products, departments).title).toBe('Privacy · Alabama Wholesale Inc');
+  });
+
+  it('titles the support pages in sentence case, the words of their h1s (AW-131, LEFT-1)', () => {
+    const title = (route) => pageMeta(route, products, departments).title;
+    expect(title({ page: 'catalog' })).toBe('All products · Wholesale catalog · Alabama Wholesale Inc');
+    expect(title({ page: 'contact' })).toBe('Contact & visit · Alabama Wholesale Inc');
+    expect(title({ page: 'delivery' })).toBe('Delivery & service area · Alabama Wholesale Inc');
+    expect(title({ page: 'terms' })).toBe('Trade terms · Alabama Wholesale Inc');
+    expect(title({ page: 'apply' })).toBe('Apply for a trade account · Alabama Wholesale Inc');
+    expect(title({ page: 'reset-password' })).toBe('Reset password · Alabama Wholesale Inc');
+  });
+
+  it('writes no title in Title Case, apart from the names of products, departments and lines (AW-131, LEFT-1)', () => {
+    // The home title waits on the owner (AW-318), and a product, department
+    // or line title starts with that name.
+    const routes = [
+      ...['catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'account', 'quote', 'search'].map((page) => ({ page })),
+      ...['guest', 'loading', 'no-profile', 'pending', 'approved', 'suspended'].map((applyAs) => ({ page: 'apply', applyAs })),
+      ...['unavailable', 'request', 'checking', 'form', 'done', 'link-invalid'].map((view) => ({ page: 'reset-password', view })),
+      ...[{}, { section: 'accounts' }, { section: 'accounts', id: 'x' }, { section: 'products' }, { section: 'products', id: 'new' }, { section: 'products', id: 3 },
+        { section: 'pricing' }, { section: 'homepage' }, { view: 'print' }, { view: 'print', query: { doc: 'slip' } }].map((r) => ({ page: 'admin', ...r })),
+      ...['page', 'product', 'department', 'line'].map((kind) => ({ page: 'not-found', kind })),
+      { page: 'not-found', kind: 'product', catalog: 'loading' },
+      { page: 'not-found', kind: 'line', catalog: 'error' },
+      { page: 'quote', basket: 'quote' }, { page: 'quote', basket: 'order' }, { page: 'quote', received: 'quote' },
+      { page: 'search', q: 'cigar' },
+    ];
+    for (const route of routes) {
+      const { title } = pageMeta(route, products, departments);
+      // Every part but the site name: no capital after the first word.
+      const parts = title.split(' · ').slice(0, -1);
+      expect([title, parts.length > 0]).toEqual([title, true]);
+      for (const part of parts) expect([title, part, /\s[A-Z][a-z]/.test(part)]).toEqual([title, part, false]);
+    }
   });
 
   it('describes the home page in one search result: 155 characters, the hero line word for word (AW-318)', () => {
@@ -284,34 +318,34 @@ describe('pageMeta for /apply (AW-098)', () => {
     }));
     expect(titles).toEqual({
       guest: 'Apply for a trade account · Alabama Wholesale Inc',
-      loading: 'Trade Account · Alabama Wholesale Inc',
+      loading: 'Trade account · Alabama Wholesale Inc',
       // Signed in, but the profile didn't load: not the guest's 'Apply' (NEW-002).
       'no-profile': 'Trade account · Alabama Wholesale Inc',
-      pending: 'Application Under Review · Alabama Wholesale Inc',
-      approved: 'Your Trade Account · Alabama Wholesale Inc',
-      suspended: 'Account On Hold · Alabama Wholesale Inc',
+      pending: 'Application under review · Alabama Wholesale Inc',
+      approved: 'Your trade account · Alabama Wholesale Inc',
+      suspended: 'Account on hold · Alabama Wholesale Inc',
     });
     expect(pageMeta({ page: 'apply', applyAs: 'mystery' }, products, departments).title).toBe(guest.title);
-    expect(APPLY_TITLES.pending).toBe('Application Under Review');
+    expect(APPLY_TITLES.pending).toBe('Application under review');
   });
 });
 
 describe('pageMeta for /reset-password (AW-255)', () => {
   it('titles the reset page by what it shows, with one description and no canonical path', () => {
     const first = pageMeta({ page: 'reset-password' }, products, departments);
-    expect(first).toMatchObject({ title: 'Reset Password · Alabama Wholesale Inc', path: null, noindex: true });
+    expect(first).toMatchObject({ title: 'Reset password · Alabama Wholesale Inc', path: null, noindex: true });
     const titles = Object.fromEntries(['unavailable', 'request', 'checking', 'form', 'done', 'link-invalid'].map((view) => {
       const meta = pageMeta({ page: 'reset-password', view }, products, departments);
       expect(meta).toMatchObject({ description: first.description, path: null, noindex: true });
       return [view, meta.title];
     }));
     expect(titles).toEqual({
-      unavailable: 'Reset Password · Alabama Wholesale Inc',
-      request: 'Reset Password · Alabama Wholesale Inc',
-      checking: 'Reset Password · Alabama Wholesale Inc',
-      form: 'Reset Password · Alabama Wholesale Inc',
-      done: 'Password Updated · Alabama Wholesale Inc',
-      'link-invalid': 'Reset Link Not Valid · Alabama Wholesale Inc',
+      unavailable: 'Reset password · Alabama Wholesale Inc',
+      request: 'Reset password · Alabama Wholesale Inc',
+      checking: 'Reset password · Alabama Wholesale Inc',
+      form: 'Reset password · Alabama Wholesale Inc',
+      done: 'Password updated · Alabama Wholesale Inc',
+      'link-invalid': 'Reset link not valid · Alabama Wholesale Inc',
     });
     expect(pageMeta({ page: 'reset-password', view: 'mystery' }, products, departments).title).toBe(first.title);
   });
@@ -353,7 +387,7 @@ describe('every bundled product, department and line (AW-319)', () => {
       expect([where, description.endsWith('.')]).toEqual([where, true]);
       if (route.sub) {
         const n = PRODUCTS.filter((p) => p.cat === d.key && p.sub === route.sub).length;
-        expect([where, title.startsWith(`${route.sub} · `), title.includes('Wholesale Catalog')]).toEqual([where, true, false]);
+        expect([where, title.startsWith(`${route.sub} · `), title.includes('Wholesale catalog')]).toEqual([where, true, false]);
         expect([where, description]).toEqual([where, expect.stringContaining(`department: ${n} product`)]);
       } else {
         expect([where, description]).toEqual([where, expect.stringContaining(`licensed retailers: ${d.count} product`)]);
