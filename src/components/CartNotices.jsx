@@ -5,7 +5,9 @@
 //                      quantity and a link to its page, where that quantity
 //                      is filled in. Dismissing it forgets the list.
 //   UnavailableNotice  lines that can no longer be ordered (AW-083), with a
-//                      way to remove them all.
+//                      way to remove them all. Its words follow how many
+//                      there are, and offer another variant only when a
+//                      line's product is still offered (NEW-021).
 
 import { useId } from 'react';
 import { Link } from '../lib/router.js';
@@ -40,20 +42,31 @@ export function SavedLinesNotice({ items, onDismiss, onChoose }) {
   );
 }
 
+// What UnavailableNotice says under its title (NEW-021): "it" or "them",
+// and the other-variant advice only when some line's product is still
+// offered with other variants (item.unavailable 'variant', src/lib/lines.js);
+// a product that left the catalog has none to offer.
+export function unavailableAdvice(items) {
+  const remove = items.length === 1 ? 'Remove it to continue' : 'Remove them to continue';
+  const variants = items.some((item) => item.unavailable === 'variant');
+  return variants ? `${remove}, or choose another variant where the product is still offered.` : `${remove}.`;
+}
+
 // items: the cart's unavailable lines. noun: 'quote' or 'order', what the
 // page calls the basket (basketTerms in src/data/terms.js, AW-132).
 export function UnavailableNotice({ items, onRemoveAll, noun = 'quote' }) {
   if (!items.length) return null;
+  const one = items.length === 1;
   const remove = (event) => {
     keepFocusNear(event.currentTarget);
     onRemoveAll(items.map((item) => item.lineKey));
-    announce(items.length === 1 ? 'Removed 1 item that is no longer available.' : `Removed ${items.length} items that are no longer available.`);
+    announce(one ? 'Removed 1 item that is no longer available.' : `Removed ${items.length} items that are no longer available.`);
   };
   return (
     <div className="cart-notice is-warn" data-notice="unavailable">
-      <p className="cart-notice-title">{items.length === 1 ? `1 item in your ${noun} is no longer available.` : `${items.length} items in your ${noun} are no longer available.`}</p>
-      <p>Remove them to continue, or choose another variant where the product is still offered.</p>
-      <button className="text-link" type="button" onClick={remove}>Remove unavailable items</button>
+      <p className="cart-notice-title">{one ? `1 item in your ${noun} is no longer available.` : `${items.length} items in your ${noun} are no longer available.`}</p>
+      <p>{unavailableAdvice(items)}</p>
+      <button className="text-link" type="button" onClick={remove}>{one ? 'Remove unavailable item' : 'Remove unavailable items'}</button>
     </div>
   );
 }

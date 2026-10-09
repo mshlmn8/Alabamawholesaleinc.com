@@ -61,12 +61,29 @@ describe('CartLine', () => {
   });
 
   it('gives a line still waiting for its variant no line total, in either layout (AW-103)', () => {
-    const bare = { ...item, needsVariant: true, qty: 8, variants: [{ label: 'Red', available: true }] };
+    const bare = { ...item, needsVariant: true, qty: 8, variants: [{ label: 'Red', available: true }], variantPrice: { unit: 12.34, from: false } };
     const view = renderLine({ item: bare, layout: 'drawer', showPrice: true, ...handlers() });
     expect(detailLine('AW-KITE · $12.34 each')).toBeTruthy();
     expect(document.querySelector('.line-total')).toBeNull();
     view.rerender(<ul><CartLine item={bare} layout="checkout" showPrice {...handlers()} /></ul>);
     expect(document.querySelector('.line-total')).toBeNull();
+  });
+
+  it('prices a line waiting for its variant by its variants, never by the product (NEW-063)', () => {
+    // The product's own price is $11.50; its varieties cost more or less.
+    const bare = { ...item, sku: 'AW-TWEAKER', needsVariant: true, qty: 2, price: 11.5, variants: [{ label: 'Berry', available: true }, { label: 'Grape', available: true }] };
+    const view = renderLine({ item: { ...bare, variantPrice: { unit: 11.5, from: true } }, layout: 'drawer', showPrice: true, ...handlers() });
+    expect(detailLine('AW-TWEAKER · From $11.50')).toBeTruthy();
+    expect(screen.queryByText(/\$11\.50 each/)).toBeNull();
+    // All the same: "each".
+    view.rerender(<ul><CartLine item={{ ...bare, variantPrice: { unit: 12, from: false } }} layout="checkout" showPrice {...handlers()} /></ul>);
+    expect(detailLine('AW-TWEAKER · $12.00 each')).toBeTruthy();
+    // None has a price: nothing, not the product's, and no "Price on request".
+    view.rerender(<ul><CartLine item={{ ...bare, variantPrice: { unit: null, from: false } }} layout="checkout" showPrice pricesStatus="ready" {...handlers()} /></ul>);
+    expect(detailLine('AW-TWEAKER')).toBeTruthy();
+    // A guest sees no price at all.
+    view.rerender(<ul><CartLine item={{ ...bare, variantPrice: { unit: 11.5, from: true } }} layout="checkout" showPrice={false} {...handlers()} /></ul>);
+    expect(detailLine('AW-TWEAKER')).toBeTruthy();
   });
 
   it('the line total is each x quantity to the cent (AW-077)', () => {

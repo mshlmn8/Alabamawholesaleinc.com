@@ -138,6 +138,37 @@ describe('priceCartItems and cartTotal', () => {
     expect(variantExcludedText([])).toBe('');
   });
 
+  it('also names the lines the trade desk prices, beside a figure only (NEW-063)', () => {
+    const withGushers = [...P, { id: 187, sku: 'AW-GUSHER-BOX', name: 'Gushers box', variants: [] }, { id: 2, sku: 'AW-TWO', name: 'Two', variants: ['A', 'B'] }];
+    // The finding's cart: Gushers is price on request, Kite has a price.
+    const items = priceCartItems({ 187: 1, 14: 1 }, withGushers, APPROVED);
+    expect(cartTotal(items)).toBe(20);
+    expect(variantExcludedText(items, 'ready')).toBe('1 line is priced by the trade desk and isn’t in this total.');
+    expect(variantExcludedText(items)).toBe('1 line is priced by the trade desk and isn’t in this total.');
+    // Before the prices are in, or when they didn't load, no line is said to be on request.
+    expect(variantExcludedText(priceCartItems({ 187: 1, 14: 1 }, withGushers, NO_PRICES), 'loading')).toBe('');
+    expect(variantExcludedText(items, 'error')).toBe('');
+    // No line has a price: the total says "Price on request" itself.
+    expect(variantExcludedText(priceCartItems({ 187: 1 }, withGushers, APPROVED), 'ready')).toBe('');
+    // Both kinds, and plurals.
+    const mixed = priceCartItems({ 1: 8, 2: 1, 187: 1, 999: 1, 14: 1 }, [...withGushers, { id: 999, sku: 'AW-X', name: 'X', variants: [] }], APPROVED);
+    expect(variantExcludedText(mixed, 'ready'))
+      .toBe('2 lines need a variant and aren’t in this total. 2 lines are priced by the trade desk and aren’t in this total.');
+    // A line that can no longer be ordered is never one of them.
+    const gone = priceCartItems({ 187: 1, 14: 1 }, withGushers.filter((p) => p.id !== 187), APPROVED);
+    expect(variantExcludedText(gone, 'ready')).toBe('');
+  });
+
+  it('prices a line waiting for its variant by the variants that can be ordered (NEW-063)', () => {
+    const tweaker = [{ id: 22, sku: 'AW-TWEAKER', name: 'Tweaker', variants: ['Berry', 'Grape', 'Peach'], unavailableVariants: ['Peach'] }];
+    const varied = priceOf({ 22: 11.5, '22::Berry': 11.5, '22::Grape': 13, '22::Peach': 9 });
+    expect(priceCartItems({ 22: 2 }, tweaker, varied)[0].variantPrice).toEqual({ unit: 11.5, from: true });
+    expect(priceCartItems({ 22: 2 }, tweaker, priceOf({ 22: 11.5 }))[0].variantPrice).toEqual({ unit: 11.5, from: false });
+    expect(priceCartItems({ 22: 2 }, tweaker, NO_PRICES)[0].variantPrice).toEqual({ unit: null, from: false });
+    // Only a line waiting for its variant carries one.
+    expect(priceCartItems({ '22::berry': 1 }, tweaker, varied)[0]).not.toHaveProperty('variantPrice');
+  });
+
   it('asks priceOf with the line’s variant, so a variant’s own price is used', () => {
     const cart = { '1::red': 2, '1::diamond': 1 };
     const items = priceCartItems(cart, P, priceOf({ ...UNIT, '1::Red': 12.5 }));

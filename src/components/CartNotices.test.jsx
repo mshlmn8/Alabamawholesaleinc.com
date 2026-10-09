@@ -1,7 +1,7 @@
-// Cart notices (AW-354, AW-083).
+// Cart notices (AW-354, AW-083, NEW-021).
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { SavedLinesNotice, UnavailableNotice } from './CartNotices.jsx';
+import { SavedLinesNotice, UnavailableNotice, unavailableAdvice } from './CartNotices.jsx';
 
 describe('SavedLinesNotice (AW-354)', () => {
   it('lists each product with its saved quantity and a link to choose a variant', () => {
@@ -33,5 +33,34 @@ describe('UnavailableNotice (AW-083)', () => {
     expect(screen.getByText('2 items in your quote are no longer available.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Remove unavailable items' }));
     expect(onRemoveAll).toHaveBeenCalledWith(['999', '1::purple']);
+  });
+
+  const notice = () => document.querySelector('[data-notice="unavailable"]');
+  const lines = () => [...notice().querySelectorAll('p, button')].map((el) => el.textContent);
+
+  it('speaks of one item as one: "Remove it" and "Remove unavailable item" (NEW-021)', () => {
+    const onRemoveAll = vi.fn();
+    render(<UnavailableNotice items={[{ lineKey: '45', unavailable: 'product' }]} onRemoveAll={onRemoveAll} noun="order" />);
+    expect(lines()).toEqual(['1 item in your order is no longer available.', 'Remove it to continue.', 'Remove unavailable item']);
+    fireEvent.click(screen.getByRole('button', { name: 'Remove unavailable item' }));
+    expect(onRemoveAll).toHaveBeenCalledWith(['45']);
+  });
+
+  it('speaks of two as them', () => {
+    render(<UnavailableNotice items={[{ lineKey: '45', unavailable: 'product' }, { lineKey: '999', unavailable: 'product' }]} onRemoveAll={vi.fn()} />);
+    expect(lines()).toEqual(['2 items in your quote are no longer available.', 'Remove them to continue.', 'Remove unavailable items']);
+  });
+
+  it('offers another variant only when a line’s product is still offered (unavailable "variant", not "product")', () => {
+    // The old merged #62 label: the product is still offered with other variants.
+    const view = render(<UnavailableNotice items={[{ lineKey: '62::watermelon-ice-kiwi-dragon-berry', unavailable: 'variant' }]} onRemoveAll={vi.fn()} noun="order" />);
+    expect(lines()).toEqual([
+      '1 item in your order is no longer available.',
+      'Remove it to continue, or choose another variant where the product is still offered.',
+      'Remove unavailable item',
+    ]);
+    view.rerender(<UnavailableNotice items={[{ lineKey: '45', unavailable: 'product' }, { lineKey: '1::purple', unavailable: 'variant' }]} onRemoveAll={vi.fn()} />);
+    expect(lines()[1]).toBe('Remove them to continue, or choose another variant where the product is still offered.');
+    expect(unavailableAdvice([{ unavailable: 'product' }, { unavailable: 'product' }])).toBe('Remove them to continue.');
   });
 });

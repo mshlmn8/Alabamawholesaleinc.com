@@ -234,10 +234,13 @@ export function tierPriceNote(priceTier) {
 
 // The estimated total for an approved buyer's lines. When no line that
 // counts toward it (one that can be ordered as it stands: not waiting for
-// its variant, AW-103) has a price yet, it says why instead of showing $0.00.
+// its variant, AW-103) has a price yet, it says why instead of showing $0.00;
+// with no such line at all it is a dash (NEW-063), never $0.00.
+export const NO_TOTAL = '—';
 export function totalLabel(items, total, status) {
   const orderable = (items || []).filter((it) => !it.unavailable && !it.needsVariant);
-  if (!orderable.length || orderable.some((it) => it.price != null)) return formatMoney(total);
+  if (!orderable.length) return NO_TOTAL;
+  if (orderable.some((it) => it.price != null)) return formatMoney(total);
   if (status === 'loading') return 'Loading prices…';
   if (status === 'error') return 'Prices didn’t load';
   return PRICE_ON_REQUEST;

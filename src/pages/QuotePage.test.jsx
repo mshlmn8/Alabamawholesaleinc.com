@@ -103,18 +103,26 @@ describe('QuotePage and the account', () => {
     const gone = { lineKey: '999', productId: 999, variant: null, unavailable: 'product', name: 'Old product', sku: 'AW-OLD', qty: 4, price: null };
     render(page({ items: [...ITEMS, gone], removeLines, profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true }));
     expect(screen.getByText('1 item in your order is no longer available.')).toBeTruthy();
-    expect(screen.getByRole('alert').textContent).toBe('Remove the items that are no longer available before you submit.');
+    // Said under the button it keeps off, as plain text it is described by,
+    // not an alert on arrival (NEW-021).
+    expect(screen.queryByRole('alert')).toBeNull();
+    const note = document.getElementById('quote-blocked-unavailable');
+    expect(note.textContent).toBe('Remove the item that is no longer available before you submit.');
+    expect(note.className).toBe('form-error');
     expect(submit().disabled).toBe(true);
+    expect(submit().getAttribute('aria-describedby')).toBe('quote-blocked-unavailable');
     // Units count only what can be ordered.
     expect(screen.getByText('Estimated subtotal · 2 units')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Remove unavailable items' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove unavailable item' }));
     expect(removeLines).toHaveBeenCalledWith(['999']);
   });
 
   it('blocks a quantity the database would refuse, as a guard (AW-013)', () => {
     render(page({ items: [{ ...ITEMS[0], qty: 150000 }], profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true }));
-    expect(screen.getByRole('alert').textContent).toBe('Quantities must be a whole number from 1 to 100,000.');
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(document.getElementById('quote-blocked-qty').textContent).toBe('Quantities must be a whole number from 1 to 100,000.');
     expect(submit().disabled).toBe(true);
+    expect(submit().getAttribute('aria-describedby')).toBe('quote-blocked-qty');
   });
 
   it('sets a line’s quantity and a bare line’s variant on the page (AW-013, AW-011)', () => {
@@ -193,7 +201,10 @@ describe('QuotePage and a catalog that changed', () => {
     // App re-renders the page with the catalog it just loaded.
     view.rerender(page({ items: [gone], removeLines: vi.fn(), profile: null, account: 'signed-out', isApprovedBuyer: false, checkCart }));
     const alerts = screen.getAllByRole('alert').map((el) => el.textContent);
-    expect(alerts).toContain('The catalog changed since this page opened, so nothing was sent. Kite cigarette tobacco is no longer available — remove it to continue. Check your items, then submit again.');
+    expect(alerts).toEqual(['The catalog changed since this page opened, so nothing was sent. Kite cigarette tobacco is no longer available — remove it to continue. Check your items, then submit again.']);
+    // The general line would say the same: it waits until the message goes (NEW-021).
+    expect(document.getElementById('quote-blocked-unavailable')).toBeNull();
+    expect(submit().hasAttribute('aria-describedby')).toBe(false);
     expect(sent).toEqual([]);
     // Gone once the lines on the page change.
     view.rerender(page({ items: [], profile: null, account: 'signed-out', isApprovedBuyer: false, checkCart }));
@@ -319,6 +330,30 @@ describe('QuotePage totals for an approved buyer', () => {
     view.rerender(page({ items: [bare, ...ITEMS], total: 0, profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false }));
     expect(document.querySelector('.checkout-total').textContent).toBe('Estimated subtotal · 10 unitsPricing confirmed by the trade desk');
     expect(document.querySelector('.total-note')).toBeNull();
+  });
+
+  it('says a price-on-request line is left out too, and shows a dash when no line counts (NEW-063)', () => {
+    const gushers = { lineKey: '187::regular', productId: 187, variant: 'Regular', name: 'Gushers box — Regular', sku: 'AW-GUSHER-BOX-REGULAR', cat: 'CANDIES', qty: 1, price: null };
+    const view = render(page({ items: [gushers, ...ITEMS], total: 20, profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true, pricesStatus: 'ready' }));
+    expect(document.querySelector('.checkout-total').textContent).toBe('Estimated subtotal · 3 units$20.00');
+    expect(document.querySelector('.checkout-total + .total-note').textContent).toBe('1 line is priced by the trade desk and isn’t in this total.');
+    // Only a line waiting for its variant: no "$0.00".
+    const bare = { lineKey: '22', productId: 22, variant: null, needsVariant: true, name: 'Tweaker energy shots', sku: 'AW-TWEAKER', cat: 'MERCHANDISE', qty: 2, price: 11.5, variants: [] };
+    view.rerender(page({ items: [bare], total: 0, profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true, pricesStatus: 'ready' }));
+    expect(document.querySelector('.checkout-total').textContent).toBe('Estimated subtotal · 2 units—');
+    expect(document.querySelector('.total-note').textContent).toBe('1 line needs a variant and isn’t in this total.');
+  });
+
+  it('says why the submit is off as text the button is described by, not as an alert on arrival (NEW-021)', () => {
+    const bare = { lineKey: '22', productId: 22, variant: null, needsVariant: true, name: 'Tweaker energy shots', sku: 'AW-TWEAKER', cat: 'MERCHANDISE', qty: 2, price: null, variants: [] };
+    const gone = { lineKey: '999', productId: 999, variant: null, unavailable: 'product', name: 'Old product', sku: 'AW-OLD', qty: 1, price: null };
+    const gone2 = { ...gone, lineKey: '998', productId: 998 };
+    render(page({ items: [bare, gone, gone2, ...ITEMS], profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true }));
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(submit().getAttribute('aria-describedby')).toBe('quote-blocked-variant quote-blocked-unavailable');
+    expect(document.getElementById('quote-blocked-variant').textContent).toBe('Choose a variant for every product that has more than one.');
+    expect(document.getElementById('quote-blocked-unavailable').textContent).toBe('Remove the items that are no longer available before you submit.');
+    expect(screen.getByRole('button', { name: 'Remove unavailable items' })).toBeTruthy();
   });
 });
 

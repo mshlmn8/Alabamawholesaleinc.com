@@ -40,6 +40,19 @@ describe('CartDrawer totals (AW-103)', () => {
     expect(note().tagName).toBe('P');
   });
 
+  it('names a price-on-request line beside the figure, and shows a dash, not $0.00, when no line counts (NEW-063)', () => {
+    const gushers = { lineKey: '187::regular', productId: 187, variant: 'Regular', name: 'Gushers box — Regular', sku: 'AW-GUSHER-BOX-REGULAR', cat: 'CANDIES', qty: 1, price: null };
+    const view = render(drawer([gushers, KITE]));
+    expect(totalRow()).toBe('Estimated total$40.20');
+    expect(note().textContent).toBe('1 line is priced by the trade desk and isn’t in this total.');
+    // While the prices load, nothing is said to be on request.
+    view.rerender(drawer([gushers, { ...KITE, price: null }], { pricesStatus: 'loading' }));
+    expect(note()).toBeNull();
+    view.rerender(drawer([BARE]));
+    expect(totalRow()).toBe('Estimated total—');
+    expect(note().textContent).toBe('1 line needs a variant and isn’t in this total.');
+  });
+
   it('says nothing about variants to guests and accounts awaiting approval', () => {
     const view = render(drawer([BARE, KITE], { profile: null, isApprovedBuyer: false }));
     expect(note()).toBeNull();

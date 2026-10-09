@@ -179,7 +179,7 @@ test('checkout checks the catalog again and names a line that was taken out (AW-
   expect(sent).toEqual([]);
   expect(calls.length).toBe(2);
 
-  await page.getByRole('button', { name: 'Remove unavailable items' }).click();
+  await page.getByRole('button', { name: 'Remove unavailable item', exact: true }).click();
   await expect(note).toHaveCount(0);
   await page.getByRole('button', { name: /Submit quote request/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: /Thank you/ })).toBeVisible();

@@ -5,7 +5,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   MISSING_FUNCTION_CODES, PRICE_FAILED, PRICE_FAILED_SENTENCE, PRICE_LOADING, PRICE_ON_REQUEST, fromCents, lineTotal, loadPrices, normalizePrices,
-  priceDidNotLoad, priceFor, priceLabel, pctText, sumLines, tierDiscountText, tierName, tierPriceNote, tierUnitPrice, toCents, totalLabel, variantPriceRange,
+  NO_TOTAL, priceDidNotLoad, priceFor, priceLabel, pctText, sumLines, tierDiscountText, tierName, tierPriceNote, tierUnitPrice, toCents, totalLabel, variantPriceRange,
 } from './pricing.js';
 import * as pricing from './pricing.js';
 
@@ -291,12 +291,15 @@ describe('priceLabel and totalLabel', () => {
     expect(totalLabel(unpriced, 0, 'loading')).toBe('Loading prices…');
     expect(totalLabel(unpriced, 0, 'error')).toBe('Prices didn’t load');
     expect(totalLabel(unpriced, 0, 'ready')).toBe('Price on request');
-    expect(totalLabel([], 0, 'loading')).toBe('$0.00');
+    // No line counts: a dash, never $0.00 (NEW-063).
+    expect(totalLabel([], 0, 'loading')).toBe('—');
+    expect(totalLabel([], 0, 'ready')).toBe(NO_TOTAL);
   });
 
   it('looks only at the lines in the total: a line waiting for its variant doesn’t count (AW-103)', () => {
     const waiting = [{ price: 5, qty: 1, needsVariant: true }, { price: null, qty: 2 }];
     expect(totalLabel(waiting, 0, 'loading')).toBe('Loading prices…');
-    expect(totalLabel([{ price: 5, qty: 1, needsVariant: true }], 0, 'ready')).toBe('$0.00');
+    expect(totalLabel([{ price: 5, qty: 1, needsVariant: true }], 0, 'ready')).toBe('—');
+    expect(totalLabel([{ price: 5, qty: 1, needsVariant: true }, { price: 5, qty: 1, unavailable: 'variant' }], 0, 'ready')).toBe('—');
   });
 });

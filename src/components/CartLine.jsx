@@ -42,7 +42,11 @@
 // With showPrice (an approved buyer), a line without a price says why:
 // "Loading price…" while the buyer's prices load, "Price on request" for a
 // product without one (pricesStatus is usePrices().status). The line total
-// is worked in cents, so it is exactly "each" x quantity (AW-077).
+// is worked in cents, so it is exactly "each" x quantity (AW-077). A line
+// still waiting for its variant gives its variants' price instead of the
+// product's (NEW-063): "From $x" when they differ, "$x each" when they are
+// all the same, and nothing when none has a price (item.variantPrice,
+// priceCartItems in src/lib/cart.js).
 
 import { useId, useState } from 'react';
 import { announce } from '../lib/announce.js';
@@ -84,6 +88,13 @@ function VariantChoice({ item: it, onChooseVariant }) {
   );
 }
 
+// A bare line's price (NEW-063): its variants' unit price, "From" the lowest
+// when they differ; '' when none has one.
+function variantPriceText(range) {
+  if (range?.unit == null) return '';
+  return range.from ? `From ${formatMoney(range.unit)}` : `${formatMoney(range.unit)} each`;
+}
+
 export function CartLine({ item: it, layout = 'drawer', showPrice, pricesStatus = 'ready', onSetQty, onRemove, onChoose, onChooseVariant }) {
   const checkout = layout === 'checkout';
   const gone = !!it.unavailable;
@@ -100,6 +111,7 @@ export function CartLine({ item: it, layout = 'drawer', showPrice, pricesStatus 
   const productPage = { page: 'product', productId: it.productId };
   let detail;
   if (gone) detail = [it.sku, `Quantity ${it.qty}`, checkout ? '' : 'No longer available'];
+  else if (it.needsVariant) detail = [it.sku, unit, showPrice ? variantPriceText(it.variantPrice) : ''];
   else detail = [it.sku, unit, priced ? `${formatMoney(it.price)} each` : noPrice];
   return (
     <li className={className} data-line-key={it.lineKey}>

@@ -9,7 +9,7 @@ import { PRODUCTS as BUNDLED_PRODUCTS } from '../data/products.js';
 import {
   canonicalVariant, isVariantAvailable, lineKey, parseLineKey, requiresVariantChoice, normalizeCart, normalizeOrder, resolveCartItems,
 } from './lines.js';
-import { sumLines } from './pricing.js';
+import { sumLines, variantPriceRange } from './pricing.js';
 import { formatMoney } from './format.js';
 import { MAX_QTY, addableQty, clampQty } from './quantity.js';
 import {
@@ -110,11 +110,18 @@ export const NO_PRICES = () => null;
 // from priceOf(productId, variant) (App: the signed-in account's price from
 // usePrices(), src/lib/prices.jsx). price is null when the account sees no
 // prices, the product has none (price on request), and for lines that can no
-// longer be ordered. `options` go to resolveCartItems.
+// longer be ordered. A line still waiting for its variant also gets
+// variantPrice, variantPriceRange() over the variants that can be ordered
+// ({ unit, from }: "From $x" when they differ, NEW-063), because the
+// product's own price may not be the chosen variant's. `options` go to
+// resolveCartItems.
 export const priceCartItems = (cart, products, priceOf = NO_PRICES, options) =>
   resolveCartItems(cart, products, options).map(item => ({
     ...item,
     price: item.unavailable ? null : (priceOf(item.productId, item.variant) ?? null),
+    ...(item.needsVariant
+      ? { variantPrice: variantPriceRange((item.variants || []).filter((v) => v.available).map((v) => priceOf(item.productId, v.label))) }
+      : {}),
   }));
 
 // A line counts toward the estimated total once it can be ordered as it
@@ -127,12 +134,29 @@ export const countsInTotal = (item) => !item.needsVariant && !item.unavailable;
 // sent, so its subtotal is unaffected.
 export const cartTotal = (items) => sumLines(items.filter(countsInTotal));
 
-// Under the estimated total when some lines are left out of it (AW-103):
-// '' when none is.
-export function variantExcludedText(items) {
-  const n = (items || []).filter((it) => it.needsVariant).length;
-  if (!n) return '';
-  return n === 1 ? '1 line needs a variant and isn’t in this total.' : `${n} lines need a variant and aren’t in this total.`;
+// A line that counts toward the total but has no price: priced by the trade
+// desk (price on request). Only once the prices are in (status 'ready'):
+// before that, or when they didn't load, no line has a price yet.
+const priceOnRequest = (item, status) => status === 'ready' && countsInTotal(item) && item.price == null;
+
+// Under the estimated total when some lines are left out of it (AW-103,
+// NEW-063): lines still waiting for their variant, and lines the trade desk
+// prices, which add nothing to the figure. '' when none is. status is
+// usePrices().status. The trade desk's lines are named only beside a figure:
+// when no line has a price the total itself says "Price on request".
+export function variantExcludedText(items, status = 'ready') {
+  const list = items || [];
+  const variants = list.filter((it) => it.needsVariant).length;
+  const priced = list.some((it) => countsInTotal(it) && it.price != null);
+  const onRequest = priced ? list.filter((it) => priceOnRequest(it, status)).length : 0;
+  const sentences = [];
+  if (variants) sentences.push(variants === 1 ? '1 line needs a variant and isn’t in this total.' : `${variants} lines need a variant and aren’t in this total.`);
+  if (onRequest) {
+    sentences.push(onRequest === 1
+      ? '1 line is priced by the trade desk and isn’t in this total.'
+      : `${onRequest} lines are priced by the trade desk and aren’t in this total.`);
+  }
+  return sentences.join(' ');
 }
 
 // What changed for the buyer between the cart lines they reviewed (`before`)

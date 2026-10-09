@@ -105,6 +105,8 @@ import { stateName } from '../data/usStates.js';
 import { QuoteReceipt } from './QuoteReceipt.jsx';
 
 const UNAVAILABLE_ERROR = 'Remove the items that are no longer available before you submit.';
+const UNAVAILABLE_ONE_ERROR = 'Remove the item that is no longer available before you submit.';
+const VARIANT_ERROR = 'Choose a variant for every product that has more than one.';
 // What takes focus on a line put back by Undo (AW-082): its quantity, else
 // its variant select or "Choose variant" link, else its ×. Never the
 // thumbnail's link, which is out of the tab order.
@@ -292,6 +294,9 @@ export function QuotePage({
   const orderable = items.filter(it => !it.unavailable);
   const totalUnits = orderable.reduce((s, i) => s + i.qty, 0);
   const needsVariant = items.some(it => it.needsVariant);
+  // Lines left out of the estimate (AW-103, NEW-063): waiting for a variant,
+  // or priced by the trade desk.
+  const excluded = isApprovedBuyer ? variantExcludedText(items, pricesStatus) : '';
   const invalidQty = orderable.some(it => !isOrderableQty(it.qty));
   const willCall = data.delivery === 'willcall';
   // The tobacco license answers (AW-014): asked of a visitor who isn't an
@@ -305,6 +310,19 @@ export function QuotePage({
   // What keeps the submit button off (apart from a send in progress). The
   // minimum note says "you can still submit" only when nothing does (AW-076).
   const submitBlocked = isSuspended || !isBackendConfigured || needsVariant || unavailable.length > 0 || invalidQty || lostOrdering || !online;
+  // Why the submit button is off, said under it as plain text it is
+  // described by (NEW-021): these show from the start, before the buyer has
+  // done anything, so they aren't alerts. The catalog-change message and a
+  // refused send, which follow a submit, stay alerts; while the change
+  // message names the lines that are no longer available, the line saying
+  // so in general is left out.
+  const blockedNotes = [
+    needsVariant && { id: 'quote-blocked-variant', text: VARIANT_ERROR },
+    unavailable.length > 0 && !changeText && {
+      id: 'quote-blocked-unavailable', text: unavailable.length === 1 ? UNAVAILABLE_ONE_ERROR : UNAVAILABLE_ERROR,
+    },
+    invalidQty && { id: 'quote-blocked-qty', text: QTY_ERROR },
+  ].filter(Boolean);
   let submitLabel = basket.submit;
   if (phase === 'checking') submitLabel = 'Checking the catalog…';
   else if (phase === 'sending') submitLabel = 'Sending…';
@@ -333,11 +351,11 @@ export function QuotePage({
       return;
     }
     if (needsVariant) {
-      setSubmitError('Choose a variant for every product that has more than one.');
+      setSubmitError(VARIANT_ERROR);
       return;
     }
     if (unavailable.length) {
-      setSubmitError(UNAVAILABLE_ERROR);
+      setSubmitError(unavailable.length === 1 ? UNAVAILABLE_ONE_ERROR : UNAVAILABLE_ERROR);
       return;
     }
     if (invalidQty) {
@@ -582,21 +600,19 @@ export function QuotePage({
             </Field>
           </div>
           </fieldset>
-          {/* Lines still waiting for a variant are not in the estimate (AW-103). */}
+          {/* Lines still waiting for a variant, or priced by the trade desk, are not in the estimate (AW-103, NEW-063). */}
           <div className="drawer-total checkout-total">
             <span>{`Estimated subtotal · ${totalUnits} ${totalUnits === 1 ? 'unit' : 'units'}`}</span>
             <span>{isApprovedBuyer ? totalLabel(items, total, pricesStatus) : (isSuspended ? 'Ordering paused' : (signedIn ? 'Pricing after approval' : 'Pricing confirmed by the trade desk'))}</span>
           </div>
-          {isApprovedBuyer && needsVariant && <p className="total-note">{variantExcludedText(items)}</p>}
+          {excluded && <p className="total-note">{excluded}</p>}
           {/* The approved buyer's way to the minimum and free delivery (AW-238).
               Guests and pending accounts already read who confirms pricing in
               the row above; the counts are under the list. */}
           {isApprovedBuyer && <CartSummary items={items} total={total} isApprovedBuyer isSuspended={isSuspended} pricesStatus={pricesStatus} showCounts={false} />}
           {pricedBelowMinimum && !submitBlocked && <p className="notice" role="status">{`The order minimum is ${formatMoney(ORDER_MINIMUM)}. You can still submit this order.`}</p>}
           {!isBackendConfigured && <p className="form-error" role="status"><CallOrEmail before="Quote requests can’t be saved right now. Call" after=" and the trade desk will write it up with you." /></p>}
-          {needsVariant && <p className="form-error" role="alert">Choose a variant for every product that has more than one.</p>}
-          {unavailable.length > 0 && <p className="form-error" role="alert">{UNAVAILABLE_ERROR}</p>}
-          {invalidQty && <p className="form-error" role="alert">{QTY_ERROR}</p>}
+          {blockedNotes.map((note) => <p key={note.id} className="form-error" id={note.id}>{note.text}</p>)}
           {changeText && <p className="form-error" role="alert">{changeText}</p>}
           {submitError && <p className="form-error" id="quote-submit-error" role="alert">{typeof submitError === 'string' ? submitError : <CallOrEmail before={submitError.before} after={submitError.after} />}</p>}
           {lostOrdering && (
@@ -613,7 +629,8 @@ export function QuotePage({
           {/* A suspended account can't order (AW-201): no submit, a way to reach the trade desk. */}
           {isSuspended && <p className="notice quote-paused">Ordering is paused on this account. <CallOrEmail after=" and a trade rep will help you sort it out." /></p>}
           {!isSuspended && (
-          <button className="button wide" type="submit" disabled={sending || submitBlocked}>
+          <button className="button wide" type="submit" disabled={sending || submitBlocked}
+                  aria-describedby={blockedNotes.length ? blockedNotes.map((note) => note.id).join(' ') : undefined}>
             <span>{submitLabel}</span></button>
           )}
           {/* The site notice reads "You’re offline" out; this says why the button is off. */}
