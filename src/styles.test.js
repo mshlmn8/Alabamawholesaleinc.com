@@ -512,7 +512,7 @@ describe('the markup uses the design system (merged PR #12, PR #13 and lane p2 p
     // "Not available" uses the button's own disabled state.
     expect(card).toMatch(/className="button ghost sm card-add" type="button" disabled/);
     expect(css).not.toMatch(/\.card-add:disabled/);
-    const admin = code(read('src/pages/admin/AdminPage.jsx'));
+    const admin = code(read('src/pages/admin/OrdersSection.jsx'));
     expect(admin).toMatch(/className="button" type="button" disabled=\{busy \|\| !workflow\} onClick=\{save\}>Save prices/);
   });
 });
