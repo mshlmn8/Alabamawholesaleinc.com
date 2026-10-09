@@ -12,6 +12,7 @@ import { DOCUMENT_TYPES, listAllProfileDocuments } from '../../lib/documents.js'
 import { useLeaveGuard } from './useLeaveGuard.js';
 import { adminErrorMessage, withStatus } from './adminData.js';
 import { LoadProblem } from './AdminStatus.jsx';
+import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { AccountFacts, DocumentView, Email, approvalLine, useDocumentViewer } from './accountParts.jsx';
 import { AccountChangeDialog, accountControlId, useAccountChanges } from './AccountChanges.jsx';
 import { AccountDetail } from './AccountDetail.jsx';
@@ -112,9 +113,22 @@ function AccountsList({
   const viewer = useDocumentViewer();
   const [openId, setOpenId] = useState(null);
   const [noteDraft, setNoteDraft] = useState('');
-  // A verification note typed but not saved: leaving the page asks first (AW-118).
+  // A verification note typed but not saved: leaving the page asks first
+  // (AW-118), and so do Hide and another account's Details, which would
+  // drop it (discarding: { next }, the account to open then, or null).
   const openProfile = openId && profiles ? profiles.find(row => row.id === openId) : null;
-  useLeaveGuard(!!openProfile && noteDraft !== (openProfile.verification_note || ''), 'The verification note isn’t saved. Leave without saving it?');
+  const noteDirty = !!openProfile && noteDraft !== (openProfile.verification_note || '');
+  useLeaveGuard(noteDirty, 'The verification note isn’t saved. Leave without saving it?');
+  const [discarding, setDiscarding] = useState(null);
+  const showDetails = (next) => {
+    setOpenId(next);
+    setNoteDraft((next && profiles?.find(row => row.id === next)?.verification_note) || '');
+  };
+  const toggleDetails = (p) => {
+    const next = openId === p.id ? null : p.id;
+    if (noteDirty) setDiscarding({ next });
+    else showDetails(next);
+  };
   const loadDocuments = () => listAllProfileDocuments().then(
     (rows) => { setDocuments(rows); setDocumentsError(null); },
     (error) => setDocumentsError(adminErrorMessage(error, 'The licence documents didn’t load')),
@@ -260,7 +274,7 @@ function AccountsList({
                           type="button"
                           aria-expanded={openId === p.id}
                           aria-controls={openId === p.id ? `account-details-${p.id}` : undefined}
-                          onClick={() => { setOpenId(openId === p.id ? null : p.id); setNoteDraft(p.verification_note || ''); }}
+                          onClick={() => toggleDetails(p)}
                         >
                           <span>{openId === p.id ? 'Hide' : 'Details'}</span>
                           <span className="sr-only">{` for ${p.business || p.name}`}</span>
@@ -301,6 +315,15 @@ function AccountsList({
             </tbody>
           </table>
         </div>
+      )}
+      {discarding && openProfile && (
+        <ConfirmDialog
+          title={`Discard the verification note for ${openProfile.business || openProfile.name || 'this account'}?`}
+          body="The note you typed isn’t saved yet."
+          confirmLabel="Discard the note" cancelLabel="Keep editing"
+          onConfirm={() => { const { next } = discarding; setDiscarding(null); showDetails(next); }}
+          onCancel={() => setDiscarding(null)}
+        />
       )}
     </div>
   );

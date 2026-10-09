@@ -224,6 +224,19 @@ describe('staff notes and history', () => {
     expect(screen.getByRole('status').textContent).toBe('Added a note to ALW-O-BBBB222233.');
   });
 
+  it('keep a note being typed when the panel is closed, without loading again (AW-118)', async () => {
+    await open();
+    const details = await openStaff('ALW-O-BBBB222233');
+    fireEvent.change(within(details).getByLabelText('Add a staff note'), { target: { value: 'Half typed' } });
+    await act(async () => {
+      details.open = false;
+      details.dispatchEvent(new Event('toggle'));
+    });
+    await openStaff('ALW-O-BBBB222233');
+    expect(within(details).getByLabelText('Add a staff note').value).toBe('Half typed');
+    expect(fake.find({ table: 'order_events' })).toHaveLength(1);
+  });
+
   it('say they need the October 2026 update when the tables are missing, and hide "Assigned to" without the column', async () => {
     db.tableError.order_events = MISSING_TABLE;
     // Rows from a database without orders.assigned_to.

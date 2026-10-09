@@ -588,6 +588,9 @@ function OrderCard({
   };
   const business = o.profiles?.business || o.business || o.contact;
   const [staffOpen, setStaffOpen] = useState(false);
+  // Once opened, the panel stays mounted while it is closed, so closing it
+  // doesn't drop a note being typed (its leave guard still asks; AW-118).
+  const [staffOpened, setStaffOpened] = useState(false);
 
   const unpriced = items.some(it => it.unit_price == null);
   const draftTotal = draft ? linesTotal(draft) : null;
@@ -692,13 +695,17 @@ function OrderCard({
       </div>
       {workflow && quote && !draft && unpriced && <p className="order-notes">Price every line to convert this quote to an order.</p>}
       {/* Internal: notes, assignment and history load when this is opened. */}
-      <details className="order-staff" open={staffOpen} onToggle={(e) => setStaffOpen(e.currentTarget.open)}>
+      <details className="order-staff" open={staffOpen} onToggle={(e) => {
+        const open = e.currentTarget.open;
+        setStaffOpen(open);
+        if (open) setStaffOpened(true);
+      }}>
         <summary>
           <Icon name="plus" className="order-staff-plus" />
           <Icon name="minus" className="order-staff-minus" />
           <span>Staff notes and history</span><span className="sr-only">{` for ${o.ref_num}`}</span>
         </summary>
-        {staffOpen && <OrderStaff order={o} admins={admins} assignment={assignment} onAssigned={onAssigned} notify={notify} />}
+        {staffOpened && <OrderStaff order={o} admins={admins} assignment={assignment} onAssigned={onAssigned} notify={notify} />}
       </details>
       {cancelling && (
         <ConfirmDialog

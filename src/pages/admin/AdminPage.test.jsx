@@ -164,6 +164,33 @@ describe('an unsaved verification note (AW-118)', () => {
   });
 });
 
+describe('an unsaved verification note in the list (AW-118)', () => {
+  afterEach(async () => {
+    // ConfirmDialog's history entry is removed asynchronously.
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+  });
+
+  it('asks before Details on another account or Hide drops it', async () => {
+    await openAccounts();
+    fireEvent.click(within(rowFor('Alpha Food Mart')).getByRole('button', { name: named('Details', 'Alpha Food Mart') }));
+    fireEvent.change(screen.getByLabelText('Verification note'), { target: { value: 'Checked twice' } });
+    fireEvent.click(within(rowFor('Bravo Tobacco Outlet')).getByRole('button', { name: named('Details', 'Bravo Tobacco Outlet') }));
+    const dialog = screen.getByRole('alertdialog', { name: 'Discard the verification note for Alpha Food Mart?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Keep editing' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByLabelText('Verification note').value).toBe('Checked twice');
+    fireEvent.click(within(rowFor('Alpha Food Mart')).getByRole('button', { name: named('Hide', 'Alpha Food Mart') }));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Discard the note' }));
+    expect(screen.queryByLabelText('Verification note')).toBeNull();
+    // A clean note goes without asking.
+    fireEvent.click(within(rowFor('Bravo Tobacco Outlet')).getByRole('button', { name: named('Details', 'Bravo Tobacco Outlet') }));
+    fireEvent.click(within(rowFor('Alpha Food Mart')).getByRole('button', { name: named('Details', 'Alpha Food Mart') }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByLabelText('Verification note').value).toBe('Checked');
+    expect(updates()).toEqual([]);
+  });
+});
+
 describe('Admin orders', () => {
   it('shows the licence answers a guest gave with a tobacco quote', async () => {
     fake.tables.orders = [{
