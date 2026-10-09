@@ -36,6 +36,13 @@
 // buyer below it is told "You can still submit this order" only while the
 // submit button can actually be used (Cursor's PR #13).
 //
+// A signed-in buyer's ship-to address starts from the store address on the
+// application (src/lib/quoteForm.js), then from the address of their last
+// delivery order when there is one (loadShipTo, from App: src/lib/shipTo.js,
+// AW-102), without new storage and never over typed text. While the fields
+// hold one of those, "Use a different address" empties them and moves to
+// Street.
+//
 // After the save (AW-012, AW-022): one send at a time, the lines that were
 // sent leave the cart, and the page shows a receipt (QuoteReceipt.jsx) built
 // from what was sent and what submit_quote answered. App keeps that receipt
@@ -53,7 +60,7 @@ import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../data/content
 import { QUOTE_ERROR_GENERIC, QUOTE_OFFLINE, quoteErrorField, quoteErrorMessage, submitOrder, todayInBirmingham } from '../lib/orders.js';
 import { isOffline } from '../lib/network.js';
 import { useOnlineStatus } from '../lib/useOnlineStatus.js';
-import { cartChanges, describeCartChanges } from '../lib/cart.js';
+import { cartChanges, describeCartChanges, variantExcludedText } from '../lib/cart.js';
 import { QTY_RANGE_TEXT, isOrderableQty } from '../lib/quantity.js';
 import { formatMoney, formatMoneyShort } from '../lib/format.js';
 import { totalLabel } from '../lib/pricing.js';
@@ -67,7 +74,7 @@ import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
 import { CartLine } from '../components/CartLine.jsx';
 import { SavedLinesNotice, UnavailableNotice } from '../components/CartNotices.jsx';
 import { AccountLoading } from '../components/AccountStatus.jsx';
-import { initialQuoteForm, quoteFormForAccount } from '../lib/quoteForm.js';
+import { accountShipToSource, applyShipTo, clearShipTo, initialQuoteForm, quoteFormForAccount } from '../lib/quoteForm.js';
 import { QuoteReceipt } from './QuoteReceipt.jsx';
 
 const UNAVAILABLE_ERROR = 'Remove the items that are no longer available before you submit.';
@@ -83,7 +90,7 @@ export function QuotePage({
   items, total, setLine, chooseVariant, removeLine, removeLines, clearCart, legacy = [], onDismissLegacy,
   profile, account = profile ? 'ready' : 'signed-out', signedIn = !!profile, onSignIn, onApplyClick, isApprovedBuyer, isBackendConfigured,
   checkCart = null, pricesStatus = 'ready', isSuspended = false,
-  savedReceipt = null, entryKey = null, onSubmitted,
+  savedReceipt = null, entryKey = null, onSubmitted, loadShipTo = null,
 }) {
   const [data, setData] = useState(() => initialQuoteForm(profile));
   // The field the last refused submit was about (its hint), marked invalid
@@ -132,6 +139,38 @@ export function QuotePage({
     // The receipt on screen was the last account's.
     setReceipt(null);
   }
+
+  // The account's last delivery address (AW-102), once per account. It goes
+  // into the ship-to fields once, when it arrives, and only where nothing was
+  // typed (applyShipTo). Any failure leaves the form as it is.
+  const [savedShipTo, setSavedShipTo] = useState(null); // { for, value }
+  useEffect(() => {
+    if (!profileId || !loadShipTo) return undefined;
+    const controller = new AbortController();
+    let live = true;
+    loadShipTo(profileId, { signal: controller.signal }).then((value) => {
+      if (live && value) setSavedShipTo({ for: profileId, value });
+    }, () => {});
+    return () => {
+      live = false;
+      controller.abort();
+    };
+  }, [profileId, loadShipTo]);
+  const shipTo = savedShipTo?.for === profileId ? savedShipTo.value : null;
+  const [shipToApplied, setShipToApplied] = useState(null);
+  if (shipTo && shipToApplied !== savedShipTo) {
+    setShipToApplied(savedShipTo);
+    setData((current) => applyShipTo(current, profile, shipTo));
+  }
+  // "Use a different address": while the fields hold the account's own
+  // address, the buyer can empty them in one go; Street takes focus.
+  const streetRef = useRef(null);
+  const shipFrom = profile ? accountShipToSource(data, profile, shipTo) : null;
+  const chooseOtherAddress = () => {
+    setData((current) => clearShipTo(current));
+    if (errorField && errorField.startsWith('ship')) setErrorField(null);
+    streetRef.current?.focus();
+  };
 
   // Ordering lost mid-checkout (AW-048): a buyer who was placing an order and
   // is now signed out, or signed in to an account that can't order, must not
@@ -391,7 +430,13 @@ export function QuotePage({
               <p className="full result-note" id="quote-pickup">{`Pickup at ${COMPANY.addressShort} during business hours.`}</p>
             ) : (
               <>
-                <div className="full"><label htmlFor="ship-street">Street</label><input id="ship-street" name="shipStreet" value={data.shipStreet} onChange={set('shipStreet')} required maxLength={200} autoComplete="street-address" {...fieldProps('shipStreet')} /></div>
+                {shipFrom && (
+                  <div className="full ship-from">
+                    <span>{shipFrom === 'saved' ? 'Your last delivery address.' : 'Your store address.'}</span>
+                    <button className="text-link" type="button" onClick={chooseOtherAddress}>Use a different address</button>
+                  </div>
+                )}
+                <div className="full"><label htmlFor="ship-street">Street</label><input id="ship-street" ref={streetRef} name="shipStreet" value={data.shipStreet} onChange={set('shipStreet')} required maxLength={200} autoComplete="street-address" {...fieldProps('shipStreet')} /></div>
                 <div><label htmlFor="ship-city">City</label><input id="ship-city" name="shipCity" value={data.shipCity} onChange={set('shipCity')} required maxLength={100} autoComplete="address-level2" {...fieldProps('shipCity')} /></div>
                 <div><label htmlFor="ship-state">State</label><input id="ship-state" name="shipState" value={data.shipState} onChange={set('shipState')} required maxLength={2} pattern="[A-Za-z]{2}" title="The 2-letter state code, for example AL" autoCapitalize="characters" autoComplete="address-level1" {...fieldProps('shipState')} /></div>
                 <div><label htmlFor="ship-zip">ZIP</label><input id="ship-zip" name="shipZip" value={data.shipZip} onChange={set('shipZip')} required maxLength={10} pattern="[0-9]{5}(-[0-9]{4})?" title="A 5-digit ZIP code, or ZIP+4" autoComplete="postal-code" inputMode="numeric" {...fieldProps('shipZip')} /></div>
@@ -401,10 +446,12 @@ export function QuotePage({
             <div className="full"><label htmlFor="quote-notes">Notes</label><input id="quote-notes" name="notes" value={data.notes} onChange={set('notes')} maxLength={2000} placeholder="Dock hours, pallet needs, substitutions…" autoComplete="off" /></div>
           </div>
           </fieldset>
+          {/* Lines still waiting for a variant are not in the estimate (AW-103). */}
           <div className="drawer-total checkout-total">
-            <span>{`${totalUnits} ${totalUnits === 1 ? 'unit' : 'units'}`}</span>
+            <span>{`Estimated subtotal · ${totalUnits} ${totalUnits === 1 ? 'unit' : 'units'}`}</span>
             <span>{isApprovedBuyer ? totalLabel(items, total, pricesStatus) : (isSuspended ? 'Ordering paused' : (signedIn ? 'Pricing after approval' : 'Pricing after sign-in'))}</span>
           </div>
+          {isApprovedBuyer && needsVariant && <p className="total-note">{variantExcludedText(items)}</p>}
           {pricedBelowMinimum && !submitBlocked && <p className="notice" role="status">{`The order minimum is ${formatMoney(ORDER_MINIMUM)}. You can still submit this order.`}</p>}
           {!isBackendConfigured && <p className="form-error" role="status"><CallOrEmail before="Quote requests can’t be saved right now. Call" after=" and the trade desk will write it up with you." /></p>}
           {needsVariant && <p className="form-error" role="alert">Choose a variant for every product that has more than one.</p>}

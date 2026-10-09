@@ -11,6 +11,13 @@
 // variant; before one is chosen, variants priced differently show "From $x"
 // (AW-030).
 //
+// Around the price (AW-265), all from my_prices(): the buyer's tier ("Silver
+// price"), the list price struck through and the tier's discount when there
+// is one ("list $34.05 · you save 5%"; listOf and priceTier from App), and
+// the SKU once it names what is added (a chosen or only variant), else
+// "Choose a flavor". Under the quantity, quantity × price = the line total,
+// worked in cents like the cart's.
+//
 // Variants (AW-233, AW-128): a product with several gets chips labelled with
 // its axis ("Choose a flavor"), and a variant marked not available is a
 // disabled chip that says so (AW-030). A product with one variant has no
@@ -32,8 +39,10 @@ import { useState } from 'react';
 import {
   informativeVariant, isVariantAvailable, lineKey, requiresVariantChoice, variantAxis, variantList, variantSku,
 } from '../lib/lines.js';
-import { priceLabel, variantPriceRange } from '../lib/pricing.js';
-import { brandLabel, catLabel } from '../lib/format.js';
+import { lineTotal, pctText, priceLabel, tierName, variantPriceRange } from '../lib/pricing.js';
+import { PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
+import { COMPANY } from '../data/content.js';
+import { brandLabel, catLabel, formatMoney } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { Breadcrumbs, HOME_CRUMB } from '../components/Breadcrumbs.jsx';
@@ -50,7 +59,8 @@ import { maxPerLineText } from '../lib/quantity.js';
 const NO_PRICES = () => null;
 
 export function ProductPage({
-  productId, profile, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, products, onLoginClick, onApplyClick, savedQty = 0,
+  productId, profile, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', listOf = NO_PRICES, priceTier = null,
+  cart, addLine, decLine, products, onLoginClick, onApplyClick, savedQty = 0,
 }) {
   const [desiredQty, setDesiredQty] = useState(() => savedQty || 1);
   // What is left of the saved quantity after each add becomes the next one.
@@ -82,12 +92,32 @@ export function ProductPage({
   const brand = brandLabel(p.brand);
   const credit = p.picture ? photoCredit(p) : '';
   const creditSource = photoCreditSource(p);
+  // An account on hold is told ordering is paused and who to call, not that
+  // pricing waits for approval (AW-101).
+  const onHold = !isApprovedBuyer && accountStatus(profile) === 'suspended';
   let shown = { unit: null, from: false };
+  // The list price beside a single unit price: the chosen (or only)
+  // variant's, or the one every available variant shares (AW-265).
+  let list = null;
   if (isApprovedBuyer) {
-    shown = choiceRequired && !selected
+    const pending = choiceRequired && !selected;
+    shown = pending
       ? variantPriceRange(variants.filter(available).map(v => priceOf(p.id, v)))
       : { unit: priceOf(p.id, selected), from: false };
+    if (shown.unit != null && !shown.from) {
+      const lists = pending ? variantPriceRange(variants.filter(available).map(v => listOf(p.id, v))) : { unit: listOf(p.id, selected), from: false };
+      list = lists.from ? null : lists.unit;
+    }
   }
+  const tier = tierName(priceTier?.tier);
+  const discountPct = Number(priceTier?.discountPct) || 0;
+  const showSaving = shown.unit != null && !shown.from && list != null && discountPct > 0;
+  // What is added: the variant's SKU once it is known.
+  const skuLine = choiceRequired && !selected ? `Choose a ${axis.noun}` : `SKU ${variantSku(p.sku, selected)}`;
+  // quantity × price = line total, for a single known price.
+  const qtyTotal = isApprovedBuyer && shown.unit != null && !shown.from
+    ? `${desiredQty.toLocaleString('en-US')} × ${formatMoney(shown.unit)} = ${formatMoney(lineTotal(shown.unit, desiredQty))}`
+    : '';
   const handleAdd = () => {
     if (choiceRequired && !chosen) {
       setVariantError(true);
@@ -147,7 +177,16 @@ export function ProductPage({
           {variantError && <p className="form-error" role="alert">{`Select a ${axis.noun} before adding this product.`}</p>}
           <div className="pd-price">
             {isApprovedBuyer
-              ? <><b>{priceLabel(shown.unit, pricesStatus, { from: shown.from })}</b><span>{`Wholesale unit price · ${variantSku(p.sku, selected)}`}</span></>
+              ? (
+                <>
+                  <b>{priceLabel(shown.unit, pricesStatus, { from: shown.from })}</b>
+                  <span>{shown.unit != null && tier ? `${tier} price` : 'Wholesale unit price'}</span>
+                  {showSaving && <span className="pd-save">list <s>{formatMoney(list)}</s> · you save <strong>{pctText(discountPct)}</strong></span>}
+                  <span>{skuLine}</span>
+                </>
+              )
+              : onHold
+              ? <><b>On hold</b><span>{PRICE_LOCK.suspended.line}</span></>
               : profile
               ? <><b>Pending</b><span>Pricing unlocks after your account is approved</span></>
               : <><b>Sign in</b><span>Wholesale pricing is visible to approved trade accounts</span></>}
@@ -157,6 +196,7 @@ export function ProductPage({
             <QuantityInput value={desiredQty} onChange={setDesiredQty} min={1} label={`Quantity of ${p.name} to add`} groupLabel="Quantity to add" />
             <button className="button" type="button" onClick={handleAdd} disabled={(choiceRequired && !chosen) || soleUnavailable}><span>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</span></button>
           </div>
+          {qtyTotal && <p className="in-cart-note pd-line-total">{qtyTotal}</p>}
           {qty > 0 && <p className="in-cart-note"><span>{`Already in ${isApprovedBuyer ? 'order' : 'quote'}: `}</span><strong>{qty}</strong><span>{selected ? ` · ${selected}` : ''}</span></p>}
           {!profile && (
             <div className="dialog-actions compact-actions">
@@ -166,7 +206,8 @@ export function ProductPage({
           )}
           {profile && !isApprovedBuyer && (
             <div className="dialog-actions compact-actions">
-              <Link className="text-link" to="/account">View approval status</Link>
+              {onHold && <a className="text-link" href={`tel:${COMPANY.phoneRaw}`}>{`Call ${COMPANY.phone}`}</a>}
+              <Link className="text-link" to="/account">{onHold ? 'View account status' : 'View approval status'}</Link>
             </div>
           )}
         </div>

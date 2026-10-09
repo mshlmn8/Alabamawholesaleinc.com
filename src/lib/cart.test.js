@@ -2,8 +2,8 @@
 // no prices (AW-003): a line's price comes from priceOf(productId, variant).
 import { describe, expect, it } from 'vitest';
 import {
-  NO_PRICES, addableLineKey, cartChanges, cartCount, cartTotal, decrementLine, deleteLine, describeCartChanges, incrementLine, mergeLines,
-  moveLineToVariant, priceCartItems, setLineQuantity,
+  NO_PRICES, addableLineKey, cartChanges, cartCount, cartTotal, countsInTotal, decrementLine, deleteLine, describeCartChanges, incrementLine, mergeLines,
+  moveLineToVariant, priceCartItems, setLineQuantity, variantExcludedText,
 } from './cart.js';
 
 const P = [
@@ -121,7 +121,21 @@ describe('priceCartItems and cartTotal', () => {
     expect(cartTotal(guest)).toBe(0);
     const approved = priceCartItems(cart, P, APPROVED);
     expect(approved.map(i => [i.lineKey, i.price])).toEqual([['1', 10], ['14', 20], ['1::red', 10]]);
-    expect(cartTotal(approved)).toBe(60);
+    // The bare line '1' still needs its variant: it isn't in the total (AW-103).
+    expect(cartTotal(approved)).toBe(50);
+  });
+
+  it('leaves lines that still need a variant out of the total, and says how many (AW-103)', () => {
+    const items = priceCartItems({ 1: 8, 14: 2, '1::red': 3 }, P, APPROVED);
+    expect(items.map(i => [i.lineKey, i.needsVariant, countsInTotal(i)])).toEqual([['1', true, false], ['14', false, true], ['1::red', false, true]]);
+    expect(cartTotal(items)).toBe(70);
+    expect(variantExcludedText(items)).toBe('1 line needs a variant and isn’t in this total.');
+    const withTwo = [...P, { id: 2, sku: 'AW-TWO', name: 'Two', variants: ['A', 'B'] }];
+    const two = priceCartItems({ 1: 8, 2: 1, 14: 2 }, withTwo, priceOf({ ...UNIT, 2: 3 }));
+    expect(cartTotal(two)).toBe(40);
+    expect(variantExcludedText(two)).toBe('2 lines need a variant and aren’t in this total.');
+    expect(variantExcludedText(priceCartItems({ 14: 2 }, P, APPROVED))).toBe('');
+    expect(variantExcludedText([])).toBe('');
   });
 
   it('asks priceOf with the line’s variant, so a variant’s own price is used', () => {

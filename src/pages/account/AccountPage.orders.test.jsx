@@ -2,6 +2,7 @@
 // starts from nothing and a late answer for the last one is ignored, a
 // stalled request gives up after 20 s, a failed load says so in words with
 // Try again, and offline says the orders load on reconnect (and they do).
+// The history itself is OrderHistory (AW-104, AW-105).
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { REQUEST_TIMEOUT_MS } from '../../lib/network.js';
@@ -15,7 +16,10 @@ vi.mock('../../lib/supabase.js', () => {
     const query = {
       select: (columns) => { request.columns = columns; return query; },
       eq: (column, value) => { request.filters[column] = value; return query; },
+      in: () => query,
+      ilike: () => query,
       order: () => query,
+      range: () => query,
       abortSignal: (signal) => {
         request.signal = signal;
         db.requests.push(request);
@@ -31,16 +35,19 @@ vi.mock('../../lib/supabase.js', () => {
 });
 
 const { AccountPage, ORDER_HISTORY_ERRORS } = await import('./AccountPage.jsx');
-const { ORDER_HISTORY_SELECT } = await import('./useOrderHistory.js');
+const { ORDER_COLUMN_STEPS, resetOrderColumnsForTests } = await import('./orderHistory.js');
 
 const profile = (id, business) => ({ id, business, name: 'Test Buyer', email: `${id}@example.test`, status: 'approved', role: 'customer', pricing_tier: 'silver' });
 const order = (id, ref) => ({ id, ref_num: ref, status: 'new', total_units: 1, subtotal: null, created_at: '2026-10-01T12:00:00Z', order_items: [] });
 const last = () => db.requests[db.requests.length - 1];
 const alert = () => screen.queryByRole('alert');
+// The order numbers on the cards.
+const refs = () => [...document.querySelectorAll('.order-ref')].map((el) => el.textContent);
 
 let logged;
 beforeEach(() => {
   db.requests.length = 0;
+  resetOrderColumnsForTests();
   logged = vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 afterEach(() => vi.useRealTimers());
@@ -48,7 +55,7 @@ afterEach(() => vi.useRealTimers());
 describe('AccountPage order history', () => {
   it('asks for the account’s orders, newest first, with a time limit', () => {
     render(<AccountPage profile={profile('a', 'Alpha')} account="ready" />);
-    expect(last()).toMatchObject({ table: 'orders', filters: { user_id: 'a' }, columns: ORDER_HISTORY_SELECT });
+    expect(last()).toMatchObject({ table: 'orders', filters: { user_id: 'a' }, columns: ORDER_COLUMN_STEPS[0] });
     expect(last().signal).toBeInstanceOf(AbortSignal);
     expect(screen.getByText('Loading…')).toBeTruthy();
   });
@@ -57,15 +64,15 @@ describe('AccountPage order history', () => {
     const view = render(<AccountPage profile={profile('a', 'Alpha')} account="ready" />);
     const forA = last();
     await act(async () => { forA.answer({ data: [order('oa1', 'ALW-O-AAAAAAAAAA')], error: null }); });
-    expect(screen.getByText('ALW-O-AAAAAAAAAA')).toBeTruthy();
+    expect(refs()).toContain('ALW-O-AAAAAAAAAA');
     // Another account on the same page (no remount).
     view.rerender(<AccountPage profile={profile('b', 'Bravo')} account="ready" />);
-    expect(screen.queryByText('ALW-O-AAAAAAAAAA')).toBeNull();
+    expect(refs()).not.toContain('ALW-O-AAAAAAAAAA');
     expect(screen.getByText('Loading…')).toBeTruthy();
     const forB = last();
     expect(forB.filters.user_id).toBe('b');
     await act(async () => { forB.answer({ data: [order('ob1', 'ALW-O-BBBBBBBBBB')], error: null }); });
-    expect(screen.getByText('ALW-O-BBBBBBBBBB')).toBeTruthy();
+    expect(refs()).toContain('ALW-O-BBBBBBBBBB');
   });
 
   it('cancels its request when the page goes, and a late answer changes nothing', async () => {
@@ -80,15 +87,16 @@ describe('AccountPage order history', () => {
   it('says it couldn’t load the orders, logs the detail, and tries again on request', async () => {
     render(<AccountPage profile={profile('a', 'Alpha')} account="ready" />);
     await act(async () => { last().answer({ data: null, error: { code: 'XX000', message: 'upstream exploded' } }); });
-    expect(alert().textContent).toMatch(/^We couldn’t load your orders\. Need an order now\? Call \(205\) [\d-]+ or email \S+@\S+\.Try again$/);
+    expect(alert().textContent).toMatch(/^We couldn’t load your orders\. Need an order now\? Call \(205\) [\d-]+ or email \S+@\S+\.$/);
     expect(alert().textContent).not.toMatch(/upstream exploded/);
     expect(logged).toHaveBeenCalledWith('Order history did not load:', 'XX000 upstream exploded');
+    // Try again keeps its place (and focus) while it works.
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    expect(alert()).toBeNull();
-    expect(screen.getByText('Loading…')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Trying again…' })).toBeTruthy();
     expect(db.requests).toHaveLength(2);
     await act(async () => { last().answer({ data: [order('oa1', 'ALW-O-AAAAAAAAAA')], error: null }); });
-    expect(screen.getByText('ALW-O-AAAAAAAAAA')).toBeTruthy();
+    expect(refs()).toContain('ALW-O-AAAAAAAAAA');
+    expect(alert()).toBeNull();
   });
 
   it('gives up on a stalled request after 20 s', async () => {

@@ -41,8 +41,9 @@ afterEach(async () => {
 });
 const updates = () => fake.find({ op: 'update' }).map(({ table, filters, patch }) => ({ table, id: filters.find(([name]) => name === 'eq')[2], patch }));
 
+// Every status: the list opens on pending accounts (AW-268).
 async function openAccounts(profile = ADMIN) {
-  await act(async () => { render(<AdminPage profile={profile} account="ready" route={{ page: 'admin', section: 'accounts', query: {} }} />); });
+  await act(async () => { render(<AdminPage profile={profile} account="ready" route={{ page: 'admin', section: 'accounts', query: { status: 'all' } }} />); });
   return screen.findByRole('table');
 }
 const rowOf = (business) => screen.getByRole('cell', { name: business }).closest('tr');

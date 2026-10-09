@@ -2,11 +2,14 @@
 // (accountDetail.test.js). The page is AccountDetail.jsx.
 //
 //   matchesAccountSearch(profile, text)  the list's search box
+//   accountStatusCounts(profiles)        the list's status pills (AW-268)
+//   accountCountText({ listed, shown, filter, searching })   its count line
 //   contactDraft / contactChanges / validateContact   the contact and store form
 //   loadAccountOrders / ordersSummary                 the account's orders
 //   loadStatusHistory / historyText                   its status and role history
 
 import { fromCents, toCents } from '../../lib/pricing.js';
+import { accountStatus } from '../../lib/accountStatus.js';
 import { adminHref } from '../../lib/adminRoutes.js';
 import { statusLabel } from './orderStaff.js';
 
@@ -23,6 +26,35 @@ export function matchesAccountSearch(profile, text) {
   const digits = query.replace(/\D/g, '');
   return digits.length >= 3 && digits.length === query.replace(/[\s().+-]/g, '').length
     && String(profile?.phone ?? '').replace(/\D/g, '').includes(digits);
+}
+
+// How many accounts each status pill of the list counts (AW-268):
+// { pending, approved, suspended, all }. A status the site doesn't know
+// counts as pending, as everywhere else (accountStatus.js). The counts come
+// from the loaded accounts; AW-199's per-status count queries can take this
+// function's place.
+export function accountStatusCounts(profiles) {
+  const counts = { pending: 0, approved: 0, suspended: 0, all: 0 };
+  for (const profile of profiles || []) {
+    counts[accountStatus(profile || {})] += 1;
+    counts.all += 1;
+  }
+  return counts;
+}
+
+// The list's count line (AW-268): '3 pending accounts', '1 of 3 pending
+// accounts' while searching, '40 accounts' for every status. Listed accounts
+// whose status changed since the filter was chosen are counted apart
+// ('2 pending accounts · 1 moved'), so the line agrees with the pills.
+// listed: the filter's rows; shown: those the search keeps.
+export function accountCountText({ listed = [], shown = listed, filter = 'all', searching = false }) {
+  const moved = (rows) => (filter === 'all' ? 0 : rows.filter((p) => accountStatus(p || {}) !== filter).length);
+  const total = listed.length - moved(listed);
+  const noun = `${filter === 'all' ? '' : `${filter} `}${total === 1 ? 'account' : 'accounts'}`;
+  const rows = searching ? shown : listed;
+  const away = moved(rows);
+  const text = searching ? `${rows.length - away} of ${total} ${noun}` : `${total} ${noun}`;
+  return away ? `${text} · ${away} moved` : text;
 }
 
 // 'Test Market LLC', else the contact's name, else the email.

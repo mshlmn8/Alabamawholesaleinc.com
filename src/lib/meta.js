@@ -9,6 +9,7 @@
 
 import { COMPANY, HOME_PITCH, HOURS, ORDER_MINIMUM, hoursLine } from '../data/content.js';
 import { POLICY_TITLES, POLICY_INTROS } from '../pages/support/PolicyPage.jsx';
+import { resetTitle } from '../pages/support/resetView.js';
 import { brandLabel, catLabel, formatMoney } from './format.js';
 import { NOINDEX_PAGES, pathFor, siteUrl } from './routes.js';
 import { MIN_QUERY_LENGTH } from './search.js';
@@ -65,6 +66,17 @@ function adminTitle(route) {
   if (route.view === 'print') return route.query?.doc === 'slip' ? 'Packing slip' : 'Pick list';
   return 'Orders';
 }
+
+// The application page's title follows the account (AW-098): App sets
+// route.applyAs to 'loading' or accountStatus(profile). Without it, the
+// page is the one a visitor, or a search engine, sees.
+export const APPLY_TITLES = {
+  guest: 'Apply for a Trade Account',
+  loading: 'Trade Account',
+  pending: 'Application Under Review',
+  approved: 'Your Trade Account',
+  suspended: 'Account On Hold',
+};
 
 // Title, description, canonical path, share image and indexing for a
 // resolved route (see resolveRoute in routes.js).
@@ -136,8 +148,10 @@ function pageText(route, products, departments) {
   if (route.page === 'contact') return { title: `Contact & Visit · ${site}`, description: clip(`Call ${COMPANY.phone} or visit ${COMPANY.addressShort}. ${HOURS.map(r => hoursLine(r, { nowrap: false })).join(', ')}.`) };
   if (route.page === 'delivery') return { title: `Delivery & Service Area · ${site}`, description: 'Next-day delivery on our own trucks when your stop is on a route in Alabama, Mississippi or Georgia, plus will-call pickup at the Birmingham warehouse.' };
   if (POLICY_TITLES[route.page]) return { title: `${POLICY_TITLES[route.page]} · ${site}`, description: clip(POLICY_INTROS[route.page]) };
-  if (route.page === 'apply') return { title: `Apply for a Trade Account · ${site}`, description: `What licensed retailers need to open a ${site} trade account: EIN, state retail tobacco license, resale certificate and store details.` };
-  if (route.page === 'reset-password') return { title: `Reset Password · ${site}`, description: `Choose a new password for your ${site} trade account.` };
+  if (route.page === 'apply') return { title: `${APPLY_TITLES[route.applyAs] || APPLY_TITLES.guest} · ${site}`, description: `What licensed retailers need to open a ${site} trade account: EIN, state retail tobacco license, resale certificate and store details.` };
+  // The reset page's title follows what it shows (AW-255): App sets
+  // route.view from the page's resetView().
+  if (route.page === 'reset-password') return { title: `${resetTitle(route.view)} · ${site}`, description: `Choose a new password for your ${site} trade account.` };
   return { title: `${site} · Wholesale Distributor — Birmingham, AL`, description: HOME_DESCRIPTION };
 }
 

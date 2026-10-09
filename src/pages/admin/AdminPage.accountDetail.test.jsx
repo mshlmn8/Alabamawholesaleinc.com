@@ -44,7 +44,8 @@ const MISSING_TABLE = { code: 'PGRST205', message: 'Could not find the table' };
 
 const db = { tableError: {}, updateResult: null };
 beforeEach(() => {
-  act(() => navigate('/admin/accounts', { replace: true }));
+  // Every status: the list opens on pending accounts (AW-268).
+  act(() => navigate('/admin/accounts?status=all', { replace: true }));
   fake.reset();
   resetOrderStatusForTests();
   resetOrdersSeenForTests();
@@ -92,7 +93,8 @@ describe('the Accounts search (AW-113)', () => {
     expect(screen.getByRole('link', { name: 'Bravo Tobacco Outlet' })).toBeTruthy();
     fireEvent.change(box, { target: { value: '2055550101' } });
     expect(screen.getByRole('link', { name: 'Alpha Food Mart' })).toBeTruthy();
-    expect(window.location.search).toBe('');
+    // The URL keeps the status filter, never the search.
+    expect(window.location.search).toBe('?status=all');
     fireEvent.change(box, { target: { value: 'nobody' } });
     expect(screen.getByText('No account matches “nobody”.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }));
@@ -100,7 +102,7 @@ describe('the Accounts search (AW-113)', () => {
     fireEvent.change(box, { target: { value: 'alpha' } });
     await act(async () => { fireEvent.click(screen.getByRole('link', { name: 'Alpha Food Mart' })); });
     expect(window.location.pathname).toBe(`/admin/accounts/${ALPHA_ID}`);
-    await act(async () => { navigate('/admin/accounts'); });
+    await act(async () => { navigate('/admin/accounts?status=all'); });
     expect(screen.getByLabelText('Search accounts').value).toBe('alpha');
   });
 
@@ -277,12 +279,12 @@ describe('an account’s page (AW-113)', () => {
   it('says when no account has that id', async () => {
     await open('/admin/accounts/11111111-2222-4333-8444-000000000fff');
     expect(screen.getByRole('heading', { level: 2, name: 'Account not found' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'All accounts' }).getAttribute('href')).toBe('/admin/accounts');
+    expect(screen.getByRole('link', { name: 'All accounts' }).getAttribute('href')).toBe('/admin/accounts?status=all');
   });
 
   it('goes back to the list it was opened from, with the business link focused', async () => {
     const back = vi.spyOn(window.history, 'back').mockImplementation(() => {
-      act(() => navigate('/admin/accounts', { replace: true }));
+      act(() => navigate('/admin/accounts?status=all', { replace: true }));
     });
     await open();
     await act(async () => { fireEvent.click(screen.getByRole('link', { name: 'Alpha Food Mart' })); });

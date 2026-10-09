@@ -4,7 +4,7 @@
 //   /admin                              Orders (exactly { page: 'admin' })
 //   /admin/orders?status=&from=&to=&on=&method=&account=&page=
 //   /admin/orders/:uuid/print?doc=pick|slip   an order's pick list or packing slip
-//   /admin/accounts                     /admin/accounts/:uuid
+//   /admin/accounts?status=pending|approved|suspended|all   /admin/accounts/:uuid
 //   /admin/products?q=&status=&dept=&sub=&tag=&photo=&unit=&stock=&sort=&dir=&page=
 //   /admin/products/:id                 /admin/products/new?from=:id
 //   /admin/pricing                      the pricing tiers (AW-114)
@@ -27,6 +27,10 @@ export const LEGACY_ORDER_STATES = ['new', 'contacted', 'fulfilled', 'cancelled'
 export const ORDER_STATUS_FILTERS = [...ORDER_STATES, 'all'];
 export const DEFAULT_ORDER_STATUS = 'new';
 export const ORDER_METHODS = ['delivery', 'willcall'];
+// The Accounts status filter (AW-268): a status or 'all'. 'pending' is the
+// default: the applications waiting for a decision.
+export const ACCOUNT_STATUS_FILTERS = ['pending', 'approved', 'suspended', 'all'];
+export const DEFAULT_ACCOUNT_STATUS = 'pending';
 // The print view's sheets (AW-110): the pick list (also without ?doc) and
 // the packing slip.
 export const PRINT_SHEETS = ['pick', 'slip'];
@@ -77,7 +81,9 @@ const QUERY = {
     // The list's page (AW-199); a filter or status change starts at 1.
     page: { read: positiveInt, fallback: 1 },
   },
-  accounts: {},
+  accounts: {
+    status: { read: (v) => oneOf(ACCOUNT_STATUS_FILTERS)(v.toLowerCase()), fallback: DEFAULT_ACCOUNT_STATUS },
+  },
   products: {
     q: { read: (v) => v.trim().slice(0, MAX_PRODUCT_QUERY).trim() || null },
     status: { read: (v) => oneOf(PRODUCT_STATUSES)(v.toLowerCase()) },

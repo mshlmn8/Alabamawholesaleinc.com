@@ -104,8 +104,12 @@ test('a recovery link opens /reset-password once, and the site stays usable (AW-
   const exp = Math.floor(Date.now() / 1000) + 3600;
   await page.goto(`/#access_token=${jwt(exp)}&expires_at=${exp}&expires_in=3600&refresh_token=smoke-rt&token_type=bearer&type=recovery`);
   await expect(page).toHaveURL(/\/reset-password$/);
-  await expect(page.getByRole('heading', { name: `New password for ${PROFILE.email}` })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Choose a new password' })).toBeVisible();
+  await expect(page.getByRole('form', { name: 'Set a new password' })).toContainText(`For ${PROFILE.email}`);
   await expect(page.getByText('RESET LINK CONFIRMED')).toBeVisible();
+  // The link signed the account in: the form says so, and the cursor is in the new password (AW-253, AW-256).
+  await expect(page.getByLabel('New password', { exact: true })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Cancel and sign out' })).toBeVisible();
   await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('link', { name: 'Home' }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('heading', { name: 'Choose a new password' })).toHaveCount(0);
@@ -118,7 +122,7 @@ test('an account page waits for the account instead of showing the signed-out vi
   const calls = await mockSupabase(page, { profileDelay: 800 });
   await page.goto('/account');
   await expect(page.getByText('Loading your account…')).toBeVisible();
-  await expect(page.getByText(/Sign in to view your account/)).toHaveCount(0);
+  await expect(page.getByText(/A trade account shows your order history/)).toHaveCount(0);
   await expect(page.getByRole('heading', { level: 1, name: 'Test Market LLC' })).toBeVisible();
   expect(calls.profiles).toBe(1);
   expect(errors).toEqual([]);
@@ -239,7 +243,7 @@ test('after a sign-out, a session another tab saved that cannot be refreshed nev
   expect(errors).toEqual([]);
 });
 
-test('an approved buyer’s prices come from my_prices(), and each × quantity is the line total (AW-003, AW-077)', async ({ page, context }) => {
+test('an approved buyer’s prices come from my_prices(), and each × quantity is the line total (AW-003, AW-077, AW-103)', async ({ page, context }) => {
   const errors = trackErrors(page);
   const selects = [];
   page.on('request', (req) => {
@@ -255,14 +259,15 @@ test('an approved buyer’s prices come from my_prices(), and each × quantity i
   await page.locator('.pd-info').getByRole('button', { name: /^Add to order/ }).click();
   await page.getByRole('button', { name: /^Cart, 3 items$/ }).click();
   const drawer = page.getByRole('dialog', { name: 'Your order' });
-  await expect(drawer.locator('.drawer-line small').first()).toHaveText('AW-KITE · $13.40');
+  await expect(drawer.locator('.drawer-line small').first()).toHaveText('AW-KITE · $13.40 each');
+  await expect(drawer.locator('.drawer-line .line-total')).toHaveText('$40.20');
   await expect(drawer.locator('.drawer-total')).toContainText('$40.20');
   await drawer.getByRole('link', { name: /Checkout/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Place your order' })).toBeVisible();
   const line = page.locator('.checkout-lines .drawer-line').first();
   await expect(line.locator('small').first()).toHaveText('AW-KITE · $13.40 each');
   await expect(line.locator('.line-total')).toHaveText('$40.20');
-  await expect(page.locator('.checkout-total')).toHaveText('3 units$40.20');
+  await expect(page.locator('.checkout-total')).toHaveText('Estimated subtotal · 3 units$40.20');
   // A product without a price (synthetic: ids ending in 7).
   await page.goto('/product/7');
   await expect(page.locator('.pd-price')).toContainText('Price on request');
@@ -292,7 +297,8 @@ test('Back on a half-typed application asks first, keeps the answers, and leaves
   await mockSupabase(page);
   await page.goto('/');
   await page.goto('/apply');
-  await page.getByRole('button', { name: 'Start application' }).click();
+  // The page head's Start application (AW-242); the checklist card has one too.
+  await page.locator('.page-head').getByRole('button', { name: 'Start application' }).click();
   const dialog = page.getByRole('dialog', { name: 'Apply for an account' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Your name').fill('Typed Applicant');
@@ -333,6 +339,9 @@ test('a confirmation link for an application under review says what happens next
   await notice.getByRole('button', { name: 'View application status' }).click();
   await expect(page).toHaveURL(/\/apply$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Your trade account' })).toBeVisible();
+  // The head and the title say where the application stands (AW-098).
+  await expect(page.locator('.page-head .eyebrow')).toHaveText('APPLICATION UNDER REVIEW');
+  await expect(page).toHaveTitle(/^Application Under Review · /);
   await expect(page.locator('.site-notice[data-notice="link-confirmed"]')).toHaveCount(0);
   expect(errors).toEqual([]);
 });

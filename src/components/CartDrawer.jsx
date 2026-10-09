@@ -1,5 +1,6 @@
 // Slide-in cart: the lines in the cart, the estimated total (approved
-// accounts) and the checkout/quote actions. Above the lines: products from an
+// accounts; lines still waiting for a variant are left out of it, and a note
+// under it says so, AW-103) and the checkout/quote actions. Above the lines: products from an
 // older cart that still need a variant (AW-354) and lines that can no longer
 // be ordered (AW-083). A suspended account sees that ordering is paused, with
 // the trade desk's phone and email, instead of the quote button (AW-201).
@@ -16,6 +17,7 @@ import { announce } from '../lib/announce.js';
 import { LINE_CONTROL, focusLineSoon, keepFocusNear, neighbourKey } from '../lib/focus.js';
 import { formatMoney, formatMoneyShort } from '../lib/format.js';
 import { totalLabel } from '../lib/pricing.js';
+import { variantExcludedText } from '../lib/cart.js';
 import { Link, focusPageHeading } from '../lib/router.js';
 import { CallOrEmail } from './ContactLinks.jsx';
 import { ModalLayer } from './ModalLayer.jsx';
@@ -46,6 +48,7 @@ export function CartDrawer({
     if (next) focusLineSoon(listRef.current, next, { selector: LINE_CONTROL, fallback: () => keepFocusNear(dialog) });
   };
   const unavailable = items.filter(it => it.unavailable);
+  const excluded = isApprovedBuyer ? variantExcludedText(items) : '';
   // Guests are asked to sign in; signed-in buyers who are not approved yet are
   // told pricing is waiting on approval instead, and suspended ones that the
   // account is on hold.
@@ -82,6 +85,7 @@ export function CartDrawer({
               ? <span>{totalLabel(items, total, pricesStatus)}</span>
               : <span className="drawer-total-note">{note}</span>}
           </div>
+          {excluded && <p className="total-note">{excluded}</p>}
           {items.length > 0 && isSuspended && (
             <p className="notice drawer-paused">Ordering is paused on this account. <CallOrEmail after=" and a trade rep will help you sort it out." /></p>
           )}

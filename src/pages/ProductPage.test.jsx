@@ -21,23 +21,23 @@ describe('ProductPage prices', () => {
   it('shows "From" the lowest variant price, then the chosen variant’s own price (AW-030)', () => {
     const priceOf = (id, variant) => (variant === 'Red' ? 13.5 : 12.25);
     render(page({ profile: APPROVED, isApprovedBuyer: true, priceOf, pricesStatus: 'ready' }));
-    expect(pd()).toBe('From $12.25Wholesale unit price · AW-SS');
+    expect(pd()).toBe('From $12.25Wholesale unit priceChoose a variant');
     fireEvent.click(screen.getByRole('button', { name: 'Red' }));
-    expect(pd()).toBe('$13.50Wholesale unit price · AW-SS-RED');
+    expect(pd()).toBe('$13.50Wholesale unit priceSKU AW-SS-RED');
     fireEvent.click(screen.getByRole('button', { name: 'Diamond' }));
-    expect(pd()).toBe('$12.25Wholesale unit price · AW-SS-DIAMOND');
+    expect(pd()).toBe('$12.25Wholesale unit priceSKU AW-SS-DIAMOND');
   });
 
   it('shows one price when every variant costs the same', () => {
     render(page({ profile: APPROVED, isApprovedBuyer: true, priceOf: () => 12.25, pricesStatus: 'ready' }));
-    expect(pd()).toBe('$12.25Wholesale unit price · AW-SS');
+    expect(pd()).toBe('$12.25Wholesale unit priceChoose a variant');
   });
 
   it('says "Price on request" for a product without a price, and "Loading price…" while prices load', () => {
     const view = render(page({ profile: APPROVED, isApprovedBuyer: true, priceOf: () => null, pricesStatus: 'ready' }));
-    expect(pd()).toBe('Price on requestWholesale unit price · AW-SS');
+    expect(pd()).toBe('Price on requestWholesale unit priceChoose a variant');
     view.rerender(page({ profile: APPROVED, isApprovedBuyer: true, priceOf: () => null, pricesStatus: 'loading' }));
-    expect(pd()).toBe('Loading price…Wholesale unit price · AW-SS');
+    expect(pd()).toBe('Loading price…Wholesale unit priceChoose a variant');
   });
 
   it('shows no price to guests and accounts awaiting approval, whatever priceOf says', () => {
@@ -46,6 +46,20 @@ describe('ProductPage prices', () => {
     expect(pd()).toBe('Sign inWholesale pricing is visible to approved trade accounts');
     view.rerender(page({ profile: { id: 'p', status: 'pending' }, priceOf }));
     expect(pd()).toBe('PendingPricing unlocks after your account is approved');
+  });
+
+  it('tells an account on hold ordering is paused, with the trade desk’s number and its account status (AW-101)', () => {
+    const view = render(page({ profile: { id: 's', status: 'suspended' }, priceOf: () => 12.25 }));
+    expect(pd()).toBe('On holdOrdering is paused on this account.');
+    const call = screen.getByRole('link', { name: /^Call / });
+    expect(call.getAttribute('href')).toMatch(/^tel:/);
+    expect(call.className).toBe('text-link');
+    expect(screen.getByRole('link', { name: 'View account status' }).getAttribute('href')).toBe('/account');
+    expect(screen.queryByRole('link', { name: 'View approval status' })).toBeNull();
+    // An applicant under review keeps its own wording, and no call link.
+    view.rerender(page({ profile: { id: 'p', status: 'pending' } }));
+    expect(screen.getByRole('link', { name: 'View approval status' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /^Call / })).toBeNull();
   });
 });
 
@@ -101,7 +115,7 @@ describe('ProductPage variants (AW-233, AW-128, AW-030)', () => {
     const red = screen.getByRole('button', { name: 'Red (not available)' });
     expect(red.disabled).toBe(true);
     expect(screen.getByRole('button', { name: 'Diamond' }).disabled).toBe(false);
-    expect(pd()).toBe('$12.25Wholesale unit price · AW-SS');
+    expect(pd()).toBe('$12.25Wholesale unit priceChoose a flavor');
     fireEvent.click(red);
     expect(screen.getByRole('button', { name: /Add to order/ }).disabled).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Diamond' }));

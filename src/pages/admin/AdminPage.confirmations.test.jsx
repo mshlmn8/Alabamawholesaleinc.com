@@ -211,7 +211,7 @@ describe('account changes', () => {
   const row = (business) => screen.getByRole('link', { name: business }).closest('tr');
 
   it('suspending asks for a reason, then saves it as an internal note', async () => {
-    await open('/admin/accounts');
+    await open('/admin/accounts?status=all');
     const select = within(row('Alpha Food Mart')).getByRole('combobox', { name: 'Status for Alpha Food Mart' });
     await act(async () => { fireEvent.change(select, { target: { value: 'suspended' } }); });
     const dialog = screen.getByRole('alertdialog', { name: 'Suspend Alpha Food Mart?' });
@@ -230,7 +230,7 @@ describe('account changes', () => {
 
   it('says the account is suspended but the reason wasn’t saved when the notes table is missing', async () => {
     db.tableError.profile_admin_notes = MISSING_TABLE;
-    await open('/admin/accounts');
+    await open('/admin/accounts?status=all');
     await act(async () => { fireEvent.change(screen.getByRole('combobox', { name: 'Status for Alpha Food Mart' }), { target: { value: 'suspended' } }); });
     fireEvent.change(screen.getByLabelText('Reason for suspending'), { target: { value: 'Licence expired' } });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Suspend the account' })); });
@@ -259,7 +259,7 @@ describe('account changes', () => {
 
   it('a double click on Approve sends one update; the status select then has the focus, and Undo puts it back', async () => {
     db.hold['profiles:update'] = true;
-    await open('/admin/accounts');
+    await open('/admin/accounts?status=all');
     const approve = within(row('Bravo Tobacco Outlet')).getByRole('button', { name: /^Approve ?Bravo Tobacco Outlet$/ });
     await act(async () => { fireEvent.click(approve); });
     await act(async () => { fireEvent.click(approve); });
@@ -284,7 +284,7 @@ describe('account changes', () => {
   });
 
   it('a tier change shows at once and goes back, with the reason, when it reaches no row', async () => {
-    await open('/admin/accounts');
+    await open('/admin/accounts?status=all');
     const tier = () => screen.getByRole('combobox', { name: 'Tier for Alpha Food Mart' });
     db.updateResult = { data: [], error: null, status: 200 };
     await act(async () => { fireEvent.change(tier(), { target: { value: 'standard' } }); });
@@ -305,11 +305,12 @@ describe('account changes', () => {
 });
 
 describe('role changes (AW-203)', () => {
+  // ?status=all: the list opens on pending accounts (AW-268).
   const row = (business) => screen.getByRole('link', { name: business }).closest('tr');
   const roleSelect = (business) => within(row(business)).getByRole('combobox', { name: `Role for ${business}` });
 
   it('making an account an admin asks first; Cancel leaves the role and gives the select its focus back', async () => {
-    await open('/admin/accounts');
+    await open('/admin/accounts?status=all');
     const select = roleSelect('Alpha Food Mart');
     select.focus();
     await act(async () => { fireEvent.change(select, { target: { value: 'admin' } }); });
@@ -328,7 +329,7 @@ describe('role changes (AW-203)', () => {
   });
 
   it('needs a reason, then saves the role and the reason as an internal note, without Undo', async () => {
-    await open('/admin/accounts');
+    await open('/admin/accounts?status=all');
     await act(async () => { fireEvent.change(roleSelect('Alpha Food Mart'), { target: { value: 'admin' } }); });
     const dialog = screen.getByRole('alertdialog');
     await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Make an admin' })); });
@@ -344,7 +345,7 @@ describe('role changes (AW-203)', () => {
   });
 
   it('making a pending account an admin says it approves it, and does', async () => {
-    await open('/admin/accounts');
+    await open('/admin/accounts?status=all');
     await act(async () => { fireEvent.change(roleSelect('Bravo Tobacco Outlet'), { target: { value: 'admin' } }); });
     const dialog = screen.getByRole('alertdialog', { name: 'Make Bravo Tobacco Outlet an admin?' });
     expect(within(dialog).getByText(/This also approves the account\.$/)).toBeTruthy();
@@ -356,7 +357,7 @@ describe('role changes (AW-203)', () => {
 
   it('removing admin access asks too, and notes the reason', async () => {
     fake.tables.profiles = [ADMIN, { ...ALPHA, role: 'admin' }, BRAVO];
-    await open('/admin/accounts');
+    await open('/admin/accounts?status=all');
     await act(async () => { fireEvent.change(roleSelect('Alpha Food Mart'), { target: { value: 'customer' } }); });
     const dialog = screen.getByRole('alertdialog', { name: 'Remove admin access from Alpha Food Mart?' });
     expect(within(dialog).getByText('They keep their customer account and lose Admin.')).toBeTruthy();
@@ -369,7 +370,7 @@ describe('role changes (AW-203)', () => {
 
   it('says the role changed but the reason wasn’t saved when the notes table is missing', async () => {
     db.tableError.profile_admin_notes = MISSING_TABLE;
-    await open('/admin/accounts');
+    await open('/admin/accounts?status=all');
     await act(async () => { fireEvent.change(roleSelect('Alpha Food Mart'), { target: { value: 'admin' } }); });
     fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'Runs the store' } });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Make an admin' })); });
@@ -380,7 +381,7 @@ describe('role changes (AW-203)', () => {
 
   it('a refused role change goes back, with the reason, and saves no note', async () => {
     db.updateResult = { data: null, error: { code: '42501', message: 'permission denied', hint: 'admin_only' }, status: 403 };
-    await open('/admin/accounts');
+    await open('/admin/accounts?status=all');
     await act(async () => { fireEvent.change(roleSelect('Alpha Food Mart'), { target: { value: 'admin' } }); });
     fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'Runs the store' } });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Make an admin' })); });
@@ -391,7 +392,7 @@ describe('role changes (AW-203)', () => {
   });
 
   it('the admin’s own role can’t be changed: the select is locked and nothing is asked or sent', async () => {
-    await open('/admin/accounts');
+    await open('/admin/accounts?status=all');
     const own = screen.getByRole('combobox', { name: 'Role for Alabama Wholesale' });
     expect(own.disabled).toBe(true);
     await act(async () => { fireEvent.change(own, { target: { value: 'customer' } }); });

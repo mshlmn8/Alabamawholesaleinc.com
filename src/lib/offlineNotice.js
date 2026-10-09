@@ -6,7 +6,7 @@
 //
 // Browsing, search and the cart keep working offline; anything that has to
 // reach the server waits, and says so where it is offered (QuotePage, the
-// sign-in dialog through describeError in src/lib/errors.js).
+// sign-in dialog through friendlyAuthError in src/lib/authErrors.js).
 
 // TODO(owner): Should a reload while offline still open the site (an installable app with an offline copy of the pages and catalog)? Not built: a service worker's cache would fight the cache rules for the site's code files (AW-179, AW-182). (AW-344)
 

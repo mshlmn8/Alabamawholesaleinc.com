@@ -138,7 +138,7 @@ describe('bulk updates (AW-114)', () => {
     expect(onCatalogChange).toHaveBeenCalledTimes(1);
     // No reload: the rows are patched where they are.
     expect(fake.find({ table: 'products', op: 'select' })).toHaveLength(1);
-    expect(rowOf(1).cells[7].textContent).toBe('DEAL');
+    expect(rowOf(1).cells[9].textContent).toBe('DEAL');
     expect(screen.queryByRole('region', { name: 'Change the selected products' })).toBeNull();
   });
 
@@ -186,7 +186,7 @@ describe('bulk updates (AW-114)', () => {
     expect(within(confirmDialog()).getByText(/gets the list price price on request/)).toBeTruthy();
     await confirmButton();
     expect(updates()[0].patch).toEqual({ price: null });
-    expect(rowOf(1).cells[6].textContent).toBe('On request');
+    expect(rowOf(1).cells[8].textContent).toBe('On request');
   });
 });
 
@@ -217,8 +217,8 @@ describe('adjusting prices (AW-114)', () => {
     expect(calls).toHaveLength(1);
     expect(calls[0].args).toEqual({ p_ids: ROWS.slice(0, 40).map((r) => r.id), p_pct: 5, p_amount: 0, p_variants: true });
     expect(statusText()).toBe('Updated 39 products; 1 on request skipped');
-    expect(rowOf(1).cells[6].textContent).toBe('$10.61');
-    expect(rowOf(2).cells[6].textContent).toBe('On request');
+    expect(rowOf(1).cells[8].textContent).toBe('$10.61');
+    expect(rowOf(2).cells[8].textContent).toBe('On request');
     expect(updates()).toHaveLength(0);
   });
 
@@ -244,7 +244,7 @@ describe('adjusting prices (AW-114)', () => {
     const adjust = within(bar()).getByRole('button', { name: 'Adjust price' });
     expect(adjust.disabled).toBe(true);
     expect(within(bar()).getByRole('button', { name: 'Set price' }).disabled).toBe(false);
-    expect(rowOf(1).cells[6].textContent).toBe('$10.10');
+    expect(rowOf(1).cells[8].textContent).toBe('$10.10');
   });
 });
 
@@ -347,6 +347,6 @@ describe('export and import (AW-114)', () => {
     await act(async () => { fireEvent.click(within(preview()).getByRole('button', { name: 'Import 1 change' })); });
     await confirmButton();
     expect(within(preview()).getByRole('alert').textContent).toBe('No product has the SKU AW-B1 any more, so nothing was imported. Reload the list and choose the file again.');
-    expect(rowOf(1).cells[7].textContent).toBe('—');
+    expect(rowOf(1).cells[9].textContent).toBe('—');
   });
 });

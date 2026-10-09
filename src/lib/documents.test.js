@@ -3,7 +3,7 @@
 // the document history, and a refusal by the database names the upload limit.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mock = vi.hoisted(() => ({ existing: null, uploadError: null, rowError: null, removeError: null, signError: null, calls: [] }));
+const mock = vi.hoisted(() => ({ existing: null, uploadError: null, rowError: null, removeError: null, signError: null, calls: [], uploadErrors: {} }));
 
 vi.mock('./supabase.js', () => {
   const table = () => {
@@ -16,7 +16,11 @@ vi.mock('./supabase.js', () => {
     return q;
   };
   const bucket = {
-    upload: async (path, _file, options) => { mock.calls.push(['upload', path, options]); return { error: mock.uploadError }; },
+    upload: async (path, body, options) => {
+      mock.calls.push(['upload', path, options, body]);
+      const type = path.split('/')[1];
+      return { error: mock.uploadErrors[type] || mock.uploadError };
+    },
     remove: async (paths) => { mock.calls.push(['remove', paths]); return { data: null, error: mock.removeError }; },
     createSignedUrl: async (path, expiresIn) => {
       mock.calls.push(['sign', path, expiresIn]);
@@ -31,9 +35,12 @@ vi.mock('./supabase.js', () => {
 });
 
 const {
-  DOCUMENT_ACCEPT, DOCUMENT_CONTENT_MESSAGE, DOCUMENTS_REFUSED_MESSAGE, MAX_DOCUMENT_BYTES, checkDocumentFile, createDocumentViewUrl,
-  documentErrorMessage, isDocumentPermissionError, openDocument, sniffDocumentType, uploadProfileDocument, validateDocumentFile,
+  DOCUMENT_ACCEPT, DOCUMENT_CONTENT_MESSAGE, DOCUMENTS_REFUSED_MESSAGE, DOCUMENT_UPLOAD_FAILED_MESSAGE, FILE_MISSING_MESSAGE,
+  FILE_TOO_LARGE_MESSAGE, FILE_TYPE_MESSAGE, MAX_DOCUMENT_BYTES, checkDocumentFile, createDocumentViewUrl, documentErrorMessage,
+  isDocumentPermissionError, openDocument, shortFileName, sniffDocumentType, uploadProfileDocument, uploadSelectedProof,
+  validateDocumentFile,
 } = await import('./documents.js');
+const { OFFLINE_MESSAGE, slowMessage, unavailableMessage } = await import('./errors.js');
 
 const SESSION = { user: { id: 'u1' } };
 // Real file headers (AW-347), padded to a believable size.
@@ -48,7 +55,7 @@ const fileOf = (name, head, type = '', size = 2000) => new File([new Uint8Array(
 const file = (name) => fileOf(name, HEADERS.pdf, 'application/pdf');
 
 beforeEach(() => {
-  Object.assign(mock, { existing: null, uploadError: null, rowError: null, removeError: null, signError: null, calls: [] });
+  Object.assign(mock, { existing: null, uploadError: null, rowError: null, removeError: null, signError: null, calls: [], uploadErrors: {} });
 });
 
 describe('uploadProfileDocument', () => {
@@ -138,17 +145,93 @@ describe('checking a file by its content (AW-347)', () => {
 
   it('no longer takes HEIC, and keeps the size limit', async () => {
     const heic = fileOf('IMG_0001.heic', [0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63], 'image/heic');
-    expect(validateDocumentFile(heic)).toBe('Use a PDF, JPG or PNG file.');
-    expect(await checkDocumentFile(heic)).toBe('Use a PDF, JPG or PNG file.');
-    expect(await checkDocumentFile(fileOf('IMG_0001.HEIF', HEADERS.jpeg, ''))).toBe('Use a PDF, JPG or PNG file.');
-    expect(await checkDocumentFile(fileOf('burst.heic', HEADERS.jpeg, 'image/heic-sequence'))).toBe('Use a PDF, JPG or PNG file.');
+    expect(validateDocumentFile(heic)).toBe('IMG_0001.heic isn’t a PDF, JPG or PNG file.');
+    expect(await checkDocumentFile(heic)).toBe('IMG_0001.heic isn’t a PDF, JPG or PNG file.');
+    expect(await checkDocumentFile(fileOf('IMG_0001.HEIF', HEADERS.jpeg, ''))).toBe('IMG_0001.HEIF isn’t a PDF, JPG or PNG file.');
+    expect(await checkDocumentFile(fileOf('burst.heic', HEADERS.jpeg, 'image/heic-sequence'))).toBe('burst.heic isn’t a PDF, JPG or PNG file.');
     expect(DOCUMENT_ACCEPT).toBe('.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png');
     expect(validateDocumentFile(null)).toBe('Choose a PDF, JPG or PNG file.');
     const big = { name: 'big.pdf', type: 'application/pdf', size: MAX_DOCUMENT_BYTES + 1, slice: vi.fn() };
-    expect(validateDocumentFile(big)).toBe('That file is over the 10 MB limit.');
-    expect(await checkDocumentFile(big)).toBe('That file is over the 10 MB limit.');
+    expect(validateDocumentFile(big)).toBe('big.pdf is over the 10 MB limit.');
+    expect(await checkDocumentFile(big)).toBe('big.pdf is over the 10 MB limit.');
     // Refused before any byte is read.
     expect(big.slice).not.toHaveBeenCalled();
+  });
+});
+
+describe('the stored file type (AW-347, AW-251)', () => {
+  // supabase-js sends a File as a multipart part of the file's own type and
+  // ignores contentType then, so the body itself carries the stored type:
+  // the type the file's content was sniffed as. HEIC is no longer taken, so
+  // AW-251's HEIC-sequence mapping is moot.
+  it('sends a file whose own type isn’t its sniffed type as a slice of that type', async () => {
+    for (const [name, head, type, stored] of [
+      ['scan.png', HEADERS.png, '', 'image/png'],
+      ['scan.JPG', HEADERS.jpeg, 'application/octet-stream', 'image/jpeg'],
+      ['photo.jpeg', HEADERS.jpeg, 'image/jpg', 'image/jpeg'],
+      ['license.pdf', HEADERS.pdf, '', 'application/pdf'],
+    ]) {
+      mock.calls = [];
+      const picked = fileOf(name, head, type);
+      await uploadProfileDocument(SESSION, 'tobacco_license', picked);
+      expect(mock.calls[0][2], name).toMatchObject({ contentType: stored });
+      const body = mock.calls[0][3];
+      expect(body, name).toBeInstanceOf(Blob);
+      expect(body.type, name).toBe(stored);
+      expect(body.size, name).toBe(picked.size);
+    }
+    mock.calls = [];
+    const pdf = fileOf('license.pdf', HEADERS.pdf, 'application/pdf');
+    await uploadProfileDocument(SESSION, 'tobacco_license', pdf);
+    expect(mock.calls[0][3]).toBe(pdf);
+  });
+});
+
+describe('shortFileName (AW-264)', () => {
+  it('keeps a name of up to 40 characters, and shortens a longer one around an ellipsis, extension kept', () => {
+    expect(shortFileName('license.pdf')).toBe('license.pdf');
+    const forty = `${'a'.repeat(36)}.pdf`;
+    expect(shortFileName(forty)).toBe(forty);
+    const long = 'TEST_ONLY_State_retail_tobacco_license_2026_renewal_Pending_Mart_LLC_Birmingham_scan01.pdf';
+    expect(shortFileName(long)).toBe('TEST_ONLY_State_retail_tob…scan01.pdf');
+    expect(Array.from(shortFileName(long))).toHaveLength(37);
+    expect(shortFileName(long, 100)).toBe(long);
+    expect(shortFileName(null)).toBe('');
+  });
+
+  it('never cuts an emoji in half', () => {
+    const name = `${'😀'.repeat(30)}-scan-of-the-license.pdf`;
+    const short = shortFileName(name);
+    expect(short.startsWith('😀'.repeat(26))).toBe(true);
+    expect(short.endsWith('icense.pdf')).toBe(true);
+  });
+});
+
+describe('validateDocumentFile (AW-244)', () => {
+  it('names the file it refuses', () => {
+    expect(validateDocumentFile(null)).toBe(FILE_MISSING_MESSAGE);
+    expect(validateDocumentFile({ name: 'notes.txt', type: 'text/plain', size: 10 })).toBe('notes.txt isn’t a PDF, JPG or PNG file.');
+    expect(validateDocumentFile({ name: 'scan.pdf', type: 'application/pdf', size: 11 * 1024 * 1024 })).toBe('scan.pdf is over the 10 MB limit.');
+    expect(validateDocumentFile({ name: `${'x'.repeat(60)}.docx`, type: '', size: 10 })).toBe('xxxxxxxxxxxxxxxxxxxxxxxxxx…xxxxx.docx isn’t a PDF, JPG or PNG file.');
+    expect(validateDocumentFile({ name: 'IMG_0001.HEIC', type: 'image/heic-sequence', size: 10 })).toBe('IMG_0001.HEIC isn’t a PDF, JPG or PNG file.');
+  });
+});
+
+describe('uploadSelectedProof (AW-085)', () => {
+  it('uploads every chosen file, past one that fails, and says how each went', async () => {
+    mock.uploadErrors = { tobacco_license: { statusCode: '413', status: 400, message: 'The object exceeded the maximum allowed size' } };
+    const outcome = await uploadSelectedProof(SESSION, { tobacco_license: file('license.pdf'), resale_certificate: file('resale.pdf') });
+    expect(outcome.attempted).toBe(true);
+    expect(outcome.results.tobacco_license).toEqual({ ok: false, error: mock.uploadErrors.tobacco_license });
+    expect(documentErrorMessage(outcome.results.tobacco_license.error)).toBe(FILE_TOO_LARGE_MESSAGE);
+    expect(outcome.results.resale_certificate).toMatchObject({ ok: true, record: { document_type: 'resale_certificate', original_filename: 'resale.pdf' } });
+    expect(mock.calls.filter(([kind]) => kind === 'upload').map(([, path]) => path.split('/')[1])).toEqual(['tobacco_license', 'resale_certificate']);
+  });
+
+  it('sends nothing without a session or a file', async () => {
+    expect(await uploadSelectedProof(null, { tobacco_license: file('l.pdf') })).toEqual({ attempted: false, results: {} });
+    expect(await uploadSelectedProof(SESSION, { tobacco_license: null })).toEqual({ attempted: false, results: {} });
+    expect(mock.calls).toEqual([]);
   });
 });
 
@@ -164,6 +247,53 @@ describe('documentErrorMessage', () => {
 
   it('keeps the old message for other failures', () => {
     expect(documentErrorMessage(new Error('That file is over the 10 MB limit.'))).not.toBe(DOCUMENTS_REFUSED_MESSAGE);
+  });
+
+  // AW-084: Storage's and the database's own text never reaches the applicant.
+  it('names the size limit for a file Storage finds too large', () => {
+    expect(documentErrorMessage({ statusCode: '413', status: 400, error: 'Payload too large', message: 'The object exceeded the maximum allowed size' })).toBe(FILE_TOO_LARGE_MESSAGE);
+    expect(documentErrorMessage({ status: 413, message: 'Request Entity Too Large' })).toBe(FILE_TOO_LARGE_MESSAGE);
+    expect(documentErrorMessage({ status: 400, message: 'The object exceeded the maximum allowed size' })).toBe(FILE_TOO_LARGE_MESSAGE);
+    expect(FILE_TOO_LARGE_MESSAGE).toBe('That file is over the 10 MB limit.');
+  });
+
+  it('names the file types for a type Storage refuses', () => {
+    expect(documentErrorMessage({ statusCode: '415', status: 400, error: 'invalid_mime_type', message: 'mime type image/heic-sequence is not supported' })).toBe(FILE_TYPE_MESSAGE);
+    expect(documentErrorMessage({ status: 400, message: 'mime type text/plain is not supported' })).toBe(FILE_TYPE_MESSAGE);
+    expect(FILE_TYPE_MESSAGE).toBe('Use a PDF, JPG or PNG file.');
+  });
+
+  it('says the upload service is unavailable when the network or server fails', () => {
+    expect(documentErrorMessage(new TypeError('Failed to fetch'))).toBe(unavailableMessage('Document upload'));
+    expect(documentErrorMessage({ statusCode: '500', status: 500, message: 'Internal Server Error' })).toBe(unavailableMessage('Document upload'));
+  });
+
+  it('says so when the browser is offline or the request gave up (AW-344, AW-194)', () => {
+    expect(documentErrorMessage({ name: 'TimeoutError', message: 'The request took too long.' })).toBe(slowMessage('Document upload'));
+    const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    expect(documentErrorMessage(new TypeError('Failed to fetch'))).toBe(OFFLINE_MESSAGE);
+    online.mockRestore();
+  });
+
+  it('shows this file’s own check, naming the file, and the generic sentence for anything else', async () => {
+    const err = await uploadProfileDocument(SESSION, 'tobacco_license', { name: 'big.pdf', type: 'application/pdf', size: 11 * 1024 * 1024 }).catch((e) => e);
+    expect(documentErrorMessage(err)).toBe('big.pdf is over the 10 MB limit.');
+    const wrong = await uploadProfileDocument(SESSION, 'tobacco_license', { name: 'notes.txt', type: 'text/plain', size: 10 }).catch((e) => e);
+    expect(documentErrorMessage(wrong)).toBe('notes.txt isn’t a PDF, JPG or PNG file.');
+    expect(mock.calls).toEqual([]);
+    for (const raw of [
+      { code: '23505', message: 'duplicate key value violates unique constraint "profile_documents_pkey"' },
+      { code: 'invalid_file', message: 'Something injected' },
+      // Only this file's own sentence for the file it checked.
+      { code: 'invalid_file', fileName: 'a.pdf', message: 'b.pdf is over the 10 MB limit.' },
+      new Error('Unknown document.'),
+      {},
+      null,
+    ]) {
+      const text = documentErrorMessage(raw);
+      expect([DOCUMENT_UPLOAD_FAILED_MESSAGE, FILE_TYPE_MESSAGE]).toContain(text);
+      expect(text).not.toMatch(/duplicate|injected|Unknown document/);
+    }
   });
 });
 

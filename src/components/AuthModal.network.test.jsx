@@ -61,6 +61,8 @@ describe('AuthModal on a slow or missing connection', () => {
   it('says a timed-out application may have gone through: check the inbox', async () => {
     setup({ signUp: vi.fn(async () => { throw timeoutError(); }) }, { initialMode: 'application' });
     fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'New Buyer' } });
+    // A US phone number, which the form checks before sending (AW-091).
+    fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '205-555-0199' } });
     await act(async () => { fireEvent.submit(screen.getByLabelText('Your name').closest('form')); });
     expect(dialogAlert().textContent).toBe(APPLICATION_TIMEOUT_MESSAGE);
     // The answers stay, and the application can be sent again.

@@ -5,7 +5,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   MISSING_FUNCTION_CODES, PRICE_FAILED, PRICE_LOADING, PRICE_ON_REQUEST, fromCents, lineTotal, loadPrices, normalizePrices,
-  priceFor, priceLabel, sumLines, tierUnitPrice, toCents, totalLabel, variantPriceRange,
+  priceFor, priceLabel, pctText, sumLines, tierDiscountText, tierName, tierPriceNote, tierUnitPrice, toCents, totalLabel, variantPriceRange,
 } from './pricing.js';
 import * as pricing from './pricing.js';
 
@@ -228,6 +228,41 @@ describe('variantPriceRange (AW-030)', () => {
   });
 });
 
+describe('the tier, in words (AW-107, AW-265)', () => {
+  it('names the tier from its key, and writes the discount as a percentage', () => {
+    expect(tierName('silver')).toBe('Silver');
+    expect(tierName('gold')).toBe('Gold');
+    expect(tierName('key_account-b')).toBe('Key account b');
+    expect(tierName(null)).toBe('');
+    expect(tierName('')).toBe('');
+    expect(pctText(5)).toBe('5%');
+    expect(pctText('5.00')).toBe('5%');
+    expect(pctText(2.5)).toBe('2.5%');
+    expect(pctText(12.25)).toBe('12.25%');
+    expect(pctText(null)).toBe('0%');
+    expect(pctText('abc')).toBe('');
+  });
+
+  it('says the tier and its discount off list, or the tier alone without one', () => {
+    expect(tierDiscountText({ tier: 'silver', label: 'Silver (5% off)', discountPct: 5 })).toBe('Silver · 5% off list');
+    expect(tierDiscountText({ tier: 'p4-test', discountPct: 12.5 })).toBe('P4 test · 12.5% off list');
+    expect(tierDiscountText({ tier: 'standard', label: 'Standard', discountPct: 0 })).toBe('Standard');
+    expect(tierDiscountText({ tier: null, discountPct: 5 })).toBe('5% off list');
+    expect(tierDiscountText(null)).toBe('');
+  });
+
+  it('captions the cards with the same server values, or says only that the prices are the account’s', () => {
+    expect(tierPriceNote({ tier: 'silver', discountPct: 5 })).toBe('Prices shown are your Silver tier prices, 5% off list.');
+    expect(tierPriceNote({ tier: 'standard', discountPct: 0 })).toBe('Prices shown are your Standard tier prices.');
+    expect(tierPriceNote(null)).toBe('Prices shown are your account prices.');
+  });
+
+  it('reads the tier from my_prices(), with no tier table of its own', () => {
+    const prices = normalizePrices({ tier: 'gold', tier_label: 'Gold (10% off)', discount_pct: '10.00', products: {} });
+    expect(tierDiscountText({ tier: prices.tier, label: prices.tierLabel, discountPct: prices.discountPct })).toBe('Gold · 10% off list');
+  });
+});
+
 describe('priceLabel and totalLabel', () => {
   it('shows the price, or why there is none', () => {
     expect(priceLabel(12.34, 'ready')).toBe('$12.34');
@@ -249,5 +284,11 @@ describe('priceLabel and totalLabel', () => {
     expect(totalLabel(unpriced, 0, 'error')).toBe('Prices didn’t load');
     expect(totalLabel(unpriced, 0, 'ready')).toBe('Price on request');
     expect(totalLabel([], 0, 'loading')).toBe('$0.00');
+  });
+
+  it('looks only at the lines in the total: a line waiting for its variant doesn’t count (AW-103)', () => {
+    const waiting = [{ price: 5, qty: 1, needsVariant: true }, { price: null, qty: 2 }];
+    expect(totalLabel(waiting, 0, 'loading')).toBe('Loading prices…');
+    expect(totalLabel([{ price: 5, qty: 1, needsVariant: true }], 0, 'ready')).toBe('$0.00');
   });
 });

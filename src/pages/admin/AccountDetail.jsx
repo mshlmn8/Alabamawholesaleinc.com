@@ -24,6 +24,8 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { Link } from '../../lib/router.js';
+import { adminHref } from '../../lib/adminRoutes.js';
+import { accountStatus } from '../../lib/accountStatus.js';
 import { formatMoney } from '../../lib/format.js';
 import { DOCUMENT_TYPES, formatUploadedOn, listProfileDocuments } from '../../lib/documents.js';
 import { ADMIN_STATUS_LABELS, ROLE_LABELS, adminStatusLabel, tierLabel } from '../../lib/accountLabels.js';
@@ -38,6 +40,8 @@ import {
   loadStatusHistory, ordersSummary, validateContact,
 } from './accountDetail.js';
 
+// The list filtered on a status (AW-268); every account for 'all'.
+const accountsHref = (status) => adminHref({ section: 'accounts', query: { status } });
 const telHref = (phone) => `tel:${String(phone ?? '').replace(/[^\d+]/g, '')}`;
 
 // id: the account. profiles: every account (null while loading), with
@@ -76,7 +80,10 @@ export function AccountDetail({
 
   return (
     <section className="account-detail" aria-labelledby="account-detail-title">
-      <p className="account-detail-back"><Link className="text-link" to="/admin/accounts" onClick={onBack}>Back to accounts</Link></p>
+      {/* Opened from the list, Back goes back to it (onBack); opened any other
+          way, it goes to the list of the account's status, where its link
+          takes the focus. */}
+      <p className="account-detail-back"><Link className="text-link" to={accountsHref(profile ? accountStatus(profile) : undefined)} onClick={onBack}>Back to accounts</Link></p>
       <div className="account-detail-head">
         <h2 id="account-detail-title" ref={headingRef} tabIndex={-1}>{profile ? who : profiles ? 'Account not found' : 'Account details'}</h2>
         {profile && <span className={`admin-pill account-pill is-${profile.status}`}>{adminStatusLabel(profile.status)}</span>}
@@ -85,7 +92,7 @@ export function AccountDetail({
       {profiles && !profile && (
         <>
           <p className="result-note">No account has this address. It may have been deleted.</p>
-          <p><Link className="button sm ghost" to="/admin/accounts">All accounts</Link></p>
+          <p><Link className="button sm ghost" to={accountsHref('all')}>All accounts</Link></p>
         </>
       )}
       {profile && (

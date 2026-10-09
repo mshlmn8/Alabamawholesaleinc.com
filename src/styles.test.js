@@ -639,7 +639,11 @@ describe('one field system (AW-146, AW-172, AW-147, AW-309)', () => {
 
   it('gives every field label one style', () => {
     const labels = ['.form-grid label', '.contact-grid dt', '.eligibility-form label', '.qr-field span', '.qr-choice span',
-      '.category-sort', '.filter-search', '.doc-upload label', '.filter-panel legend', '.doc-uploads legend', '.order-edit-line label', '.account-note',
+      '.category-sort', '.filter-search',
+      // Not the Choose file label, which is a button (AW-244).
+      '.doc-upload label:not(.doc-choose)', '.filter-panel legend', '.doc-uploads legend',
+      // The application form's group legends (AW-243).
+      '.form-section legend', '.order-edit-line label', '.account-note',
       '.admin-toolbar label'];
     const typography = { 'font-size': 'var(--text-xs)', 'font-weight': '700', 'letter-spacing': 'var(--track-label)', color: 'var(--purple)', 'text-transform': 'uppercase' };
     const shared = all.find((r) => r.selectors.includes('.doc-uploads legend') && declarations(r.body)['text-transform']);
@@ -727,6 +731,39 @@ describe('the markup uses the design system (merged PR #12, PR #13 and lane p2 p
     expect(scroller).toMatchObject({ position: 'relative', 'overflow-x': 'auto' });
   });
 
+  it('keeps a long admin table’s header row in view: a capped scroller, a sticky header, the Accounts Business column pinned (AW-266)', () => {
+    const own = (selector) => declarations(rules(css).find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+    // The scroller scrolls both ways inside at most 70% of the screen, and
+    // keeps overflow-x (the .sr-only rule above) rather than one overflow.
+    expect(own('.table-scroll')).toMatchObject({ 'overflow-x': 'auto', 'overflow-y': 'auto', 'max-height': 'min(70vh, 56.25rem)', isolation: 'isolate', 'scroll-padding-top': '3.5rem', 'scroll-padding-bottom': 'var(--tap)' });
+    expect(own('.table-scroll')).not.toHaveProperty('overflow');
+    // The header sticks above the rows' photo placeholders (.photo-soon, z-index 1).
+    expect(own('.aw-table thead th')).toEqual({ position: 'sticky', top: '0', 'z-index': '2' });
+    expect(Number(own('.photo-soon')['z-index'])).toBeLessThan(2);
+    expect(own('.admin-accounts td:first-child:not([colspan])')).toMatchObject({ position: 'sticky', left: '0', 'z-index': '1', background: '#fff' });
+    expect(own('.admin-accounts thead th:first-child')).toMatchObject({ left: '0', 'z-index': '3' });
+    // Focus scrolled into view stops beside the pinned column, as wide as the
+    // scroll padding while the table can scroll sideways (WCAG 2.4.11).
+    const narrow = mediaBlocks(css).filter((b) => b.prelude === '(max-width: 68.75em)').flatMap((b) => rules(b.body));
+    const pinWidth = declarations(narrow.find((r) => r.selectors.join(', ') === '.admin-accounts th:first-child, .admin-accounts td:first-child:not([colspan])').body)['min-width'];
+    expect(declarations(narrow.find((r) => r.selectors.join() === '.table-scroll:has(> .admin-accounts)').body)).toEqual({ 'scroll-padding-left': pinWidth });
+    // A printed admin table is whole.
+    const print = mediaBlocks(css).filter((b) => b.prelude === 'print').flatMap((b) => rules(b.body));
+    expect(declarations(print.find((r) => r.selectors.join() === '.table-scroll').body)).toEqual({ 'max-height': 'none', overflow: 'visible' });
+    // On phones the admin's pill rows wrap (in the compact block, not a fourth
+    // one), and a hint says the table scrolls sideways.
+    const compact = mediaBlocks(css).filter((b) => b.prelude === MOBILE_QUERY).flatMap((b) => rules(b.body));
+    expect(declarations(compact.find((r) => r.selectors.join() === '.admin-page .sub-pills').body)).toMatchObject({ 'flex-wrap': 'wrap', 'overflow-x': 'visible' });
+    expect(own('.table-hint')).toMatchObject({ display: 'none' });
+    const phone = mediaBlocks(css).filter((b) => b.prelude === '(max-width: 37.5em)').flatMap((b) => rules(b.body));
+    expect(declarations(phone.find((r) => r.selectors.join() === '.table-hint').body)).toEqual({ display: 'block' });
+    // The scrollers are named, focusable regions, so the keyboard can scroll them.
+    expect(code(read('src/pages/admin/TableScroll.jsx'))).toMatch(/className="table-scroll" role="region" aria-label=\{label\} tabIndex=\{0\}/);
+    expect(code(read('src/pages/admin/AccountsSection.jsx'))).toMatch(/<TableScroll label="Accounts table" resetKey=\{`[^`]+`\}>\s*<table className="aw-table admin-accounts">/);
+    expect(code(read('src/pages/admin/ProductsSection.jsx'))).toMatch(/<TableScroll label="Products table" resetKey=\{`[^`]+`\}>\s*<table className="aw-table admin-products">/);
+    expect(code(read('src/pages/admin/AdminPage.jsx'))).toMatch(/<section className="admin-page">/);
+  });
+
   it('styles the card buttons, the sold-out state and the order actions with .button', () => {
     const card = code(read('src/components/ProductCard.jsx'));
     expect(card.match(/className="button ghost sm card-add"/g)).toHaveLength(3);
@@ -747,7 +784,7 @@ describe('one link style (AW-297)', () => {
   const LINKS = ['.text-link', '.support-note a', '.checklist a', '.checklist-note a', '.next-steps a', '.policy-body a', '.contact-grid a',
     '.doc-uploads-note a', '.doc-panel a', '.doc-admin a', '.status-panel p a', '.eligibility-result a', '.error-fallback > p a', '.dialog > .desc a',
     '.form-error a', '.dialog .form-grid a', '.consent-block .consent a', '.photo-credit a', '.order-contact a',
-    '.account-link', '.order-account-link', '.account-contact a', '.account-detail-contact a'];
+    '.account-link', '.order-account-link', '.account-contact a', '.account-detail-contact a', 'p.notice a', '.notice p a'];
   const LOOK = { color: 'var(--link-color)', 'font-weight': '600', 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' };
 
   it('defines the link colour and underline offset once', () => {
@@ -920,6 +957,12 @@ describe('one number marker for ordered steps (AW-296)', () => {
   it('numbers only ordered steps: no number prefixes on the checklist or the delivery cards', () => {
     expect(code(read('src/pages/support/ApplyPage.jsx'))).not.toMatch(/padStart\(2/);
     expect(code(read('src/pages/support/DeliveryPage.jsx'))).not.toMatch(/\d\d · [A-Z]/);
+  });
+
+  it('marks checklist items with one plain square, not a ticked box that looks already done (AW-250)', () => {
+    expect(ruleFor('.checklist li::before')).toMatchObject({ content: "''", width: '.5rem', height: '.5rem', background: 'var(--purple)' });
+    expect(all.filter((r) => r.selectors.some((s) => /\.checklist\b.*::after/.test(s))).map((r) => r.selectors.join(', '))).toEqual([]);
+    expect(all.filter((r) => r.selectors.some((s) => /^\.checklist(\.big)? li/.test(s))).map((r) => r.body).join('')).not.toMatch(/--orange|rotate/);
   });
 });
 

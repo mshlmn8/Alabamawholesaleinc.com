@@ -23,18 +23,15 @@ const ORDER = {
   ],
 };
 
-vi.mock('../../lib/supabase.js', () => {
-  const query = {
-    select: () => query,
-    eq: () => query,
-    order: () => query,
-    abortSignal: () => query,
-    then: (resolve) => Promise.resolve({ data: [ORDER], error: null }).then(resolve),
-  };
-  return { supabase: { from: () => query }, isBackendConfigured: true, AUTH_STORAGE_KEY: 'aw-auth' };
+vi.mock('../../lib/supabase.js', async () => {
+  const { createFakeSupabase } = await import('../admin/fakeSupabase.js');
+  const fake = createFakeSupabase();
+  return { supabase: fake.client, fake, isBackendConfigured: true, AUTH_STORAGE_KEY: 'aw-auth' };
 });
 
+const { fake } = await import('../../lib/supabase.js');
 const { AccountPage } = await import('./AccountPage.jsx');
+fake.tables.orders = [ORDER];
 
 const PROFILE = { id: 'u1', business: 'Test Market LLC', name: 'Test Buyer', email: 'buyer@example.test', status: 'approved', role: 'customer', pricing_tier: 'silver' };
 
@@ -44,7 +41,12 @@ describe('AccountPage Reorder with old SKUs', () => {
     render(<AccountPage profile={PROFILE} account="ready" products={PRODUCTS} addLines={addLines} isApprovedBuyer />);
     // The history shows the order as it was saved.
     expect(await screen.findByText('(AW-BRILLO-BASICS--YELLOW)')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Reorder' }));
+    // Three lines show until Show all; Reorder takes every line, and its
+    // name says which order (AW-104, AW-105).
+    expect(screen.queryByText('(AW-LOOSE-LEAFS-5P-WATERMELON)')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Show all 6 items' }));
+    expect(screen.getByText('(AW-LOOSE-LEAFS-5P-WATERMELON)')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Reorder T-C3-OLD-SKUS' }));
     expect(addLines).toHaveBeenCalledWith([
       { productId: 60, variant: 'F*** fab', qty: 2 },
       { productId: 130, variant: 'Yellow', qty: 1 },

@@ -17,21 +17,34 @@
 // the next person on a shared store computer.
 //
 // 'Check your inbox' and 'Confirm your email first' can send the
-// confirmation email again, once a minute (AW-016).
+// confirmation email again, once a minute (AW-016); the password reset step
+// can send its link again, on its own minute (AW-259).
+//
+// License documents chosen on the application (AW-085) upload right after a
+// sign-up that returns a session; one that fails is listed with Try again.
+// With email confirmation on there is no session yet: the files stay in
+// this dialog's state (never in localStorage or sessionStorage) and upload
+// here once the applicant confirms the email in this browser, which signs
+// in another tab and reaches this one (AW-335). A session for any other
+// email never gets them.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth.jsx';
 import { COMPANY, TERMS_VERSION } from '../data/content.js';
-import { APPLICATION_TIMEOUT_MESSAGE, describeError, isRateLimitError } from '../lib/errors.js';
+import { APPLICATION_TIMEOUT_MESSAGE, isRateLimitError } from '../lib/errors.js';
 import { isTimeoutError } from '../lib/network.js';
+import { friendlyAuthError } from '../lib/authErrors.js';
+import { announce } from '../lib/announce.js';
+import { PHONE_ERROR, PHONE_EXAMPLE, PHONE_PATTERN, PHONE_TITLE, usPhone } from '../lib/phone.js';
 import { Link, restoreOverlayEntry } from '../lib/router.js';
 import { APPLICATION_CHECKLIST } from '../data/onboarding.js';
-import { DOCUMENT_TYPES, documentErrorMessage, uploadSelectedProof } from '../lib/documents.js';
+import { DOCUMENT_TYPES, documentErrorMessage, shortFileName, uploadSelectedProof } from '../lib/documents.js';
 import { ServiceUnavailable } from './ServiceUnavailable.jsx';
 import { CallOrEmail } from './ContactLinks.jsx';
 import { DocumentUploads } from './DocumentUploads.jsx';
 import { Icon } from './Icon.jsx';
 import { ModalLayer } from './ModalLayer.jsx';
+import { PASSWORD_MIN_LENGTH, PasswordField } from './PasswordField.jsx';
 
 const STATES = ['AL','GA','MS','TN','FL','LA','SC','NC','KY','Other'];
 const BUSINESS_TYPES = ['Convenience Store','Smoke Shop','Vape Shop','Liquor Store','Grocery / Bodega','Auto Parts','Hookah Lounge','Other'];
@@ -39,8 +52,9 @@ const VOLUMES = ['Under $5K','$5K — $15K','$15K — $50K','$50K — $100K','$1
 
 // How long "Signing you in…" waits for the account before saying so.
 export const CHECKING_TIMEOUT_MS = 10000;
-// How long Resend waits before it can send the confirmation email again
-// (AW-016). Supabase limits these emails too; see RESEND_RATE_LIMITED.
+// How long Resend waits before it can send the confirmation email, or Send
+// again the reset link, once more (AW-016, AW-259). Supabase limits these
+// emails too; see RESEND_RATE_LIMITED.
 export const RESEND_COOLDOWN_MS = 60000;
 export const RESEND_RATE_LIMITED = 'We just sent one. Wait a minute, then try again.';
 // Screens that ask a signed-out visitor for something. When a session appears
@@ -56,23 +70,61 @@ const isUnconfirmedEmail = (err) => err?.code === 'email_not_confirmed' || /emai
 // TODO(owner): Approve the consent checkbox wording. The Trade terms / Privacy
 // version it records is TERMS_VERSION in ../data/content.js. (AW-019)
 
+// The three selects start empty and are required, so an answer is one the
+// applicant chose, not a default nobody looked at (AW-091).
 const EMPTY_SIGNUP = {
   email: '', password: '', name: '', business: '', phone: '',
   ein: '', license_no: '', resale_cert_no: '',
-  business_type: 'Convenience Store', state: 'AL', expected_volume: '$5K — $15K',
+  business_type: '', state: '', expected_volume: '',
   // The store's address (AW-092) and the two required boxes (AW-019).
   store_street: '', store_city: '', store_zip: '',
   agreeTerms: false, ageConfirmed: false,
 };
 
-function Field({ id, label, hint, full = false, children }) {
+// True for RESEND_COOLDOWN_MS after start(); each start begins a new minute.
+function useCooldown() {
+  const [round, setRound] = useState(0);
+  useEffect(() => {
+    if (!round) return undefined;
+    const id = window.setTimeout(() => setRound(0), RESEND_COOLDOWN_MS);
+    return () => window.clearTimeout(id);
+  }, [round]);
+  return [round > 0, () => setRound((r) => r + 1)];
+}
+
+// A labelled control in the form grid. The control names its hint
+// (`${id}-hint`) and, while there is one, its error (`${id}-error`) in
+// aria-describedby. A field that can have an error passes `error` ('' when
+// there is none), so the element is always there and only its text changes.
+function Field({ id, label, hint, error, full = false, children }) {
   return (
     <div className={full ? 'full' : undefined}>
       <label htmlFor={id}>{label}</label>
       {children}
       {hint && <small className="field-hint" id={`${id}-hint`}>{hint}</small>}
+      {error !== undefined && <p className="form-error" id={`${id}-error`}>{error}</p>}
     </div>
   );
+}
+
+// A select's first, unpickable option, shown until the applicant chooses (AW-091).
+const choose = <option value="" disabled>Select…</option>;
+
+// The chosen files of `types`, for uploadSelectedProof.
+const filesOf = (proof, types) => Object.fromEntries(types.map((type) => [type, proof[type]]));
+const PROOF_UPLOADING = 'Uploading your documents…';
+// What an upload of the application's documents came to (AW-085): per
+// failed document type its sentence, and one line for the status.
+function proofOutcome(results) {
+  const done = DOCUMENT_TYPES.filter((doc) => results?.[doc.id]?.ok);
+  const missed = DOCUMENT_TYPES.filter((doc) => results?.[doc.id] && !results[doc.id].ok);
+  const failed = Object.fromEntries(missed.map((doc) => [doc.id, documentErrorMessage(results[doc.id].error)]));
+  const name = (doc) => doc.label.toLowerCase();
+  let status = '';
+  if (done.length && missed.length) status = `Your ${name(done[0])} is uploaded. Your ${name(missed[0])} didn’t upload.`;
+  else if (missed.length) status = missed.length === 1 ? `Your ${name(missed[0])} didn’t upload.` : 'Your documents didn’t upload.';
+  else if (done.length) status = done.length === 1 ? `Your ${name(done[0])} is uploaded.` : 'Your documents are uploaded.';
+  return { failed, status };
 }
 
 export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, signingOut = false }) {
@@ -90,34 +142,57 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
   const [signin, setSignin] = useState({ email: '', password: '' });
   const [resetEmail, setResetEmail] = useState('');
   const [signup, setSignup] = useState(EMPTY_SIGNUP);
+  // The phone number's own error, under the field (AW-247).
+  const [phoneError, setPhoneError] = useState('');
   const [proof, setProof] = useState({});
   const [proofErrors, setProofErrors] = useState({});
+  // Files chosen on an application that returned no session, held until
+  // the applicant's own session reaches this tab (AW-085).
   const [proofWaiting, setProofWaiting] = useState(false);
+  // Per document type, why its file didn't upload; the line that says how
+  // the last upload went; and a Try again running.
+  const [proofFailed, setProofFailed] = useState({});
+  const [proofStatus, setProofStatus] = useState('');
+  const [proofBusy, setProofBusy] = useState(false);
   const [resent, setResent] = useState(false);
   // A confirmation email sent again: to whom, and whether the minute before
-  // the next one is still running (AW-016).
+  // the next one is still running (AW-016). The reset link has its own
+  // minute, and resetAgain says the last one went from Send again (AW-259).
   const [resentTo, setResentTo] = useState('');
-  const [cooling, setCooling] = useState(false);
+  const [cooling, startCooling] = useCooldown();
+  const [resetCooling, startResetCooling] = useCooldown();
+  const [resetAgain, setResetAgain] = useState(false);
   // The 'Discard your application?' bar (AW-018).
   const [confirming, setConfirming] = useState(false);
   const titleRef = useRef(null);
   const dialogRef = useRef(null);
   const keepEditingRef = useRef(null);
   const resendRef = useRef(null);
+  const phoneRef = useRef(null);
   // Where focus was when the discard bar opened, for Keep editing.
   const focusBeforeConfirm = useRef(null);
   // A resend is running; see the focus effect below.
   const resending = useRef(false);
+  // The session the application's files went up with, for Try again; and
+  // whether the held files have been sent.
+  const proofSession = useRef(null);
+  const heldSent = useRef(false);
   const onCloseRef = useRef(onClose);
   // Keep the latest onClose for the timers and effects below.
   useLayoutEffect(() => { onCloseRef.current = onClose; });
   // Focus trap, inert background, Escape and focus restore come from the
   // ModalLayer this dialog is rendered in; data-autofocus marks the first field.
 
-  // Each step swaps the dialog content, so move focus to the new heading.
-  const initialModeRef = useRef(mode);
+  // Each step swaps the dialog content, so the new step starts at the top
+  // (AW-096) and its heading takes focus, also on a return to the first step
+  // (AW-090). The step shown last is compared, not a first-run flag: under
+  // StrictMode the effect runs twice on open, and the opening step's own
+  // data-autofocus field keeps focus.
+  const shownMode = useRef(mode);
   useEffect(() => {
-    if (mode === initialModeRef.current) return;
+    if (shownMode.current === mode) return;
+    shownMode.current = mode;
+    if (dialogRef.current) dialogRef.current.scrollTop = 0;
     titleRef.current?.focus({ preventScroll: true });
   }, [mode]);
 
@@ -147,16 +222,10 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
     return () => window.clearTimeout(id);
   }, [mode]);
 
-  // Resend can be used again a minute after it sent (AW-016).
-  useEffect(() => {
-    if (!cooling) return undefined;
-    const id = window.setTimeout(() => setCooling(false), RESEND_COOLDOWN_MS);
-    return () => window.clearTimeout(id);
-  }, [cooling]);
-  // A Resend button disabled (or hidden) while it had focus drops focus to
-  // <body> (Chrome) or leaves it on a dead control. When the send has
-  // finished, focus goes back to it if it can be used again (it failed),
-  // else to the dialog's heading.
+  // A Resend or Send again button disabled (or hidden) while it had focus
+  // drops focus to <body> (Chrome) or leaves it on a dead control. When the
+  // send has finished, focus goes back to it if it can be used again (it
+  // failed), else to the dialog's heading.
   useEffect(() => {
     if (!resending.current || submitting) return;
     resending.current = false;
@@ -164,7 +233,25 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
     if (active && active !== document.body && !active.disabled && dialogRef.current?.contains(active)) return;
     const button = resendRef.current;
     (button && !button.disabled ? button : titleRef.current)?.focus({ preventScroll: true });
-  }, [submitting, cooling]);
+  }, [submitting, cooling, resetCooling]);
+
+  // Held files go up once, when a session for the email that applied
+  // appears while 'Check your inbox' is open (AW-085).
+  const heldEmail = signup.email.trim().toLowerCase();
+  const sessionEmail = String(session?.user?.email || '').toLowerCase();
+  const heldReady = mode === 'sent' && proofWaiting && !!session?.user?.id && sessionEmail !== '' && sessionEmail === heldEmail;
+  useEffect(() => {
+    if (!heldReady || heldSent.current) return;
+    heldSent.current = true;
+    proofSession.current = session;
+    const types = DOCUMENT_TYPES.filter((doc) => proof[doc.id]).map((doc) => doc.id);
+    uploadSelectedProof(session, filesOf(proof, types)).then(({ results }) => {
+      const outcome = proofOutcome(results);
+      setProofFailed(outcome.failed);
+      setProofStatus(outcome.status);
+      setProofWaiting(false);
+    });
+  }, [heldReady, session, proof]);
 
   // Typed application answers (AW-018). Guarded in every mode, so they stay
   // guarded after 'Back to the checklist' or 'Already approved? Sign in',
@@ -215,7 +302,8 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
     catch (err) {
       // An account whose confirmation link expired (AW-015) can ask for a new one.
       if (isUnconfirmedEmail(err)) { setResent(false); setMode('unconfirmed'); }
-      else setError(describeError(err, 'Account sign-in', 'Sign-in failed'));
+      // Supabase's own text is never shown (AW-084).
+      else setError(friendlyAuthError(err, { what: 'Account sign-in', fallback: 'We couldn’t sign you in. Try again in a moment.' }));
     }
     finally { setSubmitting(false); }
   };
@@ -228,11 +316,11 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
       await resendConfirmation(email);
       setResent(true);
       setResentTo(email);
-      setCooling(true);
+      startCooling();
     } catch (err) {
       setError(isRateLimitError(err)
         ? RESEND_RATE_LIMITED
-        : describeError(err, 'Email confirmation', 'We couldn’t send a new confirmation link'));
+        : friendlyAuthError(err, { what: 'Email confirmation', fallback: 'We couldn’t send a new confirmation link. Try again in a moment.' }));
     } finally { setSubmitting(false); }
   };
 
@@ -249,36 +337,103 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
 
   const handleSignup = async (e) => {
     e.preventDefault();
-    setSubmitting(true); setError(null);
+    setError(null);
+    // A number staff can call (AW-247): ten digits, sent as (205) 555-0123.
+    // The browser's pattern lets through text with the right characters
+    // only; this is the real check.
+    const phone = usPhone(signup.phone);
+    if (!phone) {
+      setPhoneError(PHONE_ERROR);
+      const field = phoneRef.current;
+      // Focus reads the error out with the field; a field that already has
+      // focus (Enter pressed in it) is not read again, so say it.
+      if (field && document.activeElement === field) announce(PHONE_ERROR);
+      else field?.focus();
+      return;
+    }
+    setSubmitting(true);
     try {
       const data = await signUp({
         ...signup,
+        phone: phone.formatted,
         terms_accepted: signup.agreeTerms,
         terms_version: TERMS_VERSION,
         age_confirmed: signup.ageConfirmed,
       });
-      const chosen = DOCUMENT_TYPES.some(doc => proof[doc.id]);
-      let uploadError = null;
-      // Email confirmation leaves no session. Hold the files and do not call storage.
-      if (data?.session && chosen) {
-        try { await uploadSelectedProof(data.session, proof); }
-        catch (err) { uploadError = documentErrorMessage(err); }
+      const chosen = DOCUMENT_TYPES.filter(doc => proof[doc.id]).map(doc => doc.id);
+      // Each chosen file goes up now when there is a session; one that fails
+      // doesn't stop the other (AW-085). Email confirmation leaves no
+      // session: the files are held, and storage isn't called.
+      if (data?.session && chosen.length) {
+        proofSession.current = data.session;
+        const { results } = await uploadSelectedProof(data.session, filesOf(proof, chosen));
+        const outcome = proofOutcome(results);
+        setProofFailed(outcome.failed);
+        setProofStatus(outcome.status);
       }
-      setProofWaiting(chosen && !data?.session);
+      setProofWaiting(chosen.length > 0 && !data?.session);
       setAfterSignup(true);
       setMode(data?.session ? 'status' : 'sent');
-      if (uploadError) setError(uploadError);
     }
-    catch (err) { setError(isTimeoutError(err) ? APPLICATION_TIMEOUT_MESSAGE : describeError(err, 'The online application', 'Sign-up failed')); }
+    catch (err) {
+      // A timed-out application may have gone through (AW-194): its
+      // confirmation email says so.
+      setError(isTimeoutError(err) ? APPLICATION_TIMEOUT_MESSAGE
+        : friendlyAuthError(err, { what: 'The online application', fallback: 'We couldn’t send your application. Try again in a moment.' }));
+    }
     finally { setSubmitting(false); }
   };
 
-  const handleReset = async (e) => {
-    e.preventDefault();
+  // Try again for the application's files that didn't upload: only those,
+  // with the session they went up with (the current one, once refreshed).
+  // When none is left to retry, focus goes to the heading, as the button
+  // that had it is gone.
+  const retryProof = async () => {
+    const types = DOCUMENT_TYPES.filter((doc) => proofFailed[doc.id] && proof[doc.id]).map((doc) => doc.id);
+    const held = proofSession.current;
+    const withSession = session?.user?.id && session.user.id === held?.user?.id ? session : held;
+    if (proofBusy || !types.length || !withSession) return;
+    setProofBusy(true);
+    setProofStatus(PROOF_UPLOADING);
+    const { results } = await uploadSelectedProof(withSession, filesOf(proof, types));
+    const outcome = proofOutcome(results);
+    setProofFailed(outcome.failed);
+    setProofStatus(outcome.status);
+    setProofBusy(false);
+    if (!Object.keys(outcome.failed).length) titleRef.current?.focus({ preventScroll: true });
+  };
+
+  // Sends the password reset link to resetEmail, from the form or from Send
+  // again on 'Check your inbox'. Each send starts the minute before Send
+  // again can be used (AW-259).
+  const sendResetLink = async (again) => {
+    if (again) resending.current = true;
     setSubmitting(true); setError(null);
-    try { await resetPassword(resetEmail); setMode('reset-sent'); }
-    catch (err) { setError(describeError(err, 'Password reset', 'We couldn’t send the reset link')); }
-    finally { setSubmitting(false); }
+    try {
+      await resetPassword(resetEmail);
+      setResetAgain(again);
+      startResetCooling();
+      setMode('reset-sent');
+    } catch (err) {
+      setError(again && isRateLimitError(err)
+        ? RESEND_RATE_LIMITED
+        : friendlyAuthError(err, { what: 'Password reset', fallback: 'We couldn’t send the reset link. Try again in a moment.' }));
+    } finally { setSubmitting(false); }
+  };
+  const handleReset = (e) => {
+    e.preventDefault();
+    sendResetLink(false);
+  };
+  // Sign in keeps the email typed for the reset link, and the reset form the
+  // one typed for sign-in (AW-259).
+  const backToSignin = () => {
+    if (resetEmail) setSignin((s) => ({ ...s, email: resetEmail }));
+    switchMode('signin');
+  };
+  // From 'Check your inbox': sign in with the email the application used (AW-260).
+  const signInWithApplication = () => {
+    setSignin((s) => ({ ...s, email: signup.email }));
+    switchMode('signin');
   };
 
   const status = profile?.status || 'pending';
@@ -317,6 +472,36 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
   const resendStatus = cooling
     ? `Sent again to ${resentTo}. It can take a few minutes; check your spam folder too. You can ask for another in a minute.`
     : '';
+  // While Send again waits out the minute after a reset link went, why it
+  // can't be used yet; after Send again, also that it went (AW-259).
+  let resetStatus = '';
+  if (resetCooling) resetStatus = resetAgain ? `Sent again to ${resetEmail}. You can ask for another in a minute.` : 'You can ask for another link in a minute.';
+
+  // The application's files that didn't upload, each with its reason, then
+  // Try again or My account (AW-085). Shown on 'Check your inbox' after the
+  // held files went up, and on the status step after a sign-up.
+  const failedProof = DOCUMENT_TYPES.filter((doc) => proofFailed[doc.id]);
+  const proofProblem = failedProof.length > 0 && (
+    <div className="proof-failed">
+      <ul className="proof-failed-list">
+        {failedProof.map((doc) => (
+          <li key={doc.id}>
+            <b title={proof[doc.id]?.name}>{`${doc.label}: ${shortFileName(proof[doc.id]?.name)}`}</b>
+            <span>{proofFailed[doc.id]}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="checklist-note">
+        <button className="text-link" type="button" onClick={retryProof} aria-disabled={proofBusy ? 'true' : undefined}>
+          <span>{proofBusy ? 'Trying again…' : 'Try again'}</span>
+        </button>
+        {' '}<span>{failedProof.length === 1 ? 'or add it from' : 'or add them from'}</span>{' '}
+        <Link to="/account#documents" onClick={onClose}>My account</Link>.
+      </p>
+    </div>
+  );
+  // Always rendered on those two steps, so each outcome is read out.
+  const proofLine = <p className="checklist-note proof-status" role="status">{heldReady ? PROOF_UPLOADING : proofStatus}</p>;
 
   const dialog = (
     // Backdrop click is a mouse shortcut; Escape (ModalLayer) and the Close button are the keyboard paths.
@@ -326,8 +511,10 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
       {/* Keeps clicks inside the dialog from reaching the backdrop. */}
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
       <div className="dialog scale-in" role="dialog" aria-modal="true" aria-labelledby="auth-title" ref={dialogRef} onClick={(e) => e.stopPropagation()}>
+        {/* One header row: the step's kicker beside the ×, so the first
+            field and the submit button fit a landscape phone (AW-245). */}
         <div className="dialog-top">
-          <p className="eyebrow">TRADE ACCOUNT</p>
+          <p className="kicker">{kicker}</p>
           <button className="icon-btn" type="button" onClick={requestClose} aria-label="Close"><Icon name="close" /></button>
         </div>
         {confirming && (
@@ -339,7 +526,6 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             </div>
           </div>
         )}
-        <p className="kicker">{kicker}</p>
         <h2 id="auth-title" ref={titleRef} tabIndex={-1}>{title}</h2>
 
         {mode === 'signin' && <p className="desc">Sign in to view wholesale pricing, build orders and see your order history.</p>}
@@ -347,7 +533,8 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
         {/* TODO(owner): How long does approval actually take, what should the application promise, and is Net-30 offered (with credit verification)? Kept as published. (AW-246, AW-272, AW-025) */}
         {/* TODO(owner): A Cloudflare Turnstile site key, so Supabase can require a CAPTCHA on sign-up. (AW-206) */}
         {mode === 'signup' && <p className="desc">Alabama Wholesale sells exclusively to licensed retail businesses. Most applications are approved within one business day. Net-30 terms available with credit verification.</p>}
-        {mode === 'sent' && <p className="desc">{`We sent a confirmation link to ${signup.email}. Click it to activate your account — a trade rep will verify your license within one business day.`}</p>}
+        {/* TODO(owner): "within one business day" is kept as published; see the AW-246 row in docs/OWNER-TODO.md. (AW-246) */}
+        {mode === 'sent' && <p className="desc">We sent a confirmation link to <strong>{signup.email}</strong>. Click it to activate your account — a trade rep will verify your license within one business day.</p>}
         {mode === 'checking' && <p className="desc" aria-live="polite">One moment while we load your account.</p>}
         {mode === 'profile-error' && <p className="desc">We signed you in but couldn’t load your account. <CallOrEmail before="Try again, or call" after=" and a trade rep will help you." /></p>}
         {mode === 'unconfirmed' && (
@@ -356,7 +543,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             : `${signin.email} isn’t confirmed yet. Open the confirmation link we emailed when you applied, or send a new one. Links work once and expire after a while.`}</p>
         )}
         {mode === 'reset' && <p className="desc">Enter the business email on your account and we’ll send a link to choose a new password.</p>}
-        {mode === 'reset-sent' && <p className="desc">{`If an account exists for ${resetEmail}, a password reset link is on its way. The link works once — if it doesn’t arrive within a few minutes, check your spam folder or call us.`}</p>}
+        {mode === 'reset-sent' && <p className="desc">If an account exists for <strong>{resetEmail}</strong>, a password reset link is on its way. The link works once. If it doesn’t arrive within a few minutes, check your spam folder. <CallOrEmail before="Still nothing? Call" /></p>}
         {mode === 'status' && (
           status === 'suspended'
             ? <p className="desc">Ordering is paused on this account. <CallOrEmail after=" and a trade rep will help you sort it out." /></p>
@@ -371,14 +558,12 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
               <Field id="aw-email" label="Business email" full>
                 <input id="aw-email" type="email" name="email" value={signin.email} onChange={setS('email')} required autoComplete="email" inputMode="email" data-autofocus />
               </Field>
-              <Field id="aw-pass" label="Password" full>
-                <input id="aw-pass" type="password" name="password" value={signin.password} onChange={setS('password')} required autoComplete="current-password" />
-              </Field>
+              <PasswordField id="aw-pass" className="full" label="Password" name="password" value={signin.password} onChange={setS('password')} required autoComplete="current-password" />
             </div>
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
               <button className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Signing in…' : 'Sign in'}</span></button>
-              <button className="text-link" type="button" onClick={() => { setResetEmail(signin.email); switchMode('reset'); }}>Forgot password?</button>
+              <button className="text-link" type="button" onClick={() => { setResetEmail(signin.email || resetEmail); switchMode('reset'); }}>Forgot password?</button>
               <button className="text-link" type="button" onClick={() => switchMode('checklist')}>No account? Apply instead</button>
             </div>
           </form>
@@ -434,30 +619,36 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
 
         {mode === 'signup' && (
           <form onSubmit={handleSignup}>
-            <div className="form-grid">
-              <Field id="aw-su-name" label="Your name">
+            {/* Three groups, each under its legend, then the optional
+                documents (AW-243). */}
+            <fieldset className="form-grid form-section">
+              <legend>Your login</legend>
+              <Field id="aw-su-name" label="Your name" full>
                 <input id="aw-su-name" name="name" value={signup.name} onChange={setU('name')} required autoComplete="name" data-autofocus />
-              </Field>
-              <Field id="aw-su-business" label="Business name">
-                <input id="aw-su-business" name="organization" value={signup.business} onChange={setU('business')} required autoComplete="organization" />
               </Field>
               <Field id="aw-su-email" label="Business email">
                 <input id="aw-su-email" type="email" name="email" value={signup.email} onChange={setU('email')} required autoComplete="email" inputMode="email" />
               </Field>
-              <Field id="aw-su-phone" label="Phone">
-                <input id="aw-su-phone" type="tel" name="tel" value={signup.phone} onChange={setU('phone')} required autoComplete="tel" inputMode="tel" />
+              <Field id="aw-su-phone" label="Phone" hint="Ten digits, the number we should call about this account." error={phoneError}>
+                <input
+                  id="aw-su-phone" ref={phoneRef} type="tel" name="tel" value={signup.phone}
+                  onChange={(e) => { setPhoneError(''); setU('phone')(e); }}
+                  required autoComplete="tel" inputMode="tel" placeholder={PHONE_EXAMPLE} pattern={PHONE_PATTERN} title={PHONE_TITLE}
+                  aria-invalid={phoneError ? true : undefined} aria-describedby={phoneError ? 'aw-su-phone-hint aw-su-phone-error' : 'aw-su-phone-hint'}
+                />
               </Field>
-              <Field id="aw-su-pass" label="Password" hint="At least 8 characters.">
-                <input id="aw-su-pass" type="password" name="new-password" value={signup.password} onChange={setU('password')} required minLength={8} autoComplete="new-password" aria-describedby="aw-su-pass-hint" />
+              <PasswordField id="aw-su-pass" className="full" label="Password" name="new-password" value={signup.password} onChange={setU('password')} required minLength={PASSWORD_MIN_LENGTH} autoComplete="new-password" showRule />
+            </fieldset>
+            <fieldset className="form-grid form-section">
+              <legend>Your store</legend>
+              <Field id="aw-su-business" label="Business name" full>
+                <input id="aw-su-business" name="organization" value={signup.business} onChange={setU('business')} required autoComplete="organization" />
               </Field>
               <Field id="aw-su-type" label="Business type">
-                <select id="aw-su-type" name="business_type" value={signup.business_type} onChange={setU('business_type')} autoComplete="off">{BUSINESS_TYPES.map(o => <option key={o}>{o}</option>)}</select>
-              </Field>
-              <Field id="aw-su-ein" label="Federal EIN" hint="9 digits, for example 12-3456789.">
-                <input id="aw-su-ein" name="ein" value={signup.ein} onChange={setU('ein')} required inputMode="numeric" pattern="[0-9]{2}-?[0-9]{7}" title="Enter the 9-digit EIN, for example 12-3456789" placeholder="12-3456789" autoComplete="off" aria-describedby="aw-su-ein-hint" />
+                <select id="aw-su-type" name="business_type" value={signup.business_type} onChange={setU('business_type')} required autoComplete="off">{choose}{BUSINESS_TYPES.map(o => <option key={o}>{o}</option>)}</select>
               </Field>
               <Field id="aw-su-state" label="Store state">
-                <select id="aw-su-state" name="state" value={signup.state} onChange={setU('state')} autoComplete="address-level1">{STATES.map(o => <option key={o}>{o}</option>)}</select>
+                <select id="aw-su-state" name="state" value={signup.state} onChange={setU('state')} required autoComplete="address-level1">{choose}{STATES.map(o => <option key={o}>{o}</option>)}</select>
               </Field>
               <Field id="aw-su-street" label="Store street address" full>
                 <input id="aw-su-street" name="address-line1" value={signup.store_street} onChange={setU('store_street')} required maxLength={200} autoComplete="address-line1" />
@@ -468,6 +659,15 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
               <Field id="aw-su-zip" label="ZIP">
                 <input id="aw-su-zip" name="postal-code" value={signup.store_zip} onChange={setU('store_zip')} required maxLength={5} inputMode="numeric" pattern="[0-9]{5}" autoComplete="postal-code" title="Enter a 5-digit ZIP code" />
               </Field>
+              <Field id="aw-su-volume" label="Expected monthly volume" full>
+                <select id="aw-su-volume" name="expected_volume" value={signup.expected_volume} onChange={setU('expected_volume')} required autoComplete="off">{choose}{VOLUMES.map(o => <option key={o}>{o}</option>)}</select>
+              </Field>
+            </fieldset>
+            <fieldset className="form-grid form-section">
+              <legend>Licensing</legend>
+              <Field id="aw-su-ein" label="Federal EIN" hint="9 digits, for example 12-3456789." full>
+                <input id="aw-su-ein" name="ein" value={signup.ein} onChange={setU('ein')} required inputMode="numeric" pattern="[0-9]{2}-?[0-9]{7}" title="Enter the 9-digit EIN, for example 12-3456789" placeholder="12-3456789" autoComplete="off" aria-describedby="aw-su-ein-hint" />
+              </Field>
               {/* TODO(owner): Is a tobacco license required for every trade account, or only for tobacco, vapor, and nicotine? This field stays required for every application until you decide. (AW-129) */}
               <Field id="aw-su-license" label="State retail tobacco license #" hint="From the state where the store is licensed.">
                 <input id="aw-su-license" name="license_no" value={signup.license_no} onChange={setU('license_no')} required autoComplete="off" aria-describedby="aw-su-license-hint" />
@@ -475,16 +675,13 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
               <Field id="aw-su-resale" label="Resale certificate #" hint="Sales tax resale or exemption certificate.">
                 <input id="aw-su-resale" name="resale_cert_no" value={signup.resale_cert_no} onChange={setU('resale_cert_no')} required autoComplete="off" aria-describedby="aw-su-resale-hint" />
               </Field>
-              <DocumentUploads
-                disabled={submitting || !isBackendConfigured}
-                files={proof}
-                errors={proofErrors}
-                onPick={onProof}
-              />
-              <Field id="aw-su-volume" label="Expected monthly volume" full>
-                <select id="aw-su-volume" name="expected_volume" value={signup.expected_volume} onChange={setU('expected_volume')} autoComplete="off">{VOLUMES.map(o => <option key={o}>{o}</option>)}</select>
-              </Field>
-            </div>
+            </fieldset>
+            <DocumentUploads
+              disabled={submitting || !isBackendConfigured}
+              files={proof}
+              errors={proofErrors}
+              onPick={onProof}
+            />
             {/* Consent and 21+ (AW-019). The policies open in a new tab so the
                 answers typed here stay put. */}
             <div className="consent-block">
@@ -513,13 +710,17 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
           <>
             <h3 className="checklist-heading">What happens next</h3>
             <ol className="next-steps">
-              <li><b>Confirm your email.</b><span>{`Open the link we sent to ${signup.email}. If it doesn’t arrive within a few minutes, check your spam folder. Already have an account with this email? Sign in instead.`}</span></li>
+              <li><b>Confirm your email.</b><span>Open the link in that email. Not there after a few minutes? Check your spam folder. Already have an account with this email? <button className="text-link" type="button" onClick={signInWithApplication}>Sign in instead</button>.</span></li>
               <li><b>We review your application.</b><span>A trade rep checks your EIN, state retail tobacco license and resale certificate.</span></li>
-              <li><b>You hear from us.</b><span>{`We’ll contact you at ${signup.email} or ${signup.phone} when your account is approved. Wholesale pricing and ordering unlock then.`}</span></li>
+              {/* The application went with a checked number (AW-247), shown as sent. */}
+              <li><b>You hear from us.</b><span>{`We’ll email you or call ${usPhone(signup.phone)?.formatted ?? signup.phone} when your account is approved. Wholesale pricing and ordering unlock then.`}</span></li>
             </ol>
+            {/* The files aren't sent yet (AW-085). */}
             {proofWaiting && (
-              <p className="checklist-note">Your files stay on this device until you are signed in. After you confirm your email, upload them from your application status, or send proof later to <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.</p>
+              <p className="checklist-note">Your documents aren’t sent yet. Keep this page open: once you confirm your email in this browser, they upload here. Otherwise, add them later from My account, under License documents, or email them to <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.</p>
             )}
+            {proofLine}
+            {proofProblem}
             {/* No email? Send it again, once a minute (AW-016). */}
             <div className="resend">
               <button ref={resendRef} className="text-link" type="button" onClick={() => handleResend(signup.email)} disabled={submitting || cooling || !isBackendConfigured}>
@@ -530,7 +731,7 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
               <button className="button" type="button" onClick={requestClose} data-autofocus>Done</button>
-              <button className="text-link" type="button" onClick={() => switchMode('signin')}>Sign in</button>
+              <button className="text-link" type="button" onClick={signInWithApplication}>Sign in</button>
             </div>
           </>
         )}
@@ -538,19 +739,32 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
         {mode === 'status' && (
           <>
             {error && <p className="form-error" role="alert">{error}</p>}
+            {proofLine}
+            {proofProblem}
             {status !== 'suspended' && (
               <>
                 <h3 className="checklist-heading">While you wait</h3>
                 <ul className="checklist">
-                  <li><b>Browse the catalog.</b><span>You can look through every department and build a quote request now.</span></li>
                   <li><b>Pricing unlocks on approval.</b><span>Wholesale prices and checkout appear as soon as a trade rep approves the account.</span></li>
                   <li><b>Questions?</b><span><CallOrEmail /></span></li>
                 </ul>
               </>
             )}
+            {/* On hold, calling or emailing the trade desk is the one thing
+                to do, so those are the actions (AW-097). */}
             <div className="dialog-actions">
-              <Link className="button" to="/account" onClick={onClose} data-autofocus>View account status</Link>
-              <Link className="text-link" to="/catalog" onClick={onClose}>Browse the catalog</Link>
+              {status === 'suspended' ? (
+                <>
+                  <a className="button" href={`tel:${COMPANY.phoneRaw}`} data-autofocus>{`Call ${COMPANY.phone}`}</a>
+                  <a className="button ghost" href={`mailto:${COMPANY.email}`}>Email the trade desk</a>
+                </>
+              ) : (
+                <>
+                  {/* My account's documents panel (AW-085). */}
+                  <Link className="button" to="/account#documents" onClick={onClose} data-autofocus>View account status</Link>
+                  <Link className="text-link" to="/catalog" onClick={onClose}>Browse the catalog</Link>
+                </>
+              )}
               <button className="text-link" type="button" onClick={requestClose}>Close</button>
             </div>
           </>
@@ -566,16 +780,26 @@ export function AuthModal({ open, initialMode = 'signin', onClose, onSignOut, si
             <p className="form-error" role="alert">{error}</p>
             <div className="dialog-actions">
               <button className="button" type="submit" disabled={submitting || !isBackendConfigured}><span>{submitting ? 'Sending…' : 'Send reset link'}</span></button>
-              <button className="text-link" type="button" onClick={() => switchMode('signin')}>Back to sign in</button>
+              <button className="text-link" type="button" onClick={backToSignin}>Back to sign in</button>
             </div>
           </form>
         )}
 
         {mode === 'reset-sent' && (
-          <div className="dialog-actions">
-            <button className="button" type="button" onClick={requestClose} data-autofocus>Done</button>
-            <button className="text-link" type="button" onClick={() => switchMode('signin')}>Back to sign in</button>
-          </div>
+          <>
+            {/* No email? Send the link again, once a minute (AW-259). */}
+            <div className="resend">
+              <button ref={resendRef} className="text-link" type="button" onClick={() => sendResetLink(true)} disabled={submitting || resetCooling || !isBackendConfigured}>
+                <span>{submitting ? 'Sending…' : 'Send again'}</span>
+              </button>
+              <p className="checklist-note" role="status">{resetStatus}</p>
+            </div>
+            <p className="form-error" role="alert">{error}</p>
+            <div className="dialog-actions">
+              <button className="button" type="button" onClick={requestClose} data-autofocus>Done</button>
+              <button className="text-link" type="button" onClick={backToSignin}>Back to sign in</button>
+            </div>
+          </>
         )}
 
         {mode === 'signup' && <p className="fine">21+ licensed businesses only. By applying you confirm all store staff handling tobacco products meet federal and state age requirements.</p>}

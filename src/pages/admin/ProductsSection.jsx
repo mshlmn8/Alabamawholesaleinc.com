@@ -23,6 +23,7 @@ import { formatMoney } from '../../lib/format.js';
 import { productImage } from '../../lib/images.js';
 import { currentImageFile } from '../../data/catalogAliases.js';
 import { MISSING_FUNCTION_CODES } from '../../lib/pricing.js';
+import { variantCount } from '../../lib/lines.js';
 import { MAX_PRODUCT_QUERY, adminHref } from '../../lib/adminRoutes.js';
 import { fetchAllRows } from '../../lib/paging.js';
 import { Link, navigate } from '../../lib/router.js';
@@ -30,6 +31,7 @@ import { Thumb } from '../../components/Thumb.jsx';
 import { Icon } from '../../components/Icon.jsx';
 import { adminErrorMessage, withStatus } from './adminData.js';
 import { LoadProblem } from './AdminStatus.jsx';
+import { TableScroll } from './TableScroll.jsx';
 import { ProductEditor } from './ProductEditor.jsx';
 import { BulkBar, plural } from './ProductBulk.jsx';
 import { ImportPreview } from './ProductImport.jsx';
@@ -184,13 +186,16 @@ function RowPhoto({ img }) {
 }
 
 // The list's columns; those with a `sort` have a sort button in their header
-// (AW-115).
+// (AW-115). The SKU, which the search matches, and the number of variants
+// show too (AW-106).
 const COLUMNS = [
   { label: 'ID', sort: 'id' },
   { label: 'Photo' },
   { label: 'Name', sort: 'name' },
+  { label: 'SKU' },
   { label: 'Brand', sort: 'brand' },
   { label: 'Category' },
+  { label: 'Variants' },
   { label: 'Price', sort: 'price' },
   { label: 'Tag' },
   { label: 'Active' },
@@ -455,13 +460,17 @@ function ProductsList({
         <BulkBar rows={selectedRows} adjustMissing={missing.adjust} onAdjustMissing={() => onMissing?.('adjust')}
           onApplied={afterChange} onClear={clearSelection} />
       )}
-      {result.total === 0 ? (
+      {rows.length === 0 ? (
+        // An empty catalog is not a filter's doing (AW-268); a failed load
+        // says so above.
+        !loadError && <p className="result-note">No products loaded. Check the catalog connection.</p>
+      ) : result.total === 0 ? (
         <div className="empty-results">
           <p>No products match these filters.</p>
           <Link className="text-link" to={clearHref} replace scroll={false}>Clear filters</Link>
         </div>
       ) : (
-        <div className="table-scroll">
+        <TableScroll label="Products table" resetKey={`${signature}\u0001${result.page}\u0001${query.sort || ''}\u0001${query.dir || ''}`}>
           <table className="aw-table admin-products">
             <thead>
               <tr>
@@ -491,8 +500,10 @@ function ProductsList({
                     <td>{p.id}</td>
                     <td className="product-thumb-cell"><RowPhoto img={p.img} /></td>
                     <td>{p.name}</td>
+                    <td className="muted">{p.sku ? <code>{p.sku}</code> : <span>—</span>}</td>
                     <td>{p.brand}</td>
                     <td className="muted">{`${p.cat} / ${p.sub}`}</td>
+                    <td>{variantCount(p) || '—'}</td>
                     <td className="price">{p.price != null ? formatMoney(p.price) : 'On request'}</td>
                     <td>
                       {p.tag ? <span>{p.tag}</span> : <span>—</span>}
@@ -517,7 +528,7 @@ function ProductsList({
               })}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       )}
       {result.pages > 1 && (
         <nav className="admin-pager" aria-label="Product pages">

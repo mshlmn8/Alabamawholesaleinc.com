@@ -9,8 +9,8 @@
 // 24 hours (AW-207).
 
 import { supabase } from './supabase.js';
-import { describeError } from './errors.js';
-import { REQUEST_TIMEOUT_MS, timeoutSignal } from './network.js';
+import { OFFLINE_MESSAGE, isNetworkError, slowMessage, unavailableMessage } from './errors.js';
+import { REQUEST_TIMEOUT_MS, isOffline, isTimeoutError, timeoutSignal } from './network.js';
 import { fetchAllRows } from './paging.js';
 
 export const DOCUMENT_BUCKET = 'application-documents';
@@ -60,9 +60,52 @@ export function isDocumentPermissionError(err) {
   return code === '42501' || status === '403' || /row-level security/i.test(String(err.message || ''));
 }
 
+// A file name as the page shows it (AW-264): up to `max` characters whole,
+// a longer one as its first 26 and last 10 (which keep the extension) around
+// an ellipsis. The full name goes in a title attribute beside it. Counted in
+// code points, so an emoji is never cut in half.
+export function shortFileName(name, max = 40) {
+  const chars = Array.from(String(name ?? ''));
+  if (chars.length <= max) return chars.join('');
+  return `${chars.slice(0, 26).join('')}…${chars.slice(-10).join('')}`;
+}
+
+// What a picked file that can't be sent says, here and from Storage. A file
+// checked here is named (AW-244); Storage's refusals don't say which file.
+// HEIC is no longer taken (AW-347, above).
+export const FILE_MISSING_MESSAGE = 'Choose a PDF, JPG or PNG file.';
+export const FILE_TYPE_MESSAGE = 'Use a PDF, JPG or PNG file.';
+export const FILE_TOO_LARGE_MESSAGE = 'That file is over the 10 MB limit.';
+export const DOCUMENT_UPLOAD_FAILED_MESSAGE = 'That file did not upload. You can try again, or send proof later.';
+const fileLabel = (name) => shortFileName(name) || 'That file';
+export const fileTypeMessage = (name) => `${fileLabel(name)} isn’t a PDF, JPG or PNG file.`;
+export const fileTooLargeMessage = (name) => `${fileLabel(name)} is over the 10 MB limit.`;
+
+// Storage answers a too-large or wrong-type file with its own status code
+// (often inside an HTTP 400) and English text.
+const storageStatus = (err) => [err?.statusCode, err?.status].map((v) => String(v ?? ''));
+
+// The sentence for a failed upload (AW-084). Never the error's own text:
+// Storage's and the database's messages ('new row violates row-level security
+// policy', 'mime type image/heic-sequence is not supported') mean nothing to
+// an applicant. Offline and a request that gave up get errors.js's copy
+// (AW-344, AW-194).
 export function documentErrorMessage(err) {
   if (isDocumentPermissionError(err)) return DOCUMENTS_REFUSED_MESSAGE;
-  return describeError(err, 'Document upload', 'That file did not upload. You can try again, or send proof later.');
+  // This file's own check (uploadProfileDocument), before anything is sent:
+  // only its own sentences, for the file it checked.
+  if (err?.code === 'invalid_file') {
+    const own = [FILE_MISSING_MESSAGE, fileTypeMessage(err.fileName), fileTooLargeMessage(err.fileName), DOCUMENT_CONTENT_MESSAGE];
+    return own.find((text) => text === err.message) || FILE_TYPE_MESSAGE;
+  }
+  const message = String(err?.message || '');
+  const status = storageStatus(err);
+  if (status.includes('413') || /exceeded the maximum allowed size|payload too large/i.test(message)) return FILE_TOO_LARGE_MESSAGE;
+  if (status.includes('415') || err?.code === 'invalid_mime_type' || /mime type/i.test(message)) return FILE_TYPE_MESSAGE;
+  if (isOffline()) return OFFLINE_MESSAGE;
+  if (isTimeoutError(err)) return slowMessage('Document upload');
+  if (isNetworkError(err) || Number(err?.status) >= 500) return unavailableMessage('Document upload');
+  return DOCUMENT_UPLOAD_FAILED_MESSAGE;
 }
 
 const extensionOf = (file) => (file?.name || '').split('.').pop()?.toLowerCase();
@@ -70,13 +113,13 @@ const extensionOf = (file) => (file?.name || '').split('.').pop()?.toLowerCase()
 // The quick check, by name, declared type and size: synchronous, so a pick
 // can be refused at once. checkDocumentFile() adds the content check.
 export function validateDocumentFile(file) {
-  if (!file) return 'Choose a PDF, JPG or PNG file.';
+  if (!file) return FILE_MISSING_MESSAGE;
   const ext = extensionOf(file);
   const mime = (file.type || '').toLowerCase();
   const extOk = ALLOWED_EXT.has(ext);
   const mimeOk = !mime || mime === 'application/octet-stream' || ALLOWED_MIME.has(mime);
-  if (!extOk || !mimeOk) return 'Use a PDF, JPG or PNG file.';
-  if (file.size > MAX_DOCUMENT_BYTES) return 'That file is over the 10 MB limit.';
+  if (!extOk || !mimeOk) return fileTypeMessage(file.name);
+  if (file.size > MAX_DOCUMENT_BYTES) return fileTooLargeMessage(file.name);
   return null;
 }
 
@@ -159,6 +202,7 @@ function safeFilename(name) {
 }
 
 // The sniffed type when it is known (AW-347), else what the file declares.
+// HEIC is no longer taken, so there is no HEIC-sequence type to map (AW-251).
 function contentTypeFor(file, type = null) {
   if (MIME_FOR_TYPE[type]) return MIME_FOR_TYPE[type];
   const mime = (file.type || '').toLowerCase();
@@ -166,6 +210,17 @@ function contentTypeFor(file, type = null) {
   if (ALLOWED_MIME.has(mime)) return mime;
   const ext = (file.name || '').split('.').pop()?.toLowerCase();
   return MIME_FOR_EXT[ext] || 'application/octet-stream';
+}
+
+// What goes up for `file` as `type`. supabase-js sends a File or Blob as
+// multipart form data, and Storage takes the type of that part, which is the
+// file's own: the contentType option only travels with a raw body. A file
+// whose own type isn't the one to store (none at all, octet-stream, or one
+// its content contradicts) goes up as a slice of itself with that type;
+// slice copies nothing.
+function uploadBody(file, type) {
+  if ((file.type || '').toLowerCase() === type || typeof file.slice !== 'function') return file;
+  return file.slice(0, file.size, type);
 }
 
 // Gives up after REQUEST_TIMEOUT_MS (AW-194) and throws, like any failed
@@ -208,7 +263,7 @@ export async function uploadProfileDocument(session, documentType, file) {
   }
   // A disguised file is refused here, before anything reaches storage.
   const { problem, type } = await inspectDocumentFile(file);
-  if (problem) throw new Error(problem);
+  if (problem) throw Object.assign(new Error(problem), { code: 'invalid_file', fileName: file?.name });
 
   const userId = session.user.id;
   // A new object name keeps the previous file in the bucket when a license is renewed.
@@ -222,9 +277,10 @@ export async function uploadProfileDocument(session, documentType, file) {
     .maybeSingle();
   if (existingError) throw existingError;
 
+  const contentType = contentTypeFor(file, type);
   const { error: uploadError } = await supabase.storage
     .from(DOCUMENT_BUCKET)
-    .upload(path, file, { upsert: true, contentType: contentTypeFor(file, type) });
+    .upload(path, uploadBody(file, contentType), { upsert: true, contentType });
   if (uploadError) throw uploadError;
 
   const uploaded_at = new Date().toISOString();
@@ -243,16 +299,25 @@ export async function uploadProfileDocument(session, documentType, file) {
   return { attempted: true, ...row };
 }
 
+// Uploads each chosen file in turn. One that fails doesn't stop the next
+// (AW-085): results says, per document type, { ok: true, record } or
+// { ok: false, error } (the error as thrown; show documentErrorMessage(error)).
 export async function uploadSelectedProof(session, filesByType) {
-  if (!supabase || !session?.user?.id) return { attempted: false };
+  if (!supabase || !session?.user?.id) return { attempted: false, results: {} };
   let attempted = false;
+  const results = {};
   for (const doc of DOCUMENT_TYPES) {
     const file = filesByType?.[doc.id];
     if (!file) continue;
     attempted = true;
-    await uploadProfileDocument(session, doc.id, file);
+    try {
+      const record = await uploadProfileDocument(session, doc.id, file);
+      results[doc.id] = { ok: true, record };
+    } catch (error) {
+      results[doc.id] = { ok: false, error };
+    }
   }
-  return { attempted };
+  return { attempted, results };
 }
 
 // A signed URL for a stored document, valid for `expiresIn` seconds.

@@ -11,8 +11,15 @@
 //   notes and tobacco license answers (AW-014) are cleared first, so an order
 //   is never sent under one account with another buyer's details.
 //
+// - The account's last delivery address (src/lib/shipTo.js, AW-102) then
+//   replaces the four ship-to fields, as a whole, while each is still empty
+//   or exactly what the profile filled in (applyShipTo): never over typed
+//   text. "Use a different address" clears them (clearShipTo) while they
+//   hold the account's own address (accountShipToSource).
+//
 // A saved draft (AW-080, later) comes before profile values for the same
-// account, and is discarded when the account changes.
+// account, and is discarded when the account changes. A draft's typed
+// address is typed text, so the last delivery address never replaces it.
 
 export const EMPTY_QUOTE_FORM = Object.freeze({
   business: '', contact: '', email: '', phone: '',
@@ -36,6 +43,15 @@ const FROM_PROFILE = {
 // The store state fills the state field only when it is a 2-letter code (the
 // application's list also offers 'Other').
 const PROFILE_VALUE_OK = { shipState: (value) => /^[A-Za-z]{2}$/.test(value) };
+// The ship-to address, in the form's fields.
+export const SHIP_FIELDS = ['shipStreet', 'shipCity', 'shipState', 'shipZip'];
+
+// What the profile fills into `field`, or '' when it has nothing usable.
+function profileValue(profile, field) {
+  const value = profile?.[FROM_PROFILE[field]];
+  if (!value || (PROFILE_VALUE_OK[field] && !PROFILE_VALUE_OK[field](String(value)))) return '';
+  return String(value);
+}
 
 // The form once the signed-in account is `profile` (or null), where
 // `previousId` is the account the form was filled for before (or null).
@@ -46,12 +62,53 @@ export function quoteFormForAccount(data, profile, previousId = null) {
     for (const field of BUYER_FIELDS) next[field] = EMPTY_QUOTE_FORM[field];
   }
   if (profile) {
-    for (const [field, column] of Object.entries(FROM_PROFILE)) {
-      const value = profile[column];
-      if (!value || (PROFILE_VALUE_OK[field] && !PROFILE_VALUE_OK[field](String(value)))) continue;
-      if (!String(next[field] ?? '').trim()) next[field] = String(value);
+    for (const field of Object.keys(FROM_PROFILE)) {
+      const value = profileValue(profile, field);
+      if (value && !String(next[field] ?? '').trim()) next[field] = value;
     }
   }
+  return next;
+}
+
+const shipValue = (data, field) => String(data?.[field] ?? '').trim();
+
+// The ship-to address the profile fills in (the store address from the
+// application), field by field, '' where it has none.
+export function profileShipTo(profile) {
+  return Object.fromEntries(SHIP_FIELDS.map((field) => [field, profileValue(profile, field).trim()]));
+}
+
+// The form with the account's saved ship-to address (shipTo, from
+// loadLastShipTo()) in the four ship-to fields, when every one of them is
+// empty or still exactly the profile's value; otherwise the form as it was.
+export function applyShipTo(data, profile, shipTo) {
+  if (!shipTo) return data;
+  const filled = profileShipTo(profile);
+  const untouched = SHIP_FIELDS.every((field) => {
+    const value = shipValue(data, field);
+    return value === '' || value === filled[field];
+  });
+  if (!untouched) return data;
+  const next = { ...data };
+  for (const field of SHIP_FIELDS) next[field] = shipTo[field] ?? '';
+  return next;
+}
+
+// Whether the ship-to fields hold the account's own address: 'saved' (the
+// last delivery address), 'store' (the profile's store address), or null
+// (empty, typed, or changed).
+export function accountShipToSource(data, profile, shipTo) {
+  if (!shipValue(data, 'shipStreet')) return null;
+  const same = (address) => !!address && SHIP_FIELDS.every((field) => shipValue(data, field) === String(address[field] ?? '').trim());
+  if (same(shipTo)) return 'saved';
+  if (same(profileShipTo(profile))) return 'store';
+  return null;
+}
+
+// "Use a different address": the four ship-to fields emptied.
+export function clearShipTo(data) {
+  const next = { ...data };
+  for (const field of SHIP_FIELDS) next[field] = '';
   return next;
 }
 

@@ -10,7 +10,7 @@
 // approved buyer's prices from the PricesProvider (src/lib/prices.jsx,
 // AW-003), both also mounted in main.jsx.
 
-import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 
 import { savedSessionUserId, useAuth } from './lib/auth.jsx';
 import { useCatalog } from './lib/catalog.jsx';
@@ -19,10 +19,12 @@ import { usePrices } from './lib/prices.jsx';
 import { priceFor } from './lib/pricing.js';
 import { cartOwner, clearGuestCart } from './lib/cartStorage.js';
 import { clearReceipt, saveReceipt, useLastReceipt } from './lib/receipt.js';
+import { loadAccountShipTo } from './lib/shipTo.js';
 import { confirmLeave, focusPageHeading, navigate, pathFor, resolveRoute, routeKey, useNavigationEffects, useRoute } from './lib/router.js';
 import { pageKeyFor } from './lib/routes.js';
 import { confirmAge, declineAge, endAgeConfirmationOnSignOut, reconsiderAge, useAgeGate } from './lib/ageGate.js';
 import { pageMeta, applyPageMeta } from './lib/meta.js';
+import { accountStatus } from './lib/accountStatus.js';
 import { departmentsFor } from './lib/departments.js';
 import { accountNotices, signOutMessage } from './lib/accountNotices.js';
 import { catalogNotices } from './lib/catalogNotices.js';
@@ -71,6 +73,8 @@ export default function App() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutNotice, setSignOutNotice] = useState(null); // { text, pageKey }
+  // What /reset-password shows, for its title (AW-255): { view, pageKey }.
+  const [resetShown, setResetShown] = useState(null);
   const [catalogNoticeHidden, setCatalogNoticeHidden] = useState(false);
 
   const auth = useAuth();
@@ -112,6 +116,14 @@ export default function App() {
   // no approved account, prices still loading, or price on request (AW-003).
   const prices = usePrices();
   const priceOf = useMemo(() => (id, variant) => priceFor(prices.prices, id, variant)?.unit ?? null, [prices.prices]);
+  // The buyer's tier as my_prices() gives it, for saying what the prices on
+  // screen are (AW-107, AW-265); null until the prices are in.
+  const priceTier = useMemo(() => (prices.prices
+    ? { tier: prices.prices.tier, label: prices.prices.tierLabel, discountPct: prices.prices.discountPct }
+    : null), [prices.prices]);
+  // A product's (or variant's) list price for the same buyer, to show beside
+  // the tier price on the product page (AW-265); null without one.
+  const listOf = useMemo(() => (id, variant) => priceFor(prices.prices, id, variant)?.list ?? null, [prices.prices]);
   // Each account on this device has its own cart, and guests share one
   // (AW-189). While the saved session is being checked, or can't be
   // refreshed because Supabase is out of reach, it is that session's
@@ -150,13 +162,23 @@ export default function App() {
     }
   }, [canonicalPath, location]);
 
-  // The title names a saved receipt ('Quote received', AW-022) on /quote, and
-  // the count of orders new since the last visit on /admin (AW-111).
+  // The title names a saved receipt ('Quote received', AW-022) on /quote, the
+  // count of orders new since the last visit on /admin (AW-111), the
+  // account's state on /apply ('Application Under Review', AW-098) and what
+  // /reset-password shows ('Password Updated', AW-255).
+  const applyAs = account === 'loading' ? 'loading' : accountStatus(profile);
+  // The reset page's view belongs to the page that reported it.
+  if (resetShown && resetShown.pageKey !== location.pageKey) setResetShown(null);
+  const resetAs = resetShown?.view || null;
   const metaRoute = useMemo(() => {
     if (receivedKind) return { ...route, received: receivedKind };
     if (route.page === 'admin' && adminUnseen > 0) return { ...route, unseen: adminUnseen };
+    if (route.page === 'apply') return { ...route, applyAs };
+    if (route.page === 'reset-password' && resetAs) return { ...route, view: resetAs };
     return route;
-  }, [route, receivedKind, adminUnseen]);
+  }, [route, receivedKind, adminUnseen, applyAs, resetAs]);
+  const currentPageKey = location.pageKey;
+  const onResetView = useCallback((view) => setResetShown({ view, pageKey: currentPageKey }), [currentPageKey]);
   useEffect(() => {
     applyPageMeta(pageMeta(metaRoute, products, departments));
   }, [metaRoute, products, departments]);
@@ -290,7 +312,7 @@ export default function App() {
 
   // Product cards need the account, its prices, the cart and the add/step actions.
   const cardProps = {
-    profile, isApprovedBuyer, priceOf, pricesStatus: prices.status,
+    profile, isApprovedBuyer, priceOf, pricesStatus: prices.status, priceTier, listOf,
     cart: cart.cart, addLine: cart.addLine, decLine: cart.decLine, onLoginClick: openSignin,
   };
   // Account pages wait for the session and profile instead of flashing a
@@ -324,13 +346,15 @@ export default function App() {
                      removeLines={cart.removeLines} clearCart={cart.clearCart} legacy={cart.legacy} onDismissLegacy={cart.dismissLegacy}
                      profile={profile} account={account} signedIn={!!session} onSignIn={openSignin} onApplyClick={openSignup}
                      isApprovedBuyer={isApprovedBuyer} isSuspended={isSuspended} pricesStatus={prices.status} isBackendConfigured={isBackendConfigured} checkCart={checkCart}
-                     savedReceipt={receiptHere} entryKey={location.key} onSubmitted={(receipt) => saveReceipt({ owner, entryKey: location.key, receipt })} />
+                     savedReceipt={receiptHere} entryKey={location.key} onSubmitted={(receipt) => saveReceipt({ owner, entryKey: location.key, receipt })}
+                     loadShipTo={isBackendConfigured ? loadAccountShipTo : null} />
         );
       case 'account':
         // Keyed by account: another buyer never sees the last one's orders (AW-190).
         return (
-          <AccountPage key={session?.user?.id || 'guest'} {...accountProps} products={products}
-                       addLines={cart.addLines} onOpenCart={() => setCartOpen(true)} isApprovedBuyer={isApprovedBuyer}
+          <AccountPage key={session?.user?.id || 'guest'} {...accountProps} products={products} onApplyClick={openSignup}
+                       addLines={cart.addLines} onOpenCart={() => setCartOpen(true)} isApprovedBuyer={isApprovedBuyer} isBackendConfigured={isBackendConfigured}
+                       priceOf={priceOf} pricesStatus={prices.status} priceTier={priceTier}
                        onSignOutEverywhere={() => handleLogout({ scope: 'global' })} />
         );
       case 'admin':
@@ -355,7 +379,11 @@ export default function App() {
         );
       case 'reset-password':
         // Keyed by account: signing out ends a finished or half-done reset (AW-015).
-        return <ResetPasswordPage key={session?.user?.id || 'guest'} auth={auth} onRequestReset={openReset} onLoginClick={openSignin} />;
+        // 'Cancel and sign out' is the ordinary Sign Out (AW-253).
+        return (
+          <ResetPasswordPage key={session?.user?.id || 'guest'} auth={auth} onRequestReset={openReset} onLoginClick={openSignin}
+                             onSignOut={signOutHere} signingOut={signingOut} onViewChange={onResetView} />
+        );
       default:
         return (
           <NotFoundPage key={routeKey(route)} kind={route.kind} category={route.category} products={products} departments={departments}

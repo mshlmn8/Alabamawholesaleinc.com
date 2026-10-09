@@ -5,13 +5,22 @@
 //
 // App keys it by account, so signing out ends a half-done or finished reset
 // and shows the signed-out view, not "link expired".
+//
+// What it shows is one state, resetView() (AW-255): the page head, the body
+// and, through onViewChange, the tab title all follow it.
 
-import { useState } from 'react';
-import { describeError } from '../../lib/errors.js';
+import { useEffect, useRef, useState } from 'react';
+import { friendlyAuthError } from '../../lib/authErrors.js';
 import { ServiceUnavailable } from '../../components/ServiceUnavailable.jsx';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
-import { Link } from '../../lib/router.js';
+import { PASSWORD_MIN_LENGTH, PasswordField } from '../../components/PasswordField.jsx';
+import { Link, useLocation } from '../../lib/router.js';
 import { PageHead } from './SupportShell.jsx';
+import { resetHead, resetView } from './resetView.js';
+
+// The checking view shows only after this long, so a quick check, or a
+// session that is already there, never flashes it (AW-263).
+export const CHECKING_DELAY_MS = 300;
 
 // What a reset link that did not work says. Supabase's own description is
 // never shown: anyone can write text into a link.
@@ -28,7 +37,10 @@ function linkProblem(linkError) {
   };
 }
 
-export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
+// onSignOut is App's Sign Out, which also clears the guest cart, the receipt
+// and the age confirmation: never auth.signOut here. onViewChange(view) lets
+// App title the page.
+export function ResetPasswordPage({ auth, onRequestReset, onLoginClick, onSignOut, signingOut = false, onViewChange }) {
   const { session, loading, recovery, linkError, linkChecking, updatePassword, isBackendConfigured } = auth;
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -43,19 +55,57 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
     if (password !== confirm) { setError('The two passwords don’t match.'); return; }
     setSaving(true);
     try { await updatePassword(password); setDone(true); }
-    catch (err) { setError(describeError(err, 'Password reset', 'We couldn’t update the password.')); }
+    // Supabase's own text is never shown (AW-084).
+    catch (err) { setError(friendlyAuthError(err, { what: 'Password reset', fallback: 'We couldn’t update the password. Try again in a moment.' })); }
     finally { setSaving(false); }
   };
 
-  let body;
-  if (!isBackendConfigured) {
+  const view = resetView({ isBackendConfigured, done, session, loading, linkChecking, linkError });
+  const head = resetHead(view, { linkChecking });
+  useEffect(() => { onViewChange?.(view); }, [view, onViewChange]);
+
+  const [checkingShown, setCheckingShown] = useState(false);
+  if (view !== 'checking' && checkingShown) setCheckingShown(false);
+  useEffect(() => {
+    if (view !== 'checking') return undefined;
+    const timer = window.setTimeout(() => setCheckingShown(true), CHECKING_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [view]);
+
+  // Focus follows the state (AW-256). Once the link or the account has been
+  // checked, the cursor goes to the new password, unless focus has moved
+  // elsewhere meanwhile. App remounts the page when the session arrives (it
+  // is keyed by account), so the form also takes focus when it is the first
+  // view of a page that was loaded rather than navigated to: the email link
+  // and a reload. After a navigation the router has focused the h1, and the
+  // form leaves it there. A saved password moves focus from the Save button,
+  // which is gone, to the panel that says so.
+  const loaded = useLocation().action === 'load';
+  const sectionRef = useRef(null);
+  const passRef = useRef(null);
+  const doneRef = useRef(null);
+  const shownView = useRef(null);
+  useEffect(() => {
+    const previous = shownView.current;
+    shownView.current = view;
+    if (previous === view) return;
+    if (view === 'done') {
+      doneRef.current?.focus();
+    } else if (view === 'form' && (previous === 'checking' || (previous === null && loaded))) {
+      const active = document.activeElement;
+      if (!active || active === document.body || active.id === 'main' || sectionRef.current?.contains(active)) passRef.current?.focus();
+    }
+  }, [view, loaded]);
+
+  let body = null;
+  if (view === 'unavailable') {
     body = <ServiceUnavailable what="Password reset" className="form-error support-alert" />;
-  } else if (done && session) {
+  } else if (view === 'done') {
     body = (
-      <div className="status-panel status-approved">
+      <div className="status-panel status-approved" role="status">
         <div>
           <p className="eyebrow">ALL SET</p>
-          <h2>Password updated</h2>
+          <h2 ref={doneRef} tabIndex={-1}>New password saved</h2>
           <p>You are signed in with your new password. Use it the next time you sign in.</p>
         </div>
         <div className="contact-strip-actions">
@@ -64,37 +114,50 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
         </div>
       </div>
     );
-  } else if (linkChecking || (loading && !session)) {
-    body = <p className="support-note" role="status">{linkChecking ? 'Checking your reset link…' : 'Loading your account…'}</p>;
-  } else if (session) {
+  } else if (view === 'checking') {
+    // In the form's frame, after a short wait (AW-263).
+    body = checkingShown && (
+      <div className="reset-form" role="status" aria-busy="true">
+        <p className="eyebrow">{linkChecking ? 'CHECKING YOUR LINK' : 'LOADING'}</p>
+        <p className="support-note">{linkChecking ? 'Checking your reset link…' : 'Loading your account…'}</p>
+      </div>
+    );
+  } else if (view === 'form') {
+    // The email on a line of its own that wraps anywhere (AW-262). A reset
+    // link signed the account in on this device: the form says so, and
+    // offers to sign out again (AW-253).
     body = (
-      <form className="reset-form" onSubmit={handleSubmit} aria-labelledby="reset-form-title">
-        <p className="eyebrow">{recovery ? 'RESET LINK CONFIRMED' : 'SIGNED IN'}</p>
-        <h2 id="reset-form-title">{`New password for ${session.user?.email}`}</h2>
+      <form className="reset-form" onSubmit={handleSubmit} aria-labelledby="reset-form-title" aria-describedby={recovery ? 'reset-link-hint' : undefined}>
+        <p className="eyebrow">{recovery ? 'RESET LINK CONFIRMED' : 'YOUR ACCOUNT'}</p>
+        <h2 id="reset-form-title">Set a new password</h2>
+        <p className="reset-account">For <strong>{session.user?.email}</strong></p>
+        {recovery && (
+          <p className="field-hint" id="reset-link-hint">Opening this link signed you in on this device. Save a new password, or choose ‘Cancel and sign out’.</p>
+        )}
         <div className="form-grid">
-          <div className="full">
-            <label htmlFor="reset-password">New password</label>
-            <input id="reset-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} autoComplete="new-password" aria-describedby="reset-password-hint" data-autofocus />
-            <small className="field-hint" id="reset-password-hint">At least 8 characters.</small>
-          </div>
-          <div className="full">
-            <label htmlFor="reset-confirm">Confirm new password</label>
-            <input id="reset-confirm" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={8} autoComplete="new-password" />
-          </div>
+          {/* Show/Hide and the length rule as it is typed (AW-248). */}
+          <PasswordField id="reset-password" className="full" label="New password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={PASSWORD_MIN_LENGTH} autoComplete="new-password" showRule inputRef={passRef} />
+          <PasswordField id="reset-confirm" className="full" label="Confirm new password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={PASSWORD_MIN_LENGTH} autoComplete="new-password" />
         </div>
         <p className="form-error" role="alert">{error}</p>
         <div className="dialog-actions">
           <button className="button" type="submit" disabled={saving}><span>{saving ? 'Saving…' : 'Save new password'}</span></button>
-          <Link className="text-link" to="/">Cancel</Link>
+          {/* My account, where the session shows; not history.back(), which can leave the site. */}
+          <Link className="text-link" to="/account">Cancel</Link>
+          {recovery && (
+            <button className="text-link" type="button" onClick={onSignOut} disabled={signingOut}>
+              <span>{signingOut ? 'Signing out…' : 'Cancel and sign out'}</span>
+            </button>
+          )}
         </div>
       </form>
     );
-  } else if (linkError?.forReset) {
+  } else if (view === 'link-invalid') {
     const problem = linkProblem(linkError);
     body = (
       <div className="status-panel status-suspended">
         <div>
-          <p className="eyebrow">LINK NOT VALID</p>
+          <p className="eyebrow">RESET LINK</p>
           <h2>{problem.title}</h2>
           <p><span>{problem.text}</span> Or <CallOrEmail before="call" after=" and a trade rep will help you get back in." /></p>
         </div>
@@ -121,9 +184,9 @@ export function ResetPasswordPage({ auth, onRequestReset, onLoginClick }) {
   }
 
   return (
-    <section className="support-page">
-      <PageHead crumb="Password reset" eyebrow="PASSWORD HELP" title="Choose a new password">
-        <p>Pick a password of at least 8 characters that you don’t use anywhere else. Your trade account stays signed in once it is saved.</p>
+    <section className="support-page" ref={sectionRef}>
+      <PageHead crumb="Password reset" eyebrow={head.eyebrow} title={head.h1}>
+        {head.intro && <p>{head.intro}</p>}
       </PageHead>
       <div className="reset-layout">{body}</div>
     </section>

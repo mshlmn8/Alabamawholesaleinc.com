@@ -12,6 +12,11 @@
 // buttons say "Select options", "Add to quote" or "Add to order", and an add
 // shows "Added" for a moment and is announced (AW-057).
 //
+// An approved buyer's price is the card's figure, larger than the name, with
+// what it buys under it ("per 36-count box") when the product has a sell
+// unit (AW-107). The price row sits at the foot of the card, so the rows line
+// up across a grid row.
+//
 // The add and choose controls are .button.ghost.sm and are described by the
 // card's title, so "Add to quote" says which product (AW-143). Cursor's
 // "Select options" label (AW-057) is kept for products with a choice. Once
@@ -29,6 +34,7 @@ import {
   isVariantAvailable, lineKey, parseLineKey, requiresVariantChoice, variantAxis, variantCount, variantList,
 } from '../lib/lines.js';
 import { priceLabel, variantPriceRange } from '../lib/pricing.js';
+import { PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
 import { brandLabel } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
@@ -138,9 +144,13 @@ export function ProductCard({ p, profile, isApprovedBuyer, priceOf = NO_PRICES, 
       {showsNicotineWarning(p) && <NicotineWarning compact />}
       <span className="card-meta card-actions">
         {isApprovedBuyer ? (
-          <span>{priceLabel(shown.unit, pricesStatus, { from: shown.from })}</span>
+          <span className="card-price">
+            <b>{priceLabel(shown.unit, pricesStatus, { from: shown.from })}</b>
+            {shown.unit != null && p.sellUnit && <small>{`per ${p.sellUnit}`}</small>}
+          </span>
         ) : profile ? (
-          <span className="lock">Pricing after approval</span>
+          // A suspended account is on hold, not waiting for approval (AW-101).
+          <span className="lock">{(PRICE_LOCK[accountStatus(profile)] || PRICE_LOCK.pending).short}</span>
         ) : (
           <button className="text-link price-login" type="button" onClick={onLoginClick}>Sign in for pricing</button>
         )}
