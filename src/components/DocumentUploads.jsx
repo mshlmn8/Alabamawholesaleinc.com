@@ -29,6 +29,7 @@ import {
   documentErrorMessage,
   formatUploadedOn,
   listProfileDocuments,
+  prepareDocumentStorage,
   shortFileName,
   uploadProfileDocument,
   validateDocumentFile,
@@ -289,6 +290,8 @@ export function ApplicationDocuments({ disabled = false, status = 'pending', id 
       setRecords(isBackendConfigured ? null : []);
       return undefined;
     }
+    // Uploads and View links need Storage's code, which loads on demand (AW-179).
+    prepareDocumentStorage();
     let cancelled = false;
     listProfileDocuments(userId)
       .then(rows => {

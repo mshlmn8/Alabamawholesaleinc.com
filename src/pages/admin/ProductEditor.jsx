@@ -25,6 +25,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
+import { storageOf } from '../../lib/storageClient.js';
 import { productImage } from '../../lib/images.js';
 import { currentImageFile } from '../../data/catalogAliases.js';
 import { catLabel } from '../../lib/format.js';
@@ -152,13 +153,16 @@ function photoUploadMessage(error) {
 // Admin -> Homepage uploads its hero photos the same way.
 export async function uploadPhoto(client, path, file) {
   let error = null;
+  let storage = null;
   try {
-    ({ error } = await client.storage.from(PHOTO_BUCKET).upload(path, file, { contentType: file.type, upsert: false }));
+    // Storage's code is downloaded the first time it is needed (AW-179).
+    storage = await storageOf(client);
+    ({ error } = await storage.from(PHOTO_BUCKET).upload(path, file, { contentType: file.type, upsert: false }));
   } catch (thrown) {
     error = thrown;
   }
   if (error) return { error: photoUploadMessage(error) };
-  return { url: client.storage.from(PHOTO_BUCKET).getPublicUrl(path).data?.publicUrl || '' };
+  return { url: storage.from(PHOTO_BUCKET).getPublicUrl(path).data?.publicUrl || '' };
 }
 
 // Where each field's control is, and what the error summary calls it.

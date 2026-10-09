@@ -11,7 +11,10 @@
 //   prefetchChunks(names)    fetches the files of those pages or dialogs
 //                            into the browser's HTTP cache, quietly, so they
 //                            open at once later, and offline (NEW-006,
-//                            AW-344). Names are the keys of LAZY_CHUNKS in
+//                            AW-344); never on a data-saving or 2G
+//                            connection (isSlowConnection, AW-179), where
+//                            each page's files load when it is opened.
+//                            Names are the keys of LAZY_CHUNKS in
 //                            scripts/chunk-urls.mjs ('quote', 'account',
 //                            'admin', 'auth', 'contact', 'delivery',
 //                            'policy', 'apply', 'reset');
@@ -118,11 +121,20 @@ export function whenOnline() {
   });
 }
 
+// A connection that asks to save data, or one as slow as 2G (the Network
+// Information API, where the browser has it), fetches a page's files only
+// when the page is opened (AW-179).
+export function isSlowConnection() {
+  const connection = typeof navigator === 'undefined' ? null : navigator.connection;
+  if (!connection) return false;
+  return connection.saveData === true || connection.effectiveType === '2g' || connection.effectiveType === 'slow-2g';
+}
+
 export function prefetchChunks(names) {
   if (typeof window === 'undefined' || typeof window.fetch !== 'function') return;
-  // Offline it would only fail; a data-saving connection waits for a page
-  // that needs it.
-  if (!isOnline() || navigator.connection?.saveData) return;
+  // Offline it would only fail; a data-saving or 2G connection waits for a
+  // page that needs it.
+  if (!isOnline() || isSlowConnection()) return;
   for (const url of new Set(names.flatMap(chunkUrls))) {
     if (warmed.has(url)) continue;
     window.fetch(url, { credentials: 'same-origin' })

@@ -11,6 +11,8 @@
 // approved stays the one they saw (AW-197).
 
 import { supabase } from './supabase.js';
+import { preloadStorage, storageOf } from './storageClient.js';
+import { isChunkLoadError } from './chunks.js';
 import { OFFLINE_MESSAGE, isNetworkError, slowMessage, unavailableMessage } from './errors.js';
 import { REQUEST_TIMEOUT_MS, isOffline, isTimeoutError, timeoutSignal } from './network.js';
 import { fetchAllRows } from './paging.js';
@@ -107,7 +109,8 @@ export function documentErrorMessage(err) {
   if (status.includes('415') || err?.code === 'invalid_mime_type' || /mime type/i.test(message)) return FILE_TYPE_MESSAGE;
   if (isOffline()) return OFFLINE_MESSAGE;
   if (isTimeoutError(err)) return slowMessage('Document upload');
-  if (isNetworkError(err) || Number(err?.status) >= 500) return unavailableMessage('Document upload');
+  // Storage's code didn't download (AW-179, src/lib/storageClient.js) counts as the connection.
+  if (isNetworkError(err) || isChunkLoadError(err) || Number(err?.status) >= 500) return unavailableMessage('Document upload');
   return DOCUMENT_UPLOAD_FAILED_MESSAGE;
 }
 
@@ -304,7 +307,9 @@ export async function uploadProfileDocument(session, documentType, file) {
   // needs an UPDATE policy, which 20261012100000 removes; adding works on the
   // database before and after it. If the name is already taken (two uploads
   // in the same millisecond), try once more under a new one.
-  const send = () => supabase.storage.from(DOCUMENT_BUCKET).upload(path, body, { upsert: false, contentType });
+  // Storage's code is downloaded the first time it is needed (AW-179).
+  const storage = await storageOf(supabase);
+  const send = () => storage.from(DOCUMENT_BUCKET).upload(path, body, { upsert: false, contentType });
   let { error: uploadError } = await send();
   if (uploadError && isDuplicateObjectError(uploadError)) {
     time = Math.max(Date.now(), time + 1);
@@ -350,10 +355,17 @@ export async function uploadSelectedProof(session, filesByType) {
   return { attempted, results };
 }
 
+// Starts downloading Storage's code (AW-179) when a panel that uploads or
+// opens documents shows, so the first upload or link doesn't wait for it.
+export function prepareDocumentStorage() {
+  preloadStorage(supabase);
+}
+
 // A signed URL for a stored document, valid for `expiresIn` seconds.
 export async function createDocumentViewUrl(storagePath, expiresIn = 600) {
   if (!supabase || !storagePath) return null;
-  const { data, error } = await supabase.storage.from(DOCUMENT_BUCKET).createSignedUrl(storagePath, expiresIn);
+  const storage = await storageOf(supabase);
+  const { data, error } = await storage.from(DOCUMENT_BUCKET).createSignedUrl(storagePath, expiresIn);
   if (error || !data?.signedUrl) throw error || new Error('Could not open that file.');
   return data.signedUrl;
 }

@@ -25,6 +25,7 @@ import {
 import { MAX_NOTE, hasAssignment, staffName, statusLabel } from './orderStaff.js';
 import { isNewSince, ordersActivity } from './ordersSeen.js';
 import { useLiveOrders } from './liveOrders.js';
+import { realtimeFor } from './realtime.js';
 import { printHref } from './printSheet.js';
 import { OrderStaff } from './OrderStaff.jsx';
 
@@ -380,7 +381,8 @@ export function OrdersTab({
   }, [loadCounts]);
   useEffect(() => { reload(); }, [viewKey, reload]);
   // Realtime, plus a reload every minute while the tab is visible (AW-111).
-  useLiveOrders(reload, { client: supabase });
+  // Realtime is built in the admin code only (AW-179).
+  useLiveOrders(reload, { client: realtimeFor(supabase) });
   const retry = async () => {
     setRetrying(true);
     await reload();

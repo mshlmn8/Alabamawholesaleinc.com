@@ -84,9 +84,19 @@ export default defineConfig(({ command, mode }) => {
           // (AW-179). The pages that load on demand are split in App.jsx;
           // the bundled catalog (src/data/products.js) stays in the main
           // file, as the first paint's fallback catalog.
-          manualChunks: {
-            vendor: ['react', 'react-dom'],
-            supabase: ['@supabase/supabase-js']
+          // The Supabase client every page loads is auth-js and postgrest-js
+          // (src/lib/supabase.js). Storage loads on demand (documents and
+          // admin photos) and Realtime only with the admin code; each is a
+          // file of its own. Their shared helper (tslib) goes with the
+          // client every page has, so neither of the others is ever pulled
+          // in by it. check-compat.mjs knows these names.
+          manualChunks(id) {
+            if (!id.includes('/node_modules/')) return undefined;
+            if (/\/node_modules\/(react|react-dom|scheduler)\//.test(id)) return 'vendor';
+            if (/\/node_modules\/(@supabase\/storage-js|iceberg-js)\//.test(id)) return 'storage';
+            if (/\/node_modules\/@supabase\/(realtime-js|phoenix)\//.test(id)) return 'realtime';
+            if (/\/node_modules\/(@supabase\/(auth-js|postgrest-js)|tslib)\//.test(id)) return 'supabase';
+            return undefined;
           }
         }
       }

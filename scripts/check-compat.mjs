@@ -8,8 +8,9 @@
 // what was actually built, dependencies included.
 //
 // A hit in the site's own files fails the build. A hit in the React or
-// Supabase file (vendor-*.js, supabase-*.js) is only reported: that code is
-// not patched here, and a library may guard its own use.
+// Supabase files (vendor-*.js, supabase-*.js, storage-*.js, realtime-*.js)
+// is only reported: that code is not patched here, and a library may guard
+// its own use.
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,7 +35,7 @@ export const NEWER_CALLS = [
 ];
 
 // Third-party files, by the names vite.config.js manualChunks gives them.
-export const isLibraryFile = (file) => /^(vendor|supabase)-/.test(path.basename(file));
+export const isLibraryFile = (file) => /^(vendor|supabase|storage|realtime)-/.test(path.basename(file));
 
 // [{ file, call, library }] for every newer call in `files` ({ name: code }).
 export function compatProblems(files) {

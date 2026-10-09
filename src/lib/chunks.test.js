@@ -3,7 +3,7 @@
 // the one reload that recovers a file that didn't download (NEW-006).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  CHUNK_RELOAD_KEY, IDLE_FALLBACK_MS, chunkUrls, clearChunkReload, installChunkRecovery, isChunkLoadError, isWarm, loadDialog, loadPage,
+  CHUNK_RELOAD_KEY, IDLE_FALLBACK_MS, chunkUrls, clearChunkReload, installChunkRecovery, isChunkLoadError, isSlowConnection, isWarm, loadDialog, loadPage,
   prefetchChunks, reloadForChunkError, setChunkUrlsForTests, setReloadForTests, whenIdle, whenOnline,
 } from './chunks.js';
 
@@ -144,6 +144,17 @@ describe('prefetchChunks (NEW-006)', () => {
     vi.stubGlobal('navigator', { onLine: true, connection: { saveData: true } });
     prefetchChunks(['quote']);
     expect(fetch).not.toHaveBeenCalled();
+    // Nor on a 2G connection (AW-179).
+    for (const effectiveType of ['2g', 'slow-2g']) {
+      vi.stubGlobal('navigator', { onLine: true, connection: { saveData: false, effectiveType } });
+      expect(isSlowConnection()).toBe(true);
+      prefetchChunks(['quote']);
+    }
+    expect(fetch).not.toHaveBeenCalled();
+    vi.stubGlobal('navigator', { onLine: true, connection: { saveData: false, effectiveType: '3g' } });
+    expect(isSlowConnection()).toBe(false);
+    vi.stubGlobal('navigator', { onLine: true });
+    expect(isSlowConnection()).toBe(false);
     vi.unstubAllGlobals();
     vi.stubGlobal('fetch', fetch);
     const unhandled = vi.fn();

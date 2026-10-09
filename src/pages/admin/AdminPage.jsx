@@ -24,6 +24,7 @@
 import { useEffect, useState } from 'react';
 import { Link, navigate } from '../../lib/router.js';
 import { supabase } from '../../lib/supabase.js';
+import { preloadStorage } from '../../lib/storageClient.js';
 import { adminHref, adminPath, adminSection } from '../../lib/adminRoutes.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
@@ -77,6 +78,11 @@ export function AdminPage({
   const [accountSearch, setAccountSearch] = useState('');
   const approvedAdmin = profile?.role === 'admin' && profile?.status === 'approved';
   const ordersSince = useOrdersSeen(approvedAdmin && account === 'ready' && section === 'orders', supabase);
+  // Photo uploads and document links need Storage, whose code loads on
+  // demand (AW-179): start that for an admin now, so the first one doesn't wait.
+  useEffect(() => {
+    if (approvedAdmin) preloadStorage(supabase);
+  }, [approvedAdmin]);
   // A filter change replaces the history entry and keeps the scroll position.
   // options.force: the change keeps any unsaved edit, so it skips the leave guard.
   const setQuery = (next, options = {}) => navigate(adminHref({ section, query: next }), { replace: true, scroll: false, ...options });

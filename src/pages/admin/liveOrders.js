@@ -13,7 +13,9 @@ export const POLL_MS = 60000;
 export const REALTIME_DEBOUNCE_MS = 500;
 export const ORDERS_CHANNEL = 'admin-orders';
 
-// Subscribes to every change of public.orders; returns the unsubscribe.
+// Subscribes to every change of public.orders; returns the unsubscribe. A
+// client with ready() (src/pages/admin/realtime.js, AW-179) is waited for,
+// so the channel joins with the admin's token.
 export function subscribeOrders(client, onChange, { debounceMs = REALTIME_DEBOUNCE_MS } = {}) {
   if (typeof client?.channel !== 'function') return () => {};
   let timer = null;
@@ -23,18 +25,24 @@ export function subscribeOrders(client, onChange, { debounceMs = REALTIME_DEBOUN
     clearTimeout(timer);
     timer = setTimeout(onChange, debounceMs);
   };
-  let channel;
-  try {
-    channel = client
-      .channel(ORDERS_CHANNEL)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, changed)
-      .subscribe();
-  } catch {
-    return () => {};
-  }
+  let channel = null;
+  const start = () => {
+    if (stopped) return;
+    try {
+      channel = client
+        .channel(ORDERS_CHANNEL)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, changed)
+        .subscribe();
+    } catch {
+      channel = null;
+    }
+  };
+  if (typeof client.ready === 'function') Promise.resolve(client.ready()).then(start, start);
+  else start();
   return () => {
     stopped = true;
     clearTimeout(timer);
+    if (!channel) return;
     try {
       Promise.resolve(client.removeChannel(channel)).catch(() => {});
     } catch {

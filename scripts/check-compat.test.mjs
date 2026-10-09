@@ -23,6 +23,9 @@ describe('check-compat', () => {
   it('knows the vendor and Supabase files by name', () => {
     expect(isLibraryFile('vendor-D3j9xVti.js')).toBe(true);
     expect(isLibraryFile('/x/dist/assets/supabase-CR30SAh-.js')).toBe(true);
+    // Storage and Realtime, split from the client every page loads (AW-179).
+    expect(isLibraryFile('storage-Ab12.js')).toBe(true);
+    expect(isLibraryFile('realtime-Cd34.js')).toBe(true);
     expect(isLibraryFile('index-CWML2A4j.js')).toBe(false);
     expect(isLibraryFile('AdminPage-vendorish.js')).toBe(false);
   });

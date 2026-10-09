@@ -50,6 +50,25 @@ describe('Realtime', () => {
     expect(onChange).toHaveBeenCalledTimes(1);
   });
 
+  it('waits for a client’s ready() (the admin’s token on the socket, AW-179), and never joins after a stop', async () => {
+    let release;
+    const ready = new Promise((resolve) => { release = resolve; });
+    const client = { channel: (name) => fake.client.channel(name), removeChannel: (c) => fake.client.removeChannel(c), ready: () => ready };
+    const stop = subscribeOrders(client, vi.fn());
+    expect(fake.channels).toHaveLength(0);
+    release();
+    await act(async () => { await ready; });
+    expect(fake.channels).toHaveLength(1);
+    stop();
+    expect(fake.channels).toHaveLength(0);
+    let later;
+    const stopEarly = subscribeOrders({ ...client, ready: () => new Promise((resolve) => { later = resolve; }) }, vi.fn());
+    stopEarly();
+    later();
+    await act(async () => {});
+    expect(fake.channels).toHaveLength(0);
+  });
+
   it('does nothing without a client that has channels', () => {
     expect(() => subscribeOrders(null, () => {})()).not.toThrow();
     expect(() => subscribeOrders({ channel: () => { throw new Error('closed'); } }, () => {})()).not.toThrow();
