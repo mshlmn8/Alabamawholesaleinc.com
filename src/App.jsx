@@ -56,7 +56,7 @@ import { CartDrawer } from './components/CartDrawer.jsx';
 import { HelpDialog } from './components/HelpDialog.jsx';
 import { ModalLayer } from './components/ModalLayer.jsx';
 import { ErrorBoundary } from './components/ErrorBoundary.jsx';
-import { LazyDialog, PageLoading, lazyPage } from './components/LazyPage.jsx';
+import { LazyDialog, PageLoading, TALL_PAGES, lazyPage } from './components/LazyPage.jsx';
 import { SiteNotices } from './components/SiteNotices.jsx';
 import { Toast } from './components/Toast.jsx';
 import { HomePage } from './pages/HomePage.jsx';
@@ -499,7 +499,7 @@ export default function App() {
         <ErrorBoundary resetKey={routeKey(route)}>
           {/* Keyed by page: a page whose code is still loading shows the
               loading view, not the last page hidden underneath it (AW-179). */}
-          <Suspense key={route.page} fallback={<PageLoading />}>
+          <Suspense key={route.page} fallback={<PageLoading tall={TALL_PAGES.has(route.page)} />}>
             {renderRoute()}
           </Suspense>
         </ErrorBoundary>

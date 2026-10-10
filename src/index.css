@@ -870,8 +870,11 @@ p > .text-link { min-height: 0; min-width: 0; }
 .page-head > p:not([class]) { max-width: 560px; color: var(--muted); font-size: var(--text-base); line-height: 1.7; }
 /* A page whose code is still downloading (AW-179, src/components/LazyPage.jsx):
    it keeps the footer down where the page will be, and its status line
-   shows only after a moment, so a quick load doesn't flash it. */
+   shows only after a moment, so a quick load doesn't flash it. A page always
+   longer than a screen (TALL_PAGES: the support pages) keeps it below the
+   fold, so it doesn't jump out of view when the page arrives. */
 .page-loading { min-height: 60vh; }
+.page-loading.is-tall { min-height: 100vh; }
 .page-loading > p { animation: page-loading-in 0s 0.4s both; }
 @keyframes page-loading-in { from { visibility: hidden; } }
 /* Page-head modifiers (AW-301), one class each, so the phone page-head padding

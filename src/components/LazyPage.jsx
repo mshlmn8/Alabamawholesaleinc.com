@@ -7,9 +7,10 @@
 //                      after a link to an anchor on it (/account#documents),
 //                      that section comes into view with its heading
 //                      focused (NEW-032);
-//   <PageLoading />    App's Suspense fallback while that code downloads: a
+//   <PageLoading tall/> App's Suspense fallback while that code downloads: a
 //                      page head with a 'Loading…' status line and no h1, so
-//                      the router focuses <main> meanwhile;
+//                      the router focuses <main> meanwhile; a screen tall
+//                      for TALL_PAGES;
 //   <LazyDialog>       a dialog's own error boundary and Suspense: a small
 //                      'Loading…' dialog while its code downloads, and a
 //                      'This didn't open' dialog with Reload when it can't
@@ -27,9 +28,18 @@ import { ErrorBoundary } from './ErrorBoundary.jsx';
 import { Icon } from './Icon.jsx';
 import { ModalLayer } from './ModalLayer.jsx';
 
-export function PageLoading() {
+// The pages always longer than a screen: while their code downloads, the
+// loading view is a screen tall, so the footer stays below the fold and
+// doesn't jump out of view when the page arrives (a layout shift of up to
+// 0.18 on a cold visit; the contact page's warehouse photos, AW-006, made it
+// longer still). A shorter page (an empty checkout, the sign-in prompts of
+// My account and Admin, the password reset) keeps the shorter view, or the
+// footer would rise into view instead.
+export const TALL_PAGES = Object.freeze(new Set(['contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply']));
+
+export function PageLoading({ tall = false }) {
   return (
-    <div className="page-head page-loading">
+    <div className={tall ? 'page-head page-loading is-tall' : 'page-head page-loading'}>
       <p role="status">Loading…</p>
     </div>
   );

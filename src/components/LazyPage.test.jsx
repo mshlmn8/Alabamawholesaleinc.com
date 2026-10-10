@@ -5,7 +5,7 @@ import { Suspense } from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { navigate } from '../lib/router.js';
-import { LazyDialog, PageLoading, lazyPage } from './LazyPage.jsx';
+import { LazyDialog, PageLoading, TALL_PAGES, lazyPage } from './LazyPage.jsx';
 
 const deferred = () => {
   let resolve;
@@ -35,6 +35,13 @@ describe('PageLoading', () => {
     expect(screen.getByRole('status').textContent).toBe('Loading…');
     expect(document.querySelector('.page-head.page-loading')).toBeTruthy();
     expect(document.querySelector('h1, h2')).toBeNull();
+    expect(document.querySelector('.page-loading.is-tall')).toBeNull();
+  });
+
+  it('is a screen tall for the pages always longer than one, so the footer stays below the fold', () => {
+    render(<PageLoading tall />);
+    expect(document.querySelector('.page-head.page-loading.is-tall')).toBeTruthy();
+    expect([...TALL_PAGES].sort()).toEqual(['apply', 'contact', 'delivery', 'privacy', 'shipping', 'terms']);
   });
 });
 
