@@ -8,7 +8,7 @@
 // waits for real seconds.
 import { test, expect } from '@playwright/test';
 import { serveCatalog } from './catalog.js';
-import { GUEST_CART, cartValue } from './cartStore.js';
+import { mockAccount, seedAccount } from './account.js';
 
 const AGE_KEY = 'aw-age-verified'; // STORAGE.age in src/data/content.js
 const ageRecord = (at) => JSON.stringify({ ok: true, at });
@@ -124,7 +124,7 @@ test('on a phone the trade bar is one row, and a message longer than it scrolls 
 test('a toast at the foot of the page leaves the FDA warning readable (NEW-080)', async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto('/product/14');
-  await page.locator('.pd-info').getByRole('button', { name: /^Add to quote/ }).click();
+  await page.locator('.pd-info').getByRole('button', { name: /^Add to order/ }).click();
   const toast = page.locator('.toast-root > *').first();
   await expect(toast).toBeVisible();
   await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
@@ -307,13 +307,13 @@ test.describe('the sticky header and the department page', () => {
   test('Shift+Tab back through checkout never leaves a field under the stuck header (NEW-018)', async ({ page, context }, testInfo) => {
     test.skip(testInfo.project.name === 'phone', 'the wide layouts');
     const errors = trackErrors(page);
-    await context.addInitScript(([key, cart]) => {
-      try { if (!localStorage.getItem(key)) localStorage.setItem(key, cart); } catch { /* storage blocked */ }
-    }, [GUEST_CART, cartValue({ 14: 2, 2: 3 })]);
+    // Only an approved account gets the order form (AW-014).
+    await seedAccount(context, { cart: { 14: 2, 2: 3 } });
+    await mockAccount(page);
     for (const size of [{ width: 1440, height: 900 }, { width: 1920, height: 1080 }]) {
       await page.setViewportSize(size);
-      await page.goto('/quote');
-      await expect(page.getByRole('heading', { level: 1, name: 'Request a quote' })).toBeVisible();
+      await page.goto('/checkout');
+      await expect(page.getByRole('heading', { level: 2, name: 'Your details' })).toBeVisible();
       await page.locator('footer').getByRole('link').first().focus();
       await settled(page);
       const fields = [];

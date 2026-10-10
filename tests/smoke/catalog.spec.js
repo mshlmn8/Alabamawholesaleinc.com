@@ -3,10 +3,11 @@
 // instead of "not found", an open tab loads the catalog again, and checkout
 // checks it again before sending. Products come from the seeded catalog
 // (./catalog.js); every other request that leaves the preview server is
-// aborted, and submit_quote is answered here.
+// aborted, and submit_quote is answered here (for a signed-in, approved
+// account, ./account.js: only those place orders, AW-014).
 import { test, expect } from '@playwright/test';
 import { fulfillProducts, seedRows } from './catalog.js';
-import { GUEST_CART, cartValue } from './cartStore.js';
+import { mockAccount, seedAccount } from './account.js';
 
 const AGE_KEY = 'aw-age-verified'; // STORAGE.age in src/data/content.js
 const ageRecord = (at) => JSON.stringify({ ok: true, at });
@@ -153,35 +154,21 @@ test('an open tab loads the catalog again when it comes back after five minutes,
 test('checkout checks the catalog again and names a line that was taken out (AW-191)', async ({ page, context }) => {
   const errors = trackErrors(page);
   let drop = false;
+  // Only an approved account places an order (AW-014): signed in, with this cart.
+  await seedAccount(context, { cart: { 14: 2, '1::red': 1 } });
+  const sent = await mockAccount(page, { onSubmit: () => ({ json: { id: 'smoke-order', ref_num: 'ALW-O-00001' } }) });
+  // Registered after the account's routes, so it answers the products.
   const calls = await catalog(page, () => ({ rows: seedRows().filter((r) => !(drop && r.id === 14)) }));
-  const sent = [];
-  await page.route(/\/rest\/v1\/rpc\/submit_quote/, (route) => {
-    sent.push(route.request().postDataJSON());
-    return route.fulfill({ json: { id: 'smoke-order', ref_num: 'ALW-Q-00001' } });
-  });
-  await context.addInitScript(([key, value]) => {
-    try {
-      if (!sessionStorage.getItem('smoke-cart')) {
-        localStorage.setItem(key, value);
-        sessionStorage.setItem('smoke-cart', '1');
-      }
-    } catch { /* storage blocked */ }
-  }, [GUEST_CART, cartValue({ 14: 2, '1::red': 1 })]);
-  await page.goto('/quote');
-  await expect(page.getByRole('heading', { level: 1, name: 'Request a quote' })).toBeVisible();
-  for (const [label, value] of [['Business name', 'Test Market LLC'], ['Contact name', 'Test Buyer'], ['Email', 'buyer@example.test'], ['Phone', '205-555-0100'],
-    ['Street', '1 Test Way'], ['City', 'Birmingham'], ['ZIP', '35203']]) {
+  await page.goto('/checkout');
+  await expect(page.getByRole('heading', { level: 1, name: 'Checkout' })).toBeVisible();
+  for (const [label, value] of [['Street', '1 Test Way'], ['City', 'Birmingham'], ['ZIP', '35203']]) {
     await page.getByLabel(label, { exact: true }).fill(value);
   }
   await page.getByLabel('State', { exact: true }).selectOption('AL');
-  // Tobacco lines from a guest: the licence questions (AW-014, PR #12).
-  await page.getByLabel('State tobacco/retail license #').fill('TL-SMOKE');
-  await page.getByLabel('Sales-tax / resale certificate #').fill('RC-SMOKE');
-  await page.getByRole('checkbox', { name: /all purchasers are 21\+/ }).check();
   await expect.poll(() => calls.length).toBe(1);
 
   drop = true;
-  await page.getByRole('button', { name: /Submit quote request/ }).click();
+  await page.getByRole('button', { name: 'Place order' }).click();
   const note = page.getByRole('alert').filter({ hasText: 'The catalog changed since this page opened' });
   await expect(note).toContainText('Kite cigarette tobacco is no longer available — remove it to continue.');
   expect(sent).toEqual([]);
@@ -189,9 +176,8 @@ test('checkout checks the catalog again and names a line that was taken out (AW-
 
   await page.getByRole('button', { name: 'Remove unavailable item', exact: true }).click();
   await expect(note).toHaveCount(0);
-  await page.getByRole('button', { name: /Submit quote request/ }).click();
+  await page.getByRole('button', { name: 'Place order' }).click();
   await expect(page.getByRole('heading', { level: 1, name: /Thank you/ })).toBeVisible();
   expect(sent.map((body) => body.p_items)).toEqual([[{ product_id: 1, variant: 'Red', qty: 1 }]]);
-  expect(sent[0]).toMatchObject({ p_license_no: 'TL-SMOKE', p_resale_cert: 'RC-SMOKE', p_purchasers_21: true });
   expect(errors).toEqual([]);
 });

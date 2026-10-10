@@ -1,4 +1,6 @@
-// The receipt after a quote or order is saved (AW-012, AW-022, AW-108).
+// The receipt after an order is placed (AW-012, AW-022, AW-108). Customers
+// place orders, never quotes (owner answer 2026-10, AW-024), so it always
+// says order; the reference and total are what submit_quote saved.
 //
 // It shows the snapshot src/lib/receipt.js took when submit_quote answered:
 // the reference (large, with a Copy button where the browser allows it; the
@@ -6,7 +8,7 @@
 // the lines that were sent, and the delivery details. Print leaves out the
 // site's header, notices, footer, dialogs and these buttons, and adds the
 // company's name, address and phone (index.css @media print). Nothing here
-// can send the quote again.
+// can send the order again.
 //
 // QuotePage renders it right after a save and, from the copy App keeps for
 // this history entry, after a reload or Back. The heading is focusable
@@ -14,10 +16,11 @@
 //
 // The heading block is centred by its class, with no inline styles
 // (AW-108); the details below it read left to right. They say when the
-// request was sent, on the warehouse's clock; the phone number to be reached
+// order was sent, on the warehouse's clock; the phone number to be reached
 // at is written the usual way, and the notes keep their lines (NEW-062).
 
 import { COMPANY } from '../data/content.js';
+import { BASKET } from '../data/terms.js';
 import { formatMoney } from '../lib/format.js';
 import { DELIVERY_LABELS, formatPreferredDate, formatSentAt, reachAtText } from '../lib/receipt.js';
 import { Link } from '../lib/router.js';
@@ -26,8 +29,6 @@ import { showToast } from '../lib/toast.js';
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 export function QuoteReceipt({ receipt, signedIn = false, headingRef = null }) {
-  const asOrder = receipt.kind === 'order';
-  const noun = asOrder ? 'order' : 'quote';
   // Copy is offered only where the browser has a clipboard to write to
   // (secure pages in current browsers). The toast shows the result and
   // speaks it through announce(), once.
@@ -51,11 +52,12 @@ export function QuoteReceipt({ receipt, signedIn = false, headingRef = null }) {
     <section className="page-head receipt-head">
       {/* Printed only: whom the receipt is from. */}
       <p className="receipt-from">{`${COMPANY.name} · ${COMPANY.addressShort} · ${COMPANY.phone}`}</p>
-      <p className="eyebrow">{asOrder ? 'ORDER RECEIVED' : 'QUOTE RECEIVED'}</p>
+      <p className="eyebrow">{BASKET.received.toUpperCase()}</p>
       <h1 ref={headingRef} tabIndex={-1}>{`Thank you, ${receipt.contact || 'partner'}.`}</h1>
-      {/* No response time is promised (AW-246, owner answer 2026-10). */}
+      {/* No response time is promised (AW-246, owner answer 2026-10). The
+          order goes to the orders inbox, and staff prepare it (AW-024). */}
       <p>
-        <span>{asOrder ? 'Your order has been saved.' : 'Your quote request has been saved.'}</span> A trade desk rep will reach out at <strong>{reachAtText(receipt.reachAt)}</strong> to confirm details.
+        Your order has been placed, and our team will prepare it. A trade desk rep will reach out at <strong>{reachAtText(receipt.reachAt)}</strong> to confirm details.
       </p>
       <p className="receipt-ref">
         <span className="receipt-ref-label">Reference number</span>
@@ -69,7 +71,7 @@ export function QuoteReceipt({ receipt, signedIn = false, headingRef = null }) {
       )}
 
       <div className="receipt-body">
-        <h2 className="receipt-subhead">{`Items in this ${noun}`}</h2>
+        <h2 className="receipt-subhead">{BASKET.items}</h2>
         <ul className="order-items receipt-items">
           {receipt.lines.map((line) => (
             <li key={line.lineKey}>
@@ -99,7 +101,8 @@ export function QuoteReceipt({ receipt, signedIn = false, headingRef = null }) {
 
         <div className="dialog-actions receipt-actions">
           <Link className="button" to="/catalog">Continue shopping</Link>
-          {/* Guest quotes are in no account's history. */}
+          {/* In the account's order history (a receipt kept from before a
+              sign-out is cleared then, App.handleLogout). */}
           {signedIn && <Link className="button ghost" to="/account">View order history</Link>}
           <button className="button ghost" type="button" onClick={() => window.print()}>Print</button>
           <a className="button ghost" href={`tel:${COMPANY.phoneRaw}`}>Call to discuss</a>

@@ -5,7 +5,7 @@
 // (AW-132): the page, its related cards and the add toast.
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { basketTerms } from '../data/terms.js';
+import { BASKET } from '../data/terms.js';
 import { COMPANY } from '../data/content.js';
 import { dismissToast, getToast } from '../lib/toast.js';
 import { ProductPage } from './ProductPage.jsx';
@@ -111,10 +111,10 @@ describe('ProductPage price slot without a price (AW-133)', () => {
   });
 });
 
-describe('ProductPage add labels follow the basket terms (AW-132)', () => {
+describe('ProductPage add labels follow the basket terms (AW-132, AW-024)', () => {
   for (const [who, props] of [['a guest', {}], ['an approved buyer', { profile: APPROVED, isApprovedBuyer: true }]]) {
-    it(`says ${who} adds to the ${basketTerms(Boolean(props.isApprovedBuyer)).noun}, on the page, its cards and the toast`, () => {
-      const basket = basketTerms(Boolean(props.isApprovedBuyer));
+    it(`says ${who} adds to the ${BASKET.noun}, on the page, its cards and the toast`, () => {
+      const basket = BASKET;
       render(page(props));
       const add = within(document.querySelector('.qty-row')).getByRole('button', { name: basket.add });
       const card = document.querySelector('.card-grid');

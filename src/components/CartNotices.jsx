@@ -52,9 +52,9 @@ export function unavailableAdvice(items) {
   return variants ? `${remove}, or choose another variant where the product is still offered.` : `${remove}.`;
 }
 
-// items: the cart's unavailable lines. noun: 'quote' or 'order', what the
-// page calls the basket (basketTerms in src/data/terms.js, AW-132).
-export function UnavailableNotice({ items, onRemoveAll, noun = 'quote' }) {
+// items: the cart's unavailable lines. noun: 'order' (BASKET.noun), what the
+// page calls the basket (src/data/terms.js, AW-132).
+export function UnavailableNotice({ items, onRemoveAll, noun = 'order' }) {
   if (!items.length) return null;
   const one = items.length === 1;
   const remove = (event) => {

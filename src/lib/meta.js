@@ -21,7 +21,7 @@
 // data block runs nothing, so the Content-Security-Policy needs no hash for it.
 
 import { COMPANY, HOME_PITCH, HOME_TITLE, HOURS, ORDER_MINIMUM, hoursLine } from '../data/content.js';
-import { APPLY_LABEL, TRADE_ACCOUNT_LABEL, basketTerms } from '../data/terms.js';
+import { APPLY_LABEL, BASKET, TRADE_ACCOUNT_LABEL } from '../data/terms.js';
 import { ADMIN_GATE_HEADINGS, TRADE_ACCOUNT_TITLE } from './accountStatus.js';
 import { POLICY_TITLES, POLICY_INTROS } from '../pages/support/policyText.js';
 import { resetTitle } from '../pages/support/resetView.js';
@@ -272,10 +272,9 @@ function pageText(route, products, departments) {
       breadcrumbs: trailOf(catalogCrumbs({ category: p.cat, sub: p.sub || null, product: p }), pathFor(route)),
     };
   }
-  // After a save, /quote shows the receipt (App sets route.received, AW-022);
-  // before, its heading, once App knows the account (route.basket 'quote' or
-  // 'order', AW-132).
-  if (route.page === 'quote') return { title: route.received ? `${route.received === 'order' ? 'Order' : 'Quote'} received · ${site}` : `${route.basket ? basketTerms(route.basket === 'order').page : 'Checkout'} · ${site}`, description: `Review your items and submit a wholesale quote or order to ${site}. Minimum order ${formatMoney(ORDER_MINIMUM)}.` };
+  // After a save, /checkout shows the receipt (App sets route.received,
+  // AW-022); before, its heading. Customers place orders (AW-024).
+  if (route.page === 'checkout') return { title: `${route.received ? BASKET.received : BASKET.page} · ${site}`, description: `Review your order and place it with ${site}. Minimum order ${formatMoney(ORDER_MINIMUM)}.` };
   if (route.page === 'account') return { title: `My account · ${site}`, description: `Your ${site} trade account: order history, reorders and quick entry by SKU.` };
   // route.unseen: orders placed since the admin last opened Orders (AW-111,
   // App's useAdminUnseen), as '(2) ' in front. route.gated: the page shows

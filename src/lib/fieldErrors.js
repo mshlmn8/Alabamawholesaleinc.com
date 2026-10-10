@@ -37,8 +37,8 @@ export function asSentence(text) {
   return !s || /[.?!]$/.test(s) ? s : `${s}.`;
 }
 
-// The license and resale fields' words for an empty answer, on the
-// application and the quote form alike (NEW-069).
+// The license and resale fields' words for an empty answer, on the trade
+// application (NEW-069).
 export const LICENSE_REQUIRED = 'Enter the state tobacco license number.';
 export const RESALE_REQUIRED = 'Enter the resale certificate number.';
 
@@ -71,7 +71,7 @@ export function fieldErrorMessage(el, label = labelText(el)) {
   if (v.patternMismatch) return asSentence(el.title) || (what ? `Check the format of ${what}.` : 'Check the format of this entry.');
   if (v.tooShort) return `Use at least ${el.minLength} characters.`;
   if (v.tooLong) return `Use ${el.maxLength} characters or fewer.`;
-  // The one date field with a minimum, the quote's preferred date, starts at
+  // The one date field with a minimum, checkout's preferred date, starts at
   // today (todayInBirmingham in src/lib/orders.js).
   if (v.rangeUnderflow) return type === 'date' ? 'Choose today or a later date.' : `Enter ${el.min} or more.`;
   if (v.rangeOverflow) return type === 'date' ? 'Choose an earlier date.' : `Enter ${el.max} or less.`;

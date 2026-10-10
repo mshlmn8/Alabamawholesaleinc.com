@@ -1,13 +1,15 @@
-// Checkout while the account changes underneath it (AW-186, AW-190, AW-048),
-// against submit_quote v3 (AW-049, AW-079, AW-198, AW-201, AW-014),
-// removing lines (AW-042), and the receipt after a save (AW-012, AW-022,
-// AW-108).
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+// Checkout (AW-024: customers place orders, never quotes): who may order
+// (AW-014), the account changing underneath it (AW-186, AW-190, AW-048),
+// submit_quote v3 (AW-049, AW-079, AW-198, AW-201), removing lines
+// (AW-042), the receipt after a save (AW-012, AW-022, AW-108) and the order
+// email (src/lib/orderNotification.js).
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { useState } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { announce } from '../lib/announce.js';
 import { QuotePage } from './QuotePage.jsx';
 import { submitOrder, todayInBirmingham } from '../lib/orders.js';
+import { ORDER_NOTIFICATION_FIELDS, sendOrderNotification } from '../lib/orderNotification.js';
 import { COMPANY } from '../data/content.js';
 
 vi.mock('../lib/announce.js', async (importOriginal) => ({ ...(await importOriginal()), announce: vi.fn() }));
@@ -23,14 +25,24 @@ vi.mock('../lib/orders.js', async (importOriginal) => ({
     sent.push(args.items);
     calls.push(args);
     forms.push(args.formData);
-    // No kind, like a database without v3: the account decides order or quote.
-    return { ok: true, order: { id: 'o1', ref_num: 'ALW-Q-TEST000001' } };
+    // No kind, like a database without v3.
+    return { ok: true, order: { id: 'o1', ref_num: 'ALW-O-TEST000001' } };
   }),
+}));
+// The order email is posted after a save, never awaited (AW-024).
+const notices = vi.hoisted(() => []);
+vi.mock('../lib/orderNotification.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  sendOrderNotification: vi.fn(async (fields) => { notices.push(fields); return true; }),
 }));
 
 const ITEMS = [{ lineKey: '14', productId: 14, variant: null, name: 'Kite cigarette tobacco', sku: 'AW-KITE', cat: 'TOBACCO', qty: 2, price: 10 }];
 const A = { id: 'a', business: 'Alpha Food Mart', name: 'Alice Alpha', email: 'alpha@example.test', phone: '205-000-0001', status: 'approved' };
 const B = { id: 'b', business: 'Bravo Tobacco Outlet', name: 'Bea Bravo', email: 'bravo@example.test', phone: '', status: 'pending' };
+const GUEST = { profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false };
+const PENDING = { profile: B, account: 'ready', signedIn: true, isApprovedBuyer: false };
+const APPROVED = { profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true };
+const SUSPENDED = { profile: { ...A, status: 'suspended' }, account: 'ready', signedIn: true, isApprovedBuyer: false };
 
 function page(props) {
   const base = {
@@ -40,74 +52,147 @@ function page(props) {
   return <QuotePage {...base} {...props} />;
 }
 const field = (id) => document.getElementById(id).value;
-// A guest or unapproved account with a tobacco line (ITEMS) also gives the
-// license answers: the form checks its required fields before it sends
-// anything (AW-173).
-const answerLicense = () => {
-  const box = document.getElementById('quote-age');
-  if (!box) return;
-  fireEvent.change(document.getElementById('quote-license'), { target: { value: 'TL-1' } });
-  fireEvent.change(document.getElementById('quote-resale'), { target: { value: 'RS-1' } });
-  if (!box.checked) fireEvent.click(box);
-};
-const submit = () => screen.getByRole('button', { name: /Submit/ });
+const submit = () => screen.getByRole('button', { name: /Place order/ });
+const gate = () => document.querySelector('.checkout-gate');
+
+// Only a signed-in, approved account that isn't on hold places an order
+// (AW-014, AW-024). Everyone else sees the cart and, in place of the form,
+// why not and what to do; no approval time is promised (AW-246).
+describe('QuotePage: who may place an order (AW-014, AW-024)', () => {
+  it('shows a guest the cart, and Sign in and Apply instead of the form', () => {
+    const onSignIn = vi.fn();
+    const onApplyClick = vi.fn();
+    render(page({ ...GUEST, onSignIn, onApplyClick }));
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Checkout');
+    expect(screen.getByRole('list', { name: 'Items in your order' })).toBeTruthy();
+    expect(screen.getByRole('textbox', { name: 'Quantity of Kite cigarette tobacco' })).toBeTruthy();
+    const panel = screen.getByRole('region', { name: 'Sign in to place your order' });
+    expect(panel).toBe(gate());
+    expect(panel.textContent).toMatch(/Orders are placed from an approved trade account, for licensed retailers only\. Your cart is kept when you sign in\./);
+    fireEvent.click(within(panel).getByRole('button', { name: 'Sign in' }));
+    fireEvent.click(within(panel).getByRole('button', { name: 'Apply for a trade account' }));
+    expect(onSignIn).toHaveBeenCalledTimes(1);
+    expect(onApplyClick).toHaveBeenCalledTimes(1);
+    // No form, no licence fields, no submit (the guest quote is gone).
+    expect(document.querySelector('form')).toBeNull();
+    expect(document.getElementById('quote-business')).toBeNull();
+    expect(document.getElementById('quote-license')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Place order|Submit/ })).toBeNull();
+    expect(document.body.textContent).not.toMatch(/quote/i);
+  });
+
+  it('links a guest to the apply page when there is no apply dialog', () => {
+    render(page({ ...GUEST, onApplyClick: undefined }));
+    expect(within(gate()).getByRole('link', { name: 'Apply for a trade account' }).getAttribute('href')).toBe('/apply');
+  });
+
+  it('tells an account under review it can order once approved, with no approval time', () => {
+    render(page(PENDING));
+    const panel = screen.getByRole('region', { name: 'Your account is being reviewed' });
+    expect(panel.querySelector('p').textContent).toBe('You can place orders once it’s approved. Your cart stays here until then.');
+    expect(within(panel).getByRole('link', { name: 'Application status' }).getAttribute('href')).toBe('/apply');
+    expect(panel.textContent).not.toMatch(/business day|within|hours?\b/i);
+    expect(screen.queryByRole('button', { name: /Place order/ })).toBeNull();
+    // Its lines can still be changed, for when it can order.
+    expect(screen.getByRole('button', { name: 'Clear all items' })).toBeTruthy();
+  });
+
+  it('tells a suspended account ordering is paused, with the trade desk, in place of the form (AW-201, NEW-064)', () => {
+    const view = render(page(SUSPENDED));
+    expect(screen.queryByRole('button', { name: /Place order/ })).toBeNull();
+    const panel = gate();
+    expect(panel.classList.contains('status-suspended')).toBe(true);
+    expect(panel.querySelector('h2').textContent).toBe('Account on hold');
+    const paused = panel.querySelector('.quote-paused');
+    expect(paused.textContent).toMatch(/^Ordering is paused on this account\. Call \(205\) 458-4788 or email .+ and a trade rep will help you sort it out\.$/);
+    expect(paused.querySelector(`a[href="tel:${COMPANY.phoneRaw}"]`)).toBeTruthy();
+    // Said once; nothing invites an order, and the lines can still change.
+    expect(document.body.textContent.split('Ordering is paused on this account.')).toHaveLength(2);
+    expect(document.querySelector('form')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Clear all items' }).closest('fieldset').disabled).toBe(false);
+    // An approved buyer suspended mid-checkout gets the same.
+    view.rerender(page(APPROVED));
+    expect(submit()).toBeTruthy();
+    view.rerender(page(SUSPENDED));
+    expect(screen.queryByRole('button', { name: /Place order/ })).toBeNull();
+    expect(document.querySelector('.quote-paused')).toBeTruthy();
+  });
+
+  it('says a signed-in account whose details didn’t load can order once they load (NEW-002)', () => {
+    render(page({ profile: null, account: 'no-profile', signedIn: true, isApprovedBuyer: false }));
+    const panel = screen.getByRole('region', { name: 'Your account didn’t load' });
+    expect(panel.textContent).toMatch(/didn’t load\. Orders can be placed once they load: use Try again at the top of the page\.$/);
+    expect(within(panel).queryByRole('button', { name: 'Sign in' })).toBeNull();
+  });
+
+  it('says ordering online is unavailable without a backend, with the trade desk', () => {
+    render(page({ ...APPROVED, isBackendConfigured: false }));
+    expect(screen.getByRole('region', { name: 'Online ordering is unavailable' }).textContent)
+      .toMatch(/^Online ordering is unavailableOrders can’t be placed online right now\. Call \(205\) 458-4788 or email .+ and the trade desk will take your order\.$/);
+    expect(screen.queryByRole('button', { name: /Place order/ })).toBeNull();
+  });
+
+  it('gives an approved buyer the form and Place order', () => {
+    render(page(APPROVED));
+    expect(gate()).toBeNull();
+    expect(screen.getByRole('heading', { level: 2, name: 'Your details' })).toBeTruthy();
+    expect(submit().textContent).toBe('Place order');
+  });
+});
 
 describe('QuotePage and the account', () => {
-  it('waits for the account instead of showing the guest form (AW-186)', () => {
+  it('waits for the account before choosing the form or the sign-in panel (AW-186)', () => {
     const view = render(page({ profile: null, account: 'loading', signedIn: true, isApprovedBuyer: false }));
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Checkout');
-    expect(screen.queryByText('Request a quote')).toBeNull();
-    expect(screen.queryByRole('button', { name: /Submit/ })).toBeNull();
-    view.rerender(page({ profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true }));
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Place your order');
+    expect(gate()).toBeNull();
+    expect(screen.queryByRole('button', { name: /Place order/ })).toBeNull();
+    view.rerender(page(APPROVED));
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Checkout');
     expect([field('quote-business'), field('quote-contact'), field('quote-email'), field('quote-phone')])
       .toEqual(['Alpha Food Mart', 'Alice Alpha', 'alpha@example.test', '205-000-0001']);
   });
 
-  it('warns and blocks the order when the buyer is signed out mid-checkout (AW-048, AW-190)', () => {
-    const view = render(page({ profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true }));
+  it('asks a buyer signed out mid-checkout to sign in again, in place of the form (AW-048, AW-190)', () => {
+    const onSignIn = vi.fn();
+    const view = render(page({ ...APPROVED, onSignIn }));
     fireEvent.change(document.getElementById('ship-street'), { target: { value: '1 Alpha Way' } });
     expect(submit().disabled).toBe(false);
-    view.rerender(page({ profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false }));
-    expect(screen.getByRole('alert').textContent).toMatch(/You were signed out/);
-    expect(submit().disabled).toBe(true);
-    // The signed-out buyer's details are gone.
-    expect([field('quote-business'), field('quote-contact'), field('quote-email'), field('quote-phone'), field('ship-street')]).toEqual(['', '', '', '', '']);
-    fireEvent.click(screen.getByRole('button', { name: 'Send it as a quote request instead' }));
-    expect(submit().disabled).toBe(false);
-    expect(submit().textContent).toMatch(/Submit quote request/);
+    view.rerender(page({ ...GUEST, onSignIn }));
+    expect(gate().querySelector('h2').textContent).toBe('Sign in to place your order');
+    expect(screen.queryByRole('button', { name: /Place order/ })).toBeNull();
+    // No quote request instead (AW-024).
+    expect(screen.queryByRole('button', { name: /quote/i })).toBeNull();
+    fireEvent.click(within(gate()).getByRole('button', { name: 'Sign in' }));
+    expect(onSignIn).toHaveBeenCalledTimes(1);
+    // Signed in again: the form is back from the profile, without what the
+    // signed-out buyer typed.
+    view.rerender(page({ ...APPROVED, onSignIn }));
+    expect([field('quote-business'), field('ship-street')]).toEqual(['Alpha Food Mart', '']);
   });
 
-  it('refills for the next buyer, and says when their account can’t order (AW-190, AW-048)', () => {
-    const view = render(page({ profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true }));
+  it('refills for the next buyer, and says when their account can’t order yet (AW-190, AW-048)', () => {
+    const view = render(page(APPROVED));
     fireEvent.change(document.getElementById('ship-street'), { target: { value: '1 Alpha Way' } });
     view.rerender(page({ profile: null, account: 'loading', signedIn: true, isApprovedBuyer: false }));
-    view.rerender(page({ profile: B, account: 'ready', signedIn: true, isApprovedBuyer: false }));
+    view.rerender(page(PENDING));
+    expect(gate().querySelector('h2').textContent).toBe('Your account is being reviewed');
+    expect(screen.queryByRole('button', { name: /Place order/ })).toBeNull();
+    // Approved later: the form is B's, never A's.
+    view.rerender(page({ profile: { ...B, status: 'approved' }, account: 'ready', signedIn: true, isApprovedBuyer: true }));
     expect([field('quote-business'), field('quote-contact'), field('quote-email'), field('quote-phone'), field('ship-street')])
       .toEqual(['Bravo Tobacco Outlet', 'Bea Bravo', 'bravo@example.test', '', '']);
-    expect(screen.getByRole('alert').textContent).toMatch(/can’t place orders yet/);
-    expect(submit().disabled).toBe(true);
-  });
-
-  it('keeps what a guest typed when they sign in', () => {
-    const view = render(page({ profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false }));
-    fireEvent.change(document.getElementById('quote-contact'), { target: { value: 'Typed Name' } });
-    view.rerender(page({ profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true }));
-    expect(field('quote-contact')).toBe('Typed Name');
-    expect(field('quote-business')).toBe('Alpha Food Mart');
-    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('blocks the submit until lines that can no longer be ordered are removed (AW-083)', () => {
     const removeLines = vi.fn();
     const gone = { lineKey: '999', productId: 999, variant: null, unavailable: 'product', name: 'Old product', sku: 'AW-OLD', qty: 4, price: null };
-    render(page({ items: [...ITEMS, gone], removeLines, profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true }));
+    render(page({ items: [...ITEMS, gone], removeLines, ...APPROVED }));
     expect(screen.getByText('1 item in your order is no longer available.')).toBeTruthy();
     // Said under the button it keeps off, as plain text it is described by,
     // not an alert on arrival (NEW-021).
     expect(screen.queryByRole('alert')).toBeNull();
     const note = document.getElementById('quote-blocked-unavailable');
-    expect(note.textContent).toBe('Remove the item that is no longer available before you submit.');
+    expect(note.textContent).toBe('Remove the item that is no longer available before you place your order.');
     expect(note.className).toBe('form-error');
     expect(submit().disabled).toBe(true);
     expect(submit().getAttribute('aria-describedby')).toBe('quote-blocked-unavailable');
@@ -118,7 +203,7 @@ describe('QuotePage and the account', () => {
   });
 
   it('blocks a quantity the database would refuse, as a guard (AW-013)', () => {
-    render(page({ items: [{ ...ITEMS[0], qty: 150000 }], profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true }));
+    render(page({ items: [{ ...ITEMS[0], qty: 150000 }], ...APPROVED }));
     expect(screen.queryByRole('alert')).toBeNull();
     expect(document.getElementById('quote-blocked-qty').textContent).toBe('Quantities must be a whole number from 1 to 100,000.');
     expect(submit().disabled).toBe(true);
@@ -132,7 +217,7 @@ describe('QuotePage and the account', () => {
       lineKey: '1', productId: 1, variant: null, needsVariant: true, unavailable: null, name: 'Swisher Sweets cigarillos', sku: 'AW-SS', cat: 'TOBACCO', qty: 12, price: null,
       axis: { label: 'Flavor', noun: 'flavor', plural: 'flavors' }, variants: [{ label: 'Red', available: true }],
     };
-    render(page({ items: [...ITEMS, bare], setLine, chooseVariant, profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true }));
+    render(page({ items: [...ITEMS, bare], setLine, chooseVariant, ...APPROVED }));
     expect(submit().disabled).toBe(true);
     expect(screen.getByText('12 units · choose a flavor')).toBeTruthy();
     const input = screen.getByRole('textbox', { name: 'Quantity of Kite cigarette tobacco' });
@@ -146,8 +231,8 @@ describe('QuotePage and the account', () => {
 
   it('lists an old cart’s products that need a variant, also when the cart is empty (AW-354)', () => {
     const legacy = [{ productId: 1, qty: 3, name: 'Swisher Sweets cigarillos' }];
-    const view = render(page({ items: [], legacy, onDismissLegacy: vi.fn(), profile: null, account: 'signed-out', isApprovedBuyer: false }));
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Your quote is empty');
+    const view = render(page({ items: [], legacy, onDismissLegacy: vi.fn(), ...GUEST }));
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Your order is empty');
     // Centred by a class, so the phone page-head padding applies (AW-301).
     const head = screen.getByRole('heading', { level: 1 }).closest('section');
     expect(head.className).toBe('page-head is-centered');
@@ -158,7 +243,7 @@ describe('QuotePage and the account', () => {
     expect(styled && view.container.contains(styled)).toBeFalsy();
     expect(head.querySelector('[style]')).toBeNull();
     expect(screen.getByRole('link', { name: 'Choose a variant for Swisher Sweets cigarillos' })).toBeTruthy();
-    view.rerender(page({ legacy, onDismissLegacy: vi.fn(), profile: null, account: 'signed-out', isApprovedBuyer: false }));
+    view.rerender(page({ legacy, onDismissLegacy: vi.fn(), ...GUEST }));
     expect(screen.getByRole('link', { name: 'Choose a variant for Swisher Sweets cigarillos' })).toBeTruthy();
   });
 });
@@ -170,7 +255,6 @@ describe('QuotePage and a catalog that changed', () => {
       ['quote-phone', '205-000-0000'], ['ship-street', '1 Test Way'], ['ship-city', 'Birmingham'], ['ship-state', 'AL'], ['ship-zip', '35203']]) {
       fireEvent.change(document.getElementById(id), { target: { value } });
     }
-    answerLicense();
   };
   const submitForm = () => fireEvent.submit(document.querySelector('form[aria-labelledby="quote-form-title"]'));
 
@@ -178,7 +262,7 @@ describe('QuotePage and a catalog that changed', () => {
     sent.length = 0;
     let finish;
     const checkCart = vi.fn(() => new Promise((resolve) => { finish = resolve; }));
-    render(page({ profile: null, account: 'signed-out', isApprovedBuyer: false, checkCart }));
+    render(page({ ...APPROVED, checkCart }));
     fill();
     submitForm();
     const button = document.querySelector('button[type="submit"]');
@@ -200,19 +284,19 @@ describe('QuotePage and a catalog that changed', () => {
     sent.length = 0;
     const gone = { ...ITEMS[0], unavailable: 'product', price: null };
     const checkCart = vi.fn(async () => ({ ok: true, items: [gone] }));
-    const view = render(page({ profile: null, account: 'signed-out', isApprovedBuyer: false, checkCart }));
+    const view = render(page({ ...APPROVED, checkCart }));
     fill();
     await act(async () => { submitForm(); });
     // App re-renders the page with the catalog it just loaded.
-    view.rerender(page({ items: [gone], removeLines: vi.fn(), profile: null, account: 'signed-out', isApprovedBuyer: false, checkCart }));
+    view.rerender(page({ items: [gone], removeLines: vi.fn(), ...APPROVED, checkCart }));
     const alerts = screen.getAllByRole('alert').map((el) => el.textContent);
-    expect(alerts).toEqual(['The catalog changed since this page opened, so nothing was sent. Kite cigarette tobacco is no longer available — remove it to continue. Check your items, then submit again.']);
+    expect(alerts).toEqual(['The catalog changed since this page opened, so nothing was sent. Kite cigarette tobacco is no longer available — remove it to continue. Check your items, then place your order again.']);
     // The general line would say the same: it waits until the message goes (NEW-021).
     expect(document.getElementById('quote-blocked-unavailable')).toBeNull();
     expect(submit().hasAttribute('aria-describedby')).toBe(false);
     expect(sent).toEqual([]);
     // Gone once the lines on the page change.
-    view.rerender(page({ items: [], profile: null, account: 'signed-out', isApprovedBuyer: false, checkCart }));
+    view.rerender(page({ items: [], ...APPROVED, checkCart }));
     expect(screen.queryByText(/The catalog changed/)).toBeNull();
   });
 
@@ -220,7 +304,7 @@ describe('QuotePage and a catalog that changed', () => {
     sent.length = 0;
     submitOrder.mockImplementationOnce(async () => ({ ok: true, order: { id: 'o2', ref_num: 'ALW-O-TEST000002', kind: 'order', subtotal: 1234.5, total_units: 7 } }));
     const checkCart = vi.fn(async () => ({ ok: true, items: ITEMS }));
-    render(page({ profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true, pricesStatus: 'ready', checkCart }));
+    render(page({ ...APPROVED, pricesStatus: 'ready', checkCart }));
     fill();
     await act(async () => { submitForm(); });
     await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Thank you/));
@@ -229,10 +313,10 @@ describe('QuotePage and a catalog that changed', () => {
     expect(screen.getByText('ORDER RECEIVED')).toBeTruthy();
   });
 
-  it('shows no saved total for an unpriced quote', async () => {
+  it('shows no saved total when nothing was priced', async () => {
     sent.length = 0;
     const checkCart = vi.fn(async () => ({ ok: true, items: ITEMS }));
-    render(page({ profile: null, account: 'signed-out', isApprovedBuyer: false, checkCart }));
+    render(page({ ...APPROVED, checkCart }));
     fill();
     await act(async () => { submitForm(); });
     await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Thank you/));
@@ -242,7 +326,7 @@ describe('QuotePage and a catalog that changed', () => {
   it('sends nothing when the catalog can’t be checked', async () => {
     sent.length = 0;
     const checkCart = vi.fn(async () => ({ ok: false, error: { kind: 'network' } }));
-    render(page({ profile: null, account: 'signed-out', isApprovedBuyer: false, checkCart }));
+    render(page({ ...APPROVED, checkCart }));
     fill();
     await act(async () => { submitForm(); });
     expect(screen.getByRole('alert').textContent).toMatch(/^We couldn’t check the latest prices and availability, so nothing was sent\./);
@@ -253,61 +337,33 @@ describe('QuotePage and a catalog that changed', () => {
   });
 });
 
-// A guest or unapproved account quoting tobacco or vape lines gives a
-// tobacco licence, a resale certificate and a 21+ attestation (AW-014,
-// Cursor's PR #12). Approved buyers are not asked again.
-describe('QuotePage and tobacco licenses', () => {
+// PR #12's guest licence fields (a licence number, a resale certificate and
+// a 21+ attestation for tobacco and vape lines) went with guest orders
+// (AW-014): approved accounts gave theirs when they applied.
+describe('QuotePage asks for no licence answers (AW-014)', () => {
   const CIGARETTES = [{ ...ITEMS[0], cat: 'TOBACCO', sub: 'Cigarettes' }];
-  const CANDY = [{ lineKey: '200', productId: 200, variant: null, name: 'Chocolate bar', sku: 'AW-CHOC', qty: 1, cat: 'CANDIES', sub: 'Chocolate Bars' }];
-  const licence = () => document.getElementById('quote-license');
-  const fillAll = () => {
-    for (const [id, value] of [['quote-business', 'Test Market'], ['quote-contact', 'Test Buyer'], ['quote-email', 'buyer@example.test'],
-      ['quote-phone', '205-000-0000'], ['ship-street', '1 Test Way'], ['ship-city', 'Birmingham'], ['ship-state', 'AL'], ['ship-zip', '35203']]) {
-      fireEvent.change(document.getElementById(id), { target: { value } });
+  const VAPES = [{ ...ITEMS[0], lineKey: '60', productId: 60, cat: 'NOVELTIES', sub: 'Disposable Vapes' }];
+
+  it('sends an approved buyer’s tobacco and vape order without them', async () => {
+    forms.length = 0;
+    for (const items of [CIGARETTES, VAPES]) {
+      const view = render(page({ ...APPROVED, items, checkCart: vi.fn(async () => ({ ok: true, items })) }));
+      expect(document.getElementById('quote-license')).toBeNull();
+      expect(screen.queryByLabelText(/license #|resale certificate #/i)).toBeNull();
+      expect(screen.queryByRole('checkbox')).toBeNull();
+      for (const [id, value] of [['ship-street', '1 Alpha Way'], ['ship-city', 'Hoover'], ['ship-state', 'AL'], ['ship-zip', '35216']]) {
+        fireEvent.change(document.getElementById(id), { target: { value } });
+      }
+      await act(async () => { fireEvent.submit(document.querySelector('form[aria-labelledby="quote-form-title"]')); });
+      await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Thank you/));
+      view.unmount();
     }
-  };
-
-  it('asks a guest with a cigarette line for the licence, resale certificate and 21+, and links to sign-in and apply', async () => {
-    forms.length = 0;
-    const onSignIn = vi.fn();
-    const onApplyClick = vi.fn();
-    render(page({ items: CIGARETTES, profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false, onSignIn, onApplyClick }));
-    expect(licence().required).toBe(true);
-    expect(screen.getByLabelText('Sales-tax / resale certificate #').required).toBe(true);
-    const attest = screen.getByRole('checkbox', { name: 'I confirm this business holds a valid tobacco retail license and all purchasers are 21+' });
-    expect(attest.required).toBe(true);
-    fireEvent.click(screen.getByRole('button', { name: 'Already have an account? Sign in' }));
-    fireEvent.click(screen.getByRole('button', { name: 'New here? Apply for a trade account' }));
-    expect(onSignIn).toHaveBeenCalled();
-    expect(onApplyClick).toHaveBeenCalled();
-
-    fillAll();
-    fireEvent.change(licence(), { target: { value: 'TL-123' } });
-    fireEvent.change(screen.getByLabelText('Sales-tax / resale certificate #'), { target: { value: 'RC-456' } });
-    fireEvent.click(attest);
-    await act(async () => { fireEvent.submit(licence().closest('form')); });
-    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Thank you/));
-    expect(forms.at(-1)).toMatchObject({ licenseNo: 'TL-123', resaleCert: 'RC-456', purchasers21: true });
-  });
-
-  it('asks a pending account too, but not an approved buyer', () => {
-    const view = render(page({ items: CIGARETTES, profile: B, account: 'ready', signedIn: true, isApprovedBuyer: false }));
-    expect(licence()).not.toBeNull();
-    // Signed in: no sign-in or apply links.
-    expect(screen.queryByRole('button', { name: 'Already have an account? Sign in' })).toBeNull();
-    view.rerender(page({ items: CIGARETTES, profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true }));
-    expect(licence()).toBeNull();
-    expect(screen.queryByRole('checkbox')).toBeNull();
-  });
-
-  it('asks nothing for a cart without tobacco or vape lines, and sends no licence answers', async () => {
-    forms.length = 0;
-    render(page({ items: CANDY, profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false }));
-    expect(licence()).toBeNull();
-    fillAll();
-    await act(async () => { fireEvent.submit(document.querySelector('form[aria-labelledby="quote-form-title"]')); });
-    await waitFor(() => expect(forms.length).toBe(1));
-    expect(forms[0]).toMatchObject({ licenseNo: '', resaleCert: '', purchasers21: false });
+    expect(forms).toHaveLength(2);
+    for (const form of forms) {
+      expect(form).not.toHaveProperty('licenseNo');
+      expect(form).not.toHaveProperty('resaleCert');
+      expect(form).not.toHaveProperty('purchasers21');
+    }
   });
 });
 
@@ -331,9 +387,9 @@ describe('QuotePage totals for an approved buyer', () => {
     expect(document.querySelector('.checkout-total').textContent).toBe('Estimated total · 10 units$20.00');
     expect(document.querySelector('.checkout-total + .total-note').textContent).toBe('1 line needs a variant and isn’t in this total.');
     expect(document.querySelectorAll('.checkout-lines .line-total')).toHaveLength(1);
-    // Guests see no prices, so nothing is left out of one.
-    view.rerender(page({ items: [bare, ...ITEMS], total: 0, profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false }));
-    expect(document.querySelector('.checkout-total').textContent).toBe('Estimated total · 10 unitsPricing confirmed by the trade desk');
+    // Guests see no prices and no form, so no total either (AW-014).
+    view.rerender(page({ items: [bare, ...ITEMS], total: 0, ...GUEST }));
+    expect(document.querySelector('.checkout-total')).toBeNull();
     expect(document.querySelector('.total-note')).toBeNull();
   });
 
@@ -357,7 +413,7 @@ describe('QuotePage totals for an approved buyer', () => {
     expect(screen.queryByRole('alert')).toBeNull();
     expect(submit().getAttribute('aria-describedby')).toBe('quote-blocked-variant quote-blocked-unavailable');
     expect(document.getElementById('quote-blocked-variant').textContent).toBe('Choose a variant for every product that has more than one.');
-    expect(document.getElementById('quote-blocked-unavailable').textContent).toBe('Remove the items that are no longer available before you submit.');
+    expect(document.getElementById('quote-blocked-unavailable').textContent).toBe('Remove the items that are no longer available before you place your order.');
     expect(screen.getByRole('button', { name: 'Remove unavailable items' })).toBeTruthy();
   });
 });
@@ -378,7 +434,7 @@ describe('QuotePage minimum (AW-076, AW-283, NEW-059, NEW-010)', () => {
   it('says it once, in the meter, with "You can still submit" only when the order can be submitted', () => {
     const view = render(page(buyer));
     expect(meter()).toBe('Add $480.00 to reach the $500 order minimum. You can still submit this order.');
-    expect(intro()).toBe('Review your items and submit. A trade desk rep will confirm pricing, availability and delivery.');
+    expect(intro()).toBe('Review your items, then place your order. The trade desk confirms pricing, availability and delivery, then prepares your order.');
     expect(mentions()).toBe(1);
     expect(document.querySelector('p.notice')).toBeNull();
     expect(submit().disabled).toBe(false);
@@ -395,9 +451,12 @@ describe('QuotePage minimum (AW-076, AW-283, NEW-059, NEW-010)', () => {
     view.rerender(page({ ...buyer, items: [...ITEMS, gone] }));
     expect(meter()).toBe('Add $480.00 to reach the $500 order minimum.');
     expect(mentions()).toBe(1);
-    // Quotes can't be saved (no backend).
+    // Orders can't be placed online (no backend): no form, so no meter; the
+    // intro says the minimum.
     view.rerender(page({ ...buyer, isBackendConfigured: false }));
-    expect(meter()).toBe('Add $480.00 to reach the $500 order minimum.');
+    expect(meter()).toBeNull();
+    expect(intro()).toBe('Review your items. The minimum order is $500.');
+    expect(mentions()).toBe(1);
     // At the minimum, the meter moves on and the intro says it.
     view.rerender(page({ ...buyer, total: 500 }));
     expect(allowed()).toBeNull();
@@ -428,11 +487,17 @@ describe('QuotePage minimum (AW-076, AW-283, NEW-059, NEW-010)', () => {
   });
 
   it('prints the minimum once, as $500, and the free-delivery amount from content.js', () => {
-    render(page({ profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false }));
-    expect(intro()).toBe('Review your items and submit. The minimum order is $500. A trade desk rep will confirm pricing, availability and delivery.');
-    expect(document.querySelector('form .fine:last-of-type').textContent).toMatch(/^Orders over \$1,500 qualify for free delivery/);
+    const fine = () => [...document.querySelectorAll('.fine')].filter((el) => /^Orders over/.test(el.textContent));
+    const view = render(page(GUEST));
+    expect(intro()).toBe('Review your items. The minimum order is $500.');
+    expect(fine()).toHaveLength(1);
+    expect(fine()[0].textContent).toMatch(/^Orders over \$1,500 qualify for free delivery/);
     expect(mentions()).toBe(1);
     expect(document.body.textContent).not.toMatch(/\$500\.00/);
+    view.rerender(page({ ...buyer, total: 500 }));
+    expect(intro()).toBe('Review your items, then place your order. The minimum order is $500. The trade desk confirms pricing, availability and delivery, then prepares your order.');
+    expect(fine()).toHaveLength(1);
+    expect(fine()[0].closest('form')).toBeTruthy();
   });
 });
 
@@ -502,12 +567,8 @@ describe('QuotePage when the buyer’s prices didn’t load (NEW-010)', () => {
   });
 });
 
-// submit_quote on the page (AW-049, AW-079, AW-198, AW-201, AW-014).
+// submit_quote on the page (AW-049, AW-079, AW-198).
 describe('QuotePage and submit_quote', () => {
-  const GUEST = { profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false };
-  const PENDING = { profile: { ...B }, account: 'ready', signedIn: true, isApprovedBuyer: false };
-  const APPROVED = { profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true };
-  const CANDY = [{ lineKey: '40', productId: 40, variant: null, name: 'Test candy', sku: 'AW-CANDY', cat: 'CANDIES', qty: 1, price: null }];
   const fillContact = () => {
     for (const [id, value] of [['quote-business', 'Test Market'], ['quote-contact', 'Test Buyer'], ['quote-email', 'buyer@example.test'], ['quote-phone', '205-000-0000']]) {
       fireEvent.change(document.getElementById(id), { target: { value } });
@@ -523,23 +584,21 @@ describe('QuotePage and submit_quote', () => {
 
   it('shows the reference the server made, and no reference before (AW-049)', async () => {
     calls.length = 0;
-    render(page({ ...GUEST, checkCart: checkCart() }));
+    render(page({ ...APPROVED, checkCart: checkCart() }));
     expect(document.body.textContent).not.toMatch(/ALW-/);
     fillContact();
     fillAddress();
-    answerLicense();
     await act(async () => { submitForm(); });
     await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Thank you/));
-    expect(screen.getByText('ALW-Q-TEST000001')).toBeTruthy();
+    expect(screen.getByText('ALW-O-TEST000001')).toBeTruthy();
     expect(calls[0]).not.toHaveProperty('refNum');
   });
 
   it('says what the server refused, marks the field, and cites no reference (AW-198, AW-200)', async () => {
     submitOrder.mockImplementationOnce(async () => { throw Object.assign(new Error('Enter a valid ZIP code'), { code: 'P0001', hint: 'invalid_zip' }); });
-    render(page({ ...GUEST, checkCart: checkCart() }));
+    render(page({ ...APPROVED, checkCart: checkCart() }));
     fillContact();
     fillAddress();
-    answerLicense();
     await act(async () => { submitForm(); });
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toBe('Enter a 5-digit ZIP code (or ZIP+4).');
@@ -553,18 +612,29 @@ describe('QuotePage and submit_quote', () => {
 
     submitOrder.mockImplementationOnce(async () => { throw new Error('boom'); });
     await act(async () => { submitForm(); });
-    expect((await screen.findByRole('alert')).textContent).toMatch(/^We couldn’t save this quote\. Please call the trade desk at \(205\)/);
+    expect((await screen.findByRole('alert')).textContent).toMatch(/^We couldn’t place this order\. Please call the trade desk at \(205\)/);
     expect(document.querySelector('.form-error').textContent).not.toMatch(/ALW-|reference/);
+  });
+
+  it('says so when the server no longer sees the account as signed in or approved (20261014111000)', async () => {
+    render(page({ ...APPROVED, checkCart: checkCart() }));
+    fillAddress();
+    submitOrder.mockImplementationOnce(async () => { throw Object.assign(new Error('Sign in to place an order'), { code: 'P0001', hint: 'sign_in_required' }); });
+    await act(async () => { submitForm(); });
+    expect((await screen.findByRole('alert')).textContent).toBe('You’re signed out, so this order wasn’t sent. Sign in, then place it again.');
+    submitOrder.mockImplementationOnce(async () => { throw Object.assign(new Error('x'), { code: 'P0001', hint: 'account_not_approved' }); });
+    await act(async () => { submitForm(); });
+    expect((await screen.findByRole('alert')).textContent).toBe('Your account is being reviewed, so this order wasn’t sent. You can place orders once it’s approved.');
+    expect(screen.queryByRole('heading', { level: 1, name: /Thank you/ })).toBeNull();
   });
 
   it('puts the delivery method first and hides the address for will-call (AW-079)', async () => {
     calls.length = 0;
-    render(page({ ...GUEST, checkCart: checkCart() }));
+    render(page({ ...APPROVED, checkCart: checkCart() }));
     const labels = [...document.querySelectorAll('.checkout-form-grid label')].map((l) => l.htmlFor);
     expect(labels.indexOf('quote-delivery')).toBeLessThan(labels.indexOf('ship-street'));
     fillContact();
     fillAddress();
-    answerLicense();
     const delivery = screen.getByLabelText('Delivery method');
     fireEvent.change(delivery, { target: { value: 'willcall' } });
     for (const id of ['ship-street', 'ship-city', 'ship-state', 'ship-zip']) expect(document.getElementById(id)).toBeNull();
@@ -582,7 +652,7 @@ describe('QuotePage and submit_quote', () => {
   });
 
   it('carries the server’s limits on the fields (AW-198)', () => {
-    render(page(GUEST));
+    render(page(APPROVED));
     const attr = (id, name) => document.getElementById(id).getAttribute(name);
     expect(['quote-business', 'quote-contact', 'quote-email', 'quote-phone', 'ship-street', 'ship-city', 'quote-notes'].map((id) => attr(id, 'maxlength')))
       .toEqual(['200', '120', '254', '40', '200', '100', '2000']);
@@ -595,109 +665,18 @@ describe('QuotePage and submit_quote', () => {
   it('sends nothing when the honeypot is filled, and says what a failed save says (AW-198)', async () => {
     calls.length = 0;
     const check = checkCart();
-    render(page({ ...GUEST, checkCart: check }));
+    render(page({ ...APPROVED, checkCart: check }));
     const trap = document.getElementById('quote-company-website');
     expect(trap.tabIndex).toBe(-1);
     expect(trap.getAttribute('autocomplete')).toBe('off');
     expect(trap.closest('[aria-hidden="true"]').classList.contains('sr-only')).toBe(true);
     fillContact();
     fillAddress();
-    answerLicense();
     fireEvent.change(trap, { target: { value: 'https://spam.example' } });
     await act(async () => { submitForm(); });
-    expect(screen.getByRole('alert').textContent).toMatch(/^We couldn’t save this quote\. Please call the trade desk at/);
+    expect(screen.getByRole('alert').textContent).toMatch(/^We couldn’t place this order\. Please call the trade desk at/);
     expect(calls).toEqual([]);
     expect(check).not.toHaveBeenCalled();
-  });
-
-  it('tells a suspended account ordering is paused, instead of a submit button, and locks the details (AW-201, NEW-064)', () => {
-    const suspended = { ...A, status: 'suspended' };
-    const view = render(page({ profile: suspended, account: 'ready', signedIn: true, isApprovedBuyer: false, isSuspended: true }));
-    expect(screen.queryByRole('button', { name: /Submit/ })).toBeNull();
-    const paused = document.querySelector('.quote-paused');
-    expect(paused.textContent).toMatch(/^Ordering is paused on this account\. Call \(205\) 458-4788 or email .+ and a trade rep will help you sort it out\.$/);
-    expect(paused.querySelector(`a[href="tel:${COMPANY.phoneRaw}"]`)).toBeTruthy();
-    // NEW-064: it is the page's intro, said once; nothing invites a submit.
-    expect(paused.parentElement.classList.contains('page-head')).toBe(true);
-    expect(document.body.textContent.split('Ordering is paused on this account.')).toHaveLength(2);
-    expect(document.body.textContent).not.toMatch(/Review your items and submit/);
-    expect(document.querySelector('.form-note')).toBeNull();
-    // The details show, locked; the lines can still be changed, for later.
-    const details = document.getElementById('quote-business').closest('fieldset');
-    expect(details.disabled).toBe(true);
-    expect(document.getElementById('quote-business').value).toBe(A.business);
-    expect(screen.getByRole('button', { name: 'Clear all items' }).closest('fieldset').disabled).toBe(false);
-    // Not the "send it as a quote instead" warning, nor pricing talk.
-    expect(screen.queryByText(/can’t place orders yet/)).toBeNull();
-    expect(document.querySelector('.checkout-total').textContent).toBe('Estimated total · 2 unitsOrdering paused');
-    // No license fields: the account can't submit anyway.
-    expect(document.getElementById('quote-license')).toBeNull();
-    // An approved buyer suspended mid-checkout gets the same.
-    view.rerender(page({ ...APPROVED }));
-    view.rerender(page({ profile: suspended, account: 'ready', signedIn: true, isApprovedBuyer: false, isSuspended: true }));
-    expect(screen.queryByRole('button', { name: /Submit|Send it as a quote/ })).toBeNull();
-    expect(document.querySelector('.quote-paused')).toBeTruthy();
-  });
-
-  it('offers guests sign-in and apply links above the form (AW-014)', () => {
-    const onSignIn = vi.fn();
-    const view = render(page({ ...GUEST, onSignIn }));
-    fireEvent.click(screen.getByRole('button', { name: 'Already have an account? Sign in' }));
-    expect(onSignIn).toHaveBeenCalledTimes(1);
-    // Without the apply dialog, the link goes to the apply page.
-    expect(screen.getByRole('link', { name: 'New here? Apply for a trade account' }).getAttribute('href')).toBe('/apply');
-    // No separator to end a wrapped line (NEW-033): the row's gap spaces them.
-    const links = document.querySelector('.quote-account-links');
-    expect([...links.childNodes].map((node) => `${node.nodeName} ${node.textContent}`))
-      .toEqual(['BUTTON Already have an account? Sign in', 'A New here? Apply for a trade account']);
-    view.rerender(page({ ...PENDING }));
-    expect(document.querySelector('.quote-account-links')).toBeNull();
-  });
-
-  it('asks guests and pending accounts with a tobacco or vape line for the license answers, all required (AW-014)', async () => {
-    calls.length = 0;
-    const view = render(page({ ...GUEST, checkCart: checkCart() }));
-    const license = screen.getByLabelText('State tobacco/retail license #');
-    const resale = screen.getByLabelText('Sales-tax / resale certificate #');
-    const attest = screen.getByRole('checkbox', { name: 'I confirm this business holds a valid tobacco retail license and all purchasers are 21+' });
-    for (const input of [license, resale]) {
-      expect(input.required).toBe(true);
-      expect(input.getAttribute('autocomplete')).toBe('off');
-      expect(input.getAttribute('aria-describedby')).toBe('quote-license-note');
-      expect(input.getAttribute('maxlength')).toBe('64');
-    }
-    expect(attest.required).toBe(true);
-    fillContact();
-    fillAddress();
-    fireEvent.change(license, { target: { value: 'TL-TEST-1' } });
-    fireEvent.change(resale, { target: { value: 'RS-TEST-1' } });
-    fireEvent.click(attest);
-    await act(async () => { submitForm(); });
-    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Thank you/));
-    expect(calls[0].formData).toMatchObject({ licenseNo: 'TL-TEST-1', resaleCert: 'RS-TEST-1', purchasers21: true });
-
-    view.unmount();
-    const pending = render(page({ ...PENDING }));
-    expect(screen.getByLabelText('State tobacco/retail license #')).toBeTruthy();
-    // A vape line asks too; a kava line in the same department doesn't (PR #12's rule).
-    pending.rerender(page({ ...PENDING, items: [{ ...CANDY[0], cat: 'NOVELTIES', sub: 'Disposable Vapes' }] }));
-    expect(screen.getByLabelText('State tobacco/retail license #')).toBeTruthy();
-    pending.rerender(page({ ...PENDING, items: [{ ...CANDY[0], cat: 'NOVELTIES', sub: 'Kratom & Kava' }] }));
-    expect(screen.queryByLabelText('State tobacco/retail license #')).toBeNull();
-  });
-
-  it('doesn’t ask approved buyers, or for a cart without restricted lines (AW-014)', async () => {
-    calls.length = 0;
-    const view = render(page({ ...APPROVED }));
-    expect(screen.queryByLabelText(/license #/)).toBeNull();
-    view.rerender(page({ ...GUEST, items: CANDY, checkCart: vi.fn(async () => ({ ok: true, items: CANDY })) }));
-    expect(screen.queryByLabelText(/license #/)).toBeNull();
-    expect(screen.queryByRole('checkbox')).toBeNull();
-    fillContact();
-    fillAddress();
-    await act(async () => { submitForm(); });
-    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Thank you/));
-    expect(calls[0].formData).toMatchObject({ licenseNo: '', resaleCert: '', purchasers21: false });
   });
 });
 
@@ -731,7 +710,7 @@ describe('QuotePage removals', () => {
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Quantity of Argo corn starch' })));
     fireEvent.click(removeButton('Argo corn starch'));
     expect(announced().at(-1)).toBe('Removed Argo corn starch.');
-    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Your quote is empty' }));
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Your order is empty' }));
   });
 
   it('says every item went with "Clear all items", and focuses the empty page’s heading', () => {
@@ -739,12 +718,12 @@ describe('QuotePage removals', () => {
     const clear = screen.getByRole('button', { name: 'Clear all items' });
     clear.focus();
     fireEvent.click(clear);
-    expect(announced()).toEqual(['Removed all items from your quote.']);
-    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Your quote is empty' }));
+    expect(announced()).toEqual(['Removed all items from your order.']);
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Your order is empty' }));
     expect(document.activeElement).not.toBe(document.body);
   });
 
-  it('says "order" to an approved buyer', () => {
+  it('says "order" to an approved buyer too', () => {
     render(<Checkout profile={A} isApprovedBuyer />);
     fireEvent.click(screen.getByRole('button', { name: 'Clear all items' }));
     expect(announced()).toEqual(['Removed all items from your order.']);
@@ -755,8 +734,6 @@ describe('QuotePage removals', () => {
 // that were sent leave the cart, and the receipt shows what was sent. App
 // keeps the receipt for the history entry and passes it back as savedReceipt.
 describe('QuotePage receipt', () => {
-  const GUEST = { profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false };
-  const APPROVED = { profile: A, account: 'ready', signedIn: true, isApprovedBuyer: true };
   const CORN = { lineKey: '45', productId: 45, variant: null, name: 'Argo corn starch', sku: 'AW-ARGO-CORN-STARCH', cat: 'FOOD STUFF', qty: 3, price: 10, sellUnit: 'case of 24' };
   const LINES = [ITEMS[0], CORN];
   const fillAll = () => {
@@ -765,12 +742,6 @@ describe('QuotePage receipt', () => {
       ['quote-date', '2030-01-15'], ['quote-notes', 'Back door, before 10']]) {
       fireEvent.change(document.getElementById(id), { target: { value } });
     }
-  };
-  // Product 14 is tobacco: a guest gives the license answers.
-  const fillLicense = () => {
-    fireEvent.change(document.getElementById('quote-license'), { target: { value: 'TL-1' } });
-    fireEvent.change(document.getElementById('quote-resale'), { target: { value: 'RS-1' } });
-    fireEvent.click(document.getElementById('quote-age'));
   };
   // An approved account's contact details come from its profile; the ship-to
   // address is typed (the form checks every required field, AW-173).
@@ -796,17 +767,16 @@ describe('QuotePage receipt', () => {
     let answer;
     submitOrder.mockImplementationOnce(() => new Promise((resolve) => { answer = resolve; }));
     const checkCart = vi.fn(async () => ({ ok: true, items: LINES }));
-    const props = { ...GUEST, items: LINES, removeLines, clearCart, onSubmitted, checkCart, entryKey: 'k1' };
+    const props = { ...APPROVED, items: LINES, removeLines, clearCart, onSubmitted, checkCart, entryKey: 'k1' };
     const view = render(page(props));
     fillAll();
-    fillLicense();
     await act(async () => { submitForm(); });
     expect(answer).toBeTypeOf('function');
-    // Another tab adds a line while the quote is on its way, and the buyer edits a field.
+    // Another tab adds a line while the order is on its way, and the buyer edits a field.
     const added = { lineKey: '200', productId: 200, variant: null, name: 'Chocolate bar', sku: 'AW-CHOC', cat: 'CANDIES', qty: 1, price: null };
     view.rerender(page({ ...props, items: [...LINES, added] }));
     fireEvent.change(document.getElementById('quote-contact'), { target: { value: 'Edited While Sending' } });
-    await act(async () => { answer({ ok: true, order: { id: 'o9', ref_num: 'ALW-Q-TEST000009', kind: 'quote', total_units: 5, subtotal: null, priced_lines: 0, unpriced_lines: 2 } }); });
+    await act(async () => { answer({ ok: true, order: { id: 'o9', ref_num: 'ALW-O-TEST000009', kind: 'order', total_units: 5, subtotal: null, priced_lines: 0, unpriced_lines: 2 } }); });
     await waitFor(() => expect(heading().textContent).toBe('Thank you, Test Buyer.'));
     expect(removeLines).toHaveBeenCalledTimes(1);
     expect(removeLines).toHaveBeenCalledWith(['14', '45']);
@@ -814,7 +784,7 @@ describe('QuotePage receipt', () => {
     expect(onSubmitted).toHaveBeenCalledTimes(1);
     const receipt = onSubmitted.mock.calls[0][0];
     expect(receipt).toMatchObject({
-      ref: 'ALW-Q-TEST000009', kind: 'quote', totalUnits: 5, subtotal: null, pricedLines: 0, unpricedLines: 2,
+      ref: 'ALW-O-TEST000009', kind: 'order', totalUnits: 5, subtotal: null, pricedLines: 0, unpricedLines: 2,
       lines: [
         { lineKey: '14', name: 'Kite cigarette tobacco', sku: 'AW-KITE', qty: 2, sellUnit: '' },
         { lineKey: '45', name: 'Argo corn starch', sku: 'AW-ARGO-CORN-STARCH', qty: 3, sellUnit: 'case of 24' },
@@ -823,18 +793,16 @@ describe('QuotePage receipt', () => {
       preferredDate: '2030-01-15', notes: 'Back door, before 10', contact: 'Test Buyer', business: 'Test Market', reachAt: '205-000-0000',
     });
     expect(receipt.savedAt).toBeTypeOf('number');
-    // No license answers in the receipt.
-    expect(JSON.stringify(receipt)).not.toMatch(/TL-1|RS-1/);
   });
 
   it('lists the lines, the delivery method, the ship-to address, the date and the notes, with no inline styles (AW-022, AW-108)', async () => {
-    render(page({ ...GUEST, items: LINES, checkCart: vi.fn(async () => ({ ok: true, items: LINES })) }));
+    render(page({ ...APPROVED, items: LINES, checkCart: vi.fn(async () => ({ ok: true, items: LINES })) }));
     fillAll();
-    fillLicense();
     await act(async () => { submitForm(); });
     await waitFor(() => expect(heading().textContent).toMatch(/^Thank you/));
-    expect(screen.getByText('QUOTE RECEIVED')).toBeTruthy();
-    expect(screen.getByText('ALW-Q-TEST000001')).toBeTruthy();
+    expect(screen.getByText('ORDER RECEIVED')).toBeTruthy();
+    expect(screen.getByText('ALW-O-TEST000001')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Items in your order' })).toBeTruthy();
     expect([...document.querySelectorAll('.receipt-items li')].map((li) => li.textContent)).toEqual([
       '2 × Kite cigarette tobacco (AW-KITE)',
       '3 × Argo corn starch (AW-ARGO-CORN-STARCH · sold by the case of 24)',
@@ -850,15 +818,16 @@ describe('QuotePage receipt', () => {
       Notes: 'Back door, before 10',
     });
     // The phone as typed (205-000-0000), written the usual way (NEW-062).
-    expect(receiptText()).toMatch(/A trade desk rep will reach out at \(205\) 000-0000 to confirm details\./);
+    expect(receiptText()).toMatch(/Your order has been placed, and our team will prepare it\. A trade desk rep will reach out at \(205\) 000-0000 to confirm details\./);
+    expect(receiptText()).not.toMatch(/quote/i);
     // AW-108: centred by class, never by inline style.
     const section = document.querySelector('section.page-head.receipt-head');
     expect(section.hasAttribute('style')).toBe(false);
     expect(section.querySelectorAll('[style]')).toHaveLength(0);
-    // Nothing on the receipt sends again; guests get no order-history link.
+    // Nothing on the receipt sends again; the order is in the account's history.
     expect(document.querySelector('form')).toBeNull();
-    expect(screen.queryByRole('button', { name: /Submit/ })).toBeNull();
-    expect(screen.queryByRole('link', { name: 'View order history' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Place order/ })).toBeNull();
+    expect(screen.getByRole('link', { name: 'View order history' }).getAttribute('href')).toBe('/account');
     expect(screen.getByRole('link', { name: 'Continue shopping' }).getAttribute('href')).toBe('/catalog');
     expect(screen.getByRole('button', { name: 'Print' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Call to discuss' }).getAttribute('href')).toBe(`tel:${COMPANY.phoneRaw}`);
@@ -916,31 +885,27 @@ describe('QuotePage receipt', () => {
     render(page({ ...APPROVED, checkCart: vi.fn(async () => ({ ok: true, items: ITEMS })) }));
     fillShipTo();
     await act(async () => { submitForm(); });
-    expect(screen.getByRole('alert').textContent).toMatch(/^We couldn’t save this/);
+    expect(screen.getByRole('alert').textContent).toMatch(/^We couldn’t place this order/);
     await act(async () => { submitForm(); });
     await waitFor(() => expect(heading().textContent).toMatch(/Thank you/));
     expect(sentCount() - before).toBe(2);
   });
 
-  it('picks ORDER or QUOTE by account when the database doesn’t say (older signatures)', async () => {
-    // The default answer has no kind, priced_lines or unpriced_lines.
+  it('says ORDER RECEIVED whatever the database calls it (AW-024)', async () => {
+    // The default answer has no kind, priced_lines or unpriced_lines (older signatures).
     const view = render(page({ ...APPROVED, checkCart: vi.fn(async () => ({ ok: true, items: ITEMS })) }));
     fillShipTo();
     await act(async () => { submitForm(); });
     await waitFor(() => expect(screen.getByText('ORDER RECEIVED')).toBeTruthy());
-    expect(screen.getByText('Items in this order')).toBeTruthy();
+    expect(screen.getByText('Items in your order')).toBeTruthy();
     view.unmount();
-    render(page({ ...GUEST, items: [CORN], checkCart: vi.fn(async () => ({ ok: true, items: [CORN] })) }));
-    fillAll();
-    await act(async () => { submitForm(); });
-    await waitFor(() => expect(screen.getByText('QUOTE RECEIVED')).toBeTruthy());
-    expect(screen.queryByText(/Saved total/)).toBeNull();
-    // The server's kind wins over the account.
+    // A database that saved it as a quote (an account it doesn't see as approved).
     submitOrder.mockImplementationOnce(async () => ({ ok: true, order: { id: 'o3', ref_num: 'ALW-Q-TEST000003', kind: 'quote', total_units: 2, subtotal: null } }));
     cleanupAndRender(page({ ...APPROVED, checkCart: vi.fn(async () => ({ ok: true, items: ITEMS })) }));
     fillShipTo();
     await act(async () => { submitForm(); });
-    await waitFor(() => expect(screen.getByText('QUOTE RECEIVED')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('ORDER RECEIVED')).toBeTruthy());
+    expect(document.body.textContent).not.toMatch(/QUOTE|quote request/i);
   });
 
   it('says how many lines the trade desk prices beside a partial total', async () => {
@@ -956,11 +921,12 @@ describe('QuotePage receipt', () => {
     const view = render(page({ ...GUEST, items: [], savedReceipt: SAVED, entryKey: 'k1' }));
     expect(heading().textContent).toBe('Thank you, Saved Buyer.');
     expect(screen.getByText('ALW-Q-SAVED00001')).toBeTruthy();
-    expect(screen.queryByText('Your quote is empty')).toBeNull();
-    expect(screen.queryByRole('button', { name: /Submit/ })).toBeNull();
-    // A fresh visit to /quote (another entry): no saved receipt, so the empty cart.
+    expect(screen.getByText('ORDER RECEIVED')).toBeTruthy();
+    expect(screen.queryByText('Your order is empty')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Place order/ })).toBeNull();
+    // A fresh visit to /checkout (another entry): no saved receipt, so the empty cart.
     view.rerender(page({ ...GUEST, items: [], savedReceipt: null, entryKey: 'k2' }));
-    expect(heading().textContent).toBe('Your quote is empty');
+    expect(heading().textContent).toBe('Your order is empty');
   });
 
   it('forgets a receipt it showed when the history entry changes', async () => {
@@ -1004,6 +970,86 @@ describe('QuotePage receipt', () => {
     } finally {
       delete window.navigator.clipboard;
     }
+  });
+});
+
+// The order email (AW-024): once submit_quote has saved the order, checkout
+// posts a copy to Netlify Forms for the orders inbox. Never before the save,
+// never for a failed one, and never holding up the receipt.
+describe('QuotePage order email (AW-024)', () => {
+  const UUID = '3f2c9a1e-5b7d-4c11-8e2f-0a1b2c3d4e5f';
+  const VARIANT = {
+    lineKey: '1::red', productId: 1, variant: 'Red', name: 'Swisher Sweets cigarillos — Red', sku: 'AW-SS-RED', cat: 'TOBACCO', qty: 4, price: 5, sellUnit: 'box of 30',
+  };
+  const LINES = [ITEMS[0], VARIANT];
+  const fill = () => {
+    for (const [id, value] of [['ship-street', '1 Alpha Way'], ['ship-city', 'Hoover'], ['ship-state', 'AL'], ['ship-zip', '35216'],
+      ['quote-date', '2030-01-15'], ['quote-notes', 'Back door']]) {
+      fireEvent.change(document.getElementById(id), { target: { value } });
+    }
+  };
+  const submitForm = () => fireEvent.submit(document.querySelector('form[aria-labelledby="quote-form-title"]'));
+  beforeEach(() => {
+    notices.length = 0;
+    vi.mocked(sendOrderNotification).mockClear();
+  });
+
+  it('posts every field of the saved order once, after the save', async () => {
+    let answer;
+    submitOrder.mockImplementationOnce(() => new Promise((resolve) => { answer = resolve; }));
+    render(page({ ...APPROVED, items: LINES, checkCart: vi.fn(async () => ({ ok: true, items: LINES })) }));
+    fill();
+    await act(async () => { submitForm(); });
+    // Not before the order is saved.
+    expect(sendOrderNotification).not.toHaveBeenCalled();
+    await act(async () => { answer({ ok: true, order: { id: UUID, ref_num: 'ALW-O-5E4F3A2B1C', kind: 'order', total_units: 6 } }); });
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Thank you/));
+    expect(sendOrderNotification).toHaveBeenCalledTimes(1);
+    const fields = notices[0];
+    expect(Object.keys(fields)).toEqual([...ORDER_NOTIFICATION_FIELDS]);
+    expect(fields).toMatchObject({
+      subject: 'New order ALW-O-5E4F3A2B1C from Alpha Food Mart',
+      reference: 'ALW-O-5E4F3A2B1C',
+      business: 'Alpha Food Mart',
+      contact: 'Alice Alpha',
+      email: 'alpha@example.test',
+      phone: '205-000-0001',
+      delivery: 'Next-day delivery (on route)',
+      'preferred-date': 'Tuesday, January 15, 2030',
+      'ship-to': '1 Alpha Way, Hoover, AL 35216',
+      items: '2 × Kite cigarette tobacco | SKU: AW-KITE\n4 × Swisher Sweets cigarillos | Variant: Red | SKU: AW-SS-RED | Sell unit: box of 30',
+      'line-count': '2',
+      'total-units': '6',
+      notes: 'Back door',
+      'admin-link': `${window.location.origin}/admin/orders/${UUID}/print`,
+    });
+    expect(fields['placed-at']).toMatch(/ CT$/);
+  });
+
+  it('posts nothing for an order that wasn’t saved, or a send that was refused', async () => {
+    render(page({ ...APPROVED, checkCart: vi.fn(async () => ({ ok: true, items: ITEMS })) }));
+    fill();
+    submitOrder.mockImplementationOnce(async () => { throw Object.assign(new Error('x'), { code: 'P0001', hint: 'invalid_zip' }); });
+    await act(async () => { submitForm(); });
+    await screen.findByRole('alert');
+    submitOrder.mockImplementationOnce(async () => { throw new Error('boom'); });
+    await act(async () => { submitForm(); });
+    expect(sendOrderNotification).not.toHaveBeenCalled();
+  });
+
+  it('shows the receipt without waiting for the email, also when it never answers or fails', async () => {
+    vi.mocked(sendOrderNotification).mockImplementationOnce(() => new Promise(() => {}));
+    const view = render(page({ ...APPROVED, checkCart: vi.fn(async () => ({ ok: true, items: ITEMS })) }));
+    fill();
+    await act(async () => { submitForm(); });
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Thank you/));
+    view.unmount();
+    vi.mocked(sendOrderNotification).mockImplementationOnce(async () => false);
+    render(page({ ...APPROVED, checkCart: vi.fn(async () => ({ ok: true, items: ITEMS })) }));
+    fill();
+    await act(async () => { submitForm(); });
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Thank you/));
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });
 

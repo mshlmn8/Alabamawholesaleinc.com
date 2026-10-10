@@ -217,7 +217,7 @@ describe('cartChanges and describeCartChanges', () => {
       + 'Kite is no longer available — remove it to continue. '
       + 'Cigarillos — Red is no longer available — remove it or choose another variant. '
       + 'One — Only is now $6.00 each (was $5.00). '
-      + 'Check your items, then submit again.');
+      + 'Check your items, then place your order again.');
   });
 
   it('ignores prices for accounts that don’t see them', () => {
@@ -244,10 +244,10 @@ describe('cartChanges and describeCartChanges', () => {
     ];
     const changes = cartChanges(before, after);
     expect(changes.map(c => [c.kind, c.lineKey])).toEqual([['qty', '14'], ['variant', '1'], ['added', '99']]);
-    expect(describeCartChanges(changes)).toBe('The catalog and your quote changed since this page opened, so nothing was sent. '
-      + 'Cigarillos now comes in several variants — choose one. Check your items, then submit again.');
+    expect(describeCartChanges(changes)).toBe('The catalog and your order changed since this page opened, so nothing was sent. '
+      + 'Cigarillos now comes in several variants — choose one. Check your items, then place your order again.');
     expect(describeCartChanges([{ kind: 'removed', name: 'Kite', lineKey: '14' }]))
-      .toBe('Your quote changed since this page opened, so nothing was sent. Check your items, then submit again.');
+      .toBe('Your order changed since this page opened, so nothing was sent. Check your items, then place your order again.');
   });
 
   it('names at most three lines', () => {

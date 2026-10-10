@@ -2,7 +2,7 @@
 
 Editorial wholesale storefront for licensed retailers. 368 SKUs across 8 departments — tobacco, novelties, merchandise, candies, food stuff, grocery, motor oil, drinks & bags — shipping from Birmingham.
 
-Every page uses the 2A editorial system: Barlow Condensed and DM Sans (bundled in `src/fonts/`), purple / cream / orange, and plain CSS in `src/index.css`. Home, catalog, product, quote, cart, the sign-in dialog, the support pages, account (`/account`) and admin (`/admin`) all share it, with no CSS framework.
+Every page uses the 2A editorial system: Barlow Condensed and DM Sans (bundled in `src/fonts/`), purple / cream / orange, and plain CSS in `src/index.css`. Home, catalog, product, checkout, cart, the sign-in dialog, the support pages, account (`/account`) and admin (`/admin`) all share it, with no CSS framework.
 
 ## Pages
 
@@ -15,7 +15,7 @@ Every page has a real path URL (History API router, `src/lib/router.js` and `src
 | `/category/<department>[/<line>]` | Department catalog, optionally one product line, e.g. `/category/drinks-and-bags/energy-drinks`. Search, sort and filters live in the query string (`?q=&sort=&tags=&variants=1`) |
 | `/product/<id>` | Product detail |
 | `/search?q=` | Search results for name, brand, department, SKU and variants (marked `noindex`) |
-| `/quote` | Checkout: an order from an approved trade account, or a quote request from a guest or an account still waiting for approval (the words come from `basketTerms()` in `src/data/terms.js`) |
+| `/checkout` | Checkout. Only a signed-in, approved trade account places an order; a guest sees the cart with Sign in and Apply, and an account under review that it can order once approved (AW-014, AW-024). `/quote`, the old address, redirects here. The words come from `BASKET` in `src/data/terms.js` |
 | `/account` | Trade account and order history |
 | `/admin`, `/admin/orders`, `/admin/accounts`, `/admin/products`, `/admin/pricing` | Admin back office: orders (`/admin/orders/<id>/print` for the pick list or packing slip), accounts (`/admin/accounts/<id>`), products (`/admin/products/<id>`, `/admin/products/new`) and pricing tiers. Filters that name no person live in the query string (`src/lib/adminRoutes.js`) |
 | `/contact`, `/delivery`, `/shipping`, `/privacy`, `/terms`, `/apply`, `/reset-password` | Support pages |
@@ -29,7 +29,7 @@ Also on the storefront:
 - Category menu for the eight departments
 - Cart drawer. The cart is kept in `localStorage`, one per account on the device plus one for guests, and stays in step across open tabs; signing in adds the guest cart to the account's, and signing out leaves the next person an empty cart. Lines the catalog no longer has are flagged instead of dropped, and carts from earlier builds are moved over once (`src/lib/cartStorage.js`). Escape closes the cart, sign-in, and help overlays and unlocks page scrolling
 - The catalog is read from Supabase's `products` table (`src/lib/catalog.jsx`). The copy built into the site shows first and is the fallback: a slow or failed load says so and offers **Try again**, a product only the live catalog has shows a loading view instead of "not found", open tabs load it again after five minutes away or when the connection comes back, and checkout checks it once more before sending
-- Quote requests and orders are saved by the `submit_quote` function in Supabase, which prices the lines on the server. While the form is being filled in, a draft is kept in `sessionStorage` for that tab, so leaving `/quote` or a reload keeps what was typed; it is cleared on a successful submit and on sign-out (`src/lib/quoteDraft.js`). If saving fails, the quote page shows an error with the trade desk's phone number and email; there is no other fallback. After a save, the lines that were sent leave the cart and the page shows a printable receipt (reference, lines, delivery details). It is kept in `sessionStorage` for that tab only, so a reload or Back shows it again, and it is cleared on sign-out (`src/lib/receipt.js`)
+- Orders are saved by the `submit_quote` function in Supabase, which prices the lines on the server and, once `20261014111000` is applied, takes orders only from signed-in, approved accounts. A copy of each saved order is emailed to the orders inbox through Netlify Forms (`src/lib/orderNotification.js`; NETLIFY-DEPLOY.md, "Order emails"). While the form is being filled in, a draft is kept in `sessionStorage` for that tab, so leaving `/checkout` or a reload keeps what was typed; it is cleared on a successful submit and on sign-out (`src/lib/quoteDraft.js`). If saving fails, checkout shows an error with the trade desk's phone number and email; there is no other fallback. After a save, the lines that were sent leave the cart and the page shows a printable receipt (reference, lines, delivery details). It is kept in `sessionStorage` for that tab only, so a reload or Back shows it again, and it is cleared on sign-out (`src/lib/receipt.js`)
 - Trade sign-in and account applications through Supabase Auth. One provider (`src/lib/auth.jsx`) holds the session and profile; account pages wait for them instead of flashing a signed-out view, and email links are handled by `src/lib/authLink.js` (see BACKEND.md, "Email links"). Changing the password while signed in asks for the current password first and then signs the account out on its other devices (BACKEND.md, "Password changes (AW-349)")
 
 Trade prices are kept only in Supabase: the site's code and the product seed carry none. Approved accounts see their tier's prices, which the `my_prices()` database function works out; guests, pending and suspended accounts get no prices. The public API stops serving the price column once `supabase/migrations/20261009100000_price_boundary.sql` is applied (see BACKEND.md, "How pricing tiers work" and "Release checklist").
@@ -90,7 +90,7 @@ Output goes to `dist/`; `npm run preview` serves it locally, with the security h
 | Hero photos (the owner's 8-photo warehouse reel; staff replace them in Admin → Homepage) | `HERO_REEL` in `src/data/warehousePhotos.js`, built into `HERO_SLIDES` in `src/data/content.js` |
 | Warehouse photos on the contact page (the other 29), each photo's description, and which are grouped under the FDA statement | `WAREHOUSE_GALLERY` in `src/data/warehousePhotos.js`; the photos are `src/assets/hero_wh_*.jpg`, named after what they show; `src/data/warehousePhotos.test.js` checks all 37 are shown once |
 | Business facts: address, phone, email, hours, minimum order, free-delivery threshold | `COMPANY`, `HOURS`, `ORDER_MINIMUM` and `FREE_DELIVERY_THRESHOLD` in `src/data/content.js`; pages print them from there (money through `formatMoney`/`formatMoneyShort`), and `src/data/facts.test.js` fails when the phone, address, hours, minimum or threshold is typed into another source file |
-| Wording: the apply and sign-in labels, quote or order, the licensed-only line | `src/data/terms.js` (`APPLY_LABEL`, `SIGN_IN_LABEL`, `basketTerms()`); `LICENSED_ONLY` in `src/data/content.js` |
+| Wording: the apply and sign-in labels, the basket (an order), the licensed-only line | `src/data/terms.js` (`APPLY_LABEL`, `SIGN_IN_LABEL`, `BASKET`); `LICENSED_ONLY` in `src/data/content.js` |
 | Trade bar announcements | `ANNOUNCEMENTS` in `src/data/content.js`, after the trade notice (`TRADE_NOTICE` in `src/components/TradeBar.jsx`) |
 | Trust band under the home hero (20 years in business, 100% authentic, where products come from) | `TRUST`, `YEARS_IN_BUSINESS` and `SOURCING` in `src/data/content.js` |
 | The volume-pricing line (no Net-30, no published volume discounts) | `VOLUME_PRICING` in `src/data/content.js`; `VolumePricing` in `src/components/ContactLinks.jsx` prints it with the email and phone as links. `src/data/claims.test.js` fails if Net-30, volume discounts, an approval time, "three generations" or "direct from the manufacturer" comes back |
@@ -113,7 +113,7 @@ Re-runs compare content hashes, not file dates, so an unchanged photo is never r
 - Plain CSS with `:root` design tokens and an explicit reset in `src/index.css` for every page, including Account and Admin (no Tailwind)
 - Supabase (Postgres + Auth + RLS); see [BACKEND.md](BACKEND.md)
 
-Without `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, `npm run dev` still serves the catalog, but trade accounts, quotes, order history and the admin dashboard are off, and `npm run build` stops with an error (set `ALLOW_NO_BACKEND=1` to build a static-only preview on purpose). See [BACKEND.md](BACKEND.md).
+Without `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, `npm run dev` still serves the catalog, but trade accounts, orders, order history and the admin dashboard are off, and `npm run build` stops with an error (set `ALLOW_NO_BACKEND=1` to build a static-only preview on purpose). See [BACKEND.md](BACKEND.md).
 
 ## License
 

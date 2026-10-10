@@ -4,7 +4,7 @@ import { PRODUCTS } from '../data/products.js';
 import { departmentsFor } from './departments.js';
 import {
   categoryQueryString, hrefFor, legacyHashTarget, pageKeyFor, parseCategoryQuery, parseUrl, pathFor,
-  resolveRoute, routeKey, siteUrl, slugify, DEFAULT_SITE_URL, EMPTY_CATEGORY_QUERY, PATH_SECTIONS, SORTS,
+  resolveRoute, routeKey, siteUrl, slugify, DEFAULT_SITE_URL, EMPTY_CATEGORY_QUERY, MOVED_SECTIONS, NOINDEX_PAGES, PATH_SECTIONS, SORTS,
 } from './routes.js';
 
 const departments = departmentsFor(PRODUCTS);
@@ -43,9 +43,21 @@ describe('parseUrl', () => {
     expect(parseUrl({ pathname: '/category/tobacco' })).toMatchObject({ page: 'category', dept: 'tobacco', sub: null });
     expect(parseUrl({ pathname: '/category/drinks-and-bags/energy-drinks' })).toMatchObject({ page: 'category', dept: 'drinks-and-bags', sub: 'energy-drinks' });
     expect(parseUrl({ pathname: '/search', search: '?q=kite' })).toEqual({ page: 'search', q: 'kite' });
-    for (const page of ['quote', 'account', 'admin', 'catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply', 'reset-password']) {
+    for (const page of ['checkout', 'account', 'admin', 'catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply', 'reset-password']) {
       expect(parseUrl({ pathname: `/${page}` })).toEqual({ page });
     }
+  });
+
+  it('reads checkout’s old address, /quote, as checkout, so App redirects it (AW-024)', () => {
+    expect(MOVED_SECTIONS).toEqual({ quote: 'checkout' });
+    expect(parseUrl({ pathname: '/quote' })).toEqual({ page: 'checkout' });
+    expect(parseUrl({ pathname: '/Quote/' })).toEqual({ page: 'checkout' });
+    expect(pageKeyFor({ pathname: '/quote' })).toBe(pageKeyFor({ pathname: '/checkout' }));
+    expect(pathFor(resolveRoute(parseUrl({ pathname: '/quote' })))).toBe('/checkout');
+    // Never a page of its own: no rewrite, no sitemap entry, nothing to index.
+    expect(PATH_SECTIONS).not.toContain('quote');
+    expect(NOINDEX_PAGES).toContain('checkout');
+    expect(NOINDEX_PAGES).not.toContain('quote');
   });
 
   it('is not case or trailing-slash sensitive for page names', () => {
@@ -61,7 +73,7 @@ describe('parseUrl', () => {
   });
 
   it('answers only the first segments in PATH_SECTIONS, the paths netlify.toml rewrites (NEW-088)', () => {
-    expect(PATH_SECTIONS).toEqual(['product', 'category', 'search', 'quote', 'account', 'admin', 'catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply', 'reset-password']);
+    expect(PATH_SECTIONS).toEqual(['product', 'category', 'search', 'checkout', 'account', 'admin', 'catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply', 'reset-password']);
     for (const section of ['products', 'categories', 'home', 'index', 'cart', '404', 'sitemap.xml']) {
       expect([section, parseUrl({ pathname: `/${section}` })]).toEqual([section, { page: 'not-found' }]);
     }
@@ -185,7 +197,7 @@ describe('canonical addresses', () => {
       { page: 'category', category: 'DRINKS & BAGS', sub: null, query: { q: '', sort: 'featured', tags: [], brands: [], variants: false } },
       { page: 'category', category: 'TOBACCO', sub: 'Cigars & Cigarillos', query: { q: 'swisher', sort: 'name-asc', tags: ['NEW'], brands: [], variants: true } },
       { page: 'category', category: 'TOBACCO', sub: 'Wraps & Leafs', query: { q: '', sort: 'brand', tags: [], brands: ['game', 'swisher-sweets'], variants: false } },
-      { page: 'quote' }, { page: 'account' }, { page: 'admin' }, { page: 'catalog' }, { page: 'terms' }, { page: 'reset-password' },
+      { page: 'checkout' }, { page: 'account' }, { page: 'admin' }, { page: 'catalog' }, { page: 'terms' }, { page: 'reset-password' },
     ];
     for (const route of routes) expect(resolve(hrefFor(route))).toEqual(route);
     expect(hrefFor({ page: 'category', category: 'TOBACCO' })).toBe('/category/tobacco');

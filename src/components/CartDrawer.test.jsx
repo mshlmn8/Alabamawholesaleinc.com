@@ -23,25 +23,25 @@ function drawer(props) {
 const note = () => document.querySelector('.drawer-total-note')?.textContent;
 
 describe('CartDrawer', () => {
-  it('asks guests to sign in, and offers a quote', () => {
+  it('asks guests to sign in, and leads to checkout, which asks them too (AW-014)', () => {
     render(drawer({ profile: null, isApprovedBuyer: false }));
     expect(note()).toBe('Prices show for approved trade accounts');
-    expect(screen.getByRole('link', { name: 'Review quote' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Sign in for account pricing' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Checkout' }).getAttribute('href')).toBe('/checkout');
+    expect(screen.getByRole('button', { name: 'Sign in for pricing and ordering' })).toBeTruthy();
   });
 
   it('tells a pending account pricing waits on approval', () => {
     render(drawer({ profile: { id: 'p', status: 'pending' }, isApprovedBuyer: false }));
     expect(note()).toBe('Pricing after approval');
-    expect(screen.getByRole('link', { name: 'Review quote' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Sign in for account pricing' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Checkout' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Sign in for pricing and ordering' })).toBeNull();
   });
 
-  it('tells a suspended account ordering is paused, instead of a quote button (AW-201)', () => {
+  it('tells a suspended account ordering is paused, instead of a checkout button (AW-201)', () => {
     render(drawer({ profile: { id: 's', status: 'suspended' }, isApprovedBuyer: false, isSuspended: true }));
     expect(note()).toBe('Account on hold');
-    expect(screen.queryByRole('link', { name: /Review/ })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Sign in for account pricing' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Checkout' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Sign in for pricing and ordering' })).toBeNull();
     const paused = document.querySelector('.drawer-paused');
     expect(paused.textContent).toMatch(/^Ordering is paused on this account\. Call \(205\) 458-4788 or email .* and a trade rep will help you sort it out\.$/);
     expect(paused.querySelector(`a[href="tel:${COMPANY.phoneRaw}"]`)).toBeTruthy();
@@ -63,16 +63,16 @@ describe('CartDrawer', () => {
     const onClose = vi.fn();
     render(drawer({ items: [], onClose, profile: null, isApprovedBuyer: false }));
     const empty = document.querySelector('.drawer-body > .empty-state');
-    // In the basket's words (AW-132): a guest's is a quote.
-    expect(screen.getByRole('heading', { level: 3, name: 'Your quote is empty' }).closest('.empty-state')).toBe(empty);
-    expect(empty.textContent).toContain('Browse the catalog and add items to build a quote.');
+    // In the basket's words (AW-132): an order, for a guest too (AW-024).
+    expect(screen.getByRole('heading', { level: 3, name: 'Your order is empty' }).closest('.empty-state')).toBe(empty);
+    expect(empty.textContent).toContain('Browse the catalog and add items to build an order.');
     const browse = screen.getByRole('link', { name: 'Browse the catalog' });
     expect(browse.getAttribute('href')).toBe('/catalog');
     expect(browse.className).toBe('button');
-    // No total, quote button, sign-in or fine print for an empty cart: the foot is empty (and hidden by CSS).
+    // No total, checkout button, sign-in or fine print for an empty cart: the foot is empty (and hidden by CSS).
     expect(screen.queryByText('Estimated total')).toBeNull();
     expect(document.querySelector('.drawer-total, .drawer-fine')).toBeNull();
-    expect(screen.queryByRole('link', { name: /Request quote|Checkout/ })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Checkout/ })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Sign in for account pricing' })).toBeNull();
     expect(document.querySelector('.drawer-foot').childNodes).toHaveLength(0);
     // Following the link closes the drawer.
@@ -125,9 +125,9 @@ describe('CartDrawer removals', () => {
 
     fireEvent.click(removeButton('Retired item'));
     expect(announced().at(-1)).toBe('Removed Retired item.');
-    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Your quote' }));
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Your order' }));
     // The shared empty state (AW-299), in the basket's words (AW-132).
-    expect(screen.getByRole('heading', { level: 3, name: 'Your quote is empty' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 3, name: 'Your order is empty' })).toBeTruthy();
     expect(document.activeElement).not.toBe(document.body);
   });
 

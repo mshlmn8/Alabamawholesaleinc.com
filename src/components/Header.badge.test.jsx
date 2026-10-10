@@ -1,5 +1,5 @@
-// The header's basket button and account labels (AW-131, AW-132, AW-240):
-// 'Quote' or 'Order' by account, a name that counts items correctly, and a
+// The header's basket button and account labels (AW-131, AW-132, AW-240,
+// AW-024): 'Order' for everyone, a name that counts items correctly, and a
 // badge that stops at '99+'; one apply label and sentence case.
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -13,23 +13,22 @@ const cartButton = () => document.querySelector('.aw-cart-btn');
 const badge = () => document.querySelector('.aw-cart-count');
 
 describe('Header basket button (AW-132, AW-240)', () => {
-  it('says Quote to guests and accounts that are not approved, Order to approved buyers', () => {
+  it('says Order to everyone: customers place orders, not quotes', () => {
     const view = render(<Header {...props} cartCount={3} />);
-    expect(screen.getByRole('button', { name: 'Quote, 3 items' })).toBe(cartButton());
-    expect(cartButton().firstElementChild.textContent).toBe('Quote');
-    view.rerender(<Header {...props} cartCount={3} isApprovedBuyer />);
     expect(screen.getByRole('button', { name: 'Order, 3 items' })).toBe(cartButton());
     expect(cartButton().firstElementChild.textContent).toBe('Order');
+    view.rerender(<Header {...props} cartCount={3} user={{ name: 'Bea', business: 'Bravo' }} />);
+    expect(screen.getByRole('button', { name: 'Order, 3 items' })).toBe(cartButton());
   });
 
   it('counts one item, none and thousands in words a screen reader reads right', () => {
     const view = render(<Header {...props} cartCount={1} />);
-    expect(cartButton().getAttribute('aria-label')).toBe('Quote, 1 item');
+    expect(cartButton().getAttribute('aria-label')).toBe('Order, 1 item');
     view.rerender(<Header {...props} cartCount={0} />);
-    expect(cartButton().getAttribute('aria-label')).toBe('Quote, 0 items');
+    expect(cartButton().getAttribute('aria-label')).toBe('Order, 0 items');
     expect(badge()).toBeNull();
     view.rerender(<Header {...props} cartCount={1500} />);
-    expect(cartButton().getAttribute('aria-label')).toBe('Quote, 1,500 items');
+    expect(cartButton().getAttribute('aria-label')).toBe('Order, 1,500 items');
   });
 
   it('caps the badge at 99+, as its only text', () => {
@@ -56,7 +55,7 @@ describe('Header account labels (AW-131)', () => {
   it('offers Sign in and the one apply label to guests', () => {
     render(<Header {...props} />);
     const actions = document.querySelector('.aw-account-actions');
-    expect([...actions.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Sign in', 'Apply for a trade account', 'Quote']);
+    expect([...actions.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Sign in', 'Apply for a trade account', 'Order']);
     screen.getByRole('button', { name: 'Apply for a trade account' }).click();
     expect(props.onSignupClick).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('button', { name: /Sign up/i })).toBeNull();

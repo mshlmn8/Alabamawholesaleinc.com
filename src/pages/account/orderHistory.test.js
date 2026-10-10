@@ -97,24 +97,26 @@ describe('loadOrders', () => {
 describe('the buyer’s words', () => {
   it('names every status the way a buyer would, and an unknown one as received', () => {
     expect(STATUSES.map((status) => buyerStatus({ status, delivery: 'delivery' }))).toEqual([
-      'Received', 'Confirming with a rep', 'Quote ready', 'Confirmed', 'Being picked', 'Ready', 'Out for delivery', 'Delivered', 'Cancelled',
+      'Received', 'Confirming with a rep', 'Confirming with a rep', 'Confirmed', 'Being picked', 'Ready', 'Out for delivery', 'Delivered', 'Cancelled',
     ]);
     expect(buyerStatus({ status: 'fulfilled', delivery: 'willcall' })).toBe('Picked up');
     expect(buyerStatus({ status: 'archived' })).toBe('Received');
     expect(Object.keys(BUYER_STATUS)).toEqual(STATUSES);
-    for (const label of ['Received', 'Confirming with a rep', 'Quote ready', 'Being picked', 'Out for delivery', 'Picked up']) {
+    for (const label of ['Received', 'Confirming with a rep', 'Being picked', 'Out for delivery', 'Picked up']) {
       expect(STATUS_LEGEND).toContain(label);
     }
+    // Customers place orders, not quotes (AW-024).
+    expect([STATUS_LEGEND, ...Object.values(BUYER_STATUS)].join(' ')).not.toMatch(/quote/i);
     expect(STATUSES.map(statusTone)).toEqual(['', 'contacted', 'contacted', '', '', '', '', 'fulfilled', 'cancelled']);
   });
 
-  it('tells an order from a quote request, with or without orders.kind', () => {
+  it('tells an order from an earlier quote request, with or without orders.kind, and calls both an order (AW-024)', () => {
     expect(orderKind({ kind: 'order', subtotal: null })).toBe('order');
     expect(orderKind({ kind: 'quote', subtotal: 12 })).toBe('quote');
     // No kind column: the account's own unpriced request is a quote.
     expect(orderKind({ subtotal: 125.5 })).toBe('order');
     expect(orderKind({ subtotal: null })).toBe('quote');
-    expect(KIND_LABEL).toEqual({ order: 'Order', quote: 'Quote request' });
+    expect(KIND_LABEL).toEqual({ order: 'Order', quote: 'Order' });
   });
 
   it('dates an order without the time, and a requested day without a time-zone shift', () => {

@@ -30,7 +30,7 @@ describe('UnavailableNotice (AW-083)', () => {
   it('says how many lines can no longer be ordered and removes them all', () => {
     const onRemoveAll = vi.fn();
     render(<UnavailableNotice items={[{ lineKey: '999' }, { lineKey: '1::purple' }]} onRemoveAll={onRemoveAll} />);
-    expect(screen.getByText('2 items in your quote are no longer available.')).toBeTruthy();
+    expect(screen.getByText('2 items in your order are no longer available.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Remove unavailable items' }));
     expect(onRemoveAll).toHaveBeenCalledWith(['999', '1::purple']);
   });
@@ -48,7 +48,7 @@ describe('UnavailableNotice (AW-083)', () => {
 
   it('speaks of two as them', () => {
     render(<UnavailableNotice items={[{ lineKey: '45', unavailable: 'product' }, { lineKey: '999', unavailable: 'product' }]} onRemoveAll={vi.fn()} />);
-    expect(lines()).toEqual(['2 items in your quote are no longer available.', 'Remove them to continue.', 'Remove unavailable items']);
+    expect(lines()).toEqual(['2 items in your order are no longer available.', 'Remove them to continue.', 'Remove unavailable items']);
   });
 
   it('offers another variant only when a line’s product is still offered (unavailable "variant", not "product")', () => {

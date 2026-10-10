@@ -147,6 +147,31 @@
         <p>This catalog needs JavaScript. To order, call <a href="tel:+12054584788">(205) 458-4788</a> or email <a href="mailto:Alabamawholesaleinc@gmail.com">Alabamawholesaleinc@gmail.com</a>.</p>
       </div>
     </noscript>
+    <!-- The order email (AW-024): checkout posts each saved order to this
+         Netlify form (src/lib/orderNotification.js), and Netlify emails it
+         to the orders inbox set in its dashboard (Forms -> Form
+         notifications). Netlify registers the form from this markup when it
+         deploys; nobody sees it. It lists every field the post sends, plus
+         the honeypot (src/lib/orderNotification.test.js checks them). -->
+    <form name="order-notification" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input type="hidden" name="form-name" value="order-notification" />
+      <input type="text" name="bot-field" />
+      <input type="text" name="subject" />
+      <input type="text" name="reference" />
+      <input type="text" name="placed-at" />
+      <input type="text" name="business" />
+      <input type="text" name="contact" />
+      <input type="email" name="email" />
+      <input type="tel" name="phone" />
+      <input type="text" name="delivery" />
+      <input type="text" name="preferred-date" />
+      <input type="text" name="ship-to" />
+      <textarea name="items"></textarea>
+      <input type="text" name="line-count" />
+      <input type="text" name="total-units" />
+      <textarea name="notes"></textarea>
+      <input type="text" name="admin-link" />
+    </form>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

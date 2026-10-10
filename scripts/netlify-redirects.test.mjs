@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ADMIN_SECTIONS } from '../src/lib/adminRoutes.js';
-import { NOINDEX_PAGES, PATH_SECTIONS, SUPPORT_PAGES, hrefFor, parseUrl, slugify } from '../src/lib/routes.js';
+import { MOVED_SECTIONS, NOINDEX_PAGES, PATH_SECTIONS, SUPPORT_PAGES, hrefFor, parseUrl, slugify } from '../src/lib/routes.js';
 import { DELISTED_LINE_DEPARTMENT, DELISTED_LINE_SLUGS } from '../src/data/delisted.js';
 import { SITEMAP_PAGES } from './build-sitemap.mjs';
 import { routeFile } from './build-route-heads.mjs';
@@ -157,6 +157,24 @@ describe('netlify.toml page rewrites (NEW-088)', () => {
     // The department itself and its other lines are unchanged.
     expect(answer(dept, new Set([...BUILT_FILES, `/${routeFile(dept)}`]))).toEqual({ status: 200, file: `/${routeFile(dept)}` });
     expect(answer(`${dept}/detox`)).toEqual({ status: 404, to: '/index.html' });
+  });
+
+  it('moves checkout’s old address, /quote, permanently to /checkout (AW-024)', () => {
+    for (const [old, page] of Object.entries(MOVED_SECTIONS)) {
+      const to = hrefFor({ page });
+      expect(to).toBe('/checkout');
+      for (const path of [`/${old}`, `/${old}/`]) {
+        expect([path, answer(path)]).toEqual([path, { status: 301, to }]);
+        // The app reads the same address as the page, and redirects it too.
+        expect([path, parseUrl({ pathname: path }).page]).toEqual([path, page]);
+      }
+      // The new address is a page like any other.
+      expect(answer(to)).toEqual({ status: 200, to: '/index.html' });
+    }
+    // Every permanent redirect lands on a page.
+    for (const r of redirects.filter((rule) => rule.status === 301)) {
+      expect([r.from, parseUrl({ pathname: r.to }).page]).not.toEqual([r.from, 'not-found']);
+    }
   });
 
   it('answers any other path with index.html and status 404, which the app shows as not found', () => {

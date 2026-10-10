@@ -193,7 +193,7 @@ export const CONFIRMED_CHANGES = {
   suspend: {
     kind: 'status',
     title: (who) => `Suspend ${who}?`,
-    body: () => 'A suspended account sees no prices and can’t send orders or quotes until it is approved again. Say why: the reason goes in the account’s internal notes, which only staff see.',
+    body: () => 'A suspended account sees no prices and can’t place orders until it is approved again. Say why: the reason goes in the account’s internal notes, which only staff see.',
     confirm: 'Suspend the account',
     cancel: 'Keep it',
     reason: 'Reason for suspending',

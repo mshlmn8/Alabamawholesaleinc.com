@@ -23,7 +23,7 @@ describe('sitemapPaths', () => {
 
   it('leaves out checkout, account, admin, reset and fragment URLs', () => {
     const paths = sitemapPaths({ departments, products });
-    for (const p of paths) expect(p).not.toMatch(/#|\/quote|\/account|\/admin|\/reset-password|\/search/);
+    for (const p of paths) expect(p).not.toMatch(/#|\/checkout|\/quote|\/account|\/admin|\/reset-password|\/search/);
   });
 });
 

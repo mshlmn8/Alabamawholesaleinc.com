@@ -66,13 +66,13 @@ const POLICIES = {
           'Application details: your name, business name, phone, business email, business type, store street address, city, state and ZIP, federal EIN, state retail tobacco license number, resale certificate number and expected monthly volume.',
           'License documents: the state retail tobacco license and resale certificate files you upload with an application. They are kept in private storage that only you and the trade desk can open.',
           'Your agreement: when you accepted the Trade terms and Privacy policy and which version, and when you confirmed you are 21 or older.',
-          'Orders: business and contact details, delivery address, the items requested, delivery preferences and notes.',
+          'Orders: business and contact details, delivery address, the items ordered, delivery preferences and notes.',
         ] },
       ] },
       { heading: 'Why we collect it', body: [
         { list: [
           'To review trade account applications.',
-          'To prepare quotes, process orders, and contact you about them.',
+          'To prepare and deliver orders, and contact you about them. A copy of each order you place is emailed to our orders inbox, through our website host (Netlify), so staff can prepare it.',
         ] },
       ] },
       // TODO(owner): This section repeats the contact strip below it; it stays as privacy-policy wording until you approve the contact method for access or deletion requests (AW-027), and may then go. (AW-276)
@@ -93,8 +93,8 @@ const POLICIES = {
       { heading: 'Account approval', body: [
         'Applications are reviewed by a trade rep. Wholesale pricing and ordering unlock when the account is approved. We may decline, pause or close an account whose licensing cannot be verified or is no longer valid.',
       ] },
-      { heading: 'Pricing and quotes', body: [
-        'Wholesale prices shown after sign-in apply to the approved account that is signed in and are not for publication. A quote request is not an order: the trade desk confirms pricing, availability and delivery before an order is accepted. Prices and availability can change until then.',
+      { heading: 'Pricing and orders', body: [
+        'Wholesale prices shown after sign-in apply to the approved account that is signed in and are not for publication. Orders are placed from an approved account, and the trade desk confirms pricing, availability and delivery before an order is accepted and prepared. Prices and availability can change until then.',
       ] },
       { heading: 'Orders and delivery', body: [
         `The minimum order is ${formatMoney(ORDER_MINIMUM)}.`,

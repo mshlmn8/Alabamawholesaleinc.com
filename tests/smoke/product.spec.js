@@ -40,7 +40,7 @@ test('the variants are one required choice, adding before a choice says so, and 
   const group = page.getByRole('radiogroup', { name: 'Choose a variety' });
   await expect(group).toHaveAttribute('aria-required', 'true');
   await expect(page.locator('.pd-sku')).toHaveText('SKU AW-SNICKERS');
-  const add = page.locator('.pd-info').getByRole('button', { name: /^Add to quote/ });
+  const add = page.locator('.pd-info').getByRole('button', { name: /^Add to order/ });
   await expect(add).toBeEnabled();
   await add.click();
   await expect(page.getByRole('alert').filter({ hasText: 'Select a variety before adding this product.' })).toBeVisible();
@@ -60,7 +60,7 @@ test('the variants are one required choice, adding before a choice says so, and 
   await page.keyboard.press('Tab');
   expect(await page.evaluate(() => Boolean(document.activeElement.closest('[role="radiogroup"]')))).toBe(false);
   await add.click();
-  await expect(page.locator('#aw-toasts .toast-text')).toHaveText('Added 1 × Snickers bars — Regular to your quote.');
+  await expect(page.locator('#aw-toasts .toast-text')).toHaveText('Added 1 × Snickers bars — Regular to your order.');
   expect(errors).toEqual([]);
 });
 

@@ -1,6 +1,12 @@
-// Which catalog rows are nicotine products, and which quote lines need a
-// tobacco-license attestation. Hemp-named wraps are left out of the nicotine
-// statement so the page does not claim those products contain nicotine.
+// Which catalog rows are nicotine products (AW-026). Hemp-named wraps are left
+// out of the nicotine statement so the page does not claim those products
+// contain nicotine.
+//
+// PR #12's guest licence rule (cartNeedsTobaccoLicense: tobacco and vape
+// lines from a guest or an unapproved account needed a licence, a resale
+// certificate and a 21+ attestation) went with guest orders: only approved
+// accounts place orders (owner answer 2026-10, AW-014). submit_quote still
+// carries the rule, which an approved account never meets.
 
 export const FDA_NICOTINE_WARNING = 'WARNING: This product contains nicotine. Nicotine is an addictive chemical.';
 
@@ -22,13 +28,3 @@ export function showsNicotineWarning(product) {
   return /shisha/i.test(product.name || '');
 }
 
-// AW-014: tobacco department lines, and the novelties vape lines.
-export function lineNeedsTobaccoLicense(item) {
-  if (!item) return false;
-  if (item.cat === 'TOBACCO') return true;
-  return item.sub === 'Disposable Vapes' || item.sub === 'Vape Pods';
-}
-
-export function cartNeedsTobaccoLicense(items) {
-  return (items || []).some(lineNeedsTobaccoLicense);
-}

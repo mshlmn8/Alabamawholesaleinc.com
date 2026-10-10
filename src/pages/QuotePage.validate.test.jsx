@@ -11,18 +11,20 @@ import { submitOrder } from '../lib/orders.js';
 
 vi.mock('../lib/orders.js', async (importOriginal) => ({
   ...(await importOriginal()),
-  submitOrder: vi.fn(async () => ({ ok: true, order: { id: 'o1', ref_num: 'ALW-Q-TEST000001' } })),
+  submitOrder: vi.fn(async () => ({ ok: true, order: { id: 'o1', ref_num: 'ALW-O-TEST000001' } })),
 }));
 
 const ITEMS = [{ lineKey: '14', productId: 14, variant: null, name: 'Kite cigarette tobacco', sku: 'AW-KITE', cat: 'TOBACCO', qty: 2, price: 10 }];
-const GUEST = { profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false };
+// An approved buyer whose profile has no contact details yet, so every field
+// starts empty (only approved accounts get the form, AW-014).
+const BUYER = { profile: { id: 'u-blank', status: 'approved', business: '', name: '', email: '', phone: '' }, account: 'ready', signedIn: true, isApprovedBuyer: true };
 
 function renderPage(props = {}) {
   const checkCart = vi.fn(async () => ({ ok: true, items: ITEMS }));
   render(
     <main id="main">
       <QuotePage items={ITEMS} total={20} setLine={vi.fn()} chooseVariant={vi.fn()} removeLine={vi.fn()} removeLines={vi.fn()} clearCart={vi.fn()}
-                 isBackendConfigured onSignIn={vi.fn()} checkCart={checkCart} {...GUEST} {...props} />
+                 isBackendConfigured onSignIn={vi.fn()} checkCart={checkCart} {...BUYER} {...props} />
     </main>,
   );
   return { checkCart };
@@ -50,16 +52,13 @@ describe('QuotePage checks its form before it sends (AW-173)', () => {
     vi.mocked(submitOrder).mockClear();
     const { checkCart } = renderPage();
     await submitForm();
-    // Sentences with a period; the phone, license and resale fields say
-    // what to enter in their own words (NEW-069).
+    // Sentences with a period; the phone field says what to enter in its own
+    // words (NEW-069). No licence fields (AW-014).
     const expected = {
       'quote-business': 'Enter business name.',
       'quote-contact': 'Enter contact name.',
       'quote-email': 'Enter email.',
       'quote-phone': 'Enter a phone number.',
-      'quote-license': 'Enter the state tobacco license number.',
-      'quote-resale': 'Enter the resale certificate number.',
-      'quote-age': 'Check this box to continue.',
       'ship-street': 'Enter street.',
       'ship-city': 'Enter city.',
       'ship-state': 'Choose state.',
@@ -70,8 +69,7 @@ describe('QuotePage checks its form before it sends (AW-173)', () => {
       expect(byId(`${id}-error`).textContent, id).toBe(message);
       expect(byId(id).getAttribute('aria-describedby').split(' '), id).toContain(`${id}-error`);
     }
-    // The license fields keep their note first.
-    expect(byId('quote-license').getAttribute('aria-describedby')).toBe('quote-license-note quote-license-error');
+    expect(byId('quote-license')).toBeNull();
     for (const id of ['quote-date', 'quote-notes', 'quote-delivery']) expect(byId(id).hasAttribute('aria-invalid'), id).toBe(false);
     expect(document.activeElement).toBe(byId('quote-business'));
     // The page-level alert is for the server's answer; none here.
@@ -100,9 +98,8 @@ describe('QuotePage checks its form before it sends (AW-173)', () => {
     vi.mocked(submitOrder).mockClear();
     renderPage();
     for (const [id, value] of [['quote-business', 'Test Market'], ['quote-contact', 'Test Buyer'], ['quote-email', 'buyer@example.test'],
-      ['quote-phone', '205-000-0000'], ['quote-license', 'TL-1'], ['quote-resale', 'RS-1'],
+      ['quote-phone', '205-000-0000'],
       ['ship-street', '1 Test Way'], ['ship-city', 'Birmingham'], ['ship-state', 'AL'], ['ship-zip', '35203']]) type(id, value);
-    fireEvent.click(byId('quote-age'));
     await submitForm();
     expect(submitOrder).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/^Thank you/);

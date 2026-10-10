@@ -71,7 +71,9 @@ export async function loadOrders(client, { userId, from = 0, status = 'all', ref
 export const BUYER_STATUS = {
   new: 'Received',
   contacted: 'Confirming with a rep',
-  quoted: 'Quote ready',
+  // Staff's 'quoted' step (Admin -> Orders prices the lines) is still the
+  // rep confirming: customers place orders, not quotes (AW-024).
+  quoted: 'Confirming with a rep',
   confirmed: 'Confirmed',
   picking: 'Being picked',
   ready: 'Ready',
@@ -91,12 +93,15 @@ export const statusTone = (status) => {
   return '';
 };
 // The one-line key above the list.
-export const STATUS_LEGEND = 'How an order moves: Received, Confirming with a rep (Quote ready, for a quote request), Confirmed, Being picked, Ready or Out for delivery, then Delivered or Picked up.';
+export const STATUS_LEGEND = 'How an order moves: Received, Confirming with a rep, Confirmed, Being picked, Ready or Out for delivery, then Delivered or Picked up.';
 
 // An order or a quote request. The account's own rows carry no user_id, so a
 // database without orders.kind goes by the subtotal, as Admin does.
+// Customers place orders, never quotes (owner answer 2026-10, AW-024): a
+// request the account sent while it waited for approval, before that rule
+// (an ALW-Q- reference), reads as an order too.
 export const orderKind = (o) => (isQuote({ ...o, user_id: o?.user_id ?? 'account' }) ? 'quote' : 'order');
-export const KIND_LABEL = { order: 'Order', quote: 'Quote request' };
+export const KIND_LABEL = { order: 'Order', quote: 'Order' };
 
 const DATE = { month: 'short', day: 'numeric', year: 'numeric' };
 // 'Oct 8, 2026', on this computer's calendar.

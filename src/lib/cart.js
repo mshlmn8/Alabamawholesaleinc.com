@@ -207,8 +207,8 @@ const MAX_NAMED = 3;
 
 // The checkout message for cartChanges() (AW-191): what changed, by name, so
 // the buyer can fix it and submit again. One string, for a single text node.
-// noun: 'quote' or 'order', what checkout calls the basket (AW-132).
-export function describeCartChanges(changes, noun = 'quote') {
+// noun: what checkout calls the basket, 'order' (BASKET.noun, AW-132).
+export function describeCartChanges(changes, noun = 'order') {
   const sentences = [];
   for (const change of changes) {
     if (change.kind === 'unavailable') {
@@ -231,7 +231,7 @@ export function describeCartChanges(changes, noun = 'quote') {
       ? `The catalog and your ${noun} changed since this page opened, so nothing was sent.`
       : `Your ${noun} changed since this page opened, so nothing was sent.`;
   }
-  return [lead, ...named, 'Check your items, then submit again.'].join(' ');
+  return [lead, ...named, 'Check your items, then place your order again.'].join(' ');
 }
 
 // The old cart's lines that still need a variant (AW-354), named from the

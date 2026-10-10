@@ -102,7 +102,7 @@ describe('pageMeta', () => {
     // The home title waits on the owner (AW-318), and a product, department
     // or line title starts with that name.
     const routes = [
-      ...['catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'account', 'quote', 'search'].map((page) => ({ page })),
+      ...['catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'account', 'checkout', 'search'].map((page) => ({ page })),
       ...['guest', 'loading', 'no-profile', 'pending', 'approved', 'suspended'].map((applyAs) => ({ page: 'apply', applyAs })),
       ...['unavailable', 'request', 'checking', 'form', 'done', 'link-invalid'].map((view) => ({ page: 'reset-password', view })),
       ...[{}, { section: 'accounts' }, { section: 'accounts', id: 'x' }, { section: 'products' }, { section: 'products', id: 'new' }, { section: 'products', id: 3 },
@@ -111,7 +111,7 @@ describe('pageMeta', () => {
       ...['page', 'product', 'department', 'line'].map((kind) => ({ page: 'not-found', kind })),
       { page: 'not-found', kind: 'product', catalog: 'loading' },
       { page: 'not-found', kind: 'line', catalog: 'error' },
-      { page: 'quote', basket: 'quote' }, { page: 'quote', basket: 'order' }, { page: 'quote', received: 'quote' },
+      { page: 'checkout', received: 'order' },
       { page: 'search', q: 'cigar' },
     ];
     for (const route of routes) {
@@ -233,7 +233,7 @@ describe('pageMeta', () => {
     expect(trail({ page: 'product', productId: 7 })).toEqual([
       ...top, { name: 'Tobacco', path: '/category/tobacco' }, { name: 'Cigarettes', path: '/category/tobacco/cigarettes' }, { name: 'Kite', path: '/product/7' },
     ]);
-    for (const route of [{ page: 'home' }, { page: 'contact' }, { page: 'catalog' }, { page: 'quote' }, { page: 'search', q: 'kite' }, { page: 'not-found', kind: 'product' }, { page: 'product', productId: 999 }]) {
+    for (const route of [{ page: 'home' }, { page: 'contact' }, { page: 'catalog' }, { page: 'checkout' }, { page: 'search', q: 'kite' }, { page: 'not-found', kind: 'product' }, { page: 'product', productId: 999 }]) {
       expect([route.page, trail(route)]).toEqual([route.page, null]);
     }
   });
@@ -252,7 +252,7 @@ describe('pageMeta', () => {
   });
 
   it('keeps private and not-found pages out of search results', () => {
-    for (const page of ['quote', 'account', 'admin', 'reset-password']) {
+    for (const page of ['checkout', 'account', 'admin', 'reset-password']) {
       expect(pageMeta({ page }, products, departments)).toMatchObject({ noindex: true, path: null });
     }
     expect(pageMeta({ page: 'not-found', kind: 'product' }, products, departments)).toMatchObject({ title: 'Product not found · Alabama Wholesale Inc', noindex: true, path: null });
@@ -307,7 +307,7 @@ describe('pageMeta', () => {
   });
 
   it('prints the minimum and the hours from content.js, in plain text (AW-283, AW-275)', () => {
-    expect(pageMeta({ page: 'quote' }, products, departments).description).toMatch(/Minimum order \$500\.00\.$/);
+    expect(pageMeta({ page: 'checkout' }, products, departments).description).toMatch(/Minimum order \$500\.00\.$/);
     const contact = pageMeta({ page: 'contact' }, products, departments).description;
     // Both hours lines whole: the description is never clipped mid-hours.
     expect(contact).toBe('Call (205) 458-4788 or visit 613 Graymont Ave N, Birmingham, AL 35203. Mon–Fri 7:00 AM – 6:00 PM CT, Sat–Sun 8:00 AM – 5:30 PM CT.');
@@ -331,15 +331,16 @@ describe('pageMeta', () => {
   });
 
   it('depends on the route only, never on the header search (AW-338)', () => {
-    expect(pageMeta({ page: 'quote' }, products, departments, 'kite').title).toBe('Checkout · Alabama Wholesale Inc');
+    expect(pageMeta({ page: 'checkout' }, products, departments, 'kite').title).toBe('Checkout · Alabama Wholesale Inc');
   });
 
-  it('names the receipt /quote shows after a save, and keeps it out of search results (AW-022)', () => {
-    const checkout = pageMeta({ page: 'quote' }, products, departments);
-    const quote = pageMeta({ page: 'quote', received: 'quote' }, products, departments);
-    const order = pageMeta({ page: 'quote', received: 'order' }, products, departments);
-    expect(quote).toMatchObject({ title: 'Quote received · Alabama Wholesale Inc', description: checkout.description, noindex: true, path: null });
+  it('names the receipt /checkout shows after a save, and keeps it out of search results (AW-022, AW-024)', () => {
+    const checkout = pageMeta({ page: 'checkout' }, products, departments);
+    const order = pageMeta({ page: 'checkout', received: 'order' }, products, departments);
     expect(order).toMatchObject({ title: 'Order received · Alabama Wholesale Inc', description: checkout.description, noindex: true, path: null });
+    // A receipt kept from before (kind 'quote') is an order too.
+    expect(pageMeta({ page: 'checkout', received: 'quote' }, products, departments).title).toBe('Order received · Alabama Wholesale Inc');
+    expect(checkout.description).toBe('Review your order and place it with Alabama Wholesale Inc. Minimum order $500.00.');
   });
 });
 

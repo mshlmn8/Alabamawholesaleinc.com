@@ -51,8 +51,10 @@ and loading or reloading one must serve `index.html`, which starts the app.
    `/category/novelties/mushroom-products`, move permanently (301) to
    `/category/novelties`, so an old bookmark or search result lands on the
    department. The app redirects the same addresses, in any spelling.
+   Checkout's old address, `/quote`, moves permanently to `/checkout` the
+   same way (AW-024: customers place orders, not quotes).
 3. Each page path of the app gets `index.html` with status 200: `/`,
-   `/index.html`, `/catalog`, `/search`, `/quote`, `/account`, `/admin`,
+   `/index.html`, `/catalog`, `/search`, `/checkout`, `/account`, `/admin`,
    `/admin/*`, `/contact`, `/delivery`, `/shipping`, `/privacy`, `/terms`,
    `/apply` and `/reset-password`. The catalog's pages, `/product/<id>` and
    `/category/<department>[/<line>]`, have no rule: each is a file the build
@@ -194,7 +196,7 @@ Caching:
   `index.html`. Two `[[redirects]]` rules above the page rewrites do this.
   They aren't forced, and Netlify serves a file that exists before any rule,
   so they only answer for missing files. This matters after a deploy: the
-  account, admin, quote and support pages and the sign-in dialog are separate
+  account, admin, checkout and support pages and the sign-in dialog are separate
   code files that load when first opened (AW-179), and a tab still open on the
   last version asks for their old names. With a 404 the page says it didn't
   load and offers Reload; `index.html` sent under that name would fail as a
@@ -223,7 +225,7 @@ When you change something:
   as above.
 
 Before promoting a deploy preview, open it with the browser console showing
-and click through home, a category, a product, the cart, the quote page,
+and click through home, a category, a product, the cart, checkout,
 sign-in, Apply and (signed in as an admin) Admin. A
 "Content-Security-Policy" or "Refused to load" error means the policy is
 missing a source: fix it before promoting the deploy.
@@ -241,7 +243,9 @@ The build fails unless `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set
 in the Netlify environment (scope "All", so deploy previews get them too).
 Until there is a separate project for previews (owner question AW-213 in
 `docs/OWNER-TODO.md`), deploy previews and branch deploys use the production
-database: an application or quote sent from a preview is real.
+database: an application or order sent from a preview is real, and its
+order email goes to the orders inbox too (if the preview's form submissions
+are on: "Order emails" below).
 [BACKEND.md](BACKEND.md) covers the variables and the Supabase auth URL
 settings (section 4), the database migrations (section 2), the first-run
 sanity check (section 5) and the release checklist: database changes go in
@@ -255,7 +259,7 @@ database is safe to publish: one built from the commit that added
 that migration (`supabase/migrations/<timestamp>_….sql`) or a later commit.
 An older build can depend on what a later migration changed or removed (a
 build from before `20260925120000` inserts orders directly, which that
-migration forbids, so every quote would fail). Each deploy's page names its
+migration forbids, so every order would fail). Each deploy's page names its
 commit; compare it with the newest migration the project has (`supabase
 migration list`, or BACKEND.md's release checklist).
 
@@ -265,12 +269,67 @@ every file from `20261009100000` on) or restoring the dump taken before it
 (BACKEND.md, "Release checklist", step 2, and "Rolling back"); the dump also
 undoes every order and application made since.
 
-## Netlify Forms
+## Order emails (Netlify Forms)
 
-The site uses no Netlify Forms: quotes go to Supabase's `submit_quote`
-function and applications to Supabase Auth. If the Netlify dashboard (**Forms**)
-still lists `apply`, `quote` or `newsletter` forms from earlier deploys, delete
-them and turn off form detection so nothing can post to them.
+When a customer places an order, it is saved in Supabase (`submit_quote`)
+and shows in **Admin → Orders**: that is the record. Checkout then also
+posts a copy of the order to the Netlify form `order-notification`, and
+Netlify emails it to the orders inbox, **alwholesale@gmail.com** (the
+owner's answer of October 2026, AW-024). The email's subject is "New order
+ALW-O-… from <business>", and it lists the reference, when it was placed,
+the business, contact, email, phone, delivery method, preferred date,
+ship-to address or will-call, every line (quantity, product, variant, SKU,
+sell unit), the number of lines and units, the notes, and a link to the
+order's pick list in Admin. It carries no prices.
+
+`index.html` declares the form (hidden, with every field and the
+`bot-field` honeypot), and `src/lib/orderNotification.js` posts to it. The
+post never holds up or fails an order: checkout doesn't wait for it, gives
+up after 10 seconds, and logs only that it failed.
+
+Set it up once in the Netlify dashboard:
+
+1. **Turn on form detection**: Forms → enable form detection (newer
+   dashboards: Project configuration → Forms). Then redeploy (Deploys →
+   Trigger deploy → Deploy site), so Netlify finds `order-notification` in
+   the deployed HTML. Forms lists it once it has.
+2. **Email the orders inbox**: add a form notification (Site or Project
+   configuration → Notifications → Emails and webhooks → Form submission
+   notifications → Add notification → Email notification; older dashboards
+   have it under Forms → Form notifications), with **Email to notify**
+   `alwholesale@gmail.com` and **Form** `order-notification`. Add a second
+   one for any other address that should get a copy.
+3. **Place a test order** from an approved test account and check that the
+   email arrives (look in Gmail's spam folder the first time, and mark it
+   "Not spam"). Then cancel the test order in Admin → Orders.
+4. If Forms still lists `apply`, `quote` or `newsletter` forms from older
+   deploys, delete them: nothing uses them any more (AW-350).
+
+Things to know:
+
+- **Plan limits.** Netlify's free plan includes a limited number of form
+  submissions a month (100 per site on the Starter plan when this was
+  written; newer credit-based plans charge credits per submission instead).
+  Past the limit Netlify stops taking submissions, so order emails stop
+  until the next month or an upgrade, but **orders are still saved and
+  listed in Admin → Orders**. Check the current numbers on Netlify's
+  pricing page, and watch Forms → usage as order volume grows.
+- **Spam.** Netlify filters form spam, and checkout always sends the
+  honeypot empty. A submission Netlify marks as spam sends no email: if an
+  order is in Admin → Orders but its email never came, look under Forms →
+  `order-notification` → Spam submissions and mark it verified.
+- **An email is a heads-up, not proof.** Anyone can post to a Netlify form
+  (that is why AW-350 removed the old unused ones), so a fake "order" email
+  is possible. Prepare an order once its reference is in Admin → Orders; the
+  email's admin link opens it.
+- **Personal data.** Each submission holds the buyer's contact details and
+  address. Netlify keeps submissions in the dashboard until they are
+  deleted; staff can delete old ones there. The privacy policy says order
+  copies are emailed through Netlify.
+- **Locally**, `npm run dev` and `npm run preview` answer the post like
+  Netlify (status 200) but keep and send nothing (`scripts/netlify-forms.mjs`).
+  The Content-Security-Policy needs no change: the post goes to the site's
+  own origin (`connect-src 'self'`).
 
 ## Do not drag and drop `dist/`
 

@@ -125,7 +125,7 @@ export function ContactPage({ onApplyClick, signedIn = false, profile = null, ac
           <h2 className="eyebrow">Email</h2>
           <a className="info-lead info-lead-small" href={`mailto:${COMPANY.email}`}><EmailText /></a>
           <CopyEmailButton />
-          <p>Applications, quotes, invoices and anything you would rather put in writing. Include your business name and phone number.</p>
+          <p>Applications, volume pricing, invoices and anything you would rather put in writing. Include your business name and phone number.</p>
           <a className="button ghost" href={`mailto:${COMPANY.email}`}>Email the trade desk</a>
         </article>
         <article className="info-card">

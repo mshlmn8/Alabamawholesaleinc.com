@@ -1,8 +1,8 @@
 // My account's order history (AW-104, AW-105). Ten orders at a time, newest
 // first, with 'Show more' for the next ten; a status filter and a search by
 // order number above them (a new filter starts again at the first page).
-// Each card says whether it was an order or a quote request, when it was
-// placed, the status in the buyer's words, how it was to be delivered and on
+// Each card says it is an order (an earlier quote request too, AW-024), when
+// it was placed, the status in the buyer's words, how it was to be delivered and on
 // what day, and the buyer's notes. Long orders show their first three lines
 // until 'Show all'. Reorder puts an order's lines back in the cart.
 //
@@ -20,6 +20,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
+import { BASKET } from '../../data/terms.js';
 import { linesFromOrder } from '../../lib/lines.js';
 import { formatMoney } from '../../lib/format.js';
 import { lineTotal } from '../../lib/pricing.js';
@@ -70,7 +71,7 @@ const reorderMessage = (note, target) => (note.lines > 0
   + (note.needsVariant > 0 ? ` ${plural(note.needsVariant, 'line')} need${note.needsVariant === 1 ? 's' : ''} a variant choice in your ${target}.` : '')
   + (note.unavailable.length > 0 ? ` No longer available: ${note.unavailable.join(', ')}.` : '');
 
-export function OrderHistory({ userId, products = [], addLines, onOpenCart, isApprovedBuyer }) {
+export function OrderHistory({ userId, products = [], addLines, onOpenCart }) {
   const uid = useId();
   const headingId = `${uid}-title`;
   // The filters the list shows; `attempt` counts Try again.
@@ -209,7 +210,8 @@ export function OrderHistory({ userId, products = [], addLines, onOpenCart, isAp
     if (!moreLeft && added.length) focusNext.current = `${uid}-order-${added[0].id}`;
   };
 
-  const target = isApprovedBuyer ? 'order' : 'quote';
+  // The basket is an order for every account (AW-024).
+  const target = BASKET.noun;
   const reorder = (order) => {
     const { lines, unavailable, needsVariant } = linesFromOrder(order, products);
     if (lines.length && addLines) addLines(lines);

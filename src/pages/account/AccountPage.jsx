@@ -157,7 +157,7 @@ export function AccountPage({
       </section>
 
       {/* Keyed: another account starts from nothing (AW-326). */}
-      <OrderHistory key={profile.id} userId={profile.id} products={products} addLines={addLines} onOpenCart={onOpenCart} isApprovedBuyer={isApprovedBuyer} />
+      <OrderHistory key={profile.id} userId={profile.id} products={products} addLines={addLines} onOpenCart={onOpenCart} />
     </section>
   );
 }

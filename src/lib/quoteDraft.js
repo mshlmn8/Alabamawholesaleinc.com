@@ -1,5 +1,6 @@
-// A draft of the quote form (AW-080), so what a buyer typed survives leaving
-// /quote (a line's product link, the breadcrumb, Back) and a reload.
+// A draft of the checkout form (AW-080), so what a buyer typed survives
+// leaving /checkout (a line's product link, the breadcrumb, Back) and a
+// reload. (The storage key and file keep their old 'quote' name.)
 //
 // The store keeps ONE record in sessionStorage (STORAGE.quoteDraft), for this
 // tab only: { owner, data, savedAt }. `owner` is the cart owner App computes
@@ -7,16 +8,16 @@
 // or 'guest'); a draft is read back only for the same owner. `data` holds the
 // buyer's contact details and ship-to address, the delivery method, the
 // preferred date and the notes, checked and cut to the form's limits on the
-// way in and out; damaged values read as no draft. It never holds the
-// tobacco license answers (licenseNo, resaleCert, purchasers21): like the
-// application form (AuthModal), the attestation is given fresh each time.
+// way in and out; damaged values read as no draft. Nothing else is kept
+// (the guest licence answers of PR #12, licenseNo, resaleCert and
+// purchasers21, never were, and checkout no longer asks for them).
 // Where sessionStorage is blocked or full there is simply no draft.
 //
 // A draft holds contact details: never in a URL or a log. It is cleared on a
 // successful submit (QuotePage) and on sign-out (App.handleLogout), and
 // discarded when another account takes over the page.
 //
-// Precedence on /quote (plan/conflicts.md, AW-080 + AW-102 + AW-186 +
+// Precedence on /checkout (plan/conflicts.md, AW-080 + AW-102 + AW-186 +
 // AW-190): the empty form, then this owner's draft, then the profile, which
 // fills only the fields still empty (src/lib/quoteForm.js).
 

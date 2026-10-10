@@ -234,8 +234,8 @@ describe('AccountPage order history (AW-104, AW-105)', () => {
     // The status is a tag under the reference; Reorder is the head's only action (NEW-070).
     expect(first.querySelector('.order-summary .order-status > .status-pill')).toBe(first.querySelector('.status-pill'));
     expect([...first.querySelector('.order-actions').children].map((el) => el.textContent)).toEqual(['Reorder ALW-O-10100']);
-    // A quote request: no prices yet.
-    expect(within(second).getByRole('heading', { level: 3 }).textContent).toBe('Quote request ALW-Q-10099');
+    // An earlier quote request (AW-024: customers place orders): no prices yet.
+    expect(within(second).getByRole('heading', { level: 3 }).textContent).toBe('Order ALW-Q-10099');
     expect(second.querySelector('.order-head small').textContent).toMatch(/· 6 units · Price on confirmation$/);
     expect(second.querySelector('.line-total').textContent).toBe('Price on confirmation');
     expect(second.querySelector('.status-pill').textContent).toBe('Confirming with a rep');

@@ -27,7 +27,7 @@ function trackErrors(page) {
 const toast = (page) => page.locator('#aw-toasts .toast');
 const addButton = (page) => page.locator('.pd-info').getByRole('button', { name: /^Add to (quote|order)/ });
 // A card's add button is named for its product after the label (AW-170).
-const cardAdds = (page) => page.locator('.content-card').getByRole('button', { name: /^Add to quote\b/ });
+const cardAdds = (page) => page.locator('.content-card').getByRole('button', { name: /^Add to order\b/ });
 const activeIsBody = (page) => page.evaluate(() => document.activeElement === document.body);
 // What the live region (#aw-announcer) said, recorded from the first paint.
 const said = (page) => page.evaluate(() => window.__said);
@@ -49,7 +49,7 @@ test.beforeEach(async ({ context, page }, testInfo) => {
   if (testInfo.project.name === 'phone') await page.setViewportSize({ width: 390, height: 844 });
 });
 
-test('a card add deep in a category shows the toast in view, and "View quote" opens the cart (AW-072)', async ({ page }) => {
+test('a card add deep in a category shows the toast in view, and "View order" opens the cart (AW-072)', async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto('/category/candies');
   const add = cardAdds(page).last();
@@ -57,7 +57,7 @@ test('a card add deep in a category shows the toast in view, and "View quote" op
   expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(1000);
   await add.click();
   await expect(toast(page)).toBeVisible();
-  await expect(toast(page).locator('.toast-text')).toHaveText(/^Added .+ to your quote\.$/);
+  await expect(toast(page).locator('.toast-text')).toHaveText(/^Added .+ to your order\.$/);
   const box = await toast(page).boundingBox();
   const viewport = page.viewportSize();
   expect(box.y).toBeGreaterThanOrEqual(0);
@@ -67,8 +67,8 @@ test('a card add deep in a category shows the toast in view, and "View quote" op
   // Focus moved to the stepper that replaced the button.
   await expect(page.locator('.card-stepper input:focus')).toHaveCount(1);
 
-  await toast(page).getByRole('button', { name: 'View quote' }).click();
-  await expect(page.getByRole('dialog', { name: 'Your quote' })).toBeVisible();
+  await toast(page).getByRole('button', { name: 'View order' }).click();
+  await expect(page.getByRole('dialog', { name: 'Your order' })).toBeVisible();
   await expect(toast(page)).toHaveCount(0);
   expect(errors).toEqual([]);
 });
@@ -78,7 +78,7 @@ test('a product page add says the quantity, without covering the add button (AW-
   await page.goto('/product/14');
   await page.getByRole('group', { name: 'Quantity to add' }).getByRole('textbox').fill('3');
   await addButton(page).click();
-  await expect(toast(page).locator('.toast-text')).toHaveText('Added 3 × Kite cigarette tobacco to your quote.');
+  await expect(toast(page).locator('.toast-text')).toHaveText('Added 3 × Kite cigarette tobacco to your order.');
   await expect(addButton(page)).toBeFocused();
   // When the button was low on the screen, the page scrolls it clear.
   await expect.poll(async () => {
@@ -98,8 +98,8 @@ test('each add is read out exactly once (AW-042)', async ({ page }) => {
   await expect.poll(async () => (await said(page)).length).toBe(1);
   await addButton(page).click();
   await expect.poll(async () => (await said(page)).filter((t) => t.startsWith('Added'))).toEqual([
-    'Added 1 × Kite cigarette tobacco to your quote.',
-    'Added 1 × Kite cigarette tobacco to your quote.',
+    'Added 1 × Kite cigarette tobacco to your order.',
+    'Added 1 × Kite cigarette tobacco to your order.',
   ]);
 
   await page.goto('/category/candies');
@@ -109,13 +109,13 @@ test('each add is read out exactly once (AW-042)', async ({ page }) => {
   await page.waitForTimeout(400);
   const added = (await said(page)).filter((t) => t.startsWith('Added'));
   expect(added).toHaveLength(1);
-  expect(added[0]).toMatch(/^Added .+ to your quote\.$/);
+  expect(added[0]).toMatch(/^Added .+ to your order\.$/);
   expect(errors).toEqual([]);
 });
 
 test('focus stays on the cart controls after adds and removals (AW-042)', async ({ page }) => {
   const errors = trackErrors(page);
-  // A card: Enter on "Add to quote", then − at 1 removes it again.
+  // A card: Enter on "Add to order", then − at 1 removes it again.
   await page.goto('/category/candies');
   const add = cardAdds(page).first();
   await add.focus();
@@ -125,30 +125,30 @@ test('focus stays on the cart controls after adds and removals (AW-042)', async 
   await expect(page.locator('.card-stepper button:focus')).toHaveAccessibleName(/^Remove /);
   await page.keyboard.press('Enter');
   expect(await activeIsBody(page)).toBe(false);
-  await expect(page.locator('.card-add:focus')).toHaveText(/^Add to quote\b/);
-  await expect.poll(async () => (await said(page)).at(-1)).toMatch(/^Removed .+ from your quote\.$/);
+  await expect(page.locator('.card-add:focus')).toHaveText(/^Add to order\b/);
+  await expect.poll(async () => (await said(page)).at(-1)).toMatch(/^Removed .+ from your order\.$/);
 
   // The drawer: × on a line, then on the last one.
   await page.evaluate(([k, v]) => localStorage.setItem(k, v), [GUEST_CART, cartValue({ 14: 2, 45: 1 })]);
   await page.goto('/');
-  await page.getByRole('button', { name: /^Quote, [\d,]+ items?$/ }).click();
-  const drawer = page.getByRole('dialog', { name: 'Your quote' });
+  await page.getByRole('button', { name: /^Order, [\d,]+ items?$/ }).click();
+  const drawer = page.getByRole('dialog', { name: 'Your order' });
   await drawer.getByRole('button', { name: 'Remove Kite cigarette tobacco' }).click();
   await expect(drawer.getByRole('textbox', { name: 'Quantity of Argo corn starch' })).toBeFocused();
   await expect.poll(async () => (await said(page)).at(-1)).toBe('Removed Kite cigarette tobacco.');
   await drawer.getByRole('button', { name: 'Remove Argo corn starch' }).click();
-  await expect(drawer.getByRole('heading', { name: 'Your quote', exact: true })).toBeFocused();
+  await expect(drawer.getByRole('heading', { name: 'Your order', exact: true })).toBeFocused();
   await expect.poll(async () => (await said(page)).at(-1)).toBe('Removed Argo corn starch.');
 
   // Checkout: × on a line, then "Clear all items".
   await page.evaluate(([k, v]) => localStorage.setItem(k, v), [GUEST_CART, cartValue({ 14: 2, 45: 1 })]);
-  await page.goto('/quote');
+  await page.goto('/checkout');
   await page.getByRole('button', { name: 'Remove Kite cigarette tobacco' }).click();
   await expect(page.getByRole('textbox', { name: 'Quantity of Argo corn starch' })).toBeFocused();
   await expect.poll(async () => (await said(page)).at(-1)).toBe('Removed Kite cigarette tobacco.');
   await page.getByRole('button', { name: 'Clear all items' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Your quote is empty' })).toBeFocused();
+  await expect(page.getByRole('heading', { level: 1, name: 'Your order is empty' })).toBeFocused();
   expect(await activeIsBody(page)).toBe(false);
-  await expect.poll(async () => (await said(page)).at(-1)).toBe('Removed all items from your quote.');
+  await expect.poll(async () => (await said(page)).at(-1)).toBe('Removed all items from your order.');
   expect(errors).toEqual([]);
 });

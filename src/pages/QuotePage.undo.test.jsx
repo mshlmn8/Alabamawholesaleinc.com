@@ -64,21 +64,21 @@ describe('QuotePage: clear all and undo (AW-082)', () => {
     render(<Harness />);
     fireEvent.click(clearButton());
     expect(stored(GUEST)).toBeNull();
-    const heading = screen.getByRole('heading', { level: 1, name: 'Your quote is empty' });
+    const heading = screen.getByRole('heading', { level: 1, name: 'Your order is empty' });
     expect(document.activeElement).toBe(heading);
     const banner = document.querySelector('p.notice.cart-cleared');
     expect(banner.textContent).toBe('Removed 43 items. Undo');
     expect(banner.querySelector('span').textContent).toBe('Removed 43 items.');
     const undo = screen.getByRole('button', { name: 'Undo' });
     expect(undo.getAttribute('aria-describedby')).toBe(banner.querySelector('span').id);
-    expect(said()).toEqual(['Removed all items from your quote.']);
+    expect(said()).toEqual(['Removed all items from your order.']);
 
     fireEvent.click(undo);
     expect(stored(GUEST)).toEqual({ 14: 40, 45: 3 });
     expect(document.querySelectorAll('.checkout-lines > li')).toHaveLength(2);
     expect(document.querySelector('.cart-cleared')).toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Quantity of Kite' })));
-    expect(said()).toEqual(['Removed all items from your quote.', 'Restored 43 items.']);
+    expect(said()).toEqual(['Removed all items from your order.', 'Restored 43 items.']);
   });
 
   it('focuses the variant choice of a restored line that has no quantity box, never its thumbnail link', async () => {
@@ -127,7 +127,7 @@ describe('QuotePage: clear all and undo (AW-082)', () => {
       window.localStorage.removeItem(cartKey(GUEST));
       window.dispatchEvent(new StorageEvent('storage', { key: cartKey(GUEST) }));
     });
-    expect(screen.getByRole('heading', { level: 1, name: 'Your quote is empty' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'Your order is empty' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
   });
 

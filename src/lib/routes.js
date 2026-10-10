@@ -11,7 +11,8 @@
 //                                       brand: brand slugs, comma-separated (AW-067)
 //   /product/:id
 //   /search?q=                          search results (AW-007; q clipped to 200 characters)
-//   /quote /account /admin
+//   /checkout /account /admin            (/quote is the old checkout address:
+//                                       it redirects to /checkout, AW-024)
 //   /contact /delivery /shipping /privacy /terms /apply /reset-password
 //
 // Department and product-line segments are slugs of the catalog's names
@@ -51,14 +52,20 @@ export function siteUrl(value) {
 // Static support pages: /<page> — see src/pages/support/.
 export const SUPPORT_PAGES = ['catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply', 'reset-password'];
 // Pages that take no parameters.
-const SIMPLE_PAGES = ['quote', 'account', 'admin', ...SUPPORT_PAGES];
+const SIMPLE_PAGES = ['checkout', 'account', 'admin', ...SUPPORT_PAGES];
 // Every first path segment parseUrl answers ('/' and '/index.html' are the
 // home page). Any other is not found, here and on Netlify (NEW-088), so a new
 // section goes in this list or it never resolves.
 export const PATH_SECTIONS = ['product', 'category', 'search', ...SIMPLE_PAGES];
+// Old addresses of a page, as { old section: page }. Each one parses as its
+// page, so App redirects it to the page's own path (and '#/quote' from the
+// hash router lands there too); netlify.toml moves it permanently, so it is
+// in no list above and never in the sitemap. Customers place orders, not
+// quotes (owner answer 2026-10, AW-024): checkout moved from /quote.
+export const MOVED_SECTIONS = Object.freeze({ quote: 'checkout' });
 
 // Kept out of search engines (robots noindex) and out of the sitemap.
-export const NOINDEX_PAGES = ['quote', 'account', 'admin', 'reset-password', 'search', 'not-found'];
+export const NOINDEX_PAGES = ['checkout', 'account', 'admin', 'reset-password', 'search', 'not-found'];
 
 // Department page sort orders; 'featured' is the default and never written.
 // 'brand' is Brand: A to Z (AW-067).
@@ -145,6 +152,7 @@ export function parseUrl({ pathname = '/', search = '' } = {}) {
   if (!first) return { page: 'home' };
   const section = first.toLowerCase();
   if (section === 'index.html' && rest.length === 0) return { page: 'home' };
+  if (Object.prototype.hasOwnProperty.call(MOVED_SECTIONS, section)) return rest.length === 0 ? { page: MOVED_SECTIONS[section] } : { page: 'not-found' };
   if (!PATH_SECTIONS.includes(section)) return { page: 'not-found' };
   if (section === 'product') return rest.length === 1 ? { page: 'product', id: rest[0] } : { page: 'not-found', kind: rest.length ? 'page' : 'product' };
   if (section === 'category') {

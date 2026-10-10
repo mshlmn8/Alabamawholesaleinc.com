@@ -24,8 +24,10 @@ export const ADMIN_SECTIONS = ['orders', 'accounts', 'products', 'pricing', 'hom
 
 // The order statuses. The quote workflow (AW-024; Cursor's
 // 20261008200000) adds quoted ... out_for_delivery; a database without it
-// accepts only the first four (LEGACY_ORDER_STATES).
-// TODO(owner): Confirm how quotes should work: should staff price and answer guest quotes and convert them to orders, and should orders go through 'quoted' and 'confirmed' stages before picking? (AW-024)
+// accepts only the first four (LEGACY_ORDER_STATES). Customers place orders,
+// not quotes (the owner's answer of October 2026, AW-024); staff keep every
+// status, and the quotes saved before then can still be priced and
+// converted.
 export const ORDER_STATES = ['new', 'contacted', 'quoted', 'confirmed', 'picking', 'ready', 'out_for_delivery', 'fulfilled', 'cancelled'];
 export const LEGACY_ORDER_STATES = ['new', 'contacted', 'fulfilled', 'cancelled'];
 // The Orders status filter: a status or 'all'. 'new' is the default.

@@ -16,7 +16,7 @@ describe('offlineNotices', () => {
       id: 'offline',
       tone: 'warn',
       title: 'You’re offline',
-      text: 'You can keep browsing and adding to your cart. Sending a quote or order, signing in and uploads wait until you’re back online.',
+      text: 'You can keep browsing and adding to your cart. Placing an order, signing in and uploads wait until you’re back online.',
     });
     expect(notice).not.toHaveProperty('onDismiss');
     expect(notice).not.toHaveProperty('actions');

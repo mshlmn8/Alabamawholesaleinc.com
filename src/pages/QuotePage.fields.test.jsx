@@ -1,4 +1,4 @@
-// The quote form's field checks (AW-078): the ship-to State lists the route
+// The checkout form's field checks (AW-078): the ship-to State lists the route
 // states, the phone needs 10 digits (checked before anything is sent), and
 // Notes is a box of several lines.
 import { act, fireEvent, render, screen } from '@testing-library/react';
@@ -8,14 +8,16 @@ import { submitOrder } from '../lib/orders.js';
 
 vi.mock('../lib/orders.js', async (importOriginal) => ({
   ...(await importOriginal()),
-  submitOrder: vi.fn(async () => ({ ok: true, order: { id: 'o1', ref_num: 'ALW-Q-FIELDS0001', kind: 'quote' } })),
+  submitOrder: vi.fn(async () => ({ ok: true, order: { id: 'o1', ref_num: 'ALW-O-FIELDS0001', kind: 'order' } })),
 }));
 
 const ITEMS = [{ lineKey: '45', productId: 45, variant: null, name: 'Argo corn starch', sku: 'AW-ARGO', cat: 'FOOD STUFF', qty: 2, price: null }];
-const GUEST = { profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false };
+// An approved buyer whose profile has no contact details yet, so every field
+// starts empty (only approved accounts get the form, AW-014).
+const BUYER = { profile: { id: 'u-blank', status: 'approved', business: '', name: '', email: '', phone: '' }, account: 'ready', signedIn: true, isApprovedBuyer: true };
 const page = (props) => (
   <QuotePage items={ITEMS} total={0} setLine={vi.fn()} chooseVariant={vi.fn()} removeLine={vi.fn()} removeLines={vi.fn()} clearCart={vi.fn()}
-             isBackendConfigured onSignIn={vi.fn()} {...GUEST} {...props} />
+             isBackendConfigured onSignIn={vi.fn()} {...BUYER} {...props} />
 );
 const el = (id) => document.getElementById(id);
 const fill = (values) => {
@@ -45,7 +47,7 @@ describe('QuotePage fields (AW-078)', () => {
   });
 
   it('starts the State from a store in a route state only', () => {
-    const store = { id: 'p', name: 'Pat', business: 'Pending Mart', email: 'p@example.test', phone: '205-555-0101', status: 'pending', store_city: 'Nashville' };
+    const store = { id: 'p', name: 'Pat', business: 'Pat Mart', email: 'p@example.test', phone: '205-555-0101', status: 'approved', store_city: 'Nashville' };
     const view = render(page({ profile: { ...store, state: 'TN' }, account: 'ready', signedIn: true }));
     expect(el('ship-state').value).toBe('');
     expect(el('ship-city').value).toBe('Nashville');

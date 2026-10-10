@@ -60,7 +60,7 @@
 // any variant.
 //
 // An add is confirmed by the toast (AW-072, AW-042): the quantity, the
-// product and its variant, and "View quote", also read out once
+// product and its variant, and "View order", also read out once
 // (src/lib/toast.js). Focus stays on the add button.
 //
 // The photo opens larger (AW-236): the whole frame is a button that opens
@@ -99,7 +99,7 @@ import { CHECKING_ACCOUNT_TEXT, PRICES_NEED_PROFILE, PRICE_LOCK, accountStatus }
 import { SHARED_PHOTO_NOTE, brandLabel, catLabel, formatMoney, photoAlt, sharedPhotoBadge } from '../lib/format.js';
 import { SIZES, zoomPicture, zoomSizes } from '../lib/images.js';
 import { Link } from '../lib/router.js';
-import { APPLY_LABEL } from '../data/terms.js';
+import { APPLY_LABEL, BASKET } from '../data/terms.js';
 import { Breadcrumbs, catalogCrumbs } from '../components/Breadcrumbs.jsx';
 import { CallOrEmail } from '../components/ContactLinks.jsx';
 import { ProductPhoto } from '../components/ProductPhoto.jsx';
@@ -282,21 +282,21 @@ export function ProductPage({
     if (soleUnavailable) return;
     const added = addLine(p.id, selected, desiredQty);
     if (!added) return;
-    const target = isApprovedBuyer ? 'order' : 'quote';
+    const target = BASKET.noun;
     const what = `${p.name}${selected ? ` — ${selected}` : ''}`;
     // A line already near the limit takes only what fits (AW-013).
     const count = added.capped ? Math.max(0, added.qty - qty) : desiredQty;
     const text = count > 0
       ? `Added ${count.toLocaleString('en-US')} × ${what} to your ${target}.`
       : `Your ${target} already has ${added.qty.toLocaleString('en-US')} × ${what}.`;
-    showToast({ text: added.capped ? `${text} ${maxPerLineText()}` : text, action: { id: 'open-cart', label: `View ${target}` } });
+    showToast({ text: added.capped ? `${text} ${maxPerLineText()}` : text, action: { id: 'open-cart', label: BASKET.view } });
     setDesiredQty(1);
   };
   const addRow = (
     <div key="add" className="qty-row" aria-hidden={provisional || undefined}>
       {/* Typed or stepped, 1 to 100,000 (AW-013). */}
       <QuantityInput value={desiredQty} onChange={setDesiredQty} min={1} label={`Quantity of ${p.name} to add`} groupLabel="Quantity to add" />
-      <button className="button" type="button" onClick={handleAdd} disabled={provisional}><span>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</span></button>
+      <button className="button" type="button" onClick={handleAdd} disabled={provisional}><span>{BASKET.add}</span></button>
     </div>
   );
   // The purchase block's parts, keyed, so a change of layout moves them
@@ -326,7 +326,7 @@ export function ProductPage({
   ) : addRow;
   const totalNote = qtyTotal ? <p key="total" className="in-cart-note pd-line-total">{qtyTotal}</p> : null;
   const inCartNote = qty > 0
-    ? <p key="in-cart" className="in-cart-note"><span>{`Already in ${isApprovedBuyer ? 'order' : 'quote'}: `}</span><strong>{qty}</strong><span>{selected ? ` · ${selected}` : ''}</span></p>
+    ? <p key="in-cart" className="in-cart-note"><span>{`Already in ${BASKET.noun}: `}</span><strong>{qty}</strong><span>{selected ? ` · ${selected}` : ''}</span></p>
     : null;
   // Nothing to price or add (NEW-052): in the price slot's frame, a sentence
   // in body type and the trade desk, first in either layout.

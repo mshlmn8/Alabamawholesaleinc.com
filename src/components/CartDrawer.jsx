@@ -1,10 +1,12 @@
 // Slide-in cart: the lines in the cart, the estimated total (approved
 // accounts; lines still waiting for a variant, and lines the trade desk
 // prices, are left out of it, and a note under it says so, AW-103, NEW-063)
-// and the checkout/quote actions. Above the lines: products from an
-// older cart that still need a variant (AW-354) and lines that can no longer
-// be ordered (AW-083). A suspended account sees that ordering is paused, with
-// the trade desk's phone and email, instead of the quote button (AW-201).
+// and the way to checkout. Above the lines: products from an older cart that
+// still need a variant (AW-354) and lines that can no longer be ordered
+// (AW-083). A suspended account sees that ordering is paused, with the trade
+// desk's phone and email, instead of the checkout button (AW-201). Everyone
+// else goes to checkout, which asks a guest to sign in and tells an account
+// under review it can order once approved (AW-014, AW-024).
 // An empty cart shows the shared EmptyState with a way to the catalog, and
 // no total or summary (AW-299).
 //
@@ -26,7 +28,7 @@
 // saved there (cartSynced, src/lib/cartSync.js).
 
 import { useEffect, useRef } from 'react';
-import { basketTerms, cartDeviceNote } from '../data/terms.js';
+import { BASKET, cartDeviceNote } from '../data/terms.js';
 import { announce } from '../lib/announce.js';
 import { LINE_CONTROL, focusLineSoon, keepFocusNear, neighbourKey } from '../lib/focus.js';
 import { totalLabel } from '../lib/pricing.js';
@@ -72,8 +74,7 @@ export function CartDrawer({
     if (next) focusLineSoon(listRef.current, next, { selector: LINE_CONTROL, fallback: () => keepFocusNear(dialog) });
   };
   const unavailable = items.filter(it => it.unavailable);
-  // A quote, or an order for an approved buyer (AW-132, src/data/terms.js).
-  const basket = basketTerms(isApprovedBuyer);
+  const basket = BASKET;
   const excluded = isApprovedBuyer ? variantExcludedText(items, pricesStatus) : '';
   // Guests are told prices are for approved trade accounts, with a way to
   // sign in; signed-in buyers who are not approved yet are told pricing is
@@ -100,7 +101,7 @@ export function CartDrawer({
           <UnavailableNotice items={unavailable} onRemoveAll={removeLines} noun={basket.noun} />
           {items.length === 0 && (
             <EmptyState level={3} title={basket.empty} actions={<Link className="button" to="/catalog" onClick={onClose}>Browse the catalog</Link>}>
-              {`Browse the catalog and add items to build ${basket.noun === 'order' ? 'an order' : 'a quote'}.`}
+              Browse the catalog and add items to build an order.
             </EmptyState>
           )}
           {items.length > 0 && (
@@ -128,12 +129,10 @@ export function CartDrawer({
             <p className="notice drawer-paused">Ordering is paused on this account. <CallOrEmail after=" and a trade rep will help you sort it out." /></p>
           )}
           {items.length > 0 && !isSuspended && (
-            isApprovedBuyer
-              ? <Link className="button wide" to="/quote" onClick={onClose}>{basket.cta}</Link>
-              : <>
-                  <Link className="button wide" to="/quote" onClick={onClose}>{basket.cta}</Link>
-                  {!pendingBuyer && <button className="drawer-signin text-link" type="button" onClick={onLoginClick}>Sign in for account pricing</button>}
-                </>
+            <>
+              <Link className="button wide" to="/checkout" onClick={onClose}>{basket.cta}</Link>
+              {!isApprovedBuyer && !pendingBuyer && <button className="drawer-signin text-link" type="button" onClick={onLoginClick}>Sign in for pricing and ordering</button>}
+            </>
           )}
         </div>
       </div>

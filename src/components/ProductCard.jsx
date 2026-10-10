@@ -10,8 +10,9 @@
 // (AW-029); a photo other rows share is badged with this row's sell unit, or
 // else the size word in its name, and its alt calls it representative
 // (AW-136); the placeholder brand "Assorted" isn't printed (AW-286); the
-// buttons say "Select options", "Add to quote" or "Add to order", and an add
-// shows "Added" for a moment and is announced (AW-057).
+// buttons say "Select options" or "Add to order" (the basket is an order for
+// everyone, AW-024), and an add shows "Added" for a moment and is announced
+// (AW-057).
 //
 // An approved buyer's price is the card's figure, larger than the name, with
 // what it buys under it ("per 36-count box") when the product has a sell
@@ -27,10 +28,10 @@
 // above it. The link's name is the product name.
 //
 // The add and choose controls are .button.ghost.sm. Their names start with
-// the visible label and add the product for screen readers, "Add to quote,
+// the visible label and add the product for screen readers, "Add to order,
 // Kite cigarette tobacco", so a list of buttons says which is which (AW-143,
 // AW-170, WCAG 2.5.3). A comma rather than a colon: browsers put a space
-// before visually hidden text, so a colon would read "Add to quote : Kite…". Cursor's "Select options" label (AW-057) is kept for
+// before visually hidden text, so a colon would read "Add to order : Kite…". Cursor's "Select options" label (AW-057) is kept for
 // products with a choice. Once the product is in the cart the control is the
 // shared QuantityInput (AW-013): typed or stepped, with − removing the line
 // from 1.
@@ -40,7 +41,7 @@
 // text and in its title.
 //
 // Feedback (AW-042, AW-072): an add shows the toast ("Added … to your
-// quote", with "View quote"), which is also what is read out, once
+// order", with "View order"), which is also what is read out, once
 // (src/lib/toast.js). Focus moves to the stepper that replaces the button
 // (its + after a tap, so a phone's keyboard doesn't open), and back to the
 // add button when − at 1 removes the product, which is announced.
@@ -76,6 +77,7 @@ import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { announce } from '../lib/announce.js';
 import { showToast } from '../lib/toast.js';
+import { BASKET } from '../data/terms.js';
 import { ProductPhoto } from './ProductPhoto.jsx';
 import { NicotineWarning } from './NicotineWarning.jsx';
 import { showsNicotineWarning } from '../lib/regulated.js';
@@ -145,7 +147,7 @@ export function ProductCard({
       ? variantPriceRange(variants.filter(v => isVariantAvailable(p, v)).map(v => priceOf(p.id, v)))
       : { unit: priceOf(p.id, onlyVariant), from: false };
   }
-  const target = isApprovedBuyer ? 'order' : 'quote';
+  const target = BASKET.noun;
   const lockText = isApprovedBuyer ? '' : cardLockText(profile, account);
   // Where focus goes once the control has changed: 'input' or 'plus' (the
   // stepper), 'add' (the add button), or nothing.
@@ -173,7 +175,7 @@ export function ProductCard({
     }
     setAdds(n => n + 1);
     // Seen and heard once; the stepper announces its own steps.
-    showToast({ text: `Added ${p.name} to your ${target}.`, action: { id: 'open-cart', label: `View ${target}` } });
+    showToast({ text: `Added ${p.name} to your ${target}.`, action: { id: 'open-cart', label: BASKET.view } });
   };
   const remove = () => {
     pendingFocus.current = 'add';
@@ -226,7 +228,7 @@ export function ProductCard({
                          label={`Quantity of ${p.name}`} groupLabel={`${p.name} quantity`} itemName={p.name} />
         ) : (
           <button ref={addRef} className="button ghost sm card-add" type="button" onClick={add} onPointerDown={(event) => { pressedWith.current = event.pointerType; }}>
-            <span>{isApprovedBuyer ? 'Add to order' : 'Add to quote'}</span><span className="sr-only">{`, ${p.name}`}</span>
+            <span>{BASKET.add}</span><span className="sr-only">{`, ${p.name}`}</span>
           </button>
         )}
         <span className="added-note" aria-hidden="true">{adds ? 'Added' : ''}</span>

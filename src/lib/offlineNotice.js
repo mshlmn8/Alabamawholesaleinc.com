@@ -8,7 +8,7 @@
 // reach the server waits, and says so where it is offered (QuotePage, the
 // sign-in dialog through friendlyAuthError in src/lib/authErrors.js). The
 // pages that load on demand open offline too: once the page is idle their
-// files are fetched into the browser's cache (every support page, Quote, My
+// files are fetched into the browser's cache (every support page, checkout, My
 // account and the sign-in dialog), and one opened before that says
 // 'Loading…' until the connection is back (src/lib/chunks.js, NEW-006).
 
@@ -18,7 +18,7 @@ export const OFFLINE_NOTICE = Object.freeze({
   id: 'offline',
   tone: 'warn',
   title: 'You’re offline',
-  text: 'You can keep browsing and adding to your cart. Sending a quote or order, signing in and uploads wait until you’re back online.',
+  text: 'You can keep browsing and adding to your cart. Placing an order, signing in and uploads wait until you’re back online.',
 });
 
 export function offlineNotices({ online = true } = {}) {

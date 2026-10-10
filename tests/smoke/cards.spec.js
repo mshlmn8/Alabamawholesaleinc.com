@@ -52,7 +52,7 @@ test('a product card is an article whose title links to the product, and its pho
   // Its name is the product name, not an aria-label that hides the rest of the card.
   await expect(link).not.toHaveAttribute('aria-label', /./);
   // The action names the product after its label.
-  await expect(card.getByRole('button', { name: /^Add to quote\b.*Kite cigarette tobacco$/ })).toBeVisible();
+  await expect(card.getByRole('button', { name: /^Add to order\b.*Kite cigarette tobacco$/ })).toBeVisible();
   // A click on the photo, or on the line under the title, opens the product.
   await clickAt(page, card.locator('.card-block'), 0.5, 0.5);
   await expect(page).toHaveURL(/\/product\/14$/);
@@ -67,7 +67,7 @@ test('the controls sit above the card link, after it in the tab order (AW-170)',
   const errors = trackErrors(page);
   await page.goto('/category/tobacco/cigarettes');
   const card = page.getByRole('article', { name: 'Kite cigarette tobacco' });
-  const add = card.getByRole('button', { name: /^Add to quote\b/ });
+  const add = card.getByRole('button', { name: /^Add to order\b/ });
   // A click on the add button adds; it doesn't open the product.
   await add.click();
   await expect(card.getByRole('group', { name: 'Kite cigarette tobacco quantity' })).toBeVisible();

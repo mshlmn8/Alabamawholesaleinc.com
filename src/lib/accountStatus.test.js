@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ACCOUNT_EYEBROWS, ACCOUNT_STATUSES, ADMIN_GATE_HEADINGS, PRICE_LOCK, STATUS_LABEL, TRADE_ACCOUNT_PANELS, accountStatus, accountView, adminGate,
-  isApprovedAdmin, tradeAccountPanel,
+  isApprovedAdmin, orderGate, tradeAccountPanel,
 } from './accountStatus.js';
 
 describe('accountStatus', () => {
@@ -95,6 +95,30 @@ describe('adminGate', () => {
     expect(adminGate(null, 'loading')).toBeNull();
     expect(adminGate({ role: 'customer', status: 'approved' }, 'loading')).toBeNull();
     expect(adminGate(null, 'no-profile')).toBeNull();
+  });
+});
+
+// Who may place an order (AW-014, AW-024): only a signed-in, approved
+// account that isn't on hold; checkout shows the gate's panel otherwise.
+describe('orderGate', () => {
+  it('lets only an approved account order, admins included', () => {
+    expect(orderGate({ status: 'approved', role: 'customer' }, 'ready')).toBeNull();
+    expect(orderGate({ status: 'approved', role: 'admin' }, 'ready')).toBeNull();
+  });
+
+  it('says why everyone else can’t', () => {
+    expect(orderGate(null, 'signed-out')).toBe('guest');
+    expect(orderGate({ status: 'pending' }, 'ready')).toBe('pending');
+    expect(orderGate({ status: 'suspended' }, 'ready')).toBe('suspended');
+    // A status this site doesn't know is still under review.
+    expect(orderGate({ status: 'rejected' }, 'ready')).toBe('pending');
+    expect(orderGate({}, 'ready')).toBe('pending');
+  });
+
+  it('waits for the account, and names a profile that didn’t load', () => {
+    expect(orderGate(null, 'loading')).toBe('loading');
+    expect(orderGate({ status: 'approved' }, 'loading')).toBe('loading');
+    expect(orderGate(null, 'no-profile')).toBe('no-profile');
   });
 });
 

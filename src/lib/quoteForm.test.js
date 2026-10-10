@@ -23,21 +23,17 @@ describe('quoteForm', () => {
   it('clears the last buyer’s details when they sign out', () => {
     const filled = {
       ...initialQuoteForm(A), shipStreet: '1 Alpha Way', shipCity: 'Birmingham', notes: 'Dock B', delivery: 'willcall', preferredDate: '2026-10-01',
-      licenseNo: 'TL-TEST-1', resaleCert: 'RS-TEST-1', purchasers21: true,
     };
     const next = quoteFormForAccount(filled, null, 'a');
-    for (const field of ['business', 'contact', 'email', 'phone', 'shipStreet', 'shipCity', 'shipState', 'shipZip', 'notes', 'licenseNo', 'resaleCert']) expect(next[field]).toBe('');
-    // The attestation is a checkbox: unchecked, not blank (AW-014).
-    expect(next.purchasers21).toBe(false);
+    for (const field of ['business', 'contact', 'email', 'phone', 'shipStreet', 'shipCity', 'shipState', 'shipZip', 'notes']) expect(next[field]).toBe('');
     // Not personal: kept.
     expect(next).toMatchObject({ delivery: 'willcall', preferredDate: '2026-10-01' });
   });
 
   it('never carries buyer A’s details into buyer B’s order', () => {
-    const filled = { ...initialQuoteForm(A), shipStreet: '1 Alpha Way', licenseNo: 'TL-TEST-A', resaleCert: 'RS-TEST-A', purchasers21: true };
+    const filled = { ...initialQuoteForm(A), shipStreet: '1 Alpha Way' };
     expect(quoteFormForAccount(filled, B, 'a')).toMatchObject({
       business: 'Bravo Tobacco Outlet', contact: 'Bea Bravo', email: 'bravo@example.test', phone: '', shipStreet: '',
-      licenseNo: '', resaleCert: '', purchasers21: false,
     });
   });
 
@@ -91,15 +87,10 @@ describe('quoteForm', () => {
     });
   });
 
-  it('starts the tobacco license answers empty and clears them for the next buyer (AW-014)', () => {
-    expect(EMPTY_QUOTE_FORM).toMatchObject({ licenseNo: '', resaleCert: '', purchasers21: false });
-    const filled = { ...initialQuoteForm(B), licenseNo: 'L-1', resaleCert: 'R-1', purchasers21: true };
-    expect(quoteFormForAccount(filled, B, 'b')).toMatchObject({ licenseNo: 'L-1', resaleCert: 'R-1', purchasers21: true });
-    expect(quoteFormForAccount(filled, null, 'b')).toMatchObject({ licenseNo: '', resaleCert: '', purchasers21: false });
-  });
-
-  it('keeps the license details a guest typed when they sign in (AW-014)', () => {
-    const typed = { ...EMPTY_QUOTE_FORM, licenseNo: 'TL-TEST-G', purchasers21: true };
-    expect(quoteFormForAccount(typed, A, null)).toMatchObject({ licenseNo: 'TL-TEST-G', purchasers21: true });
+  it('has no tobacco licence answers: only approved accounts order, and they gave theirs when they applied (AW-014)', () => {
+    expect(Object.keys(EMPTY_QUOTE_FORM)).toEqual([
+      'business', 'contact', 'email', 'phone', 'notes', 'delivery', 'preferredDate', 'shipStreet', 'shipCity', 'shipState', 'shipZip',
+    ]);
+    expect(initialQuoteForm(A)).not.toHaveProperty('licenseNo');
   });
 });

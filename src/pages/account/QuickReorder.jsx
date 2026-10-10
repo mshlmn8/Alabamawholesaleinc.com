@@ -33,6 +33,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { resolveSkuLine, variantSku } from '../../lib/lines.js';
+import { BASKET } from '../../data/terms.js';
 import { brandLabel, formatMoney } from '../../lib/format.js';
 import { lineTotal, priceLabel } from '../../lib/pricing.js';
 import { announce } from '../../lib/announce.js';
@@ -134,7 +135,8 @@ export function QuickReorder({ products, addLines, onOpenCart, isApprovedBuyer, 
 
   const ready = resolved.filter(({ row, res }) => res.status === 'ok' && rowQty(row) > 0);
   const attention = resolved.filter(({ row, res }) => res.status !== 'empty' && !(res.status === 'ok' && rowQty(row) > 0));
-  const target = isApprovedBuyer ? 'order' : 'quote';
+  // The basket is an order for every account (AW-024).
+  const target = BASKET.noun;
 
   const update = (key, patch) => setRows((current) => current.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   const fieldRef = (key, field) => (el) => {

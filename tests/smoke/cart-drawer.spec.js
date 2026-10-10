@@ -67,7 +67,7 @@ test.describe('a phone on its side', () => {
     await page.goto('/category/grocery');
     await expect(cartButton(page)).toContainText('9');
     await cartButton(page).click();
-    const drawer = page.getByRole('dialog', { name: 'Your quote' });
+    const drawer = page.getByRole('dialog', { name: 'Your order' });
     await expect(drawer.locator('.drawer-line')).toHaveCount(5);
 
     const landscape = await measure(page);
@@ -75,8 +75,8 @@ test.describe('a phone on its side', () => {
     expect(landscape.body).toBeGreaterThanOrEqual(landscape.drawer / 2);
     expect(landscape.summaryInBody).toBe(true);
     // The guest's foot keeps its 44px controls.
-    for (const name of ['Review quote', 'Sign in for account pricing']) {
-      const height = await drawer.getByRole(name === 'Review quote' ? 'link' : 'button', { name }).evaluate((el) => el.getBoundingClientRect().height);
+    for (const name of ['Checkout', 'Sign in for pricing and ordering']) {
+      const height = await drawer.getByRole(name === 'Checkout' ? 'link' : 'button', { name }).evaluate((el) => el.getBoundingClientRect().height);
       expect(height, name).toBeGreaterThanOrEqual(44);
     }
 
@@ -102,15 +102,15 @@ test('an empty cart offers the catalog, with no total or fine print, and the lin
   const errors = trackErrors(page);
   await page.goto('/');
   await cartButton(page).click();
-  const drawer = page.getByRole('dialog', { name: 'Your quote' });
-  // In the basket's words (AW-132): a guest's is a quote.
-  await expect(drawer.getByRole('heading', { level: 3, name: 'Your quote is empty' })).toBeVisible();
+  const drawer = page.getByRole('dialog', { name: 'Your order' });
+  // In the basket's words (AW-132): an order, for a guest too (AW-024).
+  await expect(drawer.getByRole('heading', { level: 3, name: 'Your order is empty' })).toBeVisible();
   await expect(drawer.getByText('Estimated total')).toHaveCount(0);
   await expect(drawer.locator('.drawer-fine')).toHaveCount(0);
   await expect(drawer.locator('.drawer-foot')).toBeHidden();
   await drawer.getByRole('link', { name: 'Browse the catalog' }).click();
   await expect(page).toHaveURL(/\/catalog$/);
-  await expect(page.getByRole('dialog', { name: 'Your quote' })).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'Your order' })).toHaveCount(0);
   await expect(page.locator('main h1')).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -122,7 +122,7 @@ test('stepping a line down to 1 keeps focus in the drawer, and the steppers name
   }, [GUEST_CART, cartValue({ 14: 2, 45: 2 })]);
   await page.goto('/category/grocery');
   await cartButton(page).click();
-  const drawer = page.getByRole('dialog', { name: 'Your quote' });
+  const drawer = page.getByRole('dialog', { name: 'Your order' });
   const minus = drawer.getByRole('button', { name: 'Decrease quantity of Kite cigarette tobacco', exact: true });
   await minus.focus();
   await page.keyboard.press('Enter');

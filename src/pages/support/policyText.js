@@ -19,7 +19,7 @@ export const POLICY_TEXT = {
   },
   terms: {
     title: 'Trade terms',
-    intro: 'The basics of buying from Alabama Wholesale: who can open an account, how pricing and quotes work, and what we ask of retail customers.',
+    intro: 'The basics of buying from Alabama Wholesale: who can open an account, how pricing and orders work, and what we ask of retail customers.',
   },
 };
 

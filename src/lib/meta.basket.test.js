@@ -1,6 +1,7 @@
-// Tab titles that match the page (AW-131, AW-132): /quote is titled like its
-// heading once App knows the account (route.basket), the account and apply
-// pages in sentence case with the one apply label.
+// Tab titles that match the page (AW-131, AW-132, AW-024): checkout is
+// titled like its heading for everyone, since customers place orders, not
+// quotes; the account and apply pages in sentence case with the one apply
+// label.
 import { describe, expect, it } from 'vitest';
 import { PRODUCTS } from '../data/products.js';
 import { departmentsFor } from './departments.js';
@@ -9,16 +10,13 @@ import { pageMeta } from './meta.js';
 const departments = departmentsFor(PRODUCTS);
 const title = (route) => pageMeta(route, PRODUCTS, departments).title;
 
-describe('page titles and the basket (AW-132)', () => {
-  it('titles /quote like its heading for a quote or an order', () => {
-    expect(title({ page: 'quote', basket: 'quote' })).toBe('Request a quote · Alabama Wholesale Inc');
-    expect(title({ page: 'quote', basket: 'order' })).toBe('Place your order · Alabama Wholesale Inc');
+describe('page titles and the basket (AW-132, AW-024)', () => {
+  it('titles /checkout like its heading, whoever is signed in', () => {
+    expect(title({ page: 'checkout' })).toBe('Checkout · Alabama Wholesale Inc');
   });
 
-  it('says Checkout while the account is unknown, and names a receipt over anything else', () => {
-    expect(title({ page: 'quote' })).toBe('Checkout · Alabama Wholesale Inc');
-    expect(title({ page: 'quote', basket: 'order', received: 'order' })).toBe('Order received · Alabama Wholesale Inc');
-    expect(title({ page: 'quote', basket: 'quote', received: 'quote' })).toBe('Quote received · Alabama Wholesale Inc');
+  it('names a receipt over anything else', () => {
+    expect(title({ page: 'checkout', received: 'order' })).toBe('Order received · Alabama Wholesale Inc');
   });
 });
 

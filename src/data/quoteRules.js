@@ -1,4 +1,4 @@
-// Rules the quote form shares with submit_quote
+// Rules the checkout form shares with submit_quote
 // (supabase/migrations/20261009130000_submit_quote_v3.sql). The server
 // enforces them; the form mirrors them so a buyer finds out before sending.
 // Each value must equal its twin in that function: change both together

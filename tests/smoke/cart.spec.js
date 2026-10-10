@@ -27,7 +27,7 @@ function trackErrors(page) {
 
 const stored = (page, key) => page.evaluate((k) => localStorage.getItem(k), key);
 const cartButton = (page) => page.getByRole('button', { name: /^(Quote|Order), [\d,]+ items?$/ });
-// The product's own add button: the related cards below it say "Add to quote" too.
+// The product's own add button: the related cards below it say "Add to order" too.
 const addButton = (page) => page.locator('.pd-info').getByRole('button', { name: /^Add to (quote|order)/ });
 
 test.beforeEach(async ({ context }) => {
@@ -52,16 +52,16 @@ test.describe('with the age confirmed', () => {
     // Product 115 has one variant: no chips to choose from (AW-233), it is added with it.
     await expect(second.locator('.variant-chips')).toHaveCount(0);
     await addButton(second).click();
-    await expect(cartButton(first)).toHaveAccessibleName('Quote, 2 items');
-    await expect(cartButton(second)).toHaveAccessibleName('Quote, 2 items');
+    await expect(cartButton(first)).toHaveAccessibleName('Order, 2 items');
+    await expect(cartButton(second)).toHaveAccessibleName('Order, 2 items');
     expect(Object.keys(cartFromStored(await stored(first, GUEST_CART)))).toHaveLength(2);
 
-    await second.goto('/quote');
+    await second.goto('/checkout');
     await second.getByRole('button', { name: 'Clear all items' }).click();
-    await expect(cartButton(first)).toHaveAccessibleName('Quote, 0 items');
+    await expect(cartButton(first)).toHaveAccessibleName('Order, 0 items');
     // The first tab's next add does not bring the cleared lines back.
     await addButton(first).click();
-    await expect(cartButton(second)).toHaveAccessibleName('Quote, 1 item');
+    await expect(cartButton(second)).toHaveAccessibleName('Order, 1 item');
     expect(cartFromStored(await stored(first, GUEST_CART))).toEqual({ 14: 1 });
     expect(errors).toEqual([]);
   });
@@ -75,7 +75,7 @@ test.describe('with the age confirmed', () => {
       localStorage.setItem('aw-welcome-seen', '1');
     });
     await page.reload();
-    await expect(cartButton(page)).toHaveAccessibleName('Quote, 1 item');
+    await expect(cartButton(page)).toHaveAccessibleName('Order, 1 item');
     expect(await page.evaluate(() => ['aw-cart', 'aw-trade-user', 'aw-welcome-seen'].map((k) => localStorage.getItem(k)))).toEqual([null, null, null]);
     expect(JSON.parse(await stored(page, GUEST_LEGACY))).toEqual([{ productId: 1, qty: 3 }, { productId: 162, qty: 2 }]);
 
@@ -87,19 +87,19 @@ test.describe('with the age confirmed', () => {
     await expect(page.getByRole('group', { name: 'Quantity to add' }).locator('input')).toHaveValue('3');
     await page.locator('.variant-chips button').first().click();
     await addButton(page).click();
-    await expect(cartButton(page)).toHaveAccessibleName('Quote, 4 items');
+    await expect(cartButton(page)).toHaveAccessibleName('Order, 4 items');
     expect(JSON.parse(await stored(page, GUEST_LEGACY))).toEqual([{ productId: 162, qty: 2 }]);
     expect(errors).toEqual([]);
   });
 
-  test('a bare line gets its variant in the drawer and keeps its quantity, so the quote can be sent (AW-011)', async ({ page }) => {
+  test('a bare line gets its variant in the drawer and keeps its quantity, so the order is ready (AW-011)', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/');
     await page.evaluate(([k, v]) => localStorage.setItem(k, v), [GUEST_CART, cartValue({ 1: 12, 14: 2 })]);
     await page.reload();
-    await expect(cartButton(page)).toHaveAccessibleName('Quote, 14 items');
+    await expect(cartButton(page)).toHaveAccessibleName('Order, 14 items');
     await cartButton(page).click();
-    const drawer = page.getByRole('dialog', { name: 'Your quote' });
+    const drawer = page.getByRole('dialog', { name: 'Your order' });
     await expect(drawer.getByText('12 units · choose a variety')).toBeVisible();
     const set = drawer.getByRole('button', { name: 'Set variety' });
     await expect(set).toBeDisabled();
@@ -112,12 +112,13 @@ test.describe('with the age confirmed', () => {
     await expect(moved).toBeFocused();
     expect(cartFromStored(await stored(page, GUEST_CART))).toEqual({ '1::red': 12, 14: 2 });
     await drawer.getByRole('button', { name: 'Close', exact: true }).click();
-    await expect(cartButton(page)).toHaveAccessibleName('Quote, 14 items');
+    await expect(cartButton(page)).toHaveAccessibleName('Order, 14 items');
 
-    // Nothing left to choose: the quote can go (not sent here).
-    await page.goto('/quote');
+    // Nothing left to choose: the order is ready, once the guest signs in
+    // (only approved accounts place orders, AW-014; not sent here).
+    await page.goto('/checkout');
     await expect(page.getByText('Choose a variant for every product that has more than one.')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Submit quote request' })).toBeEnabled();
+    await expect(page.getByRole('region', { name: 'Sign in to place your order' })).toBeVisible();
     expect(errors).toEqual([]);
   });
 
@@ -130,11 +131,11 @@ test.describe('with the age confirmed', () => {
     await input.fill('48');
     await addButton(page).click();
     expect(cartFromStored(await stored(page, GUEST_CART))).toEqual({ 14: 48 });
-    await expect(cartButton(page)).toHaveAccessibleName('Quote, 48 items');
+    await expect(cartButton(page)).toHaveAccessibleName('Order, 48 items');
 
     // In the cart, a number over the limit comes down to it.
     await cartButton(page).click();
-    const line = page.getByRole('dialog', { name: 'Your quote' }).getByRole('textbox', { name: 'Quantity of Kite cigarette tobacco' });
+    const line = page.getByRole('dialog', { name: 'Your order' }).getByRole('textbox', { name: 'Quantity of Kite cigarette tobacco' });
     await line.fill('150000');
     await line.press('Enter');
     await expect(line).toHaveValue('100000');
@@ -146,10 +147,10 @@ test.describe('with the age confirmed', () => {
     const errors = trackErrors(page);
     await page.goto('/');
     await page.evaluate(([k, v]) => localStorage.setItem(k, v), [GUEST_CART, cartValue({ '1::red': 2.5, 366: 1e9 })]);
-    await page.goto('/quote');
+    await page.goto('/checkout');
     await expect(page.getByRole('textbox', { name: 'Quantity of Swisher Sweets cigarillos — Red' })).toHaveValue('2');
     await expect(page.getByRole('textbox', { name: /^Quantity of Garcia y Vega cigars/ })).toHaveValue('100000');
-    await expect(cartButton(page)).toHaveAccessibleName('Quote, 100,002 items');
+    await expect(cartButton(page)).toHaveAccessibleName('Order, 100,002 items');
     expect(errors).toEqual([]);
   });
 
@@ -160,11 +161,11 @@ test.describe('with the age confirmed', () => {
       await page.goto(`/product/${id}`);
       await addButton(page).click();
     }
-    await expect(cartButton(page)).toHaveAccessibleName('Quote, 3 items');
+    await expect(cartButton(page)).toHaveAccessibleName('Order, 3 items');
     const names = ['Long Boys coconut candy tub', 'Kite cigarette tobacco', 'Argo corn starch'];
     await cartButton(page).click();
-    await expect(page.getByRole('dialog', { name: 'Your quote' }).locator('.drawer-line .line-name')).toHaveText(names);
-    await page.goto('/quote');
+    await expect(page.getByRole('dialog', { name: 'Your order' }).locator('.drawer-line .line-name')).toHaveText(names);
+    await page.goto('/checkout');
     await expect(page.locator('.checkout-lines .line-name')).toHaveText(names);
     expect(orderFromStored(await stored(page, GUEST_CART))).toEqual(['174', '14', '45']);
     await page.reload();
@@ -177,7 +178,7 @@ test.describe('with the age confirmed', () => {
     await page.goto('/');
     // As that build stored it: JSON.parse lists '14' and '174' first, by number.
     await page.evaluate((k) => localStorage.setItem(k, '{"1::red":1,"174":1,"14":2}'), v2CartKey('guest'));
-    await page.goto('/quote');
+    await page.goto('/checkout');
     await expect(page.locator('.checkout-lines .line-name')).toHaveText(['Kite cigarette tobacco', 'Long Boys coconut candy tub', 'Swisher Sweets cigarillos — Red']);
     expect(await stored(page, v2CartKey('guest'))).toBeNull();
     expect(orderFromStored(await stored(page, GUEST_CART))).toEqual(['14', '174', '1::red']);
@@ -186,11 +187,11 @@ test.describe('with the age confirmed', () => {
 
   test('damaged carts start empty instead of breaking the page (AW-045)', async ({ page }) => {
     const errors = trackErrors(page);
-    await page.goto('/quote');
+    await page.goto('/checkout');
     for (const [key, value] of [['aw-cart', 'null'], [GUEST_CART, '[1,2]'], [GUEST_CART, '{"abc":3,"14":-1}']]) {
       await page.evaluate(([k, v]) => localStorage.setItem(k, v), [key, value]);
       await page.reload();
-      await expect(page.getByRole('heading', { level: 1, name: 'Your quote is empty' })).toBeVisible();
+      await expect(page.getByRole('heading', { level: 1, name: 'Your order is empty' })).toBeVisible();
     }
     expect(errors).toEqual([]);
   });
@@ -207,6 +208,6 @@ test('with storage blocked, the site renders and the cart works for the visit (A
   await page.getByRole('button', { name: /Yes, I am 21\+/ }).click();
   await addButton(page).click();
   await addButton(page).click();
-  await expect(cartButton(page)).toHaveAccessibleName('Quote, 2 items');
+  await expect(cartButton(page)).toHaveAccessibleName('Order, 2 items');
   expect(errors).toEqual([]);
 });

@@ -44,7 +44,7 @@ export function catalogNotices(catalog, { dismissed = false, pageExplains = fals
       id: 'catalog-stale',
       tone: 'warn',
       title: 'We couldn’t check the catalog for changes',
-      text: `Products and prices shown are from ${loadedAtText(lastLoadedAt, now)} and may have changed since. Orders and quote requests are checked against the latest catalog when you send them.`,
+      text: `Products and prices shown are from ${loadedAtText(lastLoadedAt, now)} and may have changed since. Orders are checked against the latest catalog when you place them.`,
       actions: [retry],
       onDismiss,
     }];
@@ -53,7 +53,7 @@ export function catalogNotices(catalog, { dismissed = false, pageExplains = fals
     id: 'catalog-error',
     tone: 'warn',
     title: 'We couldn’t load the latest catalog',
-    text: 'The products shown here may be out of date. You can send an order or quote request once the catalog loads.',
+    text: 'The products shown here may be out of date. You can place an order once the catalog loads.',
     actions: [retry],
     onDismiss,
   }];

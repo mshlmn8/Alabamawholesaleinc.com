@@ -144,7 +144,7 @@ test.describe('after age confirmation', () => {
   const pages = [
     { name: 'department', path: '/category/tobacco', heading: 'Tobacco' },
     { name: 'product', path: '/product/12', heading: /\S/ },
-    { name: 'empty checkout', path: '/quote', heading: 'Your quote is empty' },
+    { name: 'empty checkout', path: '/checkout', heading: 'Your order is empty' },
     { name: 'all products', path: '/catalog', heading: 'All products' },
     { name: 'contact', path: '/contact', heading: /Contact/ },
     { name: 'privacy policy', path: '/privacy', heading: 'Privacy' },
@@ -561,6 +561,7 @@ test('sitemap.xml lists path URLs only', async ({ request }) => {
   expect(xml).toContain('<loc>https://alabamawholesaleinc.com/category/tobacco</loc>');
   expect(xml).not.toContain('#');
   expect(xml).not.toContain('/quote');
+  expect(xml).not.toContain('/checkout');
 });
 
 // Static boot shell in index.html (AW-193): something useful shows before the
@@ -602,7 +603,8 @@ test('the app replaces the loading shell once it renders', async ({ page }) => {
 });
 
 // Cursor's PR #12 in the Phase 1 structure: the FDA nicotine statement
-// (AW-026, AW-144) and the licence questions on a guest tobacco quote (AW-014).
+// (AW-026, AW-144). Its licence questions on a guest tobacco quote went with
+// guest orders (AW-014): checkout asks a guest to sign in or apply.
 test.describe('tobacco and vapor', () => {
   const FDA = 'WARNING: This product contains nicotine. Nicotine is an addictive chemical. Not for sale to anyone under 21.';
 
@@ -675,16 +677,16 @@ test.describe('tobacco and vapor', () => {
     expect(errors).toEqual([]);
   });
 
-  test('a guest quote with a cigarette line asks for the licence, resale certificate and 21+', async ({ page }) => {
+  test('a guest with a cigarette line is asked to sign in or apply, never for licence answers (AW-014)', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/product/14');
-    await page.locator('.pd-info').getByRole('button', { name: /^Add to (quote|order)/ }).click();
-    await page.goto('/quote');
-    await expect(page.getByLabel('State tobacco/retail license #')).toHaveAttribute('required', '');
-    await expect(page.getByLabel('Sales-tax / resale certificate #')).toHaveAttribute('required', '');
-    await expect(page.getByRole('checkbox', { name: /all purchasers are 21\+/ })).toHaveAttribute('required', '');
-    await expect(page.getByRole('button', { name: 'Already have an account? Sign in' })).toBeVisible();
-    await page.getByRole('button', { name: 'New here? Apply for a trade account' }).click();
+    await page.locator('.pd-info').getByRole('button', { name: /^Add to order/ }).click();
+    await page.goto('/checkout');
+    await expect(page.getByLabel('State tobacco/retail license #')).toHaveCount(0);
+    await expect(page.getByRole('checkbox')).toHaveCount(0);
+    const panel = page.getByRole('region', { name: 'Sign in to place your order' });
+    await expect(panel.getByRole('button', { name: 'Sign in' })).toBeVisible();
+    await panel.getByRole('button', { name: 'Apply for a trade account' }).click();
     await expect(page.getByRole('dialog', { name: 'Apply for a trade account' })).toBeVisible();
     expect(errors).toEqual([]);
   });
@@ -780,14 +782,14 @@ test.describe('part 2 catalog', () => {
     }, [AGE_KEY, ageRecord(Date.now())]);
   });
 
-  test('cards say "Select options" or "Add to quote", and "Added" after an add', async ({ page }) => {
+  test('cards say "Select options" or "Add to order", and "Added" after an add', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/category/tobacco/cigarettes');
     const kite = page.locator('.content-card', { hasText: 'Kite cigarette tobacco' });
-    await kite.getByRole('button', { name: /^Add to quote\b/ }).click();
+    await kite.getByRole('button', { name: /^Add to order\b/ }).click();
     await expect(kite.locator('.added-note')).toHaveText('Added');
     await expect(kite.getByRole('group', { name: 'Kite cigarette tobacco quantity' })).toBeVisible();
-    await expect(page.locator('#aw-announcer')).toHaveText('Added Kite cigarette tobacco to your quote.');
+    await expect(page.locator('#aw-announcer')).toHaveText('Added Kite cigarette tobacco to your order.');
     await expect(kite.locator('.added-note')).toHaveText('', { timeout: 4000 });
     await page.goto('/category/tobacco/cigars-and-cigarillos');
     await expect(page.locator('.content-card', { hasText: 'Royal Blunts EZ Roll' }).getByRole('link', { name: /^Select options\b/ })).toBeVisible();

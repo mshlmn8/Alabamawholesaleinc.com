@@ -5,6 +5,7 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { backendEnvError } from './scripts/build-env.mjs';
 import { chunkUrlsPlugin } from './scripts/chunk-urls.mjs';
+import { formsStandIn, netlifyForms } from './scripts/netlify-forms.mjs';
 import { netlifyResponse, pathHeaders, previewHeaders, readNetlifyHeaders, readNetlifyRedirects } from './scripts/netlify-headers.mjs';
 import { siteUrlPlugin } from './scripts/site-url.mjs';
 
@@ -77,6 +78,31 @@ function previewRedirects() {
   };
 }
 
+// Netlify Forms' endpoint, stood in for locally (AW-024): checkout posts each
+// saved order to the 'order-notification' form, which Netlify accepts
+// because index.html declares it. `vite` reads the forms from index.html,
+// `vite preview` from the built dist/index.html, as Netlify does; a post for
+// one of them gets 200 and is thrown away (no email locally), anything else
+// a 404 (scripts/netlify-forms.mjs).
+function localNetlifyForms() {
+  const formsIn = (file) => () => {
+    try {
+      return Object.keys(netlifyForms(readFileSync(file, 'utf8')));
+    } catch {
+      return [];
+    }
+  };
+  return {
+    name: 'aw-local-netlify-forms',
+    configureServer(server) {
+      server.middlewares.use(formsStandIn(formsIn(path.join(ROOT, 'index.html'))));
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(formsStandIn(formsIn(path.resolve(ROOT, server.config.build.outDir, 'index.html'))));
+    },
+  };
+}
+
 export default defineConfig(({ command, mode }) => {
   // Production builds must carry the Supabase settings (AW-053). Dev servers,
   // tests and non-production modes still run without them.
@@ -89,7 +115,7 @@ export default defineConfig(({ command, mode }) => {
     // chunkUrlsPlugin (build only): the files src/lib/chunks.js fetches
     // ahead, written into the built code (NEW-006). siteUrlPlugin: index.html's
     // share image and structured data on VITE_SITE_URL's origin (AW-052).
-    plugins: [react(), siteUrlPlugin(), chunkUrlsPlugin(), previewPathHeaders(), previewRedirects()],
+    plugins: [react(), siteUrlPlugin(), chunkUrlsPlugin(), previewPathHeaders(), previewRedirects(), localNetlifyForms()],
     server: {
       port: 3000,
       // CI and Playwright runs must not try to open a browser (preview.open

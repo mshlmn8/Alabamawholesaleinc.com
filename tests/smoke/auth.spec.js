@@ -181,9 +181,9 @@ test('signing out puts the buyer’s cart away: the next person starts empty, th
   }
   await expect(page.locator('.site-notice[data-notice="signed-out"]')).toContainText('The items you added are saved on this computer for your next sign-in.');
   await page.getByRole('button', { name: /Yes, I am 21\+/ }).click();
-  await expect(cart).toHaveAccessibleName('Quote, 0 items');
-  await page.goto('/quote');
-  await expect(page.getByRole('heading', { level: 1, name: 'Your quote is empty' })).toBeVisible();
+  await expect(cart).toHaveAccessibleName('Order, 0 items');
+  await page.goto('/checkout');
+  await expect(page.getByRole('heading', { level: 1, name: 'Your order is empty' })).toBeVisible();
 
   // The buyer signs in again (in another tab; this one follows).
   const other = await context.newPage();
@@ -191,7 +191,7 @@ test('signing out puts the buyer’s cart away: the next person starts empty, th
   await other.evaluate(([key, value]) => localStorage.setItem(key, value), [AUTH_KEY, JSON.stringify(savedSession())]);
   await expect(page.locator('.aw-account-actions')).toContainText('Test Market LLC');
   await expect(cart).toHaveAccessibleName('Order, 1 item');
-  await expect(page.getByRole('heading', { level: 1, name: 'Place your order' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Checkout' })).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -233,7 +233,7 @@ test('after a sign-out, a session another tab saved that cannot be refreshed nev
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   }
   await page.getByRole('button', { name: /Yes, I am 21\+/ }).click();
-  await expect(cart).toHaveAccessibleName('Quote, 0 items');
+  await expect(cart).toHaveAccessibleName('Order, 0 items');
 
   const other = await context.newPage();
   await other.goto('/robots.txt');
@@ -241,7 +241,7 @@ test('after a sign-out, a session another tab saved that cannot be refreshed nev
   // supabase-js retries the refresh with backoff for up to 30 s.
   await page.clock.runFor(35_000);
   await expect(page.locator('.site-notice[data-notice="connection"]')).toBeVisible();
-  await expect(cart).toHaveAccessibleName('Quote, 0 items');
+  await expect(cart).toHaveAccessibleName('Order, 0 items');
   expect(errors).toEqual([]);
 });
 
@@ -264,8 +264,8 @@ test('an approved buyer’s prices come from my_prices(), and each × quantity i
   await expect(drawer.locator('.drawer-line small').first()).toHaveText('AW-KITE · $13.40 each');
   await expect(drawer.locator('.drawer-line .line-total')).toHaveText('$40.20');
   await expect(drawer.locator('.drawer-total')).toContainText('$40.20');
-  await drawer.getByRole('link', { name: 'Review order' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Place your order' })).toBeVisible();
+  await drawer.getByRole('link', { name: 'Checkout' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Checkout' })).toBeVisible();
   const line = page.locator('.checkout-lines .drawer-line').first();
   await expect(line.locator('small').first()).toHaveText('AW-KITE · $13.40 each');
   await expect(line.locator('.line-total')).toHaveText('$40.20');

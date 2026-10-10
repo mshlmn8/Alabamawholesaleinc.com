@@ -44,6 +44,15 @@
   to = "/category/novelties"
   status = 301
 
+# Checkout's old address (AW-024): customers place orders, not quotes, so the
+# page moved from /quote to /checkout. Bookmarks and old links move
+# permanently; the app redirects /quote and '#/quote' the same way
+# (MOVED_SECTIONS in src/lib/routes.js).
+[[redirects]]
+  from = "/quote"
+  to = "/checkout"
+  status = 301
+
 # The app's page paths (src/lib/routes.js, PATH_SECTIONS) are answered with
 # index.html and status 200; the app then shows the page. Any other path
 # gets index.html too, so the app can show its "Page not found" with a
@@ -83,7 +92,7 @@
   status = 200
 
 [[redirects]]
-  from = "/quote"
+  from = "/checkout"
   to = "/index.html"
   status = 200
 

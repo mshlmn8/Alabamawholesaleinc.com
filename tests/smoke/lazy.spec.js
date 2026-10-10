@@ -1,4 +1,4 @@
-// Code that loads on demand (AW-179): the account, admin, quote and support
+// Code that loads on demand (AW-179): the account, admin, checkout and support
 // pages and the sign-in dialog are files of their own. The home page
 // downloads none of them until the page is idle, and then only with fetch()
 // into the browser's cache, never import() (NEW-006); a page opened from a
@@ -93,7 +93,7 @@ test('the home page fetches the account, quote, sign-in and support code into th
   expect(errors).toEqual([]);
 });
 
-test('a dropped fetch-ahead of the quote page’s code doesn’t stop the quote page from opening (NEW-006)', async ({ page }) => {
+test('a dropped fetch-ahead of checkout’s code doesn’t stop checkout from opening (NEW-006)', async ({ page }) => {
   const errors = trackErrors(page);
   await holdIdle(page);
   const quoteRequests = [];
@@ -107,10 +107,10 @@ test('a dropped fetch-ahead of the quote page’s code doesn’t stop the quote 
   await runIdle(page);
   await expect.poll(() => quoteRequests).toEqual(['fetch']);
   await page.locator('.pd-info').getByRole('button', { name: /^Add to (quote|order)/ }).click();
-  await page.getByRole('button', { name: /^Quote, 1 item$/ }).click();
-  await page.getByRole('link', { name: 'Review quote' }).click();
-  await expect(page).toHaveURL(/\/quote$/);
-  const heading = page.getByRole('heading', { level: 1, name: 'Request a quote' });
+  await page.getByRole('button', { name: /^Order, 1 item$/ }).click();
+  await page.getByRole('link', { name: 'Checkout' }).click();
+  await expect(page).toHaveURL(/\/checkout$/);
+  const heading = page.getByRole('heading', { level: 1, name: 'Checkout' });
   await expect(heading).toBeVisible();
   await expect(heading).toBeFocused();
   await expect(page.locator('.error-fallback')).toHaveCount(0);

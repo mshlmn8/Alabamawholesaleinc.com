@@ -58,7 +58,7 @@ test.describe('a guest', () => {
     await page.evaluate(([k, v]) => localStorage.setItem(k, v), [GUEST_CART, cartValue({ 14: 2, 45: 1 })]);
     await page.reload();
     await cartButton(page).click();
-    const drawer = page.getByRole('dialog', { name: 'Your quote' });
+    const drawer = page.getByRole('dialog', { name: 'Your order' });
     await expect(drawer.locator('.cart-counts')).toHaveText('2 lines · 3 units');
     await expect(drawer.locator('.cart-summary-note')).toHaveText('Pricing, the order minimum and delivery are confirmed by the trade desk.');
     await expect(drawer.locator('progress')).toHaveCount(0);
@@ -76,7 +76,7 @@ test.describe('a guest', () => {
     const errors = trackErrors(page);
     await page.goto('/');
     await page.evaluate(([k, v]) => localStorage.setItem(k, v), [GUEST_CART, cartValue({ 14: 2, 45: 1 })]);
-    await page.goto('/quote');
+    await page.goto('/checkout');
     const line = page.locator('.checkout-line').first();
     const inset = await line.evaluate((li) => {
       const box = li.getBoundingClientRect();
@@ -89,15 +89,15 @@ test.describe('a guest', () => {
     await expect(page.locator('.cart-device-note')).toHaveText('Saved in this browser only. Items added on another device won’t appear here.');
 
     await foot.getByRole('button', { name: 'Clear all items' }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Your quote is empty' })).toBeFocused();
-    await expect(cartButton(page)).toHaveAccessibleName('Quote, 0 items');
+    await expect(page.getByRole('heading', { level: 1, name: 'Your order is empty' })).toBeFocused();
+    await expect(cartButton(page)).toHaveAccessibleName('Order, 0 items');
     await expect(page.locator('.cart-cleared')).toHaveText('Removed 3 items. Undo');
-    await expect.poll(async () => (await said(page)).at(-1)).toBe('Removed all items from your quote.');
+    await expect.poll(async () => (await said(page)).at(-1)).toBe('Removed all items from your order.');
     await page.keyboard.press('Tab');
     await expect(page.getByRole('button', { name: 'Undo' })).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(page.getByRole('textbox', { name: 'Quantity of Kite cigarette tobacco' })).toBeFocused();
-    await expect(cartButton(page)).toHaveAccessibleName('Quote, 3 items');
+    await expect(cartButton(page)).toHaveAccessibleName('Order, 3 items');
     expect(cartFromStored(await page.evaluate((k) => localStorage.getItem(k), GUEST_CART))).toEqual({ 14: 2, 45: 1 });
     await expect.poll(async () => (await said(page)).at(-1)).toBe('Restored 3 items.');
     await expect(page.locator('.cart-cleared')).toHaveCount(0);
@@ -163,10 +163,10 @@ test('an approved buyer sees the way to the minimum, then to free delivery, in t
   await kite.fill('120');
   await kite.press('Enter');
   await expect(status).toHaveText('This order qualifies for free delivery on a delivery route.');
-  await drawer.getByRole('link', { name: 'Review order' }).click();
+  await drawer.getByRole('link', { name: 'Checkout' }).click();
 
   // Checkout: the counts under the list, the meter under the total.
-  await expect(page.getByRole('heading', { level: 1, name: 'Place your order' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Checkout' })).toBeVisible();
   await expect(page.locator('.checkout-list-foot .cart-counts')).toHaveText('2 lines · 123 units');
   await expect(page.locator('form[aria-labelledby="quote-form-title"] .cart-counts')).toHaveCount(0);
   await expect(page.locator('form[aria-labelledby="quote-form-title"]').getByRole('status')).toHaveText('This order qualifies for free delivery on a delivery route.');

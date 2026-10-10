@@ -48,7 +48,7 @@ test('a 1366x650 laptop shows the add button without scrolling (AW-163)', async 
   const errors = trackErrors(page);
   await page.setViewportSize({ width: 1366, height: 650 });
   await page.goto('/product/14');
-  await expect(page.locator('.pd-info').getByRole('button', { name: /^Add to quote/ })).toBeInViewport({ ratio: 1 });
+  await expect(page.locator('.pd-info').getByRole('button', { name: /^Add to order/ })).toBeInViewport({ ratio: 1 });
   // With variants to choose, the button is at most a little below the fold.
   await page.goto('/product/162');
   await expect(page.locator('.pd-info h1')).toHaveText('Snickers bars');
@@ -84,10 +84,10 @@ test('a tablet shows the product name and the add button on the first screen, an
   expect(at.media.height).toBeLessThanOrEqual(0.36 * at.vh + 1);
   expect(at.h1.bottom).toBeLessThan(at.vh);
   // The add button too, before the price, also under two rows of flavors, the FDA statement and a sell unit.
-  await expect(page.locator('.pd-info').getByRole('button', { name: /^Add to quote/ })).toBeInViewport({ ratio: 1 });
+  await expect(page.locator('.pd-info').getByRole('button', { name: /^Add to order/ })).toBeInViewport({ ratio: 1 });
   await page.goto('/product/12');
   await expect(page.locator('.pd-info h1')).toHaveText('LooseLeaf wraps 2-pack');
-  await expect(page.locator('.pd-info').getByRole('button', { name: /^Add to quote/ })).toBeInViewport({ ratio: 1 });
+  await expect(page.locator('.pd-info').getByRole('button', { name: /^Add to order/ })).toBeInViewport({ ratio: 1 });
   const order = await page.locator('.pd-info > *').evaluateAll((els) => els.map((el) => el.className.split(' ')[0]));
   expect(order.indexOf('qty-row')).toBeLessThan(order.indexOf('pd-price'));
   // A product without a photo: the placeholder's own height, not a photo frame.

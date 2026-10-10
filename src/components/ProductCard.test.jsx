@@ -68,7 +68,7 @@ describe('ProductCard', () => {
     fireEvent.click(button);
     expect(addLine).not.toHaveBeenCalled();
     view.rerender(card({ ...base, variants: ['Green'] }, { addLine }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add to quote, Swisher Sweets cigarillos' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to order, Swisher Sweets cigarillos' }));
     expect(addLine).toHaveBeenCalledWith(1, 'Green');
   });
 
@@ -101,7 +101,7 @@ describe('ProductCard', () => {
   });
 
   // Cursor's PR #13 (AW-057, AW-029, AW-136, AW-286).
-  it('says "Select options", "Add to quote" or "Add to order", and "Added" after an add (AW-057)', () => {
+  it('says "Select options" or "Add to order" (an order for everyone, AW-024), and "Added" after an add (AW-057)', () => {
     vi.useFakeTimers();
     const addLine = vi.fn(() => ({ key: '1', qty: 1, capped: false }));
     const view = render(card({ ...base, variants: ['Red', 'Grape'] }, { addLine }));
@@ -111,7 +111,7 @@ describe('ProductCard', () => {
     view.rerender(card({ ...base, variants: [] }, { addLine }));
     const note = () => document.querySelector('.added-note').textContent;
     expect(note()).toBe('');
-    fireEvent.click(screen.getByRole('button', { name: 'Add to quote, Swisher Sweets cigarillos' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to order, Swisher Sweets cigarillos' }));
     expect(addLine).toHaveBeenCalledWith(1, null);
     expect(note()).toBe('Added');
     act(() => vi.advanceTimersByTime(2100));
@@ -211,16 +211,16 @@ const addCard = (props) => render(
 );
 
 describe('ProductCard add control', () => {
-  it('says "Add to quote" to guests and pending accounts, and adds one', () => {
+  it('says "Add to order" to guests and pending accounts too, and adds one (AW-024)', () => {
     const addLine = vi.fn();
     addCard({ addLine });
-    const add = screen.getByRole('button', { name: 'Add to quote, Kite cigarette tobacco' });
+    const add = screen.getByRole('button', { name: 'Add to order, Kite cigarette tobacco' });
     expect(add.className).toBe('button ghost sm card-add');
     fireEvent.click(add);
     expect(addLine).toHaveBeenCalledWith(14, null);
 
     addCard({ profile: PENDING });
-    expect(screen.getAllByRole('button', { name: 'Add to quote, Kite cigarette tobacco' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Add to order, Kite cigarette tobacco' })).toHaveLength(2);
   });
 
   it('says "Add to order" to approved buyers', () => {
@@ -243,8 +243,8 @@ describe('ProductCard add control', () => {
     // The product is screen-reader text after the label; the label shows.
     const visible = (el) => [...el.childNodes].filter((n) => !n.classList?.contains('sr-only')).map((n) => n.textContent).join('');
     addCard();
-    const add = screen.getByRole('button', { name: 'Add to quote, Kite cigarette tobacco' });
-    expect(visible(add)).toBe('Add to quote');
+    const add = screen.getByRole('button', { name: 'Add to order, Kite cigarette tobacco' });
+    expect(visible(add)).toBe('Add to order');
     expect(add.querySelector('.sr-only').textContent).toBe(', Kite cigarette tobacco');
 
     addCard({ p: SWISHER, cart: { '1::red': 2 } });
@@ -305,7 +305,7 @@ describe('ProductCard add control', () => {
     expect(screen.queryByRole('button', { name: /Sign in/ })).toBeNull();
     // The add button is the card's only control after its link.
     // (Its visible label; the product's name follows for screen readers, AW-170.)
-    expect([...document.querySelectorAll('.card-meta button, .card-meta a')].map((el) => el.firstElementChild.textContent)).toEqual(['Add to quote']);
+    expect([...document.querySelectorAll('.card-meta button, .card-meta a')].map((el) => el.firstElementChild.textContent)).toEqual(['Add to order']);
     expect(onLoginClick).not.toHaveBeenCalled();
   });
 
@@ -378,11 +378,11 @@ describe('ProductCard feedback', () => {
 
   it('confirms an add with the toast, spoken once, and focuses the stepper’s quantity', () => {
     render(<Shelf />);
-    const add = screen.getByRole('button', { name: 'Add to quote, Kite cigarette tobacco' });
+    const add = screen.getByRole('button', { name: 'Add to order, Kite cigarette tobacco' });
     add.focus();
     fireEvent.click(add);
-    expect(getToast()).toMatchObject({ text: 'Added Kite cigarette tobacco to your quote.', action: { id: 'open-cart', label: 'View quote' } });
-    expect(announced()).toEqual(['Added Kite cigarette tobacco to your quote.']);
+    expect(getToast()).toMatchObject({ text: 'Added Kite cigarette tobacco to your order.', action: { id: 'open-cart', label: 'View order' } });
+    expect(announced()).toEqual(['Added Kite cigarette tobacco to your order.']);
     const input = screen.getByRole('textbox', { name: 'Quantity of Kite cigarette tobacco' });
     expect(document.activeElement).toBe(input);
     expect(document.activeElement).not.toBe(document.body);
@@ -396,7 +396,7 @@ describe('ProductCard feedback', () => {
 
   it('focuses + instead of the number box after a tap, so a phone’s keyboard stays shut', () => {
     render(<Shelf />);
-    const add = screen.getByRole('button', { name: 'Add to quote, Kite cigarette tobacco' });
+    const add = screen.getByRole('button', { name: 'Add to order, Kite cigarette tobacco' });
     fireEvent.pointerDown(add, { pointerType: 'touch' });
     fireEvent.click(add);
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Increase quantity of Kite cigarette tobacco' }));
@@ -404,18 +404,18 @@ describe('ProductCard feedback', () => {
 
   it('announces a removal with − at 1 and puts focus back on the add button', () => {
     render(<Shelf />);
-    fireEvent.click(screen.getByRole('button', { name: 'Add to quote, Kite cigarette tobacco' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to order, Kite cigarette tobacco' }));
     vi.mocked(announce).mockClear();
     const remove = screen.getByRole('button', { name: 'Remove Kite cigarette tobacco' });
     remove.focus();
     fireEvent.click(remove);
-    expect(announced()).toEqual(['Removed Kite cigarette tobacco from your quote.']);
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Add to quote, Kite cigarette tobacco' }));
+    expect(announced()).toEqual(['Removed Kite cigarette tobacco from your order.']);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Add to order, Kite cigarette tobacco' }));
   });
 
   it('shows no toast and no "Added" when nothing could be added', () => {
     addCard({ addLine: vi.fn(() => null) });
-    fireEvent.click(screen.getByRole('button', { name: 'Add to quote, Kite cigarette tobacco' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to order, Kite cigarette tobacco' }));
     expect(getToast()).toBeNull();
     expect(announce).not.toHaveBeenCalled();
     expect(document.querySelector('.added-note').textContent).toBe('');

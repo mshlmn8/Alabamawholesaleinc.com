@@ -73,9 +73,9 @@ describe('quoteParams', () => {
 });
 
 describe('makeClientRef', () => {
-  it('is ALW-Q- and 10 hex digits from crypto.getRandomValues', () => {
-    expect(makeClientRef()).toMatch(/^ALW-Q-[0-9A-F]{10}$/);
-    expect(makeClientRef((bytes) => bytes.fill(0xab))).toBe('ALW-Q-ABABABABAB');
+  it('is ALW-O- (only approved accounts order) and 10 hex digits from crypto.getRandomValues', () => {
+    expect(makeClientRef()).toMatch(/^ALW-O-[0-9A-F]{10}$/);
+    expect(makeClientRef((bytes) => bytes.fill(0xab))).toBe('ALW-O-ABABABABAB');
     expect(makeClientRef()).not.toBe(makeClientRef());
   });
 });
@@ -134,7 +134,7 @@ describe('submitOrder', () => {
     expect(r).toMatchObject({ ok: true, order: saved, legacy: true });
     expect(client.calls).toHaveLength(2);
     const { args } = client.calls[1];
-    expect(args.p_ref_num).toMatch(/^ALW-Q-[0-9A-F]{10}$/);
+    expect(args.p_ref_num).toMatch(/^ALW-O-[0-9A-F]{10}$/);
     expect(args).toMatchObject({ p_license_no: 'TL-123', p_purchasers_21: true, p_ship_street: COMPANY.addressStreet });
   });
 
@@ -180,10 +180,10 @@ describe('submitOrder', () => {
     await expect(submitOrder({ formData: FORM, items: ITEMS }, { client: fakeClient({ error: MISSING }, { error: MISSING }, { error: MISSING }) }))
       .rejects.toBe(MISSING);
     await expect(submitOrder({ formData: FORM, items: ITEMS }, { client: fakeClient({ data: null, error: null }) }))
-      .rejects.toThrow('The quote was not saved.');
+      .rejects.toThrow('The order was not saved.');
   });
 
-  it('says quote requests can’t be saved without a backend', async () => {
+  it('says orders can’t be placed online without a backend', async () => {
     const err = await submitOrder({ formData: FORM, items: ITEMS }, { client: null }).catch((e) => e);
     expect(err.code).toBe('unavailable');
     expect(quoteErrorMessage(err)).toBe(QUOTE_UNAVAILABLE);
@@ -193,7 +193,10 @@ describe('submitOrder', () => {
 describe('quoteErrorMessage', () => {
   it.each([
     ['account_suspended', /^Ordering is paused on this account\. Call/],
-    ['rate_limited', /^Too many quote requests in a short time/],
+    // 20261014111000: only signed-in, approved accounts order (AW-014).
+    ['sign_in_required', /^You’re signed out, so this order wasn’t sent\. Sign in, then place it again\.$/],
+    ['account_not_approved', /^Your account is being reviewed, so this order wasn’t sent\. You can place orders once it’s approved\.$/],
+    ['rate_limited', /^Too many orders in a short time/],
     ['field_too_long', /too long/],
     ['invalid_email', /valid email/],
     ['invalid_zip', /ZIP code/],
@@ -201,17 +204,26 @@ describe('quoteErrorMessage', () => {
     ['delivery_state', /^Delivery routes cover AL, MS and GA\. For another state, choose will-call pickup\.$/],
     ['past_date', /from today on/],
     ['address_required', /or choose will-call pickup/],
-    ['license_required', /tobacco license and resale certificate/],
+    ['license_required', /^This order has tobacco or vape items, which need an approved trade account\. Call$/],
     ['contact_required', /business, contact, email and phone/],
   ])('words the %s hint', (hint, text) => {
     const message = quoteErrorMessage({ code: 'P0001', message: 'server text', hint });
     expect(typeof message === 'string' ? message : message.before).toMatch(text);
   });
 
-  it('words PR #12’s license refusal, which has no hint', () => {
+  it('words PR #12’s license refusal, which has no hint, for the account the server doesn’t see as approved', () => {
     const refused = { code: 'P0001', message: 'A tobacco license, resale certificate, and 21+ confirmation are required' };
-    expect(quoteErrorMessage(refused)).toMatch(/tobacco license and resale certificate/);
-    expect(quoteErrorField(refused)).toBe('licenseNo');
+    expect(quoteErrorMessage(refused).before).toMatch(/need an approved trade account/);
+    // Checkout has no licence fields any more (AW-014): no field to mark.
+    expect(quoteErrorField(refused)).toBeNull();
+  });
+
+  it('words the sign-in rule’s refusals without a field, and never as “couldn’t save” (AW-014)', () => {
+    for (const hint of ['sign_in_required', 'account_not_approved']) {
+      const err = { code: 'P0001', message: 'x', hint };
+      expect(quoteErrorMessage(err)).not.toEqual(QUOTE_ERROR_GENERIC);
+      expect(quoteErrorField(err)).toBeNull();
+    }
   });
 
   it('falls back to "call the trade desk", with no reference number', () => {
@@ -252,8 +264,8 @@ describe('submitOrder time limit (AW-194)', () => {
     expect(client.calls[0].signal.aborted).toBe(true);
     // Past tense: the page has stopped waiting (NEW-061).
     expect(quoteErrorMessage(err)).toEqual({
-      before: 'We stopped waiting for an answer, and the request may have been saved. Call',
-      after: ' before you submit it again, so it isn’t sent twice.',
+      before: 'We stopped waiting for an answer, and the order may have been saved. Call',
+      after: ' before you place it again, so it isn’t sent twice.',
     });
   });
 
@@ -267,7 +279,7 @@ describe('submitOrder time limit (AW-194)', () => {
     expect(err.code).toBe('timeout');
     expect(err.refNum).toBe(client.calls[1].args.p_ref_num);
     expect(quoteErrorMessage(err)).toEqual(quoteTimeoutMessage(err.refNum));
-    expect(quoteErrorMessage(err).after).toBe(` and give quote reference ${err.refNum} before you submit it again.`);
+    expect(quoteErrorMessage(err).after).toBe(` and give order reference ${err.refNum} before you place it again.`);
   });
 });
 
@@ -286,12 +298,12 @@ describe('quoteErrorMessage for a lost connection (NEW-061)', () => {
     expect(isTransportFailure(null)).toBe(false);
   });
 
-  it('says it may have been saved, with no reference, instead of “We couldn’t save this quote”', () => {
+  it('says it may have been saved, with no reference, instead of “We couldn’t place this order”', () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
     const message = quoteErrorMessage({ message: 'TypeError: Failed to fetch', code: '', hint: '', details: '' });
     expect(message).toEqual({
-      before: 'The connection dropped before an answer came back, and the request may have been saved. Call',
-      after: ' before you submit it again, so it isn’t sent twice.',
+      before: 'The connection dropped before an answer came back, and the order may have been saved. Call',
+      after: ' before you place it again, so it isn’t sent twice.',
     });
     expect(message).not.toEqual(QUOTE_ERROR_GENERIC);
     expect(quoteErrorMessage({ message: 'TypeError: Load failed', code: '' }, { items: [] }).before).toMatch(/may have been saved/);
@@ -312,7 +324,7 @@ describe('quoteErrorMessage for a lost connection (NEW-061)', () => {
     expect(older.calls).toHaveLength(2);
     expect(late.refNum).toBe(older.calls[1].args.p_ref_num);
     expect(quoteErrorMessage(late)).toEqual(quoteConnectionMessage(late.refNum));
-    expect(quoteErrorMessage(late).after).toBe(` and give quote reference ${late.refNum} before you submit it again.`);
+    expect(quoteErrorMessage(late).after).toBe(` and give order reference ${late.refNum} before you place it again.`);
   });
 });
 
@@ -333,15 +345,15 @@ describe('quoteErrorMessage for the remaining refusals (AW-200)', () => {
     expect(quoteErrorMessage({ code: 'P0001', message: 'x', hint })).toBe(expected);
   });
 
-  it('words too many lines, a reference that couldn’t be made, and a quote sent already, around the phone and email', () => {
+  it('words too many lines, a reference that couldn’t be made, and an order sent already, around the phone and email', () => {
     expect(quoteErrorMessage({ hint: 'too_many_items' })).toEqual({
-      before: 'This request has more lines than one request can take. Split it into two, or call', after: '.',
+      before: 'This order has more lines than one order can take. Split it into two, or call', after: '.',
     });
     expect(quoteErrorMessage({ hint: 'ref_unavailable' })).toEqual({
       before: 'We couldn’t assign a reference number, so nothing was sent. Try again in a moment, or call', after: '.',
     });
     expect(quoteErrorMessage({ message: 'This quote was already submitted', code: 'P0001' })).toEqual({
-      before: 'This request may already have been sent. Call', after: ' before you submit it again.',
+      before: 'This order may already have been sent. Call', after: ' before you place it again.',
     });
   });
 
@@ -358,7 +370,7 @@ describe('quoteErrorMessage for the remaining refusals (AW-200)', () => {
     expect(quoteErrorMessage({ hint: 'variant_required', message: 'Choose a variant for Hershey’s bars', details: '999' }, { items: LINES }))
       .toBe('Choose a variant for ‘Hershey’s bars’, then submit again.');
     expect(quoteErrorMessage({ hint: 'product_unavailable', message: 'Product is not available' }))
-      .toBe('An item in this request is no longer available, so nothing was sent. Reload the page to see which, remove it, then submit again.');
+      .toBe('An item in this order is no longer available, so nothing was sent. Reload the page to see which, remove it, then submit again.');
     expect(quoteErrorMessage({ hint: 'variant_unavailable', message: 'That variant is not available' }))
       .toBe('One of the chosen variants can’t be ordered right now. Choose another or remove it, then submit again.');
     expect(quoteErrorMessage({ hint: 'unknown_variant', message: 'x' })).toBe('One of the chosen variants is no longer offered. Choose another, then submit again.');
@@ -366,16 +378,16 @@ describe('quoteErrorMessage for the remaining refusals (AW-200)', () => {
 
   it('reads the hint from the message of a database without hints', () => {
     const live = (message, items = LINES) => text(quoteErrorMessage({ code: 'P0001', message, hint: null, details: null }, { items }));
-    expect(live('Product is not available')).toMatch(/^An item in this request is no longer available/);
+    expect(live('Product is not available')).toMatch(/^An item in this order is no longer available/);
     expect(live('Invalid quantity')).toBe('Quantities must be a whole number from 1 to 100,000.');
     expect(live('Choose a variant for Swisher Sweets cigarillos')).toBe('Choose a variant for ‘Swisher Sweets cigarillos’, then submit again.');
     expect(live('Unknown variant for Geek Bar Pulse 15K')).toBe('The variant chosen for ‘Geek Bar Pulse 15K’ is no longer offered. Choose another, then submit again.');
-    expect(live('Too many items')).toMatch(/^This request has more lines than one request can take/);
+    expect(live('Too many items')).toMatch(/^This order has more lines than one order can take/);
     expect(live('Add at least one item')).toBe('Add at least one item before you submit.');
     expect(live('A ship-to address is required')).toBe('Enter the ship-to street, city, state and ZIP, or choose will-call pickup.');
     expect(live('Contact details are required')).toBe('Fill in the business, contact, email and phone.');
     expect(live('Invalid delivery method')).toBe('Choose delivery or will-call pickup.');
-    expect(live('This quote was already submitted')).toMatch(/^This request may already have been sent\. Call/);
+    expect(live('This quote was already submitted')).toMatch(/^This order may already have been sent\. Call/);
     expect(quoteErrorField({ message: 'A ship-to address is required' })).toBe('shipStreet');
   });
 
@@ -385,7 +397,7 @@ describe('quoteErrorMessage for the remaining refusals (AW-200)', () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     expect(QUOTE_OFFLINE).toBe('You’re offline, so nothing was sent. Reconnect and submit again.');
     expect(quoteErrorMessage({ message: 'TypeError: Failed to fetch', code: '' })).toEqual(quoteConnectionMessage());
-    expect(quoteErrorMessage({ message: 'The quote was not saved.' })).toEqual(quoteConnectionMessage());
+    expect(quoteErrorMessage({ message: 'The order was not saved.' })).toEqual(quoteConnectionMessage());
     expect(quoteErrorMessage({ hint: 'invalid_zip' })).toBe('Enter a 5-digit ZIP code (or ZIP+4).');
     // A server that answered with an error code was reached: nothing saved.
     expect(quoteErrorMessage({ code: 'XX000', message: 'boom', hint: '' })).toBe(QUOTE_ERROR_GENERIC);

@@ -22,7 +22,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { IMG } from '../data/theme.js';
-import { APPLY_LABEL, SIGN_IN_LABEL, basketBadge, basketButtonLabel, basketTerms } from '../data/terms.js';
+import { APPLY_LABEL, BASKET, SIGN_IN_LABEL, basketBadge, basketButtonLabel } from '../data/terms.js';
 import { useMediaQuery, MOBILE_QUERY } from '../lib/useMediaQuery.js';
 import { Link, navigate, useRoute } from '../lib/router.js';
 import { MobileMenu } from './MobileMenu.jsx';
@@ -48,11 +48,10 @@ const QUICK_REORDER = '/account#quick-reorder';
 // A left click with no modifier key, which a Link follows in the app.
 const plainClick = (e) => e.button === 0 && !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey);
 
-export function Header({ cartCount, onCart, products, departments, user, isAdmin, isApprovedBuyer = false, adminUnseen = 0, onLoginClick, onSignupClick, onLogout, signingOut = false, onHelp }) {
+export function Header({ cartCount, onCart, products, departments, user, isAdmin, adminUnseen = 0, onLoginClick, onSignupClick, onLogout, signingOut = false, onHelp }) {
   const [megaOpen, setMegaOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const isMobile = useMediaQuery(MOBILE_QUERY);
-  const basket = basketTerms(isApprovedBuyer);
   const categoryToggleRef = useRef(null);
   const megaMenuRef = useRef(null);
   const megaOpenRef = useRef(false);
@@ -173,8 +172,8 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
               <button className="button aw-desktop-only" type="button" onClick={() => runNav(onSignupClick)}>{APPLY_LABEL}</button>
             </>
           )}
-          <button className="button ghost sm aw-cart-btn" type="button" onClick={() => runNav(onCart)} aria-label={basketButtonLabel(basket, cartCount)}>
-            <span>{basket.label}</span>
+          <button className="button ghost sm aw-cart-btn" type="button" onClick={() => runNav(onCart)} aria-label={basketButtonLabel(cartCount)}>
+            <span>{BASKET.label}</span>
             {cartCount > 0 && <span key={cartCount} className="aw-cart-count">{basketBadge(cartCount)}</span>}
           </button>
         </div>

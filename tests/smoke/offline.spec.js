@@ -1,5 +1,5 @@
 // Offline in-app navigation (NEW-006, AW-344). Once the page is idle, the
-// files of the support pages, Quote, My account and the sign-in dialog are
+// files of the support pages, checkout, My account and the sign-in dialog are
 // fetched into the browser's cache; with the connection gone, links to
 // /contact, /apply, /delivery, /shipping, /privacy, /terms and
 // /reset-password still open their pages, and after reconnecting a page not
@@ -90,8 +90,8 @@ test('offline, the support pages still open from the cache, and after reconnecti
 
   await context.setOffline(false);
   await expect(page.locator('.site-notice[data-notice="offline"]')).toHaveCount(0);
-  await goInApp(page, '/quote');
-  await expect(page.getByRole('heading', { level: 1, name: 'Your quote is empty' })).toBeVisible();
+  await goInApp(page, '/checkout');
+  await expect(page.getByRole('heading', { level: 1, name: 'Your order is empty' })).toBeVisible();
   await goInApp(page, '/account');
   await expect(page.getByRole('heading', { level: 1, name: 'My account' })).toBeVisible();
   await expect(page.locator('.error-fallback')).toHaveCount(0);

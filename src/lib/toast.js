@@ -1,5 +1,5 @@
 // The cart toast (AW-072, AW-042): a short message near the bottom of the
-// window that confirms an add, with one action ("View quote"). App renders it
+// window that confirms an add, with one action ("View order"). App renders it
 // once (src/components/Toast.jsx); anything can show one.
 //
 // One toast at a time: a new one replaces the last. showToast also speaks the

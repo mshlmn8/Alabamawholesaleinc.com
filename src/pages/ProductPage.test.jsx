@@ -105,7 +105,7 @@ describe('ProductPage variants (AW-233, AW-128, AW-030)', () => {
   it('adds a single-variant product with its variant, without a choice', () => {
     const addLine = vi.fn();
     render(page({ addLine, products: [product({ name: 'Garcia y Vega cigars', variants: ['Green'] })] }));
-    fireEvent.click(screen.getByRole('button', { name: /Add to quote/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Add to order/ }));
     expect(addLine).toHaveBeenCalledWith(1, 'Green', 1);
   });
 
@@ -217,7 +217,7 @@ describe('ProductPage variant choice (AW-235, AW-074)', () => {
   it('keeps the add button enabled; adding before a choice says so under the chips and focuses the first variant', () => {
     const addLine = vi.fn();
     render(page({ addLine, products: FLAVORS }));
-    const add = screen.getByRole('button', { name: /Add to quote/ });
+    const add = screen.getByRole('button', { name: /Add to order/ });
     expect(add.disabled).toBe(false);
     add.focus();
     fireEvent.click(add);
@@ -259,7 +259,7 @@ describe('ProductPage variant choice (AW-235, AW-074)', () => {
     expect(pd()).toMatch(/^This product can’t be ordered right now\./);
     // One variant back in stock: the price slot and the add row return.
     view.rerender(page({ products: [{ ...none[0], unavailableVariants: ['Diamond', 'Red', 'Grape'] }] }));
-    expect(screen.getByRole('button', { name: /Add to quote/ }).disabled).toBe(false);
+    expect(screen.getByRole('button', { name: /Add to order/ }).disabled).toBe(false);
     expect(tabStops()).toEqual(['Wine']);
   });
 });
@@ -449,7 +449,7 @@ describe('ProductPage and a saved quantity', () => {
     expect(screen.getByText('From your last visit: quantity 3. Choose a variant, then add it.')).toBeTruthy();
     fireEvent.click(screen.getByRole('radio', { name: 'Red' }));
     fireEvent.click(screen.getByRole('button', { name: 'Decrease quantity' }));
-    fireEvent.click(screen.getByRole('button', { name: /Add to quote/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Add to order/ }));
     expect(addLine).toHaveBeenCalledWith(1, 'Red', 2);
     view.rerender(page({ savedQty: 1, addLine }));
     expect(qty()).toBe('1');
@@ -478,18 +478,18 @@ describe('ProductPage quantity (AW-013) and a bare cart line (AW-011)', () => {
     expect(qty()).toBe('48');
     expect(screen.getByRole('button', { name: 'Decrease quantity' }).disabled).toBe(false);
     fireEvent.click(screen.getByRole('radio', { name: 'Red' }));
-    fireEvent.click(screen.getByRole('button', { name: /Add to quote/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Add to order/ }));
     expect(addLine).toHaveBeenCalledWith(1, 'Red', 48);
     expect(qty()).toBe('1');
   });
 
-  it('doesn’t show a bare line’s quantity as already in the quote, only the chosen variant’s', () => {
+  it('doesn’t show a bare line’s quantity as already in the order, only the chosen variant’s', () => {
     const view = render(page({ cart: { 1: 12 } }));
     expect(screen.queryByText(/Already in/)).toBeNull();
     view.rerender(page({ cart: { 1: 12, '1::red': 3 } }));
     expect(screen.queryByText(/Already in/)).toBeNull();
     fireEvent.click(screen.getByRole('radio', { name: 'Red' }));
-    expect([...document.querySelectorAll('.in-cart-note')].map((n) => n.textContent)).toContain('Already in quote: 3 · Red');
+    expect([...document.querySelectorAll('.in-cart-note')].map((n) => n.textContent)).toContain('Already in order: 3 · Red');
   });
 });
 
@@ -512,11 +512,11 @@ describe('ProductPage add feedback', () => {
     render(page({ addLine }));
     fireEvent.click(screen.getByRole('radio', { name: 'Red' }));
     typeQty(3);
-    const add = screen.getByRole('button', { name: /Add to quote/ });
+    const add = screen.getByRole('button', { name: /Add to order/ });
     add.focus();
     fireEvent.click(add);
-    expect(getToast()).toMatchObject({ text: 'Added 3 × Swisher Sweets cigarillos — Red to your quote.', action: { id: 'open-cart', label: 'View quote' } });
-    expect(vi.mocked(announce).mock.calls).toEqual([['Added 3 × Swisher Sweets cigarillos — Red to your quote.']]);
+    expect(getToast()).toMatchObject({ text: 'Added 3 × Swisher Sweets cigarillos — Red to your order.', action: { id: 'open-cart', label: 'View order' } });
+    expect(vi.mocked(announce).mock.calls).toEqual([['Added 3 × Swisher Sweets cigarillos — Red to your order.']]);
     expect(document.activeElement).toBe(add);
   });
 
@@ -532,17 +532,17 @@ describe('ProductPage add feedback', () => {
     const view = render(page({ addLine, cart: { '1::red': 99990 } }));
     fireEvent.click(screen.getByRole('radio', { name: 'Red' }));
     typeQty(48);
-    fireEvent.click(screen.getByRole('button', { name: /Add to quote/ }));
-    expect(getToast().text).toBe('Added 10 × Swisher Sweets cigarillos — Red to your quote. The most per line is 100,000.');
+    fireEvent.click(screen.getByRole('button', { name: /Add to order/ }));
+    expect(getToast().text).toBe('Added 10 × Swisher Sweets cigarillos — Red to your order. The most per line is 100,000.');
     view.rerender(page({ addLine, cart: { '1::red': 100000 } }));
-    fireEvent.click(screen.getByRole('button', { name: /Add to quote/ }));
-    expect(getToast().text).toBe('Your quote already has 100,000 × Swisher Sweets cigarillos — Red. The most per line is 100,000.');
+    fireEvent.click(screen.getByRole('button', { name: /Add to order/ }));
+    expect(getToast().text).toBe('Your order already has 100,000 × Swisher Sweets cigarillos — Red. The most per line is 100,000.');
     expect(announce).toHaveBeenCalledTimes(2);
   });
 
   it('shows nothing when nothing could be added', () => {
     render(page({ addLine: vi.fn(() => null), products: [{ ...P[0], variants: [] }] }));
-    fireEvent.click(screen.getByRole('button', { name: /Add to quote/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Add to order/ }));
     expect(getToast()).toBeNull();
   });
 
@@ -569,7 +569,7 @@ describe('ProductPage while the live catalog is checked (AW-232)', () => {
     // The row keeps its place unseen (index.css), out of the accessibility tree.
     expect(addRow().parentElement.className).toBe('pd-add-hold');
     expect(addRow().getAttribute('aria-hidden')).toBe('true');
-    expect(screen.queryByRole('button', { name: /Add to quote/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Add to order/ })).toBeNull();
     const hidden = addRow().querySelector('.button');
     expect(hidden.disabled).toBe(true);
     fireEvent.click(hidden);
@@ -586,7 +586,7 @@ describe('ProductPage while the live catalog is checked (AW-232)', () => {
     expect(screen.queryByText(CHECKING_AVAILABILITY_TEXT)).toBeNull();
     expect(document.querySelector('.pd-add-hold')).toBeNull();
     expect(addRow().getAttribute('aria-hidden')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: /Add to quote/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Add to order/ }));
     expect(addLine).toHaveBeenCalledWith(1, null, 1);
     dismissToast();
   });
@@ -595,16 +595,16 @@ describe('ProductPage while the live catalog is checked (AW-232)', () => {
     const addLine = vi.fn(() => ({ key: '1', qty: 1, capped: false }));
     render(page({ products: single, addLine, catalogStatus: 'error', catalogSettled: false }));
     expect(screen.queryByText(CHECKING_AVAILABILITY_TEXT)).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: /Add to quote/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Add to order/ }));
     expect(addLine).toHaveBeenCalledWith(1, null, 1);
     dismissToast();
   });
 
   it('without a backend (the bundled copy is the catalog) or by default, the row is there', () => {
     const view = render(page({ products: single, catalogStatus: 'static', catalogSettled: true }));
-    expect(screen.getByRole('button', { name: /Add to quote/ })).not.toBeNull();
+    expect(screen.getByRole('button', { name: /Add to order/ })).not.toBeNull();
     view.rerender(page({ products: single }));
-    expect(screen.getByRole('button', { name: /Add to quote/ })).not.toBeNull();
+    expect(screen.getByRole('button', { name: /Add to order/ })).not.toBeNull();
     expect(screen.queryByText(CHECKING_AVAILABILITY_TEXT)).toBeNull();
   });
 });

@@ -1,6 +1,12 @@
-// Quote submission. Prices, totals and the reference number are made inside
-// submit_quote; the browser sends the buyer's details, the tobacco license
-// answers (AW-014) and, per line, the product id, variant label and quantity.
+// Placing an order. The database function keeps its old name, submit_quote,
+// though customers place orders, never quotes (owner answer 2026-10,
+// AW-024). Prices, totals and the reference number are made inside it; the
+// browser sends the buyer's details and, per line, the product id, variant
+// label and quantity. Only a signed-in, approved account that isn't on hold
+// gets this far (QuotePage's gate, AW-014); once 20261014111000 is applied
+// the function refuses anyone else too, with the hints sign_in_required,
+// account_not_approved and account_suspended. The licence answers it still
+// takes are sent empty: approved accounts gave theirs when they applied.
 //
 // The current submit_quote (supabase/migrations/20261009130000_submit_quote_v3.sql)
 // makes the reference itself (AW-049), needs a ship-to address only for
@@ -12,7 +18,7 @@
 //
 // The live database may be older (the owner applies migrations later). A
 // signature it doesn't have fails with "no such function" (PGRST202 / 42883),
-// and the quote is sent once more with the next older one:
+// and the order is sent once more with the next older one:
 //   current   15 arguments, no p_ref_num             (20261009130000)
 //   licensed  16 arguments: p_ref_num + the answers  (20261008190000, PR #12)
 //   legacy    13 arguments: p_ref_num, the answers
@@ -21,13 +27,13 @@
 // (40 random bits), and they need an address even for will-call, so will-call
 // sends the warehouse address. The signature that worked is remembered for
 // the rest of the visit, so a live database without the new functions costs
-// one call per quote after the first.
+// one call per order after the first.
 //
 // Each call gives up after QUOTE_SUBMIT_TIMEOUT_MS (AW-194,
 // src/lib/network.js). A call that timed out may still have been saved, so
 // it is never sent again with an older signature: the buyer is told to call
 // before submitting again, with the reference an older signature was sent
-// with (the only reference ever shown for a quote that wasn't confirmed).
+// with (the only reference ever shown for an order that wasn't confirmed).
 // A call whose connection dropped before the answer came back is just as
 // uncertain, and is worded the same way (NEW-061).
 
@@ -54,8 +60,8 @@ export const isTransportFailure = (err) => !!err && !err.hint && !err.code && TR
 
 // The arguments of the current call. Will-call sends no address, whatever
 // the hidden address fields still hold. The state is sent upper-case. The
-// license answers are sent as the form holds them; QuotePage blanks them
-// when the cart doesn't need them.
+// licence answers (PR #12's guest fields, AW-014) are empty unless the form
+// data has them: checkout no longer asks, as only approved accounts order.
 export function quoteParams(formData, items) {
   const willCall = formData.delivery === 'willcall';
   return {
@@ -81,12 +87,13 @@ export function quoteParams(formData, items) {
   };
 }
 
-// 'ALW-Q-' and 10 hex digits (40 random bits), the shape of the references
-// the server makes. Only for a database without the current submit_quote.
+// 'ALW-O-' and 10 hex digits (40 random bits), the shape of the references
+// the server makes for an approved account's order. Only for a database
+// without the current submit_quote.
 const HEX = '0123456789ABCDEF';
 export function makeClientRef(getRandomValues = (bytes) => globalThis.crypto.getRandomValues(bytes)) {
   const bytes = getRandomValues(new Uint8Array(5));
-  return `ALW-Q-${Array.from(bytes, (b) => HEX[b >> 4] + HEX[b & 15]).join('')}`;
+  return `ALW-O-${Array.from(bytes, (b) => HEX[b >> 4] + HEX[b & 15]).join('')}`;
 }
 
 // The older functions require a ship-to address for will-call too.
@@ -139,16 +146,17 @@ async function callSubmitQuote(client, args, timeoutMs) {
   }
 }
 
-// Saves the quote. Resolves { ok, order, legacy }, where order is what
+// Saves the order. Resolves { ok, order, legacy }, where order is what
 // submit_quote returned ({ id, ref_num, total_units, subtotal, and from the
 // current function kind, priced_lines, unpriced_lines }) and legacy says an
 // older signature saved it; throws the error otherwise (quoteErrorMessage()
 // words it). A call that took too long throws code 'timeout', with refNum
 // when an older signature was sent that reference.
-// TODO(owner): Which address or phone should hear about a new quote, and which provider sends it? Nothing is sent on its own yet. (AW-050)
+// The orders inbox hears about a saved order from checkout, through Netlify
+// Forms (src/lib/orderNotification.js; owner answer 2026-10, AW-050, AW-024).
 export async function submitOrder({ formData, items }, { client = supabase, timeoutMs = QUOTE_SUBMIT_TIMEOUT_MS } = {}) {
   if (!client) {
-    const err = new Error('Quote requests can’t be saved right now.');
+    const err = new Error('Orders can’t be placed online right now.');
     err.code = 'unavailable';
     throw err;
   }
@@ -166,7 +174,7 @@ export async function submitOrder({ formData, items }, { client = supabase, time
     const { data, error } = await callSubmitQuote(client, args, timeoutMs);
     if (error && isMissingFunction(error)) { missing = error; continue; }
     if (error && isTimeoutError(error)) {
-      const late = Object.assign(timeoutError('The quote request took too long.'), { cause: error });
+      const late = Object.assign(timeoutError('The order took too long.'), { cause: error });
       if (signature !== 'current') late.refNum = refNum;
       throw late;
     }
@@ -176,7 +184,7 @@ export async function submitOrder({ formData, items }, { client = supabase, time
       throw Object.assign(new Error(String(error.message)), { code: '', cause: error, refNum });
     }
     if (error) throw error;
-    if (!data?.id) throw new Error('The quote was not saved.');
+    if (!data?.id) throw new Error('The order was not saved.');
     workingSignature = signature;
     return { ok: true, order: data, legacy: signature !== 'current' };
   }
@@ -198,7 +206,11 @@ export function todayInBirmingham(now = new Date()) {
 // alone.
 const HINT_MESSAGES = {
   account_suspended: { before: 'Ordering is paused on this account. Call', after: ' and a trade rep will help you sort it out.' },
-  rate_limited: { before: 'Too many quote requests in a short time, so this one wasn’t sent. Try again in a few minutes, or call the trade desk at', after: '.' },
+  // 20261014111000: only a signed-in, approved account places orders
+  // (AW-014). The page had a session or approval the server no longer sees.
+  sign_in_required: 'You’re signed out, so this order wasn’t sent. Sign in, then place it again.',
+  account_not_approved: 'Your account is being reviewed, so this order wasn’t sent. You can place orders once it’s approved.',
+  rate_limited: { before: 'Too many orders in a short time, so this one wasn’t sent. Try again in a few minutes, or call the trade desk at', after: '.' },
   contact_required: 'Fill in the business, contact, email and phone.',
   field_too_long: 'One of the fields is too long. Shorten it and submit again.',
   invalid_email: 'Enter a valid email address.',
@@ -207,18 +219,20 @@ const HINT_MESSAGES = {
   invalid_state: 'Enter the 2-letter state code, for example AL.',
   delivery_state: DELIVERY_STATE_NOTE,
   past_date: 'Choose a preferred date from today on.',
-  license_required: 'Enter the tobacco license and resale certificate numbers and confirm the 21+ statement to quote tobacco and vape items.',
+  // Only for an account the server doesn't see as approved (older
+  // databases): approved accounts' licences were checked when they applied.
+  license_required: { before: 'This order has tobacco or vape items, which need an approved trade account. Call', after: ' and the trade desk will help.' },
   // AW-200: the remaining ones.
   no_items: 'Add at least one item before you submit.',
   // submit_quote takes 200 lines; the storefront has no constant for that.
-  too_many_items: { before: 'This request has more lines than one request can take. Split it into two, or call', after: '.' },
+  too_many_items: { before: 'This order has more lines than one order can take. Split it into two, or call', after: '.' },
   invalid_delivery: 'Choose delivery or will-call pickup.',
   ref_unavailable: { before: 'We couldn’t assign a reference number, so nothing was sent. Try again in a moment, or call', after: '.' },
   invalid_quantity: `Quantities must be ${QTY_RANGE_TEXT}.`,
   // The 13- and 16-argument functions refuse a reference they already have
   // ("This quote was already submitted"): a double send, or a retry after a
   // lost answer.
-  already_submitted: { before: 'This request may already have been sent. Call', after: ' before you submit it again.' },
+  already_submitted: { before: 'This order may already have been sent. Call', after: ' before you place it again.' },
 };
 
 // Hints about one product (the order-line trigger, 20261011110000, puts its
@@ -227,7 +241,7 @@ const HINT_MESSAGES = {
 const PRODUCT_HINT_MESSAGES = {
   product_unavailable: (name) => (name
     ? `‘${name}’ is no longer available. Remove it, then submit again.`
-    : 'An item in this request is no longer available, so nothing was sent. Reload the page to see which, remove it, then submit again.'),
+    : 'An item in this order is no longer available, so nothing was sent. Reload the page to see which, remove it, then submit again.'),
   variant_required: (name) => (name
     ? `Choose a variant for ‘${name}’, then submit again.`
     : 'Choose a variant for every product that has more than one, then submit again.'),
@@ -276,8 +290,8 @@ function productNameOf(err, items) {
   return NAMED_IN_MESSAGE.exec(String(err?.message || '').trim())?.[1] || null;
 }
 
-export const QUOTE_ERROR_GENERIC = { before: 'We couldn’t save this quote. Please call the trade desk at', after: '.' };
-export const QUOTE_UNAVAILABLE = { before: 'Quote requests can’t be saved right now. Call', after: ' and the trade desk will write it up with you.' };
+export const QUOTE_ERROR_GENERIC = { before: 'We couldn’t place this order. Please call the trade desk at', after: '.' };
+export const QUOTE_UNAVAILABLE = { before: 'Orders can’t be placed online right now. Call', after: ' and the trade desk will take your order.' };
 export const QUOTE_OFFLINE = 'You’re offline, so nothing was sent. Reconnect and submit again.';
 
 // A submit that may have been saved (AW-194, NEW-061): it took too long and
@@ -285,12 +299,12 @@ export const QUOTE_OFFLINE = 'You’re offline, so nothing was sent. Reconnect a
 // With the reference an older signature was sent, the trade desk can look
 // it up.
 const mayHaveBeenSaved = (before, refNum) => (refNum
-  ? { before, after: ` and give quote reference ${refNum} before you submit it again.` }
-  : { before, after: ' before you submit it again, so it isn’t sent twice.' });
+  ? { before, after: ` and give order reference ${refNum} before you place it again.` }
+  : { before, after: ' before you place it again, so it isn’t sent twice.' });
 export const quoteTimeoutMessage = (refNum = null) =>
-  mayHaveBeenSaved('We stopped waiting for an answer, and the request may have been saved. Call', refNum);
+  mayHaveBeenSaved('We stopped waiting for an answer, and the order may have been saved. Call', refNum);
 export const quoteConnectionMessage = (refNum = null) =>
-  mayHaveBeenSaved('The connection dropped before an answer came back, and the request may have been saved. Call', refNum);
+  mayHaveBeenSaved('The connection dropped before an answer came back, and the order may have been saved. Call', refNum);
 
 // What to tell the buyer when submitOrder() failed: a timeout first, then
 // the text for its hint (naming the product from `items`, the lines that
@@ -298,7 +312,7 @@ export const quoteConnectionMessage = (refNum = null) =>
 // "call the trade desk" copy. A request that got no answer (a transport
 // failure, or the browser went offline while it was on its way: checkout
 // sends nothing while offline) may have been saved (NEW-061). Never a
-// reference number for a quote that failed; one that may have been saved
+// reference number for an order that failed; one that may have been saved
 // is cited only with "may".
 export function quoteErrorMessage(err, { items = [] } = {}) {
   if (isTimeoutError(err)) return quoteTimeoutMessage(err.refNum || null);
@@ -318,7 +332,6 @@ const HINT_FIELDS = {
   invalid_state: 'shipState',
   delivery_state: 'shipState',
   past_date: 'preferredDate',
-  license_required: 'licenseNo',
 };
 export const quoteErrorField = (err) => {
   const hint = hintOf(err);

@@ -2,7 +2,8 @@
 // remaining submit_quote refusals in the page (AW-200): the lines and the
 // fields are locked while a send runs, a send that takes too long says the
 // request may have been saved and unlocks the form, offline turns the submit
-// button off with a note, and a refusal names its product.
+// button off with a note, and a refusal names its product. The buyer is an
+// approved account: only those get the form (AW-014).
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { QUOTE_OFFLINE, submitOrder } from '../lib/orders.js';
@@ -12,18 +13,20 @@ import { QuotePage } from './QuotePage.jsx';
 vi.mock('../lib/announce.js', async (importOriginal) => ({ ...(await importOriginal()), announce: vi.fn() }));
 vi.mock('../lib/orders.js', async (importOriginal) => ({
   ...(await importOriginal()),
-  submitOrder: vi.fn(async () => ({ ok: true, order: { id: 'o1', ref_num: 'ALW-Q-TEST000001' } })),
+  submitOrder: vi.fn(async () => ({ ok: true, order: { id: 'o1', ref_num: 'ALW-O-TEST000001' } })),
 }));
 
 const CANDY = { lineKey: '40', productId: 40, variant: null, name: 'Test candy', sku: 'AW-CANDY', cat: 'CANDIES', qty: 2, price: null };
 const MINT = { lineKey: '41::mint', productId: 41, variant: 'Mint', name: 'Test gum — Mint', sku: 'AW-GUM-MINT', cat: 'CANDIES', qty: 1, price: null };
 const ITEMS = [CANDY, MINT];
-const GUEST = { profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false };
+// An approved buyer whose profile has no contact details yet, so every field
+// starts empty (only approved accounts get the form, AW-014).
+const BUYER = { profile: { id: 'u-blank', status: 'approved', business: '', name: '', email: '', phone: '' }, account: 'ready', signedIn: true, isApprovedBuyer: true };
 
 function page(props = {}) {
   const base = {
     items: ITEMS, total: 0, setLine: vi.fn(), chooseVariant: vi.fn(), removeLine: vi.fn(), removeLines: vi.fn(), clearCart: vi.fn(),
-    isBackendConfigured: true, onSignIn: vi.fn(), checkCart: vi.fn(async () => ({ ok: true, items: ITEMS })), ...GUEST,
+    isBackendConfigured: true, onSignIn: vi.fn(), checkCart: vi.fn(async () => ({ ok: true, items: ITEMS })), ...BUYER,
   };
   return <QuotePage {...base} {...props} />;
 }
@@ -52,10 +55,10 @@ describe('QuotePage while a send runs (AW-194)', () => {
     ];
     expect(controls().some(locked)).toBe(false);
     await act(async () => { fireEvent.submit(form()); });
-    expect(submitButton().textContent).toBe('Sending…');
+    expect(submitButton().textContent).toBe('Placing your order…');
     expect(controls().every(locked)).toBe(true);
     expect(document.querySelectorAll('fieldset.checkout-fieldset')).toHaveLength(2);
-    await act(async () => { fail(timeoutError('The quote request took too long.')); });
+    await act(async () => { fail(timeoutError('The order took too long.')); });
     expect(controls().some(locked)).toBe(false);
     expect(submitButton().disabled).toBe(false);
   });
@@ -75,19 +78,19 @@ describe('QuotePage while a send runs (AW-194)', () => {
     fill();
     submitOrder.mockImplementationOnce(async () => { throw timeoutError(); });
     await act(async () => { fireEvent.submit(form()); });
-    expect(submitError().textContent).toMatch(/^We stopped waiting for an answer, and the request may have been saved\. Call \(205\) .* before you submit it again, so it isn’t sent twice\.$/);
+    expect(submitError().textContent).toMatch(/^We stopped waiting for an answer, and the order may have been saved\. Call \(205\) .* before you place it again, so it isn’t sent twice\.$/);
     expect(submitError().textContent).not.toMatch(/ALW-/);
     submitOrder.mockImplementationOnce(async () => { throw Object.assign(timeoutError(), { refNum: 'ALW-Q-0A1B2C3D4E' }); });
     await act(async () => { fireEvent.submit(form()); });
-    expect(submitError().textContent).toMatch(/ and give quote reference ALW-Q-0A1B2C3D4E before you submit it again\.$/);
+    expect(submitError().textContent).toMatch(/ and give order reference ALW-Q-0A1B2C3D4E before you place it again\.$/);
   });
 });
 
 // A connection lost while the request was on its way may have delivered it
 // (NEW-061): the buyer is told to call before sending it again, never
-// "We couldn’t save this quote" or "nothing was sent".
+// "We couldn’t place this order" or "nothing was sent".
 describe('QuotePage when the connection drops during the send (NEW-061)', () => {
-  const MAY_HAVE = /^The connection dropped before an answer came back, and the request may have been saved\. Call \(205\) .* before you submit it again, so it isn’t sent twice\.$/;
+  const MAY_HAVE = /^The connection dropped before an answer came back, and the order may have been saved\. Call \(205\) .* before you place it again, so it isn’t sent twice\.$/;
 
   it('says a send whose connection failed may have been saved', async () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
@@ -103,7 +106,7 @@ describe('QuotePage when the connection drops during the send (NEW-061)', () => 
     const onLine = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
     submitOrder.mockImplementationOnce(async () => {
       onLine.mockReturnValue(false);
-      throw new Error('The quote was not saved.');
+      throw new Error('The order was not saved.');
     });
     render(page());
     fill();
@@ -132,7 +135,7 @@ describe('QuotePage offline (AW-344)', () => {
     fill();
     expect(submitButton().disabled).toBe(true);
     const note = document.querySelector('.quote-offline');
-    expect(note.textContent).toBe('You’re offline. Reconnect to submit.');
+    expect(note.textContent).toBe('You’re offline. Reconnect to place your order.');
     // The site notice announces it; the note doesn't speak again.
     expect(note.hasAttribute('role')).toBe(false);
     onLine.mockReturnValue(true);
@@ -176,7 +179,7 @@ describe('QuotePage and the remaining refusals (AW-200)', () => {
     // An older database's message without a hint.
     submitOrder.mockImplementationOnce(async () => { throw { code: 'P0001', message: 'Product is not available', hint: null, details: null }; });
     await act(async () => { fireEvent.submit(form()); });
-    expect(submitError().textContent).toMatch(/^An item in this request is no longer available, so nothing was sent\./);
+    expect(submitError().textContent).toMatch(/^An item in this order is no longer available, so nothing was sent\./);
     expect(submitError().textContent).not.toMatch(/ALW-/);
   });
 });
@@ -185,12 +188,6 @@ describe('QuotePage and the remaining refusals (AW-200)', () => {
 // submit ends without a save, focus comes back to the field the refusal is
 // about, else to the message that says what happened.
 describe('QuotePage focus after a submit that didn’t save (NEW-009)', () => {
-  const KITE = { lineKey: '14', productId: 14, variant: null, name: 'Kite cigarette tobacco', sku: 'AW-KITE', cat: 'TOBACCO', qty: 2, price: null };
-  const answerLicense = () => {
-    fireEvent.change(document.getElementById('quote-license'), { target: { value: 'TL-1' } });
-    fireEvent.change(document.getElementById('quote-resale'), { target: { value: 'RS-1' } });
-    fireEvent.click(document.getElementById('quote-age'));
-  };
   // Press Enter on the focused submit button; the browser then blurs it, as
   // Chromium does with a control that becomes disabled.
   const submitFromButton = async () => {
@@ -211,16 +208,24 @@ describe('QuotePage focus after a submit that didn’t save (NEW-009)', () => {
     expect(submitError().tabIndex).toBe(-1);
   });
 
-  it('focuses the field a refusal is about: license_required, the license number', async () => {
-    submitOrder.mockImplementationOnce(async () => { throw { code: 'P0001', message: 'x', hint: 'license_required', details: '' }; });
-    render(page({ items: [KITE], checkCart: vi.fn(async () => ({ ok: true, items: [KITE] })) }));
+  it('focuses the field a refusal is about: invalid_zip, the ZIP', async () => {
+    submitOrder.mockImplementationOnce(async () => { throw { code: 'P0001', message: 'x', hint: 'invalid_zip', details: '' }; });
+    render(page());
     fill();
-    answerLicense();
     await submitFromButton();
-    const license = document.getElementById('quote-license');
-    expect(document.activeElement).toBe(license);
-    expect(license.getAttribute('aria-invalid')).toBe('true');
-    expect(license.getAttribute('aria-describedby')).toMatch(/quote-submit-error/);
+    const zip = document.getElementById('ship-zip');
+    expect(document.activeElement).toBe(zip);
+    expect(zip.getAttribute('aria-invalid')).toBe('true');
+    expect(zip.getAttribute('aria-describedby')).toMatch(/quote-submit-error/);
+  });
+
+  it('focuses the message for a refusal with no field of its own: license_required (an older database)', async () => {
+    submitOrder.mockImplementationOnce(async () => { throw { code: 'P0001', message: 'x', hint: 'license_required', details: '' }; });
+    render(page());
+    fill();
+    await submitFromButton();
+    expect(document.activeElement).toBe(submitError());
+    expect(document.getElementById('quote-license')).toBeNull();
   });
 
   it('focuses the message after a catalog check that failed, and the change note after one that found changes', async () => {

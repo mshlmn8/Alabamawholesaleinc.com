@@ -12,7 +12,7 @@
 //
 // Code splitting (AW-179): the storefront pages (home, departments, products,
 // search, All products, not found) are in the first download. The account,
-// admin, quote and support pages and the sign-in dialog load when first
+// admin, checkout and support pages and the sign-in dialog load when first
 // opened. Once the page is idle their files (Admin's only for an admin) are
 // fetched into the browser's cache, so they open at once and offline
 // (NEW-006, AW-344); offline, a page whose files aren't cached shows
@@ -37,7 +37,6 @@ import { pageKeyFor } from './lib/routes.js';
 import { confirmAge, declineAge, endAgeConfirmationOnSignOut, reconsiderAge, useAgeGate } from './lib/ageGate.js';
 import { pageMeta, applyPageMeta } from './lib/meta.js';
 import { accountView, adminGate, isApprovedAdmin } from './lib/accountStatus.js';
-import { basketTerms } from './data/terms.js';
 import { departmentsFor } from './lib/departments.js';
 import { accountNotices, signOutMessage } from './lib/accountNotices.js';
 import { catalogNotices } from './lib/catalogNotices.js';
@@ -141,9 +140,8 @@ export default function App() {
   // Signed in whenever there is a session, also before (or without) its
   // profile, so Sign Out is always within reach (AW-089).
   const user = session ? { name: profile?.name || '', business: profile?.business || '' } : null;
+  // Only an approved account sees prices and places orders (AW-014, AW-024).
   const isApprovedBuyer = profile?.status === 'approved';
-  // A quote, or an order for an approved buyer (AW-132, src/data/terms.js).
-  const basket = basketTerms(isApprovedBuyer);
   // Ordering is paused on a suspended account (AW-201).
   const isSuspended = profile?.status === 'suspended';
   // Only an approved admin is one; the database's is_admin() says the same
@@ -204,11 +202,11 @@ export default function App() {
   const catalogPending = found.page === 'not-found' && CATALOG_KINDS.includes(found.kind) && !found.malformed && !catalog.settled;
   const pendingAs = catalogPending ? (catalog.status === 'loading' ? 'loading' : 'error') : null;
   const route = useMemo(() => (pendingAs ? { ...found, catalog: pendingAs } : found), [found, pendingAs]);
-  // The receipt of the quote or order saved on this history entry, by this
-  // cart's owner (AW-022): a reload or Back shows it again; a new visit to
-  // /quote shows checkout. The title then names it ("Quote received").
+  // The receipt of the order saved on this history entry, by this cart's
+  // owner (AW-022): a reload or Back shows it again; a new visit to
+  // /checkout shows checkout. The title then names it ("Order received").
   const lastReceipt = useLastReceipt();
-  const receiptHere = route.page === 'quote' && location.key && lastReceipt?.owner === owner && lastReceipt?.entryKey === location.key
+  const receiptHere = route.page === 'checkout' && location.key && lastReceipt?.owner === owner && lastReceipt?.entryKey === location.key
     ? lastReceipt.receipt : null;
   const receivedKind = receiptHere?.kind || null;
   useLayoutEffect(() => {
@@ -217,11 +215,10 @@ export default function App() {
     }
   }, [canonicalPath, location]);
 
-  // The title names a saved receipt ('Quote received', AW-022) on /quote, or
-  // else its heading once the account is known (AW-132), the count of orders
-  // new since the last visit on /admin (AW-111), the account's view on
-  // /apply ('Your trade account' once signed in, AW-098) and what /reset-password
-  // shows ('Password updated', AW-255).
+  // The title names a saved receipt ('Order received', AW-022) on /checkout,
+  // the count of orders new since the last visit on /admin (AW-111), the
+  // account's view on /apply ('Your trade account' once signed in, AW-098)
+  // and what /reset-password shows ('Password updated', AW-255).
   // A signed-in account whose profile didn't load isn't a guest (NEW-002).
   const applyAs = accountView(profile, account);
   // /admin behind its sign-in or staff-only gate is titled by the gate, not
@@ -233,13 +230,12 @@ export default function App() {
   const resetAs = resetShown?.view || null;
   const metaRoute = useMemo(() => {
     if (receivedKind) return { ...route, received: receivedKind };
-    if (route.page === 'quote' && account !== 'loading') return { ...route, basket: basket.kind };
     if (route.page === 'admin' && adminGated) return { ...route, gated: adminGated };
     if (route.page === 'admin' && adminUnseen > 0) return { ...route, unseen: adminUnseen };
     if (route.page === 'apply') return { ...route, applyAs };
     if (route.page === 'reset-password' && resetAs) return { ...route, view: resetAs };
     return route;
-  }, [route, receivedKind, adminGated, adminUnseen, account, basket.kind, applyAs, resetAs]);
+  }, [route, receivedKind, adminGated, adminUnseen, applyAs, resetAs]);
   const currentPageKey = location.pageKey;
   const onResetView = useCallback((view) => setResetShown({ view, pageKey: currentPageKey }), [currentPageKey]);
   useEffect(() => {
@@ -317,7 +313,7 @@ export default function App() {
       setSigningOut(false);
     }
     clearGuestCart();
-    // The last receipt and the quote form's draft hold the buyer's contact
+    // The last receipt and the checkout form's draft hold the buyer's contact
     // details (AW-022, AW-080).
     clearReceipt();
     clearQuoteDraft();
@@ -416,12 +412,12 @@ export default function App() {
       case 'search':
         // Keyed by URL (AW-007): each query starts with a fresh page.
         return <SearchPage key={routeKey(route)} q={route.q} products={products} departments={departments} {...cardProps} />;
-      case 'quote':
+      case 'checkout':
         return (
           <QuotePage items={cart.items} total={cart.total} setLine={cart.setLine} chooseVariant={cart.chooseVariant} removeLine={cart.removeLine}
                      removeLines={cart.removeLines} clearCart={cart.clearCart} restoreLines={cart.restoreLines} owner={owner} legacy={cart.legacy} onDismissLegacy={cart.dismissLegacy}
                      profile={profile} account={account} signedIn={!!session} onSignIn={openSignin} onApplyClick={openSignup}
-                     isApprovedBuyer={isApprovedBuyer} isSuspended={isSuspended} pricesStatus={prices.status} isBackendConfigured={isBackendConfigured} checkCart={checkCart}
+                     isApprovedBuyer={isApprovedBuyer} pricesStatus={prices.status} isBackendConfigured={isBackendConfigured} checkCart={checkCart}
                      onRetryPrices={retryPrices} pricesRefreshing={prices.refreshing}
                      savedReceipt={receiptHere} entryKey={location.key} onSubmitted={(receipt) => saveReceipt({ owner, entryKey: location.key, receipt })} cartSynced={cartSynced}
                      loadShipTo={isBackendConfigured ? loadAccountShipTo : null} />
@@ -487,7 +483,7 @@ export default function App() {
         <Header
           cartCount={cart.count} onCart={() => setCartOpen(true)}
           products={products} departments={departments}
-          user={user} isAdmin={isAdmin} isApprovedBuyer={isApprovedBuyer} adminUnseen={adminUnseen}
+          user={user} isAdmin={isAdmin} adminUnseen={adminUnseen}
           onLoginClick={openSignin} onSignupClick={openSignup} onLogout={signOutHere} signingOut={signingOut}
           onHelp={() => setHelpOpen(true)}
         />

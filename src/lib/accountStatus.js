@@ -58,6 +58,20 @@ export const PRICE_LOCK = {
 export const CHECKING_ACCOUNT_TEXT = 'Checking your account…';
 export const PRICES_NEED_PROFILE = 'Prices need your account details.';
 
+// Who may place an order (AW-014, AW-024; owner answer 2026-10): a
+// signed-in account that is approved and not on hold. The site is for
+// licensed store owners, so guests and accounts under review build a cart
+// but don't order. orderGate() is what checkout shows instead of its form:
+// 'loading' until the session and profile are known, 'no-profile' when the
+// profile didn't load (NEW-002), then 'guest', 'pending' or 'suspended'
+// (accountStatus), or null for an approved account, which may order.
+// submit_quote applies the same rule (20261014111000).
+export function orderGate(profile, account) {
+  if (account === 'loading' || account === 'no-profile') return account;
+  const status = accountStatus(profile);
+  return status === 'approved' ? null : status;
+}
+
 // Only an approved admin gets the admin dashboard, as only an approved
 // admin passes is_admin() in the database (AW-352).
 export const isApprovedAdmin = (profile) => profile?.role === 'admin' && profile?.status === 'approved';
