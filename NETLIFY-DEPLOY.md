@@ -215,8 +215,11 @@ When you change something:
 - **A third-party host** (analytics, error reporting, a CAPTCHA, an image
   CDN): add it to the matching directive in the same change that adds the
   script or request, and add the service to the privacy policy's list of
-  processors in that change too (AW-210). The unit test lists the off-site
-  hosts the policy allows, so it fails until it is updated on purpose.
+  processors in that change too (AW-210): "Who handles it for us" on
+  /privacy (`POLICIES.privacy` in `src/pages/support/PolicyPage.jsx`). The
+  unit test lists the off-site hosts the policy allows, so it fails until it
+  is updated on purpose, and `PolicyPage.test.jsx` fails until the privacy
+  policy names the service behind each host.
 - **A frame**: there is no `frame-src`, so the site can frame only itself.
   Admin opens signed document links in a new tab.
 - **Netlify features that inject scripts** are blocked by the policy:
@@ -325,7 +328,8 @@ Things to know:
 - **Personal data.** Each submission holds the buyer's contact details and
   address. Netlify keeps submissions in the dashboard until they are
   deleted; staff can delete old ones there. The privacy policy says order
-  copies are emailed through Netlify.
+  copies are emailed through Netlify and kept in its form records and the
+  inbox until they are deleted (AW-027).
 - **Locally**, `npm run dev` and `npm run preview` answer the post like
   Netlify (status 200) but keep and send nothing (`scripts/netlify-forms.mjs`).
   The Content-Security-Policy needs no change: the post goes to the site's

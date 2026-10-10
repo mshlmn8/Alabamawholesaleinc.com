@@ -1093,7 +1093,9 @@ fills it on a phone finds it on the computer (`src/lib/cartSync.js`, AW-334):
   succeeds they say "Saved with your account".
 
 Storing what is in a buyer's cart is a new use of their data: the privacy
-policy doesn't mention it yet (owner question AW-334 in docs/OWNER-TODO.md).
+policy names it under "What we collect" and "How long we keep it" (AW-027,
+AW-334). The comment in `20261012110000_carts.sql` that says it doesn't is
+from before that rewrite.
 
 ## Row-level security summary
 

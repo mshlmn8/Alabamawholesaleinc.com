@@ -270,6 +270,8 @@ export const FAQS = [
     a: 'Delivery is currently on routes in Alabama, Mississippi and Georgia.' }
 ];
 
+// What the site keeps in the browser. The privacy policy names every key and
+// says why (AW-027; PolicyPage.test.jsx checks), so a new key goes there too.
 export const STORAGE = {
   // localStorage: the dated 21+ confirmation (src/lib/ageGate.js, AW-340).
   age: 'aw-age-verified',
@@ -297,12 +299,31 @@ export const STORAGE = {
   quoteDraft: 'aw-quote-draft'
 };
 
-// The date the Trade terms and Privacy policy last changed, as the policy
-// pages print it, and the version a trade application records acceptance of
-// (profiles.terms_version, AW-019). Change both together when either policy
-// changes; content.test.js checks they name the same month.
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+// A policy date as the pages print it (AW-277): '2026-10-10' is
+// 'October 10, 2026', and a month alone, '2026-09', is 'September 2026'.
+// Worked out from the digits, so no time zone can move the day.
+export function policyDateLabel(iso) {
+  const [, year, month, day] = /^(\d{4})-(\d{2})(?:-(\d{2}))?$/.exec(String(iso)) || [];
+  const name = MONTH_NAMES[Number(month) - 1];
+  if (!name) return String(iso);
+  return day ? `${name} ${Number(day)}, ${year}` : `${name} ${year}`;
+}
+
+// The day the Trade terms and Privacy policy last changed (ISO), which the
+// two pages print in a <time> element, and the version a trade application
+// records acceptance of (profiles.terms_version, AW-019): the same date, so
+// one edit here dates both pages and the record. Change it whenever either
+// policy changes. Applications sent before October 10, 2026 recorded
+// '2026-09', the month the pages printed then.
 // TODO(owner): approve the Trade terms and Privacy policy version the
 // application records acceptance of (AW-019).
 // TODO(owner): The exact date each policy should show. (AW-277)
-export const POLICIES_UPDATED = 'September 2026';
-export const TERMS_VERSION = '2026-09';
+export const POLICIES_UPDATED_ON = '2026-10-10';
+export const POLICIES_UPDATED = policyDateLabel(POLICIES_UPDATED_ON);
+export const TERMS_VERSION = POLICIES_UPDATED_ON;
+// The Delivery policy's own date (AW-130, AW-277). Its terms haven't changed
+// since September 2026, so it doesn't take the date above, and an
+// application doesn't record it.
+export const DELIVERY_POLICY_UPDATED_ON = '2026-09';

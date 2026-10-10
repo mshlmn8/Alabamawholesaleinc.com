@@ -48,7 +48,8 @@ let started = false;
 // internal link's path (and #anchor; never its query, which can hold typed
 // text), { line } a cart line's data-line-key, or { id }.
 const positions = new Map();
-const SCROLL_STORE = 'aw-scroll';
+// Named in the privacy policy (AW-027), like every key the site stores.
+export const SCROLL_STORE = 'aw-scroll';
 const MAX_POSITIONS = 50;
 // Dialog history entries (AW-065). `holders` are the open ModalLayers, oldest
 // first; `pushed` is true while the entry they share is in the history.

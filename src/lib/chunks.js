@@ -153,6 +153,7 @@ export function isWarm(name) {
 // Resolves when `name`'s code can load: online, or offline from the cache.
 const whenLoadable = (name) => (isOnline() || isWarm(name) ? Promise.resolve() : whenOnline());
 
+// sessionStorage; named in the privacy policy (AW-027).
 export const CHUNK_RELOAD_KEY = 'aw-chunk-reload';
 const reloadNow = () => window.location.reload();
 let reloadPage = reloadNow;

@@ -7,6 +7,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthContext } from '../lib/auth.jsx';
+import { TERMS_VERSION } from '../data/content.js';
 import { FILE_TOO_LARGE_MESSAGE, uploadSelectedProof } from '../lib/documents.js';
 import { AuthModal, CHECKING_TIMEOUT_MS, RESEND_COOLDOWN_MS, RESEND_RATE_LIMITED } from './AuthModal.jsx';
 
@@ -208,7 +209,8 @@ describe('AuthModal application form', () => {
     expect(signUp).toHaveBeenCalledWith(expect.objectContaining({
       store_street: '1 Test St', store_city: 'Birmingham', store_zip: '35203',
       business_type: 'Smoke Shop', state: 'AL', expected_volume: '$15K — $50K',
-      terms_accepted: true, terms_version: '2026-09', age_confirmed: true,
+      // The day the Privacy policy and Trade terms print (AW-019, AW-027).
+      terms_accepted: true, terms_version: TERMS_VERSION, age_confirmed: true,
     }));
   });
 });

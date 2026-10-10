@@ -13,9 +13,10 @@ export const POLICY_TEXT = {
     title: 'Delivery policy',
     intro: 'How orders leave the Birmingham warehouse: on our own trucks along routes in Alabama, Mississippi and Georgia, or will-call pickup during business hours.',
   },
+  // In plain language, from what the site actually does (AW-027).
   privacy: {
     title: 'Privacy',
-    intro: 'What Alabama Wholesale collects from trade customers, and why.',
+    intro: 'What Alabama Wholesale collects when you apply, sign in and order, why, who handles and sees it, and how to ask for a copy, a correction or deletion.',
   },
   terms: {
     title: 'Trade terms',

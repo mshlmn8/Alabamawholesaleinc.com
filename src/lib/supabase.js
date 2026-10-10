@@ -37,7 +37,7 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 // Where auth-js keeps the session in localStorage ('aw-auth', plus
 // 'aw-auth-…' helper keys). src/lib/auth.jsx clears these itself when a
 // sign-out cannot reach Supabase (AW-047), and follows changes to them made
-// by other tabs.
+// by other tabs. The privacy policy names it (AW-027).
 export const AUTH_STORAGE_KEY = 'aw-auth';
 
 // The supabase-js release the packages come from, and the X-Client-Info it

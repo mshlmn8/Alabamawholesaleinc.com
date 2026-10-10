@@ -2500,6 +2500,9 @@ address.info-lead-small { font-style: normal; }
 .policy-body ul { margin: 0 0 10px; padding-left: 20px; list-style: disc; }
 .policy-body li { font-size: var(--text-lg); line-height: 1.7; margin-bottom: 6px; }
 .policy-body a, .policy-body .text-link { font-size: inherit; }
+/* The browser storage keys the privacy policy names (AW-027): like the other
+   code text, and free to wrap anywhere so a long key never widens a phone. */
+.policy-body code { font: 600 var(--text-base)/1.4 var(--body); color: var(--purple); overflow-wrap: anywhere; }
 
 /* all-products index */
 .dept-jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 14px; }
