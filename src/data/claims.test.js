@@ -35,6 +35,8 @@ const RETIRED = [
   ['an approval or response time', /\bbusiness days?\b|\bapproved within\b|\bwithin (one|1|two|2|24|48) (business )?(day|days|hour|hours)\b/i],
   ['direct from the manufacturer', /\bdirect(ly)? from (the )?manufacturers?\b/i],
   ['a count of accounts', /\b\d[\d,]*\+? (retail )?(accounts|stores|retailers|customers) (served|trust)/i],
+  // The number published before the owner's phone answer.
+  ['the old phone number', /354[-. ]?4473|\+?1?2053544473/],
 ];
 
 const published = () => [
