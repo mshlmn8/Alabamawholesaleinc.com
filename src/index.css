@@ -536,7 +536,17 @@ p > .text-link { min-height: 0; min-width: 0; }
    swipe anywhere on the carousel changes slides, so the page only scrolls up
    and down there (AW-161). */
 .home-carousel { position: relative; background: var(--tile); touch-action: pan-y; }
-.home-carousel-stage { position: relative; aspect-ratio: 16 / 10; overflow: hidden; background: var(--tile); -webkit-user-select: none; user-select: none; }
+/* The stage is never shorter than the column of touch targets at its right
+   edge: Next at its middle and the pause toggle at its foot, with room
+   between them. The targets grow with the browser's text size and a 16:10
+   box on a phone doesn't: at 150% and 200% text on a 320-430px phone the
+   toggle sat on Next. The minimum is in rem, so at the default text size it
+   is below every phone's 16:10 height and changes nothing; at large text
+   the stage grows taller and the photo, never drawn larger than its own
+   size, stays centred in it. The same three rows (the vape slide's link at
+   the top, previous/next, then its dots and the toggle) fit one above the
+   other. */
+.home-carousel-stage { position: relative; aspect-ratio: 16 / 10; min-height: calc(3 * var(--tap) + 2rem); overflow: hidden; background: var(--tile); -webkit-user-select: none; user-select: none; }
 /* Each slide is a stacking context, so its photo (z-index -1) sits under
    the department link that follows it in the page. */
 .home-carousel-slide { position: absolute; inset: 0; z-index: 0; display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity .3s; }
@@ -2147,8 +2157,10 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .aw-logo img { height: 42px; }
   .aw-logo-text { min-height: 42px; }
   .aw-menu-toggle span:last-child { display: none; }
-  /* On the vape slide the dots move left, clear of the pause toggle. */
-  .home-carousel.is-warning .home-carousel-dots { left: 12px; transform: none; }
+  /* On the vape slide the dots move left, clear of the pause toggle, and
+     narrow to leave it its place at the photo's foot: at large text four
+     dots are wider than the photo (their buttons shrink to fit). */
+  .home-carousel.is-warning .home-carousel-dots { left: 12px; transform: none; max-width: calc(100% - 32px - var(--tap)); }
   /* Too narrow (or the text too large) for State and ZIP side by side: the
      state names and "Choose a state…" would be cut off (AW-241). */
   .checkout-form-grid { grid-template-columns: minmax(0, 1fr); }

@@ -1962,3 +1962,53 @@ describe('older browsers the build targets (NEW-019)', () => {
     expect(declarations(site.find((r) => r.selectors.join() === '.pd-grid ~ .section').body)).toEqual({ display: 'none' });
   });
 });
+
+// The hero's on-photo controls at large browser text. Next sits at the
+// stage's middle and the pause toggle at its foot, both var(--tap) touch
+// targets that grow with the text while a 16:10 stage on a phone doesn't: at
+// 200% text on a 320-430px phone the toggle sat on Next. The stage's rem
+// minimum keeps them apart at any text size, and is below every phone's 16:10
+// height at the default size.
+describe('the hero stage at large browser text', () => {
+  const all = rules(css);
+  const blocks = mediaBlocks(css);
+  const own = (selector) => declarations(all.find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+  const inBlock = (prelude, selector) => declarations(blocks.filter((b) => b.prelude === prelude)
+    .flatMap((b) => rules(b.body)).find((r) => r.selectors.join(', ') === selector)?.body ?? '');
+  const px = (value) => Number(/^(\d+(?:\.\d+)?)px$/.exec(value)[1]);
+  const tapRem = Number(/^(\d+(?:\.\d+)?)rem$/.exec(root['--tap'])[1]);
+
+  it('is at least three touch targets and 2rem tall, so the pause toggle never meets Next', () => {
+    expect(own('.home-carousel-stage')['min-height']).toBe('calc(3 * var(--tap) + 2rem)');
+    expect(own('.home-carousel-stage')['aspect-ratio']).toBe('16 / 10');
+    expect(own('.home-carousel-prev, .home-carousel-next')).toMatchObject({ top: '50%', 'margin-top': 'calc(var(--tap) / -2)' });
+    // The toggle's distance from the stage's foot, at every width.
+    const bottoms = all.filter((r) => r.selectors.includes('.home-carousel-toggle')).map((r) => declarations(r.body).bottom).filter(Boolean).map(px);
+    expect(bottoms).toEqual([14, 12]);
+    // Browser text sizes from the default to 200%, stage widths from a 320px
+    // phone's (286px) to a tablet's.
+    for (const text of [16, 20, 24, 28, 32]) {
+      const tap = tapRem * text;
+      const minHeight = 3 * tap + 2 * text;
+      for (let width = 286; width <= 734; width += 4) {
+        const height = Math.max(width * 10 / 16, minHeight);
+        const nextBottom = height / 2 + tap / 2;
+        for (const bottom of bottoms) {
+          expect(height - bottom - tap - nextBottom, `${text}px text, ${width}px stage`).toBeGreaterThan(0);
+        }
+      }
+    }
+    // At the default size the minimum changes nothing on a phone.
+    expect(3 * tapRem * 16 + 2 * 16).toBeLessThan(286 * 10 / 16);
+  });
+
+  it('keeps the vape slide’s dots on the photo clear of the pause toggle on narrow screens', () => {
+    const dots = inBlock('(max-width: 22.5em)', '.home-carousel.is-warning .home-carousel-dots');
+    expect(dots).toEqual({ left: '12px', transform: 'none', 'max-width': 'calc(100% - 32px - var(--tap))' });
+    const toggle = inBlock('(max-width: 37.5em)', '.home-carousel-next, .home-carousel-toggle');
+    // The dots end at most (100% - 32px - tap) + 12px from the left; the
+    // toggle starts tap + 12px from the right: 8px between them.
+    const reserved = Number(/calc\(100% - (\d+)px - var\(--tap\)\)/.exec(dots['max-width'])[1]);
+    expect(reserved - px(dots.left) - px(toggle.right)).toBe(8);
+  });
+});
