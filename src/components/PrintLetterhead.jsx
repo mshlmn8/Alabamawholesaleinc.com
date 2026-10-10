@@ -3,13 +3,15 @@
 // the admin's pick list and packing slip print their own company line, so
 // the print stylesheet leaves this off them.
 
-import { COMPANY } from '../data/content.js';
+import { useSite } from '../lib/siteSettings.js';
 
+// The phone and email are the ones staff set in Admin -> Site settings (AW-030).
 export function PrintLetterhead() {
+  const site = useSite();
   return (
     <p className="print-letterhead container">
-      <strong>{COMPANY.name}</strong>
-      <span>{`${COMPANY.phone} · ${COMPANY.email}`}</span>
+      <strong>{site.name}</strong>
+      <span>{`${site.phone} · ${site.email}`}</span>
     </p>
   );
 }

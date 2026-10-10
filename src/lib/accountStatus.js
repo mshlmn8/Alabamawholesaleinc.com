@@ -72,16 +72,28 @@ export function orderGate(profile, account) {
   return status === 'approved' ? null : status;
 }
 
-// Only an approved admin gets the admin dashboard, as only an approved
-// admin passes is_admin() in the database (AW-352).
+// The roles that open the admin area (AW-030, owner answer 2026-10): the
+// owner's admin accounts and staff accounts. Staff can do everything there
+// except change an account's role or pricing tier and the pricing tiers
+// themselves; the database says the same (is_staff_or_admin() and
+// is_admin(), 20261014120000_staff_role.sql).
+export const STAFF_ROLES = Object.freeze(['admin', 'staff']);
+export const isStaffRole = (role) => STAFF_ROLES.includes(role);
+
+// An approved admin: roles and pricing tiers are theirs alone, as only an
+// approved admin passes is_admin() in the database (AW-352).
 export const isApprovedAdmin = (profile) => profile?.role === 'admin' && profile?.status === 'approved';
+// An approved admin or staff account: the admin area (the header's Admin
+// link, the dashboard), as is_staff_or_admin() in the database. A pending or
+// suspended staff account is a customer.
+export const isApprovedStaff = (profile) => isStaffRole(profile?.role) && profile?.status === 'approved';
 
 // What /admin shows in place of the dashboard (NEW-020): 'signin' to a
-// signed-out visitor, 'staff' to an account that isn't an approved admin
-// (pending, suspended, or a buyer), and null to an approved admin. Also null
-// while the account loads or when its profile didn't load: the page then
-// says that under its 'Admin' h1 instead. AdminPage shows the gate's h1,
-// and App puts the gate in the tab title (meta.js), so they agree.
+// signed-out visitor, 'staff' to an account that isn't an approved admin or
+// staff account (pending, suspended, or a buyer), and null to one that is.
+// Also null while the account loads or when its profile didn't load: the
+// page then says that under its 'Admin' h1 instead. AdminPage shows the
+// gate's h1, and App puts the gate in the tab title (meta.js), so they agree.
 export const ADMIN_GATE_HEADINGS = Object.freeze({
   signin: 'Sign in to continue',
   staff: 'This page is for the trade desk',
@@ -89,7 +101,7 @@ export const ADMIN_GATE_HEADINGS = Object.freeze({
 export function adminGate(profile, account) {
   if (account === 'loading' || account === 'no-profile') return null;
   if (!profile) return 'signin';
-  return isApprovedAdmin(profile) ? null : 'staff';
+  return isApprovedStaff(profile) ? null : 'staff';
 }
 
 // What /apply shows a visitor (its page head, App's title for it, and the

@@ -6,7 +6,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { AuthContext } from '../lib/auth.jsx';
-import { APPLICATION_TIMEOUT_MESSAGE, OFFLINE_MESSAGE, slowMessage } from '../lib/errors.js';
+import { OFFLINE_MESSAGE, applicationTimeoutMessage, slowMessage } from '../lib/errors.js';
 import { timeoutError } from '../lib/network.js';
 import { AuthModal } from './AuthModal.jsx';
 
@@ -78,7 +78,7 @@ describe('AuthModal on a slow or missing connection', () => {
     setup({ signUp: vi.fn(async () => { throw timeoutError(); }) }, { initialMode: 'application' });
     fillApplication();
     await act(async () => { fireEvent.submit(screen.getByLabelText('Your name').closest('form')); });
-    expect(dialogAlert().textContent).toBe(APPLICATION_TIMEOUT_MESSAGE);
+    expect(dialogAlert().textContent).toBe(applicationTimeoutMessage());
     // The answers stay, and the application can be sent again.
     expect(screen.getByLabelText('Your name').value).toBe('New Buyer');
     expect(screen.getByRole('button', { name: 'Submit application' }).disabled).toBe(false);

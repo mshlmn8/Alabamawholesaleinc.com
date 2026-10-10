@@ -106,7 +106,7 @@ describe('pageMeta', () => {
       ...['guest', 'loading', 'no-profile', 'pending', 'approved', 'suspended'].map((applyAs) => ({ page: 'apply', applyAs })),
       ...['unavailable', 'request', 'checking', 'form', 'done', 'link-invalid'].map((view) => ({ page: 'reset-password', view })),
       ...[{}, { section: 'accounts' }, { section: 'accounts', id: 'x' }, { section: 'products' }, { section: 'products', id: 'new' }, { section: 'products', id: 3 },
-        { section: 'pricing' }, { section: 'homepage' }, { view: 'print' }, { view: 'print', query: { doc: 'slip' } }, { gated: 'signin' }, { gated: 'staff' }]
+        { section: 'pricing' }, { section: 'homepage' }, { section: 'settings' }, { view: 'print' }, { view: 'print', query: { doc: 'slip' } }, { gated: 'signin' }, { gated: 'staff' }]
         .map((r) => ({ page: 'admin', ...r })),
       ...['page', 'product', 'department', 'line'].map((kind) => ({ page: 'not-found', kind })),
       { page: 'not-found', kind: 'product', catalog: 'loading' },
@@ -274,6 +274,7 @@ describe('pageMeta', () => {
     expect(title({ section: 'products', id: 12 })).toBe('Edit product · Admin · Alabama Wholesale Inc');
     expect(title({ section: 'pricing' })).toBe('Pricing · Admin · Alabama Wholesale Inc');
     expect(title({ section: 'homepage' })).toBe('Homepage · Admin · Alabama Wholesale Inc');
+    expect(title({ section: 'settings' })).toBe('Site settings · Admin · Alabama Wholesale Inc');
     expect(pageMeta({ page: 'admin', section: 'products', id: 12 }, products, departments)).toMatchObject({ noindex: true, path: null });
     // Orders placed since the last visit to Orders (AW-111): a count, never a name.
     expect(title({ unseen: 2 })).toBe('(2) Orders · Admin · Alabama Wholesale Inc');

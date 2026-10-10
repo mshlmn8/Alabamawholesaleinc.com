@@ -21,11 +21,12 @@
 // the plain heading and the open list. The columns carry classes so the CSS
 // can put the contact details beside the longer list (index.css).
 
-import { COMPANY, HOURS, LICENSED_ONLY, TIME_ZONE_LABEL, hoursRange } from '../data/content.js';
+import { COMPANY, LICENSED_ONLY } from '../data/content.js';
 import { APPLY_LABEL, SIGN_IN_LABEL, TRADE_ACCOUNT_LABEL } from '../data/terms.js';
 import { Link, useRoute } from '../lib/router.js';
 import { currentFor } from '../lib/navCurrent.js';
 import { useMediaQuery } from '../lib/useMediaQuery.js';
+import { useSite } from '../lib/siteSettings.js';
 import { EmailText } from './ContactLinks.jsx';
 import { Icon } from './Icon.jsx';
 import { NicotineWarning } from './NicotineWarning.jsx';
@@ -33,8 +34,6 @@ import { NicotineWarning } from './NicotineWarning.jsx';
 // The phone layout, where Departments folds: the same condition as the
 // footer's phone block in src/index.css (styles.test.js checks they match).
 export const FOOTER_FOLD_QUERY = '(max-width: 37.5em)';
-
-const NBSP = '\u00A0';
 
 // The copyright year, read once when the module loads: render may not read
 // the clock (react-hooks/purity).
@@ -68,6 +67,7 @@ export function Footer({ departments, signedIn = false, onLoginClick, onApplyCli
   const { raw } = useRoute();
   const current = (to) => currentFor(raw, to);
   const fold = useMediaQuery(FOOTER_FOLD_QUERY);
+  const site = useSite();
   const shopLinks = (
     <>
       <Link className="footer-link" to="/catalog" aria-current={current('/catalog')}>All products</Link>
@@ -108,11 +108,13 @@ export function Footer({ departments, signedIn = false, onLoginClick, onApplyCli
           </div>
           <div className="footer-contact">
             <h2>Contact</h2>
-            <p>{COMPANY.addressLine1}<br />{COMPANY.addressLine2}</p>
-            <p><a href={`tel:${COMPANY.phoneRaw}`}>{COMPANY.phone}</a><br /><a href={`mailto:${COMPANY.email}`}><EmailText /></a></p>
+            {/* The address, phone, email and hours staff set in Admin -> Site
+                settings (AW-030), or content.js's. */}
+            <p><span>{site.addressLine1}</span><br /><span>{site.addressLine2}</span></p>
+            <p><a href={`tel:${site.phoneRaw}`}>{site.phone}</a><br /><a href={`mailto:${site.email}`}><EmailText /></a></p>
             {/* In the narrow phone column the email breaks after the '@' and
                 each line of hours after its days, never inside the times. */}
-            <p>{HOURS.map((row) => <span className="footer-hours" key={row.days}><span>{row.days}</span> <span>{`${hoursRange(row)}${NBSP}${TIME_ZONE_LABEL}`}</span></span>)}</p>
+            <p>{site.hours.map((row, i) => <span className="footer-hours" key={`${i}:${row.days}`}><span>{row.days}</span> <span>{row.time}</span></span>)}</p>
           </div>
         </div>
         <div className="footer-legal">

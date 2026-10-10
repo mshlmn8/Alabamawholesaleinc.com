@@ -6,7 +6,7 @@ import { tierUnitPrice } from '../../lib/pricing.js';
 import { parseCsv, toCsv } from './csv.js';
 import {
   adjustPreview, adjustRow, adjustedPrice, createRows, csvFileName, displayValue, exportColumns, importPlan, importRows, parseActive, parseAdjust,
-  productCsvRecords,
+  parseSellUnit, productCsvRecords, sellUnitOptions,
 } from './productBulk.js';
 
 describe('the adjust box', () => {
@@ -224,5 +224,21 @@ describe('import', () => {
     expect(displayValue('stock_status', 'low')).toBe('Low stock');
     expect(displayValue('tag', null)).toBe('—');
     expect(displayValue('description', 'x'.repeat(80))).toHaveLength(58);
+  });
+});
+
+// AW-031 (owner answer 2026-10): staff set sell units in bulk.
+describe('sell units', () => {
+  it('reads the Set sell unit box as the editor does: trimmed, blank removes it, 60 characters at most', () => {
+    expect(parseSellUnit('  box of   24 ')).toEqual({ ok: true, value: 'box of 24' });
+    expect(parseSellUnit('')).toEqual({ ok: true, value: '' });
+    expect(parseSellUnit('x'.repeat(60))).toEqual({ ok: true, value: 'x'.repeat(60) });
+    expect(parseSellUnit('x'.repeat(61))).toEqual({ ok: false, error: 'Keep the sell unit to 60 characters.' });
+  });
+
+  it('offers the sell units in use, most used first, then A to Z', () => {
+    const rows = [{ sell_unit: 'each' }, { sell_unit: 'box of 24' }, { sell_unit: ' each ' }, { sell_unit: '' }, { sell_unit: null }, { sell_unit: 'case of 12' }];
+    expect(sellUnitOptions(rows)).toEqual(['each', 'box of 24', 'case of 12']);
+    expect(sellUnitOptions()).toEqual([]);
   });
 });

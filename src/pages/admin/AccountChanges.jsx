@@ -9,21 +9,25 @@
 //   keyboard focus) and Approve is disabled, so a double click sends one.
 // - The status line says what changed, with Undo for 8 seconds; Undo puts the
 //   previous values back the same way.
-// - Suspending, making an account an admin and removing admin access ask
-//   first, with a required reason (ConfirmDialog, AW-112, AW-203), and the
-//   reason goes in the account's internal notes (profile_admin_notes,
-//   20261009140000): "Suspended: …", "Made an admin: …", "Admin access
-//   removed: …". Without that table, or if the note isn't saved, the page
+// - Suspending, making an account an admin or staff (AW-030) and removing
+//   that access ask first, with a required reason (ConfirmDialog, AW-112,
+//   AW-203), and the reason goes in the account's internal notes
+//   (profile_admin_notes, 20261009140000): "Suspended: …", "Made an admin:
+//   …", "Made staff: …", "Admin access removed: …", "Staff access removed:
+//   …". Without that table, or if the note isn't saved, the page
 //   says the change was made but the reason wasn't saved. These have no Undo
 //   (it would skip the question). The database logs role changes too
 //   (profile_status_log, 20261011111000).
 // - The admin's own status and role can't be changed (the database refuses
-//   it too, hint own_role_status).
+//   it too, hint own_role_status). Only an admin sees the role and tier
+//   selects; staff change neither, nor a staff or admin account
+//   (accountAccess.js; the database's hints role_admin_only,
+//   tier_admin_only and staff_account).
 //
 //   const changes = useAccountChanges({ setProfiles, currentAdminId, notify });
 //   changes.change(row, { pricing_tier: 'gold' }, { focusId });
 //   changes.setStatus(row, 'suspended', { focusId, onNote });
-//   changes.setRole(row, 'admin', { focusId, onNote });
+//   changes.setRole(row, 'staff', { focusId, onNote });   'customer' | 'staff' | 'admin'
 //   changes.saving(row.id)   'approve' | 'status' | … while a request is out
 //   {changes.error && …}  <AccountChangeDialog changes={changes} />
 
@@ -131,13 +135,16 @@ export function useAccountChanges({ setProfiles, currentAdminId, notify }) {
     change(row, { status }, { kind: 'status', focusId });
   };
 
-  // A role from a select (AW-203): both ways ask for a reason first. An
-  // admin must be an approved account (is_admin()), so making a pending or
-  // suspended account an admin approves it too.
+  // A role from a select (AW-203, AW-030): every change asks for a reason
+  // first. Admins and staff must be approved accounts (is_admin(),
+  // is_staff_or_admin()), so making a pending or suspended account an admin
+  // or staff approves it too.
   const setRole = (row, role, { onNote = null } = {}) => {
     if (savingRef.current.has(row.id) || role === row.role) return;
-    if (role === 'admin') ask('make-admin', row, row.status === 'approved' ? { role: 'admin' } : { role: 'admin', status: 'approved' }, onNote);
-    else ask('remove-admin', row, { role }, onNote);
+    const approve = (patch) => (row.status === 'approved' ? patch : { ...patch, status: 'approved' });
+    if (role === 'admin') ask('make-admin', row, approve({ role: 'admin' }), onNote);
+    else if (role === 'staff') ask('make-staff', row, approve({ role: 'staff' }), onNote);
+    else ask(row.role === 'staff' ? 'remove-staff' : 'remove-admin', row, { role }, onNote);
   };
 
   const confirmChange = async (reason) => {
@@ -212,6 +219,18 @@ export const CONFIRMED_CHANGES = {
     note: 'Made an admin: ',
     done: (who) => `${who} is now an admin`,
   },
+  // Staff (AW-030): all of Admin but roles and pricing tiers.
+  'make-staff': {
+    kind: 'role',
+    title: (who) => `Make ${who} staff?`,
+    body: (row) => `Staff can use all of Admin: orders, accounts with their EINs and license documents, products and prices, photos, the home page and site settings. They can’t change roles or pricing tiers.${row.role === 'admin' ? ' This takes away their admin access.' : ''}${row.status === 'approved' ? '' : ' This also approves the account.'}`,
+    confirm: 'Make staff',
+    cancel: 'Cancel',
+    reason: 'Reason',
+    hint: NOTE_HINT,
+    note: 'Made staff: ',
+    done: (who) => `${who} is now staff`,
+  },
   'remove-admin': {
     kind: 'role',
     title: (who) => `Remove admin access from ${who}?`,
@@ -222,6 +241,17 @@ export const CONFIRMED_CHANGES = {
     hint: NOTE_HINT,
     note: 'Admin access removed: ',
     done: (who) => `${who} no longer has admin access`,
+  },
+  'remove-staff': {
+    kind: 'role',
+    title: (who) => `Remove staff access from ${who}?`,
+    body: () => 'They keep their customer account and lose Admin.',
+    confirm: 'Remove staff access',
+    cancel: 'Cancel',
+    reason: 'Reason',
+    hint: NOTE_HINT,
+    note: 'Staff access removed: ',
+    done: (who) => `${who} no longer has staff access`,
   },
 };
 

@@ -6,6 +6,8 @@
 //   adjustedPrice(price, change)    one new price, in integer cents
 //   adjustPreview(rows, change)     old -> new, skipped and refused rows
 //   adjustRow(row, change)          a row as the database leaves it
+//   parseSellUnit(text)             the "Set sell unit" box (AW-031)
+//   sellUnitOptions(rows)           the sell units the catalog uses
 //   exportColumns(columns)          the CSV's columns
 //   productCsvRecords(rows, cols)   the CSV's header and rows
 //   csvFileName(date)               products-YYYY-MM-DD.csv
@@ -23,7 +25,7 @@ import { normalizeSku } from '../../lib/lines.js';
 import { departmentsFor } from '../../lib/departments.js';
 import { formatMoney } from '../../lib/format.js';
 import {
-  MAX_PRICE, PRODUCT_TAGS, STOCK_LABELS, STOCK_STATUSES, draftFromRow, emptyDraft, hasColumn, productValues, validateProduct,
+  LIMITS, MAX_PRICE, PRODUCT_TAGS, STOCK_LABELS, STOCK_STATUSES, draftFromRow, emptyDraft, hasColumn, productValues, validateProduct,
 } from './productForm.js';
 import { unguardCell } from './csv.js';
 
@@ -102,6 +104,30 @@ export function adjustRow(row, change, { variants = true } = {}) {
     next.variantPrices = Object.fromEntries(Object.entries(row.variantPrices).map(([label, price]) => [label, price == null ? null : adjustedPrice(price, change)]));
   }
   return next;
+}
+
+// ---------------------------------------------------------------------------
+// Sell units (AW-031; owner answer 2026-10: staff set them in Admin).
+// ---------------------------------------------------------------------------
+
+// The "Set sell unit" box: what quantity 1 is ('box of 24', 'case of 12',
+// 'each'), as the product editor takes it: trimmed, at most LIMITS.sellUnit
+// characters; blank removes the sell unit. { ok, value } or { ok: false, error }.
+export function parseSellUnit(raw) {
+  const value = text(raw).trim().replace(/\s+/g, ' ');
+  if (value.length > LIMITS.sellUnit) return { ok: false, error: `Keep the sell unit to ${LIMITS.sellUnit} characters.` };
+  return { ok: true, value };
+}
+
+// The sell units the loaded products use, most used first (then A-Z), for
+// the box's suggestions, so the same unit is written the same way.
+export function sellUnitOptions(rows = []) {
+  const counts = new Map();
+  for (const row of rows) {
+    const unit = text(row.sell_unit).trim();
+    if (unit) counts.set(unit, (counts.get(unit) || 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([unit]) => unit);
 }
 
 // ---------------------------------------------------------------------------

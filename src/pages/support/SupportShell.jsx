@@ -1,12 +1,18 @@
 // Shared pieces for the customer support pages (contact, delivery, policies,
 // application, password reset). Same editorial system as the storefront.
+// The address, hours, phone and email are the ones staff set in Admin ->
+// Site settings (AW-030, useSite), or content.js's.
 
-import { COMPANY } from '../../data/content.js';
+import { DEFAULT_SITE } from '../../data/siteFacts.js';
 import { APPLY_LABEL, TRADE_ACCOUNT_LABEL } from '../../data/terms.js';
 import { Link } from '../../lib/router.js';
+import { useSite } from '../../lib/siteSettings.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 
-export const DIRECTIONS_URL = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${COMPANY.addressLine1}, ${COMPANY.addressLine2}`)}`;
+// Directions to the warehouse in Google Maps; DIRECTIONS_URL is the site's
+// own address.
+export const directionsUrl = (site) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${site.addressLine1}, ${site.addressLine2}`)}`;
+export const DIRECTIONS_URL = directionsUrl(DEFAULT_SITE);
 
 export const POLICY_LINKS = [
   { page: 'shipping', label: 'Delivery policy' },
@@ -27,16 +33,17 @@ export function PageHead({ crumb, eyebrow, title, children }) {
 
 // Compact contact strip reused at the bottom of the support pages.
 export function ContactStrip({ eyebrow = 'QUESTIONS?', title = 'Talk to the warehouse', contactLink = true }) {
+  const site = useSite();
   return (
     <aside className="contact-strip" aria-label="Contact the trade desk">
       <div>
         <p className="eyebrow">{eyebrow}</p>
         <h2>{title}</h2>
-        <p>Real people, same building as the inventory. {COMPANY.hoursLine1} · {COMPANY.hoursLine2}.</p>
+        <p>{`Real people, same building as the inventory. ${site.hoursLines.join(' · ')}.`}</p>
       </div>
       <div className="contact-strip-actions">
-        <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Call {COMPANY.phone}</a>
-        <a className="button on-dark" href={`mailto:${COMPANY.email}`}>Email us</a>
+        <a className="button" href={`tel:${site.phoneRaw}`}>{`Call ${site.phone}`}</a>
+        <a className="button on-dark" href={`mailto:${site.email}`}>Email us</a>
         {contactLink && <Link className="text-link" to="/contact">Contact &amp; visit</Link>}
       </div>
     </aside>

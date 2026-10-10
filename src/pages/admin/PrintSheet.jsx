@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { Link } from '../../lib/router.js';
-import { COMPANY } from '../../data/content.js';
+import { useSite } from '../../lib/siteSettings.js';
 import { adminErrorMessage } from './adminData.js';
 import { LoadProblem } from './AdminStatus.jsx';
 import { orderMethod, placedAt, requestedDate } from './OrdersSection.jsx';
@@ -19,6 +19,7 @@ import { PRINT_DOCS, loadPrintOrder, printDoc, printGroups, printHref, printLine
 // onBack(event): Back was clicked (AdminPage goes back in history when the
 // list opened this sheet).
 export function PrintSheet({ orderId, doc: requested, listHref, onBack }) {
+  const site = useSite();
   const doc = printDoc(requested);
   const sheet = PRINT_DOCS[doc];
   const [state, setState] = useState({ order: undefined, error: null });
@@ -57,7 +58,7 @@ export function PrintSheet({ orderId, doc: requested, listHref, onBack }) {
       </div>
       <header className="print-head">
         {doc === 'slip' && (
-          <p className="print-company">{`${COMPANY.name} · ${COMPANY.addressShort} · ${COMPANY.phone}`}</p>
+          <p className="print-company">{`${site.name} · ${site.addressShort} · ${site.phone}`}</p>
         )}
         <h2 id="print-title" ref={headingRef} tabIndex={-1}>
           <span>{sheet.title}</span> <span className="print-ref">{order ? order.ref_num : ''}</span>

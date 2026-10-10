@@ -5,25 +5,27 @@
 // apart from that (AW-344, AW-194): this file is the one place that words
 // them.
 
-import { COMPANY } from '../data/content.js';
+import { currentSite } from '../data/siteFacts.js';
 import { isOffline, isTimeoutError } from './network.js';
 
 const NETWORK_ERROR = /fetch|network|load failed/i;
 
 export const isNetworkError = (err) => NETWORK_ERROR.test(err?.message || '');
 
+// The phone and email are the ones the site shows now (Admin -> Site
+// settings, AW-030), read when the message is made.
 export const unavailableMessage = (what) =>
-  `${what} is unavailable right now. Call ${COMPANY.phone} or email ${COMPANY.email} and a trade rep will help you.`;
+  `${what} is unavailable right now. Call ${currentSite().phone} or email ${currentSite().email} and a trade rep will help you.`;
 
 // The browser has no connection: the buyer's side, not the business's.
 export const OFFLINE_MESSAGE = 'You appear to be offline. Check your connection and try again.';
 
 export const slowMessage = (what) =>
-  `${what} is taking too long to answer. Check your connection and try again, or call ${COMPANY.phone}.`;
+  `${what} is taking too long to answer. Check your connection and try again, or call ${currentSite().phone}.`;
 
 // What to say when the application (sign-up) timed out: it may have gone
 // through, and its confirmation email says so.
-export const APPLICATION_TIMEOUT_MESSAGE = `The application is taking too long to send. Check your inbox: if a confirmation email arrives, it went through. Otherwise try again, or call ${COMPANY.phone}.`;
+export const applicationTimeoutMessage = () => `The application is taking too long to send. Check your inbox: if a confirmation email arrives, it went through. Otherwise try again, or call ${currentSite().phone}.`;
 
 // The message to show for a failed request: the offline copy while the
 // browser is offline, the "taking too long" copy for a timeout, the

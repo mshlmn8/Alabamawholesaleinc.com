@@ -19,16 +19,18 @@
 // order was sent, on the warehouse's clock; the phone number to be reached
 // at is written the usual way, and the notes keep their lines (NEW-062).
 
-import { COMPANY } from '../data/content.js';
 import { BASKET } from '../data/terms.js';
 import { formatMoney } from '../lib/format.js';
 import { DELIVERY_LABELS, formatPreferredDate, formatSentAt, reachAtText } from '../lib/receipt.js';
 import { Link } from '../lib/router.js';
+import { useSite } from '../lib/siteSettings.js';
 import { showToast } from '../lib/toast.js';
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 export function QuoteReceipt({ receipt, signedIn = false, headingRef = null }) {
+  // The warehouse's address and phone, as staff set them (AW-030).
+  const site = useSite();
   // Copy is offered only where the browser has a clipboard to write to
   // (secure pages in current browsers). The toast shows the result and
   // speaks it through announce(), once.
@@ -51,7 +53,7 @@ export function QuoteReceipt({ receipt, signedIn = false, headingRef = null }) {
   return (
     <section className="page-head receipt-head">
       {/* Printed only: whom the receipt is from. */}
-      <p className="receipt-from">{`${COMPANY.name} · ${COMPANY.addressShort} · ${COMPANY.phone}`}</p>
+      <p className="receipt-from">{`${site.name} · ${site.addressShort} · ${site.phone}`}</p>
       <p className="eyebrow">{BASKET.received.toUpperCase()}</p>
       <h1 ref={headingRef} tabIndex={-1}>{`Thank you, ${receipt.contact || 'partner'}.`}</h1>
       {/* No response time is promised (AW-246, owner answer 2026-10). The
@@ -93,7 +95,7 @@ export function QuoteReceipt({ receipt, signedIn = false, headingRef = null }) {
               <dd><span className="receipt-line">{ship.street}</span><span className="receipt-line">{`${ship.city}, ${ship.state} ${ship.zip}`}</span></dd>
             </div>
           ) : (
-            <div><dt>Pickup at</dt><dd>{`${COMPANY.addressShort}, during business hours`}</dd></div>
+            <div><dt>Pickup at</dt><dd>{`${site.addressShort}, during business hours`}</dd></div>
           )}
           {preferred && <div><dt>Preferred date</dt><dd>{preferred}</dd></div>}
           {receipt.notes && <div className="receipt-wide"><dt>Notes</dt><dd>{receipt.notes}</dd></div>}
@@ -105,7 +107,7 @@ export function QuoteReceipt({ receipt, signedIn = false, headingRef = null }) {
               sign-out is cleared then, App.handleLogout). */}
           {signedIn && <Link className="button ghost" to="/account">View order history</Link>}
           <button className="button ghost" type="button" onClick={() => window.print()}>Print</button>
-          <a className="button ghost" href={`tel:${COMPANY.phoneRaw}`}>Call to discuss</a>
+          <a className="button ghost" href={`tel:${site.phoneRaw}`}>Call to discuss</a>
         </div>
       </div>
     </section>

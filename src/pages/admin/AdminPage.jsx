@@ -8,7 +8,13 @@
 // (Orders), /admin/orders?status=…, /admin/orders/:id/print?doc=pick|slip
 // (AW-110), /admin/accounts?status=… (AW-268), /admin/products?q=…,
 // /admin/pricing (the tier discounts, AW-114), /admin/homepage (the hero
-// photos and the rails, AW-119).
+// photos and the rails, AW-119), /admin/settings (the announcements, phone,
+// email, hours and address, AW-030). Bare /admin also has "How to use
+// Admin" (AdminHelp.jsx).
+//
+// Approved admin and staff accounts use it (AW-030, owner answer 2026-10;
+// is_staff_or_admin() in the database). Staff don't get Pricing, or the
+// role and tier controls in Accounts: those are an admin's alone.
 // Every admin URL is the same page to the router (pageKey 'admin'), so moving
 // between sections and filters keeps the scroll position and focus, and Back
 // returns to the previous section. A detail view (the product editor,
@@ -30,12 +36,14 @@ import { preloadStorage } from '../../lib/storageClient.js';
 import { adminHref, adminPath, adminSection } from '../../lib/adminRoutes.js';
 import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
 import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
-import { ADMIN_GATE_HEADINGS, adminGate, isApprovedAdmin } from '../../lib/accountStatus.js';
+import { ADMIN_GATE_HEADINGS, adminGate, isApprovedAdmin, isApprovedStaff, isStaffRole } from '../../lib/accountStatus.js';
 import { OrdersTab, printLinkId } from './OrdersSection.jsx';
 import { AccountsTab } from './AccountsSection.jsx';
 import { NEW_PRODUCT_LINK_ID, ProductsTab, editLinkId } from './ProductsSection.jsx';
 import { PricingTab } from './PricingSection.jsx';
 import { HomepageTab, RAILS_HEADING_ID, railEditId } from './HomepageSection.jsx';
+import { SiteSettingsTab } from './SiteSettingsSection.jsx';
+import { AdminHelp } from './AdminHelp.jsx';
 import { PrintSheet } from './PrintSheet.jsx';
 import { printDoc } from './printSheet.js';
 import { accountLinkId } from './accountDetail.js';
@@ -49,13 +57,16 @@ export {
 export { approvalEmail, approvalLine } from './AccountsSection.jsx';
 export { loadAdminProducts } from './ProductsSection.jsx';
 
+// admin: an admin's alone (staff don't get the link, AW-030).
 const SECTIONS = [
   { id: 'orders', label: 'Orders' },
   { id: 'accounts', label: 'Accounts' },
   { id: 'products', label: 'Products' },
-  { id: 'pricing', label: 'Pricing' },
+  { id: 'pricing', label: 'Pricing', admin: true },
   { id: 'homepage', label: 'Homepage' },
+  { id: 'settings', label: 'Site settings' },
 ];
+export const PRICING_ADMIN_ONLY = 'Pricing tiers are changed by an admin. Ask the owner to change a tier’s discount or an account’s tier.';
 const NO_QUERY = Object.freeze({});
 
 // The control that opened a detail view, for its list to focus when the
@@ -133,13 +144,16 @@ export function AdminPage({
     setProductOpenedFrom(null);
     if (opener && !handled) setReturnFocusId(opener);
   }, [route, printFrom]);
+  // The admin area is for approved admin and staff accounts; roles and
+  // pricing tiers for approved admins (AW-030).
+  const staffAccess = isApprovedStaff(profile);
   const approvedAdmin = isApprovedAdmin(profile);
-  const ordersSince = useOrdersSeen(approvedAdmin && account === 'ready' && section === 'orders', supabase);
+  const ordersSince = useOrdersSeen(staffAccess && account === 'ready' && section === 'orders', supabase);
   // Photo uploads and document links need Storage, whose code loads on
-  // demand (AW-179): start that for an admin now, so the first one doesn't wait.
+  // demand (AW-179): start that for staff now, so the first one doesn't wait.
   useEffect(() => {
-    if (approvedAdmin) preloadStorage(supabase);
-  }, [approvedAdmin]);
+    if (staffAccess) preloadStorage(supabase);
+  }, [staffAccess]);
   // A filter change replaces the history entry and keeps the scroll position.
   // options.force: the change keeps any unsaved edit, so it skips the leave guard.
   const setQuery = (next, options = {}) => navigate(adminHref({ section, query: next }), { replace: true, scroll: false, ...options });
@@ -167,8 +181,9 @@ export function AdminPage({
 
   // While auth loads, a real admin sees "Loading", not "access denied"
   // (AW-087). Not a dead end otherwise (AW-232): signed-out visitors can sign
-  // in, and signed-in accounts without the admin role get a way back. The
-  // server boundary is RLS (is_admin()); this is only what the page shows.
+  // in, and signed-in accounts without the admin or staff role get a way
+  // back. The server boundary is RLS (is_staff_or_admin(), is_admin()); this
+  // is only what the page shows.
   // (Laid out like the dashboard, so its heading stays put when it loads.)
   if (account === 'loading' || account === 'no-profile') {
     return (
@@ -184,20 +199,21 @@ export function AdminPage({
       </section>
     );
   }
-  // Only an approved admin gets the dashboard, as only an approved admin
-  // passes is_admin() in the database (AW-352). A suspended or pending admin
-  // is told their access is on hold. App titles the tab by the same gate
-  // (adminGate, NEW-020), so the title names what is on screen.
+  // Only an approved admin or staff account gets the dashboard, as only
+  // those pass is_staff_or_admin() in the database (AW-352, AW-030). A
+  // suspended or pending one is told their access is on hold. App titles the
+  // tab by the same gate (adminGate, NEW-020), so the title names what is on
+  // screen.
   const gate = adminGate(profile, account);
   if (gate) {
-    const held = profile?.role === 'admin';
+    const held = isStaffRole(profile?.role);
     return (
       <section className="page-head">
         <Breadcrumbs items={[HOME_CRUMB, { label: 'Admin' }]} />
         <p className="eyebrow">TRADE DESK</p>
         <h1>{ADMIN_GATE_HEADINGS[gate]}</h1>
         <p>{held
-          ? 'Your admin access is on hold. Contact the owner.'
+          ? `Your ${profile.role === 'staff' ? 'staff' : 'admin'} access is on hold. Contact the owner.`
           : profile
             ? 'The admin area is only open to Alabama Wholesale staff accounts. Your account doesn’t have access.'
             : 'The admin area is only open to Alabama Wholesale staff accounts. Sign in with a staff account to continue.'}</p>
@@ -219,11 +235,13 @@ export function AdminPage({
         <Breadcrumbs items={[HOME_CRUMB, { label: 'Admin' }]} />
         <p className="eyebrow">TRADE DESK</p>
         <h1>Admin</h1>
-        <p>Orders, account approvals, catalog edits, pricing tiers, and the home page.</p>
+        <p>{approvedAdmin
+          ? 'Orders, account approvals, catalog edits, pricing tiers, the home page and the site settings.'
+          : 'Orders, account approvals, catalog edits, the home page and the site settings.'}</p>
       </div>
 
       <nav className="sub-pills admin-sections" aria-label="Admin sections">
-        {SECTIONS.map(s => {
+        {SECTIONS.filter((s) => approvedAdmin || !s.admin).map(s => {
           const current = s.id === section;
           return (
             <Link
@@ -238,6 +256,8 @@ export function AdminPage({
         })}
       </nav>
 
+      {/* The admin home: how to do the everyday jobs (AW-030, AW-031). */}
+      {!route.section && <AdminHelp admin={approvedAdmin} />}
       {section === 'orders' && route.view === 'print' && route.id != null && (
         <PrintSheet orderId={route.id} doc={query.doc} listHref={adminHref({ section: 'orders', query: lastQuery.orders })} onBack={leavePrint} />
       )}
@@ -247,17 +267,20 @@ export function AdminPage({
           returnFocusId={returnFocusId} onReturnFocus={returnFocusTo} />
       )}
       {section === 'accounts' && (
-        <AccountsTab route={route} query={query} onQuery={setQuery} currentAdminId={profile.id} notify={status.show} search={accountSearch} onSearch={setAccountSearch}
+        <AccountsTab route={route} query={query} onQuery={setQuery} currentAdminId={profile.id} viewer={profile} notify={status.show} search={accountSearch} onSearch={setAccountSearch}
           returnFocusId={returnFocusId} onReturnFocus={returnFocusTo} openedFrom={accountOpenedFrom} onOpen={setAccountOpenedFrom} />
       )}
       {section === 'products' && (
         <ProductsTab route={route} query={query} onQuery={setQuery} onCatalogChange={onCatalogChange} notify={status.show}
           returnFocusId={returnFocusId} onReturnFocus={returnFocusTo} openedFrom={productOpenedFrom} onOpen={setProductOpenedFrom} />
       )}
-      {section === 'pricing' && <PricingTab notify={status.show} />}
+      {section === 'pricing' && (approvedAdmin ? <PricingTab notify={status.show} /> : (
+        <div className="callout info admin-slides-missing"><p>{PRICING_ADMIN_ONLY}</p></div>
+      ))}
       {section === 'homepage' && (
         <HomepageTab notify={status.show} onOpenProduct={setProductOpenedFrom} returnFocusId={returnFocusId} onReturnFocus={returnFocusTo} />
       )}
+      {section === 'settings' && <SiteSettingsTab notify={status.show} />}
       <AdminStatus status={status} />
     </section>
   );

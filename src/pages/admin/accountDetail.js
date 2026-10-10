@@ -191,12 +191,16 @@ export async function loadStatusHistory(client, id) {
   return result;
 }
 
-// What a history row says: 'Approved', 'Made an admin', 'Admin access
-// removed', or both at once: 'Approved and made an admin'.
+// What a history row says: 'Approved', 'Made an admin', 'Made staff',
+// 'Admin access removed', 'Staff access removed', or both at once: 'Approved
+// and made an admin'.
+function roleChangeText(row) {
+  if (row.new_role === 'admin') return 'Made an admin';
+  if (row.new_role === 'staff') return 'Made staff';
+  return row.old_role === 'staff' ? 'Staff access removed' : 'Admin access removed';
+}
 export function historyText(row) {
-  const role = row?.new_role && row.new_role !== row.old_role
-    ? (row.new_role === 'admin' ? 'Made an admin' : 'Admin access removed')
-    : null;
+  const role = row?.new_role && row.new_role !== row.old_role ? roleChangeText(row) : null;
   const status = row?.new_status && row.new_status !== row.old_status ? statusLabel(row.new_status) : null;
   if (role && status) return `${status} and ${role[0].toLowerCase()}${role.slice(1)}`;
   return role || status || statusLabel(row?.new_status) || 'Status changed';

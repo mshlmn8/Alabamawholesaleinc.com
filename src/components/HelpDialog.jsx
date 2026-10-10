@@ -1,16 +1,19 @@
 // "Talk to the warehouse" dialog opened from the header's Help button. The
 // apply button is for guests only (AW-066). One eyebrow over the heading, the
 // two hour ranges on lines of their own, and links to the help pages, which
-// close the dialog as they open the page (AW-220).
+// close the dialog as they open the page (AW-220). The phone, email, hours
+// and address are the ones staff set in Admin -> Site settings (AW-030).
 
-import { COMPANY, ORDER_MINIMUM } from '../data/content.js';
+import { ORDER_MINIMUM } from '../data/content.js';
 import { APPLY_LABEL } from '../data/terms.js';
 import { formatMoney } from '../lib/format.js';
 import { Link } from '../lib/router.js';
+import { useSite } from '../lib/siteSettings.js';
 import { ModalLayer } from './ModalLayer.jsx';
 import { Icon } from './Icon.jsx';
 
 export function HelpDialog({ signedIn = false, onClose, onApply }) {
+  const site = useSite();
   return (
     <ModalLayer onClose={onClose}>
       {/* Backdrop click is a mouse shortcut; Escape (ModalLayer) and the Close button are the keyboard paths. */}
@@ -23,13 +26,13 @@ export function HelpDialog({ signedIn = false, onClose, onApply }) {
           <h2 id="help-title">Talk to the warehouse</h2>
           <p className="desc">Real people, same building as the inventory. Call, email or stop by will-call.</p>
           <dl className="contact-grid">
-            <div><dt>Phone</dt><dd><a href={`tel:${COMPANY.phoneRaw}`}>{COMPANY.phone}</a></dd></div>
-            <div><dt>Email</dt><dd><a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a></dd></div>
-            <div><dt>Hours</dt><dd><span className="hours-line">{COMPANY.hoursLine1}</span><span className="hours-line">{COMPANY.hoursLine2}</span></dd></div>
-            <div><dt>Will-call</dt><dd>{COMPANY.addressShort}</dd></div>
+            <div><dt>Phone</dt><dd><a href={`tel:${site.phoneRaw}`}>{site.phone}</a></dd></div>
+            <div><dt>Email</dt><dd><a href={`mailto:${site.email}`}>{site.email}</a></dd></div>
+            <div><dt>Hours</dt><dd>{site.hoursLines.map((line, i) => <span className="hours-line" key={`${i}:${line}`}>{line}</span>)}</dd></div>
+            <div><dt>Will-call</dt><dd>{site.addressShort}</dd></div>
           </dl>
           <div className="dialog-actions">
-            <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Call now</a>
+            <a className="button" href={`tel:${site.phoneRaw}`}>Call now</a>
             {!signedIn && <button className="text-link" type="button" onClick={onApply}>{APPLY_LABEL}</button>}
           </div>
           <p className="fine">{`The minimum order is ${formatMoney(ORDER_MINIMUM)}. Next-day delivery on our own trucks when the stop is on a delivery route in AL, MS and GA. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>

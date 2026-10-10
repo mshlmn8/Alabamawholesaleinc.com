@@ -3,11 +3,11 @@
 // links (AW-043); following one closes the menu (onFollowLink). Links to the
 // page on screen carry aria-current (AW-221).
 
-import { COMPANY } from '../data/content.js';
 import { APPLY_LABEL, SIGN_IN_LABEL } from '../data/terms.js';
 import { Link, useRoute } from '../lib/router.js';
 import { currentFor } from '../lib/navCurrent.js';
 import { productCount } from '../lib/format.js';
+import { useSite } from '../lib/siteSettings.js';
 import { ModalLayer } from './ModalLayer.jsx';
 import { Icon } from './Icon.jsx';
 import { AdminUnseenBadge } from './AdminUnseenBadge.jsx';
@@ -17,6 +17,7 @@ const QUICK_REORDER = '/account#quick-reorder';
 
 export function MobileMenu({ onClose, onFollowLink, departments, products, user, isAdmin, adminUnseen = 0, signingOut = false, go }) {
   const { raw } = useRoute();
+  const site = useSite();
   return (
     <ModalLayer onClose={onClose} className="aw-menu-layer">
       <div className="overlay" aria-hidden="true" onClick={onClose} />
@@ -65,8 +66,8 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
             <button type="button" onClick={go.help}>Help</button>
           </nav>
           <div className="menu-contact">
-            <p>{COMPANY.addressShort}<br /><span>{`${departments.length} departments · ${productCount(products.length)}`}</span></p>
-            <a className="button ghost" href={`tel:${COMPANY.phoneRaw}`}>Call {COMPANY.phone}</a>
+            <p><span>{site.addressShort}</span><br /><span>{`${departments.length} departments · ${productCount(products.length)}`}</span></p>
+            <a className="button ghost" href={`tel:${site.phoneRaw}`}>{`Call ${site.phone}`}</a>
             {!user && <button className="button" type="button" onClick={go.signup}>{APPLY_LABEL}</button>}
           </div>
         </div>

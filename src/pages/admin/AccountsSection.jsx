@@ -4,7 +4,8 @@
 // default, AW-268), a search box, and each business's own page
 // (/admin/accounts/:id, AccountDetail.jsx, AW-113). Status, tier and role
 // changes show at once, with Undo; suspending asks for a reason
-// (AccountChanges.jsx, AW-112).
+// (AccountChanges.jsx, AW-112). Staff (AW-030) see the tier and role as
+// text and can't change a staff or admin account (accountAccess.js).
 
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
@@ -13,13 +14,14 @@ import { accountStatus } from '../../lib/accountStatus.js';
 import { ACCOUNT_STATUS_FILTERS, DEFAULT_ACCOUNT_STATUS } from '../../lib/adminRoutes.js';
 import { DOCUMENT_TYPES, listAllProfileDocuments } from '../../lib/documents.js';
 import { fetchAllRows } from '../../lib/paging.js';
-import { ADMIN_STATUS_LABELS, ROLE_LABELS, adminStatusLabel, tierLabel } from '../../lib/accountLabels.js';
+import { ADMIN_STATUS_LABELS, ROLE_LABELS, adminStatusLabel, roleLabel, tierLabel } from '../../lib/accountLabels.js';
 import { useLeaveGuard } from './useLeaveGuard.js';
 import { adminErrorMessage, withStatus } from './adminData.js';
 import { LoadProblem } from './AdminStatus.jsx';
 import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { AccountFacts, DocumentView, Email, approvalLine, useDocumentViewer } from './accountParts.jsx';
 import { AccountChangeDialog, accountControlId, useAccountChanges } from './AccountChanges.jsx';
+import { ACCOUNT_LOCK_TEXT, accountAccess } from './accountAccess.js';
 import { AccountDetail } from './AccountDetail.jsx';
 import { TableScroll } from './TableScroll.jsx';
 import { MAX_ACCOUNT_SEARCH, accountCountText, accountHref, accountLinkId, accountStatusCounts, matchesAccountSearch } from './accountDetail.js';
@@ -37,6 +39,9 @@ export const telHref = (phone) => `tel:${String(phone ?? '').replace(/[^\d+]/g, 
 // query: the list's filter from the URL (status, AW-268); onQuery writes it.
 // currentAdminId: the signed-in admin, whose own status and role can't be
 // changed here (AW-352); the database refuses it too (profiles_guard).
+// viewer: the signed-in profile, which says whether roles and tiers can be
+// changed (an approved admin) or only a customer's status and details
+// (staff, AW-030; accountAccess.js).
 // notify: shows what a change did (useAdminStatus). search/onSearch: the
 // search box, kept by AdminPage (never in the URL: it names people).
 // returnFocusId/onReturnFocus: the business link the list focuses when an
@@ -46,7 +51,8 @@ export const telHref = (phone) => `tel:${String(phone ?? '').replace(/[^\d+]/g, 
 // scroll position); a page opened any other way goes to the list by its
 // link.
 export function AccountsTab({
-  route = {}, query = {}, onQuery, currentAdminId, notify, search = '', onSearch, returnFocusId = null, onReturnFocus, openedFrom = null, onOpen,
+  route = {}, query = {}, onQuery, currentAdminId, viewer = { id: currentAdminId, role: 'admin', status: 'approved' }, notify, search = '', onSearch,
+  returnFocusId = null, onReturnFocus, openedFrom = null, onOpen,
 }) {
   const [profiles, setProfiles] = useState(null);
   const [profilesError, setProfilesError] = useState(null);
@@ -113,11 +119,11 @@ export function AccountsTab({
       {detail ? (
         <AccountDetail
           key={route.id} id={route.id} profiles={profiles} loadError={profilesError} onRetry={retry} retrying={retrying} tiers={tiers}
-          currentAdminId={currentAdminId} changes={changes} notify={notify} onPatch={patchProfile} onBack={leaveDetail}
+          currentAdminId={currentAdminId} viewer={viewer} changes={changes} notify={notify} onPatch={patchProfile} onBack={leaveDetail}
         />
       ) : (
         <AccountsList
-          profiles={profiles} profilesError={profilesError} onRetry={retry} retrying={retrying} tiers={tiers} currentAdminId={currentAdminId}
+          profiles={profiles} profilesError={profilesError} onRetry={retry} retrying={retrying} tiers={tiers} actor={viewer}
           changes={changes} search={search} onSearch={onSearch} onOpen={onOpen} returnFocusId={returnFocusId} onReturnFocus={onReturnFocus}
           filter={filter} listedStatus={listedStatus} onFilter={(status) => onQuery?.({ ...query, status })}
         />
@@ -129,8 +135,9 @@ export function AccountsTab({
 
 // filter: the status filter ('pending' … 'all'); listedStatus(p): the
 // status the list files the account under; onFilter(status) changes it.
+// actor: the signed-in profile (an admin, or staff: accountAccess.js).
 function AccountsList({
-  profiles, profilesError, onRetry, retrying, tiers, currentAdminId, changes, search, onSearch, onOpen, returnFocusId, onReturnFocus,
+  profiles, profilesError, onRetry, retrying, tiers, actor, changes, search, onSearch, onOpen, returnFocusId, onReturnFocus,
   filter = DEFAULT_ACCOUNT_STATUS, listedStatus = accountStatus, onFilter,
 }) {
   // The license documents: null while loading. They load once when the list
@@ -256,7 +263,10 @@ function AccountsList({
               </tr>
             </thead>
             <tbody>
-              {shown.map(p => (
+              {shown.map(p => {
+                const access = accountAccess(actor, p);
+                const lockId = access.lock ? `account-lock-${p.id}` : undefined;
+                return (
                 <Fragment key={p.id}>
                   <tr>
                     <td>
@@ -273,8 +283,8 @@ function AccountsList({
                     </td>
                     <td>
                       <select id={accountControlId(p.id, 'status')} aria-label={`Status for ${p.business || p.name}`} value={p.status}
-                        disabled={p.id === currentAdminId} aria-disabled={busy(p) || undefined}
-                        aria-describedby={p.id === currentAdminId ? 'admin-own-row' : undefined} onChange={chooseStatus(p)}>
+                        disabled={!access.status} aria-disabled={busy(p) || undefined}
+                        aria-describedby={lockId} onChange={chooseStatus(p)}>
                         <option value="pending">{ADMIN_STATUS_LABELS.pending}</option>
                         <option value="approved">{ADMIN_STATUS_LABELS.approved}</option>
                         <option value="suspended">{ADMIN_STATUS_LABELS.suspended}</option>
@@ -282,25 +292,29 @@ function AccountsList({
                       {filter !== 'all' && accountStatus(p) !== filter && (
                         <span className="account-moved">{`Moved to ${adminStatusLabel(accountStatus(p))}`}</span>
                       )}
-                      {p.id === currentAdminId && <small className="field-hint" id="admin-own-row">Your own status and role can’t be changed here.</small>}
+                      {access.lock && <small className="field-hint" id={lockId}>{ACCOUNT_LOCK_TEXT[access.lock]}</small>}
                       {p.approved_at && <small className="field-hint">{approvalLine(p, profiles)}</small>}
                     </td>
                     <td>
-                      <select id={accountControlId(p.id, 'tier')} aria-label={`Tier for ${p.business || p.name}`} value={p.pricing_tier} aria-disabled={busy(p) || undefined}
-                        onChange={e => { if (!busy(p)) changes.change(p, { pricing_tier: e.target.value }, { kind: 'tier', focusId: accountControlId(p.id, 'tier') }); }}>
-                        {(tiers.includes(p.pricing_tier) ? tiers : [...tiers, p.pricing_tier]).map(t => <option key={t} value={t}>{tierLabel(t)}</option>)}
-                      </select>
+                      {/* Tiers and roles are the admin's alone (AW-030): staff see them as text. */}
+                      {access.tier ? (
+                        <select id={accountControlId(p.id, 'tier')} aria-label={`Tier for ${p.business || p.name}`} value={p.pricing_tier} aria-disabled={busy(p) || undefined}
+                          onChange={e => { if (!busy(p)) changes.change(p, { pricing_tier: e.target.value }, { kind: 'tier', focusId: accountControlId(p.id, 'tier') }); }}>
+                          {(tiers.includes(p.pricing_tier) ? tiers : [...tiers, p.pricing_tier]).map(t => <option key={t} value={t}>{tierLabel(t)}</option>)}
+                        </select>
+                      ) : <span>{tierLabel(p.pricing_tier)}</span>}
                     </td>
                     <td>
                       {/* A role change asks first, with a reason (AW-203);
-                          making a pending or suspended account an admin approves it. */}
-                      <select id={accountControlId(p.id, 'role')} aria-label={`Role for ${p.business || p.name}`} value={p.role}
-                        disabled={p.id === currentAdminId} aria-disabled={busy(p) || undefined}
-                        aria-describedby={p.id === currentAdminId ? 'admin-own-row' : undefined}
-                        onChange={e => { if (!busy(p)) changes.setRole(p, e.target.value); }}>
-                        <option value="customer">{ROLE_LABELS.customer}</option>
-                        <option value="admin">{ROLE_LABELS.admin}</option>
-                      </select>
+                          making a pending or suspended account an admin or staff approves it. */}
+                      {access.roleControl ? (
+                        <select id={accountControlId(p.id, 'role')} aria-label={`Role for ${p.business || p.name}`} value={p.role}
+                          disabled={!access.role} aria-disabled={busy(p) || undefined}
+                          aria-describedby={lockId}
+                          onChange={e => { if (!busy(p)) changes.setRole(p, e.target.value); }}>
+                          {Object.entries(ROLE_LABELS).map(([role, label]) => <option key={role} value={role}>{label}</option>)}
+                        </select>
+                      ) : <span>{roleLabel(p.role)}</span>}
                     </td>
                     <td>
                       {/* Every status: the proof stays on file after approval (AW-197). */}
@@ -337,14 +351,14 @@ function AccountsList({
                         </button>
                         {/* Approve stays (disabled) while its request is out, so
                             a double click sends one. */}
-                        {(p.status === 'pending' || changes.saving(p.id) === 'approve') && (
+                        {((p.status === 'pending' && access.status) || changes.saving(p.id) === 'approve') && (
                           <button id={accountControlId(p.id, 'approve')} className="button xs" type="button" disabled={busy(p)} onClick={() => approve(p)}>
                             <span>{changes.saving(p.id) === 'approve' ? 'Approving…' : 'Approve'}</span><span className="sr-only">{` ${p.business || p.name}`}</span>
                           </button>
                         )}
                         {/* No mail goes out on its own (AW-088): after approving,
                             staff send this from the desk's own mail. */}
-                        {p.status === 'approved' && p.role !== 'admin' && p.email && !busy(p) && (
+                        {p.status === 'approved' && p.role === 'customer' && p.email && !busy(p) && (
                           <a className="button xs ghost" href={approvalEmail(p)}>
                             <span>Email applicant</span><span className="sr-only">{` ${p.business || p.name}`}</span>
                           </a>
@@ -357,9 +371,10 @@ function AccountsList({
                       <td colSpan={7}>
                         <AccountFacts profile={p} profiles={profiles} />
                         <label className="account-note" htmlFor={`note-${p.id}`}>Verification note
-                          <input id={`note-${p.id}`} value={noteDraft} onChange={e => setNoteDraft(e.target.value)} />
+                          <input id={`note-${p.id}`} value={noteDraft} readOnly={!access.details} aria-describedby={access.details ? undefined : lockId}
+                            onChange={e => setNoteDraft(e.target.value)} />
                         </label>
-                        <button className="button xs ghost" type="button" disabled={busy(p)}
+                        <button className="button xs ghost" type="button" disabled={busy(p) || !access.details}
                           onClick={async () => {
                             if (await changes.change(p, { verification_note: noteDraft.trim() || null }, { kind: 'note', undoable: false })) setNoteDraft(noteDraft.trim());
                           }}>Save note</button>
@@ -367,7 +382,8 @@ function AccountsList({
                     </tr>
                   )}
                 </Fragment>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </TableScroll>

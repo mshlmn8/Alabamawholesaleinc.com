@@ -1431,7 +1431,7 @@ describe('the markup uses the design system (merged PR #12, PR #13 and lane p2 p
     let seen = 0;
     for (const { file, text } of jsx) {
       for (const [link] of text.matchAll(/<(a|Link)\b[^>]*target="_blank"[^>]*>[\s\S]*?<\/\1>/g)) {
-        const leaves = /href=\{(credit\.licenceUrl|credit\.source|DIRECTIONS_URL|blockedLink)/.test(link);
+        const leaves = /href=\{(credit\.licenceUrl|credit\.source|directions|blockedLink)/.test(link);
         expect(/<Icon name="external"/.test(link), `${file}: ${link.slice(0, 80)}`).toBe(leaves);
         expect(link, file).toMatch(/opens in a new tab/);
         seen += 1;

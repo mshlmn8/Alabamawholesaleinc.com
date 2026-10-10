@@ -39,7 +39,8 @@ const OUT = path.join(ROOT, 'supabase/seed/products.sql');
 
 function validate(rows) {
   const { problems, warnings } = validateCatalog(rows, { aliases: { skuAliases: SKU_ALIASES, variantAliases: VARIANT_ALIASES } });
-  // TODO(owner): What is the sell unit (each, box of N, case of N, or a size) of each product that has none yet? (AW-031)
+  // The sell units this file lacks are set in Admin -> Products (AW-031,
+  // owner answer 2026-10); the warning counts them.
   for (const warning of warnings) console.warn(`build-seed: WARNING: ${warning}`);
   if (problems.length) throw new Error(`catalog is not seedable:\n  ${problems.join('\n  ')}`);
 }

@@ -25,7 +25,11 @@ describe('adminErrorMessage', () => {
     expect(adminErrorMessage({ code: '42501', hint: 'own_role_status' }, SAVE)).toBe('You can’t change your own status or role.');
     expect(adminErrorMessage({ code: '42501', hint: 'profile_record' }, SAVE)).toBe('Consent and approval records can’t be edited.');
     expect(adminErrorMessage({ code: '42501', hint: 'profile_email' }, SAVE)).toBe('A profile’s email follows its sign-in email.');
-    expect(adminErrorMessage({ code: '42501', hint: 'admin_only' }, SAVE)).toBe('Only an approved admin can change this.');
+    expect(adminErrorMessage({ code: '42501', hint: 'admin_only' }, SAVE)).toBe('Only an approved admin or staff account can change this.');
+    // The staff rules (20261014120000_staff_role.sql, AW-030).
+    expect(adminErrorMessage({ code: '42501', hint: 'role_admin_only' }, SAVE)).toBe('Only an admin can change an account’s role.');
+    expect(adminErrorMessage({ code: '42501', hint: 'tier_admin_only' }, SAVE)).toBe('Only an admin can change an account’s pricing tier.');
+    expect(adminErrorMessage({ code: '42501', hint: 'staff_account' }, SAVE)).toBe('Only an admin can change a staff or admin account.');
     expect(adminErrorMessage({ code: '42501', message: 'permission denied for table products' }, SAVE)).toBe('The change wasn’t saved: your account isn’t allowed to do that.');
     expect(adminErrorMessage({ status: 403, message: 'new row violates row-level security policy' }, SAVE)).toBe('The change wasn’t saved: your account isn’t allowed to do that.');
   });

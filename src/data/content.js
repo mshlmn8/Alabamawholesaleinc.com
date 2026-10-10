@@ -150,14 +150,20 @@ export const LICENSED_ONLY = 'Wholesale to licensed retail businesses only · No
 // and no published volume discounts; volume pricing is agreed with the trade
 // desk. This one sentence stands where the old claims were: the trade bar,
 // the home page's services and the Trade terms (ContactLinks.jsx
-// VolumePricing prints it with the email and phone as links).
-export const VOLUME_PRICING = `For volume pricing, email us or call ${COMPANY.phone}.`;
+// VolumePricing prints it with the email and phone as links). With another
+// phone (Admin -> Site settings, AW-030) it names that one.
+export const volumePricingText = (phone) => `For volume pricing, email us or call ${phone}.`;
+export const VOLUME_PRICING = volumePricingText(COMPANY.phone);
 
-export const ANNOUNCEMENTS = [
+// The trade bar's announcements (after the trade notice, TradeBar.jsx), with
+// the phone the site publishes. Staff can replace them in Admin -> Site
+// settings (src/data/siteFacts.js, AW-030); until then these show.
+export const announcementsFor = (phone) => [
   `★ FREE DELIVERY on orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} on our delivery routes in Alabama, Mississippi & Georgia`,
   '★ WILL-CALL · Pickup at the Birmingham warehouse during business hours',
-  `★ ${VOLUME_PRICING}`
+  `★ ${volumePricingText(phone)}`
 ];
+export const ANNOUNCEMENTS = announcementsFor(COMPANY.phone);
 
 // The home page's pitch: the h1's supporting line (HomeHero) and the meta
 // description (src/lib/meta.js HOME_DESCRIPTION, index.html), so the page

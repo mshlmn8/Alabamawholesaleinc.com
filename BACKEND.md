@@ -59,13 +59,15 @@ supabase/migrations/20261014100000_delist_kratom_mushroom.sql
 supabase/migrations/20261014101000_catalog_owner_answers.sql
 supabase/migrations/20261014110000_home_slides_warehouse_reel.sql
 supabase/migrations/20261014111000_orders_approved_accounts_only.sql
+supabase/migrations/20261014120000_staff_role.sql
+supabase/migrations/20261014121000_site_settings.sql
 supabase/seed/products.sql
 ```
 
 On a project that is already running, apply only the migrations it doesn't
 have yet, in that order, then the seed, then deploy the frontend (see the
 release checklist at the end of this file). The live project has the files
-up to `20260927180000`; the thirty-one `20261008…`/`20261009…`/`20261010…`/`20261011…`/`20261012…`/`20261014…`
+up to `20260927180000`; the thirty-three `20261008…`/`20261009…`/`20261010…`/`20261011…`/`20261012…`/`20261014…`
 files are new.
 Review them before applying them; the site keeps working without them (see
 `docs/OWNER-TODO.md` and "Before and after" in the release checklist).
@@ -535,11 +537,11 @@ and cart lines, Quick Reorder and order history keep working with them.
   variants.
 
 <!-- TODO(owner): What is the price, and is it in stock, for each size or pack-count variant of the multi-variant products (for example gas cans 1 gal / 2 gal / 5 gal)? Load them as below. (AW-030) -->
-<!-- TODO(owner): What is the sell unit (each, box of N, case of N, or a size) of each product that has none yet? Load them as below. (AW-031) -->
-
 Admin → Products edits them one product at a time (a variant's list price,
-"Can't be ordered", the sell unit; see "The product editor" below). For many
-at once, load them from a private SQL file under `supabase/private/` (never
+"Can't be ordered", the sell unit; see "The product editor" below), and sets
+the sell unit of many products at once (**Set sell unit** in the bulk bar,
+AW-031; the owner's answer of October 2026 is that the owner and staff set
+sell units there). For many prices at once, load them from a private SQL file under `supabase/private/` (never
 committed), run in the SQL editor:
 
 ```sql
@@ -1025,6 +1027,45 @@ Staff can't create or invite an account from Admin yet: that needs a
 Supabase Edge Function with the service-role key and an email provider (see
 docs/OWNER-TODO.md, AW-113 and AW-088).
 
+### Staff accounts (AW-030)
+
+Since `20261014120000_staff_role.sql`, an account's role is **Customer**,
+**Staff** or **Admin**. An admin makes someone staff in Admin → Accounts:
+set the account's **Role** to Staff and give a reason (it goes in the
+account's internal notes, "Made staff: …"; a pending account is approved at
+the same time). **Staff** use all of Admin: orders, accounts (approve,
+suspend, edit a customer's details, read licence documents), products,
+prices and photos, the homepage and Site settings. Only an **admin**
+changes an account's role or pricing tier, the pricing tiers themselves
+(Admin → Pricing, which staff don't see), or a staff or admin account
+(staff can't suspend the owner). Setting the role back to Customer
+(asks for a reason, "Staff access removed: …") takes it away. The database
+enforces all of this (`is_staff_or_admin()`, `is_admin()` and the profile
+guard), not only the pages. Like an admin, a staff account needs to be
+approved: a pending or suspended one is a customer.
+
+## Site settings (Admin → Site settings, AW-030)
+
+Admin → Site settings (`/admin/settings`) edits what every page tells buyers:
+the announcement bar's messages (after "Wholesale to licensed retail
+businesses only", which always shows first; up to 6 of 160 characters), the
+public phone (saved as (205) 555-0123) and email, the opening hours (up to 4
+rows of days and times, free text) and the warehouse address (street, city,
+two-letter state, ZIP). They are kept in `site_settings`
+(`20261014121000`), one row; a value equal to the site's own
+(`src/data/content.js`) is saved as null, so it keeps following the code,
+and each group has a "Use the site's own …" button. The trade bar, footer,
+Contact & visit, Help, the phone menu, the support pages, the sign-up
+dialog, checkout, receipts, printed pages, error messages and the order
+email read them (`useSite()` in `src/lib/siteSettings.js`, `currentSite()`
+in `src/data/siteFacts.js`). While the hours are staff's own, Contact &
+visit doesn't show "Open now" (it can only work that out from the site's
+schedule). Not covered: the structured data and loading page in
+`index.html`, the page heads written at build time and the web manifest,
+which keep the built-in values until a developer changes `content.js` and
+`index.html` (the page says so). Before `20261014121000` the storefront
+shows the built-in values and the page says it needs the update.
+
 ## Saved carts
 
 The cart lives in the browser: one per account on each device, plus one for
@@ -1059,6 +1100,16 @@ policy doesn't mention it yet (owner question AW-334 in docs/OWNER-TODO.md).
 - **Admins**: `is_admin()` is true only for a profile with role `admin`
   **and** status `approved` (`20261009140000`), so a suspended or pending
   admin has no admin rights anywhere below.
+- **Staff** (`20261014120000`, AW-030): `is_staff_or_admin()` is true for an
+  approved `admin` or `staff` account. Wherever "admins" appears below, it
+  means both, except: only admins write `pricing_tiers`, and the profile
+  guard refuses staff a change to any account's role (`role_admin_only`) or
+  pricing tier (`tier_admin_only`), or any change to a staff or admin
+  account (`staff_account`); on their own account staff are customers (name,
+  phone and store address only).
+- **site_settings** (`20261014121000`, AW-030): one row; guests and every
+  account read it; approved admins and staff change it; nobody deletes it.
+  See "Site settings".
 - **profiles**: a user reads their own row; admins read any. In a signed-in
   customer's own update, every column but the name, phone and store address
   (street, city, ZIP) keeps its value (Cursor's `a_protect_profile_columns`
@@ -1227,7 +1278,7 @@ For each release:
   after" below), then publish an older frontend only if it is at or after
   the latest migration still applied.
 
-The live project needs all thirty-one, in this order (Cursor's seven
+The live project needs all thirty-three, in this order (Cursor's seven
 `20261008…` files, then the six `20261009…` ones, which build on them, then
 the five `20261010…` ones: three for the admin back office and two data-only
 catalog fixes, then `20261011110000` and `20261011111000`, which can go in
@@ -1241,7 +1292,9 @@ owner's catalog answers of September and October 2026, data only: the
 delisting `20261014100000`, any time, and `20261014101000`, after
 `20261012130000`, then the home page's warehouse reel `20261014110000`,
 with or after `20261011131000`, then `20261014111000`, which lets only
-approved accounts place orders, any time after `20261009130000`).
+approved accounts place orders, any time after `20261009130000`, then the
+staff role `20261014120000`, any time, and the site settings
+`20261014121000`, after it).
 Apply
 `20261008200000` and `20261009100000`–`20261009150000` in one session: the
 price boundary hides `products.variant_prices` and `20261009110000` moves it.
@@ -1305,6 +1358,11 @@ rolling it back.
 31. `20261014111000_orders_approved_accounts_only.sql` (AW-014, AW-024:
     `submit_quote` takes orders only from signed-in, approved accounts that
     aren't on hold; after 11, before or after the new frontend)
+32. `20261014120000_staff_role.sql` (AW-030: the `staff` role; approved
+    staff use all of Admin but roles and pricing tiers; any time, before or
+    after the frontend)
+33. `20261014121000_site_settings.sql` (AW-030: the `site_settings` table
+    for Admin → Site settings; after 32, before or after the frontend)
 
 Then `supabase/seed/products.sql`, then the frontend, then 18.
 
@@ -1341,6 +1399,8 @@ Then `supabase/seed/products.sql`, then the frontend, then 18.
 | `20261014101000_catalog_owner_answers.sql` | Data only (the owner's answers of 2026-09-28, Cursor's draft PR #11): #219 Happy valentines jar moves from Wellness Pills to a new Gifts line in Novelties (name and variants unchanged, description rewritten); #295 Snack wraps is "a chips brand", flavors varying by availability; #351 becomes "Uncle Al's creme" with no "Lemon ice" variant (and no "can't be ordered" entry for it), then #350 "Uncle Al's cookies"; both lose the Lemon Ice box photo (`img` null). Ids and SKUs are unchanged (#351 keeps `AW-UNCLE-AL-S-COOKIES`). Each column changes only while it still has the value the seed (or `20261012130000`, for #350's name) wrote, so admin edits are kept and a re-run changes nothing. A variant price stored for (351, 'Lemon ice') is left in `product_variant_prices`, unused. A commented Reverse block is at the end. | Apply after `20261012130000`, before or after the frontend. Every frontend reads names, lines and descriptions from the database, so the new values show once it is applied; the new frontend already shows no photo for #350 and #351 (`RETIRED_IMAGE_FILES` in `src/data/catalogAliases.js`) and keeps a cart line saved as Lemon ice as the creme (`VARIANT_ALIASES`). Order lines keep the name and variant they were placed with. |
 | `20261014110000_home_slides_warehouse_reel.sql` | Data only (AW-006, the owner's answer of October 2026): while `home_slides` still holds exactly the four rows `20261011131000` added (same photo, alt text, link, warning and order, all shown), they are replaced by the owner's 8-photo warehouse reel (`hero_wh_sign.jpg` … `hero_wh_candy_room.jpg`, sorts 10–80, the soda, snack and candy photos linking to Drinks & Bags, Food Stuff and Candies, none with the FDA warning), the bundled slides of the new frontend word for word. A table staff have changed in any way, or emptied, is left alone, and a re-run changes nothing. Does nothing on a database without the table. A commented Reverse block is at the end. | Apply with or after `20261011131000`, best in the same session, so the home page never shows the four earlier photos from the table; before or after the new frontend, which bundles the same eight photos, so the home page looks the same before and after. The frontend deployed today doesn't read the table. |
 | `20261014111000_orders_approved_accounts_only.sql` | AW-014, AW-024 (the owner's answer of October 2026: the site is for licensed store owners, anyone who buys is signed in, and customers place orders, not quotes): a new function `require_ordering_account()` (security definer; no guest or account may run it directly) refuses a caller with no signed-in user (hint `sign_in_required`), an account on hold (`account_suspended`) and any other account that isn't approved, a pending one or one without a profile (`account_not_approved`). `submit_quote` is recreated from `20261009130000` word for word with one new first statement that calls it, so all three signatures (the 16- and 13-argument wrappers run it) refuse those callers before anything is checked, counted or saved. Same signature, return value and grants; guests may still call it, so they get the hint. A commented Reverse block is at the end. | Apply any time after `20261009130000`, before or after the frontend. The new frontend already asks guests to sign in and tells accounts under review they can order once approved, and words the new hints; until the file is applied a guest's or pending account's call sent by hand through the API is still saved as a quote. The frontend deployed before it lets guests submit and would show them its generic "couldn't save" message. Quotes saved before it stay; Admin → Orders still prices and converts them. |
+| `20261014120000_staff_role.sql` | AW-030, AW-031 (the owner's answer of October 2026: the owner or any staff account runs the website from Admin): `profiles.role` may also be `staff`; `is_staff_or_admin()` (security definer, approved accounts only); every admin policy (profiles, documents and their Storage files, notes and history, products, variant prices, orders and their lines, events and notes, the last visit to Orders, home photos, the `product-images` bucket) and the eight admin functions (`admin_product_prices`, `admin_price_order`, `admin_convert_quote`, `admin_bulk_adjust_prices`, `admin_import_products`, `admin_import_products_v2`, `admin_set_order_status`, `admin_mark_orders_seen`) let approved staff in; writing `pricing_tiers` stays admin-only; the profile guard refuses staff a role change (hint `role_admin_only`), a tier change (`tier_admin_only`) and any change to a staff or admin account (`staff_account`). The functions are their latest definitions with only that call changed (`scripts/staff-role.test.mjs`). | The new frontend shows staff the admin area and offers the Staff role; before this file the database refuses the role (`profiles_role_chk`) and Admin → Accounts says it needs the update. The frontend deployed before it gives a staff account no admin link. Reverse block at its end (make every staff account a customer first). |
+| `20261014121000_site_settings.sql` | AW-030: `site_settings`, one row (`id = true`) of the announcement bar's messages, the public phone and email, the hours and the warehouse address, null meaning the site's own (`src/data/content.js`); everyone reads it, approved admin and staff accounts change it (`is_staff_or_admin()`), nobody deletes it; `updated_at` and `updated_by` are stamped; checks for each value (the form's, `src/data/siteFacts.js`). | Before it the storefront shows the values built into the site and Admin → Site settings says it needs the update; after it the storefront reads the row on each page load (one small request). Reverse block at its end. |
 
 ### Later steps
 

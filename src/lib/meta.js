@@ -21,6 +21,7 @@
 // data block runs nothing, so the Content-Security-Policy needs no hash for it.
 
 import { COMPANY, HOME_PITCH, HOME_TITLE, HOURS, ORDER_MINIMUM, hoursLine } from '../data/content.js';
+import { DEFAULT_SITE } from '../data/siteFacts.js';
 import { APPLY_LABEL, BASKET, TRADE_ACCOUNT_LABEL } from '../data/terms.js';
 import { ADMIN_GATE_HEADINGS, TRADE_ACCOUNT_TITLE } from './accountStatus.js';
 import { POLICY_TITLES, POLICY_INTROS } from '../pages/support/policyText.js';
@@ -189,6 +190,7 @@ function adminTitle(route) {
   if (route.section === 'accounts') return route.id ? 'Account details' : 'Accounts';
   if (route.section === 'pricing') return 'Pricing';
   if (route.section === 'homepage') return 'Homepage';
+  if (route.section === 'settings') return 'Site settings';
   if (route.section === 'products') {
     if (route.id === 'new') return 'New product';
     return route.id != null ? 'Edit product' : 'Products';
@@ -215,8 +217,10 @@ export const APPLY_TITLES = Object.freeze({
 
 // Title, description, canonical path, share image, breadcrumb trail and
 // indexing for a resolved route (see resolveRoute in routes.js).
-export function pageMeta(route, products, departments) {
-  const meta = pageText(route, products, departments);
+// site: the contact facts to name (useSite in App, AW-030); content.js's
+// when left out (the route heads written at build time).
+export function pageMeta(route, products, departments, site = DEFAULT_SITE) {
+  const meta = pageText(route, products, departments, site);
   const noindex = NOINDEX_PAGES.includes(route.page);
   return {
     ...meta,
@@ -235,7 +239,11 @@ const trailOf = (items, ownPath) => items.map((item) => ({
   path: item.to ? (typeof item.to === 'string' ? item.to : pathFor(item.to)) : ownPath,
 }));
 
-function pageText(route, products, departments) {
+// Staff's hours lines keep their times together with no-break spaces; a
+// description is plain text.
+const plainText = (text) => text.replace(/\u00A0/g, ' ');
+
+function pageText(route, products, departments, facts = DEFAULT_SITE) {
   const site = COMPANY.name;
   if (route.page === 'not-found') {
     const what = route.catalog ? CATALOG_PENDING[route.kind] : null;
@@ -290,7 +298,7 @@ function pageText(route, products, departments) {
   // Support pages (src/pages/support/).
   if (route.page === 'catalog') return { title: `All products · Wholesale catalog · ${site}`, description: clip(`Every department and product line ${site} stocks — ${products.length} wholesale SKUs for licensed retailers, from the Birmingham warehouse.`) };
   // Short enough that both hours lines fit whole (the email is on the page).
-  if (route.page === 'contact') return { title: `Contact & visit · ${site}`, description: clip(`Call ${COMPANY.phone} or visit ${COMPANY.addressShort}. ${HOURS.map(r => hoursLine(r, { nowrap: false })).join(', ')}.`) };
+  if (route.page === 'contact') return { title: `Contact & visit · ${site}`, description: clip(`Call ${facts.phone} or visit ${facts.addressShort}. ${facts.hoursCustom ? facts.hoursLines.map(plainText).join(', ') : HOURS.map(r => hoursLine(r, { nowrap: false })).join(', ')}.`) };
   if (route.page === 'delivery') return { title: `Delivery & service area · ${site}`, description: 'Next-day delivery on our own trucks when your stop is on a route in Alabama, Mississippi or Georgia, plus will-call pickup at the Birmingham warehouse.' };
   if (POLICY_TITLES[route.page]) return { title: `${POLICY_TITLES[route.page]} · ${site}`, description: clip(POLICY_INTROS[route.page]) };
   if (route.page === 'apply') return { title: `${APPLY_TITLES[route.applyAs] || APPLY_TITLES.guest} · ${site}`, description: `What licensed retailers need to open an ${site} trade account: EIN, state retail tobacco license, resale certificate and store details.` };

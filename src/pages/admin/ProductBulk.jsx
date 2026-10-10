@@ -1,9 +1,10 @@
 // Admin -> Products' bulk bar (AW-114): with products selected, staff set
 // their price, adjust it by a percentage or an amount (with a preview, old
-// and new), set their tag, or activate or deactivate them, each after a
-// confirmation that says how many. The math is in productBulk.js.
+// and new), set their tag or their sell unit (AW-031), or activate or
+// deactivate them, each after a confirmation that says how many. The math
+// is in productBulk.js.
 //
-// Set price, Set tag, Activate and Deactivate are one update of the chosen
+// Set price, Set tag, Set sell unit, Activate and Deactivate are one update of the chosen
 // rows, read back (`.in('id', ids).select('id,updated_at')`), which the live
 // database already allows; the count read back is compared with the count
 // sent. Adjust is one call to admin_bulk_adjust_prices
@@ -22,7 +23,7 @@ import { MISSING_FUNCTION_CODES } from '../../lib/pricing.js';
 import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { NO_ROWS, adminErrorMessage, checkedWrite, withStatus } from './adminData.js';
 import { parsePrice } from './productForm.js';
-import { BULK_TAGS, MAX_BULK, PREVIEW_ROWS, adjustPreview, adjustRow, parseAdjust } from './productBulk.js';
+import { BULK_TAGS, MAX_BULK, PREVIEW_ROWS, adjustPreview, adjustRow, parseAdjust, parseSellUnit } from './productBulk.js';
 
 export const NEEDS_UPDATE_NOTE = 'needs the October 2026 database update (see BACKEND.md)';
 const PRICES_NOTE = 'Approved buyers see the new prices on their next page load; orders already saved keep their prices.';
@@ -61,6 +62,7 @@ const ACTIONS = [
   { id: 'price', label: 'Set price' },
   { id: 'adjust', label: 'Adjust price' },
   { id: 'tag', label: 'Set tag' },
+  { id: 'unit', label: 'Set sell unit' },
   { id: 'activate', label: 'Activate' },
   { id: 'deactivate', label: 'Deactivate' },
 ];
@@ -69,7 +71,9 @@ const ACTIONS = [
 // missing (PGRST202/42883 seen), onAdjustMissing records it. onApplied(patches,
 // message): patches is a Map of id -> the changed columns. onClear empties
 // the selection. returnFocus: a ref to what takes focus after a change.
-export function BulkBar({ rows, adjustMissing = false, onAdjustMissing, onApplied, onClear, returnFocus = null }) {
+// sellUnits: the sell units the catalog uses, offered in the Set sell unit
+// box (sellUnitOptions).
+export function BulkBar({ rows, adjustMissing = false, onAdjustMissing, onApplied, onClear, returnFocus = null, sellUnits = [] }) {
   const id = useId();
   // Filled in only when a change went through, so a cancelled or refused
   // confirmation still gives focus back to the button that opened it.
@@ -80,6 +84,7 @@ export function BulkBar({ rows, adjustMissing = false, onAdjustMissing, onApplie
   const [amountText, setAmountText] = useState('');
   const [variants, setVariants] = useState(true);
   const [tag, setTag] = useState('');
+  const [unitText, setUnitText] = useState('');
   const [fieldError, setFieldError] = useState('');
   const [error, setError] = useState(null);
   const [confirm, setConfirm] = useState(null);
@@ -138,6 +143,19 @@ export function BulkBar({ rows, adjustMissing = false, onAdjustMissing, onApplie
         body: `${verb} the list price of ${plural(preview.changes.length, 'product')}${extra} by ${by}.${skipped} ${PRICES_NOTE}`,
         label: 'Adjust prices',
       });
+    } else if (action === 'unit') {
+      const unit = parseSellUnit(unitText);
+      if (!unit.ok) { setFieldError(unit.error); return; }
+      const { value } = unit;
+      setConfirm({
+        action, patch: { sell_unit: value },
+        title: `Set the sell unit of ${products}?`,
+        body: value
+          ? `Each selected product is sold by “${value}”: what a quantity of 1 is on the product page, in carts and on orders.`
+          : 'Each selected product loses its sell unit, so buyers aren’t told what a quantity of 1 is.',
+        label: value ? `Set ${plural(count, 'sell unit')}` : `Clear ${plural(count, 'sell unit')}`,
+        done: (n) => (value ? `Set the sell unit of ${n} to “${value}”` : `Cleared the sell unit of ${n}`),
+      });
     } else if (action === 'tag') {
       setConfirm({
         action, patch: { tag: tag || null },
@@ -164,6 +182,7 @@ export function BulkBar({ rows, adjustMissing = false, onAdjustMissing, onApplie
     setOpen(null);
     setPriceText('');
     setAmountText('');
+    setUnitText('');
     setFieldError('');
     setError(null);
   };
@@ -220,7 +239,7 @@ export function BulkBar({ rows, adjustMissing = false, onAdjustMissing, onApplie
         <p className="bulk-count">{`${products} selected`}</p>
         <div className="inline-actions">
           {ACTIONS.map((action) => {
-            const panel = ['price', 'adjust', 'tag'].includes(action.id);
+            const panel = ['price', 'adjust', 'tag', 'unit'].includes(action.id);
             const off = action.id === 'adjust' && adjustMissing;
             return (
               <button
@@ -327,6 +346,25 @@ export function BulkBar({ rows, adjustMissing = false, onAdjustMissing, onApplie
             </label>
             <button className="button sm" type="submit">Set tag</button>
           </div>
+        </form>
+      )}
+
+      {open === 'unit' && (
+        <form className="bulk-panel" id={`${id}-panel`} noValidate onSubmit={(e) => { e.preventDefault(); review('unit'); }}>
+          <div className="admin-toolbar">
+            <label>New sell unit
+              <input
+                className="bulk-unit" type="text" autoComplete="off" value={unitText} list={`${id}-units`} aria-invalid={fieldError ? true : undefined}
+                aria-describedby={describedBy(true)} onChange={(e) => { setUnitText(e.target.value); setFieldError(''); }}
+              />
+            </label>
+            <datalist id={`${id}-units`}>
+              {sellUnits.map((unit) => <option key={unit} value={unit} />)}
+            </datalist>
+            <button className="button sm" type="submit">Set sell unit</button>
+          </div>
+          <small className="field-hint" id={hintId}>What a quantity of 1 is, such as box of 24, case of 12 or each. Leave it blank to remove the sell unit.</small>
+          <p className="form-error" id={errorId}>{fieldError}</p>
         </form>
       )}
 

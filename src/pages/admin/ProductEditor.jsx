@@ -55,6 +55,10 @@ const constraintOf = (error) => /constraint "([^"]+)"/.exec(errorText(error))?.[
 
 export const UPDATE_NOTE = 'needs the October 2026 database update (see BACKEND.md)';
 export const PHOTO_BUCKET_MISSING = 'Photo upload needs the October 2026 database update; enter a file name or URL instead.';
+// Staff upload photos too once 20261014120000_staff_role.sql is applied (AW-030).
+export const PHOTO_NOT_ALLOWED = 'Only approved admin or staff accounts can upload photos.';
+// After an upload the photo is in the form, not yet on the site (AW-030).
+export const PHOTO_UPLOADED = 'Uploaded. Save the product to show it on the site.';
 const COLUMN_NAMES = {
   stock_status: 'Stock status', featured_rank: 'Homepage rank', variant_axis: 'What the variants differ by', unavailable_variants: '“Can’t be ordered”',
   description_hidden: '“Show no description”',
@@ -145,7 +149,7 @@ function photoUploadMessage(error) {
   const message = String(error?.message || '');
   if (/bucket not found/i.test(message)) return PHOTO_BUCKET_MISSING;
   const status = Number(error?.statusCode) || Number(error?.status) || undefined;
-  if (status === 403 || /row-level security|unauthori[sz]ed/i.test(message)) return 'Only an approved admin can upload photos.';
+  if (status === 403 || /row-level security|unauthori[sz]ed/i.test(message)) return PHOTO_NOT_ALLOWED;
   return adminErrorMessage({ ...error, message, status }, 'The photo didn’t upload');
 }
 
@@ -217,6 +221,8 @@ export function ProductEditor({ id, fromId = null, rows, columns, loadError, onR
   const [errors, setErrors] = useState({});
   const [saveError, setSaveError] = useState('');
   const [photoError, setPhotoError] = useState('');
+  // The address of the photo just uploaded, until the product is saved.
+  const [uploaded, setUploaded] = useState('');
   const [busy, setBusy] = useState(null); // 'saving' | 'uploading' | 'checking' | 'deleting'
   const [confirm, setConfirm] = useState(null); // { kind: 'discard' | 'delete' | 'deactivate', count }
   const [deleteNote, setDeleteNote] = useState('');
@@ -394,7 +400,10 @@ export function ProductEditor({ id, fromId = null, rows, columns, loadError, onR
     setBusy('uploading');
     const { url, error } = await uploadPhoto(supabase, productImagePath(isNew ? null : id, file), file);
     if (error) setPhotoError(error);
-    else set('img', url);
+    else {
+      set('img', url);
+      setUploaded(url);
+    }
     setBusy(null);
     input.value = '';
   };
@@ -691,7 +700,9 @@ export function ProductEditor({ id, fromId = null, rows, columns, loadError, onR
               <label htmlFor="product-photo-file">Upload a photo</label>
               <input id="product-photo-file" className="doc-file" type="file" accept="image/jpeg,image/png,image/webp" disabled={disabled}
                 aria-describedby="product-photo-file-hint product-photo-file-error" onChange={upload} />
-              <small className="field-hint" id="product-photo-file-hint">{busy === 'uploading' ? 'Uploading…' : 'JPEG, PNG or WebP, up to 5 MB.'}</small>
+              <small className="field-hint" id="product-photo-file-hint">{busy === 'uploading'
+                ? 'Uploading…'
+                : uploaded && uploaded === draft.img && dirty ? PHOTO_UPLOADED : 'JPEG, PNG or WebP, up to 5 MB. A new upload replaces the photo.'}</small>
               <p className="form-error" id="product-photo-file-error" aria-live="polite">{photoError}</p>
               <label htmlFor="product-img">Image file or URL</label>
               <input id="product-img" value={draft.img} maxLength={1000} autoComplete="off" spellCheck={false}

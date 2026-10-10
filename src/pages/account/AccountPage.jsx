@@ -30,6 +30,7 @@ import { AccountLoading, AccountProblem } from '../../components/AccountStatus.j
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
 import { ApplicationDocuments } from '../../components/DocumentUploads.jsx';
 import { accountStatusLabel, roleLabel } from '../../lib/accountLabels.js';
+import { isStaffRole } from '../../lib/accountStatus.js';
 import { QuickReorder } from './QuickReorder.jsx';
 import { OrderHistory } from './OrderHistory.jsx';
 
@@ -115,7 +116,7 @@ export function AccountPage({
       <div className="account-stats">
         <Stat label="Account status" value={accountStatusLabel(profile.status)} tone={statusTone} />
         <Stat label="Pricing tier" value={tierText} asWritten />
-        {profile.role === 'admin' && <Stat label="Role" value={roleLabel(profile.role)} />}
+        {isStaffRole(profile.role) && <Stat label="Role" value={roleLabel(profile.role)} />}
       </div>
 
       {/* A suspended account is told why nothing can be ordered, and who to

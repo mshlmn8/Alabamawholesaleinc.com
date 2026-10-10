@@ -186,7 +186,12 @@ export default defineConfig(({ command, mode }) => {
       // end a hung test or hook within half a minute. src/test/setup.js does
       // the same for Testing Library's waitFor and findBy.
       testTimeout: 30_000,
-      hookTimeout: 30_000
+      hookTimeout: 30_000,
+      // No unit test reaches a Supabase project: .env.local (the owner's
+      // live project) is read in every mode, so without this the site's
+      // client was real in tests that don't mock src/lib/supabase.js, as in
+      // CI, where there is no .env.local. Tests pass their own fake clients.
+      env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_ANON_KEY: '' }
     }
   };
 });

@@ -39,7 +39,10 @@ const { ORDER_COLUMN_STEPS, resetOrderColumnsForTests } = await import('./orderH
 
 const profile = (id, business) => ({ id, business, name: 'Test Buyer', email: `${id}@example.test`, status: 'approved', role: 'customer', pricing_tier: 'silver' });
 const order = (id, ref) => ({ id, ref_num: ref, status: 'new', total_units: 1, subtotal: null, created_at: '2026-10-01T12:00:00Z', order_items: [] });
-const last = () => db.requests[db.requests.length - 1];
+// The orders requests (the page's contact links also read the site
+// settings, AW-030).
+const orders = () => db.requests.filter((request) => request.table === 'orders');
+const last = () => orders()[orders().length - 1];
 const alert = () => screen.queryByRole('alert');
 // The order numbers on the cards.
 const refs = () => [...document.querySelectorAll('.order-ref')].map((el) => el.textContent);
@@ -93,7 +96,7 @@ describe('AccountPage order history', () => {
     // Try again keeps its place (and focus) while it works.
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(screen.getByRole('button', { name: 'Trying again…' })).toBeTruthy();
-    expect(db.requests).toHaveLength(2);
+    expect(orders()).toHaveLength(2);
     await act(async () => { last().answer({ data: [order('oa1', 'ALW-O-AAAAAAAAAA')], error: null }); });
     expect(refs()).toContain('ALW-O-AAAAAAAAAA');
     expect(alert()).toBeNull();
@@ -118,7 +121,7 @@ describe('AccountPage order history', () => {
     expect(alert().textContent).toMatch(/^You’re offline\./);
     onLine.mockReturnValue(true);
     act(() => { window.dispatchEvent(new Event('online')); });
-    expect(db.requests).toHaveLength(2);
+    expect(orders()).toHaveLength(2);
     expect(screen.getByText('Loading…')).toBeTruthy();
     await act(async () => { last().answer({ data: [], error: null }); });
     expect(screen.getByText('No orders yet')).toBeTruthy();

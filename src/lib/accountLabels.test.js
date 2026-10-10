@@ -15,6 +15,8 @@ describe('account labels', () => {
     expect(Object.keys(ADMIN_STATUS_LABELS)).toEqual(Object.keys(ACCOUNT_STATUS_LABELS));
     expect(['customer', 'admin'].map(roleLabel)).toEqual(['Customer', 'Admin']);
     expect(ROLE_LABELS.admin).toBe('Admin');
+    expect(ROLE_LABELS.staff).toBe('Staff');
+    expect(Object.keys(ROLE_LABELS)).toEqual(['customer', 'staff', 'admin']);
   });
 
   it('capitalises the tier key and adds nothing to it', () => {

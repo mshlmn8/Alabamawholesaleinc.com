@@ -1578,6 +1578,39 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .form-grid.account-note-form { grid-template-columns: minmax(0, 1fr); margin-bottom: 14px; }
 .account-note-form textarea { width: 100%; }
 .account-documents .account-document-name { flex: 1 1 100%; font-weight: 700; color: var(--purple); }
+/* "How to use Admin" on the admin home (AW-030, AW-031): folded, its
+   summary an h2 between a help icon and the plus or minus, like the order
+   cards' staff notes; the jobs in columns that wrap. */
+.admin-help { margin: 0 0 20px; border: 1px solid var(--line); border-left: 4px solid var(--purple); background: var(--paper); }
+.admin-help > summary { display: flex; align-items: center; gap: 10px; min-height: var(--tap); padding: 6px 16px; color: var(--purple); cursor: pointer; list-style: none; }
+.admin-help > summary::-webkit-details-marker { display: none; }
+.admin-help > summary h2 { flex: 1 1 auto; margin: 0; font-size: var(--text-lg); line-height: 1.3; }
+.admin-help-plus, .admin-help-minus { width: 1.25rem; height: 1.25rem; padding: 1px; border: 1px solid var(--purple); }
+.admin-help[open] .admin-help-plus, .admin-help:not([open]) .admin-help-minus { display: none; }
+.admin-help-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 16px 28px; margin: 0; padding: 6px 16px 18px; list-style: none; }
+.admin-help-list h3 { margin: 0 0 4px; font-size: var(--text-base); line-height: 1.35; }
+.admin-help-list p { margin: 0 0 6px; font-size: var(--text-sm); line-height: 1.55; }
+/* Admin -> Site settings (AW-030): one form of groups, each on a rule under
+   its legend; the messages and hours as rows with their buttons beside
+   them (under them on phones). */
+.site-settings { max-width: 52rem; }
+.site-settings-form { display: grid; gap: 22px; margin-top: 8px; }
+.site-settings-group { margin: 0; padding: 16px 0 0; border: 0; border-top: 1px solid var(--line); min-inline-size: 0; }
+.site-settings-group > legend { float: left; width: 100%; margin: 0 0 8px; padding: 0; font-size: var(--text-lg); font-weight: 700; line-height: 1.3; }
+.site-settings-group > legend + * { clear: both; }
+.site-settings-group > .field-hint { display: block; margin: 0 0 10px; max-width: 45rem; }
+.site-settings-list { display: grid; gap: 14px; margin: 0 0 12px; padding: 0; list-style: none; }
+.site-settings-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 0 12px; }
+.form-grid.site-settings-fields { grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); margin: 0; }
+.site-settings-row-actions { padding-top: 1.5rem; }
+.site-settings-state input { max-width: 6rem; }
+.site-settings-actions { margin-top: 0; }
+.bulk-panel .admin-toolbar input.bulk-unit { width: 14rem; }
+@media (max-width: 37.5em) {
+  .site-settings-row { grid-template-columns: minmax(0, 1fr); }
+  .site-settings-row-actions { padding-top: 0; }
+  .bulk-panel .admin-toolbar input.bulk-unit { width: 100%; }
+}
 .account-order-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 8px 20px; margin: 0 0 12px; }
 .account-order-summary dt { font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted); }
 .account-order-summary dd { margin: 2px 0 0; font-size: var(--text-base); font-weight: 700; color: var(--ink); }

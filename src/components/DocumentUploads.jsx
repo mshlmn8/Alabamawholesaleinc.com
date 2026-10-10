@@ -16,11 +16,11 @@
 // TODO(owner): Which staff email address (or channel) should hear when an applicant uploads license documents? No alert is sent yet. (AW-099)
 
 import { useEffect, useRef, useState } from 'react';
-import { COMPANY } from '../data/content.js';
 import { useAuth } from '../lib/auth.jsx';
 import { announce } from '../lib/announce.js';
 import { useOnlineStatus } from '../lib/useOnlineStatus.js';
 import { Icon } from './Icon.jsx';
+import { EmailLink } from './ContactLinks.jsx';
 import {
   DOCUMENT_ACCEPT,
   DOCUMENT_TYPES,
@@ -118,7 +118,7 @@ function DocumentFields({
           {showStatus
             ? 'Uploading a new file replaces the one on file.'
             : <>Upload your state retail tobacco license and resale certificate now, or send proof later to{' '}
-              <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.</>}
+              <EmailLink />.</>}
         </p>
       )}
       {DOCUMENT_TYPES.map(doc => {

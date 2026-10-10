@@ -97,7 +97,8 @@
 // happened (NEW-009).
 
 import { useEffect, useRef, useState } from 'react';
-import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../data/content.js';
+import { FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../data/content.js';
+import { useSite } from '../lib/siteSettings.js';
 import { APPLY_LABEL, BASKET, SIGN_IN_LABEL, cartDeviceNote } from '../data/terms.js';
 import { QUOTE_ERROR_GENERIC, QUOTE_OFFLINE, quoteErrorField, quoteErrorMessage, submitOrder, todayInBirmingham } from '../lib/orders.js';
 import { orderNotificationFields, sendOrderNotification } from '../lib/orderNotification.js';
@@ -172,6 +173,8 @@ export function QuotePage({
   // Why this visitor can't place an order, if they can't (AW-014, AW-024):
   // the form is replaced by CheckoutGate. Without a backend nobody can.
   const gate = !isBackendConfigured && account !== 'loading' ? 'unavailable' : orderGate(profile, account);
+  // The will-call address, as staff set it (AW-030).
+  const site = useSite();
   // What was typed here before survives leaving the page and a reload: this
   // owner's draft, then the profile in the fields still empty (AW-080).
   const [data, setData] = useState(() => initialQuoteForm(profile, readQuoteDraft(owner)));
@@ -645,7 +648,7 @@ export function QuotePage({
               </select>
             </Field>
             {willCall ? (
-              <p className="full result-note" id="quote-pickup">{`Pickup at ${COMPANY.addressShort} during business hours.`}</p>
+              <p className="full result-note" id="quote-pickup">{`Pickup at ${site.addressShort} during business hours.`}</p>
             ) : (
               <>
                 {shipFrom && (

@@ -59,8 +59,9 @@ export function validateCatalog(rows, { aliases = null } = {}) {
     if (!String(p.sellUnit ?? '').trim()) noSellUnit += 1;
   }
   if (noSellUnit) {
-    // TODO(owner): What is the sell unit (each, box of N, case of N, or a size) of each product that has none yet? Until then these rows say nothing about what quantity 1 means. (AW-031)
-    warnings.push(`${noSellUnit} of ${rows.length} rows have no sellUnit, so their pages don't say what quantity 1 means (AW-031, docs/OWNER-TODO.md)`);
+    // The owner and staff set them in Admin -> Products (AW-031, owner
+    // answer 2026-10): one product, or many with Set sell unit.
+    warnings.push(`${noSellUnit} of ${rows.length} rows have no sellUnit, so their pages don't say what quantity 1 means until staff set one in Admin -> Products (AW-031)`);
   }
   if (aliases) problems.push(...validateAliases(rows, aliases));
   return { problems, warnings };

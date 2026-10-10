@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { COMPANY } from '../data/content.js';
 import {
-  APPLICATION_TIMEOUT_MESSAGE, OFFLINE_MESSAGE, describeError, isNetworkError, isRateLimitError, slowMessage, unavailableMessage,
+  OFFLINE_MESSAGE, applicationTimeoutMessage, describeError, isNetworkError, isRateLimitError, slowMessage, unavailableMessage,
 } from './errors.js';
 import { timeoutError } from './network.js';
 
@@ -40,7 +40,7 @@ describe('errors', () => {
   });
 
   it('says a timed-out application may have gone through (AW-194)', () => {
-    expect(APPLICATION_TIMEOUT_MESSAGE).toBe(`The application is taking too long to send. Check your inbox: if a confirmation email arrives, it went through. Otherwise try again, or call ${COMPANY.phone}.`);
+    expect(applicationTimeoutMessage()).toBe(`The application is taking too long to send. Check your inbox: if a confirmation email arrives, it went through. Otherwise try again, or call ${COMPANY.phone}.`);
   });
 
   it('recognises Supabase’s email rate limit (AW-016)', () => {

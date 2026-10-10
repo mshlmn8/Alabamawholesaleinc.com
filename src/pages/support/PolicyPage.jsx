@@ -1,8 +1,9 @@
 // Customer policy pages: delivery, privacy, and trade terms.
 
-import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM, POLICIES_UPDATED } from '../../data/content.js';
+import { FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM, POLICIES_UPDATED } from '../../data/content.js';
 import { formatMoney, formatMoneyShort } from '../../lib/format.js';
 import { Link } from '../../lib/router.js';
+import { useSite } from '../../lib/siteSettings.js';
 import { CallOrEmail, VolumePricing } from '../../components/ContactLinks.jsx';
 import { PageHead, SupportLayout, ContactStrip, POLICY_LINKS, supportApplyLabel } from './SupportShell.jsx';
 import { POLICY_TEXT } from './policyText.js';
@@ -12,6 +13,13 @@ export { POLICY_TITLES, POLICY_INTROS } from './policyText.js';
 
 // Shared with TERMS_VERSION, the version an application accepts (AW-019).
 const UPDATED = POLICIES_UPDATED;
+
+// The will-call address and hours staff set in Admin -> Site settings
+// (AW-030), or content.js's. One root element (AW-039).
+function WillCallPickup() {
+  const site = useSite();
+  return <span>{`Will-call is pickup at ${site.addressLine1}, ${site.addressLine2} during business hours: ${site.hoursLines.join(', ')}. Order ahead and have your order reference and business name ready at the counter.`}</span>;
+}
 
 // Each policy is a list of sections; `body` items are paragraphs (string or JSX)
 // or `{ list: [...] }` bullet groups.
@@ -37,7 +45,7 @@ const POLICIES = {
         `The minimum order is ${formatMoney(ORDER_MINIMUM)}.`,
       ] },
       { heading: 'Will-call pickup', body: [
-        `Will-call is pickup at ${COMPANY.addressLine1}, ${COMPANY.addressLine2} during business hours: ${COMPANY.hoursLine1}, ${COMPANY.hoursLine2}. Order ahead and have your order reference and business name ready at the counter.`,
+        <WillCallPickup key="will-call" />,
       ] },
       { heading: 'Receiving your order', body: [
         'Count the cases and check for damage when the order arrives or when you collect it.',

@@ -23,8 +23,11 @@ export const ADMIN_STATUS_LABELS = Object.freeze({
   approved: 'Approved',
   suspended: 'Suspended',
 });
+// Staff run the admin area with the admin, except roles and pricing tiers
+// (AW-030, 20261014120000_staff_role.sql).
 export const ROLE_LABELS = Object.freeze({
   customer: 'Customer',
+  staff: 'Staff',
   admin: 'Admin',
 });
 

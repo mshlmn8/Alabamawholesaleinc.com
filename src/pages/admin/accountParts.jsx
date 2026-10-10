@@ -25,6 +25,7 @@ export function approvalLine(p, profiles) {
 // What Admin -> Accounts says after a change was saved.
 export function profileChangeText(who, patch) {
   if (patch.role === 'admin') return `${who} is now an admin.`;
+  if (patch.role === 'staff') return `${who} is now staff.`;
   if (patch.role === 'customer') return `${who} is now a customer account.`;
   // Labels, as the selects show them (NEW-037).
   if ('status' in patch) return `${who} is now ${adminStatusLabel(patch.status)}.`;
@@ -39,6 +40,11 @@ export function profileChangeText(who, patch) {
 // and a hint (20261009140000); one with no hint names the account.
 export function profileSaveError(error, who) {
   if (isMissingSchema(error) || /PGRST204|42703/.test(String(error?.message || ''))) return 'Saving this needs the October 2026 database update (see BACKEND.md).';
+  // The Staff role (AW-030) before 20261014120000_staff_role.sql: the role
+  // check refuses it.
+  if (String(error?.code) === '23514' && /profiles_role_chk/.test(`${error?.message || ''} ${error?.details || ''}`)) {
+    return 'Staff accounts need the October 2026 database update (see BACKEND.md).';
+  }
   if (isRefused(error) && !refusalFor(error)) return `That change to ${who} isn’t allowed.`;
   return adminErrorMessage(error, `The change to ${who} wasn’t saved`);
 }
@@ -88,7 +94,8 @@ export function AccountFacts({ profile, profiles = [], detail = false }) {
   );
 }
 
-function Fact({ label, value }) {
+// One label and value, as the facts grid shows them.
+export function Fact({ label, value }) {
   return (
     <div>
       <p className="fact-label">{label}</p>

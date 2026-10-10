@@ -17,7 +17,9 @@
 //   sellUnit     what quantity 1 means, only when the product's own name or
 //                description states it (e.g. "5-pack", "25-count box",
 //                "box of 200", "jar"); never guessed, and empty renders nothing
-//                TODO(owner): What is the sell unit (each, box of N, case of N, or a size) of each product that has none yet? 322 of the 368 rows are empty; npm run seed prints the count. (AW-031)
+//                The owner and staff set the rest in Admin -> Products (one
+//                product, or many with Set sell unit; owner answer 2026-10,
+//                AW-031); npm run seed prints how many rows have none here.
 //   img          photo filename in ../assets/products, or null while a photo is
 //                still needed. Resolved to a responsive set by ../lib/images.js.
 //   description  written from the name, brand, department and variants only

@@ -385,7 +385,7 @@ describe('role changes (AW-203)', () => {
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Make an admin' })); });
     expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(roleSelect('Alpha Food Mart').value).toBe('customer');
-    expect(screen.getByRole('alert').textContent).toBe('Only an approved admin can change this.');
+    expect(screen.getByRole('alert').textContent).toBe('Only an approved admin or staff account can change this.');
     expect(fake.find({ table: 'profile_admin_notes', op: 'insert' })).toHaveLength(0);
   });
 

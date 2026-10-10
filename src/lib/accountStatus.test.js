@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ACCOUNT_EYEBROWS, ACCOUNT_STATUSES, ADMIN_GATE_HEADINGS, PRICE_LOCK, STATUS_LABEL, TRADE_ACCOUNT_PANELS, accountStatus, accountView, adminGate,
-  isApprovedAdmin, orderGate, tradeAccountPanel,
+  STAFF_ROLES, isApprovedAdmin, isApprovedStaff, isStaffRole, orderGate, tradeAccountPanel,
 } from './accountStatus.js';
 
 describe('accountStatus', () => {
@@ -89,6 +89,22 @@ describe('adminGate', () => {
     expect(isApprovedAdmin({ role: 'admin', status: 'pending' })).toBe(false);
     expect(isApprovedAdmin(null)).toBe(false);
     expect(ADMIN_GATE_HEADINGS).toEqual({ signin: 'Sign in to continue', staff: 'This page is for the trade desk' });
+  });
+
+  // Staff accounts (AW-030, owner answer 2026-10): the admin area, like
+  // is_staff_or_admin(); roles and pricing tiers stay an admin's.
+  it('lets an approved staff account in, and keeps out a pending or suspended one', () => {
+    expect(STAFF_ROLES).toEqual(['admin', 'staff']);
+    expect(isStaffRole('staff') && isStaffRole('admin')).toBe(true);
+    expect(isStaffRole('customer') || isStaffRole(undefined)).toBe(false);
+    expect(adminGate({ role: 'staff', status: 'approved' }, 'ready')).toBeNull();
+    expect(adminGate({ role: 'staff', status: 'pending' }, 'ready')).toBe('staff');
+    expect(adminGate({ role: 'staff', status: 'suspended' }, 'ready')).toBe('staff');
+    expect(isApprovedStaff({ role: 'staff', status: 'approved' })).toBe(true);
+    expect(isApprovedStaff({ role: 'admin', status: 'approved' })).toBe(true);
+    expect(isApprovedStaff({ role: 'customer', status: 'approved' })).toBe(false);
+    expect(isApprovedStaff(null)).toBe(false);
+    expect(isApprovedAdmin({ role: 'staff', status: 'approved' })).toBe(false);
   });
 
   it('shows no gate until the account is known, or when its profile didn’t load', () => {

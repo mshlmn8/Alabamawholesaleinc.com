@@ -36,7 +36,8 @@ import { confirmLeave, focusPageHeading, navigate, pathFor, resolveRoute, routeK
 import { pageKeyFor } from './lib/routes.js';
 import { confirmAge, declineAge, endAgeConfirmationOnSignOut, reconsiderAge, useAgeGate } from './lib/ageGate.js';
 import { pageMeta, applyPageMeta } from './lib/meta.js';
-import { accountView, adminGate, isApprovedAdmin } from './lib/accountStatus.js';
+import { useSite } from './lib/siteSettings.js';
+import { accountView, adminGate, isApprovedStaff } from './lib/accountStatus.js';
 import { departmentsFor } from './lib/departments.js';
 import { accountNotices, signOutMessage } from './lib/accountNotices.js';
 import { catalogNotices } from './lib/catalogNotices.js';
@@ -144,9 +145,10 @@ export default function App() {
   const isApprovedBuyer = profile?.status === 'approved';
   // Ordering is paused on a suspended account (AW-201).
   const isSuspended = profile?.status === 'suspended';
-  // Only an approved admin is one; the database's is_admin() says the same
-  // (AW-352).
-  const isAdmin = isApprovedAdmin(profile);
+  // The admin area is for approved admin and staff accounts; the database's
+  // is_staff_or_admin() says the same (AW-352, AW-030). (The header's prop
+  // keeps the name isAdmin: it shows the Admin link.)
+  const isAdmin = isApprovedStaff(profile);
   // Orders placed since this admin last opened Admin -> Orders (AW-111): the
   // header's Admin link and the admin pages' titles show the count.
   const adminUnseen = useAdminUnseen(isAdmin ? profile.id : null);
@@ -238,9 +240,12 @@ export default function App() {
   }, [route, receivedKind, adminGated, adminUnseen, applyAs, resetAs]);
   const currentPageKey = location.pageKey;
   const onResetView = useCallback((view) => setResetShown({ view, pageKey: currentPageKey }), [currentPageKey]);
+  // The contact page's description names the phone, address and hours staff
+  // set in Admin -> Site settings (AW-030).
+  const site = useSite();
   useEffect(() => {
-    applyPageMeta(pageMeta(metaRoute, products, departments));
-  }, [metaRoute, products, departments]);
+    applyPageMeta(pageMeta(metaRoute, products, departments, site));
+  }, [metaRoute, products, departments, site]);
   // The sticky header's height (AW-153), measured before paint and before the
   // page-change scroll, which lands anchors below it (scroll-margin-top).
   const siteHeaderRef = useRef(null);

@@ -10,7 +10,6 @@
 // offered Try again and Sign out, never the guest's Apply and Sign in
 // (NEW-002). App titles the page the same way (meta.js, route.applyAs).
 
-import { COMPANY } from '../../data/content.js';
 import { APPLICATION_CHECKLIST } from '../../data/onboarding.js';
 import { ACCOUNT_EYEBROWS, accountStatus, accountView } from '../../lib/accountStatus.js';
 import { APPLY_LABEL, SIGN_IN_INSTEAD, TRADE_ACCOUNT_LABEL } from '../../data/terms.js';
@@ -19,6 +18,7 @@ import { ApplicationDocuments } from '../../components/DocumentUploads.jsx';
 import { CallOrEmail } from '../../components/ContactLinks.jsx';
 import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
 import { Link } from '../../lib/router.js';
+import { useSite } from '../../lib/siteSettings.js';
 import { accountStatusLabel } from '../../lib/accountLabels.js';
 import { APPLY_TITLES } from '../../lib/meta.js';
 import { PageHead, SupportLayout, ContactStrip, supportApplyLabel } from './SupportShell.jsx';
@@ -77,10 +77,11 @@ export function ApplyPage({
   const view = applyView(profile, account);
   const { eyebrow, strip } = VIEWS[view];
   const title = APPLY_TITLES[view];
+  const site = useSite();
   // Apply (the one label, AW-132), or the phone number without a backend.
   const applyAction = isBackendConfigured
     ? <button className="button" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button>
-    : <a className="button" href={`tel:${COMPANY.phoneRaw}`}>Apply by phone · {COMPANY.phone}</a>;
+    : <a className="button" href={`tel:${site.phoneRaw}`}>{`Apply by phone · ${site.phone}`}</a>;
 
   return (
     <section className="support-page">

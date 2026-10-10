@@ -198,6 +198,39 @@ describe('bulk updates (AW-114)', () => {
     expect(updates()[0].patch).toEqual({ price: null });
     expect(rowOf(1).cells[8].textContent).toBe('On request');
   });
+
+  // AW-031 (owner answer 2026-10): staff set sell units in bulk.
+  it('sets the sell unit of the selection, suggesting the units in use, blank removing it', async () => {
+    await renderAdmin('/admin/products?q=swisher');
+    await act(async () => { fireEvent.click(screen.getByRole('checkbox', { name: 'Select all 40 filtered' })); });
+    await act(async () => { fireEvent.click(within(bar()).getByRole('button', { name: 'Set sell unit' })); });
+    const box = within(bar()).getByLabelText('New sell unit');
+    expect([...document.getElementById(box.getAttribute('list')).options].map((o) => o.value)).toEqual(['box']);
+    await act(async () => { fireEvent.change(box, { target: { value: 'x'.repeat(61) } }); });
+    await act(async () => { fireEvent.submit(box.closest('form')); });
+    expect(box.getAttribute('aria-invalid')).toBe('true');
+    expect(within(bar()).getByText('Keep the sell unit to 60 characters.')).toBeTruthy();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    await act(async () => { fireEvent.change(box, { target: { value: '  box of  24 ' } }); });
+    await act(async () => { fireEvent.submit(box.closest('form')); });
+    expect(within(confirmDialog()).getByRole('heading').textContent).toBe('Set the sell unit of 40 products?');
+    expect(within(confirmDialog()).getByText('Each selected product is sold by “box of 24”: what a quantity of 1 is on the product page, in carts and on orders.')).toBeTruthy();
+    await act(async () => { fireEvent.click(within(confirmDialog()).getByRole('button', { name: 'Set 40 sell units' })); });
+    expect(updates()).toHaveLength(1);
+    expect(updates()[0].patch).toEqual({ sell_unit: 'box of 24' });
+    expect(updates()[0].filters).toEqual([['in', 'id', ROWS.slice(0, 40).map((r) => r.id)]]);
+    expect(statusText()).toBe('Set the sell unit of 40 products to “box of 24”.');
+    expect(onCatalogChange).toHaveBeenCalledTimes(1);
+
+    // Blank removes it.
+    await act(async () => { fireEvent.click(screen.getByRole('checkbox', { name: 'Select Swisher 1' })); });
+    await act(async () => { fireEvent.click(within(bar()).getByRole('button', { name: 'Set sell unit' })); });
+    await act(async () => { fireEvent.submit(within(bar()).getByLabelText('New sell unit').closest('form')); });
+    expect(within(confirmDialog()).getByText('Each selected product loses its sell unit, so buyers aren’t told what a quantity of 1 is.')).toBeTruthy();
+    await act(async () => { fireEvent.click(within(confirmDialog()).getByRole('button', { name: 'Clear 1 sell unit' })); });
+    expect(updates()[1].patch).toEqual({ sell_unit: '' });
+    expect(statusText()).toBe('Cleared the sell unit of 1 product.');
+  });
 });
 
 describe('focus after a confirmed change (NEW-004, AW-114)', () => {

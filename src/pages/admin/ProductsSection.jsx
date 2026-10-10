@@ -39,7 +39,7 @@ import { BulkBar, plural } from './ProductBulk.jsx';
 import { ImportPreview } from './ProductImport.jsx';
 import { PRODUCT_TAGS, STOCK_LABELS, STOCK_STATUSES } from './productForm.js';
 import { ariaSort, countText, departmentOptions, filterSignature, filterSortPage, hasFilters, isInactive, nextSort } from './productList.js';
-import { csvFileName, importPlan, productCsvRecords } from './productBulk.js';
+import { csvFileName, importPlan, productCsvRecords, sellUnitOptions } from './productBulk.js';
 import { CsvError, downloadCsv, parseCsv, toCsv } from './csv.js';
 import { adminDate } from './dates.js';
 
@@ -342,6 +342,8 @@ function ProductsList({
     }
   }
   const selectedRows = useMemo(() => (rows || []).filter((row) => selected.has(row.id)), [rows, selected]);
+  // The sell units in use, offered by Set sell unit (AW-031).
+  const sellUnits = useMemo(() => sellUnitOptions(rows || []), [rows]);
   const allSelected = result.total > 0 && result.rows.every((row) => selected.has(row.id));
   const someSelected = !allSelected && result.rows.some((row) => selected.has(row.id));
   const allRef = useRef(null);
@@ -484,7 +486,7 @@ function ProductsList({
       {loadError && <LoadProblem message={loadError} onRetry={onRetry} retrying={retrying} />}
       {selected.size > 0 && (
         <BulkBar rows={selectedRows} adjustMissing={missing.adjust} onAdjustMissing={() => onMissing?.('adjust')}
-          onApplied={afterChange} onClear={clearSelection} returnFocus={countRef} />
+          onApplied={afterChange} onClear={clearSelection} returnFocus={countRef} sellUnits={sellUnits} />
       )}
       {rows.length === 0 ? (
         // An empty catalog is not a filter's doing (AW-268); a failed load

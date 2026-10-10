@@ -37,7 +37,7 @@
 // A call whose connection dropped before the answer came back is just as
 // uncertain, and is worded the same way (NEW-061).
 
-import { COMPANY } from '../data/content.js';
+import { currentSite } from '../data/siteFacts.js';
 import { DELIVERY_STATE_NOTE } from '../data/quoteRules.js';
 import { MISSING_FUNCTION_CODES } from './pricing.js';
 import { QTY_RANGE_TEXT } from './quantity.js';
@@ -96,14 +96,16 @@ export function makeClientRef(getRandomValues = (bytes) => globalThis.crypto.get
   return `ALW-O-${Array.from(bytes, (b) => HEX[b >> 4] + HEX[b & 15]).join('')}`;
 }
 
-// The older functions require a ship-to address for will-call too.
+// The older functions require a ship-to address for will-call too: the
+// warehouse's, as staff set it (Admin -> Site settings, AW-030).
 function withPickupAddress(args) {
   const noAddress = !args.p_ship_street && !args.p_ship_city && !args.p_ship_state && !args.p_ship_zip;
   if (args.p_delivery === 'willcall' && noAddress) {
-    args.p_ship_street = COMPANY.addressStreet;
-    args.p_ship_city = COMPANY.addressCity;
-    args.p_ship_state = COMPANY.addressState;
-    args.p_ship_zip = COMPANY.addressZip;
+    const site = currentSite();
+    args.p_ship_street = site.addressStreet;
+    args.p_ship_city = site.addressCity;
+    args.p_ship_state = site.addressState;
+    args.p_ship_zip = site.addressZip;
   }
   return args;
 }

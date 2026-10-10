@@ -1,7 +1,9 @@
 // One account's page, /admin/accounts/:id (AW-113): its business as the
 // heading with a status pill, then
 //   - Status, tier and role (the list's rules: the admin's own row is
-//     locked; suspending asks for a reason; AccountChanges.jsx, AW-112)
+//     locked; suspending asks for a reason; AccountChanges.jsx, AW-112;
+//     staff see the tier and role as text and can't change a staff or admin
+//     account, accountAccess.js, AW-030)
 //   - Contact and store: a form for the business, contact, phone, business
 //     type and store address (the profile's store_* columns), Enter saves;
 //     the email is read only (it follows the sign-in email)
@@ -28,12 +30,13 @@ import { adminHref } from '../../lib/adminRoutes.js';
 import { accountStatus } from '../../lib/accountStatus.js';
 import { formatMoney } from '../../lib/format.js';
 import { DOCUMENT_TYPES, formatUploadedOn, listProfileDocuments } from '../../lib/documents.js';
-import { ADMIN_STATUS_LABELS, ROLE_LABELS, adminStatusLabel, tierLabel } from '../../lib/accountLabels.js';
+import { ADMIN_STATUS_LABELS, ROLE_LABELS, adminStatusLabel, roleLabel, tierLabel } from '../../lib/accountLabels.js';
 import { useLeaveGuard } from './useLeaveGuard.js';
 import { adminErrorMessage, checkedWrite, withStatus } from './adminData.js';
 import { LoadProblem } from './AdminStatus.jsx';
-import { AccountFacts, DocumentView, Email, approvalLine, profileSaveError, useDocumentViewer } from './accountParts.jsx';
+import { AccountFacts, DocumentView, Email, Fact, approvalLine, profileSaveError, useDocumentViewer } from './accountParts.jsx';
 import { ACCOUNT_NOTE_SELECT, NOTES_NEED_UPDATE, accountControlId } from './AccountChanges.jsx';
+import { ACCOUNT_LOCK_TEXT, accountAccess } from './accountAccess.js';
 import { checkNote, entryLine, isMissingTable, staffName, statusLabel } from './orderStaff.js';
 import {
   ACCOUNT_ORDER_LIMIT, CONTACT_FIELDS, accountName, accountOrdersHref, businessTypes, contactChanges, contactDraft, dayText, historyText, loadAccountOrders,
@@ -48,10 +51,13 @@ const telHref = (phone) => `tel:${String(phone ?? '').replace(/[^\d+]/g, '')}`;
 // loadError/onRetry/retrying. tiers: the tier options. changes: the shared
 // status/tier/role/note changes (useAccountChanges). onPatch(id, patch): a
 // saved contact change. onBack(event): Back to accounts was clicked.
+// viewer: the signed-in profile (an admin, or staff: accountAccess.js).
 export function AccountDetail({
-  id, profiles, loadError = null, onRetry, retrying = false, tiers = [], currentAdminId, changes, notify, onPatch, onBack,
+  id, profiles, loadError = null, onRetry, retrying = false, tiers = [], currentAdminId,
+  viewer = { id: currentAdminId, role: 'admin', status: 'approved' }, changes, notify, onPatch, onBack,
 }) {
   const profile = profiles?.find((p) => p.id === id) || null;
+  const access = accountAccess(viewer, profile);
   const who = profile ? accountName(profile) : 'this account';
 
   // The heading takes the focus when the page opens: inside admin the page
@@ -105,13 +111,14 @@ export function AccountDetail({
           {changes.error && <p className="form-error" role="alert">{changes.error}</p>}
           <div className="account-detail-grid">
             <div className="account-detail-column">
-              <AccountControls profile={profile} profiles={profiles} tiers={tiers} currentAdminId={currentAdminId} changes={changes}
+              <AccountControls profile={profile} profiles={profiles} tiers={tiers} access={access} changes={changes}
                 onNote={(note) => setAddedNotes((list) => [note, ...list])} />
-              <ContactForm profile={profile} profiles={profiles} draft={draft} setDraft={setDraft} dirty={contactDirty} notify={notify} onPatch={onPatch} />
+              <ContactForm profile={profile} profiles={profiles} draft={draft} setDraft={setDraft} dirty={contactDirty} notify={notify} onPatch={onPatch}
+                locked={!access.details} />
               <section className="account-section" aria-labelledby="account-verify-title">
                 <h3 id="account-verify-title">Verification</h3>
                 <AccountFacts profile={profile} profiles={profiles} detail />
-                <VerificationNote profile={profile} draft={noteDraft ?? ''} setDraft={setNoteDraft} changes={changes} />
+                <VerificationNote profile={profile} draft={noteDraft ?? ''} setDraft={setNoteDraft} changes={changes} locked={!access.details} />
               </section>
             </div>
             <div className="account-detail-column">
@@ -129,12 +136,12 @@ export function AccountDetail({
 
 // Status, tier and role: the list's selects, with labels. Suspending and
 // role changes ask for a reason; onNote(note) gets the reason's internal
-// note once saved.
-function AccountControls({ profile: p, profiles, tiers, currentAdminId, changes, onNote }) {
-  const own = p.id === currentAdminId;
+// note once saved. access: accountAccess() for this account; staff see the
+// tier and role as text (AW-030).
+function AccountControls({ profile: p, profiles, tiers, access, changes, onNote }) {
   const busy = !!changes.saving(p.id);
   const ids = { status: accountControlId(p.id, 'status', 'page'), tier: accountControlId(p.id, 'tier', 'page'), role: accountControlId(p.id, 'role', 'page') };
-  const describedBy = own ? 'account-own-row' : undefined;
+  const describedBy = access.lock ? 'account-own-row' : undefined;
   const approval = approvalLine(p, profiles);
   return (
     <section className="account-section" aria-labelledby="account-controls-title">
@@ -142,7 +149,7 @@ function AccountControls({ profile: p, profiles, tiers, currentAdminId, changes,
       <div className="form-grid account-controls">
         <div>
           <label htmlFor={ids.status}>Status</label>
-          <select id={ids.status} value={p.status} disabled={own} aria-disabled={busy || undefined} aria-describedby={describedBy}
+          <select id={ids.status} value={p.status} disabled={!access.status} aria-disabled={busy || undefined} aria-describedby={describedBy}
             onChange={(e) => {
               if (!busy) changes.setStatus(p, e.target.value, { focusId: ids.status, onNote });
             }}>
@@ -151,25 +158,35 @@ function AccountControls({ profile: p, profiles, tiers, currentAdminId, changes,
             <option value="suspended">{ADMIN_STATUS_LABELS.suspended}</option>
           </select>
         </div>
-        <div>
-          <label htmlFor={ids.tier}>Tier</label>
-          <select id={ids.tier} value={p.pricing_tier} aria-disabled={busy || undefined}
-            onChange={(e) => { if (!busy) changes.change(p, { pricing_tier: e.target.value }, { kind: 'tier', focusId: ids.tier }); }}>
-            {(tiers.includes(p.pricing_tier) ? tiers : [...tiers, p.pricing_tier]).map((t) => <option key={t} value={t}>{tierLabel(t)}</option>)}
-          </select>
-        </div>
-        <div>
-          <label htmlFor={ids.role}>Role</label>
-          {/* A role change asks first, with a reason (AW-203); making a
-              pending or suspended account an admin approves it. */}
-          <select id={ids.role} value={p.role} disabled={own} aria-disabled={busy || undefined} aria-describedby={describedBy}
-            onChange={(e) => { if (!busy) changes.setRole(p, e.target.value, { onNote }); }}>
-            <option value="customer">{ROLE_LABELS.customer}</option>
-            <option value="admin">{ROLE_LABELS.admin}</option>
-          </select>
-        </div>
+        {access.tier && (
+          <div>
+            <label htmlFor={ids.tier}>Tier</label>
+            <select id={ids.tier} value={p.pricing_tier} aria-disabled={busy || undefined}
+              onChange={(e) => { if (!busy) changes.change(p, { pricing_tier: e.target.value }, { kind: 'tier', focusId: ids.tier }); }}>
+              {(tiers.includes(p.pricing_tier) ? tiers : [...tiers, p.pricing_tier]).map((t) => <option key={t} value={t}>{tierLabel(t)}</option>)}
+            </select>
+          </div>
+        )}
+        {access.roleControl && (
+          <div>
+            <label htmlFor={ids.role}>Role</label>
+            {/* A role change asks first, with a reason (AW-203); making a
+                pending or suspended account an admin or staff approves it. */}
+            <select id={ids.role} value={p.role} disabled={!access.role} aria-disabled={busy || undefined} aria-describedby={describedBy}
+              onChange={(e) => { if (!busy) changes.setRole(p, e.target.value, { onNote }); }}>
+              {Object.entries(ROLE_LABELS).map(([role, label]) => <option key={role} value={role}>{label}</option>)}
+            </select>
+          </div>
+        )}
       </div>
-      {own && <small className="field-hint" id="account-own-row">Your own status and role can’t be changed here.</small>}
+      {/* Staff see the tier and role; only an admin changes them (AW-030). */}
+      {!access.admin && (
+        <div className="account-facts">
+          <Fact label="Tier" value={tierLabel(p.pricing_tier)} />
+          <Fact label="Role" value={roleLabel(p.role)} />
+        </div>
+      )}
+      {access.lock && <small className="field-hint" id="account-own-row">{ACCOUNT_LOCK_TEXT[access.lock]}</small>}
       {approval && <p className="result-note account-approval">{approval}</p>}
     </section>
   );
@@ -177,7 +194,9 @@ function AccountControls({ profile: p, profiles, tiers, currentAdminId, changes,
 
 // The contact and store details: a real form (Enter saves) that sends only
 // the changed columns, and checks the changed fields first.
-function ContactForm({ profile, profiles, draft, setDraft, dirty, notify, onPatch }) {
+// locked: the viewer can't change this account (staff on a staff or admin
+// account, AW-030): the fields are read only.
+function ContactForm({ profile, profiles, draft, setDraft, dirty, notify, onPatch, locked = false }) {
   const id = useId();
   const [errors, setErrors] = useState({});
   const [saveError, setSaveError] = useState('');
@@ -194,7 +213,7 @@ function ContactForm({ profile, profiles, draft, setDraft, dirty, notify, onPatc
   };
   const save = async (event) => {
     event.preventDefault();
-    if (saving) return;
+    if (saving || locked) return;
     const checked = validateContact(draft, profile);
     setErrors(checked.errors);
     setSaveError('');
@@ -221,13 +240,14 @@ function ContactForm({ profile, profiles, draft, setDraft, dirty, notify, onPatc
     <section className="account-section" aria-labelledby={`${id}-title`}>
       <h3 id={`${id}-title`}>Contact and store</h3>
       {saveError && <p className="form-error" role="alert">{saveError}</p>}
+      {locked && <p className="field-hint">{ACCOUNT_LOCK_TEXT.staffAccount}</p>}
       <form className="form-grid account-contact-form" noValidate onSubmit={save} aria-labelledby={`${id}-title`}>
         {CONTACT_FIELDS.map(({ key, label, max, type, inputMode, autoComplete, hint, full }) => (
           <div key={key} className={full ? 'full' : undefined}>
             <label htmlFor={fieldId(key)}>{label}</label>
             <input
               id={fieldId(key)} type={type || 'text'} inputMode={inputMode} autoComplete={autoComplete || 'off'} maxLength={max}
-              value={draft[key]} onChange={set(key)} list={key === 'business_type' ? `${id}-types` : undefined}
+              value={draft[key]} onChange={set(key)} list={key === 'business_type' ? `${id}-types` : undefined} readOnly={locked}
               className={key === 'state' ? 'account-state' : undefined}
               aria-invalid={errors[key] ? true : undefined} aria-describedby={describedBy(key, hint)}
             />
@@ -244,7 +264,7 @@ function ContactForm({ profile, profiles, draft, setDraft, dirty, notify, onPatc
           <small className="field-hint" id={`${fieldId('email')}-hint`}>The email follows the account’s sign-in email, so it can’t be changed here.</small>
         </div>
         <div className="full inline-actions">
-          <button className="button sm" type="submit" disabled={saving || !dirty}>{saving ? 'Saving…' : 'Save changes'}</button>
+          <button className="button sm" type="submit" disabled={saving || !dirty || locked}>{saving ? 'Saving…' : 'Save changes'}</button>
           {dirty && !saving && (
             <button className="button sm ghost" type="button" onClick={() => { setDraft(contactDraft(profile)); setErrors({}); setSaveError(''); }}>Discard changes</button>
           )}
@@ -256,12 +276,12 @@ function ContactForm({ profile, profiles, draft, setDraft, dirty, notify, onPatc
 
 // The verification note (Cursor's verification_note, which the account
 // holder can read), saved like the list's.
-function VerificationNote({ profile, draft, setDraft, changes }) {
+function VerificationNote({ profile, draft, setDraft, changes, locked = false }) {
   const id = useId();
   const saving = changes.saving(profile.id) === 'note';
   const save = async (event) => {
     event.preventDefault();
-    if (changes.saving(profile.id)) return;
+    if (changes.saving(profile.id) || locked) return;
     const ok = await changes.change(profile, { verification_note: draft.trim() || null }, { kind: 'note', undoable: false });
     if (ok) setDraft(draft.trim());
   };
@@ -269,11 +289,11 @@ function VerificationNote({ profile, draft, setDraft, changes }) {
     <form className="form-grid account-verify-form" noValidate onSubmit={save}>
       <div className="full">
         <label htmlFor={`${id}-note`}>Verification note</label>
-        <input id={`${id}-note`} value={draft} onChange={(e) => setDraft(e.target.value)} aria-describedby={`${id}-hint`} />
+        <input id={`${id}-note`} value={draft} readOnly={locked} onChange={(e) => setDraft(e.target.value)} aria-describedby={`${id}-hint`} />
         <small className="field-hint" id={`${id}-hint`}>The account holder can read this note. Use internal notes for anything only staff should see.</small>
       </div>
       <div className="full">
-        <button className="button xs ghost" type="submit" disabled={!!changes.saving(profile.id)}>{saving ? 'Saving…' : 'Save note'}</button>
+        <button className="button xs ghost" type="submit" disabled={!!changes.saving(profile.id) || locked}>{saving ? 'Saving…' : 'Save note'}</button>
       </div>
     </form>
   );

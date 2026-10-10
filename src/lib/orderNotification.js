@@ -23,7 +23,7 @@
 // Pure apart from sendOrderNotification(), which takes its fetch as an
 // option for tests.
 
-import { COMPANY } from '../data/content.js';
+import { currentSite } from '../data/siteFacts.js';
 import { adminHref, isUuid } from './adminRoutes.js';
 import { DELIVERY_LABELS, formatPreferredDate, formatSentAt } from './receipt.js';
 import { timeoutSignal } from './network.js';
@@ -66,9 +66,9 @@ export function orderLineText(line) {
 }
 
 // Where the order goes: the ship-to address for delivery, or the warehouse
-// for will-call.
+// for will-call (its address as staff set it, AW-030).
 function shipToText(data) {
-  if (data.delivery === 'willcall') return `Will-call pickup at ${COMPANY.addressShort}`;
+  if (data.delivery === 'willcall') return `Will-call pickup at ${currentSite().addressShort}`;
   const street = text(data.shipStreet);
   const city = text(data.shipCity);
   const state = text(data.shipState).toUpperCase();

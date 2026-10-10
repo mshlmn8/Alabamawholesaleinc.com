@@ -421,8 +421,31 @@ describe('photos (AW-023)', () => {
     expect(upload).toMatchObject({ bucket: 'product-images', path: 'products/2/1700000000000-kite-front.png', options: { contentType: 'image/png', upsert: false } });
     expect(field('Image file or URL').value).toBe('https://fake.supabase.co/storage/v1/object/public/product-images/products/2/1700000000000-kite-front.png');
     expect(document.querySelector('.product-photo-preview img').getAttribute('src')).toBe(field('Image file or URL').value);
+    // Not on the site until the product is saved (AW-030): the hint says so.
+    expect(document.getElementById('product-photo-file-hint').textContent).toBe('Uploaded. Save the product to show it on the site.');
     fireEvent.click(screen.getByRole('button', { name: 'Remove photo' }));
     expect(field('Image file or URL').value).toBe('');
+    expect(document.getElementById('product-photo-file-hint').textContent).toBe('JPEG, PNG or WebP, up to 5 MB. A new upload replaces the photo.');
+  });
+
+  // Staff upload and replace photos too (AW-030, 20261014120000_staff_role.sql);
+  // a database that refuses the upload says who may.
+  it('uploads as staff, saves the photo with the product, and says who may upload when Storage refuses', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1700000000000);
+    act(() => navigate('/admin/products/2', { replace: true }));
+    await act(async () => {
+      render(<RoutedAdmin profile={{ id: 'staff-1', name: 'Sam Staff', role: 'staff', status: 'approved' }} account="ready" onCatalogChange={vi.fn()} />);
+    });
+    const respond = fake.respond;
+    fake.respond = (request) => (request.op === 'upload' ? { data: null, error: { message: 'new row violates row-level security policy', statusCode: '403' } } : respond?.(request));
+    await act(async () => { fireEvent.change(field('Upload a photo'), { target: { files: [fakePhoto()] } }); });
+    expect(document.getElementById('product-photo-file-error').textContent).toBe('Only approved admin or staff accounts can upload photos.');
+    fake.respond = respond;
+    await act(async () => { fireEvent.change(field('Upload a photo'), { target: { files: [fakePhoto()] } }); });
+    const url = 'https://fake.supabase.co/storage/v1/object/public/product-images/products/2/1700000000000-kite-front.png';
+    expect(field('Image file or URL').value).toBe(url);
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save product' })); });
+    expect(fake.find({ table: 'products', op: 'update' }).at(-1).patch).toMatchObject({ img: url });
   });
 
   it('shows a renamed photo file under its old name, in the list and the editor (AW-290)', async () => {

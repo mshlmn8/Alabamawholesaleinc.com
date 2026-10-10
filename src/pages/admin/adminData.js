@@ -18,10 +18,13 @@ export const MISSING_SCHEMA_CODES = ['PGRST202', '42883', 'PGRST204', '42703', '
 export const NO_ROWS = 'AW_NO_ROWS';
 
 // The hints the database's admin guards raise with 42501 (20261009140000,
-// 20261009150000).
+// 20261009150000, and the staff rules of 20261014120000).
 const REFUSALS = {
-  admin_only: 'Only an approved admin can change this.',
+  admin_only: 'Only an approved admin or staff account can change this.',
   own_role_status: 'You can’t change your own status or role.',
+  role_admin_only: 'Only an admin can change an account’s role.',
+  tier_admin_only: 'Only an admin can change an account’s pricing tier.',
+  staff_account: 'Only an admin can change a staff or admin account.',
   profile_record: 'Consent and approval records can’t be edited.',
   profile_email: 'A profile’s email follows its sign-in email.',
 };

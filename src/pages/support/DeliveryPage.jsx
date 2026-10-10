@@ -8,10 +8,11 @@
 // guessed from it.
 
 import { useState } from 'react';
-import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../../data/content.js';
+import { FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../../data/content.js';
 import { DELIVERY_STATES, OTHER_STATES } from '../../data/onboarding.js';
 import { formatMoney, formatMoneyShort } from '../../lib/format.js';
 import { Link } from '../../lib/router.js';
+import { useSite } from '../../lib/siteSettings.js';
 import { PhoneLink } from '../../components/ContactLinks.jsx';
 import { PageHead, SupportLayout, ContactStrip, supportApplyLabel } from './SupportShell.jsx';
 
@@ -20,6 +21,7 @@ const routeStates = `${ROUTE_STATE_NAMES.slice(0, -1).join(', ')} and ${ROUTE_ST
 
 // signedIn: the side nav calls /apply 'Trade account' (NEW-047).
 export function DeliveryPage({ signedIn = false }) {
+  const site = useSite();
   const [stateCode, setStateCode] = useState('');
   const [zip, setZip] = useState('');
   // TODO(owner): Which ZIP codes or 3-digit prefixes are on each delivery route, what are each route's delivery days and order cutoff, and which cities or counties are served? (AW-123)
@@ -45,7 +47,7 @@ export function DeliveryPage({ signedIn = false }) {
           {/* TODO(owner): Warehouse photo, will-call lead time, entrance and parking, and payment at pickup. (AW-124) */}
           <p className="eyebrow">WILL-CALL</p>
           <h2>Pick up in Birmingham</h2>
-          <p>Will-call is pickup at {COMPANY.addressLine1}, {COMPANY.addressLine2} during business hours. {COMPANY.hoursLine1}, {COMPANY.hoursLine2}.</p>
+          <p>{`Will-call is pickup at ${site.addressLine1}, ${site.addressLine2} during business hours. ${site.hoursLines.join(', ')}.`}</p>
           <Link className="text-link" to="/contact">Contact &amp; visit</Link>
         </article>
         <article className="info-card">

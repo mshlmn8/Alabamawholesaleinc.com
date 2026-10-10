@@ -30,17 +30,22 @@
 // pricing notices have it on a phone. A signed-in visitor gets 'My account'
 // (AW-066), which the compact layout leaves to the masthead and the menu.
 // The trade notice is LICENSED_ONLY, the footer's wording, in capitals
-// (AW-285).
+// (AW-285). The announcements after it and the phone are staff's, from
+// Admin -> Site settings (AW-030, useSite), or content.js's until then.
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { COMPANY, ANNOUNCEMENTS, LICENSED_ONLY } from '../data/content.js';
+import { LICENSED_ONLY } from '../data/content.js';
+import { defaultAnnouncements } from '../data/siteFacts.js';
 import { Link } from '../lib/router.js';
+import { useSite } from '../lib/siteSettings.js';
 import { useMediaQuery } from '../lib/useMediaQuery.js';
 import { Icon } from './Icon.jsx';
 
 export const TRADE_NOTICE = LICENSED_ONLY.toUpperCase();
-// The notice, then the announcements without their leading star.
-export const MESSAGES = [TRADE_NOTICE, ...ANNOUNCEMENTS.map((text) => text.replace(/^★\s*/, ''))];
+// The notice, then the announcements (without content.js's leading star).
+export const tradeMessages = (announcements) => [TRADE_NOTICE, ...announcements];
+// The site's own messages, before staff change them.
+export const MESSAGES = tradeMessages(defaultAnnouncements());
 export const ROTATE_MS = 7000;
 // The marquee: how long a long message shows its start before it moves, how
 // fast it moves (px per second) and how long it rests at its end.
@@ -65,7 +70,12 @@ const isPageVisible = () => !document.hidden;
 const usePageVisible = () => useSyncExternalStore(subscribeVisibility, isPageVisible, () => true);
 
 export function TradeBar({ signedIn = false }) {
-  const [index, setIndex] = useState(0);
+  const site = useSite();
+  const messages = tradeMessages(site.announcements);
+  const count = messages.length;
+  const [shown, setIndex] = useState(0);
+  // Staff's messages can be fewer than the ones shown first.
+  const index = shown % count;
   // The visitor's own choice, 'paused' or 'playing'. Until there is one,
   // reduced motion means paused.
   const [choice, setChoice] = useState(null);
@@ -78,15 +88,15 @@ export function TradeBar({ signedIn = false }) {
   const visible = usePageVisible();
   const paused = choice ? choice === 'paused' : reducedMotion;
   const moving = !paused && !hovered && !focused && visible;
-  const rotating = MESSAGES.length > 1 && moving;
+  const rotating = count > 1 && moving;
   const overflow = measured.index === index ? measured.overflow : 0;
   const timing = marqueeTiming(overflow);
 
   useEffect(() => {
     if (!rotating) return undefined;
-    const id = window.setInterval(() => setIndex((i) => (i + 1) % MESSAGES.length), timing.shown);
+    const id = window.setInterval(() => setIndex((i) => (i + 1) % count), timing.shown);
     return () => window.clearInterval(id);
-  }, [rotating, timing.shown]);
+  }, [rotating, timing.shown, count]);
 
   // Measures the shown message whenever it changes and whenever the row
   // changes size (the window, the text size, the layout). The observer
@@ -128,15 +138,15 @@ export function TradeBar({ signedIn = false }) {
             <Icon name={paused ? 'play' : 'pause'} />
           </button>
           <ul className="announcement-list" aria-label="Announcements" ref={listRef}>
-            {MESSAGES.map((text, i) => (
-              <li key={text} className={i === index ? `is-current${overflow ? ' is-marquee' : ''}` : undefined}>{text}</li>
+            {messages.map((text, i) => (
+              <li key={`${i}:${text}`} className={i === index ? `is-current${overflow ? ' is-marquee' : ''}` : undefined}>{text}</li>
             ))}
           </ul>
         </div>
         {signedIn && <Link className="trade-account" to="/account">My account</Link>}
         {/* 'Call' alone in the compact layout; the name always has the number. */}
-        <a className="trade-call" href={`tel:${COMPANY.phoneRaw}`} aria-label={`Call ${COMPANY.phone}`}>
-          Call<span className="trade-call-number">{` ${COMPANY.phone}`}</span>
+        <a className="trade-call" href={`tel:${site.phoneRaw}`} aria-label={`Call ${site.phone}`}>
+          Call<span className="trade-call-number">{` ${site.phone}`}</span>
         </a>
       </div>
     </div>

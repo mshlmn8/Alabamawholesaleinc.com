@@ -153,6 +153,23 @@ describe('Content-Security-Policy for every path', () => {
     expect(csp.has('upgrade-insecure-requests')).toBe(false);
   });
 
+  // Product and hero photos staff upload (AW-030) are public URLs of the
+  // product-images bucket: <ref>.supabase.co/storage/v1/object/public/…,
+  // which img-src's https://*.supabase.co covers. The editors accept no
+  // other host (PHOTO_URL, SLIDE_STORAGE_URL).
+  it('lets the photos staff upload show: img-src covers the public Storage URLs, and the editors accept only those', async () => {
+    expect(csp.get('img-src')).toEqual(["'self'", 'https://*.supabase.co']);
+    const { PHOTO_URL } = await import('../src/pages/admin/productForm.js');
+    const { SLIDE_STORAGE_URL } = await import('../src/lib/homeSlides.js');
+    const uploaded = 'https://abcdefghijklmnop.supabase.co/storage/v1/object/public/product-images/products/2/1700000000000-kite.png';
+    const covered = (url) => /^https:\/\/[a-z0-9-]+\.supabase\.co\//.test(url);
+    expect(PHOTO_URL.test(uploaded) && SLIDE_STORAGE_URL.test(uploaded.replace('products/2/', 'home/'))).toBe(true);
+    for (const url of ['https://cdn.example.test/kite.png', 'https://abc.supabase.co.evil.test/storage/v1/object/public/product-images/a.png', 'http://abc.supabase.co/storage/v1/object/public/product-images/a.png']) {
+      expect(PHOTO_URL.test(url) || SLIDE_STORAGE_URL.test(url), url).toBe(false);
+    }
+    expect(covered(uploaded)).toBe(true);
+  });
+
   it('refuses a policy that would block a script or weaken the protections', () => {
     const good = all['Content-Security-Policy'];
     expect(cspProblems(good, [...hashes, sha('edited()')]).join('\n')).toContain(`add '${sha('edited()')}'`);

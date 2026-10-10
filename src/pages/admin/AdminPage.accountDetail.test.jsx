@@ -350,7 +350,8 @@ describe('readable labels in the account selects (AW-149)', () => {
       .toEqual([['pending', 'Pending'], ['approved', 'Approved'], ['suspended', 'Suspended']]);
     expect(texts(within(row).getByRole('combobox', { name: 'Tier for Alpha Food Mart' })))
       .toEqual([['standard', 'Standard'], ['silver', 'Silver'], ['gold', 'Gold']]);
-    expect(texts(within(row).getByRole('combobox', { name: 'Role for Alpha Food Mart' }))).toEqual([['customer', 'Customer'], ['admin', 'Admin']]);
+    // Staff (AW-030): everything in Admin but roles and pricing tiers.
+    expect(texts(within(row).getByRole('combobox', { name: 'Role for Alpha Food Mart' }))).toEqual([['customer', 'Customer'], ['staff', 'Staff'], ['admin', 'Admin']]);
   });
 
   it('labels the account page’s selects and its status pill', async () => {
@@ -358,7 +359,7 @@ describe('readable labels in the account selects (AW-149)', () => {
     const controls = section('Status, tier and role');
     expect(texts(within(controls).getByLabelText('Status')).map(([, text]) => text)).toEqual(['Pending', 'Approved', 'Suspended']);
     expect(texts(within(controls).getByLabelText('Tier')).map(([, text]) => text)).toEqual(['Standard', 'Silver', 'Gold']);
-    expect(texts(within(controls).getByLabelText('Role')).map(([, text]) => text)).toEqual(['Customer', 'Admin']);
+    expect(texts(within(controls).getByLabelText('Role')).map(([, text]) => text)).toEqual(['Customer', 'Staff', 'Admin']);
     expect(document.querySelector('.account-pill').textContent).toBe('Pending');
   });
 });

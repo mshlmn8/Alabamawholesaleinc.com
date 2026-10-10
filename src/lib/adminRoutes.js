@@ -13,6 +13,8 @@
 //                                       which is the product a new one copies.
 //   /admin/pricing                      the pricing tiers (AW-114)
 //   /admin/homepage                     the hero photos and the rails (AW-119)
+//   /admin/settings                     the site settings: announcements,
+//                                       phone, email, hours and address (AW-030)
 //
 // Only filters that name no person go in the query: statuses, dates, the
 // delivery method, ids and product filters. Free-text order and account
@@ -20,7 +22,7 @@
 // value is checked here; unknown keys and bad values are dropped, never
 // echoed.
 
-export const ADMIN_SECTIONS = ['orders', 'accounts', 'products', 'pricing', 'homepage'];
+export const ADMIN_SECTIONS = ['orders', 'accounts', 'products', 'pricing', 'homepage', 'settings'];
 
 // The order statuses. The quote workflow (AW-024; Cursor's
 // 20261008200000) adds quoted ... out_for_delivery; a database without it
@@ -110,6 +112,7 @@ const QUERY = {
   },
   pricing: {},
   homepage: {},
+  settings: {},
 };
 // A view's own query, in place of its section's (the print view takes only
 // ?doc=; the list's filters stay with the list).

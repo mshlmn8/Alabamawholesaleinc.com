@@ -20,11 +20,14 @@ describe('parseAdminPath', () => {
   });
 
   it('reads each section, its detail views and its query', () => {
-    expect(ADMIN_SECTIONS).toEqual(['orders', 'accounts', 'products', 'pricing', 'homepage']);
+    expect(ADMIN_SECTIONS).toEqual(['orders', 'accounts', 'products', 'pricing', 'homepage', 'settings']);
     expect(parse('/admin/pricing?tier=gold')).toEqual({ page: 'admin', section: 'pricing', query: {} });
     // Admin -> Homepage (AW-119) takes nothing from the URL.
     expect(parse('/admin/homepage?slide=3')).toEqual({ page: 'admin', section: 'homepage', query: {} });
     expect(adminHref({ section: 'homepage', query: { slide: 3 } })).toBe('/admin/homepage');
+    // Admin -> Site settings (AW-030) takes nothing from the URL either.
+    expect(parse('/admin/settings?phone=1')).toEqual({ page: 'admin', section: 'settings', query: {} });
+    expect(adminHref({ section: 'settings' })).toBe('/admin/settings');
     expect(parse('/admin/orders')).toEqual({ page: 'admin', section: 'orders', query: {} });
     expect(parse('/admin/Accounts/')).toEqual({ page: 'admin', section: 'accounts', query: {} });
     expect(parse(`/admin/accounts/${UUID.toUpperCase()}`)).toEqual({ page: 'admin', section: 'accounts', id: UUID, query: {} });

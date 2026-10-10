@@ -35,8 +35,8 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth.jsx';
-import { COMPANY, TERMS_VERSION } from '../data/content.js';
-import { APPLICATION_TIMEOUT_MESSAGE, isRateLimitError } from '../lib/errors.js';
+import { TERMS_VERSION } from '../data/content.js';
+import { applicationTimeoutMessage, isRateLimitError } from '../lib/errors.js';
 import { isTimeoutError } from '../lib/network.js';
 import { friendlyAuthError } from '../lib/authErrors.js';
 import { PHONE_ERROR, PHONE_EXAMPLE, PHONE_PATTERN, PHONE_REQUIRED, PHONE_TITLE, usPhone } from '../lib/phone.js';
@@ -49,7 +49,8 @@ import { APPLY_INSTEAD, APPLY_LABEL, SIGN_IN_INSTEAD } from '../data/terms.js';
 import { US_STATES, stateName } from '../data/usStates.js';
 import { DOCUMENT_TYPES, documentErrorMessage, shortFileName, uploadSelectedProof } from '../lib/documents.js';
 import { ServiceUnavailable } from './ServiceUnavailable.jsx';
-import { CallOrEmail } from './ContactLinks.jsx';
+import { CallOrEmail, EmailLink } from './ContactLinks.jsx';
+import { useSite } from '../lib/siteSettings.js';
 import { DocumentUploads } from './DocumentUploads.jsx';
 import { Field, ValidatedForm } from './Field.jsx';
 import { Icon } from './Icon.jsx';
@@ -147,6 +148,8 @@ function proofOutcome(results) {
 }
 
 export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingOut = false }) {
+  // The trade desk's phone and email, as staff set them (AW-030).
+  const site = useSite();
   const {
     signIn, signUp, resetPassword, resendConfirmation, refreshProfile,
     session, profile, profileReady, profileRefreshing, loading, isBackendConfigured,
@@ -469,7 +472,7 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
     catch (err) {
       // A timed-out application may have gone through (AW-194): its
       // confirmation email says so.
-      const message = isTimeoutError(err) ? APPLICATION_TIMEOUT_MESSAGE
+      const message = isTimeoutError(err) ? applicationTimeoutMessage()
         : friendlyAuthError(err, { what: 'The online application', fallback: 'We couldn’t send your application. Try again in a moment.' });
       // An email already in use, or a weak password, is said under that
       // field, which takes focus (NEW-003); anything else in the form's alert.
@@ -826,7 +829,7 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
             </ol>
             {/* The files aren't sent yet (AW-085). */}
             {proofWaiting && (
-              <p className="checklist-note">Your documents aren’t sent yet. Keep this page open: once you confirm your email in this browser, they upload here. Otherwise, add them later from My account, under License documents, or email them to <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.</p>
+              <p className="checklist-note">Your documents aren’t sent yet. Keep this page open: once you confirm your email in this browser, they upload here. Otherwise, add them later from My account, under License documents, or email them to <EmailLink />.</p>
             )}
             {proofLine}
             {proofProblem}
@@ -869,8 +872,8 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
             <div className="dialog-actions">
               {status === 'suspended' ? (
                 <>
-                  <a className="button" href={`tel:${COMPANY.phoneRaw}`} data-autofocus>{`Call ${COMPANY.phone}`}</a>
-                  <a className="button ghost" href={`mailto:${COMPANY.email}`}>Email the trade desk</a>
+                  <a className="button" href={`tel:${site.phoneRaw}`} data-autofocus>{`Call ${site.phone}`}</a>
+                  <a className="button ghost" href={`mailto:${site.email}`}>Email the trade desk</a>
                 </>
               ) : (
                 <>
