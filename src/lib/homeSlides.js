@@ -26,7 +26,7 @@
 //   any other error, a timeout or no backend keep the bundled slides.
 // - Nothing is remembered between page loads: localStorage holds only the
 //   cart and the age confirmation.
-// - A row's photo is a bundled hero file (hero_candy.jpg), drawn from its
+// - A row's photo is a bundled hero file (hero_wh_sign.jpg), drawn from its
 //   responsive set like the bundled slides, or a product-images Storage
 //   address (the CSP allows *.supabase.co only); anything else is dropped. A
 //   department the site doesn't have becomes no link.
@@ -34,6 +34,7 @@
 
 import { useEffect, useSyncExternalStore } from 'react';
 import { HERO_SLIDES } from '../data/content.js';
+import { BUNDLED_PHOTOS } from '../data/warehousePhotos.js';
 import { NAV_ORDER } from '../data/products.js';
 import { isMissingSchema } from '../pages/admin/adminData.js';
 import { CATALOG_TIMEOUT_MS } from './catalog.jsx';
@@ -52,10 +53,12 @@ export const HOME_SLIDES_FIRST_PAINT_MS = 300;
 // (home_slides_img_chk).
 export const BUNDLED_HERO_FILE = /^hero_[a-z0-9_]+\.(jpg|jpeg|png|webp)$/;
 export const SLIDE_STORAGE_URL = /^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/product-images\/\S+$/;
-// The hero photos in this build of the site (src/assets), in HERO_SLIDES's
-// order. Admin -> Homepage offers these; homeSlides.test.js checks they are
-// the bundled slides' photos.
-export const BUNDLED_HERO_FILES = Object.freeze(['hero_candy.jpg', 'hero_vape.jpg', 'hero_lighters.jpg', 'hero_gatorade.jpg']);
+// The hero photos in this build of the site (src/assets): the warehouse
+// reel in HERO_SLIDES's order, the contact page's warehouse photos, then the
+// four earlier hero photos (BUNDLED_PHOTOS in src/data/warehousePhotos.js).
+// Admin -> Homepage offers these; homeSlides.test.js checks the list starts
+// with the bundled slides' photos and names every hero_* file in src/assets.
+export const BUNDLED_HERO_FILES = Object.freeze(BUNDLED_PHOTOS.map((photo) => photo.file));
 
 // A slide's photo as { img, picture }, or null when it names nothing the site
 // can show.

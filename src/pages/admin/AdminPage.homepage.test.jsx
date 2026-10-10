@@ -219,6 +219,34 @@ describe('Admin -> Homepage (AW-119)', () => {
     expect(document.querySelector('.slide-form .product-photo-preview img').getAttribute('src')).toBe(heroImage('hero_lighters.jpg').picture.src);
   });
 
+  // The owner's warehouse photos (AW-006): every bundled photo, grouped and
+  // named by what it shows; choosing one fills in its description (unless
+  // staff wrote their own) and ticks the FDA warning for a nicotine product.
+  it('offers every bundled photo by what it shows, and fills in a chosen photo’s description and warning', async () => {
+    await renderHomepage();
+    await click(screen.getByRole('button', { name: 'Add a photo' }));
+    const select = screen.getByLabelText('Bundled photo');
+    expect([...select.querySelectorAll('optgroup')].map((g) => [g.label, g.children.length])).toEqual([
+      ['Warehouse reel (the home page’s photos)', 8], ['More warehouse photos (on the contact page)', 29], ['Earlier hero photos', 4],
+    ]);
+    expect(select.querySelector('option[value="hero_wh_soda.jpg"]').textContent).toBe('Pallets of Faygo soda by the case (hero_wh_soda.jpg)');
+    const alt = () => screen.getByLabelText('Description of the photo');
+    const warning = () => screen.getByLabelText('Shows a nicotine product (adds the FDA warning)');
+    fireEvent.change(select, { target: { value: 'hero_wh_soda.jpg' } });
+    expect(alt().value).toBe('Pallets of Faygo soda by the case');
+    expect(warning().checked).toBe(false);
+    // Another bundled photo replaces the description it filled in.
+    fireEvent.change(select, { target: { value: 'hero_wh_vapes.jpg' } });
+    expect(alt().value).toBe('Disposable vapes on display shelves');
+    expect(warning().checked).toBe(true);
+    // Staff's own words stay, and the warning is never unticked for them.
+    fireEvent.change(alt(), { target: { value: 'Our vape wall' } });
+    fireEvent.change(select, { target: { value: 'hero_wh_soda.jpg' } });
+    expect(alt().value).toBe('Our vape wall');
+    expect(warning().checked).toBe(true);
+    expect(document.querySelector('.slide-form .product-photo-preview img').getAttribute('src')).toBe(heroImage('hero_wh_soda.jpg').picture.src);
+  });
+
   it('edits a photo, saving only what changed', async () => {
     await renderHomepage();
     await click(screen.getByRole('button', { name: 'Edit Geek Bar Pulse X disposable vape advertisement' }));

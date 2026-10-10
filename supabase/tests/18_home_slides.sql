@@ -1,11 +1,18 @@
 -- The home page's hero photos (20261011131000_home_slides.sql, AW-119):
--- today's four photos are in the table; guests and signed-in accounts read
--- only the active rows and write nothing; an approved admin reads every row
--- and adds, changes, reorders and deletes them, with an id from the identity
--- column and no sequence privilege; a photo is a bundled hero file or a
--- product-images Storage address, nothing else. Test accounts ...0016a1
--- (approved admin), ...0016b1 (approved customer), ...0016c1 (pending
--- admin). Everything this file adds or changes is put back at the end.
+-- the four photos the site showed then are in the table; guests and
+-- signed-in accounts read only the active rows and write nothing; an approved
+-- admin reads every row and adds, changes, reorders and deletes them, with an
+-- id from the identity column and no sequence privilege; a photo is a bundled
+-- hero file or a product-images Storage address, nothing else. Test accounts
+-- ...0016a1 (approved admin), ...0016b1 (approved customer), ...0016c1
+-- (pending admin). Everything this file adds or changes is put back at the
+-- end.
+--
+-- 20261014110000_home_slides_warehouse_reel.sql has since swapped those four
+-- for the owner's warehouse reel (26_home_slides_warehouse_reel.sql checks
+-- it), so this file first puts the table back as 20261011131000 left it,
+-- keeping the rows it found in pg_temp.hs16_saved, and restores them at the
+-- end.
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('00000000-0000-4000-8000-0000000016a1', 'hs16-admin@example.com', '{"name": "Hs16 Admin"}'),
@@ -39,8 +46,20 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- Today's photos, in today's order.
+-- The table as 20261011131000 left it: its four photos, in their order.
 -- ---------------------------------------------------------------------------
+create temp table hs16_saved as select * from public.home_slides;
+delete from public.home_slides;
+insert into public.home_slides (img, alt, go_cat, nicotine_warning, sort)
+select v.img, v.alt, v.go_cat, v.nicotine_warning, v.sort
+from (values
+  ('hero_candy.jpg', 'Display box of Turtles Bites chocolates', 'CANDIES', false, 10),
+  ('hero_vape.jpg', 'Geek Bar Pulse X disposable vape advertisement', 'NOVELTIES', true, 20),
+  ('hero_lighters.jpg', 'BIC lighters in a counter display tray', 'MERCHANDISE', false, 30),
+  ('hero_gatorade.jpg', 'Gatorade and G2 bottles', 'DRINKS & BAGS', false, 40)
+) as v (img, alt, go_cat, nicotine_warning, sort)
+where not exists (select 1 from public.home_slides);
+
 do $$ begin
   assert (select array_agg(img order by sort, id) from public.home_slides)
     = array['hero_candy.jpg', 'hero_vape.jpg', 'hero_lighters.jpg', 'hero_gatorade.jpg'],
@@ -196,4 +215,13 @@ update public.home_slides set active = true where img = 'hero_gatorade.jpg';
 do $$ begin
   assert (select array_agg(img order by sort, id) from public.home_slides where active)
     = array['hero_candy.jpg', 'hero_vape.jpg', 'hero_lighters.jpg', 'hero_gatorade.jpg'], 'back as it was';
+end $$;
+
+-- And the rows the migrations left, as this file found them.
+delete from public.home_slides;
+insert into public.home_slides select * from pg_temp.hs16_saved;
+drop table pg_temp.hs16_saved;
+do $$ begin
+  assert (select count(*) from public.home_slides) = 8, 'the warehouse reel is back';
+  assert (select array_agg(img order by sort, id) from public.home_slides)[1] = 'hero_wh_sign.jpg', 'in its order';
 end $$;

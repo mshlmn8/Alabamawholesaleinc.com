@@ -15,7 +15,8 @@ const row = (id, sort, extra = {}) => ({ id, img: 'hero_candy.jpg', alt: `Photo 
 
 describe('photos', () => {
   it('accepts a bundled hero file or a product-images upload, as the table does', () => {
-    expect(BUNDLED_HERO_FILES.map((f) => heroImage(f).img)).toEqual(HERO_SLIDES.map((s) => s.img));
+    expect(BUNDLED_HERO_FILES.slice(0, HERO_SLIDES.length).map((f) => heroImage(f).img)).toEqual(HERO_SLIDES.map((s) => s.img));
+    for (const file of BUNDLED_HERO_FILES) expect(isSlidePhoto(file), file).toBe(true);
     for (const img of ['hero_candy.jpg', 'hero_new_one.webp', 'hero_x.jpeg', 'hero_y.png', STORAGE, ` ${STORAGE} `]) expect(isSlidePhoto(img), img).toBe(true);
     for (const img of ['', 'kite.jpg', 'Hero_candy.jpg', 'hero_candy.gif', '../hero_candy.jpg', 'https://example.com/a.jpg',
       'https://abc.supabase.co/storage/v1/object/public/application-documents/a.jpg', 'https://abc.supabase.co/storage/v1/render/image/public/product-images/a.jpg',

@@ -185,8 +185,7 @@ const LITERALS = [...new Set([
 // home services copy prints formatMoneyShort(FREE_DELIVERY_THRESHOLD).
 const ALLOWLIST = [];
 
-// content.js defines the facts (its HERO_SLIDES copy is never rendered and
-// belongs to the storefront lane, AW-004); products.js is catalog data.
+// content.js defines the facts; products.js is catalog data.
 const SKIP = new Set(['src/data/content.js', 'src/data/products.js']);
 const sourceFiles = (dir) => readdirSync(resolve(ROOT, dir), { withFileTypes: true }).flatMap((entry) => {
   const path = join(dir, entry.name);

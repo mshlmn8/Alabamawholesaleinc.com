@@ -87,7 +87,8 @@ Output goes to `dist/`; `npm run preview` serves it locally, with the security h
 | ---- | ----- |
 | Editorial colors and type | `src/index.css` (`--purple`, `--orange`, `--cream`, `--display`, `--body`) |
 | Logo | `IMG` in `src/data/theme.js` |
-| Hero photos | `HERO_SLIDES` in `src/data/content.js` |
+| Hero photos (the owner's 8-photo warehouse reel; staff replace them in Admin → Homepage) | `HERO_REEL` in `src/data/warehousePhotos.js`, built into `HERO_SLIDES` in `src/data/content.js` |
+| Warehouse photos on the contact page (the other 29), each photo's description, and which are grouped under the FDA statement | `WAREHOUSE_GALLERY` in `src/data/warehousePhotos.js`; the photos are `src/assets/hero_wh_*.jpg`, named after what they show; `src/data/warehousePhotos.test.js` checks all 37 are shown once |
 | Business facts: address, phone, email, hours, minimum order, free-delivery threshold | `COMPANY`, `HOURS`, `ORDER_MINIMUM` and `FREE_DELIVERY_THRESHOLD` in `src/data/content.js`; pages print them from there (money through `formatMoney`/`formatMoneyShort`), and `src/data/facts.test.js` fails when the phone, address, hours, minimum or threshold is typed into another source file |
 | Wording: the apply and sign-in labels, quote or order, the licensed-only line | `src/data/terms.js` (`APPLY_LABEL`, `SIGN_IN_LABEL`, `basketTerms()`); `LICENSED_ONLY` in `src/data/content.js` |
 | Trade bar announcements | `ANNOUNCEMENTS` in `src/data/content.js`, after the trade notice (`TRADE_NOTICE` in `src/components/TradeBar.jsx`) |

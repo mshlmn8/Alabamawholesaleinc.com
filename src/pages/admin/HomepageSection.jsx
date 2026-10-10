@@ -28,7 +28,7 @@ import { refreshHomeSlides, slidePhoto } from '../../lib/homeSlides.js';
 import { homeRails } from '../../lib/merchandising.js';
 import { adminHref } from '../../lib/adminRoutes.js';
 import { Link } from '../../lib/router.js';
-import { HERO_SLIDES } from '../../data/content.js';
+import { EARLIER_HERO_PHOTOS, HERO_REEL, WAREHOUSE_GALLERY, bundledPhoto } from '../../data/warehousePhotos.js';
 import { MissingPhoto } from '../../components/MissingPhoto.jsx';
 import { Picture } from '../../components/Picture.jsx';
 import { Thumb } from '../../components/Thumb.jsx';
@@ -51,10 +51,21 @@ export const railEditId = (productId) => `rail-edit-product-${productId}`;
 export const RAILS_HEADING_ID = 'homepage-rails-title';
 export const RAILS_NOTE = 'The tags and the homepage rank set in each product’s editor (Products) decide these rails: New arrivals shows active products with a photo tagged NEW, Bestsellers those tagged BESTSELLER, ranked products first (1 before 2), and a product is never in both. Products in the lines under legal review need a homepage rank to appear, unless the home page already showed them.';
 
-// The bundled photos as rows, for the read-only view without the table.
-const BUNDLED_ROWS = HERO_SLIDES.map((s, i) => ({
-  id: `bundled-${i}`, img: BUNDLED_HERO_FILES[i], alt: s.alt, go_cat: s.goCat, nicotine_warning: !!s.nicotineWarning, sort: (i + 1) * 10, active: true,
+// The bundled photos as rows, for the read-only view without the table:
+// the warehouse reel the home page shows (HERO_SLIDES, AW-006), none of a
+// nicotine product.
+const BUNDLED_ROWS = HERO_REEL.map((photo, i) => ({
+  id: `bundled-${i}`, img: photo.file, alt: photo.alt, go_cat: photo.goCat, nicotine_warning: false, sort: (i + 1) * 10, active: true,
 }));
+
+// The bundled photos the form's select offers, in groups (AW-006): the
+// home page's reel, the contact page's warehouse photos, the earlier hero
+// photos. Each option names the photo by what it shows, then its file.
+const BUNDLED_GROUPS = [
+  { label: 'Warehouse reel (the home page’s photos)', photos: HERO_REEL },
+  { label: 'More warehouse photos (on the contact page)', photos: WAREHOUSE_GALLERY },
+  { label: 'Earlier hero photos', photos: EARLIER_HERO_PHOTOS },
+];
 
 // Where the form's fields are, for errors and focus.
 const FIELD_IDS = { img: 'slide-bundled', alt: 'slide-alt', goCat: 'slide-dept' };
@@ -485,6 +496,17 @@ function SlideForm({
   const previewBroken = !!previewSrc && previewSrc === brokenSrc;
   const offSite = !!img && !bundled && !isSlidePhoto(img);
   const knownDept = !draft.goCat || departments.some((d) => d.key === draft.goCat);
+  // Choosing a bundled photo fills in its description when the field is
+  // empty or still holds the last bundled photo's, and ticks the FDA
+  // warning for a photo of a nicotine product (it never unticks it).
+  const pickBundled = (file) => {
+    onSet('img', file);
+    const photo = bundledPhoto(file);
+    if (!photo) return;
+    const alt = draft.alt.trim();
+    if (!alt || alt === bundledPhoto(img)?.alt) onSet('alt', photo.alt);
+    if (photo.nicotine && !draft.nicotineWarning) onSet('nicotineWarning', true);
+  };
   const onKey = (event) => {
     if (event.key !== 'Escape' || event.defaultPrevented) return;
     event.preventDefault();
@@ -507,12 +529,16 @@ function SlideForm({
             <label htmlFor={f('slide-bundled')}>Bundled photo</label>
             <select id={f('slide-bundled')} value={bundled ? img : ''} disabled={!!busy}
               aria-invalid={invalid('img')} aria-describedby={`${f('slide-bundled')}-hint ${f('slide-img')}-error`}
-              onChange={(e) => onSet('img', e.target.value)}>
+              onChange={(e) => pickBundled(e.target.value)}>
               <option value="">None: upload or paste below</option>
-              {BUNDLED_HERO_FILES.map((file) => <option key={file} value={file}>{file}</option>)}
+              {BUNDLED_GROUPS.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.photos.map((photo) => <option key={photo.file} value={photo.file}>{`${photo.alt} (${photo.file})`}</option>)}
+                </optgroup>
+              ))}
               {bundled && !BUNDLED_HERO_FILES.includes(img) && <option value={img}>{img}</option>}
             </select>
-            <small className="field-hint" id={`${f('slide-bundled')}-hint`}>The hero photos that come with the site.</small>
+            <small className="field-hint" id={`${f('slide-bundled')}-hint`}>The photos that come with the site. Choosing one fills in its description if that is empty.</small>
             <label htmlFor={f('slide-photo-file')}>Or upload a photo</label>
             <input id={f('slide-photo-file')} className="doc-file" type="file" accept="image/jpeg,image/png,image/webp" disabled={!!busy}
               aria-describedby={`${f('slide-photo-file')}-hint ${f('slide-photo-file')}-error`} onChange={onUpload} />

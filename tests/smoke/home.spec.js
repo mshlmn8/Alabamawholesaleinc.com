@@ -1,5 +1,6 @@
 // The home page's hero photos from Admin -> Homepage (AW-119): the photos
-// staff keep in public.home_slides replace the bundled ones once loaded, a
+// staff keep in public.home_slides replace the bundled ones (the owner's
+// warehouse reel, AW-006) once loaded, a
 // photo with the nicotine flag carries the FDA statement, and a database
 // without the table (the live project until 20261011131000 is applied) keeps
 // the bundled photos without a page error. While the first load is pending
@@ -68,7 +69,7 @@ async function open(context, page, homeSlides, { photos = {}, delay = 0 } = {}) 
     window.__heroPhotos = [];
     const look = () => {
       for (const img of document.querySelectorAll('.home-hero img')) {
-        const name = (/\/(hero_[a-z]+)--/.exec(img.currentSrc || img.src) || [])[1];
+        const name = (/\/(hero_[a-z0-9_]+)--/.exec(img.currentSrc || img.src) || [])[1];
         if (name && !window.__heroPhotos.includes(name)) window.__heroPhotos.push(name);
       }
       requestAnimationFrame(look);
@@ -125,8 +126,8 @@ test('a photo without a department is named by its alt text, and an uploaded pho
 
 test('with every photo turned off an empty panel keeps the photos\' place, so nothing moves even when the answer is late', async ({ context, page }) => {
   const { errors, heroPhotos } = await open(context, page, [slide(1, 'hero_candy.jpg', 'Display box of Turtles Bites chocolates', 'CANDIES', { active: false })], { delay: 1200 });
-  // Past the first-paint budget the bundled photos show, then the answer comes.
-  await expect(page.locator('.home-carousel-slide.is-active img')).toHaveAttribute('alt', 'Display box of Turtles Bites chocolates');
+  // Past the first-paint budget the bundled photos (the warehouse reel) show, then the answer comes.
+  await expect(page.locator('.home-carousel-slide.is-active img')).toHaveAttribute('alt', 'The Alabama Wholesale Inc sign above the loading doors');
   const before = await page.locator('.home-hero-copy').boundingBox();
   const panel = page.locator('.home-hero-media > .home-carousel.is-empty');
   await expect(panel).toBeVisible();
@@ -136,7 +137,7 @@ test('with every photo turned off an empty panel keeps the photos\' place, so no
   // The copy kept its place and size, and the page didn't move.
   expect(await page.locator('.home-hero-copy').boundingBox()).toEqual(before);
   expect(await page.evaluate(() => window.__cls)).toBeLessThan(0.1);
-  expect(await heroPhotos()).toContain('hero_candy');
+  expect(await heroPhotos()).toContain('hero_wh_sign');
   expect(errors).toEqual([]);
 });
 
@@ -151,9 +152,37 @@ test('a quick answer replaces the bundled photos before any of them shows', asyn
 });
 
 test('without the table the bundled photos stay, with no page error', async ({ context, page }) => {
-  const { errors, slidesCalls } = await open(context, page, null);
+  const { errors, slidesCalls, heroPhotos } = await open(context, page, null);
   await expect.poll(() => slidesCalls.length).toBe(1);
-  await expect.poll(() => labels(page)).toEqual(['1 of 4: Candies', '2 of 4: Novelties & Vapes', '3 of 4: Merchandise', '4 of 4: Drinks & Bags']);
-  await expect(page.locator('.home-carousel-slide.is-active img')).toHaveAttribute('alt', 'Display box of Turtles Bites chocolates');
+  // The owner's warehouse reel (AW-006).
+  await expect.poll(() => labels(page)).toEqual([
+    '1 of 8: The Alabama Wholesale Inc sign above the loading doors',
+    '2 of 8: Two box trucks, one with the Alabama Wholesale logo, at the warehouse',
+    '3 of 8: The Graymont Ave N street sign in front of the warehouse',
+    '4 of 8: A long warehouse aisle of stocked pallet racks',
+    '5 of 8: Drinks & Bags',
+    '6 of 8: Food Stuff',
+    '7 of 8: Candies',
+    '8 of 8: The candy room: shelves of candy boxes and stacked cases on a checkered floor',
+  ]);
+  const photo = page.locator('.home-carousel-slide.is-active img');
+  await expect(photo).toHaveAttribute('alt', 'The Alabama Wholesale Inc sign above the loading doors');
+  await expect(photo).toHaveJSProperty('complete', true);
+  expect(await photo.evaluate((img) => img.naturalWidth)).toBeGreaterThan(0);
+  // Slide 1, and the next one, fetched ahead (AW-321): both from the reel.
+  expect((await heroPhotos())[0]).toBe('hero_wh_sign');
+  expect((await heroPhotos()).every((name) => name.startsWith('hero_wh_'))).toBe(true);
+  // The photo fills the 16:9 stage, and the browser took a rendition no
+  // wider than the stage needs at this screen's density (SIZES.hero).
+  const fit = await photo.evaluate((img) => {
+    const stage = img.closest('.home-carousel-stage').getBoundingClientRect();
+    const box = img.getBoundingClientRect();
+    return { stage: [stage.width, stage.height], box: [box.width, box.height], file: Number(/--(\d+)x\d+-/.exec(img.currentSrc)[1]), dpr: devicePixelRatio };
+  });
+  expect(Math.abs(fit.box[0] - fit.stage[0])).toBeLessThan(1.5);
+  expect(Math.abs(fit.box[1] - fit.stage[1])).toBeLessThan(1.5);
+  expect(fit.file).toBeGreaterThanOrEqual(Math.min(1280, fit.stage[0] * fit.dpr) - 1);
+  expect([480, 740, 1000, 1280].filter((w) => w >= fit.stage[0] * fit.dpr)[0] ?? 1280).toBe(fit.file);
+  await expect(page.locator('.home-carousel .nicotine-warning')).toHaveCount(0);
   expect(errors).toEqual([]);
 });

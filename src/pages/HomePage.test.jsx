@@ -317,8 +317,20 @@ describe('HomePage hero photos', () => {
 
   it('shows the bundled photos first and with no backend', () => {
     renderHome();
-    expect(slideLabels()).toEqual(['1 of 4: Candies', '2 of 4: Novelties & Vapes', '3 of 4: Merchandise', '4 of 4: Drinks & Bags']);
+    // The owner's warehouse reel (AW-006): a slide without a department is
+    // named by its photo's description.
+    expect(slideLabels()).toEqual([
+      '1 of 8: The Alabama Wholesale Inc sign above the loading doors',
+      '2 of 8: Two box trucks, one with the Alabama Wholesale logo, at the warehouse',
+      '3 of 8: The Graymont Ave N street sign in front of the warehouse',
+      '4 of 8: A long warehouse aisle of stocked pallet racks',
+      '5 of 8: Drinks & Bags',
+      '6 of 8: Food Stuff',
+      '7 of 8: Candies',
+      '8 of 8: The candy room: shelves of candy boxes and stacked cases on a checkered floor',
+    ]);
     expect(document.querySelector('.home-carousel-slide.is-active img').getAttribute('alt')).toBe(HERO_SLIDES[0].alt);
+    expect(document.querySelector('.home-carousel .nicotine-warning')).toBeNull();
   });
 
   it('swaps in the photos staff keep, in their order, starting at slide 1, with the FDA warning on the flagged one', async () => {

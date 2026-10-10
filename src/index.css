@@ -536,17 +536,19 @@ p > .text-link { min-height: 0; min-width: 0; }
    swipe anywhere on the carousel changes slides, so the page only scrolls up
    and down there (AW-161). */
 .home-carousel { position: relative; background: var(--tile); touch-action: pan-y; }
-/* The stage is never shorter than the column of touch targets at its right
-   edge: Next at its middle and the pause toggle at its foot, with room
-   between them. The targets grow with the browser's text size and a 16:10
-   box on a phone doesn't: at 150% and 200% text on a 320-430px phone the
-   toggle sat on Next. The minimum is in rem, so at the default text size it
-   is below every phone's 16:10 height and changes nothing; at large text
-   the stage grows taller and the photo, never drawn larger than its own
-   size, stays centred in it. The same three rows (the vape slide's link at
-   the top, previous/next, then its dots and the toggle) fit one above the
-   other. */
-.home-carousel-stage { position: relative; aspect-ratio: 16 / 10; min-height: calc(3 * var(--tap) + 2rem); overflow: hidden; background: var(--tile); -webkit-user-select: none; user-select: none; }
+/* The stage has the warehouse photos' shape, 16:9 (AW-006), so the bundled
+   reel fills it edge to edge; a photo of another shape (an upload in Admin
+   -> Homepage) is centred in it, whole. It is never shorter than the column
+   of touch targets at its right edge: Next at its middle and the pause
+   toggle at its foot, with room between them. The targets grow with the
+   browser's text size and a 16:9 box on a phone doesn't: at 150% and 200%
+   text on a 320-430px phone the toggle sat on Next. The minimum is in rem,
+   so at the default text size it is at most 3px over a 320px phone's 16:9
+   height (326px and wider, below it); at large text the stage
+   grows taller and the photo, never drawn larger than its own size, stays
+   centred in it. The same three rows (a flagged slide's link at the top,
+   previous/next, then its dots and the toggle) fit one above the other. */
+.home-carousel-stage { position: relative; aspect-ratio: 16 / 9; min-height: calc(3 * var(--tap) + 2rem); overflow: hidden; background: var(--tile); -webkit-user-select: none; user-select: none; }
 /* Each slide is a stacking context, so its photo (z-index -1) sits under
    the department link that follows it in the page. */
 .home-carousel-slide { position: absolute; inset: 0; z-index: 0; display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity .3s; }
@@ -1060,11 +1062,33 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .pd-zoom-dialog picture { display: block; max-width: 100%; }
 .pd-zoom-dialog img { display: block; width: auto; height: auto; max-width: 100%; max-height: min(80vh, calc(100vh - 11rem)); max-height: min(80vh, calc(100dvh - 11rem)); }
 .pd-zoom-dialog .photo-credit { align-self: stretch; width: 0; min-width: 100%; margin: 0; }
+/* The contact page's warehouse photos, enlarged in the same dialog (AW-006,
+   WarehousePhotos.jsx): a 16:9 frame, the photos' own shape, as large as
+   the dialog's photo may be (its largest rendition, the 92vw dialog less its
+   padding, 80% of the screen's height less the room the close button, the
+   FDA statement and the caption bar take), so the dialog keeps one size from
+   photo to photo and while one loads. The photo fills the frame. The bar and
+   the statement are as wide as the frame. */
+.warehouse-viewer-frame { position: relative; display: block; width: min(1280px, calc(92vw - 32px), calc(min(80vh, 100vh - 14rem) * 16 / 9)); aspect-ratio: 16 / 9; background: var(--tile); }
+.pd-zoom-dialog .warehouse-viewer-frame img { position: absolute; inset: 0; margin: auto; max-height: 100%; color: transparent; }
+.warehouse-viewer-bar, .warehouse-viewer .nicotine-warning { align-self: stretch; width: 0; min-width: 100%; margin: 0; }
+/* The description keeps two lines' room, so the dialog doesn't change
+   height from a short description to a long one. It holds the sr-only
+   place, so it is the containing block. */
+.warehouse-viewer-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.warehouse-viewer-caption { position: relative; display: flex; align-items: center; min-height: 2.9em; margin: 0; color: var(--ink); font-size: var(--text-sm); line-height: 1.45; }
+.warehouse-viewer-nav { display: flex; flex-shrink: 0; align-items: center; gap: 8px; }
+.warehouse-viewer-count { min-width: 4.5em; color: var(--muted); font-size: var(--text-sm); text-align: center; white-space: nowrap; }
 /* On a phone the enlarged photo takes the screen's width, so it is never
    smaller than the photo on the page. */
 @media (max-width: 37.5em) {
   .overlay.pd-zoom-overlay { padding: 0; }
   .dialog.pd-zoom-dialog { max-width: 100%; padding: 8px 8px 12px; }
+  .warehouse-viewer-frame { width: min(1280px, calc(100vw - 16px), calc(min(80vh, 100vh - 14rem) * 16 / 9)); }
+  /* On a phone the description takes the dialog's width, over Previous, the
+     place and Next. */
+  .warehouse-viewer-bar { flex-direction: column; align-items: stretch; gap: 6px; }
+  .warehouse-viewer-nav { justify-content: space-between; }
 }
 /* One measure for the whole column (AW-237): the description, chips, price
    rules and quantity row end at the same right edge. */
@@ -2379,6 +2403,34 @@ address.info-lead-small { font-style: normal; }
 /* The content starts level with the nav. */
 .support-layout-main > :first-child { margin-top: 0; }
 
+/* Contact page: the owner's warehouse photos (AW-006, WarehousePhotos.jsx).
+   Three across; two from 53.125em to 68.75em, where the column beside the
+   nav is narrower, and on phones (SIZES.warehouse in src/lib/images.js
+   follows these numbers). Each tile is one button: the photo in a 16:9
+   frame, the photos' own shape, so nothing moves as they arrive, and its
+   description under it. */
+.warehouse-photos { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line); }
+.warehouse-photos .eyebrow { color: var(--orange-dark); margin-bottom: 8px; }
+.warehouse-photos h2 { font-size: var(--h2-sm); margin-bottom: 14px; }
+.warehouse-photos > p:not([class]) { max-width: 56ch; margin: 0 0 18px; color: var(--ink); font-size: var(--text-base); line-height: 1.7; }
+.warehouse-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 12px; }
+.warehouse-tile { display: flex; flex-direction: column; gap: 8px; width: 100%; height: 100%; padding: 0; border: 0; background: none; color: var(--ink); text-align: left; cursor: zoom-in; }
+.warehouse-frame { position: relative; display: block; aspect-ratio: 16 / 9; overflow: hidden; background: var(--tile); }
+/* Out of flow and centred, never wider than the photo's own pixels. */
+.warehouse-frame img { position: absolute; inset: 0; margin: auto; width: auto; height: auto; max-width: 100%; max-height: 100%; color: transparent; }
+.warehouse-caption { font-size: var(--text-sm); line-height: 1.45; }
+/* Tobacco, vapes and nicotine pouches: their own group under the FDA
+   statement (AW-026). */
+.warehouse-group { margin-top: 32px; }
+.warehouse-group h3 { margin: 0 0 12px; color: var(--purple); font-size: var(--h3); }
+.warehouse-group .nicotine-warning { margin: 0 0 16px; }
+@media (hover: hover) {
+  .warehouse-tile:not(:disabled):hover .warehouse-caption { color: var(--orange-dark); }
+}
+@media (max-width: 68.75em) {
+  .warehouse-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 /* password reset */
 .reset-layout { max-width: 720px; margin-top: 14px; }
 /* Stacked at every width (AW-261): the text gets the panel's full width and
@@ -2485,6 +2537,8 @@ address.info-lead-small { font-style: normal; }
   /* In the chip row the current page is underlined instead of barred. */
   .policy-nav a[aria-current="page"] { box-shadow: none; padding-left: 0; text-decoration: underline; text-underline-offset: var(--link-offset); }
   .sku-list { grid-template-columns: 1fr 1fr; }
+  /* The column is the page wide again: three photos across. */
+  .warehouse-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 37.5em) {
   .info-card { padding: 20px; }
@@ -2496,6 +2550,8 @@ address.info-lead-small { font-style: normal; }
   .hours-list > div { flex-direction: column; gap: 2px; }
   .hours-list dd { text-align: left; }
   .footer-policies { justify-content: flex-start; }
+  .warehouse-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 12px; }
+  .warehouse-caption { font-size: var(--text-xs); }
 }
 
 /* optional license and resale proof — application dialog and /apply */
@@ -2716,6 +2772,9 @@ ul.sub-pills { list-style: none; padding: 0; }
      checkout prints its lines and whatever details are filled in: the
      empty fields are left off (React keeps the value attribute current). */
   .pd-grid ~ .section { display: none; }
+  /* The contact page prints its address, hours and will-call details, not
+     the 29 warehouse photos (AW-006), most of which haven't loaded. */
+  .warehouse-photos { display: none; }
   .checkout-form-grid > div:has(> :is(input, textarea)[value=""], > .consent > input:not(:checked)) { display: none; }
   /* While the age question is open it is the printout, as it is the page. */
   body:has(.age-gate) #root { display: none; }

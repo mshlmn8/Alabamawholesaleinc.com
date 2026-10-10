@@ -36,7 +36,14 @@ export const VERSION = 5;
 // Card and detail widths: 320 for 1x/2x phone cards, 480 for 3x phone cards
 // and 2x tablets (AW-322), 640 and 1024 for the product page.
 export const PRODUCT_WIDTHS = [320, 480, 640, 1024];
-export const HERO_WIDTHS = [480, 720];
+// Hero and warehouse photos (src/assets/hero_*, AW-006): 480 for phones and
+// the contact page's grid; 740 for the home hero at 1x, whose photo is at
+// most 735px wide (SIZES.hero in src/lib/images.js); 1000 for 2.6x phones
+// (a 378px hero) and 1280 for 3x phones, 2x desktops and the contact page's
+// enlarged photo, which a 1440x900 screen shows 1280px wide. A smaller
+// source stops at its own width: the four earlier hero photos, 700px wide
+// and narrower, keep their two sizes.
+export const HERO_WIDTHS = [480, 740, 1000, 1280];
 // WebP is rendered at every width. The JPEG fallback (browsers without WebP)
 // stops at this width, which keeps the build output about half the size.
 export const JPEG_MAX_WIDTH = 640;

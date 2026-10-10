@@ -1,6 +1,7 @@
 // The photos beside the home hero (HomeHero, AW-004): one fixed-aspect stage
 // that rotates the hero photos (Admin -> Homepage's, or the bundled
-// HERO_SLIDES; AW-119), each slide linking to its department when it has one.
+// HERO_SLIDES, the owner's warehouse reel; AW-119, AW-006), each slide
+// linking to its department when it has one.
 //
 // - The stage keeps one aspect ratio and clips, and a photo is never drawn
 //   larger than its own size, so no slide spills over the controls or the
@@ -16,11 +17,13 @@
 //   neighbours once it has been shown (AW-321).
 // - Previous/next and a pause toggle on the photo, one dot per slide
 //   (AW-054); a sideways swipe on the carousel changes slides too (AW-161).
-// - A band under the photo (NEW-055) holds the vape slide's FDA statement
-//   (AW-026, PR #12) and, on every other slide, the dots, plus the slide's
-//   "Shop …" link in the compact layout, so they no longer cover the photo.
-//   On the vape slide the statement has the band, and the dots (and the
-//   link) stay on the photo. The band keeps one height on every slide, so the
+// - A band under the photo (NEW-055) holds the FDA statement of a slide
+//   that shows a nicotine product (nicotineWarning, a home_slides row's
+//   nicotine_warning; AW-026, PR #12; none of the bundled warehouse reel
+//   does) and, on every other slide, the dots, plus the slide's "Shop …"
+//   link in the compact layout, so they no longer cover the photo. On a
+//   flagged slide the statement has the band, and the dots (and the link)
+//   stay on the photo. The band keeps one height on every slide, so the
 //   page doesn't move when the slide changes. Where the statement goes is a
 //   question for counsel (the TODO(owner) at the band, AW-026).
 // - While the first load of staff's photos is pending (NEW-008) the
@@ -37,6 +40,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { HERO_SLIDES } from '../data/content.js';
 import { catLabel } from '../lib/format.js';
+import { heroSizes } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { MOBILE_QUERY, useMediaQuery } from '../lib/useMediaQuery.js';
 import { Icon } from './Icon.jsx';
@@ -169,7 +173,7 @@ function Carousel({ slides }) {
   const band = bandOf(media.map(({ slide }) => slide));
   // The shown slide's link: on the photo, or in the band under it in the
   // compact layout, where on the photo it covered the packshot's logo
-  // (NEW-055). The vape slide's band is its statement's, so its link stays
+  // (NEW-055). A flagged slide's band is its statement's, so its link stays
   // on the photo.
   const captionInBand = compact && band.controls && !active.nicotineWarning;
   const caption = active.goCat
@@ -230,7 +234,7 @@ function Carousel({ slides }) {
   // The swipe handlers are on the whole carousel: in the band, the link's
   // stretched area still covers the photo (index.css).
   return (
-    <section className={`home-carousel${active.nicotineWarning ? ' is-warning' : ''}`} aria-roledescription="carousel" aria-label="Featured departments"
+    <section className={`home-carousel${active.nicotineWarning ? ' is-warning' : ''}`} aria-roledescription="carousel" aria-label="Featured photos"
              onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} onFocus={onFocus} onBlur={onBlur}
              onPointerDown={onPointerDown} onPointerUp={onPointerUp} onPointerCancel={onPointerCancel} onClickCapture={onClickCapture}>
       {/* Read out when the visitor changes slides, not on every automatic turn. */}
@@ -243,8 +247,9 @@ function Carousel({ slides }) {
             <Icon name={paused ? 'play' : 'pause'} />
           </button>
         )}
-        {/* Photos render at no more than their own pixel size. Slide 1 is the
-            page's largest image, so it loads eagerly at high priority. */}
+        {/* Photos render at no more than their own pixel size, a wide one
+            (the warehouse reel) at the stage's width (heroSizes). Slide 1 is
+            the page's largest image, so it loads eagerly at high priority. */}
         {media.map(({ slide, index }, i) => {
           const isActive = i === safeIndex;
           const warm = isWarm(i);
@@ -253,8 +258,7 @@ function Carousel({ slides }) {
                  role="group" aria-roledescription="slide" aria-label={`${i + 1} of ${count}${nameOf(slide)}`}
                  aria-hidden={isActive ? undefined : 'true'}>
               {warm && slide.picture?.src && (
-                <Picture picture={slide.picture} alt={slide.alt || ''} draggable={false}
-                         sizes={`(max-width: 37.5em) 100vw, ${slide.picture.width || 720}px`}
+                <Picture picture={slide.picture} alt={slide.alt || ''} draggable={false} sizes={heroSizes(slide.picture)}
                          priority={i === 0} loading={i === 0 ? 'eager' : 'lazy'} onFail={() => markFailed(photoKey(slide))}
                          onLoad={i === 0 ? onFirstPhoto : undefined} onError={i === 0 ? onFirstPhoto : undefined} />
               )}
@@ -282,7 +286,7 @@ function Carousel({ slides }) {
       </div>
       {/* The band (NEW-055): the controls and the statement share one cell,
           so it is as tall as the taller of the two on every slide. The
-          statement comes last, so on the vape slide it is on top; hidden on
+          statement comes last, so on a flagged slide it is on top; hidden on
           the others, it lets clicks through to the controls. */}
       {(band.controls || band.warning) && (
         <div className="home-carousel-band">
@@ -299,7 +303,7 @@ function Carousel({ slides }) {
               </div>
             </div>
           )}
-          {/* TODO(owner): Do the hero slides and product photos count as advertisements under 21 CFR 1143.3 (warning in the upper portion of the ad, at least 20% of its area)? The vape slide shows the verbatim warning under the photo until counsel answers. (AW-026) */}
+          {/* TODO(owner): Do the hero slides and product photos count as advertisements under 21 CFR 1143.3 (warning in the upper portion of the ad, at least 20% of its area)? A slide flagged as showing a nicotine product shows the verbatim warning under the photo until counsel answers. (AW-026) */}
           {band.warning && (
             <div className="home-carousel-warning" aria-hidden={active.nicotineWarning ? undefined : 'true'}>
               <NicotineWarning />

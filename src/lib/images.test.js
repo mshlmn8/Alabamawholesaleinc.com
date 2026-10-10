@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { SIZES, heroImage, imageFromEntry, productImage, sharedImageFiles, zoomPicture, zoomSizes } from './images.js';
+import { HERO_STAGE_MAX, SIZES, heroImage, heroSizes, imageFromEntry, productImage, sharedImageFiles, zoomPicture, zoomSizes } from './images.js';
 import { MOBILE_QUERY } from './useMediaQuery.js';
 import { entryFiles } from '../../scripts/image-pipeline.mjs';
 
@@ -160,6 +160,45 @@ describe('zoomPicture and zoomSizes', () => {
   it('has no sizes without a width', () => {
     expect(zoomSizes(undefined)).toBeUndefined();
   });
+
+  it('keeps the product photos’ sizes word for word by default', () => {
+    expect(zoomSizes(1600)).toBe(zoomSizes(1600, 1.1));
+    expect(zoomSizes(1600)).toBe('(max-width: 37.5em) and (max-width: 1600px) 100vw, (max-width: 37.5em) 1600px, (min-aspect-ratio: 22/23) and (max-height: 1819px) 88vh, (min-aspect-ratio: 22/23) 1600px, (max-width: 1740px) 92vw, 1600px');
+  });
+
+  // The contact page's warehouse photos (AW-006) in the same dialog: a 16:9
+  // frame at most 1280px wide, the dialog's width less its padding, and
+  // 80vh or the screen less 14rem tall (.warehouse-viewer-frame).
+  const frame = (vw, vh) => {
+    const width = vw <= 600 ? vw - 16 : 0.92 * vw - 32;
+    return Math.min(1280, width, (16 / 9) * Math.min(0.8 * vh, vh - 224));
+  };
+
+  it('reads the warehouse frame it assumes from index.css', () => {
+    expect(css).toMatch(/\.warehouse-viewer-frame \{[^}]*width: min\(1280px, calc\(92vw - 32px\), calc\(min\(80vh, 100vh - 14rem\) \* 16 \/ 9\)\);[^}]*aspect-ratio: 16 \/ 9;/);
+    expect(css).toMatch(/@media \(max-width: 37\.5em\) \{[^}]*\}[^}]*\}\s*\.warehouse-viewer-frame \{ width: min\(1280px, calc\(100vw - 16px\), calc\(min\(80vh, 100vh - 14rem\) \* 16 \/ 9\)\); \}/);
+  });
+
+  it.each([[1440, 900], [1366, 650], [1920, 1080], [2560, 1440], [1280, 1600], [1024, 768], [768, 1024], [844, 390], [390, 844], [360, 740], [600, 960], [3840, 2160]])(
+    'asks for at least the warehouse frame and at most the 1280 rendition, at %ix%i', (vw, vh) => {
+      const asked = pick(zoomSizes(1280, 16 / 9), vw, vh);
+      expect(asked).toBeLessThanOrEqual(1280);
+      expect(asked).toBeGreaterThanOrEqual(frame(vw, vh) - 0.5);
+    },
+  );
+});
+
+// The home hero's photo sizes (AW-006): the stage's width for a photo at
+// least as wide as the widest stage, its own width for a narrower one.
+describe('heroSizes', () => {
+  it('asks for the stage’s width for the warehouse photos, and a narrower photo’s own width', () => {
+    expect(HERO_STAGE_MAX).toBe(735);
+    expect(heroSizes({ width: 1280 })).toBe(SIZES.hero);
+    expect(heroSizes({ width: 735 })).toBe(SIZES.hero);
+    expect(heroSizes({ width: 700 })).toBe('(max-width: 37.5em) 100vw, 700px');
+    expect(heroSizes({ width: undefined })).toBe(SIZES.hero);
+    expect(heroSizes(null)).toBe(SIZES.hero);
+  });
 });
 
 describe('sharedImageFiles', () => {
@@ -279,6 +318,56 @@ describe('SIZES follow the card and product-page geometry (AW-322)', () => {
     expect(evaluate(SIZES.categoryCard, 768, false) * 2).toBeLessThanOrEqual(480);
     // The same everywhere the grid matches a row of cards.
     for (const vw of [390, 600, 851, 1000, 1440]) expect(evaluate(SIZES.categoryCard, vw, false)).toBeCloseTo(categoryCard(vw, false), 5);
+  });
+
+  // The home hero's stage (AW-004, AW-006): the hero's 1px borders, its two
+  // columns (1.35 : 1 above 68.75em, 1 : 1 down to the compact layout, which
+  // stacks them) and the container.
+  const heroColumns = /\.home-hero \{ display: grid; grid-template-columns: minmax\(0, ([\d.]+)fr\) minmax\(0, ([\d.]+)fr\);[^}]*border: (\d+)px solid/.exec(css);
+  if (!heroColumns) throw new Error('index.css no longer has the hero columns');
+  const heroShare = Number(heroColumns[1]) / (Number(heroColumns[1]) + Number(heroColumns[2]));
+  const heroBorders = 2 * Number(heroColumns[3]);
+  const heroStage = (vw, compact) => {
+    if (compact || vw <= 850) return vw - g.compactMargin - heroBorders;
+    const hero = Math.min(vw - g.margin, g.max) - heroBorders;
+    return vw <= 1100 ? hero / 2 : hero * heroShare;
+  };
+  // The contact page's warehouse grid (AW-006) in the support pages' column,
+  // beside the help nav: three columns, two from 53.125em to 68.75em and on
+  // phones, three in the compact layout above phones.
+  const policy = /\.policy-layout \{ display: grid; grid-template-columns: (\d+)px minmax\(0, 1fr\); gap: (\d+)px;/.exec(css);
+  const warehouseGap = px(/\.warehouse-grid \{[^}]*gap: \d+px (\d+)px;/);
+  const warehouseCell = (vw, compact) => {
+    const narrow = compact || vw <= 850;
+    const column = narrow ? vw - g.compactMargin : Math.min(vw - g.margin, g.max) - Number(policy[1]) - Number(policy[2]);
+    const columns = vw <= 600 ? 2 : narrow ? 3 : vw <= 1100 ? 2 : 3;
+    return (column - (columns - 1) * warehouseGap) / columns;
+  };
+
+  it('reads the warehouse grid’s columns from index.css', () => {
+    expect(css).toMatch(/\.warehouse-grid \{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
+    expect(css).toMatch(/@media \(max-width: 68\.75em\) \{\s*\.warehouse-grid \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}/);
+    expect(css).toMatch(/@media \(max-width: 53\.125em\), \(hover: none\) and \(pointer: coarse\) and \(max-height: 31\.25em\) \{[^@]*\.warehouse-grid \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\); \}/);
+    expect(css).toMatch(/@media \(max-width: 37\.5em\) \{[^@]*\.warehouse-grid \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+    expect(warehouseGap).toBe(12);
+  });
+
+  it.each([320, 360, 390, 412, 430, 600, 601, 768, 850, 851, 1000, 1100, 1101, 1280, 1344, 1345, 1440, 1920])('asks for the hero stage and the warehouse tiles at %ipx', (vw) => {
+    const hero = evaluate(SIZES.hero, vw, false);
+    expect(hero).toBeGreaterThanOrEqual(heroStage(vw, false) - 1e-9);
+    expect(hero).toBeLessThan(heroStage(vw, false) + 1);
+    expect(evaluate(SIZES.warehouse, vw, false)).toBeCloseTo(warehouseCell(vw, false), 5);
+  });
+
+  it.each([667, 740, 844, 896, 932])('asks for the hero stage and the warehouse tiles on a %ipx-wide phone held sideways', (vw) => {
+    expect(evaluate(SIZES.hero, vw, true)).toBeCloseTo(heroStage(vw, true), 5);
+    expect(evaluate(SIZES.warehouse, vw, true)).toBeCloseTo(warehouseCell(vw, true), 5);
+  });
+
+  it('takes the 740 rendition for the widest hero at 1x and the 1280 one on a 3x phone', () => {
+    expect(evaluate(SIZES.hero, 1440, false)).toBe(735);
+    expect(evaluate(SIZES.hero, 390, false) * 3).toBeGreaterThan(1000);
+    expect(evaluate(SIZES.warehouse, 1440, false)).toBe(332);
   });
 
   it('asks a 390px phone for about 141px cards, so 2x screens take the 320 rendition and 3x the 480', () => {

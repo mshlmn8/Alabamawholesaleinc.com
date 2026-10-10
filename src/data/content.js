@@ -1,11 +1,12 @@
 // Storefront content: the business facts (company, hours, minimum order,
 // free-delivery threshold), the licensed-only line, the volume-pricing line,
 // the ticker, the home hero's copy and photos, the trust band, the department
-// photos, the storage keys and the policy date. PRODUCTS lives in
-// ./products.js. BRANDS and FAQS are not shown anywhere; they wait on owner
-// answers (see each one).
+// photos, the storage keys and the policy date. The warehouse photos are in
+// ./warehousePhotos.js, PRODUCTS in ./products.js. BRANDS and FAQS are not
+// shown anywhere; they wait on owner answers (see each one).
 
 import { heroImage } from '../lib/images.js';
+import { HERO_REEL } from './warehousePhotos.js';
 import { formatMoney, formatMoneyShort } from '../lib/format.js';
 
 // ---------------------------------------------------------------------------
@@ -176,31 +177,26 @@ export const HOME_TITLE = 'Wholesale Tobacco, Vapes & Candy';
 
 // The home page's split hero (src/components/HomeHero.jsx, AW-004): the
 // eyebrow comes from the site's former title, and the line under the h1 is
-// the meta description.
-// TODO(owner): Approve the home headline "Wholesale for licensed retailers." and its supporting line, and say whether the hero beside it keeps the four rotating photos or shows one fixed photo. (AW-004)
+// the meta description. The photos beside it rotate through the owner's
+// warehouse reel (AW-006, owner answer 2026-10).
+// TODO(owner): Approve the home headline "Wholesale for licensed retailers." and its supporting line. (AW-004)
 export const HOME_HERO = {
   eyebrow: 'WHOLESALE DISTRIBUTOR · BIRMINGHAM, AL',
   title: 'Wholesale for licensed retailers.',
   text: HOME_PITCH,
 };
 
-// The photos beside the home hero (src/components/HeroCarousel.jsx). Each
-// slide links to its department (goCat) and describes its photo in `alt`.
-// heroImage() supplies img (plain URL) and picture (the responsive WebP/JPEG
-// set) from the photo in src/assets. Photos only: no slide ever used a video,
-// so the carousel's video support was dropped.
-// TODO(owner): Wide licensed photos of the warehouse or a multi-department assortment for the hero; the current hero photos are unchanged until then. (AW-006)
-// eyebrow, title, sub, cta1 and cta2 are kept as published (decision 2) but
-// no longer shown anywhere, not even as alt text (AW-169). accent is unused
-// too; it goes with them once the owner answers (AW-328).
-// TODO(owner): The unshown slide copy makes claims the catalog doesn't support: "over 368 SKUs", "Geekbar 25K" (the photo and catalog say Geek Bar Pulse X), "World's first 3D curved screen", Monster and Red Bull (only Gatorade and G2 are pictured) and Eagle torches. May eyebrow, title, sub, cta1 and cta2 be deleted? (AW-169)
-export const HERO_SLIDES = [
-  { eyebrow: 'NEW THIS WEEK', title: 'The brands your customers ask for.', sub: 'Tobacco, novelties, candy, beverages, motor oil, household and more — over 368 SKUs at our Birmingham warehouse.', cta1: 'Shop Catalog', cta2: 'Apply for Account', ...heroImage('hero_candy.jpg'), alt: 'Display box of Turtles Bites chocolates', accent: 'orange', goCat: 'CANDIES' },
-  // TODO(owner): Do the hero slides and product photos count as advertisements under 21 CFR 1143.3 (warning in the upper portion of the ad, at least 20% of its area)? The vape slide shows the verbatim warning under the photo until counsel answers. (AW-026)
-  { eyebrow: 'BESTSELLING NOVELTIES', title: 'Geekbar 25K — now in stock.', sub: 'World\'s first 3D curved screen disposable. Flavors and availability change often. The trade desk confirms what is in stock.', cta1: 'Shop Novelties', cta2: 'See All Vape', ...heroImage('hero_vape.jpg'), alt: 'Geek Bar Pulse X disposable vape advertisement', accent: 'navy', goCat: 'NOVELTIES', nicotineWarning: true },
-  { eyebrow: 'COUNTER ESSENTIALS', title: 'BIC lighters & merchandise.', sub: 'Stock up the counter with Bic, Eagle torches, Lattafa air freshener and more.', cta1: 'Shop Merchandise', cta2: 'View Displays', ...heroImage('hero_lighters.jpg'), alt: 'BIC lighters in a counter display tray', accent: 'orange', goCat: 'MERCHANDISE' },
-  { eyebrow: 'DRINKS & BEVERAGES', title: 'Gatorade, Monster, Red Bull — by the case.', sub: 'Free delivery on orders over $1,500 when the stop is on a delivery route in Alabama, Mississippi or Georgia.', cta1: 'Shop Drinks', cta2: 'Get a Quote', ...heroImage('hero_gatorade.jpg'), alt: 'Gatorade and G2 bottles', accent: 'navy', goCat: 'DRINKS & BAGS' }
-];
+// The photos beside the home hero (src/components/HeroCarousel.jsx): the
+// owner's 8-photo highlight reel of the warehouse (HERO_REEL in
+// ./warehousePhotos.js, AW-006), until Admin -> Homepage's rows replace it
+// (src/lib/homeSlides.js). The contact page shows the other 29 photos
+// (src/pages/support/WarehousePhotos.jsx). Each slide describes its photo in
+// `alt` and links to its department (goCat) or nowhere (null), like a
+// home_slides row. heroImage() supplies img (plain URL) and picture (the
+// responsive WebP/JPEG set) from the photo in src/assets. None of the eight
+// shows a nicotine product, so none carries the FDA statement (a home_slides
+// row can: nicotine_warning).
+export const HERO_SLIDES = HERO_REEL.map(({ file, alt, goCat }) => ({ ...heroImage(file), alt, goCat, nicotineWarning: false }));
 
 // The product whose photo stands for each department on the home page's
 // "Shop by department" tiles (AW-061), by catalog id: a clean packshot from

@@ -52,7 +52,10 @@ describe('ContactPage cards', () => {
     const cards = [...document.querySelectorAll('.info-card')];
     expect(cards.map((card) => card.firstElementChild.tagName + ' ' + card.firstElementChild.className)).toEqual(['H2 eyebrow', 'H2 eyebrow', 'H2 eyebrow']);
     const outline = screen.getAllByRole('heading').map((h) => `${h.tagName} ${h.textContent}`);
-    expect(outline).toEqual(['H1 Contact & visit', 'H2 Call', 'H2 Email', 'H2 Visit', 'H2 When we’re open', 'H2 Pick up at the warehouse', 'H2 Open a trade account']);
+    expect(outline).toEqual([
+      'H1 Contact & visit', 'H2 Call', 'H2 Email', 'H2 Visit', 'H2 When we’re open', 'H2 Pick up at the warehouse',
+      'H2 A look around the warehouse', 'H3 Tobacco, vapes and nicotine pouches', 'H2 Open a trade account',
+    ]);
   });
 
   it('offers a line break only after the @ in the email, and keeps the address whole', () => {

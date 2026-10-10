@@ -124,15 +124,24 @@ export function zoomPicture(picture, zoom) {
 // (FRAME in scripts/image-pipeline.mjs) is 88vh wide, the bound on a screen
 // wider than 22:23. Each is a little more than the CSS gives (the dialog's
 // padding, the 11rem the height also keeps clear), so the browser never
-// takes a file smaller than the photo is shown.
-export function zoomSizes(width) {
+// takes a file smaller than the photo is shown. `aspect` is the photo's
+// width over its height: the contact page's warehouse photos are 16:9
+// (AW-006), 142.22vh wide at 80vh tall, the bound on a screen wider than
+// 7111:4600.
+const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+export function zoomSizes(width, aspect = 1.1) {
   if (!width) return undefined;
   const w = Math.round(width);
+  // The photo's width at 80vh tall, in hundredths of a vh, and the screen
+  // aspect above which that height is the bound (it is narrower than 92vw).
+  const tall = Math.round(80 * aspect * 100);
+  const d = gcd(tall, 9200);
+  const vh = `${tall / 100}vh`;
   return [
     `(max-width: 37.5em) and (max-width: ${w}px) 100vw`,
     `(max-width: 37.5em) ${w}px`,
-    `(min-aspect-ratio: 22/23) and (max-height: ${Math.ceil(w / 0.88)}px) 88vh`,
-    `(min-aspect-ratio: 22/23) ${w}px`,
+    `(min-aspect-ratio: ${tall / d}/${9200 / d}) and (max-height: ${Math.ceil(w / (tall / 10000))}px) ${vh}`,
+    `(min-aspect-ratio: ${tall / d}/${9200 / d}) ${w}px`,
     `(max-width: ${Math.ceil(w / 0.92)}px) 92vw`,
     `${w}px`,
   ].join(', ');
@@ -183,10 +192,47 @@ export function zoomSizes(width) {
 //   narrow   (100vw − 64 − 26) / 2 − 70        = (100vw − 230px) / 2
 //   desktop  (100vw − 64 − 40) / 2 − 70        = (100vw − 244px) / 2
 //   max      (1280 − 40) / 2 − 70              = 550px
+// hero: the home hero's photo (.home-carousel-stage, AW-004), the stage's
+// width: the page wide less the 16px margins and the hero's 1px borders in
+// the compact layout; half the hero up to 68.75em; 1.35 of the hero's 2.35
+// parts above, the hero at most 1280px. The stage has the warehouse photos'
+// 16:9 shape (AW-006), so the photo is as wide as the stage. A phone held
+// sideways caps the stage at 75vh, which can draw the photo narrower: a
+// little more than it needs. heroSizes() below keeps a photo narrower than
+// the widest stage at its own width.
+//   compact    100vw − 32 − 2                  = 100vw − 34px
+//   to 68.75em (100vw − 64 − 2) / 2            = (100vw − 66px) / 2
+//   to 84em    (100vw − 66) × 1.35 / 2.35      < (100vw − 66px) × .575
+//   max        (1280 − 2) × 1.35 / 2.35        < 735px
+// warehouse: the contact page's photo grid (WarehousePhotos.jsx, AW-006) in
+// the support pages' content column: the page wide in the compact layout,
+// beside the 220px help nav and its 40px gap above it, at most 1020px. Two
+// columns on phones and from 53.125em to 68.75em, three otherwise, 12px
+// apart; the photo fills its 16:9 frame.
+//   phone      (100vw − 32 − 12) / 2           = (100vw − 44px) / 2
+//   compact    (100vw − 32 − 24) / 3           = (100vw − 56px) / 3
+//   to 68.75em (100vw − 64 − 260 − 12) / 2     = (100vw − 336px) / 2
+//   to 84em    (100vw − 64 − 260 − 24) / 3     = (100vw − 348px) / 3
+//   max        (1020 − 24) / 3                 = 332px
 const SHORT_LANDSCAPE = '(hover: none) and (pointer: coarse) and (max-height: 31.25em)';
 export const SIZES = {
   card: `(max-width: 37.5em) calc((100vw - 108px) / 2), (max-width: 53.125em) calc((100vw - 116px) / 2), ${SHORT_LANDSCAPE} calc((100vw - 116px) / 2), (max-width: 58.5em) calc((100vw - 148px) / 2), (max-width: 60.3125em) calc((100vw - 402px) / 2), (max-width: 66em) calc((100vw - 256px) / 4), (max-width: 84em) calc((100vw - 456px) / 3), 296px`,
   categoryCard: `(max-width: 37.5em) calc((100vw - 108px) / 2), (max-width: 42.4375em) calc((100vw - 116px) / 2), (max-width: 53.125em) calc((100vw - 170px) / 3), ${SHORT_LANDSCAPE} calc((100vw - 170px) / 3), (max-width: 60.3125em) calc((100vw - 402px) / 2), (max-width: 84em) calc((100vw - 456px) / 3), 296px`,
   detail: `${SHORT_LANDSCAPE} calc((100vw - 163px) * 2 / 5), (max-width: 53.125em) calc(100vw - 74px), (max-width: 68.75em) calc((100vw - 230px) / 2), (max-width: 84em) calc((100vw - 244px) / 2), 550px`,
   editorial: '(max-width: 37.5em) 100vw, (max-width: 84em) 50vw, 628px',
+  hero: `(max-width: 53.125em) calc(100vw - 34px), ${SHORT_LANDSCAPE} calc(100vw - 34px), (max-width: 68.75em) calc((100vw - 66px) / 2), (max-width: 84em) calc((100vw - 66px) * .575), 735px`,
+  warehouse: `(max-width: 37.5em) calc((100vw - 44px) / 2), (max-width: 53.125em) calc((100vw - 56px) / 3), ${SHORT_LANDSCAPE} calc((100vw - 56px) / 3), (max-width: 68.75em) calc((100vw - 336px) / 2), (max-width: 84em) calc((100vw - 348px) / 3), 332px`,
 };
+
+// The widest the home hero's photo is shown (SIZES.hero).
+export const HERO_STAGE_MAX = 735;
+
+// A hero photo's `sizes`: SIZES.hero for a photo at least as wide as the
+// widest stage (the warehouse photos). A narrower one (the four earlier hero
+// photos, 700px and less) asks for its own width, so the browser never draws
+// it larger than its pixels (AW-036); on a phone, the screen's width.
+export function heroSizes(picture) {
+  const width = picture?.width;
+  if (width && width < HERO_STAGE_MAX) return `(max-width: 37.5em) 100vw, ${width}px`;
+  return SIZES.hero;
+}

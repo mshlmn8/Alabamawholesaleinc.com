@@ -6,7 +6,7 @@
 //
 // Pages live at path URLs (AW-043); old '#/' links redirect to them.
 import { test, expect } from '@playwright/test';
-import { serveCatalog } from './catalog.js';
+import { fulfillHomeSlides, serveCatalog } from './catalog.js';
 
 const AGE_KEY = 'aw-age-verified'; // STORAGE.age in src/data/content.js
 // The dated record src/lib/ageGate.js stores for "Yes, I am 21+" (AW-340).
@@ -630,10 +630,19 @@ test.describe('tobacco and vapor', () => {
     expect(errors).toEqual([]);
   });
 
-  test('the vape hero slide shows the statement under the photo, uncovered, and keeps its space on the others', async ({ page }) => {
+  // The bundled warehouse reel (AW-006) has no nicotine photo, so the
+  // flagged slide comes from Admin -> Homepage's rows (home_slides).
+  test('a hero slide flagged as a nicotine product shows the statement under the photo, uncovered, and keeps its space on the others', async ({ context, page }) => {
     const errors = trackErrors(page);
+    const slide = (id, img, alt, goCat, nicotine = false) => ({ id, img, alt, go_cat: goCat, nicotine_warning: nicotine, sort: id * 10, active: true });
+    await context.route(/\/rest\/v1\/home_slides/, (route) => fulfillHomeSlides(route, [
+      slide(1, 'hero_candy.jpg', 'Display box of Turtles Bites chocolates', 'CANDIES'),
+      slide(2, 'hero_vape.jpg', 'Geek Bar Pulse X disposable vape advertisement', 'NOVELTIES', true),
+      slide(3, 'hero_wh_soda.jpg', 'Pallets of Faygo soda by the case', 'DRINKS & BAGS'),
+    ]));
     await page.goto('/');
     const carousel = page.locator('.home-carousel');
+    await expect(carousel.locator('.home-carousel-slide')).toHaveCount(3);
     const warning = carousel.locator('.nicotine-warning');
     await expect(warning).toBeHidden();
     const spaceBefore = await page.locator('.home-carousel-warning').boundingBox();
@@ -698,7 +707,8 @@ test.describe('home hero', () => {
     await expect(hero.getByRole('heading', { level: 1, name: 'Wholesale for licensed retailers.' })).toBeInViewport({ ratio: 1 });
     await expect(hero.getByRole('button', { name: 'Apply for a trade account' })).toBeInViewport({ ratio: 1 });
     await expect(hero.getByRole('link', { name: 'Browse the catalog' })).toBeInViewport({ ratio: 1 });
-    await expect(page.locator('.home-carousel-slide.is-active')).toHaveAttribute('aria-label', '1 of 4: Candies');
+    // The owner's warehouse reel (AW-006).
+    await expect(page.locator('.home-carousel-slide.is-active')).toHaveAttribute('aria-label', '1 of 8: The Alabama Wholesale Inc sign above the loading doors');
     await hero.getByRole('button', { name: 'Apply for a trade account' }).click();
     await expect(page.getByRole('dialog', { name: 'Apply for a trade account' })).toBeVisible();
     expect(errors).toEqual([]);

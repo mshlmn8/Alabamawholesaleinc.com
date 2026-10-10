@@ -7,6 +7,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HERO_SLIDES } from '../data/content.js';
+import { HERO_REEL } from '../data/warehousePhotos.js';
 import { heroImage } from './images.js';
 import {
   BUNDLED_HERO_FILES, HOME_SLIDES_COLUMNS, HOME_SLIDES_FIRST_PAINT_MS, HOME_SLIDES_TIMEOUT_MS, getHomeSlidesState, refreshHomeSlides,
@@ -60,7 +61,7 @@ describe('slideFromRow', () => {
       key: heroImage('hero_vape.jpg').img, img: heroImage('hero_vape.jpg').img, picture: heroImage('hero_vape.jpg').picture,
       alt: 'Vape advertisement', goCat: 'NOVELTIES', nicotineWarning: true,
     });
-    expect(slide.key).toBe(HERO_SLIDES[1].img);
+    expect(slideFromRow(row(2, { img: 'hero_wh_truck.jpg', go_cat: null })).key).toBe(HERO_SLIDES[1].img);
   });
 
   it('shows a product-images upload by its address', () => {
@@ -88,17 +89,15 @@ describe('slideFromRow', () => {
     expect(slideFromRow(row(4, { nicotine_warning: 'true' })).nicotineWarning).toBe(false);
   });
 
-  it('offers the bundled slides’ own photos', () => {
-    expect(BUNDLED_HERO_FILES.map((file) => heroImage(file).img)).toEqual(HERO_SLIDES.map((s) => s.img));
-    // The migration's rows are today's slides.
-    const seeded = [
-      row(1, { img: 'hero_candy.jpg', alt: 'Display box of Turtles Bites chocolates', go_cat: 'CANDIES' }),
-      row(2, { img: 'hero_vape.jpg', alt: 'Geek Bar Pulse X disposable vape advertisement', go_cat: 'NOVELTIES', nicotine_warning: true }),
-      row(3, { img: 'hero_lighters.jpg', alt: 'BIC lighters in a counter display tray', go_cat: 'MERCHANDISE' }),
-      row(4, { img: 'hero_gatorade.jpg', alt: 'Gatorade and G2 bottles', go_cat: 'DRINKS & BAGS' }),
-    ].map((r) => slideFromRow(r));
-    expect(seeded.map(({ img, picture, alt, goCat, nicotineWarning }) => ({ img, picture, alt, goCat, nicotineWarning: !!nicotineWarning })))
-      .toEqual(HERO_SLIDES.map(({ img, picture, alt, goCat, nicotineWarning }) => ({ img, picture, alt, goCat, nicotineWarning: !!nicotineWarning })));
+  it('offers the bundled slides’ own photos first, then every other bundled one', () => {
+    expect(BUNDLED_HERO_FILES.slice(0, HERO_SLIDES.length).map((file) => heroImage(file).img)).toEqual(HERO_SLIDES.map((s) => s.img));
+    expect(BUNDLED_HERO_FILES).toHaveLength(41);
+    expect(BUNDLED_HERO_FILES).toEqual(expect.arrayContaining(['hero_candy.jpg', 'hero_vape.jpg', 'hero_lighters.jpg', 'hero_gatorade.jpg', 'hero_wh_pouches.jpg']));
+    // The rows 20261014110000 puts in the table are the bundled slides, so
+    // the home page looks the same before and after the table answers.
+    const seeded = HERO_REEL.map((photo, i) => slideFromRow(row(i + 1, { img: photo.file, alt: photo.alt, go_cat: photo.goCat })));
+    expect(seeded.map(({ img, picture, alt, goCat, nicotineWarning }) => ({ img, picture, alt, goCat, nicotineWarning })))
+      .toEqual(HERO_SLIDES.map(({ img, picture, alt, goCat, nicotineWarning }) => ({ img, picture, alt, goCat, nicotineWarning })));
   });
 });
 

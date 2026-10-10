@@ -55,24 +55,24 @@ describe('HomeHero', () => {
     expect([...document.querySelector('.home-hero').children].map((el) => el.className)).toEqual(['home-hero-copy', 'home-hero-media']);
   });
 
-  it('describes each hero photo with its alt text, never the unshown slide copy', () => {
+  it('shows the owner\'s warehouse reel, each photo described by its alt text (AW-006)', () => {
     expect(HERO_SLIDES.map((s) => s.alt)).toEqual([
-      'Display box of Turtles Bites chocolates',
-      'Geek Bar Pulse X disposable vape advertisement',
-      'BIC lighters in a counter display tray',
-      'Gatorade and G2 bottles',
+      'The Alabama Wholesale Inc sign above the loading doors',
+      'Two box trucks, one with the Alabama Wholesale logo, at the warehouse',
+      'The Graymont Ave N street sign in front of the warehouse',
+      'A long warehouse aisle of stocked pallet racks',
+      'Pallets of Faygo soda by the case',
+      'Cases of Cheez-It, Pop-Tarts and cereal on pallet racks',
+      'Shelves of Reese’s, Hershey’s, M&M’s and Kit Kat',
+      'The candy room: shelves of candy boxes and stacked cases on a checkered floor',
     ]);
-    expect(HERO_SLIDES.map((s) => s.goCat)).toEqual(['CANDIES', 'NOVELTIES', 'MERCHANDISE', 'DRINKS & BAGS']);
+    expect(HERO_SLIDES.map((s) => s.goCat)).toEqual([null, null, null, null, 'DRINKS & BAGS', 'FOOD STUFF', 'CANDIES', null]);
+    expect(HERO_SLIDES.map((s) => s.nicotineWarning)).toEqual(Array(8).fill(false));
+    // Only the photo and its description: the old slides' unshown copy is gone.
+    for (const slide of HERO_SLIDES) expect(Object.keys(slide).sort()).toEqual(['alt', 'goCat', 'img', 'nicotineWarning', 'picture']);
     render(<HomeHero onApplyClick={() => {}} />);
     const img = document.querySelector('.home-carousel-slide.is-active img');
     expect(img.getAttribute('alt')).toBe(HERO_SLIDES[0].alt);
-    const hero = document.querySelector('.home-hero');
-    for (const slide of HERO_SLIDES) {
-      for (const field of ['eyebrow', 'title', 'sub', 'cta1', 'cta2']) {
-        expect(hero.textContent, field).not.toContain(slide[field]);
-        expect(hero.innerHTML, field).not.toContain(slide[field].replace(/&/g, '&amp;'));
-      }
-    }
   });
 });
 

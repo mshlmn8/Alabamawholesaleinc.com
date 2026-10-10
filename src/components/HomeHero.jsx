@@ -2,11 +2,11 @@
 // copy panel with the page's only h1, the pitch (the meta description, word
 // for word) and the calls to action, beside the photo carousel. The copy
 // comes first in the page; on wide screens the photos sit on the left.
-// The headline and whether the photos keep rotating wait on the owner
-// (TODO(owner) at HOME_HERO in src/data/content.js).
+// The headline waits on the owner (TODO(owner) at HOME_HERO in
+// src/data/content.js).
 // The photos are `slides`: the home page passes the ones staff keep in
 // Admin -> Homepage (useHomeSlides, src/lib/homeSlides.js), the bundled
-// HERO_SLIDES otherwise. The carousel is keyed by its photos, so a different
+// HERO_SLIDES otherwise: the owner's 8-photo warehouse reel (AW-006). The carousel is keyed by its photos, so a different
 // set starts again at slide 1, and the same photos keep their place. While
 // `pending` (the first load of staff's photos, NEW-008) the carousel holds
 // the photos' box empty; with no photos at all it is an empty panel, so the

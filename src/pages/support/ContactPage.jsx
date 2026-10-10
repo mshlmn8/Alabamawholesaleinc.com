@@ -1,5 +1,6 @@
 // Contact & visit: click-to-call, email, warehouse address with directions,
-// hours, and will-call pickup. Facts come from COMPANY and HOURS in
+// hours, will-call pickup and the owner's photos of the warehouse
+// (WarehousePhotos.jsx, AW-006). Facts come from COMPANY and HOURS in
 // data/content.js.
 //
 // TODO(owner): Do you want an on-site contact form? Messages would be stored in Supabase and read in Admin, and the privacy policy would list them. (AW-280)
@@ -13,6 +14,7 @@ import { Icon } from '../../components/Icon.jsx';
 import { EmailText } from '../../components/ContactLinks.jsx';
 import { showToast } from '../../lib/toast.js';
 import { PageHead, SupportLayout, DIRECTIONS_URL, supportApplyLabel } from './SupportShell.jsx';
+import { WarehousePhotos } from './WarehousePhotos.jsx';
 
 // 'Open now · closes 6:00 PM CT' or 'Closed · opens 8:00 AM CT' (AW-275),
 // filled in after mount and kept current each minute. Until then the line
@@ -160,6 +162,8 @@ export function ContactPage({ onApplyClick, signedIn = false, profile = null, ac
           </div>
         </section>
       </div>
+
+      <WarehousePhotos />
 
       <AccountCallToAction signedIn={signedIn} view={accountView(profile, account)} onApplyClick={onApplyClick} />
       </SupportLayout>

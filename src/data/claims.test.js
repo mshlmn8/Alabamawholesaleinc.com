@@ -56,8 +56,10 @@ describe('retired business claims (AW-005, AW-025, AW-246)', () => {
     expect(hits).toEqual([]);
   });
 
-  it('are gone from the unpublished copy too: the FAQ answers and the unshown hero slide text', () => {
-    const text = [...FAQS.flatMap(({ q, a }) => [q, a]), ...HERO_SLIDES.flatMap((s) => [s.eyebrow, s.title, s.sub])].join('\n');
+  it('are gone from the unpublished copy too: the FAQ answers, and the hero photos\' descriptions', () => {
+    // The hero slides are the owner's warehouse photos (AW-006): a photo and
+    // its description, with no slide copy of their own any more.
+    const text = [...FAQS.flatMap(({ q, a }) => [q, a]), ...HERO_SLIDES.map((s) => s.alt)].join('\n');
     for (const [what, pattern] of RETIRED) expect(text, what).not.toMatch(pattern);
   });
 });

@@ -6,6 +6,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HERO_SLIDES } from '../data/content.js';
 import { NICOTINE_WARNING_TEXT } from './NicotineWarning.jsx';
+import { SIZES } from '../lib/images.js';
 import { navigate } from '../lib/router.js';
 import { MOBILE_QUERY } from '../lib/useMediaQuery.js';
 import { AUTOPLAY_MS, HeroCarousel, SWIPE_MIN_PX } from './HeroCarousel.jsx';
@@ -53,7 +54,7 @@ describe('slides', () => {
   it('labels each slide as a group "N of 4: department", hides the others, and links only the shown one', () => {
     render(<HeroCarousel slides={SLIDES} />);
     expect(carousel().getAttribute('aria-roledescription')).toBe('carousel');
-    expect(carousel().getAttribute('aria-label')).toBe('Featured departments');
+    expect(carousel().getAttribute('aria-label')).toBe('Featured photos');
     const groups = [...document.querySelectorAll('.home-carousel-slide')];
     expect(groups.map((g) => [g.getAttribute('role'), g.getAttribute('aria-roledescription'), g.getAttribute('aria-label')])).toEqual([
       ['group', 'slide', '1 of 4: Candies'],
@@ -416,10 +417,11 @@ describe('while staff\'s photos load, and with none (NEW-008)', () => {
     expect(panel.className).toBe('home-carousel is-empty');
     expect(panel.getAttribute('aria-hidden')).toBe('true');
     expect(panel.querySelector('img, a, button, [tabindex]')).toBeNull();
-    // Reserved as the bundled slides need: dots and the vape slide's statement.
+    // Reserved as the bundled slides (the warehouse reel, AW-006) need: the
+    // dots; none of them carries the FDA statement.
     expect(HERO_SLIDES.length).toBeGreaterThan(1);
-    expect(HERO_SLIDES.some((slide) => slide.nicotineWarning)).toBe(true);
-    expect([...panel.querySelector('.home-carousel-band').children].map((el) => el.className)).toEqual(['home-carousel-controls', 'home-carousel-warning']);
+    expect(HERO_SLIDES.some((slide) => slide.nicotineWarning)).toBe(false);
+    expect([...panel.querySelector('.home-carousel-band').children].map((el) => el.className)).toEqual(['home-carousel-controls']);
   });
 });
 
@@ -501,5 +503,27 @@ describe('swipe (AW-161)', () => {
     fireEvent.pointerUp(link, { isPrimary: true, pointerId: 8, button: 0, clientX: 50, clientY: 50 });
     fireEvent.click(link);
     expect(window.location.pathname).toBe('/category/novelties');
+  });
+});
+
+// The warehouse photos are 1600px wide (AW-006): the browser is asked for
+// the stage's width (SIZES.hero), not the largest rendition's; a photo
+// narrower than the widest stage asks for its own width, so it is never
+// drawn larger than its pixels (AW-036).
+describe('photo sizes', () => {
+  const responsive = (name, width) => ({
+    img: `/${name}-480.jpg`,
+    picture: { src: `/${name}-480.jpg`, srcSet: `/${name}-480.jpg 480w`, webpSrcSet: `/${name}-480.webp 480w, /${name}-${width}.webp ${width}w`, width, height: Math.round((width * 9) / 16) },
+  });
+
+  it('gives a wide photo the stage’s sizes and a narrower one its own width', () => {
+    render(<HeroCarousel slides={[{ ...responsive('wide', 1280), alt: 'Wide' }, { ...responsive('narrow', 700), alt: 'Narrow' }]} />);
+    interact();
+    const sizes = (i) => {
+      const slide = document.querySelectorAll('.home-carousel-slide')[i];
+      return [slide.querySelector('source').getAttribute('sizes'), slide.querySelector('img').getAttribute('sizes')];
+    };
+    expect(sizes(0)).toEqual([SIZES.hero, SIZES.hero]);
+    expect(sizes(1)).toEqual(Array(2).fill('(max-width: 37.5em) 100vw, 700px'));
   });
 });

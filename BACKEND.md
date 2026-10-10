@@ -57,13 +57,14 @@ supabase/migrations/20261012130000_catalog_fixups.sql
 supabase/migrations/20261012140000_admin_import_create.sql
 supabase/migrations/20261014100000_delist_kratom_mushroom.sql
 supabase/migrations/20261014101000_catalog_owner_answers.sql
+supabase/migrations/20261014110000_home_slides_warehouse_reel.sql
 supabase/seed/products.sql
 ```
 
 On a project that is already running, apply only the migrations it doesn't
 have yet, in that order, then the seed, then deploy the frontend (see the
 release checklist at the end of this file). The live project has the files
-up to `20260927180000`; the twenty-nine `20261008…`/`20261009…`/`20261010…`/`20261011…`/`20261012…`/`20261014…`
+up to `20260927180000`; the thirty `20261008…`/`20261009…`/`20261010…`/`20261011…`/`20261012…`/`20261014…`
 files are new.
 Review them before applying them; the site keeps working without them (see
 `docs/OWNER-TODO.md` and "Before and after" in the release checklist).
@@ -741,9 +742,14 @@ product rails hold (AW-119).
   department it links to (or none), whether it shows a nicotine product (the
   FDA warning then shows under it) and whether it is active. Staff add,
   edit, reorder (Move up / Move down swaps two rows' `sort`), turn off and
-  delete photos. A photo is one of the hero photos bundled with the site
-  (`hero_candy.jpg`, `hero_vape.jpg`, `hero_lighters.jpg`,
-  `hero_gatorade.jpg`) or an upload to the `product-images` bucket, saved
+  delete photos. A photo is one of the photos bundled with the site or an
+  upload to the `product-images` bucket. The bundled ones are the owner's 37
+  warehouse photos (`hero_wh_*.jpg`, AW-006; the form lists them by what
+  they show: the home page's reel, then the contact page's photos) and the
+  four earlier hero photos (`hero_candy.jpg`, `hero_vape.jpg`,
+  `hero_lighters.jpg`, `hero_gatorade.jpg`); choosing one fills in its
+  description, and ticks the FDA warning for a nicotine product. An upload is
+  saved
   under `home/<upload time>-<name>.<ext>` with its public address
   (`https://<project>.supabase.co/storage/v1/object/public/product-images/…`);
   the table's check refuses anything else, as the site's CSP would block it.
@@ -752,8 +758,17 @@ product rails hold (AW-119).
   photos were, beside the headline (so the page doesn't move when the answer
   comes, NEW-008). One active photo is how to answer "one fixed photo or
   rotating photos" (AW-004). Turn photos off rather than deleting every
-  row: the migration adds the four bundled photos back to an empty table if
-  it is run again.
+  row: `20261011131000` adds its four photos back to an empty table if it is
+  run again.
+- The bundled photos the home page shows without the table, and the rows
+  `20261014110000_home_slides_warehouse_reel.sql` puts in it, are the
+  owner's 8-photo warehouse reel (`HERO_REEL` in
+  `src/data/warehousePhotos.js`): the building's sign, a truck, Graymont
+  Ave, an aisle, then soda, snacks and candy (each linking to its
+  department) and the candy room. That file replaces the four photos
+  `20261011131000` added, only while the table still holds exactly those
+  four rows, unchanged; a table staff have changed is left alone. The other
+  29 warehouse photos are on the Contact & visit page.
 - The storefront asks for the table's active rows once per visit
   (`src/lib/homeSlides.js`) and holds the photos' box empty for up to
   `HOME_SLIDES_FIRST_PAINT_MS` (300 ms) while it waits, so a quick answer
@@ -1116,7 +1131,9 @@ policy doesn't mention it yet (owner question AW-334 in docs/OWNER-TODO.md).
   and add, change and delete them (`updated_at` and `updated_by` follow each
   change). The id comes from the identity column, so no role needs the
   sequence. A photo must be a bundled `hero_*.jpg/jpeg/png/webp` file or a
-  `product-images` Storage address.
+  `product-images` Storage address. `20261014110000` swaps the four rows
+  `20261011131000` added for the warehouse reel (data only, no privilege
+  change).
 
 ## Resetting
 
@@ -1197,7 +1214,7 @@ For each release:
   after" below), then publish an older frontend only if it is at or after
   the latest migration still applied.
 
-The live project needs all twenty-nine, in this order (Cursor's seven
+The live project needs all thirty, in this order (Cursor's seven
 `20261008…` files, then the six `20261009…` ones, which build on them, then
 the five `20261010…` ones: three for the admin back office and two data-only
 catalog fixes, then `20261011110000` and `20261011111000`, which can go in
@@ -1209,7 +1226,8 @@ catalog fix-ups `20261012130000`, any time, then the import that adds
 products, `20261012140000`, after `20261010121000`, any time, then the
 owner's catalog answers of September and October 2026, data only: the
 delisting `20261014100000`, any time, and `20261014101000`, after
-`20261012130000`).
+`20261012130000`, then the home page's warehouse reel `20261014110000`,
+with or after `20261011131000`).
 Apply
 `20261008200000` and `20261009100000`–`20261009150000` in one session: the
 price boundary hides `products.variant_prices` and `20261009110000` moves it.
@@ -1267,6 +1285,9 @@ rolling it back.
 29. `20261014101000_catalog_owner_answers.sql` (data only: #219 to Gifts,
     #295's copy, Uncle Al's cookies and creme; after 26, before or after the
     frontend)
+30. `20261014110000_home_slides_warehouse_reel.sql` (data only, AW-006: the
+    home page's hero photos become the owner's warehouse reel; with or after
+    22, best in the same session, before or after the frontend)
 
 Then `supabase/seed/products.sql`, then the frontend, then 18.
 
@@ -1301,6 +1322,7 @@ Then `supabase/seed/products.sql`, then the frontend, then 18.
 | `20261012140000_admin_import_create.sql` | Admin → Products' Import CSV can add products (AW-114): `admin_import_products_v2(p_rows)` updates the products whose SKU a row names exactly as `admin_import_products()` does (cat and sub are not changed), and inserts a row whose SKU no product has when it has a name, a brand, a department some product already has and a sub-line, with a SKU of 2 to 41 capital letters, digits and hyphens, a price of 0 to 99,999.99 or null, a tag from the four and variants (if any) as a list of names; the id comes from `products_id_seq`, there is no photo, and it is inactive unless the row says `"active": true`. Otherwise an unknown SKU refuses the file (hint `unknown_sku`), as does a SKU listed twice (hint `duplicate_sku`) or a bad value (`invalid_input`, or the table's checks). Up to 1000 rows, all or nothing; returns `{ updated, created }`. SECURITY DEFINER, `is_admin()` first (42501, hint `admin_only`), revoked from guests. `admin_import_products()` stays. A commented Reverse block is at the end. | Apply after `20261010121000`, before or after the frontend, also on its own. The frontend deployed before it calls only `admin_import_products()`. The new frontend calls v2 and, without it (PGRST202/42883), imports the updates through `admin_import_products()` and lists the new rows as not imported ("Creating products from a file needs the October 2026 database update."). |
 | `20261014100000_delist_kratom_mushroom.sql` | Data only (AW-001, the owner's answer of October 2026): `active = false` for the 22 Kratom & Kava and Mushroom Products rows (#69–#76, #258, #281, #285, #288, #289, #293, #296, #298–#300, #306, #307, #312, #313), only where the row is still active, so a re-run changes nothing. No row is deleted. Inactive rows are hidden from guests and buyers by `products_public_read`, refused by the order-line trigger (hint `product_unavailable`) and left out of `my_prices()`. Detox, Wellness Pills and Honey & Energy are untouched. A commented Reverse block is at the end. | Apply any time, before or after the frontend, also on its own. The new frontend leaves these products and their two lines out whatever the database says (`src/data/delisted.js`: the catalog, the sitemap and the page files), and redirects the lines' old addresses to Novelties; until the file is applied a quote sent by hand through the API could still name one. The frontend deployed before it shows them until the file is applied. |
 | `20261014101000_catalog_owner_answers.sql` | Data only (the owner's answers of 2026-09-28, Cursor's draft PR #11): #219 Happy valentines jar moves from Wellness Pills to a new Gifts line in Novelties (name and variants unchanged, description rewritten); #295 Snack wraps is "a chips brand", flavors varying by availability; #351 becomes "Uncle Al's creme" with no "Lemon ice" variant (and no "can't be ordered" entry for it), then #350 "Uncle Al's cookies"; both lose the Lemon Ice box photo (`img` null). Ids and SKUs are unchanged (#351 keeps `AW-UNCLE-AL-S-COOKIES`). Each column changes only while it still has the value the seed (or `20261012130000`, for #350's name) wrote, so admin edits are kept and a re-run changes nothing. A variant price stored for (351, 'Lemon ice') is left in `product_variant_prices`, unused. A commented Reverse block is at the end. | Apply after `20261012130000`, before or after the frontend. Every frontend reads names, lines and descriptions from the database, so the new values show once it is applied; the new frontend already shows no photo for #350 and #351 (`RETIRED_IMAGE_FILES` in `src/data/catalogAliases.js`) and keeps a cart line saved as Lemon ice as the creme (`VARIANT_ALIASES`). Order lines keep the name and variant they were placed with. |
+| `20261014110000_home_slides_warehouse_reel.sql` | Data only (AW-006, the owner's answer of October 2026): while `home_slides` still holds exactly the four rows `20261011131000` added (same photo, alt text, link, warning and order, all shown), they are replaced by the owner's 8-photo warehouse reel (`hero_wh_sign.jpg` … `hero_wh_candy_room.jpg`, sorts 10–80, the soda, snack and candy photos linking to Drinks & Bags, Food Stuff and Candies, none with the FDA warning), the bundled slides of the new frontend word for word. A table staff have changed in any way, or emptied, is left alone, and a re-run changes nothing. Does nothing on a database without the table. A commented Reverse block is at the end. | Apply with or after `20261011131000`, best in the same session, so the home page never shows the four earlier photos from the table; before or after the new frontend, which bundles the same eight photos, so the home page looks the same before and after. The frontend deployed today doesn't read the table. |
 
 ### Later steps
 
