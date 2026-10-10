@@ -3,6 +3,7 @@
 // the whole file, like the app.
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { flushHistory, popstates } from '../test/history.js';
 import { confirmLeave, holdOverlayEntry, Link, navigate, redirectLegacyHash, setNavigationGuard, useNavigationEffects, useRoute } from './router.js';
 
 const url = () => window.location.pathname + window.location.search + window.location.hash;
@@ -431,28 +432,40 @@ describe('focus after Back/Forward (NEW-007)', () => {
 });
 
 // Forward onto a dialog's entry after Back closed the dialog (NEW-028).
+// jsdom's Back and Forward land a few tasks later, and the router answers
+// the Forward with a Back of its own: each step waits for its popstate
+// events, not for a fixed time a busy machine can outrun (a 30ms sleep let
+// the bounce land after the assertion).
 describe('Forward onto a closed dialog’s entry (NEW-028)', () => {
-  const settle = () => new Promise((resolve) => setTimeout(resolve, 30));
-
   it('goes straight back to the page’s entry, so the next Back leaves the page', async () => {
     act(() => navigate('/category/tobacco'));
     act(() => navigate('/category/candies'));
     const close = vi.fn();
     const release = holdOverlayEntry(close);
     expect(window.history.state.awOverlay).toBe(true);
+    const backed = popstates(1);
     window.history.back();
-    await settle();
+    await backed;
     expect(close).toHaveBeenCalledTimes(1);
     release();
-    await settle();
+    // Back already took the entry: releasing it starts no traversal.
+    const back = vi.spyOn(window.history, 'back');
+    await flushHistory();
+    expect(back).not.toHaveBeenCalled();
+    back.mockRestore();
     expect(url()).toBe('/category/candies');
+    // Forward onto the closed dialog's entry, then the router's Back off it.
+    const bounced = popstates(2);
     window.history.forward();
-    await settle();
+    await bounced;
     // Bounced back off the dialog's entry, which is never current again.
     expect(url()).toBe('/category/candies');
     expect(window.history.state.awOverlay).toBeUndefined();
+    await flushHistory();
+    expect(window.history.state.awOverlay).toBeUndefined();
+    const left = popstates(1);
     window.history.back();
-    await settle();
+    await left;
     expect(url()).toBe('/category/tobacco');
   });
 });

@@ -174,6 +174,11 @@ describe('QuickReorder Paste a list (AW-109)', () => {
   it('opens from a disclosure button and turns the lines into rows in place of the empty ones', async () => {
     const addLines = setup();
     fillRow(0, 'AW-KITE', '3');
+    // Leaving the SKU box says its result now, as a click on the toggle does
+    // in a browser (jsdom moves no focus). Left to the typing pause instead,
+    // it was read out SKU_PAUSE_MS after the typing, over 'Added 2 rows.'
+    // whenever a slow run took that long to get there.
+    fireEvent.blur(skuBoxes()[0]);
     addLine();
     const toggle = screen.getByRole('button', { name: 'Paste a list' });
     expect(toggle.getAttribute('aria-expanded')).toBe('false');

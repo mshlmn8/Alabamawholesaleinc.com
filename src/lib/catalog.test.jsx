@@ -424,7 +424,8 @@ describe('CatalogProvider', () => {
   });
 
   it('shares one load between overlapping calls, and keeps the same array when nothing changed', async () => {
-    const client = fakeClient();
+    // Its own rows: it adds one below, which must not reach the other tests.
+    const client = fakeClient({ rows: ROWS.slice() });
     mount(client);
     await waitFor(() => expect(seen.status).toBe('ready'));
     const first = seen.products;

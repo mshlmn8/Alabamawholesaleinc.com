@@ -2,7 +2,7 @@
 // approval record, documents for every status, the admin's own row and
 // refused changes (AW-197, AW-352), with the fake client (fakeSupabase.js).
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../lib/supabase.js', async () => {
   const { createFakeSupabase } = await import('./fakeSupabase.js');
@@ -34,10 +34,6 @@ beforeEach(() => {
     pricing_tiers: [{ tier: 'standard', discount_pct: 0 }, { tier: 'silver', discount_pct: 5 }],
   };
   fake.respond = (request) => (request.op === 'update' && db.updateResult ? db.updateResult : undefined);
-});
-afterEach(async () => {
-  // ConfirmDialog's history entry is removed asynchronously.
-  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
 });
 const updates = () => fake.find({ op: 'update' }).map(({ table, filters, patch }) => ({ table, id: filters.find(([name]) => name === 'eq')[2], patch }));
 

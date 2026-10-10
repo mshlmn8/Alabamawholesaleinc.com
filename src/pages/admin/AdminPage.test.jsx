@@ -166,11 +166,6 @@ describe('an unsaved verification note (AW-118)', () => {
 });
 
 describe('an unsaved verification note in the list (AW-118)', () => {
-  afterEach(async () => {
-    // ConfirmDialog's history entry is removed asynchronously.
-    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
-  });
-
   it('asks before Details on another account or Hide drops it', async () => {
     await openAccounts();
     fireEvent.click(within(rowFor('Alpha Food Mart')).getByRole('button', { name: named('Details', 'Alpha Food Mart') }));

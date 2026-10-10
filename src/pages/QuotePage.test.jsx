@@ -151,7 +151,12 @@ describe('QuotePage and the account', () => {
     // Centred by a class, so the phone page-head padding applies (AW-301).
     const head = screen.getByRole('heading', { level: 1 }).closest('section');
     expect(head.className).toBe('page-head is-centered');
-    expect(head.matches('[style], [style] *') || head.querySelector('[style]')).toBeFalsy();
+    // No inline style on it, in it, or on anything the page wraps it in. The
+    // document's <html> and <body> are not the page's: a dialog's scroll lock
+    // in an earlier test (ModalLayer) leaves style="" on <body>.
+    const styled = head.closest('[style]');
+    expect(styled && view.container.contains(styled)).toBeFalsy();
+    expect(head.querySelector('[style]')).toBeNull();
     expect(screen.getByRole('link', { name: 'Choose a variant for Swisher Sweets cigarillos' })).toBeTruthy();
     view.rerender(page({ legacy, onDismissLegacy: vi.fn(), profile: null, account: 'signed-out', isApprovedBuyer: false }));
     expect(screen.getByRole('link', { name: 'Choose a variant for Swisher Sweets cigarillos' })).toBeTruthy();

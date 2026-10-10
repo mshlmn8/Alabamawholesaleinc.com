@@ -8,7 +8,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { CATALOG } from '../src/data/products.js';
 import { seedSql } from './seed-sql.mjs';
 
@@ -54,13 +54,21 @@ const rows = async () => (await db.query(`select id, ${Object.keys(COLUMNS).join
 const expected = () => CATALOG.map((p) => ({ id: p.id, ...Object.fromEntries(Object.entries(COLUMNS).map(([column, key]) => [column, p[key] ?? ''])) }))
   .sort((a, b) => a.id - b.id);
 
-beforeEach(async () => {
+// One database for the file, emptied and seeded again before each test:
+// booting PGlite costs seconds of CPU (over 5s while other test runs shared
+// the machine), dropping and recreating the schema a few ms. Every table and
+// index the tests use is in public.
+beforeAll(async () => {
   db = new PGlite();
+  await db.waitReady;
+});
+afterAll(async () => {
+  await db?.close();
+});
+beforeEach(async () => {
+  await db.exec('drop schema if exists public cascade; create schema public;');
   await db.exec(SCHEMA);
   await db.exec(seedSql(CATALOG));
-});
-afterEach(async () => {
-  await db.close();
 });
 
 describe('20261012130000_catalog_fixups.sql', () => {

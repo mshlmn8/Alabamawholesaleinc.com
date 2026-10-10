@@ -57,9 +57,7 @@ beforeEach(() => {
     profile_status_log: [],
   };
 });
-afterEach(async () => {
-  // ConfirmDialog's history entry is removed asynchronously.
-  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+afterEach(() => {
   vi.restoreAllMocks();
 });
 

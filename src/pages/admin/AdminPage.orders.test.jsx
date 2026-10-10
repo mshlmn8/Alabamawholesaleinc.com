@@ -4,6 +4,7 @@
 // without it. A fake Supabase client; prices are test values.
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { flushHistory } from '../../test/history.js';
 
 vi.mock('../../lib/supabase.js', async () => {
   const { createFakeSupabase } = await import('./fakeSupabase.js');
@@ -402,7 +403,8 @@ describe('the quote editor’s focus, and cards a save or a conversion moves (NE
     await act(async () => { fireEvent.click(convert); });
     const dialog = screen.getByRole('alertdialog', { name: 'Convert ALW-Q-5E4F3A2B1C to an order?' });
     await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Convert to order' })); });
-    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+    // The dialog's history entry goes back (history.back()) as it closes.
+    await act(async () => { await flushHistory(); });
     expect(screen.queryByRole('alertdialog')).toBeNull();
     const kept = card('ALW-Q-5E4F3A2B1C');
     expect(within(kept).getByText('Moved to Confirmed')).toBeTruthy();
@@ -419,7 +421,7 @@ describe('the quote editor’s focus, and cards a save or a conversion moves (NE
     convert.focus();
     await act(async () => { fireEvent.click(convert); });
     await act(async () => { fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancel' })); });
-    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+    await act(async () => { await flushHistory(); });
     expect(document.activeElement).toBe(within(card('ALW-Q-5E4F3A2B1C')).getByRole('button', { name: /^Convert to order/ }));
   });
 

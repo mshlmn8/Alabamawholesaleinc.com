@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { COLUMNS, seedGuardSql, seedSql } from './seed-sql.mjs';
 
 const SEED = readFileSync(resolve(import.meta.dirname, '../supabase/seed/products.sql'), 'utf8');
@@ -23,6 +23,8 @@ const SCHEMA = `
   create unique index products_sku_upper_key on public.products (upper(btrim(sku)));
 `;
 
+const RESET = 'drop schema if exists public cascade; create schema public;';
+
 const row = (id, sku, extra = {}) => ({ id, sku, name: `Seed ${id}`, brand: 'Brand', cat: 'CANDIES', sub: 'Line', variants: [], description: `Seed row ${id}.`, sellUnit: '', ...extra });
 
 let db;
@@ -35,13 +37,22 @@ const adminInsert = async (sku, name = 'Admin product') => (await db.query(
   "insert into public.products (name, brand, cat, sub, sku) values ($1, 'Admin', 'CANDIES', 'Line', $2) returning id", [name, sku],
 )).rows[0].id;
 
-beforeEach(async () => {
+// One database for the file, emptied before each test. Booting PGlite costs
+// seconds of CPU (over 5s while other test runs shared the machine, and past
+// the hook budget with several), and a fresh one per test made this file the
+// slowest in the suite; dropping and recreating the schema takes a few ms
+// and leaves nothing behind: every table, index and sequence is in public.
+beforeAll(async () => {
   db = new PGlite();
-  notices = [];
-  await db.exec(SCHEMA);
+  await db.waitReady;
 });
-afterEach(async () => {
-  await db.close();
+afterAll(async () => {
+  await db?.close();
+});
+beforeEach(async () => {
+  notices = [];
+  await db.exec(RESET);
+  await db.exec(SCHEMA);
 });
 
 describe('the committed seed (supabase/seed/products.sql)', () => {

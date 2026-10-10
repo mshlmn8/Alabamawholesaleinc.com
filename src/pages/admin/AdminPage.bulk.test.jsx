@@ -5,6 +5,7 @@
 // the October 2026 functions.
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { flushHistory } from '../../test/history.js';
 
 vi.mock('../../lib/supabase.js', async () => {
   const { createFakeSupabase } = await import('./fakeSupabase.js');
@@ -58,10 +59,9 @@ beforeEach(() => {
   };
   onCatalogChange = vi.fn();
 });
-// A confirmation's history entry is taken back (history.back()) a moment
-// after it closes: let that land before the next test moves the URL.
-afterEach(async () => {
-  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+// A confirmation's history entry, taken back (history.back()) a moment after
+// it closes, lands before the next test: src/test/setup.js flushes it.
+afterEach(() => {
   vi.restoreAllMocks();
 });
 
@@ -214,7 +214,8 @@ describe('focus after a confirmed change (NEW-004, AW-114)', () => {
     button.focus();
     await act(async () => { fireEvent.click(button); });
   };
-  const settleDialog = () => act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+  // The confirmation's history entry goes back (history.back()) as it closes.
+  const settleDialog = () => act(async () => { await flushHistory(); });
 
   it('hands focus to the count line after a bulk tag change, as the bar that opened the confirmation is gone', async () => {
     await renderInMain();

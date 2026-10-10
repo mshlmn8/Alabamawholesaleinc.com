@@ -70,7 +70,8 @@ export default [
     }
   },
   {
-    files: ['src/**/*.test.{js,jsx}'],
+    // Tests and their helpers (src/test) run in Node.
+    files: ['src/**/*.test.{js,jsx}', 'src/test/**/*.{js,jsx}'],
     languageOptions: {
       globals: { ...globals.node }
     }

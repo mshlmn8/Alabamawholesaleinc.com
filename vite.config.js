@@ -143,7 +143,17 @@ export default defineConfig(({ command, mode }) => {
       environment: 'jsdom',
       include: ['src/**/*.test.{js,jsx}', 'scripts/**/*.test.{js,mjs}', 'netlify/**/*.test.{js,mjs}'],
       setupFiles: ['src/test/setup.js'],
-      restoreMocks: true
+      restoreMocks: true,
+      // Budgets for a busy machine, not an idle one. The heaviest tests are
+      // CPU-bound: the admin product and order lists render 50-120 rows in
+      // jsdom several times (about 0.6s alone, 5-10s with other test runs or
+      // a build on the same machine), and booting PGlite for the seed and
+      // catalog-fixup tests takes seconds (once a file). Vitest's defaults
+      // (5s a test, 10s a hook) turned that load into failures; these still
+      // end a hung test or hook within half a minute. src/test/setup.js does
+      // the same for Testing Library's waitFor and findBy.
+      testTimeout: 30_000,
+      hookTimeout: 30_000
     }
   };
 });

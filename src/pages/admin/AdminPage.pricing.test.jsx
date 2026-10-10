@@ -32,8 +32,7 @@ beforeEach(() => {
   fake.reset();
   fake.tables = { pricing_tiers: TIERS, profiles: [ADMIN], orders: [] };
 });
-afterEach(async () => {
-  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+afterEach(() => {
   vi.restoreAllMocks();
 });
 

@@ -43,8 +43,7 @@ beforeEach(() => {
   fake.tables = { home_slides: [VAPE, CANDY, UPLOAD], profiles: [ADMIN], orders: [] };
   resetHomeSlidesForTests();
 });
-afterEach(async () => {
-  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+afterEach(() => {
   resetHomeSlidesForTests({ client: null });
   vi.restoreAllMocks();
 });

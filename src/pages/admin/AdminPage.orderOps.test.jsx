@@ -65,10 +65,8 @@ beforeEach(() => {
     return undefined;
   };
 });
-afterEach(async () => {
+afterEach(() => {
   vi.useRealTimers();
-  // ConfirmDialog's history entry is removed asynchronously.
-  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
   vi.restoreAllMocks();
 });
 

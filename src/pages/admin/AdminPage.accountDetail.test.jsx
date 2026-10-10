@@ -68,9 +68,8 @@ beforeEach(() => {
     return undefined;
   };
 });
-afterEach(async () => {
+afterEach(() => {
   vi.useRealTimers();
-  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
   vi.restoreAllMocks();
 });
 
