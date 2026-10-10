@@ -673,7 +673,7 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
     // The two that lost, now after their own rules.
     const touchOf = (selector) => declarations(touchRules.find((r) => r.selectors.join() === selector)?.body ?? '');
     expect(touchOf('.home-carousel-dots button')).toEqual({ width: 'var(--tap)', height: 'var(--tap)' });
-    expect(touchOf('.sort-button')).toEqual({ 'min-height': 'var(--tap)' });
+    expect(touchOf('.sort-button')).toEqual({ 'min-width': 'var(--tap)', 'min-height': 'var(--tap)' });
   });
 });
 

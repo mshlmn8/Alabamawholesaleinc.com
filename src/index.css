@@ -557,7 +557,9 @@ p > .text-link { min-height: 0; min-width: 0; }
 .home-carousel-prev { left: 14px; }
 .home-carousel-next { right: 14px; }
 .home-carousel-toggle { right: 14px; bottom: 14px; font-size: 1.125rem; }
-.home-carousel-dots { display: flex; align-items: center; min-height: var(--tap); padding: 0 6px; border-radius: 999px; background: #fff; box-shadow: 0 2px 10px var(--shadow-popover); }
+/* The dots shrink to their row rather than widen the page when large
+   browser text makes each 44px target wider (four of them at 200% text). */
+.home-carousel-dots { display: flex; align-items: center; max-width: 100%; min-height: var(--tap); padding: 0 6px; border-radius: 999px; background: #fff; box-shadow: 0 2px 10px var(--shadow-popover); }
 .home-carousel-dots button { display: grid; place-items: center; width: 1.5rem; height: 1.5rem; padding: 0; border: 0; border-radius: 50%; background: none; }
 .home-carousel-dots button:focus-visible { outline-offset: -3px; }
 .home-carousel-dots span { width: .625rem; height: .625rem; border: 2px solid var(--purple); border-radius: 50%; background: #fff; }
@@ -1365,10 +1367,11 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 @media (hover: hover) {
   .sort-button:hover { color: var(--purple); text-decoration: underline; text-underline-offset: var(--link-offset); }
 }
-/* A column's sort button is a 44px target on touch screens; after its own
-   rule above, which would otherwise win (NEW-025). */
+/* A column's sort button is a 44px target on touch screens, short labels
+   ('ID') included; after its own rule above, which would otherwise win
+   (NEW-025). */
 @media (pointer: coarse) {
-  .sort-button { min-height: var(--tap); }
+  .sort-button { min-width: var(--tap); min-height: var(--tap); }
 }
 /* Admin -> Products' bulk changes (AW-114): Export / Import / New product
    beside the search, a checkbox per row with a 44px target, and the bulk bar

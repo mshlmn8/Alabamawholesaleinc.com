@@ -524,6 +524,24 @@ export function QuotePage({
     return <QuoteReceipt receipt={shownReceipt} signedIn={signedIn} headingRef={receiptHeading} />;
   }
 
+  // Order or quote depends on the account: wait for it (AW-186). Laid out like
+  // the form below, so the heading stays put when the account arrives. Before
+  // the empty cart too, whose title also names a quote or an order (NEW-002):
+  // a signed-in buyer's 'Your quote is empty' would turn into 'Your order is
+  // empty' once the profile loads.
+  if (account === 'loading') {
+    return (
+      <section>
+        <div className="page-head">
+          <Breadcrumbs items={[HOME_CRUMB, { label: 'Checkout' }]} />
+          <p className="eyebrow">CHECKOUT</p>
+          <h1>Checkout</h1>
+          <AccountLoading />
+        </div>
+      </section>
+    );
+  }
+
   if (items.length === 0) {
     return (
       <section className="page-head is-centered">
@@ -549,21 +567,6 @@ export function QuotePage({
             <SavedLinesNotice items={legacy} onDismiss={onDismissLegacy} />
           </div>
         )}
-      </section>
-    );
-  }
-
-  // Order or quote depends on the account: wait for it (AW-186). Laid out like
-  // the form below, so the heading stays put when the account arrives.
-  if (account === 'loading') {
-    return (
-      <section>
-        <div className="page-head">
-          <Breadcrumbs items={[HOME_CRUMB, { label: 'Checkout' }]} />
-          <p className="eyebrow">CHECKOUT</p>
-          <h1>Checkout</h1>
-          <AccountLoading />
-        </div>
       </section>
     );
   }

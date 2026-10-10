@@ -61,6 +61,14 @@ describe('QuotePage basket names (AW-132)', () => {
     expect(crumb()).toBe('Checkout');
   });
 
+  it('names no quote or order for an empty cart until the account loads (NEW-002)', () => {
+    const view = render(page({ ...GUEST, items: [], account: 'loading', signedIn: true }));
+    expect(h1()).toBe('Checkout');
+    expect(screen.queryByText(/is empty$/)).toBeNull();
+    view.rerender(page({ ...APPROVED, items: [] }));
+    expect(h1()).toBe('Your order is empty');
+  });
+
   it('names an empty quote or order', () => {
     const view = render(page({ ...GUEST, items: [] }));
     expect(h1()).toBe('Your quote is empty');
