@@ -3,7 +3,7 @@
 // from under its sticky cells.
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PIN_GAP, TableScroll, isOverflowing } from './TableScroll.jsx';
+import { OVERFLOW_SLACK_PX, PIN_GAP, TableScroll, isOverflowing } from './TableScroll.jsx';
 
 const renderScroll = () => render(
   <TableScroll label="Accounts table">
@@ -54,6 +54,23 @@ describe('TableScroll', () => {
     expect(region.className).toBe('table-scroll');
     expect(screen.queryByText('Scroll sideways for more columns.')).toBeNull();
     expect(isOverflowing(null)).toBe(false);
+  });
+
+  // The Accounts table at 1024px was 961px in a 958px box: the hint showed,
+  // though nothing but its last cell's padding was out of view.
+  it('says nothing for an overflow of a few pixels, less than a cell’s padding', () => {
+    stubResizeObserver();
+    renderScroll();
+    const region = screen.getByRole('region', { name: 'Accounts table' });
+    const hint = () => screen.queryByText('Scroll sideways for more columns.');
+    expect(OVERFLOW_SLACK_PX).toBe(4);
+    for (const [scrollWidth, overflowing] of [[961, false], [962, false], [963, true], [1127, true], [958, false]]) {
+      widths(region, scrollWidth, 958);
+      act(() => observed[0].run());
+      expect(isOverflowing(region), `${scrollWidth}px in 958px`).toBe(overflowing);
+      expect(region.classList.contains('is-overflowing')).toBe(overflowing);
+      expect(!!hint()).toBe(overflowing);
+    }
   });
 
   it('keeps focus clear of a pinned last column, and doesn’t scroll for a control inside it (NEW-075)', () => {

@@ -4,7 +4,8 @@
 // (axe scrollable-region-focusable; WCAG 2.1.1). Whenever the table is wider
 // than the box, at any screen width, it carries .is-overflowing and a line
 // above it says the table scrolls sideways (NEW-075): measured, with a
-// ResizeObserver, rather than guessed from the screen width. resetKey: a new
+// ResizeObserver, rather than guessed from the screen width, and only when
+// more than a few pixels of padding are out of view (isOverflowing). resetKey: a new
 // value (another page, filter, search or sort) brings the box back to the
 // top of the table. pinEnd: the table's last column (its row actions) is
 // pinned to the right edge while the box overflows (index.css), and focus
@@ -36,9 +37,13 @@ function reveal(event) {
   if (under > 0) box.scrollLeft += under + PIN_GAP;
 }
 
-// Whether the box's content is wider than the box (a pixel of rounding
-// allowed).
-export const isOverflowing = (box) => !!box && box.scrollWidth > box.clientWidth + 1;
+// Whether the box's content is wider than the box by more than a few
+// pixels. A table that is over by no more than OVERFLOW_SLACK_PX has no
+// column out of view: what doesn't fit is part of its last cell's 12px
+// padding (and sub-pixel rounding), so the hint would send the reader
+// sideways for nothing. The Accounts table at 1024px was 3px over (NEW-075).
+export const OVERFLOW_SLACK_PX = 4;
+export const isOverflowing = (box) => !!box && box.scrollWidth - box.clientWidth > OVERFLOW_SLACK_PX;
 
 export function TableScroll({ label, resetKey = null, pinEnd = false, children }) {
   const ref = useRef(null);
