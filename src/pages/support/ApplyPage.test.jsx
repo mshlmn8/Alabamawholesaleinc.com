@@ -5,6 +5,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { APPLICATION_CHECKLIST } from '../../data/onboarding.js';
+import { APPLY_TITLES, pageMeta } from '../../lib/meta.js';
 import { ApplyPage, applyView } from './ApplyPage.jsx';
 
 // The documents panel needs the auth provider; these tests are about the page around it.
@@ -200,6 +201,26 @@ describe('ApplyPage for each account state', () => {
     view.rerender(<ApplyPage profile={null} account="no-profile" isBackendConfigured onRetry={onRetry} retrying onSignOut={onSignOut} signingOut />);
     expect(screen.getByRole('button', { name: 'Trying again…' }).disabled).toBe(true);
     expect(screen.getByRole('button', { name: 'Signing out…' }).disabled).toBe(true);
+  });
+
+  // The tab says what the h1 says, in every view (AW-131): App titles /apply
+  // by the same view (route.applyAs), and pending or suspended accounts no
+  // longer get a title their heading doesn't have.
+  it('heads every view with the words of its page title', () => {
+    const views = [
+      ['guest', { profile: null, account: 'signed-out' }],
+      ['loading', { profile: null, account: 'loading' }],
+      ['no-profile', { profile: null, account: 'no-profile' }],
+      ...['pending', 'approved', 'suspended'].map((status) => [status, as(status)]),
+    ];
+    for (const [applyAs, props] of views) {
+      const view = page(props);
+      const title = pageMeta({ page: 'apply', applyAs }, [], []).title;
+      expect(applyView(props.profile, props.account)).toBe(applyAs);
+      expect(h1(), applyAs).toBe(APPLY_TITLES[applyAs]);
+      expect(title.split(' · ')[0], applyAs).toBe(h1());
+      view.unmount();
+    }
   });
 
   it('chooses the view from the account', () => {

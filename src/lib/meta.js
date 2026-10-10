@@ -22,7 +22,7 @@
 
 import { COMPANY, HOME_PITCH, HOME_TITLE, HOURS, ORDER_MINIMUM, hoursLine } from '../data/content.js';
 import { APPLY_LABEL, TRADE_ACCOUNT_LABEL, basketTerms } from '../data/terms.js';
-import { ADMIN_GATE_HEADINGS } from './accountStatus.js';
+import { ADMIN_GATE_HEADINGS, TRADE_ACCOUNT_TITLE } from './accountStatus.js';
 import { POLICY_TITLES, POLICY_INTROS } from '../pages/support/policyText.js';
 import { resetTitle } from '../pages/support/resetView.js';
 import { catalogCrumbs } from './crumbs.js';
@@ -200,16 +200,18 @@ function adminTitle(route) {
 // The application page's title follows the account (AW-098): App sets
 // route.applyAs to 'loading', 'no-profile' (signed in, the profile didn't
 // load: NEW-002) or accountStatus(profile). Without it, the page is the one
-// a visitor, or a search engine, sees. Sentence case, like every title and
-// the page's own h1 (AW-131).
-export const APPLY_TITLES = {
+// a visitor, or a search engine, sees. Each is the words of that view's h1,
+// in sentence case (AW-131): ApplyPage reads its h1 from here. A signed-in
+// account's tab says 'Your trade account' whatever its state; the page's
+// eyebrow says the state ('APPLICATION UNDER REVIEW', 'ACCOUNT ON HOLD').
+export const APPLY_TITLES = Object.freeze({
   guest: APPLY_LABEL,
   loading: TRADE_ACCOUNT_LABEL,
-  'no-profile': TRADE_ACCOUNT_LABEL,
-  pending: 'Application under review',
-  approved: 'Your trade account',
-  suspended: 'Account on hold',
-};
+  'no-profile': TRADE_ACCOUNT_TITLE,
+  pending: TRADE_ACCOUNT_TITLE,
+  approved: TRADE_ACCOUNT_TITLE,
+  suspended: TRADE_ACCOUNT_TITLE,
+});
 
 // Title, description, canonical path, share image, breadcrumb trail and
 // indexing for a resolved route (see resolveRoute in routes.js).

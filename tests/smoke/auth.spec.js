@@ -389,9 +389,10 @@ test('a confirmation link for an application under review says what happens next
   await notice.getByRole('button', { name: 'View application status' }).click();
   await expect(page).toHaveURL(/\/apply$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Your trade account' })).toBeVisible();
-  // The head and the title say where the application stands (AW-098).
+  // The eyebrow says where the application stands (AW-098); the title is the
+  // h1's words (AW-131).
   await expect(page.locator('.page-head .eyebrow')).toHaveText('APPLICATION UNDER REVIEW');
-  await expect(page).toHaveTitle(/^Application under review · /);
+  await expect(page).toHaveTitle(/^Your trade account · /);
   await expect(page.locator('.site-notice[data-notice="link-confirmed"]')).toHaveCount(0);
   expect(errors).toEqual([]);
 });

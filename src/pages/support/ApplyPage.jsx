@@ -12,7 +12,7 @@
 
 import { COMPANY } from '../../data/content.js';
 import { APPLICATION_CHECKLIST } from '../../data/onboarding.js';
-import { ACCOUNT_EYEBROWS, TRADE_ACCOUNT_TITLE, accountStatus, accountView } from '../../lib/accountStatus.js';
+import { ACCOUNT_EYEBROWS, accountStatus, accountView } from '../../lib/accountStatus.js';
 import { APPLY_LABEL, SIGN_IN_INSTEAD, TRADE_ACCOUNT_LABEL } from '../../data/terms.js';
 import { ServiceUnavailable } from '../../components/ServiceUnavailable.jsx';
 import { ApplicationDocuments } from '../../components/DocumentUploads.jsx';
@@ -20,22 +20,24 @@ import { CallOrEmail } from '../../components/ContactLinks.jsx';
 import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
 import { Link } from '../../lib/router.js';
 import { accountStatusLabel } from '../../lib/accountLabels.js';
+import { APPLY_TITLES } from '../../lib/meta.js';
 import { PageHead, SupportLayout, ContactStrip, supportApplyLabel } from './SupportShell.jsx';
 
 const INTRO_21 = 'Alabama Wholesale sells exclusively to licensed retail businesses — 21+, no consumer sales.';
 
 // Per view ('guest', 'loading', 'no-profile' and the three account
-// statuses): the eyebrow, the h1 and the contact strip. A strip left out is
-// the default one. A signed-in account's eyebrows are accountStatus.js's
+// statuses): the eyebrow and the contact strip. A strip left out is the
+// default one. A signed-in account's eyebrows are accountStatus.js's
 // ACCOUNT_EYEBROWS, which the account panels on the home and contact pages
-// show too (AW-066, NEW-014).
+// show too (AW-066, NEW-014). The h1 is the view's page title, meta.js's
+// APPLY_TITLES, so the tab and the heading say the same words (AW-131).
 const VIEWS = {
-  guest: { eyebrow: 'OPEN AN ACCOUNT', title: APPLY_LABEL, strip: { eyebrow: 'RATHER TALK IT THROUGH?', title: 'Apply with a trade rep' } },
-  loading: { eyebrow: ACCOUNT_EYEBROWS.loading, title: TRADE_ACCOUNT_LABEL },
-  'no-profile': { eyebrow: ACCOUNT_EYEBROWS['no-profile'], title: TRADE_ACCOUNT_TITLE },
-  pending: { eyebrow: ACCOUNT_EYEBROWS.pending, title: TRADE_ACCOUNT_TITLE, strip: { eyebrow: 'QUESTIONS ABOUT YOUR APPLICATION?', title: 'Talk to a trade rep' } },
-  approved: { eyebrow: ACCOUNT_EYEBROWS.approved, title: TRADE_ACCOUNT_TITLE },
-  suspended: { eyebrow: ACCOUNT_EYEBROWS.suspended, title: TRADE_ACCOUNT_TITLE, strip: { eyebrow: 'ACCOUNT ON HOLD?', title: 'Talk to a trade rep' } },
+  guest: { eyebrow: 'OPEN AN ACCOUNT', strip: { eyebrow: 'RATHER TALK IT THROUGH?', title: 'Apply with a trade rep' } },
+  loading: { eyebrow: ACCOUNT_EYEBROWS.loading },
+  'no-profile': { eyebrow: ACCOUNT_EYEBROWS['no-profile'] },
+  pending: { eyebrow: ACCOUNT_EYEBROWS.pending, strip: { eyebrow: 'QUESTIONS ABOUT YOUR APPLICATION?', title: 'Talk to a trade rep' } },
+  approved: { eyebrow: ACCOUNT_EYEBROWS.approved },
+  suspended: { eyebrow: ACCOUNT_EYEBROWS.suspended, strip: { eyebrow: 'ACCOUNT ON HOLD?', title: 'Talk to a trade rep' } },
 };
 
 // The view for an account: 'loading' until the session and profile are
@@ -73,7 +75,8 @@ export function ApplyPage({
   // their account loads (AW-186).
   const loadingAccount = account === 'loading';
   const view = applyView(profile, account);
-  const { eyebrow, title, strip } = VIEWS[view];
+  const { eyebrow, strip } = VIEWS[view];
+  const title = APPLY_TITLES[view];
   // Apply (the one label, AW-132), or the phone number without a backend.
   const applyAction = isBackendConfigured
     ? <button className="button" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button>
