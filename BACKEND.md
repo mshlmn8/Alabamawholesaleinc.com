@@ -58,13 +58,14 @@ supabase/migrations/20261012140000_admin_import_create.sql
 supabase/migrations/20261014100000_delist_kratom_mushroom.sql
 supabase/migrations/20261014101000_catalog_owner_answers.sql
 supabase/migrations/20261014110000_home_slides_warehouse_reel.sql
+supabase/migrations/20261014111000_orders_approved_accounts_only.sql
 supabase/seed/products.sql
 ```
 
 On a project that is already running, apply only the migrations it doesn't
 have yet, in that order, then the seed, then deploy the frontend (see the
 release checklist at the end of this file). The live project has the files
-up to `20260927180000`; the thirty `20261008…`/`20261009…`/`20261010…`/`20261011…`/`20261012…`/`20261014…`
+up to `20260927180000`; the thirty-one `20261008…`/`20261009…`/`20261010…`/`20261011…`/`20261012…`/`20261014…`
 files are new.
 Review them before applying them; the site keeps working without them (see
 `docs/OWNER-TODO.md` and "Before and after" in the release checklist).
@@ -817,17 +818,28 @@ The storefront saves a quote (or an approved buyer's order) with one call,
   `submit_quote` after 25 seconds and says the request may have been saved,
   so the buyer calls before sending it again; it never re-sends it with an
   older signature.
-- **Tobacco license answers** (AW-014, PR #12's rule, unchanged): a quote
-  with a tobacco line (department Tobacco) or a vape line (Disposable Vapes
-  or Vape Pods) from a guest or an account that isn't approved must name a
-  state tobacco/retail license number and a sales-tax / resale certificate
-  number and confirm "all purchasers are 21+" (hint `license_required`).
-  The checkout asks for them only then (`cartNeedsTobaccoLicense` in
-  `src/lib/regulated.js`, whose test reads the rule from the migration). They
-  are stored with the order (`orders.license_no`, `resale_cert_no`,
-  `purchasers_21`); Admin → Orders shows them.
+- **Only approved accounts order** (AW-014, AW-024; the owner's answer of
+  October 2026, `20261014111000`): customers place orders, not quotes, and
+  the site is for licensed store owners who are signed in. `submit_quote`
+  first calls `require_ordering_account()`, which refuses a guest (hint
+  `sign_in_required`), an account on hold (`account_suspended`) and any
+  other account that isn't approved (`account_not_approved`), before
+  anything is checked, counted or saved. The checkout (`/checkout`; `/quote`
+  redirects there) asks guests to sign in or apply and tells accounts under
+  review that they can order once approved, so it never sends such a call.
+- **Tobacco license answers** (PR #12's rule, still in the function): a
+  quote with a tobacco or vape line from an account that isn't approved
+  needed a licence number, a resale certificate number and "all purchasers
+  are 21+" (hint `license_required`). Since `20261014111000` no such caller
+  gets that far, and the checkout no longer asks for the answers; approved
+  accounts gave theirs when they applied. Earlier quotes keep them
+  (`orders.license_no`, `resale_cert_no`, `purchasers_21`), and Admin →
+  Orders shows them.
+- **The order email** (AW-024, AW-050): once an order is saved, the checkout
+  posts a copy to the Netlify form `order-notification`, and Netlify emails
+  it to the orders inbox (NETLIFY-DEPLOY.md, "Order emails"). The database
+  sends nothing; the order in Admin → Orders is the record.
 
-<!-- TODO(owner): Confirm guest tobacco and vape quotes may collect a license number, resale certificate and 21+ attestation instead of requiring an approved sign-in. (AW-014) -->
 <!-- TODO(owner): confirm route states: do the delivery routes cover exactly Alabama, Mississippi and Georgia? (AW-198) -->
 
 The delivery-route states the checkout mirrors are
@@ -846,25 +858,26 @@ rule). Drop the wrappers later (release checklist).
 
 The storefront (`src/lib/orders.js`) calls the current signature and, when
 the database doesn't have it (`PGRST202`), the 16-argument one and then the
-13-argument one, with a client-made `ALW-Q-` reference (40 random bits), the
+13-argument one, with a client-made `ALW-O-` reference (40 random bits), the
 warehouse address for will-call, and, for the 13-argument call, the license
 answers in the notes. It remembers which signature worked for the rest of the
 visit.
 
 ### Pricing quotes and converting them (Admin → Orders)
 
-<!-- TODO(owner): Confirm how quotes should work: should staff price and answer guest quotes and convert them to orders, and should orders go through 'quoted' and 'confirmed' stages before picking? (AW-024) -->
-
-Cursor's `20261008200000` and `20261009150000_quote_workflow.sql` give the
-saved requests one workflow (AW-024):
+Customers place orders, not quotes (the owner's answer of October 2026,
+AW-024): since `20261014111000` every new request is an approved account's
+order. Quotes saved before then (from guests and accounts waiting for
+approval) stay workable here. Cursor's `20261008200000` and
+`20261009150000_quote_workflow.sql` give the saved requests one workflow:
 
 - **kind**: `order` when an approved account placed it (its lines were
   priced when it was saved, `ALW-O-` reference); `quote` for a guest or an
   account that isn't approved (unpriced, `ALW-Q-`). `submit_quote` returns
   the same kind it stores.
-- **Statuses**: new, contacted, quoted ("Quote ready" on the customer's
-  account page), confirmed, picking, ready, out_for_delivery, fulfilled,
-  cancelled.
+- **Statuses**: new, contacted, quoted (both "Confirming with a rep" on the
+  customer's account page), confirmed, picking, ready, out_for_delivery,
+  fulfilled, cancelled.
 - **Edit quantities and prices** calls `admin_price_order(order, lines)`
   (admins only): each line's quantity (0 removes it) and unit price (blank
   for none). Empty prices are suggested from the list price and the
@@ -1214,7 +1227,7 @@ For each release:
   after" below), then publish an older frontend only if it is at or after
   the latest migration still applied.
 
-The live project needs all thirty, in this order (Cursor's seven
+The live project needs all thirty-one, in this order (Cursor's seven
 `20261008…` files, then the six `20261009…` ones, which build on them, then
 the five `20261010…` ones: three for the admin back office and two data-only
 catalog fixes, then `20261011110000` and `20261011111000`, which can go in
@@ -1227,7 +1240,8 @@ products, `20261012140000`, after `20261010121000`, any time, then the
 owner's catalog answers of September and October 2026, data only: the
 delisting `20261014100000`, any time, and `20261014101000`, after
 `20261012130000`, then the home page's warehouse reel `20261014110000`,
-with or after `20261011131000`).
+with or after `20261011131000`, then `20261014111000`, which lets only
+approved accounts place orders, any time after `20261009130000`).
 Apply
 `20261008200000` and `20261009100000`–`20261009150000` in one session: the
 price boundary hides `products.variant_prices` and `20261009110000` moves it.
@@ -1288,6 +1302,9 @@ rolling it back.
 30. `20261014110000_home_slides_warehouse_reel.sql` (data only, AW-006: the
     home page's hero photos become the owner's warehouse reel; with or after
     22, best in the same session, before or after the frontend)
+31. `20261014111000_orders_approved_accounts_only.sql` (AW-014, AW-024:
+    `submit_quote` takes orders only from signed-in, approved accounts that
+    aren't on hold; after 11, before or after the new frontend)
 
 Then `supabase/seed/products.sql`, then the frontend, then 18.
 
@@ -1323,6 +1340,7 @@ Then `supabase/seed/products.sql`, then the frontend, then 18.
 | `20261014100000_delist_kratom_mushroom.sql` | Data only (AW-001, the owner's answer of October 2026): `active = false` for the 22 Kratom & Kava and Mushroom Products rows (#69–#76, #258, #281, #285, #288, #289, #293, #296, #298–#300, #306, #307, #312, #313), only where the row is still active, so a re-run changes nothing. No row is deleted. Inactive rows are hidden from guests and buyers by `products_public_read`, refused by the order-line trigger (hint `product_unavailable`) and left out of `my_prices()`. Detox, Wellness Pills and Honey & Energy are untouched. A commented Reverse block is at the end. | Apply any time, before or after the frontend, also on its own. The new frontend leaves these products and their two lines out whatever the database says (`src/data/delisted.js`: the catalog, the sitemap and the page files), and redirects the lines' old addresses to Novelties; until the file is applied a quote sent by hand through the API could still name one. The frontend deployed before it shows them until the file is applied. |
 | `20261014101000_catalog_owner_answers.sql` | Data only (the owner's answers of 2026-09-28, Cursor's draft PR #11): #219 Happy valentines jar moves from Wellness Pills to a new Gifts line in Novelties (name and variants unchanged, description rewritten); #295 Snack wraps is "a chips brand", flavors varying by availability; #351 becomes "Uncle Al's creme" with no "Lemon ice" variant (and no "can't be ordered" entry for it), then #350 "Uncle Al's cookies"; both lose the Lemon Ice box photo (`img` null). Ids and SKUs are unchanged (#351 keeps `AW-UNCLE-AL-S-COOKIES`). Each column changes only while it still has the value the seed (or `20261012130000`, for #350's name) wrote, so admin edits are kept and a re-run changes nothing. A variant price stored for (351, 'Lemon ice') is left in `product_variant_prices`, unused. A commented Reverse block is at the end. | Apply after `20261012130000`, before or after the frontend. Every frontend reads names, lines and descriptions from the database, so the new values show once it is applied; the new frontend already shows no photo for #350 and #351 (`RETIRED_IMAGE_FILES` in `src/data/catalogAliases.js`) and keeps a cart line saved as Lemon ice as the creme (`VARIANT_ALIASES`). Order lines keep the name and variant they were placed with. |
 | `20261014110000_home_slides_warehouse_reel.sql` | Data only (AW-006, the owner's answer of October 2026): while `home_slides` still holds exactly the four rows `20261011131000` added (same photo, alt text, link, warning and order, all shown), they are replaced by the owner's 8-photo warehouse reel (`hero_wh_sign.jpg` … `hero_wh_candy_room.jpg`, sorts 10–80, the soda, snack and candy photos linking to Drinks & Bags, Food Stuff and Candies, none with the FDA warning), the bundled slides of the new frontend word for word. A table staff have changed in any way, or emptied, is left alone, and a re-run changes nothing. Does nothing on a database without the table. A commented Reverse block is at the end. | Apply with or after `20261011131000`, best in the same session, so the home page never shows the four earlier photos from the table; before or after the new frontend, which bundles the same eight photos, so the home page looks the same before and after. The frontend deployed today doesn't read the table. |
+| `20261014111000_orders_approved_accounts_only.sql` | AW-014, AW-024 (the owner's answer of October 2026: the site is for licensed store owners, anyone who buys is signed in, and customers place orders, not quotes): a new function `require_ordering_account()` (security definer; no guest or account may run it directly) refuses a caller with no signed-in user (hint `sign_in_required`), an account on hold (`account_suspended`) and any other account that isn't approved, a pending one or one without a profile (`account_not_approved`). `submit_quote` is recreated from `20261009130000` word for word with one new first statement that calls it, so all three signatures (the 16- and 13-argument wrappers run it) refuse those callers before anything is checked, counted or saved. Same signature, return value and grants; guests may still call it, so they get the hint. A commented Reverse block is at the end. | Apply any time after `20261009130000`, before or after the frontend. The new frontend already asks guests to sign in and tells accounts under review they can order once approved, and words the new hints; until the file is applied a guest's or pending account's call sent by hand through the API is still saved as a quote. The frontend deployed before it lets guests submit and would show them its generic "couldn't save" message. Quotes saved before it stay; Admin → Orders still prices and converts them. |
 
 ### Later steps
 

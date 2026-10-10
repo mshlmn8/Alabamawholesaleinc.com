@@ -7,6 +7,16 @@
 -- with every order below. Helpers carry the sup16_ prefix (pg_temp lives
 -- for the whole run).
 
+-- 20261014111000 lets only signed-in, approved accounts order
+-- (public.require_ordering_account(); 27_orders_approved_only.sql tests
+-- it). This file tests submit_quote's other checks, guests' and pending
+-- accounts' calls included, so it sets the rule aside while it runs, as
+-- 20261009130000 had it, and puts it back at the end.
+create temp table p16_ordering_rule as
+  select pg_get_functiondef('public.require_ordering_account()'::regprocedure) as def;
+create or replace function public.require_ordering_account() returns void
+  language plpgsql stable security definer set search_path = public as $$ begin end $$;
+
 insert into public.products (id, name, brand, cat, sub, sku, price, active, variants, unavailable_variants) values
   (95161, 'Sup16 discontinued candy', 'Test', 'CANDIES', 'Test line', 'AW-SUP16-GONE', null, false, '[]', '[]'),
   (95162, 'Sup16 gum', 'Test', 'CANDIES', 'Test line', 'AW-SUP16-GUM', null, true, '["Small", "Big", "Party"]', '["Party"]');
@@ -102,3 +112,7 @@ end $$;
 delete from public.orders where email like 'sup16-%@example.com';
 delete from public.products where id in (95161, 95162);
 delete from public.quote_throttle;
+
+-- The ordering rule (20261014111000) again, as later files expect it.
+do $$ begin execute (select def from p16_ordering_rule); end $$;
+drop table p16_ordering_rule;

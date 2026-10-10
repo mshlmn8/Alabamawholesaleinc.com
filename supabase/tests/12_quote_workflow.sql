@@ -7,6 +7,16 @@
 -- synthetic price) and 91202 (CANDIES, two sizes, Big with its own price).
 -- Everything is removed at the end.
 
+-- 20261014111000 lets only signed-in, approved accounts order
+-- (public.require_ordering_account(); 27_orders_approved_only.sql tests
+-- it). This file tests submit_quote's other checks, guests' and pending
+-- accounts' calls included, so it sets the rule aside while it runs, as
+-- 20261009130000 had it, and puts it back at the end.
+create temp table p12_ordering_rule as
+  select pg_get_functiondef('public.require_ordering_account()'::regprocedure) as def;
+create or replace function public.require_ordering_account() returns void
+  language plpgsql stable security definer set search_path = public as $$ begin end $$;
+
 insert into auth.users (id, email, raw_user_meta_data) values
   ('00000000-0000-4000-8000-0000000012a1', 'p12-pending@example.com', '{"name": "P12 Pending"}'),
   ('00000000-0000-4000-8000-0000000012b1', 'p12-approved@example.com', '{"name": "P12 Approved"}'),
@@ -263,3 +273,7 @@ select test_reset();
 delete from public.orders where email like 'p12-%@example.com';
 delete from public.products where id in (91201, 91202);
 delete from public.quote_throttle;
+
+-- The ordering rule (20261014111000) again, as later files expect it.
+do $$ begin execute (select def from p12_ordering_rule); end $$;
+drop table p12_ordering_rule;

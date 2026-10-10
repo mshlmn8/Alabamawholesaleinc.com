@@ -6,6 +6,17 @@
 -- src/lib/regulated.js. Calls go through PR #12's 16-argument signature (now
 -- a wrapper); the server makes the references, so orders are found by the
 -- one each call returns, kept in test.t9_<name>.
+
+-- 20261014111000 lets only signed-in, approved accounts order
+-- (public.require_ordering_account(); 27_orders_approved_only.sql tests
+-- it). This file tests submit_quote's other checks, guests' and pending
+-- accounts' calls included, so it sets the rule aside while it runs, as
+-- 20261009130000 had it, and puts it back at the end.
+create temp table p09_ordering_rule as
+  select pg_get_functiondef('public.require_ordering_account()'::regprocedure) as def;
+create or replace function public.require_ordering_account() returns void
+  language plpgsql stable security definer set search_path = public as $$ begin end $$;
+
 delete from public.quote_throttle;
 insert into auth.users (id, email, raw_user_meta_data) values
   ('00000000-0000-4000-8000-0000000009a1', 'tl-pending@example.com', '{"name": "Pending TL"}'),
@@ -91,3 +102,7 @@ do $$ begin
   assert exists (select 1 from public.orders where ref_num = pg_temp.t9ref('T9-APPROVED-1') and license_no is null), 'an approved buyer is not asked again';
   assert not exists (select 1 from public.orders where ref_num like 'T9-%'), 'the references are the server''s, not the caller''s';
 end $$;
+
+-- The ordering rule (20261014111000) again, as later files expect it.
+do $$ begin execute (select def from p09_ordering_rule); end $$;
+drop table p09_ordering_rule;

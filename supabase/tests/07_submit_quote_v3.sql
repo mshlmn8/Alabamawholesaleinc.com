@@ -7,6 +7,16 @@
 -- removed at the end. The throttle is cleared as the superuser before each
 -- block. Quotes use the candy product unless a test is about tobacco.
 
+-- 20261014111000 lets only signed-in, approved accounts order
+-- (public.require_ordering_account(); 27_orders_approved_only.sql tests
+-- it). This file tests submit_quote's other checks, guests' and pending
+-- accounts' calls included, so it sets the rule aside while it runs, as
+-- 20261009130000 had it, and puts it back at the end.
+create temp table p07_ordering_rule as
+  select pg_get_functiondef('public.require_ordering_account()'::regprocedure) as def;
+create or replace function public.require_ordering_account() returns void
+  language plpgsql stable security definer set search_path = public as $$ begin end $$;
+
 insert into auth.users (id, email, raw_user_meta_data) values
   ('00000000-0000-4000-8000-0000000007a1', 'p7-pending@example.com', '{"name": "P7 Pending"}'),
   ('00000000-0000-4000-8000-0000000007b1', 'p7-approved@example.com', '{"name": "P7 Approved"}'),
@@ -352,3 +362,7 @@ select test_reset();
 delete from public.orders where email like 'p7-%@example.com' or email like 'P7-%@example.com';
 delete from public.products where id in (90701, 90702);
 delete from public.quote_throttle;
+
+-- The ordering rule (20261014111000) again, as later files expect it.
+do $$ begin execute (select def from p07_ordering_rule); end $$;
+drop table p07_ordering_rule;

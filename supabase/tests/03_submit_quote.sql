@@ -8,6 +8,17 @@
 -- there is no duplicate-reference case any more, and orders are found by the
 -- reference submit_quote returns. Each caller uses its own email, and the
 -- throttle is cleared first, so no call here is throttled (AW-198).
+
+-- 20261014111000 lets only signed-in, approved accounts order
+-- (public.require_ordering_account(); 27_orders_approved_only.sql tests
+-- it). This file tests submit_quote's other checks, guests' and pending
+-- accounts' calls included, so it sets the rule aside while it runs, as
+-- 20261009130000 had it, and puts it back at the end.
+create temp table p03_ordering_rule as
+  select pg_get_functiondef('public.require_ordering_account()'::regprocedure) as def;
+create or replace function public.require_ordering_account() returns void
+  language plpgsql stable security definer set search_path = public as $$ begin end $$;
+
 delete from public.quote_throttle;
 
 insert into auth.users (id, email, raw_user_meta_data) values
@@ -81,3 +92,7 @@ do $$ begin
   assert (select user_id from public.orders where ref_num = current_setting('test.guest_ref')) is null, 'guest quotes are stored without a user';
   assert (select count(*) from public.order_items i join public.orders o on o.id = i.order_id where o.ref_num = current_setting('test.guest_ref') and i.unit_price is null) = 1, 'guest lines are unpriced';
 end $$;
+
+-- The ordering rule (20261014111000) again, as later files expect it.
+do $$ begin execute (select def from p03_ordering_rule); end $$;
+drop table p03_ordering_rule;
