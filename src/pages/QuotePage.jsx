@@ -582,9 +582,10 @@ export function QuotePage({
         {isSuspended ? (
           <p className="notice quote-paused"><span>{PRICE_LOCK.suspended.line}</span> <CallOrEmail after=" and a trade rep will help you sort it out." /></p>
         ) : (
+          // No response time is promised (AW-246, owner answer 2026-10).
           <p>{pricedBelowMinimum
-            ? 'Review your items and submit. A trade desk rep will confirm pricing, availability and delivery within one business day.'
-            : `Review your items and submit. The minimum order is ${formatMoneyShort(ORDER_MINIMUM)}. A trade desk rep will confirm pricing, availability and delivery within one business day.`}</p>
+            ? 'Review your items and submit. A trade desk rep will confirm pricing, availability and delivery.'
+            : `Review your items and submit. The minimum order is ${formatMoneyShort(ORDER_MINIMUM)}. A trade desk rep will confirm pricing, availability and delivery.`}</p>
         )}
       </div>
       <div className="checkout-grid">

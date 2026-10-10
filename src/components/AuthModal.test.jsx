@@ -739,7 +739,7 @@ describe('AuthModal after the application is sent (AW-260)', () => {
     await sendApplication();
     const desc = document.querySelector('[role="dialog"] > .desc');
     expect(desc.querySelector('strong').textContent).toBe('new@example.test');
-    expect(desc.textContent).toBe('We sent a confirmation link to new@example.test. Click it to activate your account — a trade rep will verify your license within one business day.');
+    expect(desc.textContent).toBe('We sent a confirmation link to new@example.test. Click it to activate your account — a trade rep will then verify your license.');
     expect(steps().join(' ')).not.toContain('new@example.test');
     expect(steps()).toEqual([
       'Confirm your email.Open the link in that email. Not there after a few minutes? Check your spam folder. Already have an account with this email? Sign in below.',

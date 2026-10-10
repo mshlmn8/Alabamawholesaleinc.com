@@ -705,7 +705,8 @@ test.describe('home hero', () => {
   });
 });
 
-// Under the hero: the services with their links (AW-059), the department
+// Under the hero: the trust band (AW-005), the services with their links
+// (AW-059) and volume pricing's email and phone (AW-025), the department
 // tiles with a photo in the frame and the text on the band below it (AW-060,
 // AW-061), and one row each of new arrivals and bestsellers without SKUs.
 test.describe('home sections', () => {
@@ -715,14 +716,19 @@ test.describe('home sections', () => {
     }, [AGE_KEY, ageRecord(Date.now())]);
   });
 
-  test('services follow the hero, and the department tiles lead to their departments', async ({ page }) => {
+  test('the trust band and the services follow the hero, and the department tiles lead to their departments', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/');
-    await expect(page.locator('.home-hero + .services .service')).toHaveCount(3);
+    const band = page.locator('.home-hero + .trust-band');
+    await expect(band.locator('.trust-fact')).toHaveText([/^20\s+years in business$/i, /^100%\s+authentic products$/i]);
+    await expect(band.locator('.trust-sourcing')).toHaveText('Every product comes from the manufacturer or an established wholesale distributor.');
+    await expect(page.locator('.home-hero + .trust-band + .services .service')).toHaveCount(3);
     const services = page.locator('.services');
     await expect(services.getByRole('link', { name: 'Delivery and service area' })).toHaveAttribute('href', '/delivery');
-    await expect(services.getByRole('link', { name: 'Trade terms' })).toHaveAttribute('href', '/terms');
+    await expect(services.getByRole('link', { name: 'email us' })).toHaveAttribute('href', /^mailto:/);
+    await expect(services.getByRole('link', { name: '(205) 458-4788' })).toHaveAttribute('href', 'tel:+12054584788');
     await expect(services.getByRole('link', { name: 'How to apply' })).toHaveAttribute('href', '/apply');
+    await expect(services).not.toContainText(/net-30|discount/i);
     for (const id of ['new-arrivals', 'bestsellers']) {
       await expect(page.locator(`#${id} .content-card`)).toHaveCount(4);
       for (const detail of await page.locator(`#${id} .card-detail`).allTextContents()) expect(detail).not.toMatch(/\bAW-/);

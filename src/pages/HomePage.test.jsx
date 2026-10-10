@@ -1,5 +1,7 @@
 // The home page: one h1, in the split hero (AW-004); the planned section order
-// with the services straight after the hero (AW-059); department tiles with a
+// with the trust band (AW-005) and the services straight after the hero
+// (AW-059); no Net-30 or volume discounts, and the volume-pricing line in
+// their place (AW-025); no approval time (AW-246); department tiles with a
 // chosen photo and the biggest lines on a solid band (AW-060, AW-061); one
 // row each of new arrivals and bestsellers without SKUs (AW-060); numbers only
 // on the application steps (AW-216). Products without a photo stay off the
@@ -7,7 +9,7 @@
 // once loaded, the bundled ones until then (AW-119).
 import { act, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEPARTMENT_PHOTOS, HERO_SLIDES } from '../data/content.js';
+import { COMPANY, DEPARTMENT_PHOTOS, HERO_SLIDES, SOURCING, VOLUME_PRICING } from '../data/content.js';
 import { PRODUCTS, NAV_ORDER, NEW_ARRIVALS_IDS } from '../data/products.js';
 import { departmentsFor, topLines } from '../lib/departments.js';
 import { resetHomeSlidesForTests } from '../lib/homeSlides.js';
@@ -117,11 +119,12 @@ describe('HomePage sections', () => {
     expect(screen.getByRole('link', { name: 'Go to my account' }).getAttribute('href')).toBe('/account');
   });
 
-  it('runs hero, services, departments, new arrivals, bestsellers, collections, application', () => {
+  it('runs hero, trust band, services, departments, new arrivals, bestsellers, collections, application', () => {
     renderHome();
-    expect(document.querySelector('.home-hero').nextElementSibling.className).toBe('services');
+    expect(document.querySelector('.home-hero').nextElementSibling.className).toBe('trust-band');
+    expect(document.querySelector('.trust-band').nextElementSibling.className).toBe('services');
     const h2s = [...document.querySelectorAll('h2')].map(text);
-    const order = ['Services', 'Shop by department', 'New arrivals', 'Bestsellers', 'Disposables, detox,kratom & more.', 'Tobacco, wraps& accessories.', 'Open a trade account'];
+    const order = ['About Alabama Wholesale', 'Services', 'Shop by department', 'New arrivals', 'Bestsellers', 'Disposables, detox,kratom & more.', 'Tobacco, wraps& accessories.', 'Open a trade account'];
     expect(h2s).toEqual(order);
     // The header, menu and footer link to these.
     const ids = [...document.querySelectorAll('section[id]')].map((s) => s.id);
@@ -147,20 +150,26 @@ describe('HomePage sections', () => {
     expect(document.querySelectorAll('.apply-steps > li')).toHaveLength(3);
   });
 
-  it('gives each service an icon, the claim as published and a link to its page', () => {
+  it('gives each service an icon, the claim and a link to its page, or the trade desk\'s email and phone for volume pricing', () => {
     renderHome();
     const services = [...document.querySelectorAll('.services .service')];
     expect(services).toHaveLength(3);
-    expect(services.map((s) => s.querySelector('h3').textContent)).toEqual(['Next-day delivery, our own trucks', 'Net-30 trade terms', 'Licensed businesses only']);
+    expect(services.map((s) => s.querySelector('h3').textContent)).toEqual(['Next-day delivery, our own trucks', 'Buying in volume?', 'Licensed businesses only']);
     const links = services.map((s) => {
       const icon = s.querySelector('.service-icon');
       expect(icon.getAttribute('aria-hidden')).toBe('true');
       expect(icon.querySelector('svg')).not.toBeNull();
       expect(icon.textContent).toBe('');
-      const link = within(s).getByRole('link');
-      return [link.textContent, link.getAttribute('href')];
+      return within(s).getAllByRole('link').map((link) => [link.textContent, link.getAttribute('href')]);
     });
-    expect(links).toEqual([['Delivery and service area', '/delivery'], ['Trade terms', '/terms'], ['How to apply', '/apply']]);
+    expect(links).toEqual([
+      [['Delivery and service area', '/delivery']],
+      [['email us', `mailto:${COMPANY.email}`], [COMPANY.phone, `tel:${COMPANY.phoneRaw}`]],
+      [['How to apply', '/apply']],
+    ]);
+    // AW-025: the volume-pricing line, word for word, and no Net-30 or discount.
+    expect(services[1].querySelector('p').textContent).toBe(VOLUME_PRICING);
+    expect(document.querySelector('.services').textContent).not.toMatch(/net[- ]?30|discount|\d+ ?%/i);
     // The section is named by a heading, not an aria-label.
     const section = document.querySelector('.services');
     expect(section.hasAttribute('aria-label')).toBe(false);
@@ -352,5 +361,31 @@ describe('HomePage hero photos', () => {
     await renderLoaded(() => ({ data: null, error: { code: 'PGRST205', message: 'Could not find the table public.home_slides' } }));
     expect(slideLabels()).toHaveLength(HERO_SLIDES.length);
     expect(document.querySelector('.home-carousel-slide.is-active img').getAttribute('alt')).toBe(HERO_SLIDES[0].alt);
+  });
+});
+
+// AW-005 (owner answers 2026-10): the confirmed facts, in a band under the
+// hero, and nothing the owner ruled out.
+describe('HomePage trust band (AW-005)', () => {
+  it('names 20 years in business, 100% authentic products and where every product comes from', () => {
+    renderHome();
+    const band = document.querySelector('.trust-band');
+    expect(band.getAttribute('aria-labelledby')).toBe('trust-band-title');
+    expect(document.getElementById('trust-band-title').textContent).toBe('About Alabama Wholesale');
+    expect([...band.querySelectorAll('.trust-fact')].map(text)).toEqual(['20 years in business', '100% authentic products']);
+    expect(band.querySelector('.trust-sourcing').textContent).toBe(SOURCING);
+  });
+
+  it('claims no account count, no generations and never "direct from the manufacturer" anywhere on the page', () => {
+    renderHome();
+    const page = document.body.textContent;
+    expect(page).not.toMatch(/three generations|family[- ]owned|direct(ly)? from (the )?manufacturer|accounts served|stores served/i);
+  });
+
+  it('promises no approval time in the application steps (AW-246)', () => {
+    renderHome();
+    const steps = [...document.querySelectorAll('.apply-steps > li > p')].map(text);
+    expect(steps[1]).toBe('Our team checks your license with the state before approving your account. Wholesale pricing and ordering unlock when you sign in.');
+    expect(document.body.textContent).not.toMatch(/business day|approved within|within 24 hours/i);
   });
 });

@@ -43,7 +43,7 @@ describe('CartDrawer', () => {
     expect(screen.queryByRole('link', { name: /Review/ })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Sign in for account pricing' })).toBeNull();
     const paused = document.querySelector('.drawer-paused');
-    expect(paused.textContent).toMatch(/^Ordering is paused on this account\. Call \(205\) 354-4473 or email .* and a trade rep will help you sort it out\.$/);
+    expect(paused.textContent).toMatch(/^Ordering is paused on this account\. Call \(205\) 458-4788 or email .* and a trade rep will help you sort it out\.$/);
     expect(paused.querySelector(`a[href="tel:${COMPANY.phoneRaw}"]`)).toBeTruthy();
   });
 

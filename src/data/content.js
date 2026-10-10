@@ -1,8 +1,9 @@
 // Storefront content: the business facts (company, hours, minimum order,
-// free-delivery threshold), the licensed-only line, the ticker, the home
-// hero's copy and photos, the department photos, the storage keys and the
-// policy date. PRODUCTS lives in ./products.js. BRANDS, TRUST and FAQS are
-// not shown anywhere; they wait on owner answers (see each one).
+// free-delivery threshold), the licensed-only line, the volume-pricing line,
+// the ticker, the home hero's copy and photos, the trust band, the department
+// photos, the storage keys and the policy date. PRODUCTS lives in
+// ./products.js. BRANDS and FAQS are not shown anywhere; they wait on owner
+// answers (see each one).
 
 import { heroImage } from '../lib/images.js';
 import { formatMoney, formatMoneyShort } from '../lib/format.js';
@@ -110,8 +111,11 @@ export const COMPANY = {
   // Wholesale Inc." (with the period)? The header prints "ALABAMA WHOLESALE
   // INC."; the name is unchanged until you say. (AW-283)
   name: 'Alabama Wholesale Inc',
-  phone: '(205) 354-4473',
-  phoneRaw: '+12053544473',
+  // The published phone (owner answer, 2026-09-28 and 2026-10): header,
+  // footer, contact page, Help, FAQ, every tel: link, and index.html's
+  // structured data and boot shell (src/data/facts.test.js checks them).
+  phone: '(205) 458-4788',
+  phoneRaw: '+12054584788',
   // TODO(owner): Which domain email address is monitored, so it can replace the Gmail address? (AW-127)
   email: 'Alabamawholesaleinc@gmail.com',
   // With the comma the footer and addressLine2 use (NEW-066).
@@ -130,7 +134,7 @@ export const COMPANY = {
 };
 
 // TODO(owner): Free delivery "over $1,500" (ticker, cart, quote, delivery
-// pages) or "$1,500 or more" (FAQ, TRUST)? Both wordings are unchanged until
+// pages) or "$1,500 or more" (FAQ)? Both wordings are unchanged until
 // you say. (AW-283)
 export const FREE_DELIVERY_THRESHOLD = 1500;
 // TODO(owner): Is the $500 minimum order a hard rule that blocks submission, or only a guideline that orders below it may still be submitted? It is not enforced; checkout only notes it. (AW-076)
@@ -141,12 +145,17 @@ export const ORDER_MINIMUM = 500;
 // footer's legal bar (AW-285). The policy pages keep their own legal text.
 export const LICENSED_ONLY = 'Wholesale to licensed retail businesses only · No consumer sales · 21+';
 
-// TODO(owner): Who gets Net-30, and what is the real volume discount behind "up to 18%"? Kept exactly as published until you say (decision 2). (AW-025)
+// Volume pricing (AW-025, owner answer 2026-10): there are no Net-30 terms
+// and no published volume discounts; volume pricing is agreed with the trade
+// desk. This one sentence stands where the old claims were: the trade bar,
+// the home page's services and the Trade terms (ContactLinks.jsx
+// VolumePricing prints it with the email and phone as links).
+export const VOLUME_PRICING = `For volume pricing, email us or call ${COMPANY.phone}.`;
+
 export const ANNOUNCEMENTS = [
   `★ FREE DELIVERY on orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} on our delivery routes in Alabama, Mississippi & Georgia`,
-  '★ NET-30 TERMS available for approved retail accounts',
   '★ WILL-CALL · Pickup at the Birmingham warehouse during business hours',
-  '★ VOLUME DISCOUNTS · Save up to 18% on pallet quantities'
+  `★ ${VOLUME_PRICING}`
 ];
 
 // The home page's pitch: the h1's supporting line (HomeHero) and the meta
@@ -189,8 +198,8 @@ export const HERO_SLIDES = [
   { eyebrow: 'NEW THIS WEEK', title: 'The brands your customers ask for.', sub: 'Tobacco, novelties, candy, beverages, motor oil, household and more — over 368 SKUs at our Birmingham warehouse.', cta1: 'Shop Catalog', cta2: 'Apply for Account', ...heroImage('hero_candy.jpg'), alt: 'Display box of Turtles Bites chocolates', accent: 'orange', goCat: 'CANDIES' },
   // TODO(owner): Do the hero slides and product photos count as advertisements under 21 CFR 1143.3 (warning in the upper portion of the ad, at least 20% of its area)? The vape slide shows the verbatim warning under the photo until counsel answers. (AW-026)
   { eyebrow: 'BESTSELLING NOVELTIES', title: 'Geekbar 25K — now in stock.', sub: 'World\'s first 3D curved screen disposable. Flavors and availability change often. The trade desk confirms what is in stock.', cta1: 'Shop Novelties', cta2: 'See All Vape', ...heroImage('hero_vape.jpg'), alt: 'Geek Bar Pulse X disposable vape advertisement', accent: 'navy', goCat: 'NOVELTIES', nicotineWarning: true },
-  { eyebrow: 'COUNTER ESSENTIALS', title: 'BIC lighters & merchandise.', sub: 'Stock up the counter for less. Volume pricing on Bic, Eagle torches, Lattafa air freshener and more.', cta1: 'Shop Merchandise', cta2: 'View Displays', ...heroImage('hero_lighters.jpg'), alt: 'BIC lighters in a counter display tray', accent: 'orange', goCat: 'MERCHANDISE' },
-  { eyebrow: 'DRINKS & BEVERAGES', title: 'Gatorade, Monster, Red Bull — by the case.', sub: 'Free delivery on orders over $1,500 when the stop is on a delivery route in Alabama, Mississippi or Georgia. Net-30 terms for approved accounts.', cta1: 'Shop Drinks', cta2: 'Get a Quote', ...heroImage('hero_gatorade.jpg'), alt: 'Gatorade and G2 bottles', accent: 'navy', goCat: 'DRINKS & BAGS' }
+  { eyebrow: 'COUNTER ESSENTIALS', title: 'BIC lighters & merchandise.', sub: 'Stock up the counter with Bic, Eagle torches, Lattafa air freshener and more.', cta1: 'Shop Merchandise', cta2: 'View Displays', ...heroImage('hero_lighters.jpg'), alt: 'BIC lighters in a counter display tray', accent: 'orange', goCat: 'MERCHANDISE' },
+  { eyebrow: 'DRINKS & BEVERAGES', title: 'Gatorade, Monster, Red Bull — by the case.', sub: 'Free delivery on orders over $1,500 when the stop is on a delivery route in Alabama, Mississippi or Georgia.', cta1: 'Shop Drinks', cta2: 'Get a Quote', ...heroImage('hero_gatorade.jpg'), alt: 'Gatorade and G2 bottles', accent: 'navy', goCat: 'DRINKS & BAGS' }
 ];
 
 // The product whose photo stands for each department on the home page's
@@ -215,37 +224,45 @@ export const DEPARTMENT_PHOTOS = {
   'DRINKS & BAGS': 249, // Sprite (Sodas)
 };
 
-// Not shown on the site. Kept for the brand strip AW-005 asks the owner
-// about (see TRUST); AW-328 removes only the exports no open finding needs.
+// Not shown on the site. Kept for a possible brand strip under the hero
+// (AW-005); AW-328 removes only the exports no open finding needs.
 export const BRANDS = ["HERSHEY'S", 'GATORADE', 'BIC', 'WD-40', 'GEEK BAR', 'GAIN', 'STP', 'WHITE OWL', 'TWANGERZ', 'POM POM', 'NEON', 'JOB'];
 
-// Not shown on the site. Kept until the owner answers AW-005 (AW-328).
-// TODO(owner): Years in business, account or route counts, warehouse and truck photos, and which brand logos may be shown, before any trust claim like these is published. (AW-005)
+// The trust band under the home hero (AW-005, owner answers 2026-10): 20
+// years in business and 100% authentic are confirmed; the sourcing sentence
+// is the owner's: everything comes from the manufacturer or from a
+// middleman such as a wholesaler, so the site never says "direct from the
+// manufacturer" alone. No count of accounts or routes, and no "three
+// generations" or "family owned", is published.
+export const YEARS_IN_BUSINESS = 20;
+export const SOURCING = 'Every product comes from the manufacturer or an established wholesale distributor.';
+// Each fact as the band prints it: a figure and its label, which read as one
+// phrase ("20 years in business"); CSS sets the label in capitals.
 export const TRUST = [
-  { icon: 'ShieldCheck', title: '100% Authentic',        blurb: 'Sourced direct from manufacturers and authorized distributors. Every SKU verified.' },
-  { icon: 'Truck',       title: `Free Delivery ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)}+`, blurb: 'Will-call pickup at the Birmingham warehouse during business hours, or next-day delivery on our routes in Alabama, Georgia and Mississippi.' },
-  { icon: 'Tag',         title: 'Volume Discounts',      blurb: 'Tiered case and pallet pricing. Save up to 18% on pallet-quantity orders.' },
-  { icon: 'Users',       title: 'Family Owned',          blurb: 'Three generations serving Southeast retailers. Real relationships, honest pricing.' }
+  { figure: String(YEARS_IN_BUSINESS), label: 'years in business' },
+  { figure: '100%', label: 'authentic products' },
 ];
 
 // Not shown on the site. Kept for the FAQ page AW-279 asks the owner to
-// confirm; Help stands in for it until then (AW-328).
-// TODO(owner): Confirm the FAQ answers (including Net-30, approval time and volume discounts) before they are published. (AW-279)
+// confirm; Help stands in for it until then (AW-328). The answers follow
+// the owner's 2026-10 answers: no Net-30, no volume discounts (volume
+// pricing through the trade desk) and no approval time (AW-025, AW-246).
+// TODO(owner): Confirm the FAQ answers before they are published. (AW-279)
 export const FAQS = [
   { q: 'Do I need a business license to order?',
     a: 'Yes. Alabama Wholesale only sells to licensed retailers. You\'ll need a valid retail business license, sales tax / resale certificate, and (for tobacco/vape products) a tobacco permit for your state. We verify all documents during account approval.' },
   { q: 'What is your minimum order?',
     a: `The minimum order is ${formatMoney(ORDER_MINIMUM)}. Free delivery applies to orders of ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} or more when the stop is on a delivery route. Will-call is pickup at the Birmingham warehouse during business hours.` },
-  { q: 'How long does account approval take?',
-    a: `Most applications are approved within 24 hours. Net-30 terms require credit verification which can add 2–3 business days. You can also call us at ${COMPANY.phone} to expedite.` },
+  { q: 'How does account approval work?',
+    a: `A trade rep reviews each application and checks the license and resale certificate. Wholesale pricing and ordering unlock when the account is approved. Questions about an application? Call us at ${COMPANY.phone}.` },
   { q: 'What areas do you deliver to?',
     a: `We deliver on routes in Alabama, Mississippi and Georgia. Next-day delivery on our own trucks and free delivery on orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} apply when the stop is on a delivery route.` },
   { q: 'Can I pick up my order in person?',
     a: `Yes. Will-call is pickup at the Birmingham warehouse, ${COMPANY.addressLine1}, during business hours: ${HOURS.map(row => `${row.dayOfWeek[0]}–${row.dayOfWeek[row.dayOfWeek.length - 1]} ${clockLabel(row.opens)}–${clockLabel(row.closes)}`).join(', ')}.` },
-  { q: 'How does pallet / volume pricing work?',
-    a: 'Discounts kick in starting at 5 cases (5%) and scale up to 18% off for 5+ pallet orders. The discount is applied automatically at checkout. Contact your trade rep for custom mixed-pallet pricing.' },
+  { q: 'Do you offer volume pricing?',
+    a: `For volume pricing, email us at ${COMPANY.email} or call ${COMPANY.phone}.` },
   { q: 'What payment methods do you accept?',
-    a: 'Cash, checks, and electronic wiring and transfers. Net-30 terms for approved accounts.' },
+    a: 'Cash, checks, and electronic wiring and transfers.' },
   { q: 'Do you deliver outside Alabama, Mississippi and Georgia?',
     a: 'Delivery is currently on routes in Alabama, Mississippi and Georgia.' }
 ];

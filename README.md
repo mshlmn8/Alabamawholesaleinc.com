@@ -91,11 +91,13 @@ Output goes to `dist/`; `npm run preview` serves it locally, with the security h
 | Business facts: address, phone, email, hours, minimum order, free-delivery threshold | `COMPANY`, `HOURS`, `ORDER_MINIMUM` and `FREE_DELIVERY_THRESHOLD` in `src/data/content.js`; pages print them from there (money through `formatMoney`/`formatMoneyShort`), and `src/data/facts.test.js` fails when the phone, address, hours, minimum or threshold is typed into another source file |
 | Wording: the apply and sign-in labels, quote or order, the licensed-only line | `src/data/terms.js` (`APPLY_LABEL`, `SIGN_IN_LABEL`, `basketTerms()`); `LICENSED_ONLY` in `src/data/content.js` |
 | Trade bar announcements | `ANNOUNCEMENTS` in `src/data/content.js`, after the trade notice (`TRADE_NOTICE` in `src/components/TradeBar.jsx`) |
+| Trust band under the home hero (20 years in business, 100% authentic, where products come from) | `TRUST`, `YEARS_IN_BUSINESS` and `SOURCING` in `src/data/content.js` |
+| The volume-pricing line (no Net-30, no published volume discounts) | `VOLUME_PRICING` in `src/data/content.js`; `VolumePricing` in `src/components/ContactLinks.jsx` prints it with the email and phone as links. `src/data/claims.test.js` fails if Net-30, volume discounts, an approval time, "three generations" or "direct from the manufacturer" comes back |
 | Departments and product lines | `departmentsFor()` in `src/lib/departments.js`, derived from `cat` and `sub` in `src/data/products.js` (in `NAV_ORDER`) |
 | The 368 products | `PRODUCTS` in `src/data/products.js` |
 | Account and admin styles | the `account / admin` block in `src/index.css` |
 
-`BRANDS`, `TRUST` and `FAQS` in `src/data/content.js` stay unpublished until the owner confirms them (see `docs/OWNER-TODO.md`).
+`BRANDS` and `FAQS` in `src/data/content.js` stay unpublished until the owner confirms them (see `docs/OWNER-TODO.md`).
 
 ### Images
 

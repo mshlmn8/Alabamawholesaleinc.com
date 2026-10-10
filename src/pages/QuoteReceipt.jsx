@@ -53,9 +53,9 @@ export function QuoteReceipt({ receipt, signedIn = false, headingRef = null }) {
       <p className="receipt-from">{`${COMPANY.name} · ${COMPANY.addressShort} · ${COMPANY.phone}`}</p>
       <p className="eyebrow">{asOrder ? 'ORDER RECEIVED' : 'QUOTE RECEIVED'}</p>
       <h1 ref={headingRef} tabIndex={-1}>{`Thank you, ${receipt.contact || 'partner'}.`}</h1>
-      {/* TODO(owner): "within one business day" is kept as published; see the AW-246 row in docs/OWNER-TODO.md. (AW-246) */}
+      {/* No response time is promised (AW-246, owner answer 2026-10). */}
       <p>
-        <span>{asOrder ? 'Your order has been saved.' : 'Your quote request has been saved.'}</span> A trade desk rep will reach out within one business day at <strong>{reachAtText(receipt.reachAt)}</strong> to confirm details.
+        <span>{asOrder ? 'Your order has been saved.' : 'Your quote request has been saved.'}</span> A trade desk rep will reach out at <strong>{reachAtText(receipt.reachAt)}</strong> to confirm details.
       </p>
       <p className="receipt-ref">
         <span className="receipt-ref-label">Reference number</span>

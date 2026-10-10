@@ -3,7 +3,7 @@
 import { COMPANY, FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM, POLICIES_UPDATED } from '../../data/content.js';
 import { formatMoney, formatMoneyShort } from '../../lib/format.js';
 import { Link } from '../../lib/router.js';
-import { CallOrEmail } from '../../components/ContactLinks.jsx';
+import { CallOrEmail, VolumePricing } from '../../components/ContactLinks.jsx';
 import { PageHead, SupportLayout, ContactStrip, POLICY_LINKS, supportApplyLabel } from './SupportShell.jsx';
 import { POLICY_TEXT } from './policyText.js';
 
@@ -100,8 +100,11 @@ const POLICIES = {
         `The minimum order is ${formatMoney(ORDER_MINIMUM)}.`,
         <>Orders are delivered on our own trucks when the stop is on a delivery route in Alabama, Mississippi or Georgia, or collected at the Birmingham warehouse during business hours. See the <Link to="/shipping">Delivery policy</Link> for how that works.</>,
       ] },
+      // No credit (Net-30) terms and no published volume discounts; volume
+      // pricing is agreed with the trade desk (AW-025, owner answer 2026-10).
       { heading: 'Payment', body: [
         'Payment methods are cash, checks, and electronic wiring and transfers.',
+        <><VolumePricing /></>,
       ] },
       { heading: 'Resale and compliance', body: [
         'Products are supplied for resale in your licensed store. You are responsible for following the federal, state and local laws that apply to selling them, including age verification, licensing and tax requirements for tobacco and vapor products.',

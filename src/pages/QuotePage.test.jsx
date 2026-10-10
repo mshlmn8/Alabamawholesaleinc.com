@@ -378,7 +378,7 @@ describe('QuotePage minimum (AW-076, AW-283, NEW-059, NEW-010)', () => {
   it('says it once, in the meter, with "You can still submit" only when the order can be submitted', () => {
     const view = render(page(buyer));
     expect(meter()).toBe('Add $480.00 to reach the $500 order minimum. You can still submit this order.');
-    expect(intro()).toBe('Review your items and submit. A trade desk rep will confirm pricing, availability and delivery within one business day.');
+    expect(intro()).toBe('Review your items and submit. A trade desk rep will confirm pricing, availability and delivery.');
     expect(mentions()).toBe(1);
     expect(document.querySelector('p.notice')).toBeNull();
     expect(submit().disabled).toBe(false);
@@ -429,7 +429,7 @@ describe('QuotePage minimum (AW-076, AW-283, NEW-059, NEW-010)', () => {
 
   it('prints the minimum once, as $500, and the free-delivery amount from content.js', () => {
     render(page({ profile: null, account: 'signed-out', signedIn: false, isApprovedBuyer: false }));
-    expect(intro()).toBe('Review your items and submit. The minimum order is $500. A trade desk rep will confirm pricing, availability and delivery within one business day.');
+    expect(intro()).toBe('Review your items and submit. The minimum order is $500. A trade desk rep will confirm pricing, availability and delivery.');
     expect(document.querySelector('form .fine:last-of-type').textContent).toMatch(/^Orders over \$1,500 qualify for free delivery/);
     expect(mentions()).toBe(1);
     expect(document.body.textContent).not.toMatch(/\$500\.00/);
@@ -489,7 +489,7 @@ describe('QuotePage when the buyer’s prices didn’t load (NEW-010)', () => {
       fireEvent.change(document.getElementById(id), { target: { value } });
     }
     await act(async () => { fireEvent.submit(document.querySelector('form[aria-labelledby="quote-form-title"]')); });
-    expect(screen.getByRole('alert').textContent).toMatch(/^Your prices didn’t load, so nothing was sent\. Try again, or call the trade desk at \(205\) 354-4473 or email .+\.$/);
+    expect(screen.getByRole('alert').textContent).toMatch(/^Your prices didn’t load, so nothing was sent\. Try again, or call the trade desk at \(205\) 458-4788 or email .+\.$/);
     view.unmount();
     render(page({ ...failed, items: ITEMS, total: 20, pricesStatus: 'ready', checkCart: vi.fn(async () => ({ ok: false, part: 'catalog', error: { message: 'x' } })) }));
     for (const [id, value] of [['ship-street', '1 Alpha Way'], ['ship-city', 'Hoover'], ['ship-state', 'AL'], ['ship-zip', '35216']]) {
@@ -615,7 +615,7 @@ describe('QuotePage and submit_quote', () => {
     const view = render(page({ profile: suspended, account: 'ready', signedIn: true, isApprovedBuyer: false, isSuspended: true }));
     expect(screen.queryByRole('button', { name: /Submit/ })).toBeNull();
     const paused = document.querySelector('.quote-paused');
-    expect(paused.textContent).toMatch(/^Ordering is paused on this account\. Call \(205\) 354-4473 or email .+ and a trade rep will help you sort it out\.$/);
+    expect(paused.textContent).toMatch(/^Ordering is paused on this account\. Call \(205\) 458-4788 or email .+ and a trade rep will help you sort it out\.$/);
     expect(paused.querySelector(`a[href="tel:${COMPANY.phoneRaw}"]`)).toBeTruthy();
     // NEW-064: it is the page's intro, said once; nothing invites a submit.
     expect(paused.parentElement.classList.contains('page-head')).toBe(true);
@@ -850,7 +850,7 @@ describe('QuotePage receipt', () => {
       Notes: 'Back door, before 10',
     });
     // The phone as typed (205-000-0000), written the usual way (NEW-062).
-    expect(receiptText()).toMatch(/A trade desk rep will reach out within one business day at \(205\) 000-0000 to confirm details\./);
+    expect(receiptText()).toMatch(/A trade desk rep will reach out at \(205\) 000-0000 to confirm details\./);
     // AW-108: centred by class, never by inline style.
     const section = document.querySelector('section.page-head.receipt-head');
     expect(section.hasAttribute('style')).toBe(false);

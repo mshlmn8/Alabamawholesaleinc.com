@@ -130,7 +130,8 @@ export function AccountPage({
       )}
 
       {profile.status === 'pending' && (
-        <p className="notice">Your account is awaiting approval. A trade rep will verify your retail license and activate pricing within one business day.</p>
+        // No approval time is promised (AW-246, owner answer 2026-10).
+        <p className="notice">Your account is awaiting approval. A trade rep will verify your retail license and activate pricing.</p>
       )}
 
       {profile.status === 'pending' && <ApplicationDocuments status="pending" disabled={!isBackendConfigured} id="documents" />}

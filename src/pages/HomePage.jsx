@@ -1,11 +1,12 @@
 // Home, in the section order the plan fixed (AW-059, AW-060): the split hero
-// (h1, pitch, calls to action and the photo carousel), the three services,
+// (h1, pitch, calls to action and the photo carousel), the trust band under
+// it (AW-005), the three services,
 // the departments, one row each of new arrivals and bestsellers, the two
 // collection cards and the account application steps. Only the application
 // steps are numbered, the page's one real sequence (AW-216). A signed-in
 // account sees its own account's panel in place of the steps (AW-066).
 
-import { DEPARTMENT_PHOTOS, FREE_DELIVERY_THRESHOLD } from '../data/content.js';
+import { DEPARTMENT_PHOTOS, FREE_DELIVERY_THRESHOLD, SOURCING, TRUST } from '../data/content.js';
 import { APPLY_LABEL } from '../data/terms.js';
 import { accountView, tradeAccountPanel } from '../lib/accountStatus.js';
 import { topLines } from '../lib/departments.js';
@@ -17,6 +18,7 @@ import { heroImage, SIZES } from '../lib/images.js';
 import { showsNicotineWarning } from '../lib/regulated.js';
 import { Link } from '../lib/router.js';
 import { Icon } from '../components/Icon.jsx';
+import { VolumePricing } from '../components/ContactLinks.jsx';
 import { Picture } from '../components/Picture.jsx';
 import { HomeHero } from '../components/HomeHero.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
@@ -99,8 +101,9 @@ function AccountSection({ signedIn, view, onApplyClick }) {
           </li>
           <li>
             <h3>We verify</h3>
-            {/* TODO(owner): Does approval really take one business day for most accounts, and does the team check each license with the state? Kept as published; the approval time is the AW-246 question. (AW-281, see AW-246) */}
-            <p>Our team checks your license with the state and approves most accounts within one business day. Wholesale pricing and ordering unlock when you sign in.</p>
+            {/* No approval time is promised (AW-246, owner answer 2026-10).
+                TODO(owner): Does the team check each license with the state? Kept as published. (AW-281) */}
+            <p>Our team checks your license with the state before approving your account. Wholesale pricing and ordering unlock when you sign in.</p>
           </li>
           <li>
             <h3>Order &amp; receive</h3>
@@ -108,6 +111,24 @@ function AccountSection({ signedIn, view, onApplyClick }) {
           </li>
         </ol>
       </div>
+    </section>
+  );
+}
+
+// The facts the owner confirmed (AW-005, 2026-10), in a band under the hero:
+// 20 years in business, 100% authentic products, and where every product
+// comes from. Nothing else: no count of accounts, no "three generations",
+// and never "direct from the manufacturer" alone.
+export function TrustBand() {
+  return (
+    <section className="trust-band" aria-labelledby="trust-band-title">
+      <h2 id="trust-band-title" className="sr-only">About Alabama Wholesale</h2>
+      <ul className="trust-facts">
+        {TRUST.map((fact) => (
+          <li key={fact.label} className="trust-fact"><span className="trust-figure">{fact.figure}</span> <span className="trust-label">{fact.label}</span></li>
+        ))}
+      </ul>
+      <p className="trust-sourcing">{SOURCING}</p>
     </section>
   );
 }
@@ -139,9 +160,12 @@ export function HomePage({
   return (
     <>
       <HomeHero signedIn={signedIn} onApplyClick={onApplyClick} slides={slides} pending={pending} />
+      <TrustBand />
 
-      {/* What the business offers, straight after the hero (AW-059): an icon,
-          the claim as published and a link to the page that explains it. */}
+      {/* What the business offers, straight after the hero and its trust
+          band (AW-059): an icon, the claim and a link to the page that
+          explains it, or, for volume pricing, the trade desk's email and
+          phone. */}
       <section className="services">
         <h2 className="sr-only">Services</h2>
         <div className="service">
@@ -151,11 +175,12 @@ export function HomePage({
           <p>{`We run our own delivery service on routes in Alabama, Mississippi and Georgia. Free delivery on orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} when the stop is on a delivery route. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
           <Link className="text-link" to="/delivery">Delivery and service area</Link>
         </div>
-        {/* TODO(owner): Who gets Net-30, and what is the real volume discount? Kept as published (decision 2). (AW-025) */}
+        {/* No Net-30 terms and no published volume discounts: volume
+            pricing goes through the trade desk (AW-025, owner answer 2026-10),
+            so the line's own email and phone links are this service's links. */}
         <div className="service">
-          <span className="service-icon" aria-hidden="true"><Icon name="calendar" /></span>
-          <h3>Net-30 trade terms</h3><p>Approved retail accounts order now and pay on Net-30 terms. Volume discounts up to 18% on pallet quantities across all eight departments.</p>
-          <Link className="text-link" to="/terms">Trade terms</Link>
+          <span className="service-icon" aria-hidden="true"><Icon name="tag" /></span>
+          <h3>Buying in volume?</h3><p><VolumePricing /></p>
         </div>
         {/* TODO(owner): Is a tobacco license required for every trade account, or only for tobacco, vapor, and nicotine? This sentence is unchanged until you decide. (AW-129) */}
         <div className="service">
@@ -164,8 +189,6 @@ export function HomePage({
           <Link className="text-link" to="/apply">How to apply</Link>
         </div>
       </section>
-
-      {/* The brand strip and trust band go here once the owner supplies them (AW-005). */}
 
       <section className="section" id="catalog">
         <div className="section-head">

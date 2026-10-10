@@ -66,9 +66,9 @@ test('one banner holds the skip link, the trade bar and one Apply, the header’
   const pause = banner.getByRole('button', { name: 'Pause announcements' });
   // 'Call' and the number on a wide window, 'Call' alone on a phone; the
   // name always has the number.
-  const call = banner.getByRole('link', { name: /^Call \(205\) 354-4473$/ });
+  const call = banner.getByRole('link', { name: /^Call \(205\) 458-4788$/ });
   await expect(call).toBeVisible();
-  expect(await call.evaluate((el) => el.innerText.trim())).toMatch(testInfo.project.name === 'phone' ? /^Call$/ : /^Call\s+\(205\) 354-4473$/);
+  expect(await call.evaluate((el) => el.innerText.trim())).toMatch(testInfo.project.name === 'phone' ? /^Call$/ : /^Call\s+\(205\) 458-4788$/);
   // The trade bar has no Apply of its own any more.
   await expect(banner.locator('.trade-bar').getByRole('button')).toHaveCount(1);
   // The tab order: skip link, pause, Call.
@@ -148,7 +148,9 @@ test.describe('announcements (WCAG 2.2.2)', () => {
     await page.clock.install();
     await page.goto('/');
     await pointerAway(page);
-    await expect(page.locator('.announcement-list li')).toHaveCount(5);
+    // The trade notice and three announcements: free delivery, will-call and
+    // volume pricing (Net-30 and the discount went, AW-025).
+    await expect(page.locator('.announcement-list li')).toHaveCount(4);
     await expect(shown(page)).toHaveCount(1);
     await expect(shown(page)).toHaveText(NOTICE);
 
@@ -292,7 +294,7 @@ test.describe('the sticky header and the department page', () => {
       expect(Math.abs(now.y - 1500), now.name).toBeLessThanOrEqual(barHeight);
     }
     expect(inBar).toContain('Pause announcements');
-    expect(inBar).toContain('Call (205) 354-4473');
+    expect(inBar).toContain('Call (205) 458-4788');
     // Back in the masthead, the trade bar scrolls away again.
     await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');

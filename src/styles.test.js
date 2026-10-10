@@ -1527,7 +1527,7 @@ describe('one link style (AW-297)', () => {
     '.doc-uploads-note a', '.doc-panel a', '.doc-admin a', '.status-panel p a', '.eligibility-result a', '.error-fallback > p a', '.dialog > .desc a',
     '.form-error a', '.dialog .form-grid a', '.consent-block .consent a', '.photo-credit a', '.order-contact a',
     '.account-link', '.order-account-link', '.account-contact a', '.account-detail-contact a', 'p.notice a', '.notice p a', '.pd-price.is-locked p a',
-    '.quote-paused a', '.drawer-paused a'];
+    '.quote-paused a', '.drawer-paused a', '.service p a'];
   const LOOK = { color: 'var(--link-color)', 'font-weight': '600', 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' };
 
   it('defines the link colour and underline offset once', () => {

@@ -31,3 +31,19 @@ describe('PolicyPage ending (AW-276)', () => {
     expect(heading.parentElement.textContent).toBe(`Contact the trade deskQuestions about what we collect: call ${COMPANY.phone} or email ${COMPANY.email}.`);
   });
 });
+
+// AW-025 (owner answer 2026-10): no Net-30 and no volume discounts; the
+// Payment section says how to ask for volume pricing.
+describe('Trade terms payment (AW-025)', () => {
+  it('names the payment methods and how to ask for volume pricing, and no credit terms or discounts', () => {
+    const { container } = render(<PolicyPage kind="terms" />);
+    const section = screen.getByRole('heading', { level: 2, name: 'Payment' }).parentElement;
+    expect([...section.querySelectorAll('p')].map((p) => p.textContent)).toEqual([
+      'Payment methods are cash, checks, and electronic wiring and transfers.',
+      `For volume pricing, email us or call ${COMPANY.phone}.`,
+    ]);
+    expect(section.querySelector(`a[href="mailto:${COMPANY.email}"]`).textContent).toBe('email us');
+    expect(section.querySelector(`a[href="tel:${COMPANY.phoneRaw}"]`).textContent).toBe(COMPANY.phone);
+    expect(container.textContent).not.toMatch(/net[- ]?30|credit terms|volume discount|up to \d+%/i);
+  });
+});
