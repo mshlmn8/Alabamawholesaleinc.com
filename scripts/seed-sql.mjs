@@ -40,7 +40,9 @@ function rowSql(p) {
     text(p.variantAxis),
     text(p.img),
     text(p.tag),
-    'true',
+    // A row products.js marks `active: false` (the delisted lines, AW-001)
+    // starts inactive; every other row active.
+    p.active === false ? 'false' : 'true',
     requiredText(p.description),
     requiredText(p.sellUnit),
   ];
@@ -122,7 +124,9 @@ export function seedSql(rows) {
     '-- Insert-only (AW-032): a row whose id already exists is left alone (on conflict do',
     '-- nothing), so re-applying this file never overwrites an admin\'s edits to names,',
     '-- brands, tags, prices or the active flag. Corrections to existing rows ship as',
-    '-- idempotent UPDATE data migrations in supabase/migrations/.',
+    '-- idempotent UPDATE data migrations in supabase/migrations/. Rows products.js marks',
+    '-- active: false (the delisted Kratom & Kava and Mushroom Products rows, AW-001) start',
+    '-- inactive.',
     '--',
     '-- No prices (AW-003, AW-002): products.price is set only in the database, through',
     '-- Admin -> Products or a private SQL file under supabase/private/ (gitignored). A new',

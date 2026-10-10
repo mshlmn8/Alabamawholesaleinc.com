@@ -65,12 +65,14 @@ describe('HomePage rails', () => {
     expect(document.querySelectorAll('#new-arrivals .photo-soon, #bestsellers .photo-soon')).toHaveLength(0);
   });
 
-  it('shows one row of four cards in each rail, without the SKU', () => {
+  it('shows one row of four cards at most in each rail, without the SKU', () => {
     expect(RAIL_LENGTH).toBe(4);
     renderHome();
-    for (const id of ['new-arrivals', 'bestsellers']) {
+    // Three products are tagged NEW with a photo since #75 Wava kava, the
+    // fourth card, was delisted (AW-001); staff tag more in Admin -> Products.
+    for (const [id, count] of [['new-arrivals', 3], ['bestsellers', 4]]) {
       const cards = document.querySelectorAll(`#${id} .content-card`);
-      expect(cards, id).toHaveLength(4);
+      expect(cards, id).toHaveLength(count);
       for (const card of cards) {
         const product = PRODUCTS.find((p) => p.name === card.querySelector('h3').textContent);
         const detail = card.querySelector('.card-detail').textContent;
@@ -124,11 +126,17 @@ describe('HomePage sections', () => {
     expect(document.querySelector('.home-hero').nextElementSibling.className).toBe('trust-band');
     expect(document.querySelector('.trust-band').nextElementSibling.className).toBe('services');
     const h2s = [...document.querySelectorAll('h2')].map(text);
-    const order = ['About Alabama Wholesale', 'Services', 'Shop by department', 'New arrivals', 'Bestsellers', 'Disposables, detox,kratom & more.', 'Tobacco, wraps& accessories.', 'Open a trade account'];
+    const order = ['About Alabama Wholesale', 'Services', 'Shop by department', 'New arrivals', 'Bestsellers', 'Disposables, detox,hookah & more.', 'Tobacco, wraps& accessories.', 'Open a trade account'];
     expect(h2s).toEqual(order);
     // The header, menu and footer link to these.
     const ids = [...document.querySelectorAll('section[id]')].map((s) => s.id);
     expect(ids).toEqual(['catalog', 'new-arrivals', 'bestsellers', 'apply']);
+  });
+
+  it('names no kratom, kava or mushroom product anywhere on the page (AW-001)', () => {
+    renderHome();
+    expect(document.body.textContent).not.toMatch(/kratom|kava|mushroom|shroom/i);
+    expect([...document.querySelectorAll('a[href]')].map((a) => a.getAttribute('href')).filter((h) => /kratom|mushroom/.test(h))).toEqual([]);
   });
 
   it('keeps the heading outline whole: h1, then h2, then h3', () => {

@@ -57,9 +57,16 @@ begin
     from public.products where id = 62), '#62 lists Watermelon ice and Kiwi dragon berry separately';
   assert (select variants from public.products where id = 125) = '["Small", "Medium", "Big"]'::jsonb, 'diaper sizes run small to big';
 
-  -- The restricted lines keep their rows and wording (owner decision 2, AW-001).
-  assert (select count(*) from public.products where sub in ('Kratom & Kava', 'Mushroom Products', 'Detox', 'Wellness Pills', 'Honey & Energy') and active) = 37,
-    'the restricted lines are neither removed nor deactivated';
+  -- The restricted lines keep their rows and wording (owner decision 2,
+  -- AW-001). Kratom & Kava and Mushroom Products are delisted (the owner's
+  -- answer, 2026-10): their 22 rows are kept, inactive; the other three lines'
+  -- 14 stay active (#219 moved to Gifts, 20261014101000; test 25).
+  assert (select count(*) from public.products where sub in ('Kratom & Kava', 'Mushroom Products', 'Detox', 'Wellness Pills', 'Honey & Energy')) = 36,
+    'the restricted lines keep their rows';
+  assert (select count(*) from public.products where sub in ('Kratom & Kava', 'Mushroom Products') and not active) = 22,
+    'the delisted lines are inactive, not deleted';
+  assert (select count(*) from public.products where sub in ('Detox', 'Wellness Pills', 'Honey & Energy') and active) = 14,
+    'Detox, Wellness Pills and Honey & Energy stay published';
   assert (select variants from public.products where id = 258) = '["Any flavor"]'::jsonb, 'restricted rows keep their labels';
 end $$;
 

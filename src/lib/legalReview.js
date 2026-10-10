@@ -1,6 +1,10 @@
 // The lines the AW-001 legal-review question names (docs/OWNER-TODO.md):
 // these sub-lines, and the enhancement items of Merchandise -> Honey & Energy.
-// Until the owner answers, nothing lifts them above where they already were:
+// The owner answered for Kratom & Kava and Mushroom Products (2026-10): they
+// are off the site (src/data/delisted.js) and in no catalog the storefront
+// loads; they stay in this list, so nothing would feature one that came back.
+// Detox, Wellness Pills and the enhancement items wait for the answer, and
+// until then nothing lifts them above where they already were:
 // the homepage rails and the Featured sort (merchandising.js), the related
 // products (related.js), a department's description (meta.js) and the boost
 // a search gets for naming a product line (search.js, NEW-027).

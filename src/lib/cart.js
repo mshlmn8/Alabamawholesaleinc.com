@@ -5,7 +5,9 @@
 // AW-046, AW-189, AW-354).
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react';
-import { PRODUCTS as BUNDLED_PRODUCTS } from '../data/products.js';
+// Every bundled row, delisted ones too (AW-001): a stored line of a product
+// that left the catalog keeps its name.
+import { ALL_PRODUCTS as BUNDLED_PRODUCTS } from '../data/products.js';
 import {
   canonicalVariant, isVariantAvailable, lineKey, parseLineKey, requiresVariantChoice, normalizeCart, normalizeOrder, resolveCartItems,
 } from './lines.js';

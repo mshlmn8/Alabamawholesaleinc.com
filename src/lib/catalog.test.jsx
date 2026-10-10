@@ -10,7 +10,7 @@ import {
   catalogIsStale, fetchCatalogRows, hydrateProducts, loadCatalog, resetCatalogColumnsForTests, useCatalog,
 } from './catalog.jsx';
 import { CATALOG, PRODUCTS as BUNDLED } from '../data/products.js';
-import { IMAGE_FILE_ALIASES, currentImageFile } from '../data/catalogAliases.js';
+import { IMAGE_FILE_ALIASES, RETIRED_IMAGE_FILES, currentImageFile } from '../data/catalogAliases.js';
 
 const row = (id, extra = {}) => ({
   id, name: `Product ${id}`, brand: 'Brand', cat: 'TOBACCO', sub: 'Line', sku: `AW-T${id}`, variants: [], variant_axis: null,
@@ -289,6 +289,19 @@ describe('hydrateProducts', () => {
     expect(currentImageFile(' fabulouso.avif ')).toBe('p128-fabuloso.avif');
     expect(currentImageFile('gain.jpg')).toBe('gain.jpg');
     expect(currentImageFile(null)).toBe(null);
+  });
+
+  it('retired photo files: not shipped, named by no row, and a live row naming one shows the placeholder (AW-140)', () => {
+    const files = new Set(readdirSync(resolve(process.cwd(), 'src/assets/products')));
+    const imgs = new Set(CATALOG.map((p) => p.img));
+    for (const name of RETIRED_IMAGE_FILES) {
+      expect(files.has(name), name).toBe(false);
+      expect(imgs.has(name), name).toBe(false);
+      expect(Object.keys(IMAGE_FILE_ALIASES)).not.toContain(name);
+      expect(currentImageFile(name)).toBe(null);
+    }
+    const [p] = hydrateProducts([row(350, { img: 'uncle_al_s_cookies.jpg' })]);
+    expect([p.img, p.picture, p.sharedPhoto]).toEqual([null, null, false]);
   });
 
   it('fills an empty description and sell unit from the bundled copy of the same id', () => {

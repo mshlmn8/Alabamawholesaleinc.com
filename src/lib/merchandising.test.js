@@ -60,18 +60,19 @@ describe('homeRails', () => {
     expect(rails(withRanks, { legacyNewIds: [] })).toEqual({ newArrivals: [76, 1], bestsellers: [218, 10] });
   });
 
-  it('on the bundled catalog: New arrivals follow the NEW tag, keep the restricted product the homepage showed, and Bestsellers are unchanged', () => {
+  it('on the bundled catalog: New arrivals follow the NEW tag, and Bestsellers are unchanged', () => {
     const { newArrivals, bestsellers } = homeRails(PRODUCTS, { limit: 8, hasPhoto });
-    // #342 Dubai chocolate is tagged NEW but has no photo (AW-029); #75 Wava
-    // kava was the 8th old pick; #76 Mazza Shots was cut off and stays off.
-    expect(ids(newArrivals)).toEqual([62, 64, 184, 75]);
+    // #342 Dubai chocolate is tagged NEW but has no photo (AW-029). #75 Wava
+    // kava, the 8th old pick the guard kept, and #76 Mazza Shots are
+    // delisted (AW-001), so three products are NEW with a photo.
+    expect(ids(newArrivals)).toEqual([62, 64, 184]);
     expect(ids(bestsellers)).toEqual([11, 31, 55, 56, 60, 61, 143, 162]);
     expect(ids(newArrivals).every((id) => PRODUCTS.find((x) => x.id === id).tag === 'NEW')).toBe(true);
   });
 
   it('on the bundled catalog, one row of four (AW-060): the guard still compares with the old 8-card homepage', () => {
     const { newArrivals, bestsellers } = homeRails(PRODUCTS, { limit: 4, hasPhoto });
-    expect(ids(newArrivals)).toEqual([62, 64, 184, 75]);
+    expect(ids(newArrivals)).toEqual([62, 64, 184]);
     expect(ids(bestsellers)).toEqual([11, 31, 55, 56]);
   });
 });
@@ -112,10 +113,12 @@ describe('featuredOrder (AW-227)', () => {
     expect(dept('TOBACCO').slice(0, 3)).toEqual([11, 282, 82]);
     // #342 Dubai chocolate is NEW without a photo: the tag still comes first.
     expect(dept('CANDIES').slice(0, 6)).toEqual([162, 166, 169, 171, 184, 342]);
-    // #75, #76 (Kratom & Kava) and #218 (Detox) don't jump to the top.
+    // #218 (Detox, BESTSELLER) doesn't jump to the top; #75 and #76 (Kratom &
+    // Kava, NEW) are delisted (AW-001).
     const novelties = dept('NOVELTIES');
     expect(novelties.slice(0, 4)).toEqual([60, 61, 62, 64]);
-    for (const id of [75, 76, 218]) expect(novelties.indexOf(id), `#${id}`).toBeGreaterThan(4);
+    expect(novelties.indexOf(218)).toBeGreaterThan(4);
+    for (const id of [75, 76]) expect(novelties, `#${id}`).not.toContain(id);
     // The PREMIUM enhancement items (#265, #321, #332) don't either.
     const merch = dept('MERCHANDISE');
     expect(merch[0]).toBe(31);

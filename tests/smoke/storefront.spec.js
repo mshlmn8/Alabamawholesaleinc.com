@@ -729,8 +729,9 @@ test.describe('home sections', () => {
     await expect(services.getByRole('link', { name: '(205) 458-4788' })).toHaveAttribute('href', 'tel:+12054584788');
     await expect(services.getByRole('link', { name: 'How to apply' })).toHaveAttribute('href', '/apply');
     await expect(services).not.toContainText(/net-30|discount/i);
-    for (const id of ['new-arrivals', 'bestsellers']) {
-      await expect(page.locator(`#${id} .content-card`)).toHaveCount(4);
+    // New arrivals has three: #75 Wava kava, its fourth, is delisted (AW-001).
+    for (const [id, count] of [['new-arrivals', 3], ['bestsellers', 4]]) {
+      await expect(page.locator(`#${id} .content-card`)).toHaveCount(count);
       for (const detail of await page.locator(`#${id} .card-detail`).allTextContents()) expect(detail).not.toMatch(/\bAW-/);
     }
     const tiles = page.locator('#catalog .dept-tile');
@@ -833,9 +834,9 @@ test.describe('product photo frame', () => {
 
   test('tall and wide photos are whole, centred and not cropped (AW-009)', async ({ page }) => {
     const errors = trackErrors(page);
-    // 88 Tropical Fantasy, 57 Pure Guard and 70 Shroom Puff are much taller
+    // 88 Tropical Fantasy, 57 Pure Guard and 360 Bug Juice are much taller
     // than wide; 31 BIC and 290 Powerade much wider.
-    for (const [id, shape] of [[88, 'tall'], [57, 'tall'], [70, 'tall'], [31, 'wide'], [290, 'wide']]) {
+    for (const [id, shape] of [[88, 'tall'], [57, 'tall'], [360, 'tall'], [31, 'wide'], [290, 'wide']]) {
       await page.goto(`/product/${id}`);
       const img = page.locator('.pd-media img');
       await expect.poll(() => img.evaluate((el) => el.complete && el.naturalWidth > 0)).toBe(true);

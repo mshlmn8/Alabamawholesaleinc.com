@@ -28,6 +28,22 @@
   to = "/404.html"
   status = 404
 
+# Product lines taken off the site on the owner's instruction (AW-001,
+# src/data/delisted.js): their old addresses move permanently to the
+# department, so a bookmark or a search result lands on Novelties instead of
+# a 404. The build writes no page file for them, and the app redirects the
+# same addresses (resolveRoute in src/lib/routes.js).
+# scripts/netlify-redirects.test.mjs checks one rule per delisted line.
+[[redirects]]
+  from = "/category/novelties/kratom-and-kava"
+  to = "/category/novelties"
+  status = 301
+
+[[redirects]]
+  from = "/category/novelties/mushroom-products"
+  to = "/category/novelties"
+  status = 301
+
 # The app's page paths (src/lib/routes.js, PATH_SECTIONS) are answered with
 # index.html and status 200; the app then shows the page. Any other path
 # gets index.html too, so the app can show its "Page not found" with a

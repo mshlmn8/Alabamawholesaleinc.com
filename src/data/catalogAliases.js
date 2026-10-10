@@ -155,6 +155,9 @@ export const VARIANT_ALIASES = Object.freeze({
   329: Object.freeze({ tips: null }), // RAW tips
   330: Object.freeze({ organic: null }), // High Hemp organic wraps
   331: Object.freeze({ aaa2: 'AAA 2-pack' }), // Panasonic batteries
+  // The owner said #351 is Uncle Al's creme, with no Lemon ice name
+  // (2026-09-28, AW-140): a line saved as 351::lemon-ice is the product.
+  351: Object.freeze({ 'lemon-ice': null }), // Uncle Al's creme
   354: Object.freeze({ small: null }), // Folgers coffee (small)
   356: Object.freeze({ '2gal': '2 gal' }), // Gas cans
   362: Object.freeze({ 'm-size': 'Medium', 'l-size': 'Large' }), // Disposable gloves
@@ -176,11 +179,21 @@ export const IMAGE_FILE_ALIASES = Object.freeze({
   'electrolyte.webp': 'p292-electrolit.webp', // #292
 });
 
+// Photo files taken off the site: a row that still names one shows the
+// "Photo coming soon" placeholder. The owner ruled out the Lemon Ice box
+// #350 and #351 showed (2026-09-28, AW-140); the file is gone, and rows in the
+// live products table keep naming it until the owner applies
+// supabase/migrations/20261014101000_catalog_owner_answers.sql. Never reuse a
+// retired name for another photo.
+export const RETIRED_IMAGE_FILES = Object.freeze(['uncle_al_s_cookies.jpg']);
+
 // The photo file a catalog row's img names today: the new name for a renamed
-// file, otherwise img as it is (another filename, a URL, null). Not
-// Object.hasOwn, which is newer than the browsers the build targets.
+// file, null for a retired one, otherwise img as it is (another filename, a
+// URL, null). Not Object.hasOwn, which is newer than the browsers the build
+// targets.
 export function currentImageFile(img) {
   if (typeof img !== 'string') return img;
   const name = img.trim();
+  if (RETIRED_IMAGE_FILES.includes(name)) return null;
   return Object.prototype.hasOwnProperty.call(IMAGE_FILE_ALIASES, name) ? IMAGE_FILE_ALIASES[name] : img;
 }

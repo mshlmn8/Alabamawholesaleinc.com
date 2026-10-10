@@ -2,6 +2,8 @@
 
 Photos added to `src/assets/products/` for Novelties rows that had none. Each was downloaded from the linked page, checked to be a real image at least 600 px on the long side, and re-encoded to JPEG (quality 85, max 1600 px) only when the original was over ~400 KB. Source type is "manufacturer" when the page belongs to the brand, "retailer" for a store or distributor listing. Replace any file here and the next `npm run dev`/`build` re-renders its sizes.
 
+The Kratom & Kava and Mushroom Products rows below (#69–#76, #281, #285, #296, #299, #307, #312) are delisted (AW-001, October 2026): the rows stay in the catalog as inactive, so their files stay too, but the site shows neither.
+
 | id | Product | Filename | Source URL | Source type | Date |
 | --- | --- | --- | --- | --- | --- |
 | 64 | RAZ 25K | `p64-raz-25k.webp` | https://exoticsdispo.com/products/raz-dc25000 | retailer | 2026-09-27 |
@@ -27,4 +29,4 @@ Photos added to `src/assets/products/` for Novelties rows that had none. Each wa
 | 314 | Coco Nara hookah charcoal | `p314-coco-nara-hookah-charcoal.webp` | https://www.coconaraonline.com/products/coco-nara-hookah-charcoal-coal-120pcs-flat | retailer | 2026-09-27 |
 | 310 | Geek Bar Mate 60K kit (device + pod) | `p310-geek-bar-mate-60k.webp` | https://juicefly.com/product/geek-bar-mate-60k-kit-battery-pod/ | retailer | 2026-09-27 |
 | 311 | Geek Bar Mate 60K pods (identified; photo not added) | — | https://juicefly.com/product/geek-bar-mate-60k-kit-battery-pod/ | retailer | 2026-09-27 |
-| 219 | Happy valentines jar (not identified; two candidates) | — | https://branexwholesale.com/product/happy-valentine-glass-rose-4-small-24-count | retailer | 2026-09-27 |
+| 219 | Happy valentines jar (a novelty gift from a counter jar; moved from Wellness Pills to Gifts by the owner; photo not added) | — | — | owner | 2026-09-28 |

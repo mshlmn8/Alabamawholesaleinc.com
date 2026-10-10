@@ -38,7 +38,7 @@ const hasPhoto = (p) => Boolean(p?.picture?.src || p?.img);
 // Featured order (AW-227), only those with a photo, and never a product in a
 // line under legal review. That is the status quo: this page showed no
 // products before, and the homepage rails keep these lines off the same way.
-// TODO(owner): After the legal review, may the Kratom & Kava, Mushroom Products, Detox, Wellness Pills and Honey & Energy enhancement items be featured on the homepage rails, in the department rows of All products, and lead the department pages' Featured sort? (AW-119, AW-001)
+// TODO(owner): After the legal review, may the Detox, Wellness Pills and Honey & Energy enhancement items be featured on the homepage rails, in the department rows of All products, and lead the department pages' Featured sort? (AW-119, AW-001)
 export function catalogPreview(rows, limit = CATALOG_PREVIEW) {
   return featuredOrder(rows, { hasPhoto }).filter((p) => hasPhoto(p) && !underLegalReview(p)).slice(0, limit);
 }

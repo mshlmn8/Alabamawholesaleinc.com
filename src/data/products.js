@@ -1,4 +1,5 @@
-// 368 SKUs across 8 departments. Edit here to add/remove products. The
+// 368 rows across 8 departments, 346 of them on the site (22 are delisted,
+// AW-001). Edit here to add/remove products. The
 // departments and their product lines are derived from the cat + sub fields
 // below (departmentsFor in ../lib/departments.js) — no separate list to sync.
 //
@@ -37,18 +38,26 @@
 // seed (it raises a notice naming the id), and a new row with a SKU another
 // product already has stops the seed with an error (NEW-022).
 //
-// TODO(owner): After legal review, which of Kratom & Kava, Mushroom Products,
-// Detox, Wellness Pills, and the Honey & Energy enhancement items should be
-// delisted, de-featured, or kept? Do not change those lines until then. (AW-001)
+// Delisted (AW-001, owner answer 2026-10): every Kratom & Kava and Mushroom
+// Products row is `active: false`, kept and never deleted, so order history,
+// print sheets and old carts still name them (src/data/delisted.js). PRODUCTS
+// below leaves them out, the seed writes them inactive, and
+// supabase/migrations/20261014100000_delist_kratom_mushroom.sql deactivates
+// them in a database that already has them.
+//
+// TODO(owner): After legal review, which of Detox, Wellness Pills, and the
+// Honey & Energy enhancement items should be delisted, de-featured, or kept?
+// Do not change those lines until then. (AW-001)
 //
 // TODO(owner): Approve the department and sub-line for each misfiled product
 // before anything is moved. Known examples, left where they are: Seneca filtered
 // cigars (210) and Cheyenne filtered cigars (211) under Tobacco / Cigarettes;
 // gum and mint lumps under Candies / Sweets & Gummies; Tweaker under
 // Merchandise / OTC & Health; Rhino and Hard Steel under Honey & Energy;
-// Happy valentines jar (219) under Wellness Pills; register paper and trash
-// bags split across departments; blue-lotus and hemp items inside Mushroom
-// Products. (AW-070)
+// register paper and trash bags split across departments. (AW-070) Answered
+// so far: Happy valentines jar (219) moved from Wellness Pills to Gifts
+// (2026-09-28), and the blue-lotus and hemp items of Mushroom Products left
+// with that line (AW-001, 2026-10).
 //
 // TODO(owner): Which flavors does the warehouse stock for vape products 60,
 // 61, 64, 65, 66, 67, 68, 254, 310, and 311, or which are sold only as an
@@ -58,7 +67,7 @@
 // TODO(owner): Packshots for the products without a photo (they show "Photo coming soon" and stay off the home rails, AW-029), for the rows that share a photo with a different size or pack (AW-136), and to replace the mismatched (AW-010), retailer-copied (AW-033), banner or collage (AW-034), low-resolution (AW-073) and dark or full-bleed (AW-141) photos; for each photo that shows a flavor the row doesn't list, is that flavor stocked (AW-142)? Photos are unchanged until then.
 // TODO(owner): Which brand is actually stocked for each "Assorted" row (the storefront doesn't print that placeholder), and for #343, which mixes eFrutti and SpongeBob? (AW-286)
 // TODO(owner): Pack size, case count, dimensions and attributes for each product, so the descriptions can be rewritten. Until then they stay as written from the name, brand, line and variants; only five were changed, to spell the product the way its brand and name do (#13 "Havana Leaf", #183 "Extra Gum", #193 "Pure Eyes", #213 "Lil Leaf", #260 "Backwoods True Wraps"; 20261012130000_catalog_fixups.sql). (AW-075)
-// TODO(owner): Is #366 Game Palma Green, are trash bags #95 and #107 the same stock, and which other Uncle Al's flavors are stocked? No rows were removed. #350 "Uncle Al's" (no flavor) still duplicates #351 "Uncle Al's cookies" (Lemon ice, the same photo): is it the same product, another flavor, or a different Uncle Al's item? #350 keeps its own name until then: AW-071 had named it "Uncle Al's cookies", #351's name, and NEW-023 put "Uncle Al's" back. (AW-140)
+// TODO(owner): Is #366 Game Palma Green, and are trash bags #95 and #107 the same stock? No rows were removed. (AW-140) Uncle Al's is answered (2026-09-28): two rows, #350 "Uncle Al's cookies" and #351 "Uncle Al's creme", flavors varying by availability, with no Lemon ice name and no photo.
 // TODO(owner): Approve department renames, and a lawful name for the Honey & Energy line after legal review; names are unchanged until then. (AW-134)
 //
 // Names (AW-071): one style, taken from each row's own name and description:
@@ -71,11 +80,14 @@
 // AW-CHEAP-* codes are Quick Reorder codes) and variant labels are unchanged;
 // supabase/migrations/20261011130000_catalog_names.sql brings rows already in
 // a database in line. Then (20261012130000_catalog_fixups.sql): #65 "RAZ Vue
-// full kit", and #350 is "Uncle Al's" again, as "Uncle Al's cookies" is
-// #351's name (NEW-023, see AW-140 above).
-// TODO(owner): The rows in the lines under legal review keep their names and descriptions (decision 2), so they still mix casing and pack notation: #69-#75, #219, #258, #281, #285, #288, #289, #293, #296, #298-#304, #306, #313 and #341 (e.g. "Shroom puff Gummies", "Hush hit pre rolls 2pk", "Sip happens", "Psyched blue lotus gummies 25ct box"). May they follow the same style after the legal review? May #252's "Cheap" playing cards variant be renamed (its label is a cart key, so it needs an alias), and the AW-CHEAP-* SKUs of #100, #221, #246 and #250 (Quick Reorder codes, so aliases too)? Is #235 "Kuii nata" a nata de coco drink, so it can be named "Kuii nata de coco drink"? #40 "Wrigley's 50¢ gum" keeps its price point: the 50¢ pack is the product. The live database has these names once 20261011130000_catalog_names.sql and 20261012130000_catalog_fixups.sql are applied (BACKEND.md checklist items 21 and 26). (AW-071)
+// full kit", and #350 is "Uncle Al's" again, as "Uncle Al's cookies" was
+// #351's name (NEW-023). Then the owner's names
+// (20261014101000_catalog_owner_answers.sql, AW-140): #350 "Uncle Al's
+// cookies" and #351 "Uncle Al's creme".
+// TODO(owner): The rows in the lines still under legal review keep their names and descriptions (decision 2), so they still mix casing: the Wellness Pills #301-#304 and #341 (e.g. "Better me pills", "Silly dots pills"). May they follow the same style after the legal review? (The delisted Kratom & Kava and Mushroom Products rows keep theirs; #219 keeps its name in Gifts, as the owner said.) May #252's "Cheap" playing cards variant be renamed (its label is a cart key, so it needs an alias), and the AW-CHEAP-* SKUs of #100, #221, #246 and #250 (Quick Reorder codes, so aliases too)? Is #235 "Kuii nata" a nata de coco drink, so it can be named "Kuii nata de coco drink"? #40 "Wrigley's 50¢ gum" keeps its price point: the 50¢ pack is the product. The live database has these names once 20261011130000_catalog_names.sql and 20261012130000_catalog_fixups.sql are applied (BACKEND.md checklist items 21 and 26). (AW-071)
 
 import { productImage, sharedImageFiles } from '../lib/images.js';
+import { isDelisted } from './delisted.js';
 
 export const NAV_ORDER = ['TOBACCO', 'NOVELTIES', 'MERCHANDISE', 'CANDIES', 'FOOD STUFF', 'GROCERY', 'MOTOR OIL', 'DRINKS & BAGS'];
 
@@ -222,29 +234,22 @@ export const CATALOG = [
     description: "Kangvape 8000-puff disposable vape, from the disposable vape line in our Novelties department." },
   { id:  68, name: "Kangvape 65K", brand: "Kangvape", cat: "NOVELTIES", sub: "Disposable Vapes", sku: "AW-KANG-65K", sellUnit: "", variants: [], img: "kang_vape_65k.jpg", tag: null,
     description: "Kangvape 65,000-puff disposable vape, from the disposable vape line in our Novelties department." },
-  // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  { id:  69, name: "Shroom Puff disposable 3 Gram", brand: "Shroom Puff", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-SHROOM-PUFF-DISPOSABLE", sellUnit: "3 g disposable", variantAxis: "Flavor", variants: ["Blue", "Watermelon", "Strawberry", "Pineapple", "Green"], img: "p69-shroom-puff-disposable-3g.jpg", tag: null,
+  // Delisted on the owner's instruction (AW-001, 2026-10): every Kratom & Kava and Mushroom Products row is active: false, kept for order history (src/data/delisted.js).
+  { id:  69, name: "Shroom Puff disposable 3 Gram", brand: "Shroom Puff", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-SHROOM-PUFF-DISPOSABLE", sellUnit: "3 g disposable", variantAxis: "Flavor", variants: ["Blue", "Watermelon", "Strawberry", "Pineapple", "Green"], img: "p69-shroom-puff-disposable-3g.jpg", tag: null, active: false,
     description: "Shroom Puff disposable 3 Gram from the mushroom product line in our Novelties department. Five flavors: Blue, Watermelon, Strawberry, Pineapple and Green." },
-  // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  { id:  70, name: "Shroom Puff Pre rolls 2pk", brand: "Shroom Puff", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-SHROOM-PUFF-PREROLLS-2PK", sellUnit: "2-pack", variants: [], img: "p70-shroom-puff-pre-rolls-2pk.jpg", tag: null,
+  { id:  70, name: "Shroom Puff Pre rolls 2pk", brand: "Shroom Puff", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-SHROOM-PUFF-PREROLLS-2PK", sellUnit: "2-pack", variants: [], img: "p70-shroom-puff-pre-rolls-2pk.jpg", tag: null, active: false,
     description: "Shroom Puff Pre rolls 2pk from the mushroom product line in our Novelties department." },
-  // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  { id:  71, name: "Shroom Puff pre rolls jars", brand: "Shroom Puff", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-SHROOM-PUFF-PREROLLS-JAR", sellUnit: "jar", variants: [], img: "p71-shroom-puff-pre-rolls-jar.jpg", tag: null,
+  { id:  71, name: "Shroom Puff pre rolls jars", brand: "Shroom Puff", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-SHROOM-PUFF-PREROLLS-JAR", sellUnit: "jar", variants: [], img: "p71-shroom-puff-pre-rolls-jar.jpg", tag: null, active: false,
     description: "Shroom Puff pre rolls jars from the mushroom product line in our Novelties department." },
-  // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  { id:  72, name: "Shroom puff Gummies", brand: "Shroom Puff", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-SHROOM-PUFF-GUMMIES", sellUnit: "", variants: [], img: "p72-shroom-puff-gummies.jpg", tag: null,
+  { id:  72, name: "Shroom puff Gummies", brand: "Shroom Puff", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-SHROOM-PUFF-GUMMIES", sellUnit: "", variants: [], img: "p72-shroom-puff-gummies.jpg", tag: null, active: false,
     description: "Shroom puff Gummies from the mushroom product line in our Novelties department." },
-  // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  { id:  73, name: "Mental Health disposable 4 gram", brand: "Mental Health", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-MENTAL-HEALTH-DISP-4G", sellUnit: "4 g disposable", variants: [], img: "p73-mental-health-disposable-4g.webp", tag: null,
+  { id:  73, name: "Mental Health disposable 4 gram", brand: "Mental Health", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-MENTAL-HEALTH-DISP-4G", sellUnit: "4 g disposable", variants: [], img: "p73-mental-health-disposable-4g.webp", tag: null, active: false,
     description: "Mental Health disposable 4 gram from the mushroom product line in our Novelties department." },
-  // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  { id:  74, name: "Mental Health pre rolls 2pk", brand: "Mental Health", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-MENTAL-HEALTH-PREROLLS-2PK", sellUnit: "2-pack", variantAxis: "Flavor", variants: ["Purple dragon", "Strawberry", "Blueberry"], img: "p74-mental-health-pre-rolls-2pk.webp", tag: null,
+  { id:  74, name: "Mental Health pre rolls 2pk", brand: "Mental Health", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-MENTAL-HEALTH-PREROLLS-2PK", sellUnit: "2-pack", variantAxis: "Flavor", variants: ["Purple dragon", "Strawberry", "Blueberry"], img: "p74-mental-health-pre-rolls-2pk.webp", tag: null, active: false,
     description: "Mental Health pre rolls 2pk from the mushroom product line in our Novelties department. Three flavors: Purple dragon, Strawberry and Blueberry." },
-  // TODO(owner): May this Kratom & Kava item be sold and advertised from Alabama? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  { id:  75, name: "Wava kava", brand: "Wava", cat: "NOVELTIES", sub: "Kratom & Kava", sku: "AW-WAVA-KAVA", sellUnit: "", variantAxis: "Flavor", variants: ["Blueberry", "Strawberry banana", "Mango", "Assorted"], img: "p75-wava-kava.webp", tag: "NEW",
+  { id:  75, name: "Wava kava", brand: "Wava", cat: "NOVELTIES", sub: "Kratom & Kava", sku: "AW-WAVA-KAVA", sellUnit: "", variantAxis: "Flavor", variants: ["Blueberry", "Strawberry banana", "Mango", "Assorted"], img: "p75-wava-kava.webp", tag: "NEW", active: false,
     description: "Wava kava from the kratom and kava line in our Novelties department. Four flavors: Blueberry, Strawberry banana, Mango and Assorted." },
-  // TODO(owner): May this Kratom & Kava item be sold and advertised from Alabama? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  { id:  76, name: "Mazza Shots", brand: "Mazza", cat: "NOVELTIES", sub: "Kratom & Kava", sku: "AW-MAZZA-SHOTS", sellUnit: "", variantAxis: "Flavor", variants: ["Purple", "Ruby", "Yellow", "Assorted"], img: "p76-mazza-shots.jpg", tag: "NEW",
+  { id:  76, name: "Mazza Shots", brand: "Mazza", cat: "NOVELTIES", sub: "Kratom & Kava", sku: "AW-MAZZA-SHOTS", sellUnit: "", variantAxis: "Flavor", variants: ["Purple", "Ruby", "Yellow", "Assorted"], img: "p76-mazza-shots.jpg", tag: "NEW", active: false,
     description: "Mazza Shots from the kratom and kava line in our Novelties department. Four flavors: Purple, Ruby, Yellow and Assorted." },
   { id:  77, name: "Slapwoods cigar wraps 5-pack", brand: "Slapwoods", cat: "TOBACCO", sub: "Cigars & Cigarillos", sku: "AW-SLAPWOODS-5PK", sellUnit: "5-pack", variantAxis: "Variety", variants: ["Russian cream", "Natural", "Sweet", "Banana", "Bloodshot", "Black Russian"], img: "slapwoods_5pk.webp", tag: null,
     description: "Slapwoods natural leaf cigar wraps, five wraps per pack. Six varieties: Russian cream, Natural, Sweet, Banana, Bloodshot and Black Russian." },
@@ -536,9 +541,9 @@ export const CATALOG = [
     description: "Champ Detox drinks. Six flavors: Blueberry, Fruit punch, Lemon lime, Açaí berry, Kiwi strawberry and Grape." },
   { id: 218, name: "Herbal Clean QCarbo16", brand: "Herbal Clean", cat: "NOVELTIES", sub: "Detox", sku: "AW-Q-CARBO-16", sellUnit: "", variantAxis: "Flavor", variants: ["Grape", "Red", "Strawberry mango", "Orange"], img: "p_qcarbo.jpg", tag: "BESTSELLER",
     description: "Herbal Clean QCarbo16 detox drink, 16 oz. Four flavors: Grape, Red, Strawberry mango and Orange." },
-  // TODO(owner): Is this Wellness Pills item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  { id: 219, name: "Happy valentines jar", brand: "Happy", cat: "NOVELTIES", sub: "Wellness Pills", sku: "AW-HAPPY-VALENTINES", sellUnit: "", variantAxis: "Variety", variants: ["4 inch", "6 inch", "Colored"], img: null, tag: null,
-    description: "Happy valentines jar from the wellness pill line in our Novelties department. Three varieties: 4 inch, 6 inch and Colored." },
+  // A novelty gift, not a pill: the owner moved it from Wellness Pills to Gifts (2026-09-28; AW-070, AW-001). Name and variants are unchanged.
+  { id: 219, name: "Happy valentines jar", brand: "Happy", cat: "NOVELTIES", sub: "Gifts", sku: "AW-HAPPY-VALENTINES", sellUnit: "", variantAxis: "Variety", variants: ["4 inch", "6 inch", "Colored"], img: null, tag: null,
+    description: "Happy valentines jar, a novelty gift sold from a counter jar. Three varieties: 4 inch, 6 inch and Colored." },
   { id: 220, name: "Scales", brand: "Assorted", cat: "NOVELTIES", sub: "Smoke Accessories", sku: "AW-SCALES", sellUnit: "", variantAxis: "Size", variants: ["Big", "Medium", "Small"], img: null, tag: null,
     description: "Scales from the smoke accessory line in our Novelties department. Three sizes: Big, Medium and Small." },
   { id: 221, name: "Value scales", brand: "Assorted", cat: "NOVELTIES", sub: "Smoke Accessories", sku: "AW-CHEAP-SCALES", sellUnit: "", variantAxis: "Size", variants: ["Big", "Medium", "Small"], img: null, tag: null,
@@ -615,9 +620,7 @@ export const CATALOG = [
     description: "RAW pre-rolled cones in Classic, Organic and Black. Six varieties: Classic 6X, Classic 3X, Organic 6X, Organic 3X, Black 6X and Black 3X." },
   { id: 257, name: "TOP rolling papers", brand: "TOP", cat: "TOBACCO", sub: "Papers & Cones", sku: "AW-TOP-PAPER", sellUnit: "", variantAxis: "Format", variants: ["Jar", "Box"], img: "top_paper.jpg", tag: null,
     description: "TOP fine gummed rolling papers. Two formats: Jar and Box." },
-  // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  // TODO(owner): Its only variant "Any flavor" is no choice, but it stays while this line is under legal review (decision 2). May it be removed like the other one-item variants afterwards? (AW-138)
-  { id: 258, name: "Psyched pre rolls jars", brand: "Psyched", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-PSYCHED-PRE-ROLLS", sellUnit: "jar", variants: ["Any flavor"], img: null, tag: null,
+  { id: 258, name: "Psyched pre rolls jars", brand: "Psyched", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-PSYCHED-PRE-ROLLS", sellUnit: "jar", variants: ["Any flavor"], img: null, tag: null, active: false,
     description: "Psyched pre rolls jars from the mushroom product line in our Novelties department. Stocked in one variety: Any flavor." },
   { id: 259, name: "Paper plates", brand: "Assorted", cat: "GROCERY", sub: "Paper & Plastic", sku: "AW-PAPER-PLATES", sellUnit: "", variantAxis: "Size", variants: ["Big", "Small"], img: null, tag: null,
     description: "Paper plates from the paper and plastic line in our Grocery department. Two sizes: Big and Small." },
@@ -665,8 +668,7 @@ export const CATALOG = [
     description: "Maruchan Yakisoba noodle trays. Two flavors: Beef and Chicken." },
   { id: 280, name: "Coastal motor oil", brand: "Coastal", cat: "MOTOR OIL", sub: "Motor Oil", sku: "AW-COASTAL", sellUnit: "", variantAxis: "Type", variants: ["5W-30", "5W-20"], img: "p280-coastal-motor-oil.jpg", tag: null,
     description: "Coastal synthetic blend motor oil in quarts. Two grades: 5W-30 and 5W-20." },
-  // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  { id: 281, name: "Hush hit pre rolls 2pk", brand: "Hush Hit", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-HUSH-HIT-PRE-ROLLS", sellUnit: "2-pack", variants: ["Blue dream"], img: "p281-hush-hit-pre-rolls-2pk.jpg", tag: null,
+  { id: 281, name: "Hush hit pre rolls 2pk", brand: "Hush Hit", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-HUSH-HIT-PRE-ROLLS", sellUnit: "2-pack", variants: ["Blue dream"], img: "p281-hush-hit-pre-rolls-2pk.jpg", tag: null, active: false,
     description: "Hush hit pre rolls 2pk from the mushroom product line in our Novelties department. Stocked in one variety: Blue dream." },
   { id: 282, name: "JOB rolling papers", brand: "JOB", cat: "TOBACCO", sub: "Papers & Cones", sku: "AW-JOB-PAPERS", sellUnit: "", variantAxis: "Size", variants: ["1.5", "1.25", "1.0", "1.5 slim"], img: "job_papers.jpg", tag: "BESTSELLER",
     description: "JOB rolling papers. Four sizes: 1.5, 1.25, 1.0 and 1.5 slim." },
@@ -674,18 +676,15 @@ export const CATALOG = [
     description: "Duct tape from the hardware line in our Grocery department." },
   { id: 284, name: "Clear tape", brand: "Assorted", cat: "GROCERY", sub: "Hardware", sku: "AW-CLEAR-TAPE", sellUnit: "", variants: [], img: null, tag: null,
     description: "Clear tape from the hardware line in our Grocery department." },
-  // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  { id: 285, name: "Shroom bang pre rolls 2pk", brand: "Shroom Bang", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-SHROOM-BANG-PRE-ROLLS", sellUnit: "2-pack", variantAxis: "Color", variants: ["Purple", "Blue"], img: "p285-shroom-bang-pre-rolls-2pk.webp", tag: null,
+  { id: 285, name: "Shroom bang pre rolls 2pk", brand: "Shroom Bang", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-SHROOM-BANG-PRE-ROLLS", sellUnit: "2-pack", variantAxis: "Color", variants: ["Purple", "Blue"], img: "p285-shroom-bang-pre-rolls-2pk.webp", tag: null, active: false,
     description: "Shroom bang pre rolls 2pk from the mushroom product line in our Novelties department. Two colors: Purple and Blue." },
   { id: 286, name: "AA Cellular Bluetooth headphones", brand: "AA Cellular", cat: "MERCHANDISE", sub: "Electronics", sku: "AW-AA-CELLULAR-BLUETOOTH", sellUnit: "", variants: [], img: null, tag: null,
     description: "AA Cellular Bluetooth headphones, from the electronics line in our Merchandise department." },
   { id: 287, name: "Eagle Torch lighters", brand: "Eagle Torch", cat: "MERCHANDISE", sub: "Lighters & Torches", sku: "AW-EAGLE-TORCHES", sellUnit: "", variantAxis: "Size", variants: ["Big", "Medium", "Small"], img: "eagles_torches_3.jpg", tag: null,
     description: "Eagle Torch lighters in counter displays. Three sizes: Big, Medium and Small." },
-  // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  { id: 288, name: "Blue monkey pre rolls 2pk", brand: "Blue Monkey", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-BLUE-MONKEY-PRE-ROLLS", sellUnit: "2-pack", variantAxis: "Flavor", variants: ["Space monkey", "Blue razz"], img: null, tag: null,
+  { id: 288, name: "Blue monkey pre rolls 2pk", brand: "Blue Monkey", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-BLUE-MONKEY-PRE-ROLLS", sellUnit: "2-pack", variantAxis: "Flavor", variants: ["Space monkey", "Blue razz"], img: null, tag: null, active: false,
     description: "Blue monkey pre rolls 2pk from the mushroom product line in our Novelties department. Two flavors: Space monkey and Blue razz." },
-  // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  { id: 289, name: "Psyched disposable 9000mg", brand: "Psyched", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-PSYCHED-DISPOSABLE", sellUnit: "", variants: ["Snow lotus"], img: null, tag: null,
+  { id: 289, name: "Psyched disposable 9000mg", brand: "Psyched", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-PSYCHED-DISPOSABLE", sellUnit: "", variants: ["Snow lotus"], img: null, tag: null, active: false,
     description: "Psyched disposable 9000mg from the mushroom product line in our Novelties department. Stocked in one variety: Snow lotus." },
   { id: 290, name: "Powerade (big)", brand: "Powerade", cat: "DRINKS & BAGS", sub: "Sports Drinks", sku: "AW-POWERADE-BIG", sellUnit: "", variantAxis: "Flavor", variants: ["Blue", "Red", "Grape", "Yellow"], img: "powerade_20oz.webp", tag: null,
     description: "Powerade in the big bottle. Four flavors: Blue, Red, Grape and Yellow." },
@@ -693,26 +692,21 @@ export const CATALOG = [
     description: "Powerade in the small bottle. Four flavors: Blue, Red, Grape and Yellow." },
   { id: 292, name: "Electrolit", brand: "Electrolit", cat: "DRINKS & BAGS", sub: "Energy Drinks", sku: "AW-ELECTROLIT", sellUnit: "", variants: ["Blue"], img: "p292-electrolit.webp", tag: null,
     description: "Electrolit electrolyte hydration drink. Stocked in one variety: Blue." },
-  // TODO(owner): May this Kratom & Kava item be sold and advertised from Alabama? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  { id: 293, name: "Sip happens", brand: "Sip Happens", cat: "NOVELTIES", sub: "Kratom & Kava", sku: "AW-SIP-HAPPENS", sellUnit: "", variants: [], img: null, tag: null,
+  { id: 293, name: "Sip happens", brand: "Sip Happens", cat: "NOVELTIES", sub: "Kratom & Kava", sku: "AW-SIP-HAPPENS", sellUnit: "", variants: [], img: null, tag: null, active: false,
     description: "Sip happens from the kratom and kava line in our Novelties department." },
   { id: 294, name: "PIK nicotine pouches 16mg", brand: "PIK", cat: "TOBACCO", sub: "Pouches & ZYN", sku: "AW-PIK-16MG", sellUnit: "can of 20", variants: ["Wintergreen"], img: "pik_16mg.jpg", tag: null,
     description: "PIK 16mg nicotine pouches, 20 per can. Stocked in one variety: Wintergreen." },
   { id: 295, name: "Snack wraps", brand: "Assorted", cat: "FOOD STUFF", sub: "Chips & Crackers", sku: "AW-SNACK-WRAPS", sellUnit: "", variantAxis: "Size", variants: ["40ct", "12ct"], img: null, tag: null,
-    description: "Snack wraps from the chips and crackers line in our Food Stuff department. Two sizes: 40ct and 12ct." },
-  // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  { id: 296, name: "Jelly holes pre rolls", brand: "Jelly Holes", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-JELLY-HOLES-PRE-ROLLS", sellUnit: "", variants: ["Dirty girl"], img: "p296-jelly-holes-pre-rolls.jpg", tag: null,
+    description: "Snack wraps, a chips brand. Two sizes: 40ct and 12ct. Flavors vary by availability." },
+  { id: 296, name: "Jelly holes pre rolls", brand: "Jelly Holes", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-JELLY-HOLES-PRE-ROLLS", sellUnit: "", variants: ["Dirty girl"], img: "p296-jelly-holes-pre-rolls.jpg", tag: null, active: false,
     description: "Jelly holes pre rolls from the mushroom product line in our Novelties department. Stocked in one variety: Dirty girl." },
   { id: 297, name: "Toothbrushes", brand: "Assorted", cat: "GROCERY", sub: "Personal Care", sku: "AW-TOOTHBRUSHES", sellUnit: "", variants: [], img: null, tag: null,
     description: "Toothbrushes from the personal care line in our Grocery department." },
-  // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  { id: 298, name: "Shroom rolls pre rolls jars", brand: "Shroom Rolls", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-SHROOM-ROLLS-PRE-ROLLS", sellUnit: "jar", variants: [], img: null, tag: null,
+  { id: 298, name: "Shroom rolls pre rolls jars", brand: "Shroom Rolls", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-SHROOM-ROLLS-PRE-ROLLS", sellUnit: "jar", variants: [], img: null, tag: null, active: false,
     description: "Shroom rolls pre rolls jars from the mushroom product line in our Novelties department." },
-  // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  { id: 299, name: "Psyched 6000mg disposable", brand: "Psyched", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-PSYCHED-6000MG", sellUnit: "", variants: ["Snow lotus"], img: "p299-psyched-6000mg-disposable.webp", tag: null,
+  { id: 299, name: "Psyched 6000mg disposable", brand: "Psyched", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-PSYCHED-6000MG", sellUnit: "", variants: ["Snow lotus"], img: "p299-psyched-6000mg-disposable.webp", tag: null, active: false,
     description: "Psyched 6000mg disposable from the mushroom product line in our Novelties department. Stocked in one variety: Snow lotus." },
-  // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  { id: 300, name: "Melted mushroom pre rolls 2pk", brand: "Melted", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-MELTED-MUSHROOM", sellUnit: "2-pack", variants: ["Blue razz"], img: null, tag: null,
+  { id: 300, name: "Melted mushroom pre rolls 2pk", brand: "Melted", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-MELTED-MUSHROOM", sellUnit: "2-pack", variants: ["Blue razz"], img: null, tag: null, active: false,
     description: "Melted mushroom pre rolls 2pk from the mushroom product line in our Novelties department. Stocked in one variety: Blue razz." },
   // TODO(owner): Is this Wellness Pills item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
   { id: 301, name: "Xuno pills", brand: "Xuno", cat: "NOVELTIES", sub: "Wellness Pills", sku: "AW-XUNO-PILLS", sellUnit: "", variants: [], img: null, tag: null,
@@ -728,11 +722,9 @@ export const CATALOG = [
     description: "Third eye pills from the wellness pill line in our Novelties department." },
   { id: 305, name: "Tyson 2.0 blunt wraps", brand: "Tyson 2.0", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-TYSON-WRAPS", sellUnit: "", variants: [], img: "tyson_wraps.jpg", tag: null,
     description: "Tyson 2.0 blunt wraps by Futurola in the counter display box." },
-  // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  { id: 306, name: "Stoned mushroom gummies bags regular", brand: "Stoned", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-STONED-MUSHROOM", sellUnit: "", variants: [], img: null, tag: null,
+  { id: 306, name: "Stoned mushroom gummies bags regular", brand: "Stoned", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-STONED-MUSHROOM", sellUnit: "", variants: [], img: null, tag: null, active: false,
     description: "Stoned mushroom gummies bags regular from the mushroom product line in our Novelties department." },
-  // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  { id: 307, name: "Stoned honey mushroom bags", brand: "Stoned", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-STONED-HONEY-MUSHROOM", sellUnit: "", variants: [], img: "p307-stoned-honey-mushroom-bags.webp", tag: null,
+  { id: 307, name: "Stoned honey mushroom bags", brand: "Stoned", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-STONED-HONEY-MUSHROOM", sellUnit: "", variants: [], img: "p307-stoned-honey-mushroom-bags.webp", tag: null, active: false,
     description: "Stoned honey mushroom bags from the mushroom product line in our Novelties department." },
   // TODO(owner): May this detox product (described as synthetic urine) be sold here? Awaiting legal/compliance review; kept as it is until then (AW-001)
   { id: 308, name: "UPass", brand: "UPass", cat: "NOVELTIES", sub: "Detox", sku: "AW-UPASS", sellUnit: "", variants: [], img: "upass.webp", tag: null,
@@ -743,11 +735,9 @@ export const CATALOG = [
     description: "Geek Bar Mate from the disposable vape line in our Novelties department." },
   { id: 311, name: "Geek Bar Mate 60K pods", brand: "Geek Bar", cat: "NOVELTIES", sub: "Vape Pods", sku: "AW-GEEKBAR-MATE-PODS", sellUnit: "", variants: [], img: null, tag: null,
     description: "Geek Bar Mate pods from the vape pod line in our Novelties department." },
-  // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  { id: 312, name: "Stoned blue lotus gummies bags", brand: "Stoned", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-STONED-BLUE-LOTUS", sellUnit: "", variants: [], img: "p312-stoned-blue-lotus-gummies.webp", tag: null,
+  { id: 312, name: "Stoned blue lotus gummies bags", brand: "Stoned", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-STONED-BLUE-LOTUS", sellUnit: "", variants: [], img: "p312-stoned-blue-lotus-gummies.webp", tag: null, active: false,
     description: "Stoned blue lotus gummies bags from the mushroom product line in our Novelties department." },
-  // TODO(owner): Is this Mushroom Products item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
-  { id: 313, name: "Psyched blue lotus gummies 25ct box", brand: "Psyched", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-PSYCHED-BLUE-LOTUS", sellUnit: "25-count box", variants: [], img: null, tag: null,
+  { id: 313, name: "Psyched blue lotus gummies 25ct box", brand: "Psyched", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-PSYCHED-BLUE-LOTUS", sellUnit: "25-count box", variants: [], img: null, tag: null, active: false,
     description: "Psyched blue lotus gummies 25ct box from the mushroom product line in our Novelties department." },
   { id: 314, name: "Coco Nara hookah charcoal", brand: "Coco Nara", cat: "NOVELTIES", sub: "Hookah & Shisha", sku: "AW-COCO-NARA-CHARCOAL", sellUnit: "", variantAxis: "Size", variants: ["Small", "Medium", "Big", "1 kg"], img: "p314-coco-nara-hookah-charcoal.webp", tag: null,
     description: "Coco Nara coconut hookah charcoal. Four sizes: Small, Medium, Big and 1 kg." },
@@ -829,10 +819,11 @@ export const CATALOG = [
     description: "Oreo cookies in single-serve packs. Stocked in one variety: Regular." },
   { id: 349, name: "Nutter Butter cookies", brand: "Nutter Butter", cat: "FOOD STUFF", sub: "Cookies", sku: "AW-NUTTER-BUTTER", sellUnit: "", variants: ["Regular"], img: "p349-nutter-butter-cookies.png", tag: null,
     description: "Nutter Butter peanut butter sandwich cookies. Stocked in one variety: Regular." },
-  { id: 350, name: "Uncle Al's", brand: "Uncle Al's", cat: "FOOD STUFF", sub: "Cookies", sku: "AW-UNCLE-AL-S", sellUnit: "", variants: [], img: "uncle_al_s_cookies.jpg", tag: null,
-    description: "Uncle Al's cookies, from the cookie line in our Food Stuff department." },
-  { id: 351, name: "Uncle Al's cookies", brand: "Uncle Al's", cat: "FOOD STUFF", sub: "Cookies", sku: "AW-UNCLE-AL-S-COOKIES", sellUnit: "", variants: ["Lemon ice"], img: "uncle_al_s_cookies.jpg", tag: null,
-    description: "Uncle Al's cookies in single-serve packs. Stocked in one variety: Lemon ice." },
+  // The owner's answer (2026-09-28, AW-140): two rows, #350 cookies and #351 creme, with no Lemon ice name and no photo (the old one showed a Lemon Ice box). #351 keeps its SKU, a Quick Reorder code.
+  { id: 350, name: "Uncle Al's cookies", brand: "Uncle Al's", cat: "FOOD STUFF", sub: "Cookies", sku: "AW-UNCLE-AL-S", sellUnit: "", variants: [], img: null, tag: null,
+    description: "Uncle Al's cookies, from the cookie line in our Food Stuff department. Flavors vary by availability." },
+  { id: 351, name: "Uncle Al's creme", brand: "Uncle Al's", cat: "FOOD STUFF", sub: "Cookies", sku: "AW-UNCLE-AL-S-COOKIES", sellUnit: "", variants: [], img: null, tag: null,
+    description: "Uncle Al's creme, from the cookie line in our Food Stuff department. Flavors vary by availability." },
   { id: 352, name: "Louisiana Hot Sauce", brand: "Louisiana", cat: "FOOD STUFF", sub: "Sauces & Salts", sku: "AW-LOUISIANA-HOT", sellUnit: "", variants: [], img: "louisiana_hot_sauce.jpg", tag: null,
     description: "Louisiana Hot Sauce bottles, from the sauces and salts line in our Food Stuff department." },
   { id: 353, name: "Instant coffee", brand: "Assorted", cat: "FOOD STUFF", sub: "Coffee", sku: "AW-INSTANT-COFFEE", sellUnit: "", variantAxis: "Size", variants: ["Small", "Big"], img: null, tag: null,
@@ -876,12 +867,26 @@ export const CATALOG = [
 // or else the size or format word its name has (photoSizeWord in
 // ../lib/format.js); a product page without either says the photo shows a
 // related pack or size, and the photo's alt calls it representative. The live
-// catalog is marked the same way (hydrateProducts in ../lib/catalog.jsx).
-export const SHARED_IMAGES = sharedImageFiles(CATALOG);
-export const PRODUCTS = CATALOG.map((p) => ({ ...p, ...productImage(p.img), sharedPhoto: SHARED_IMAGES.has(p.img) }));
+// catalog is marked the same way (hydrateProducts in ../lib/catalogRows.js).
+// Only the rows on the site count: a photo an inactive row also names is not
+// shared on the storefront.
+//
+// A row is on the site unless it is inactive (`active: false`) or delisted
+// (./delisted.js, AW-001), the same rule as the live catalog, which reads only
+// active rows and leaves out the delisted ones.
+const listed = (p) => p.active !== false && !isDelisted(p);
+export const SHARED_IMAGES = sharedImageFiles(CATALOG.filter(listed));
+const withPhoto = (p) => ({ ...p, ...productImage(p.img), sharedPhoto: SHARED_IMAGES.has(p.img) });
+// The storefront's bundled catalog: the rows on the site.
+export const PRODUCTS = CATALOG.filter(listed).map(withPhoto);
+// Every row, inactive and delisted ones too, in the same shape: where a
+// product that left the catalog still needs its name, department or sell unit
+// (a stored cart line, an old order's print sheet).
+export const ALL_PRODUCTS = CATALOG.map(withPhoto);
 
 // The old hand-picked New arrivals row on home. The row now follows the NEW
 // tag and the homepage rank (src/lib/merchandising.js, AW-119); this list
 // only breaks ties between unranked products, and tells the AW-001 guard
-// there what the homepage showed before.
+// there what the homepage showed before. #75 and #76 are delisted (AW-001),
+// so they are in no catalog and the rule passes over them.
 export const NEW_ARRIVALS_IDS = [61, 62, 64, 31, 171, 167, 342, 184, 75, 76];

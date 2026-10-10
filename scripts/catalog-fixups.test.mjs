@@ -14,6 +14,11 @@ import { seedSql } from './seed-sql.mjs';
 
 const read = (path) => readFileSync(resolve(import.meta.dirname, '..', path), 'utf8');
 const MIGRATION = read('supabase/migrations/20261012130000_catalog_fixups.sql');
+// The catalog files after it that change the same rows, in release order:
+// 20261014101000 gives #350 and #351 the owner's names (AW-140), the values
+// products.js has now. scripts/catalog-owner-answers.test.mjs tests it.
+const LATER = [read('supabase/migrations/20261014101000_catalog_owner_answers.sql')];
+const applyLater = async () => { for (const sql of LATER) await db.exec(sql); };
 const DB_TEST = read('supabase/tests/22_catalog_fixups.sql');
 
 // What each row held before this migration (the previous seed, and the live
@@ -39,7 +44,7 @@ const COLUMNS = { sku: 'sku', name: 'name', description: 'description', sell_uni
 const SCHEMA = `
   create table public.products (
     id integer primary key, name text not null, brand text not null, cat text not null, sub text not null, sku text not null,
-    variants jsonb not null default '[]'::jsonb, variant_axis text, img text, tag text,
+    variants jsonb not null default '[]'::jsonb, variant_axis text, unavailable_variants jsonb not null default '[]'::jsonb, img text, tag text,
     active boolean not null default true, description text, sell_unit text not null default '', price numeric(10, 2)
   );
   create unique index products_sku_upper_key on public.products (upper(btrim(sku)));
@@ -91,7 +96,7 @@ describe('20261012130000_catalog_fixups.sql', () => {
     expect([...ids].sort((a, b) => a - b)).toEqual(Object.keys(BEFORE).map(Number));
   });
 
-  it('brings the live database\'s values to products.js, once', async () => {
+  it('brings the live database\'s values to products.js, once, with the later catalog files', async () => {
     const seeded = await rows();
     expect(seeded).toEqual(expected());
     for (const [id, before] of Object.entries(BEFORE)) {
@@ -101,13 +106,18 @@ describe('20261012130000_catalog_fixups.sql', () => {
     }
     expect(await rows()).not.toEqual(seeded);
     await db.exec(MIGRATION);
+    // #350 is "Uncle Al's" between this file and 20261014101000 (NEW-023).
+    expect((await rows()).find((r) => r.id === 350).name).toBe("Uncle Al's");
+    await applyLater();
     expect(await rows()).toEqual(expected());
     await db.exec(MIGRATION);
+    await applyLater();
     expect(await rows()).toEqual(expected());
   });
 
-  it('changes nothing on a database seeded from products.js', async () => {
+  it('changes nothing on a database seeded from products.js, with the later catalog files after it', async () => {
     await db.exec(MIGRATION);
+    await applyLater();
     expect(await rows()).toEqual(expected());
   });
 

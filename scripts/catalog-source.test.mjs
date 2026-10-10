@@ -112,6 +112,15 @@ describe('loadCatalogSource', () => {
     expect(source.rows.map((r) => r.id)).toEqual([2, 5]);
   });
 
+  it('leaves out the delisted products, which the live table marks active until 20261014100000 is applied (AW-001)', async () => {
+    const { impl } = fakeFetch(() => ({ body: [
+      row(1), row(75, { cat: 'NOVELTIES', sub: 'Kratom & Kava' }), row(307, { cat: 'NOVELTIES', sub: 'Mushroom Products' }),
+      row(9001, { cat: 'NOVELTIES', sub: 'Mushroom Products' }), row(217, { cat: 'NOVELTIES', sub: 'Detox' }),
+    ] }));
+    const source = await loadCatalogSource({ env: ENV, fetchImpl: impl, warn: () => {} });
+    expect(source.rows.map((r) => r.id)).toEqual([1, 217]);
+  });
+
   it('falls back to the bundled catalog, with a warning, when it cannot use the backend', async () => {
     const cases = [
       [{ ...ENV, ALLOW_NO_BACKEND: '1' }, () => ({ body: [row(1)] }), /ALLOW_NO_BACKEND=1/],

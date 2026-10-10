@@ -23,6 +23,7 @@ import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { SUPABASE_URL_PATTERN } from './build-env.mjs';
+import { isDelisted } from '../src/data/delisted.js';
 
 const HEAD_COLUMNS = 'id,name,brand,cat,sub,sku,img,active,description,sell_unit';
 // Tried in order while the database answers 42703 (a missing column):
@@ -93,14 +94,18 @@ export async function fetchLiveRows({ url, key, columns, fetchImpl = globalThis.
   return rows;
 }
 
-// Rows with a positive whole-number id, each once.
-function validRows(rows) {
+// Active rows with a positive whole-number id, each once, and none of the
+// delisted ones (src/data/delisted.js, AW-001): the live table marks those
+// active until 20261014100000_delist_kratom_mushroom.sql is applied, and
+// the storefront leaves them out either way, so neither the sitemap nor a
+// page file may list them.
+export function validRows(rows) {
   const seen = new Set();
   return rows.filter((row) => {
     const id = Number(row?.id);
     if (!Number.isInteger(id) || id < 1 || seen.has(id)) return false;
     seen.add(id);
-    return row.active !== false;
+    return row.active !== false && !isDelisted(row);
   });
 }
 

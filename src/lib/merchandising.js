@@ -55,12 +55,13 @@ export function homeRails(products, { limit = RAIL_LIMIT, hasPhoto = photoOf, le
 
   // Status-quo guard (owner decision 2): an unranked product in a line under
   // legal review is featured only where the homepage before this change
-  // would have shown it (today that keeps #75 Wava kava, the 8th old New
-  // arrivals pick, and keeps #76 Mazza Shots and #218 off). Without it,
+  // would have shown it (today that keeps #218, a Detox BESTSELLER, off;
+  // #75 Wava kava and #76 Mazza Shots, which it used to decide on, are
+  // delisted, AW-001). Without it,
   // following the tags would add restricted products to the homepage. A
   // homepage rank set by staff still features them. featuredOrder applies the
   // same rule to the department pages' Featured sort.
-  // TODO(owner): After the legal review, may the Kratom & Kava, Mushroom Products, Detox, Wellness Pills and Honey & Energy enhancement items be featured on the homepage rails, and lead the department pages' Featured sort, when they are tagged NEW, BESTSELLER, DEAL or PREMIUM, or only when staff rank them (as now), or never? (AW-119, AW-001)
+  // TODO(owner): After the legal review, may the Detox, Wellness Pills and Honey & Energy enhancement items be featured on the homepage rails, and lead the department pages' Featured sort, when they are tagged NEW, BESTSELLER, DEAL or PREMIUM, or only when staff rank them (as now), or never? (AW-119, AW-001)
   const byId = new Map(shown.map((p) => [idOf(p), p]));
   const before = {
     newArrivals: new Set(legacyNewIds.map((id) => byId.get(id)).filter(Boolean).slice(0, legacyLimit).map(idOf)),

@@ -6,7 +6,7 @@ import {
   variantCount, variantSku, requiresVariantChoice,
 } from './lines.js';
 import { SKU_ALIASES, VARIANT_ALIASES } from '../data/catalogAliases.js';
-import { PRODUCTS } from '../data/products.js';
+import { ALL_PRODUCTS, PRODUCTS } from '../data/products.js';
 
 const P = [
   { id: 1, sku: 'AW-SS', name: 'Cigarillos', variants: ['Diamond', 'Red'] },
@@ -399,8 +399,15 @@ describe('catalog corrections (AW-135, AW-138, AW-126)', () => {
 
 describe('the bundled catalog and its aliases', () => {
   it('finds every old code, and every old variant slug, on the product it became', () => {
+    const listed = new Set(PRODUCTS.map((p) => p.sku));
     for (const [oldSku, newSku] of Object.entries(SKU_ALIASES)) {
       const res = resolveSkuLine(PRODUCTS, oldSku);
+      // A delisted product's old code finds nothing, like its new one (AW-001).
+      if (!listed.has(newSku)) {
+        expect([oldSku, res.status]).toEqual([oldSku, 'not-found']);
+        expect(ALL_PRODUCTS.find((p) => p.sku === newSku)?.active, newSku).toBe(false);
+        continue;
+      }
       expect([oldSku, res.product?.sku]).toEqual([oldSku, newSku]);
       expect(['ok', 'choose-variant']).toContain(res.status);
     }

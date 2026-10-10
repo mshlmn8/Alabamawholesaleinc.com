@@ -481,7 +481,7 @@ test.describe('the sticky header and the department page', () => {
     await expect(chips).not.toBeInViewport();
 
     await page.setViewportSize({ width: 390, height: 844 });
-    for (const path of ['/category/tobacco/wraps-and-leafs', '/category/novelties/mushroom-products']) {
+    for (const path of ['/category/tobacco/wraps-and-leafs', '/category/novelties/hookah-and-shisha']) {
       await page.goto(path);
       const current = page.locator('.sub-pills [aria-current="page"]');
       await expect(current).toBeInViewport({ ratio: 1 });

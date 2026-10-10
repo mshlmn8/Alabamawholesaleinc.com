@@ -208,7 +208,8 @@ export const HERO_SLIDES = [
 // Bestsellers rails don't already show. None is a nicotine product, because
 // the tiles carry no FDA statement, and none is from a line waiting on the
 // legal review (AW-001). Novelties' two biggest lines are exactly those
-// (Mushroom Products, Disposable Vapes), so its photo comes from Hookah &
+// (Disposable Vapes, nicotine; Wellness Pills, under review; Mushroom
+// Products, the biggest before, is delisted), so its photo comes from Hookah &
 // Shisha. A product missing from the live catalog, or without a photo, gives
 // way to the first suitable one in the department's biggest line that has
 // one (departmentPhoto in src/pages/HomePage.jsx).

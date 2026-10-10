@@ -55,13 +55,15 @@ supabase/migrations/20261012110000_carts.sql
 supabase/migrations/20261012120000_product_description_hidden.sql
 supabase/migrations/20261012130000_catalog_fixups.sql
 supabase/migrations/20261012140000_admin_import_create.sql
+supabase/migrations/20261014100000_delist_kratom_mushroom.sql
+supabase/migrations/20261014101000_catalog_owner_answers.sql
 supabase/seed/products.sql
 ```
 
 On a project that is already running, apply only the migrations it doesn't
 have yet, in that order, then the seed, then deploy the frontend (see the
 release checklist at the end of this file). The live project has the files
-up to `20260927180000`; the twenty-seven `20261008…`/`20261009…`/`20261010…`/`20261011…`/`20261012…`
+up to `20260927180000`; the twenty-nine `20261008…`/`20261009…`/`20261010…`/`20261011…`/`20261012…`/`20261014…`
 files are new.
 Review them before applying them; the site keeps working without them (see
 `docs/OWNER-TODO.md` and "Before and after" in the release checklist).
@@ -386,6 +388,17 @@ Redeploy after catalog changes (Netlify: **Deploys → Trigger deploy**), or
 let a Netlify build hook do it (NETLIFY-DEPLOY.md, "Pages and the catalog").
 A build that can't reach the database (or has `ALLOW_NO_BACKEND=1`) uses the
 bundled `src/data/products.js` and prints a warning saying so.
+
+**Delisted products (AW-001).** The Kratom & Kava and Mushroom Products
+lines are off the site on the owner's answer of October 2026
+(`src/data/delisted.js`). The storefront and the build leave their rows out
+whatever their `active` flag says (the live table marks them active until
+`20261014100000_delist_kratom_mushroom.sql` is applied), so they have no
+line, product page, search result or sitemap URL, and the two lines' old
+addresses redirect permanently to Novelties (`netlify.toml`, and the app
+itself). The rows stay in the table, inactive; Admin → Products still lists
+them and says the storefront hides them. Bringing one back is the owner's
+call and a code change: see the note in `src/data/delisted.js`.
 
 ## 5. First-run sanity check
 
@@ -1184,7 +1197,7 @@ For each release:
   after" below), then publish an older frontend only if it is at or after
   the latest migration still applied.
 
-The live project needs all twenty-seven, in this order (Cursor's seven
+The live project needs all twenty-nine, in this order (Cursor's seven
 `20261008…` files, then the six `20261009…` ones, which build on them, then
 the five `20261010…` ones: three for the admin back office and two data-only
 catalog fixes, then `20261011110000` and `20261011111000`, which can go in
@@ -1193,7 +1206,10 @@ any time, then the data-only `20261011130000` and the home page's
 carts `20261012110000`, also any time, then "Show no description"
 `20261012120000`, with or after `20261010120000`, then the data-only
 catalog fix-ups `20261012130000`, any time, then the import that adds
-products, `20261012140000`, after `20261010121000`, any time).
+products, `20261012140000`, after `20261010121000`, any time, then the
+owner's catalog answers of September and October 2026, data only: the
+delisting `20261014100000`, any time, and `20261014101000`, after
+`20261012130000`).
 Apply
 `20261008200000` and `20261009100000`–`20261009150000` in one session: the
 price boundary hides `products.variant_prices` and `20261009110000` moves it.
@@ -1245,6 +1261,12 @@ rolling it back.
 27. `20261012140000_admin_import_create.sql` (Admin → Products' Import CSV
     adds the products a file describes; after 15, before or after the
     frontend, also on its own: the site feature-detects the function)
+28. `20261014100000_delist_kratom_mushroom.sql` (data only, AW-001: the
+    Kratom & Kava and mushroom products become inactive; any time, before or
+    after the frontend, also on its own)
+29. `20261014101000_catalog_owner_answers.sql` (data only: #219 to Gifts,
+    #295's copy, Uncle Al's cookies and creme; after 26, before or after the
+    frontend)
 
 Then `supabase/seed/products.sql`, then the frontend, then 18.
 
@@ -1277,6 +1299,8 @@ Then `supabase/seed/products.sql`, then the frontend, then 18.
 | `20261012120000_product_description_hidden.sql` | AW-023 (see "The product editor"): `products.description_hidden` (boolean, not null, default false), readable by guests and signed-in accounts like every products column but price; only approved admins change it (`products_admin_write`). When it is true the product page shows no description at all, instead of the bundled description a blank one falls back to; the stored text is kept. A commented Reverse block is at the end. | Apply with or after `20261010120000`, before or after the frontend. No seed change (the seed leaves the column out, so every row keeps the default). The frontend deployed before it doesn't read the column. The new frontend works before and after: the storefront asks for it together with `featured_rank` and, on a database without it (42703), reads the catalog without both (so with `20261010120000` applied and this one not, the homepage rails follow the tags without a rank); Admin → Products offers "Show no description" only once its load sees the column. |
 | `20261012130000_catalog_fixups.sql` | Data only. SKUs (AW-135): four completed, each with an alias from its old code in `src/data/catalogAliases.js`: #83 `AW-DUTCH-MASTERS` (was `AW-DUTCH-MASTER`), #90 `AW-T-SHIRT-BAGS` (was `AW-BAGS`), #121 `AW-PLASTIC-CUTLERY` (was `AW-PLASTIC`) and #143 `AW-REDBULL-12OZ` (was `AW-RED-BULL-12OZ`, now written like #144–#146). Names: #65 "RAZ Vue full kit" (AW-071, and its description), and #350 "Uncle Al's" again, as `20261011130000` had given it #351's name (NEW-023). Descriptions (AW-075): the brand spelled as the row's brand and name spell it in #13, #183, #193, #213 and #260; a blank description isn't matched. Sell units (AW-136): `single` for #16 and #340, which are sold as singles (only while `sell_unit` is ''). Each column changes only while it still has the value the seed wrote, and a SKU only while no other product has the new code (any case), so admin edits are kept and a re-run changes nothing. A commented Reverse block is at the end. | Apply any time, also on its own; best with or after the new frontend. The new frontend reads both codes, so Quick Reorder, stored carts and Reorder from order history work before and after; the frontend deployed before it knows only the codes in the database. Order lines keep the code and name they were placed with. Every frontend reads names, descriptions and sell units from the database; the new one already shows the bundled `single` while the database's is ''. |
 | `20261012140000_admin_import_create.sql` | Admin → Products' Import CSV can add products (AW-114): `admin_import_products_v2(p_rows)` updates the products whose SKU a row names exactly as `admin_import_products()` does (cat and sub are not changed), and inserts a row whose SKU no product has when it has a name, a brand, a department some product already has and a sub-line, with a SKU of 2 to 41 capital letters, digits and hyphens, a price of 0 to 99,999.99 or null, a tag from the four and variants (if any) as a list of names; the id comes from `products_id_seq`, there is no photo, and it is inactive unless the row says `"active": true`. Otherwise an unknown SKU refuses the file (hint `unknown_sku`), as does a SKU listed twice (hint `duplicate_sku`) or a bad value (`invalid_input`, or the table's checks). Up to 1000 rows, all or nothing; returns `{ updated, created }`. SECURITY DEFINER, `is_admin()` first (42501, hint `admin_only`), revoked from guests. `admin_import_products()` stays. A commented Reverse block is at the end. | Apply after `20261010121000`, before or after the frontend, also on its own. The frontend deployed before it calls only `admin_import_products()`. The new frontend calls v2 and, without it (PGRST202/42883), imports the updates through `admin_import_products()` and lists the new rows as not imported ("Creating products from a file needs the October 2026 database update."). |
+| `20261014100000_delist_kratom_mushroom.sql` | Data only (AW-001, the owner's answer of October 2026): `active = false` for the 22 Kratom & Kava and Mushroom Products rows (#69–#76, #258, #281, #285, #288, #289, #293, #296, #298–#300, #306, #307, #312, #313), only where the row is still active, so a re-run changes nothing. No row is deleted. Inactive rows are hidden from guests and buyers by `products_public_read`, refused by the order-line trigger (hint `product_unavailable`) and left out of `my_prices()`. Detox, Wellness Pills and Honey & Energy are untouched. A commented Reverse block is at the end. | Apply any time, before or after the frontend, also on its own. The new frontend leaves these products and their two lines out whatever the database says (`src/data/delisted.js`: the catalog, the sitemap and the page files), and redirects the lines' old addresses to Novelties; until the file is applied a quote sent by hand through the API could still name one. The frontend deployed before it shows them until the file is applied. |
+| `20261014101000_catalog_owner_answers.sql` | Data only (the owner's answers of 2026-09-28, Cursor's draft PR #11): #219 Happy valentines jar moves from Wellness Pills to a new Gifts line in Novelties (name and variants unchanged, description rewritten); #295 Snack wraps is "a chips brand", flavors varying by availability; #351 becomes "Uncle Al's creme" with no "Lemon ice" variant (and no "can't be ordered" entry for it), then #350 "Uncle Al's cookies"; both lose the Lemon Ice box photo (`img` null). Ids and SKUs are unchanged (#351 keeps `AW-UNCLE-AL-S-COOKIES`). Each column changes only while it still has the value the seed (or `20261012130000`, for #350's name) wrote, so admin edits are kept and a re-run changes nothing. A variant price stored for (351, 'Lemon ice') is left in `product_variant_prices`, unused. A commented Reverse block is at the end. | Apply after `20261012130000`, before or after the frontend. Every frontend reads names, lines and descriptions from the database, so the new values show once it is applied; the new frontend already shows no photo for #350 and #351 (`RETIRED_IMAGE_FILES` in `src/data/catalogAliases.js`) and keeps a cart line saved as Lemon ice as the creme (`VARIANT_ALIASES`). Order lines keep the name and variant they were placed with. |
 
 ### Later steps
 

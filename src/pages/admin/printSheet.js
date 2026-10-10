@@ -4,7 +4,7 @@
 // Lines are sorted the way the warehouse is walked: by department in the
 // navigation order, then sub-line, then name. Neither sheet shows prices.
 
-import { NAV_ORDER, PRODUCTS } from '../../data/products.js';
+import { ALL_PRODUCTS, NAV_ORDER } from '../../data/products.js';
 import { catLabel } from '../../lib/format.js';
 import { adminHref } from '../../lib/adminRoutes.js';
 import { isNetworkError } from '../../lib/errors.js';
@@ -37,7 +37,9 @@ export async function loadPrintOrder(client, id) {
   return error ? { order: undefined, error } : { order: result.data ?? null, error: null };
 }
 
-const BUNDLED = new Map(PRODUCTS.map((p) => [Number(p.id), p]));
+// Every bundled row, inactive and delisted ones too (AW-001): an old order's
+// lines keep their department and sell unit.
+const BUNDLED = new Map(ALL_PRODUCTS.map((p) => [Number(p.id), p]));
 
 // A department's place in the walk: the navigation order, then any other
 // department, then lines whose product is unknown.

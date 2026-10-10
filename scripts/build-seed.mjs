@@ -50,6 +50,10 @@ const server = await createServer({
   logLevel: 'error',
   appType: 'custom',
   server: { middlewareMode: true, hmr: false, watch: null },
+  // Only products.js is loaded: no dependency scan, which otherwise races the
+  // close below and prints a page of 'Request is outdated' errors (as in
+  // scripts/catalog-source.mjs loadAppModules).
+  optimizeDeps: { noDiscovery: true, include: [] },
 });
 let rows;
 try {

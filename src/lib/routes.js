@@ -27,6 +27,7 @@
 
 // The admin sections' URLs are in ./adminRoutes.js.
 import { adminHref, adminPath, parseAdminPath } from './adminRoutes.js';
+import { DELISTED_LINE_DEPARTMENT, DELISTED_LINE_SLUGS } from '../data/delisted.js';
 
 // The production origin. VITE_SITE_URL overrides it (see src/lib/meta.js and
 // scripts/build-sitemap.mjs); this is the domain the site already uses.
@@ -166,6 +167,13 @@ const productIdOf = (id) => (/^\d{1,9}$/.test(String(id)) ? Number(id) : null);
 // or a not-found route. Unknown things are never echoed into headings,
 // breadcrumbs or titles.
 //
+// A product line taken off the site (src/data/delisted.js, AW-001:
+// /category/novelties/kratom-and-kava, /category/novelties/mushroom-products)
+// is its department's page, so App redirects the old address there instead
+// of showing "not found"; netlify.toml answers the same addresses with a
+// permanent redirect. Only while the catalog has no such line: the delisted
+// lines are in no catalog the storefront loads.
+//
 // A not-found route for an address that cannot name anything in any catalog
 // (/product/abc, /product/0, /product with no id, /category with no key)
 // carries malformed: true. Only the other ones (/product/99999, an unknown
@@ -183,6 +191,7 @@ export function resolveRoute(raw, { departments = [], products = [] } = {}) {
       const subSlug = slugify(raw.sub);
       if (!subSlug) return { page: 'not-found', kind: 'line', category: dept.key, malformed: true };
       sub = dept.subs.find((s) => slugify(s) === subSlug) || null;
+      if (!sub && dept.key === DELISTED_LINE_DEPARTMENT && DELISTED_LINE_SLUGS.includes(subSlug)) return { page: 'category', category: dept.key, sub: null, query: raw.query || EMPTY_CATEGORY_QUERY };
       if (!sub) return { page: 'not-found', kind: 'line', category: dept.key };
     }
     return { page: 'category', category: dept.key, sub, query: raw.query || EMPTY_CATEGORY_QUERY };

@@ -6,6 +6,7 @@
 import { productImage, sharedImageFiles } from './images.js';
 import { PRODUCTS as STATIC_PRODUCTS } from '../data/products.js';
 import { currentImageFile } from '../data/catalogAliases.js';
+import { isDelisted } from '../data/delisted.js';
 
 const STATIC_BY_ID = new Map(STATIC_PRODUCTS.map((p) => [Number(p.id), p]));
 
@@ -19,11 +20,17 @@ const STATIC_BY_ID = new Map(STATIC_PRODUCTS.map((p) => [Number(p.id), p]));
 // that came along (select('*') on a database from before 20261009100000) is
 // dropped: prices come only from usePrices(); so is the old flavors count
 // (AW-332: variantCount() in lines.js counts the variants).
+//
+// A delisted row (src/data/delisted.js, AW-001: the Kratom & Kava and
+// Mushroom Products lines) is left out, whatever its active flag says: the
+// live database marks those rows active until the owner applies
+// 20261014100000_delist_kratom_mushroom.sql, and they are off the site now.
 export function hydrateProducts(rows, bundled = STATIC_BY_ID) {
+  const onSite = rows.filter((row) => !isDelisted(row));
   // A row may still name a photo by a file name that has since changed
   // (AW-290; until 20261010131000_photo_filenames.sql is applied).
-  const shared = sharedImageFiles(rows.map((row) => ({ img: currentImageFile(row?.img) })));
-  return rows.map((row) => {
+  const shared = sharedImageFiles(onSite.map((row) => ({ img: currentImageFile(row?.img) })));
+  return onSite.map((row) => {
     const p = { ...row };
     delete p.price;
     delete p.flavors;

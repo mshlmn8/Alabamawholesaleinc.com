@@ -10,7 +10,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ADMIN_SECTIONS } from '../src/lib/adminRoutes.js';
-import { NOINDEX_PAGES, PATH_SECTIONS, SUPPORT_PAGES, hrefFor, parseUrl } from '../src/lib/routes.js';
+import { NOINDEX_PAGES, PATH_SECTIONS, SUPPORT_PAGES, hrefFor, parseUrl, slugify } from '../src/lib/routes.js';
+import { DELISTED_LINE_DEPARTMENT, DELISTED_LINE_SLUGS } from '../src/data/delisted.js';
 import { SITEMAP_PAGES } from './build-sitemap.mjs';
 import { routeFile } from './build-route-heads.mjs';
 import { netlifyResponse, readNetlifyRedirects } from './netlify-headers.mjs';
@@ -137,7 +138,25 @@ describe('netlify.toml page rewrites (NEW-088)', () => {
     for (const path of ['/product/99999', '/category/nope', '/category/tobacco/no-such-line', '/product/abc', '/product', '/category']) {
       expect([path, answer(path, BUILT_FILES)]).toEqual([path, { status: 404, to: '/index.html' }]);
     }
-    expect(redirects.filter((r) => CATALOG_SECTIONS.some((section) => r.from.startsWith(`/${section}`)))).toEqual([]);
+    // The only catalog rules are the delisted lines' (below).
+    expect(redirects.filter((r) => CATALOG_SECTIONS.some((section) => r.from.startsWith(`/${section}`))).map((r) => r.from))
+      .toEqual(DELISTED_LINE_SLUGS.map((slug) => `/category/${slugify(DELISTED_LINE_DEPARTMENT)}/${slug}`));
+  });
+
+  it('moves each delisted product line’s old address permanently to its department (AW-001)', () => {
+    const dept = `/category/${slugify(DELISTED_LINE_DEPARTMENT)}`;
+    expect(DELISTED_LINE_SLUGS.length).toBeGreaterThan(0);
+    for (const slug of DELISTED_LINE_SLUGS) {
+      for (const path of [`${dept}/${slug}`, `${dept}/${slug}/`]) {
+        // A page file would win (the rules aren't forced), but the build
+        // writes none for a delisted line (scripts/catalog-source.mjs).
+        expect([path, answer(path)]).toEqual([path, { status: 301, to: dept }]);
+        expect([path, answer(path, new Set([...BUILT_FILES, `/${routeFile(`${dept}/${slug}`)}`]))]).toEqual([path, { status: 200, file: `/${routeFile(`${dept}/${slug}`)}` }]);
+      }
+    }
+    // The department itself and its other lines are unchanged.
+    expect(answer(dept, new Set([...BUILT_FILES, `/${routeFile(dept)}`]))).toEqual({ status: 200, file: `/${routeFile(dept)}` });
+    expect(answer(`${dept}/detox`)).toEqual({ status: 404, to: '/index.html' });
   });
 
   it('answers any other path with index.html and status 404, which the app shows as not found', () => {

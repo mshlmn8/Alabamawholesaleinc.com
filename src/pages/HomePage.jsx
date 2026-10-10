@@ -241,8 +241,9 @@ export function HomePage({
         {/* TODO(owner): Licensed photos for the novelties collection card and the tobacco collection card. (AW-058) */}
         <div className="editorial-card cream">
           <Picture className="bg" picture={EDITORIAL_BG.picture} alt="" aria-hidden="true" sizes={SIZES.editorial} />
-          {/* TODO(owner): After legal review, which of Kratom & Kava, Mushroom Products, Detox, Wellness Pills, and Honey & Energy enhancement items should be delisted, de-featured, or kept, and may this card advertise detox and kratom? Headline kept as published. (AW-001) */}
-          <div><p className="eyebrow">EXOTICS &amp; NOVELTIES</p><h2>Disposables, detox,<br />kratom &amp; more.</h2><Link className="text-link" to={dept('NOVELTIES')}>Browse novelties</Link></div>
+          {/* Kratom is off the site (AW-001, answered 2026-10), so the headline names the Hookah & Shisha line in its place. */}
+          {/* TODO(owner): After legal review, may this card still advertise detox? Kept as published. (AW-001) */}
+          <div><p className="eyebrow">EXOTICS &amp; NOVELTIES</p><h2>Disposables, detox,<br />hookah &amp; more.</h2><Link className="text-link" to={dept('NOVELTIES')}>Browse novelties</Link></div>
         </div>
         <div className="editorial-card purple">
           <div><p className="eyebrow">THE CORE BUSINESS</p><h2>Tobacco, wraps<br />&amp; accessories.</h2><Link className="text-link" to={dept('TOBACCO')}>Browse tobacco</Link></div>

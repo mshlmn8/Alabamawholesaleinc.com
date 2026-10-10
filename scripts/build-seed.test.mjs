@@ -7,6 +7,8 @@ import { describe, expect, it } from 'vitest';
 import { AXIS_LABELS, validateAliases, validateCatalog } from './validate-catalog.mjs';
 import { CATALOG } from '../src/data/products.js';
 import { SKU_ALIASES, VARIANT_ALIASES } from '../src/data/catalogAliases.js';
+import { DELISTED_IDS } from '../src/data/delisted.js';
+import { seedSql } from './seed-sql.mjs';
 
 const SEED = readFileSync(resolve(import.meta.dirname, '../supabase/seed/products.sql'), 'utf8');
 const SCRIPT = readFileSync(resolve(import.meta.dirname, 'build-seed.mjs'), 'utf8');
@@ -41,6 +43,21 @@ describe('supabase/seed/products.sql', () => {
     expect(SEED).toMatch(/20261009100000_price_boundary\.sql/);
     expect(SCRIPT).toMatch(/validateCatalog\(rows, \{ aliases: \{ skuAliases: SKU_ALIASES, variantAliases: VARIANT_ALIASES \} \}\)/);
     expect(validateCatalog([{ ...ROW, price: 1.1 }]).problems).toEqual([expect.stringMatching(/has a price/)]);
+  });
+
+  it('seeds the delisted rows inactive and every other row active (AW-001)', () => {
+    const columns = /insert into public\.products \(([^)]+)\) values/.exec(SEED)[1].split(',').map((c) => c.trim());
+    const at = columns.indexOf('active');
+    const rows = SEED.split('\n').filter((line) => /^\s+\(\d+,/.test(line));
+    expect(rows).toHaveLength(CATALOG.length);
+    // The active flag is the first bare true/false after the tag (the values
+    // before it are numbers, quoted text, jsonb and null).
+    const flag = (line) => /, (true|false), '/.exec(line)[1] === 'true';
+    const inactive = rows.filter((line) => !flag(line)).map((line) => Number(/^\s+\((\d+),/.exec(line)[1]));
+    expect(inactive).toEqual([...DELISTED_IDS].sort((a, b) => a - b));
+    expect(at).toBeGreaterThan(0);
+    // The file is what seedSql writes for products.js.
+    expect(SEED).toBe(seedSql(CATALOG));
   });
 
   it('seeds the variant axis and no flavors count (AW-128, AW-332)', () => {
@@ -171,9 +188,10 @@ describe('product names (AW-071)', () => {
     expect([25, 355, 58, 93, 286, 65].map((id) => byId(id).name)).toEqual([
       'Claritin allergy relief', 'Gold Band lubricants', 'Faygo bottles 20 oz', '6-pack beer carriers', 'AA Cellular Bluetooth headphones', 'RAZ Vue full kit',
     ]);
-    // #350 keeps "Uncle Al's": "Uncle Al's cookies" is #351's name (NEW-023;
-    // whether they are one product is TODO(owner) AW-140).
-    expect([350, 351].map((id) => byId(id).name)).toEqual(["Uncle Al's", "Uncle Al's cookies"]);
+    // The owner's names for the two Uncle Al's rows (2026-09-28, AW-140):
+    // cookies and creme, no Lemon ice (20261014101000_catalog_owner_answers.sql).
+    expect([350, 351].map((id) => byId(id).name)).toEqual(["Uncle Al's cookies", "Uncle Al's creme"]);
+    expect(byId(351).variants).toEqual([]);
     // Descriptions spell the product as its name does.
     expect(byId(9).description).toMatch(/^EZ Roll from/);
     expect(byId(274).description).toMatch(/^RAW Guarana wraps from/);
@@ -200,7 +218,7 @@ describe('product names (AW-071)', () => {
     expect(same).toEqual([]);
   });
 
-  it('leaves the names of the lines under legal review as they are (decision 2)', () => {
+  it('leaves the names of the lines under legal review, and of the delisted rows, as they are (decision 2, AW-001)', () => {
     expect([69, 70, 72, 75, 219, 281, 293, 302, 306, 313].map((id) => byId(id).name)).toEqual([
       'Shroom Puff disposable 3 Gram', 'Shroom Puff Pre rolls 2pk', 'Shroom puff Gummies', 'Wava kava', 'Happy valentines jar',
       'Hush hit pre rolls 2pk', 'Sip happens', 'Better me pills', 'Stoned mushroom gummies bags regular', 'Psyched blue lotus gummies 25ct box',

@@ -39,9 +39,11 @@ function previewPathHeaders() {
 // `vite preview` answers with the statuses of netlify.toml's [[redirects]]
 // (NEW-088): a path that is neither a file in dist nor one of the app's page
 // paths gets index.html (or a missing /assets or /img file, 404.html) with
-// status 404, as on Netlify, instead of Vite's index.html with 200. Files and
-// the page paths are left to Vite, which serves them as Netlify does
-// (/product/61 -> product/61.html, any page path -> index.html).
+// status 404, as on Netlify, instead of Vite's index.html with 200. A
+// 301/302 rule (a delisted product line, AW-001) redirects, keeping the query
+// string, as Netlify does. Files and the page paths are left to Vite, which
+// serves them as Netlify does (/product/61 -> product/61.html, any page path
+// -> index.html).
 function previewRedirects() {
   return {
     name: 'aw-preview-redirects',
@@ -57,6 +59,11 @@ function previewRedirects() {
         let pathname = '/';
         try { pathname = decodeURIComponent(new URL(req.url, 'http://preview.local').pathname); } catch { return next(); }
         const answer = netlifyResponse(pathname, { redirects, hasFile: (p) => !!inDist(p) });
+        if (answer.status === 301 || answer.status === 302) {
+          res.statusCode = answer.status;
+          res.setHeader('Location', answer.to + (new URL(req.url, 'http://preview.local').search || ''));
+          return res.end();
+        }
         if (answer.status !== 404) return next();
         const file = answer.to && inDist(answer.to);
         if (!file) return next();

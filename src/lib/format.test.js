@@ -100,7 +100,7 @@ describe('photos other rows share (AW-136)', () => {
       77: '5-pack', 340: 'single', 112: 'note', 333: 'note', 178: 'tub', 182: 'note', 188: 'note', 200: 'note',
       189: 'big', 190: 'small', 240: 'big', 241: 'small', 255: 'note', 329: 'note', 273: 'note', 367: '5-pack',
       290: 'big', 291: 'small', 305: 'note', 318: 'note', 316: '250 g tin', 317: '1 kg tin', 326: 'cups', 327: 'packs',
-      335: 'small', 336: 'big', 350: 'note', 351: 'note',
+      335: 'small', 336: 'big',
     });
   });
 });

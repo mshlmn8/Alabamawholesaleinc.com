@@ -41,18 +41,23 @@ the production domain's copy, for the dev server only.
 
 Every page has a path URL (`/product/12`, `/category/tobacco`, `/contact`),
 and loading or reloading one must serve `index.html`, which starts the app.
-`netlify.toml`'s `[[redirects]]` do this in three groups, in this order
+`netlify.toml`'s `[[redirects]]` do this in four groups, in this order
 (NEW-088):
 
 1. A missing file under `/assets` or `/img` gets `public/404.html` with
    status 404 ("Headers and caching").
-2. Each page path of the app gets `index.html` with status 200: `/`,
+2. The two product lines taken off the site (AW-001,
+   `src/data/delisted.js`), `/category/novelties/kratom-and-kava` and
+   `/category/novelties/mushroom-products`, move permanently (301) to
+   `/category/novelties`, so an old bookmark or search result lands on the
+   department. The app redirects the same addresses, in any spelling.
+3. Each page path of the app gets `index.html` with status 200: `/`,
    `/index.html`, `/catalog`, `/search`, `/quote`, `/account`, `/admin`,
    `/admin/*`, `/contact`, `/delivery`, `/shipping`, `/privacy`, `/terms`,
    `/apply` and `/reset-password`. The catalog's pages, `/product/<id>` and
    `/category/<department>[/<line>]`, have no rule: each is a file the build
    writes ("Pages and the catalog" below).
-3. Last, `/*` gets `index.html` with status **404**. The visitor still sees
+4. Last, `/*` gets `index.html` with status **404**. The visitor still sees
    the app's "Page not found" page, with a search box and the departments,
    but a mistyped or retired link is a real 404 for search engines, link
    checkers and Search Console instead of a page that only says so. That
@@ -65,7 +70,7 @@ Its documentation calls rule paths case-sensitive, so `/CONTACT` is a 404
 that still shows the contact page (the app reads page names in any case);
 nothing links to such a spelling, as the old `#/` links all load `/`.
 
-A new page path needs its rule in group 2. Without it the page still works
+A new page path needs its rule in group 3. Without it the page still works
 for visitors but is a 404 for crawlers: `scripts/netlify-redirects.test.mjs`
 fails until the rule is there (it walks `PATH_SECTIONS` in
 `src/lib/routes.js`). `npm run preview` and the Playwright smoke tests answer

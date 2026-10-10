@@ -78,6 +78,14 @@ create or replace function pg_temp.p22_rows() returns text language sql as $fn$
   from public.products where id in (13, 16, 65, 83, 90, 121, 143, 183, 193, 213, 260, 340, 350)
 $fn$;
 
+-- 20261014101000_catalog_owner_answers.sql (test 25) has since given #350
+-- and #351 the owner's names, "Uncle Al's cookies" and "Uncle Al's creme",
+-- which the seed now writes. This file checks 20261012130000 on the values it
+-- was written for, so #350 and #351 go back to what they held between the two
+-- files; the end of this file puts the seed's values back.
+update public.products set name = 'Uncle Al''s cookies' where id = 351;
+update public.products set name = 'Uncle Al''s', description = 'Uncle Al''s cookies, from the cookie line in our Food Stuff department.' where id = 350;
+
 do $$
 declare
   seeded text := pg_temp.p22_rows();
@@ -157,5 +165,8 @@ begin
   assert pg_temp.p22_rows() = seeded, 'back to the seed''s values';
 end $$;
 
--- Leave the shared database as later test files expect it.
+-- Leave the shared database as later test files expect it: the seed's
+-- values for #350 and #351.
 delete from public.products where id = 92201;
+update public.products set name = 'Uncle Al''s cookies', description = 'Uncle Al''s cookies, from the cookie line in our Food Stuff department. Flavors vary by availability.' where id = 350;
+update public.products set name = 'Uncle Al''s creme' where id = 351;

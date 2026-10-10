@@ -28,6 +28,7 @@ import { supabase } from '../../lib/supabase.js';
 import { storageOf } from '../../lib/storageClient.js';
 import { productImage } from '../../lib/images.js';
 import { currentImageFile } from '../../data/catalogAliases.js';
+import { isDelisted } from '../../data/delisted.js';
 import { catLabel } from '../../lib/format.js';
 import { departmentsFor } from '../../lib/departments.js';
 import { Link } from '../../lib/router.js';
@@ -462,6 +463,10 @@ export function ProductEditor({ id, fromId = null, rows, columns, loadError, onR
   // Only when the load saw the column (20261012120000, AW-023).
   const hideDescriptionColumn = !!columns?.has('description_hidden');
   const copying = isNew && fromId != null && rows.some((r) => r.id === fromId);
+  // A delisted product or line (AW-001, src/data/delisted.js) stays off the
+  // storefront even when it is active, so the editor says so and offers no
+  // "View on site" link.
+  const delisted = isDelisted({ id: isNew ? null : id, sub: draft.sub === NEW_SUB ? draft.newSub : draft.sub });
 
   return (
     <section className="product-editor" aria-labelledby="product-editor-title">
@@ -472,7 +477,7 @@ export function ProductEditor({ id, fromId = null, rows, columns, loadError, onR
         </div>
         {!isNew && (
           <div className="inline-actions">
-            {original.active && <Link className="button xs text" to={`/product/${id}`}>View on site</Link>}
+            {original.active && !delisted && <Link className="button xs text" to={`/product/${id}`}>View on site</Link>}
             <Link className="button xs ghost" to={`/admin/products/new?from=${id}`}>Duplicate</Link>
           </div>
         )}
@@ -662,9 +667,15 @@ export function ProductEditor({ id, fromId = null, rows, columns, loadError, onR
           <p className="form-error" id="product-stock-error">{err('stockStatus')}</p>
         </div>
         <div className="full consent">
-          <input id="product-active" type="checkbox" checked={draft.active} onChange={(e) => set('active', e.target.checked)} />
+          <input id="product-active" type="checkbox" checked={draft.active} aria-describedby={delisted ? 'product-active-hint' : undefined}
+            onChange={(e) => set('active', e.target.checked)} />
           <label htmlFor="product-active">Active: shown in the catalog and can be ordered</label>
         </div>
+        {delisted && (
+          <small className="field-hint full" id="product-active-hint">
+            Off the site on the owner’s instruction (October 2026): buyers don’t see Kratom &amp; Kava or Mushroom Products, even when they are active.
+          </small>
+        )}
 
         <div className="full product-photo">
           <h3>Photo</h3>
