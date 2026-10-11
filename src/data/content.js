@@ -286,16 +286,17 @@ export const STORAGE = {
   // removed there.
   cart: 'aw-cart-v3',
   cartLegacy: 'aw-cart-legacy',
-  // sessionStorage only, never localStorage: this tab's last quote or order
-  // receipt, one record { owner, entryKey, receipt }, so a reload or Back
+  // sessionStorage only, never localStorage: this tab's last order receipt
+  // (or an older quote's), one record { owner, entryKey, receipt }, so a reload or Back
   // keeps the confirmation. It holds the buyer's contact details and is
   // cleared on sign-out. See src/lib/receipt.js (AW-012, AW-022).
   receipt: 'aw-last-receipt',
-  // sessionStorage only, never localStorage: this tab's draft of the quote
-  // form, one record { owner, data, savedAt }, so leaving /quote or a reload
-  // keeps what was typed. It holds contact details (never the tobacco
-  // license answers) and is cleared on a successful submit and on sign-out.
-  // See src/lib/quoteDraft.js (AW-080).
+  // sessionStorage only, never localStorage: this tab's draft of the checkout
+  // form, one record { owner, data, savedAt }, so leaving /checkout or a
+  // reload keeps what was typed. It holds contact details and is cleared on
+  // a successful order and on sign-out. The key keeps its old name, so a
+  // draft typed before checkout moved from /quote survives. See
+  // src/lib/quoteDraft.js (AW-080).
   quoteDraft: 'aw-quote-draft'
 };
 

@@ -10,7 +10,7 @@
 // (cartOwner(): a user id or 'guest') and `entryKey` the history entry the
 // receipt was shown on (the router's location.key). App shows it again only
 // on that entry for that owner, so a reload or Back keeps the confirmation,
-// a fresh visit to /quote shows checkout, and nothing can be sent twice from
+// a fresh visit to /checkout shows checkout, and nothing can be sent twice from
 // it. Where sessionStorage is blocked or full it is kept in memory for this
 // page view instead; damaged values read as no receipt.
 //
