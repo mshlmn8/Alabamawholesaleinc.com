@@ -19,7 +19,12 @@ section 4.
 
 ## 2. Run the migrations
 
-In the Supabase dashboard, open **SQL Editor** and run these files in order:
+**The live project** runs one file: `supabase/release/apply-to-live-database.sql`
+(SETUP.md, part A). It holds every migration below that the live project
+doesn't have yet, in order, then the seed ("The release file" below).
+
+**A new, empty project:** in the Supabase dashboard, open **SQL Editor** and
+run these files in order:
 
 ```
 supabase/migrations/20260517000000_initial_schema.sql
@@ -68,7 +73,8 @@ On a project that is already running, apply only the migrations it doesn't
 have yet, in that order, then the seed, then deploy the frontend (see the
 release checklist at the end of this file). The live project has the files
 up to `20260927180000`; the thirty-three `20261008…`/`20261009…`/`20261010…`/`20261011…`/`20261012…`/`20261014…`
-files are new.
+files are new, and `supabase/release/apply-to-live-database.sql` is exactly
+those, then the seed.
 Review them before applying them; the site keeps working without them (see
 `docs/OWNER-TODO.md` and "Before and after" in the release checklist).
 
@@ -150,6 +156,71 @@ installed and logged in (`supabase login`):
    dump first (release checklist, step 2).
 
 Never edit a migration that has been applied anywhere; add a new file.
+
+After running the release file in the SQL editor, record its migrations as
+applied the same way (step 4, with every version from `20261008190000` to
+`20261014121000`).
+
+### The release file (`supabase/release/apply-to-live-database.sql`)
+
+One file for the owner to paste into the SQL editor once (SETUP.md, part A),
+instead of thirty-three. `npm run release:sql` (`scripts/build-release-sql.mjs`)
+writes it: every migration after `LIVE_BASELINE` (the newest one the live
+project has, `20260927180000_application_documents.sql`), word for word under
+a numbered header, then `supabase/seed/products.sql`, then a last `select`
+that says "Done: the live database has every update in this file."
+
+- **A guard first.** Before anything else it stops, changing nothing, on a
+  database without the baseline (no `profile_documents`: an empty project
+  needs the files one by one, above) or on one that already has the updates
+  from `20261009110000_variant_model.sql` on (`products.flavors`, which that
+  file drops, is gone). The files before that one run again harmlessly, so a
+  database with some of `20261008190000`–`20261009100000` applied by hand
+  takes the file as it is; one further along needs the remaining files one
+  at a time.
+- **All or nothing.** The file has no `BEGIN`/`COMMIT` of its own: the SQL
+  editor sends it as one query, which Postgres runs as one transaction, so a
+  failed statement leaves the database as it was. With psql, run
+  `psql -v ON_ERROR_STOP=1 --single-transaction -f supabase/release/apply-to-live-database.sql`.
+- **Made for the SQL editor.** The editor refuses a query over about 1 MB
+  ("Query is too large to be run via the SQL Editor"), so
+  `npm run release:sql` stops above `MAX_RELEASE_BYTES` (900 KiB; the file
+  is about 470 KB today): split a larger release in two files. The editor
+  asks to confirm "destructive operations" first (the file drops and
+  replaces policies and functions; button **Run query**), and shows the
+  result of the closing `select`. Every table the file creates enables
+  row-level security in the same file (a test checks it), so the editor
+  never offers "Run and enable RLS", which would add statements to it.
+- **The photo file names** (`20261010131000_photo_filenames.sql`, release
+  checklist item 18) are in it in their place, before the deploy. A
+  frontend built before them, if one is still published, shows "Photo
+  coming soon" for those six products until the new one is deployed, so
+  deploy right after (SETUP.md, part B). Applying the files one at a time
+  instead, keep that one for after the deploy.
+- **Kept in step.** `scripts/build-release-sql.test.mjs` fails when the file
+  doesn't match the migrations and the seed: after adding or changing
+  either, run `npm run release:sql` and commit the result.
+- **Proved on a copy of the live project.** `npm run test:db` also runs
+  `scripts/check-migrations.mjs --from-live`: the migrations up to the
+  baseline, then `supabase/tests/live-baseline/before-*.sql` (the products
+  table as the live project has it, with made-up prices, and live-like
+  accounts, licence documents and orders made through the live functions),
+  then the release file. It checks the result has the same tables, columns,
+  functions, policies, triggers, constraints, indexes, grants, buckets and
+  catalog rows as a fresh install. It checks the guard both ways (an empty
+  project is refused, unchanged; a copy that already ran
+  `20261008190000`–`20261009100000` by hand takes the file and matches a
+  fresh install too), then runs
+  `supabase/tests/live-baseline/after-release.sql` (every order and line
+  kept, prices kept and private, application answers moved to the profile,
+  the new ordering rule), `provision_owner.sql` and every
+  `supabase/tests/*.sql`, and checks that a second run stops at the guard.
+- **After the owner has run it**, the next release starts from there: set
+  `LIVE_BASELINE` to `20261014121000_site_settings.sql` and `BASELINE_CHECK`
+  to something it creates (`site_settings`), point `APPLIED` at the first
+  new migration that can't run twice, rewrite the live-baseline fixtures for
+  that state, change "The live project has the files up to …" above, and
+  regenerate.
 
 `supabase/seed/products.sql` is generated from `src/data/products.js` by
 `npm run seed`. It is **insert-only**: a product whose id is already in the
@@ -234,7 +305,9 @@ and business from the account's auth metadata, which is sent with every
 access token and editable by the user (AW-348).
 
 **Provisioning the owner.** After the owner has signed up **and confirmed
-their email**, open `supabase/seed/provision_owner.sql`, replace the
+their email** (or been added under **Authentication → Users → Add user →
+Create new user** with **Auto confirm user?** ticked; SETUP.md, part A,
+step 6), open `supabase/seed/provision_owner.sql`, replace the
 placeholder with that email, and run the file in the SQL editor. It finds the
 owner by the confirmed sign-in email in `auth.users` (upper or lower case
 doesn't matter), never by the email stored on the profile, and then lists
@@ -253,14 +326,18 @@ npm run dev
 
 ## 4. Wire the env vars on Netlify
 
-In your Netlify site → **Site configuration → Environment variables**, add:
+In your Netlify project → **Project configuration** (older screens: **Site
+configuration**) → **Environment variables**, add (SETUP.md, part B, says
+where to find each value):
 
 | Key                       | Scope     |
 | ------------------------- | --------- |
 | `VITE_SUPABASE_URL`       | All       |
 | `VITE_SUPABASE_ANON_KEY`  | All       |
 
-Trigger a redeploy after saving.
+Trigger a redeploy after saving. `VITE_SITE_URL` (`.env.example`) is
+needed only for a domain other than `alabamawholesaleinc.com`
+(NETLIFY-DEPLOY.md, "Site settings").
 
 `npm run build` now fails when either variable is missing, or when
 `VITE_SUPABASE_URL` is not an `https://<project-ref>.supabase.co` URL, so a
@@ -304,9 +381,11 @@ status and documents on `/apply`.
 
 <!-- TODO(owner): Set up an SMTP provider with a sender address on the business domain (SPF/DKIM), and confirm the sender name for the confirmation and reset emails. (AW-051, AW-093) -->
 
-Supabase's built-in mailer is rate-limited and meant for testing, so
-confirmation and password-reset emails may not reach customers until a
-custom SMTP sender is set up:
+Supabase's built-in mailer is rate-limited and meant for testing (it sends
+only to the project's team), so confirmation and password-reset emails
+don't reach customers until a custom SMTP sender is set up. The quickest is
+the business Gmail with an app password (`smtp.gmail.com`, port 465; SETUP.md,
+part A, step 4). For a sender on the business domain instead:
 
 1. Pick a provider (Resend, Postmark, Amazon SES or similar) and verify a
    sender address on the business domain, with its SPF and DKIM records.
@@ -406,26 +485,24 @@ call and a code change: see the note in `src/data/delisted.js`.
 
 ## 5. First-run sanity check
 
-1. Open the site, click **SIGN IN → Open a trade account**.
-2. Fill in the signup form. You'll get a confirmation email from Supabase.
-   (You can disable email confirmation in Supabase → Authentication →
-   Providers → Email if you'd rather skip it for internal testing.)
-3. Click the confirmation link, then sign in.
-4. Run `supabase/seed/provision_owner.sql` for that email (it has to be
-   confirmed first), and check the admin list it prints. You should then see
-   an **Admin** link in the header.
-5. Open `/admin`. Three tabs:
-   - **Orders** — every quote submitted via the storefront, with status dropdown.
-   - **Accounts** — every trade account; flip `pending → approved` (the row
-     then shows who approved it and when), change pricing tier (the
-     `pricing_tiers` rows), grant the admin role (which also approves the
-     account), and open each account's license documents, for every status.
-     **Details** opens the application answers (EIN, licence, resale
-     certificate, phone, store address, volume, approval, consent) and a
-     verification note. Your own status and role can't be changed there. The
-     approval, consent and note fields fill in once the 2026-10-08
-     migrations are applied.
-   - **Products** — edit name/price/tag/active flag for any of the 368 SKUs.
+SETUP.md, part D, is the check after launch, click by click: sign in as the
+owner, apply with a second email and approve it, make it staff, place and
+cancel a test order (its email reaches the orders inbox), and change a
+product photo. In short:
+
+1. Open the site, click **Apply for a trade account**, and apply.
+   You'll get a confirmation email from Supabase (once SMTP is set up,
+   "Production email" above).
+2. Click the confirmation link, then sign in.
+3. Run `supabase/seed/provision_owner.sql` for the owner's email (confirmed
+   first), and check the admin list it prints. The header then shows
+   **Admin**.
+4. Open `/admin`: **Orders**, **Accounts** (approve, suspend, Details with
+   the application answers and licence documents, role and tier), **Products**
+   (the editor, photos, bulk changes, CSV), **Pricing** (tier discounts,
+   admins only), **Homepage** (hero photos) and **Site settings**. The admin
+   home's **How to use Admin** panel lists the everyday jobs. Your own status
+   and role can't be changed there.
 
 ## How pricing tiers work
 
@@ -1251,14 +1328,17 @@ For each release:
    so take the dump as well. Files in Storage are not in a database dump.
 3. Apply each migration below that the project doesn't have yet, in order:
    in the SQL editor, or with `supabase db push` once tracking is set up
-   ("Tracking which migrations ran").
+   ("Tracking which migrations ran"). For the live project this is one
+   file, `supabase/release/apply-to-live-database.sql` (`npm run
+   release:sql`; "The release file" in section 2), which also does step 4.
 4. Apply `supabase/seed/products.sql` (regenerated by `npm run seed`). It only
    inserts products whose id is new; read its notice if it prints one, and
    it stops, inserting nothing, on a new row whose SKU another product
    already uses ("Ids of new products" in section 2).
 5. Deploy the frontend.
 6. Then apply the migrations the table below marks "Apply AFTER deploying
-   the new frontend" (`20261010131000_photo_filenames.sql`).
+   the new frontend" (`20261010131000_photo_filenames.sql`). The release
+   file has it already, in its place (see "The release file").
 
 **Rolling back.** The frontend and the database roll back separately:
 

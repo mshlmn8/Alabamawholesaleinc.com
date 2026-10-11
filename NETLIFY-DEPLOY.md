@@ -8,8 +8,14 @@ every deploy maps to a commit.
 
 ## Site settings
 
-Link the Netlify site to the GitHub repository (**Site configuration → Build &
-deploy → Continuous deployment**):
+[SETUP.md](SETUP.md), part B, walks through the first setup click by click
+(import from GitHub, the environment variables, the order emails), and part
+C connects the domain. Netlify publishes `main`, so the finished work is
+merged into `main` first (SETUP.md, "Before you start").
+
+Link the Netlify site to the GitHub repository (**Project configuration**,
+older screens **Site configuration**, **→ Build & deploy → Continuous
+deployment**):
 
 - Production branch: `main`
 - Base directory: leave blank (the files are at the repo root)
@@ -36,6 +42,19 @@ canonical links and share tags (`scripts/build-route-heads.mjs`). `public/robots
 the production domain's copy, for the dev server only.
 
 <!-- TODO(owner): Register the production domain (or name the final one), connect it in Netlify as the primary domain with HTTPS, add the www name so Netlify redirects it to the primary one, and set the Supabase Auth Site URL once the domain resolves. (AW-052) -->
+
+SETUP.md, part C, connects `alabamawholesaleinc.com` with the registrar's
+DNS left in place: an `A` record for the bare name pointing at Netlify's
+load balancer (`75.2.60.5`) and a `www` `CNAME` to the project's
+`<name>.netlify.app` address; Netlify then adds the certificate and
+redirects `www` to the bare name, the origin `VITE_SITE_URL` defaults to.
+Other records (MX, TXT) stay as they are. Moving the domain's nameservers
+to Netlify DNS works too, but every other record then has to be recreated
+there first.
+
+If HTTPS stays "waiting" once the records resolve, look for `CAA` records
+in the registrar's zone: when there are any, one must allow
+`letsencrypt.org`, the authority Netlify's certificates come from.
 
 ## Page paths and 404s
 
@@ -252,7 +271,9 @@ are on: "Order emails" below).
 [BACKEND.md](BACKEND.md) covers the variables and the Supabase auth URL
 settings (section 4), the database migrations (section 2), the first-run
 sanity check (section 5) and the release checklist: database changes go in
-before the frontend that uses them, after a dump.
+before the frontend that uses them, after a dump. For the live project the
+database changes are one file, `supabase/release/apply-to-live-database.sql`
+(SETUP.md, part A; BACKEND.md, "The release file").
 
 ### Rolling back a deploy
 
@@ -294,8 +315,9 @@ Set it up once in the Netlify dashboard:
 
 1. **Turn on form detection**: Forms → enable form detection (newer
    dashboards: Project configuration → Forms). Then redeploy (Deploys →
-   Trigger deploy → Deploy site), so Netlify finds `order-notification` in
-   the deployed HTML. Forms lists it once it has.
+   Trigger deploy → Deploy project; older screens: Deploy site), so
+   Netlify finds `order-notification` in the deployed HTML. Forms lists it
+   once it has.
 2. **Email the orders inbox**: add a form notification (Site or Project
    configuration → Notifications → Emails and webhooks → Form submission
    notifications → Add notification → Email notification; older dashboards

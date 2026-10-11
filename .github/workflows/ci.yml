@@ -74,6 +74,10 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      # A fresh install, then the owner's release file
+      # (supabase/release/apply-to-live-database.sql) on a copy of the live
+      # database, compared with the fresh install (BACKEND.md, "The release
+      # file").
       - name: Migration checks (PGlite)
         run: npm run test:db
 

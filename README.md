@@ -2,6 +2,8 @@
 
 Editorial wholesale storefront for licensed retailers. 368 SKUs across 8 departments — tobacco, novelties, merchandise, candies, food stuff, grocery, motor oil, drinks & bags — shipping from Birmingham.
 
+**Going live?** Follow [SETUP.md](SETUP.md): update the database with one file, deploy on Netlify, connect the domain, and the first checks, click by click.
+
 Every page uses the 2A editorial system: Barlow Condensed and DM Sans (bundled in `src/fonts/`), purple / cream / orange, and plain CSS in `src/index.css`. Home, catalog, product, checkout, cart, the sign-in dialog, the support pages, account (`/account`) and admin (`/admin`) all share it, with no CSS framework.
 
 ## Pages
@@ -51,8 +53,10 @@ Then open http://localhost:3000
 | ------- | ------------ |
 | `npm run lint` | ESLint (flat config in `eslint.config.js`: React, React Hooks, jsx-a11y and the project rule `aw/translate-safe-text`); warnings fail it |
 | `npm test` | Vitest unit and component tests (`src/**/*.test.{js,jsx}`, `scripts/**/*.test.mjs`, jsdom) |
-| `npm run test:db` | Replays `supabase/migrations` and the seed in an in-memory Postgres (PGlite) and runs the assertions in `supabase/tests/*.sql` |
+| `npm run test:db` | Replays `supabase/migrations` and the seed in an in-memory Postgres (PGlite) and runs the assertions in `supabase/tests/*.sql`; then does the same from a copy of the live database through `supabase/release/apply-to-live-database.sql` and checks the result matches a fresh install (BACKEND.md, "The release file") |
 | `npm run test:e2e` | Builds the site and runs the Playwright smoke test in `tests/smoke` against `vite preview` (run `npx playwright install chromium` once first) |
+
+After adding or changing a migration or the seed (`npm run seed`), run `npm run release:sql` and commit the regenerated `supabase/release/apply-to-live-database.sql`, the one file the owner runs on the live database; `npm test` fails until it matches.
 
 GitHub Actions (`.github/workflows/ci.yml`) runs all four, plus `npm audit --omit=dev --audit-level=high` (and a non-blocking `npm audit --audit-level=high` that also covers the build and test tools) and a check that the production build refuses to run without the Supabase settings. Dependabot (`.github/dependabot.yml`) opens weekly update PRs.
 

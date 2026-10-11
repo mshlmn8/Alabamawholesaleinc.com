@@ -10,6 +10,7 @@
   "scripts": {
     "images": "node scripts/build-images.mjs",
     "seed": "node scripts/build-seed.mjs",
+    "release:sql": "node scripts/build-release-sql.mjs",
     "predev": "npm run images",
     "dev": "vite",
     "prebuild": "npm run images",
@@ -19,7 +20,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:db": "node scripts/check-migrations.mjs --seed"
+    "test:db": "node scripts/check-migrations.mjs --seed && node scripts/check-migrations.mjs --from-live"
   },
   "dependencies": {
     "@supabase/auth-js": "2.117.2",
