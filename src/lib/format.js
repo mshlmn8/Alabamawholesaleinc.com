@@ -46,8 +46,8 @@ export const brandLabel = (brand) => {
 // the badge on the photo says the row's sell unit, or else the size or format
 // word its name already has; a product page with neither says the photo shows
 // a related pack or size; and the alt text calls the photo representative.
-// Nothing is claimed that the row doesn't say (TODO(owner) AW-136: a photo of
-// each row).
+// Nothing is claimed that the row doesn't say (AW-136: the owner adds a photo
+// of each row in Admin, answered 2026-10).
 export const SHARED_PHOTO_NOTE = 'Photo shows a related pack or size.';
 
 // The size or format word in a product name, as the name writes it, or '':

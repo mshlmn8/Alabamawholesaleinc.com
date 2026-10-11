@@ -7,8 +7,9 @@
 // smaller sizes, re-encoded), so every credit says "resized". The product
 // page prints the credit under the photo and in the enlarged view, with
 // links to the licence and to the file page.
-// TODO(owner): Replace retailer and competitor photos, and confirm these four
-// Wikimedia images should stay with this attribution. (AW-033)
+// The owner replaces retailer and competitor photos later, in Admin ->
+// Products, and these four stay with this attribution until then (AW-033,
+// skipped on the owner's 2026-10 answer).
 
 // The licence deed each credit links to.
 export const LICENCE_URLS = Object.freeze({

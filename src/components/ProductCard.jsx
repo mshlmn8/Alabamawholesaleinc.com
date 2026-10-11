@@ -195,7 +195,7 @@ export function ProductCard({
     <article className="content-card" aria-labelledby={titleId}>
       <div className="card-block">
         <ProductPhoto product={p} sizes={sizes} priority={priority} loading={eager ? 'eager' : 'lazy'} />
-        {/* TODO(owner): A correct photo for each product that shares a file with a different size or pack. (AW-136) */}
+        {/* The owner adds a photo of each product that shares a file later, in Admin (AW-136, answered 2026-10). */}
         {p.picture && p.sharedPhoto && badge && <span className="pack-badge">{badge}</span>}
       </div>
       <p className="card-kicker"><span>{p.sub}</span>{p.tag && <span className={`card-tag${p.tag === 'NEW' ? ' new' : ''}`}>{p.tag}</span>}</p>

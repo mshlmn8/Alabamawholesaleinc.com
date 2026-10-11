@@ -5,7 +5,8 @@
 // On a card whose tile is too short for the name (a phone's two columns,
 // print's four), index.css leaves the name out (@container on .card-block,
 // NEW-083): it would be cut mid-line, and the card's title says it.
-// TODO(owner): Packshots for the products that have no photo, starting with Dubai chocolate #342 and the Grocery items. (AW-029)
+// The owner adds the missing packshots later, in Admin -> Products -> Edit ->
+// Upload a photo (AW-029, answered 2026-10).
 
 function PhotoMark() {
   return (
