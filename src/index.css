@@ -2247,7 +2247,11 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .drawer-head h2 { font-size: 1.375rem; }
   .drawer-foot { padding-block: 8px; }
   .drawer-total { margin-bottom: 4px; }
-  .drawer-signin { margin-top: 0; }
+  /* A guest's Checkout and Sign in sit side by side under a full-width
+     total, so two stacked 44px rows don't eat the lines' half (AW-152). */
+  .drawer-foot:has(> .drawer-signin) { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: center; }
+  .drawer-foot:has(> .drawer-signin) > :not(.button):not(.drawer-signin) { grid-column: 1 / -1; }
+  .drawer-signin { margin: 0; }
   /* The product page starts closer under the masthead, so a phone on its
      side reaches the add button sooner (AW-150). */
   .page-head.is-flush { padding-top: 4px; }
