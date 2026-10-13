@@ -120,14 +120,14 @@ Open <https://app.netlify.com>.
 5. The site is now at an address like `https://<name>.netlify.app` (rename
    it in **Project configuration → General → Change project name**). Add
    that address to Supabase's Redirect URLs (part A, step 5).
-6. **Order emails.** Each order is emailed to **alwholesale@gmail.com**:
+6. **Order emails.** Each order is emailed to **alwholesaleorders@gmail.com**:
    1. **Forms** → **Enable form detection**. Then **Deploys → Trigger
       deploy → Deploy project**, so Netlify finds the order form. **Forms**
       then lists `order-notification`.
    2. **Project configuration → Notifications → Emails and webhooks → Form
       submission notifications → Add notification → Email notification**
       (older screens: **Forms → Form notifications**). **Email to notify**:
-      `alwholesale@gmail.com`; **Form**: `order-notification`. **Save**.
+      `alwholesaleorders@gmail.com`; **Form**: `order-notification`. **Save**.
    3. If **Forms** lists old `apply`, `quote` or `newsletter` forms, delete
       them; nothing uses them.
 
@@ -166,8 +166,8 @@ Open <https://app.netlify.com>.
    everyday jobs.
 2. **A staff test account.** In a private (incognito) window, open the
    site, click **Apply for a trade account** and apply with a second email
-   you can read (for example `alwholesale+test@gmail.com`, which arrives in
-   the alwholesale inbox). Click the link in the confirmation email: that
+   you can read (for example `alwholesaleorders+test@gmail.com`, which arrives in
+   the alwholesaleorders inbox). Click the link in the confirmation email: that
    proves Supabase's email works.
 3. **Approve an account.** In your own window: **Admin → Accounts**, find
    the test application, click **Details** to see its answers, then
@@ -176,7 +176,7 @@ Open <https://app.netlify.com>.
 4. **Place a test order.** In the private window, reload, add a product,
    click **Order** (top right) → **Checkout**, fill in the form and click
    **Place order**. The page shows a reference like `ALW-O-…`.
-5. **Check the email.** Within a few minutes **alwholesale@gmail.com** gets
+5. **Check the email.** Within a few minutes **alwholesaleorders@gmail.com** gets
    "New order ALW-O-… from …". The first time, look in Spam and mark it
    **Not spam**. The order is also in **Admin → Orders**.
 6. **Cancel the test order.** **Admin → Orders**, set its status to

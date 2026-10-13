@@ -298,7 +298,7 @@ undoes every order and application made since.
 When a customer places an order, it is saved in Supabase (`submit_quote`)
 and shows in **Admin → Orders**: that is the record. Checkout then also
 posts a copy of the order to the Netlify form `order-notification`, and
-Netlify emails it to the orders inbox, **alwholesale@gmail.com** (the
+Netlify emails it to the orders inbox, **alwholesaleorders@gmail.com** (the
 owner's answer of October 2026, AW-024). The email's subject is "New order
 ALW-O-… from <business>", and it lists the reference, when it was placed,
 the business, contact, email, phone, delivery method, preferred date,
@@ -322,7 +322,7 @@ Set it up once in the Netlify dashboard:
    configuration → Notifications → Emails and webhooks → Form submission
    notifications → Add notification → Email notification; older dashboards
    have it under Forms → Form notifications), with **Email to notify**
-   `alwholesale@gmail.com` and **Form** `order-notification`. Add a second
+   `alwholesaleorders@gmail.com` and **Form** `order-notification`. Add a second
    one for any other address that should get a copy.
 3. **Place a test order** from an approved test account and check that the
    email arrives (look in Gmail's spam folder the first time, and mark it

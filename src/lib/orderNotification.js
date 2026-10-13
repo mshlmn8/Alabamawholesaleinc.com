@@ -5,7 +5,7 @@
 // the record, and Admin -> Orders lists it. Once it is saved, checkout also
 // posts a copy to Netlify Forms, form 'order-notification', and Netlify
 // emails each submission to the address set in its dashboard (Forms -> Form
-// notifications -> Email notification: alwholesale@gmail.com). Netlify only
+// notifications -> Email notification: alwholesaleorders@gmail.com). Netlify only
 // accepts submissions for a form it found in the deployed HTML, so
 // index.html declares this one, hidden, with every field below and the
 // honeypot (src/lib/orderNotification.test.js checks they match).
