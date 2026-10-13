@@ -17,7 +17,7 @@ const read = (file) => readFileSync(resolve(ROOT, file), 'utf8');
 const SETUP = read('SETUP.md');
 // The text with each run of spaces and line breaks as one space.
 const FLAT = SETUP.replace(/\s+/g, ' ');
-const ORDERS_INBOX = 'alwholesale@gmail.com';
+const ORDERS_INBOX = 'alwholesaleorders@gmail.com';
 
 describe('SETUP.md', () => {
   it('is linked from the README, BACKEND.md, NETLIFY-DEPLOY.md and the owner TODO list', () => {

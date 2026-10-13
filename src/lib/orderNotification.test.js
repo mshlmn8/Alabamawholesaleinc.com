@@ -25,7 +25,7 @@ const SAVED_AT = Date.UTC(2026, 9, 9, 20, 45);
 
 describe('orderNotificationFields', () => {
   it('holds every field, in the form’s order, from the saved order', () => {
-    const fields = orderNotificationFields({ ref: 'ALW-O-5E4F3A2B1C', orderId: UUID, data: DATA, lines: LINES, savedAt: SAVED_AT, origin: 'https://alabamawholesaleinc.com' });
+    const fields = orderNotificationFields({ ref: 'ALW-O-5E4F3A2B1C', orderId: UUID, data: DATA, lines: LINES, savedAt: SAVED_AT, origin: 'https://alabama-wholesale.com' });
     expect(Object.keys(fields)).toEqual([...ORDER_NOTIFICATION_FIELDS]);
     expect({ ...fields, 'placed-at': fields['placed-at'].replace(/\s/g, ' ') }).toEqual({
       subject: 'New order ALW-O-5E4F3A2B1C from Alpha Food Mart',
@@ -42,7 +42,7 @@ describe('orderNotificationFields', () => {
       'line-count': '2',
       'total-units': '6',
       notes: 'Back door\nbefore 10',
-      'admin-link': `https://alabamawholesaleinc.com/admin/orders/${UUID}/print`,
+      'admin-link': `https://alabama-wholesale.com/admin/orders/${UUID}/print`,
     });
   });
 

@@ -70,10 +70,10 @@ Open <https://supabase.com/dashboard> and click the site's project.
       **Secure password change**, **Save**.
 5. **Tell Supabase the site's address.** **Authentication → URL
    Configuration**:
-   - **Site URL**: `https://alabamawholesaleinc.com` → **Save**.
+   - **Site URL**: `https://alabama-wholesale.com` → **Save**.
    - **Redirect URLs** → **Add URL**, once for each of
-     `https://alabamawholesaleinc.com/` and
-     `https://alabamawholesaleinc.com/reset-password`.
+     `https://alabama-wholesale.com/` and
+     `https://alabama-wholesale.com/reset-password`.
    - After part B, add your Netlify address the same way (for example
      `https://alabama-wholesale.netlify.app/` and
      `https://alabama-wholesale.netlify.app/reset-password`), so sign-up
@@ -113,21 +113,21 @@ Open <https://app.netlify.com>.
      key.
 
    A third, `VITE_SITE_URL`, is only for a domain other than
-   `alabamawholesaleinc.com`: set it to `https://` and that domain.
+   `alabama-wholesale.com`: set it to `https://` and that domain.
 4. Click **Deploy**. The first build takes a few minutes. If it fails with
    "the Supabase settings are missing or invalid", fix the two values, then
    **Deploys → Trigger deploy → Deploy project**.
 5. The site is now at an address like `https://<name>.netlify.app` (rename
    it in **Project configuration → General → Change project name**). Add
    that address to Supabase's Redirect URLs (part A, step 5).
-6. **Order emails.** Each order is emailed to **alwholesale@gmail.com**:
+6. **Order emails.** Each order is emailed to **alwholesaleorders@gmail.com**:
    1. **Forms** → **Enable form detection**. Then **Deploys → Trigger
       deploy → Deploy project**, so Netlify finds the order form. **Forms**
       then lists `order-notification`.
    2. **Project configuration → Notifications → Emails and webhooks → Form
       submission notifications → Add notification → Email notification**
       (older screens: **Forms → Form notifications**). **Email to notify**:
-      `alwholesale@gmail.com`; **Form**: `order-notification`. **Save**.
+      `alwholesaleorders@gmail.com`; **Form**: `order-notification`. **Save**.
    3. If **Forms** lists old `apply`, `quote` or `newsletter` forms, delete
       them; nothing uses them.
 
@@ -138,25 +138,24 @@ Open <https://app.netlify.com>.
 
 ## C. The domain
 
-1. If you don't own `alabamawholesaleinc.com` yet, buy it at your registrar
-   (Hostinger: **Domains → Get a new domain**).
+1. The domain `alabama-wholesale.com` is in your GoDaddy account (Domain
+   Portfolio). Keep auto-renew on.
 2. In Netlify: **Domain management** → **Add a domain** → **Add a domain
-   you already own**, type `alabamawholesaleinc.com`, **Verify**, **Add
-   domain**. Netlify also adds `www.alabamawholesaleinc.com` and sends it
+   you already own**, type `alabama-wholesale.com`, **Verify**, **Add
+   domain**. Netlify also adds `www.alabama-wholesale.com` and sends it
    to the main name, then shows the DNS records it needs.
-3. At the registrar (Hostinger: **Domains** → the domain → **DNS /
-   Nameservers** → **DNS records**):
-   - Delete the **A** and **AAAA** records named `@`, and a **CNAME** named
-     `www` if there is one.
-   - Add an **A** record: name `@`, points to `75.2.60.5`.
-   - Add a **CNAME** record: name `www`, target your Netlify address
-     (`<name>.netlify.app`).
-   - Leave every other record (MX, TXT) alone. If Netlify's domain page
-     shows different values, use Netlify's.
+3. At GoDaddy: **Domain Portfolio** → `alabama-wholesale.com` → **DNS**:
+   - Change the **A** record named `@` so it points to `75.2.60.5`, and
+     delete any other **A** or **AAAA** record named `@`.
+   - Change the **CNAME** record named `www` so it points to your Netlify
+     address (`<name>.netlify.app`).
+   - Leave every other record alone, above all the **MX** and **TXT**
+     records: they run the domain's Microsoft 365 email. If Netlify's
+     domain page shows different values, use Netlify's.
 4. Wait until Netlify no longer shows "Awaiting External DNS" (minutes to a
    few hours). Netlify then turns on HTTPS by itself; if **HTTPS** still
    says it is waiting, click **Verify DNS configuration**. Open
-   <https://alabamawholesaleinc.com> to check.
+   <https://alabama-wholesale.com> to check.
 
 ## D. First checks after launch
 
@@ -166,8 +165,8 @@ Open <https://app.netlify.com>.
    everyday jobs.
 2. **A staff test account.** In a private (incognito) window, open the
    site, click **Apply for a trade account** and apply with a second email
-   you can read (for example `alwholesale+test@gmail.com`, which arrives in
-   the alwholesale inbox). Click the link in the confirmation email: that
+   you can read (for example `alwholesaleorders+test@gmail.com`, which arrives in
+   the alwholesaleorders inbox). Click the link in the confirmation email: that
    proves Supabase's email works.
 3. **Approve an account.** In your own window: **Admin → Accounts**, find
    the test application, click **Details** to see its answers, then
@@ -176,7 +175,7 @@ Open <https://app.netlify.com>.
 4. **Place a test order.** In the private window, reload, add a product,
    click **Order** (top right) → **Checkout**, fill in the form and click
    **Place order**. The page shows a reference like `ALW-O-…`.
-5. **Check the email.** Within a few minutes **alwholesale@gmail.com** gets
+5. **Check the email.** Within a few minutes **alwholesaleorders@gmail.com** gets
    "New order ALW-O-… from …". The first time, look in Spam and mark it
    **Not spam**. The order is also in **Admin → Orders**.
 6. **Cancel the test order.** **Admin → Orders**, set its status to

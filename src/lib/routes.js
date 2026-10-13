@@ -33,7 +33,7 @@ import { DELISTED_LINE_DEPARTMENT, DELISTED_LINE_SLUGS } from '../data/delisted.
 // The production origin. VITE_SITE_URL overrides it (see src/lib/meta.js and
 // scripts/build-sitemap.mjs); this is the domain the site already uses.
 // TODO(owner): Register the production domain and connect it in Netlify; VITE_SITE_URL overrides this. (AW-052)
-export const DEFAULT_SITE_URL = 'https://alabamawholesaleinc.com';
+export const DEFAULT_SITE_URL = 'https://alabama-wholesale.com';
 
 // Normalises a configured site URL to `https://host` with no trailing slash.
 // Anything that is not an absolute http(s) origin falls back to the default.

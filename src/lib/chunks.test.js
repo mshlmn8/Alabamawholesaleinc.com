@@ -47,9 +47,9 @@ afterEach(() => {
 describe('isChunkLoadError', () => {
   it('knows each browser’s failed import() and Vite’s failed preload', () => {
     for (const message of [
-      'Failed to fetch dynamically imported module: https://alabamawholesaleinc.com/assets/AdminPage-abc123.js',
+      'Failed to fetch dynamically imported module: https://alabama-wholesale.com/assets/AdminPage-abc123.js',
       'Importing a module script failed.',
-      'error loading dynamically imported module: https://alabamawholesaleinc.com/assets/QuotePage-x.js',
+      'error loading dynamically imported module: https://alabama-wholesale.com/assets/QuotePage-x.js',
       'Unable to preload CSS for /assets/AdminPage-abc.css',
     ]) {
       expect([message, isChunkLoadError(new TypeError(message))]).toEqual([message, true]);

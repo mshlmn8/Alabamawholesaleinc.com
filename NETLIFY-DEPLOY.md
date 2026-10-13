@@ -32,7 +32,7 @@ build` also writes `dist/sitemap.xml` from the catalog; `public/robots.txt`
 points at it.
 
 Optional: `VITE_SITE_URL` sets the public origin used for canonical links,
-share tags and the sitemap. It defaults to `https://alabamawholesaleinc.com`;
+share tags and the sitemap. It defaults to `https://alabama-wholesale.com`;
 set it only if the site moves to another domain. It reaches every absolute
 URL a crawler reads without running the app (AW-052): `index.html`'s share
 image (`og:image`, `twitter:image`) and structured data
@@ -43,7 +43,7 @@ the production domain's copy, for the dev server only.
 
 <!-- TODO(owner): Register the production domain (or name the final one), connect it in Netlify as the primary domain with HTTPS, add the www name so Netlify redirects it to the primary one, and set the Supabase Auth Site URL once the domain resolves. (AW-052) -->
 
-SETUP.md, part C, connects `alabamawholesaleinc.com` with the registrar's
+SETUP.md, part C, connects `alabama-wholesale.com` with the registrar's
 DNS left in place: an `A` record for the bare name pointing at Netlify's
 load balancer (`75.2.60.5`) and a `www` `CNAME` to the project's
 `<name>.netlify.app` address; Netlify then adds the certificate and
@@ -298,7 +298,7 @@ undoes every order and application made since.
 When a customer places an order, it is saved in Supabase (`submit_quote`)
 and shows in **Admin → Orders**: that is the record. Checkout then also
 posts a copy of the order to the Netlify form `order-notification`, and
-Netlify emails it to the orders inbox, **alwholesale@gmail.com** (the
+Netlify emails it to the orders inbox, **alwholesaleorders@gmail.com** (the
 owner's answer of October 2026, AW-024). The email's subject is "New order
 ALW-O-… from <business>", and it lists the reference, when it was placed,
 the business, contact, email, phone, delivery method, preferred date,
@@ -322,7 +322,7 @@ Set it up once in the Netlify dashboard:
    configuration → Notifications → Emails and webhooks → Form submission
    notifications → Add notification → Email notification; older dashboards
    have it under Forms → Form notifications), with **Email to notify**
-   `alwholesale@gmail.com` and **Form** `order-notification`. Add a second
+   `alwholesaleorders@gmail.com` and **Form** `order-notification`. Add a second
    one for any other address that should get a copy.
 3. **Place a test order** from an approved test account and check that the
    email arrives (look in Gmail's spam folder the first time, and mark it

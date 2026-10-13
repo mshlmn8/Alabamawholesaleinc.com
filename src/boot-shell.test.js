@@ -90,7 +90,7 @@ describe('index.html boot shell', () => {
 // publishes. Geo coordinates and sameAs profiles wait for the owner.
 describe('index.html structured data', () => {
   const graph = () => JSON.parse(between('<script type="application/ld+json">', '</script>').slice('<script type="application/ld+json">'.length))['@graph'];
-  const SITE = 'https://alabamawholesaleinc.com';
+  const SITE = 'https://alabama-wholesale.com';
 
   it('describes the business as a WholesaleStore with an @id, logo and map link', () => {
     const business = graph().find((node) => node['@type'] === 'WholesaleStore');

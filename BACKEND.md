@@ -336,7 +336,7 @@ where to find each value):
 | `VITE_SUPABASE_ANON_KEY`  | All       |
 
 Trigger a redeploy after saving. `VITE_SITE_URL` (`.env.example`) is
-needed only for a domain other than `alabamawholesaleinc.com`
+needed only for a domain other than `alabama-wholesale.com`
 (NETLIFY-DEPLOY.md, "Site settings").
 
 `npm run build` now fails when either variable is missing, or when
