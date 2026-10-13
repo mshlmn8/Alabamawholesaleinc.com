@@ -5,7 +5,9 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { CACHE_PATHS, onPostBuild, onPreBuild } from './index.js';
+import * as plugin from './index.js';
+import { onPostBuild, onPreBuild } from './index.js';
+import { CACHE_PATHS } from './paths.js';
 
 // Vitest runs from the repository root.
 const read = (file) => readFileSync(resolve(process.cwd(), file), 'utf8');
@@ -13,6 +15,11 @@ const read = (file) => readFileSync(resolve(process.cwd(), file), 'utf8');
 const fakeUtils = (result) => ({ cache: { restore: vi.fn(async () => result), save: vi.fn(async () => result) } });
 
 describe('image-cache plugin', () => {
+  it('exports only Netlify build events, or Netlify refuses the plugin', () => {
+    const EVENTS = ['onPreBuild', 'onBuild', 'onPostBuild', 'onSuccess', 'onError', 'onEnd'];
+    expect(Object.keys(plugin).filter((name) => !EVENTS.includes(name))).toEqual([]);
+  });
+
   it('restores the rendered photos before the build', async () => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
     const utils = fakeUtils(true);

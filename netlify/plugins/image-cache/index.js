@@ -13,18 +13,8 @@
 // Netlify passes in, so it needs no npm package. .github/workflows/ci.yml
 // caches the same paths for CI.
 
-// The script's outputs, relative to the repository root.
-export const CACHE_PATHS = [
-  'public/img',
-  'src/assets/generated',
-  'public/favicon.ico',
-  'public/favicon-32.png',
-  'public/apple-touch-icon.png',
-  'public/icon-192.png',
-  'public/icon-512.png',
-  'public/icon-maskable-512.png',
-  'public/og.jpg',
-];
+// Only Netlify event handlers may be exported from this file (see paths.js).
+import { CACHE_PATHS } from './paths.js';
 
 export async function onPreBuild({ utils }) {
   const restored = await utils.cache.restore(CACHE_PATHS);
