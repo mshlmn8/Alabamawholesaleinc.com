@@ -193,6 +193,22 @@ real prices in **Admin → Products** (one at a time, or **Export CSV**, fill
 in the `price` column, **Import CSV**) before you approve real customers.
 [BACKEND.md](BACKEND.md), "Loading your list prices", has the details.
 
+## Pausing the site
+
+While you finish setting up, the public domain can show a short "opening
+soon" page with your phone and email, while the site keeps working for you
+and your staff at the Netlify address (`https://alabama-wholesale.netlify.app`,
+Admin included). Search engines are told not to index either address.
+
+- **Pause:** Netlify → **Project configuration → Environment variables →
+  Add a variable**: key `SITE_PAUSED`, value `true`. Then **Deploys →
+  Trigger deploy → Deploy project**.
+- **Go live:** open `SITE_PAUSED` and set it to `false` (or delete it), then
+  **Deploys → Trigger deploy → Deploy project**.
+
+The switch is `netlify/edge-functions/pause.js`; it only takes effect after a
+deploy.
+
 Other open questions, none needed to go live, are in
 [docs/OWNER-TODO.md](docs/OWNER-TODO.md). The technical details behind
 these steps are in [BACKEND.md](BACKEND.md) (database) and
