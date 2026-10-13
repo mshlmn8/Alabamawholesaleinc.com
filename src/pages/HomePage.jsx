@@ -1,0 +1,256 @@
+// Home, in the section order the plan fixed (AW-059, AW-060): the split hero
+// (h1, pitch, calls to action and the photo carousel), the trust band under
+// it (AW-005), the three services,
+// the departments, one row each of new arrivals and bestsellers, the two
+// collection cards and the account application steps. Only the application
+// steps are numbered, the page's one real sequence (AW-216). A signed-in
+// account sees its own account's panel in place of the steps (AW-066).
+
+import { DEPARTMENT_PHOTOS, FREE_DELIVERY_THRESHOLD, SOURCING, TRUST } from '../data/content.js';
+import { APPLY_LABEL } from '../data/terms.js';
+import { accountView, tradeAccountPanel } from '../lib/accountStatus.js';
+import { topLines } from '../lib/departments.js';
+import { formatMoneyShort, productCount } from '../lib/format.js';
+import { tierPriceNote } from '../lib/pricing.js';
+import { useHomeSlides } from '../lib/homeSlides.js';
+import { homeRails } from '../lib/merchandising.js';
+import { heroImage, SIZES } from '../lib/images.js';
+import { showsNicotineWarning } from '../lib/regulated.js';
+import { Link } from '../lib/router.js';
+import { Icon } from '../components/Icon.jsx';
+import { VolumePricing } from '../components/ContactLinks.jsx';
+import { Picture } from '../components/Picture.jsx';
+import { HomeHero } from '../components/HomeHero.jsx';
+import { ProductCard } from '../components/ProductCard.jsx';
+import { PART_SEPARATOR } from '../components/TextParts.jsx';
+
+const EDITORIAL_BG = heroImage('hero_candy.jpg');
+
+// A department tile's photo frame is a quarter of the container on wide
+// screens and half the screen in the compact layout (.dept-grid in index.css).
+const DEPT_SIZES = '(max-width: 53.125em) 46vw, (max-width: 84em) 23vw, 302px';
+
+// New arrivals and Bestsellers show one row of cards: two by two on phones (AW-060).
+export const RAIL_LENGTH = 4;
+
+const dept = (category) => ({ page: 'category', category });
+const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+// A tile's text in parts (inline blocks in index.css): on a narrow tile it
+// wraps between "68 products ·" and "7 product lines", not inside them, and
+// a part wraps at its own spaces only when it is wider than the tile. The
+// dot is held to the part's last word by a no-break space, so it never
+// starts a line on its own (NEW-082, as TextParts).
+const parts = (list) => list.map((part, i) => <span key={part}>{i < list.length - 1 ? `${part}${PART_SEPARATOR}` : part}</span>);
+
+// Products without a photo stay off the home rails until a packshot exists
+// (AW-029, Cursor PR #13); they are still in their department.
+export const hasPhoto = (p) => Boolean(p?.picture?.src || p?.img);
+
+// The product whose photo a department tile shows (AW-061): the chosen one in
+// DEPARTMENT_PHOTOS or, when the live catalog lacks it or its photo, the first
+// suitable product in the department's biggest line (the next line when that
+// one has none). Never a nicotine product, since the tiles carry no FDA
+// statement. null when there is none.
+export function departmentPhoto(products, deptKey) {
+  const suitable = (p) => p?.cat === deptKey && hasPhoto(p) && !showsNicotineWarning(p);
+  const chosen = products.find(p => Number(p.id) === DEPARTMENT_PHOTOS[deptKey]);
+  if (suitable(chosen)) return chosen;
+  for (const line of topLines(products, deptKey, Infinity)) {
+    const first = products.find(p => p.sub === line && suitable(p));
+    if (first) return first;
+  }
+  return null;
+}
+
+// The foot of the page. A guest is asked to open a trade account, with the
+// three steps. A signed-in account is never offered a second application
+// (AW-066): its panel says where the account stands, as /apply's page head
+// does (accountStatus.js tradeAccountPanel), and links to My account or the
+// application status. Keyed by view, so each view's words are a new block
+// (Google Translate).
+function AccountSection({ signedIn, view, onApplyClick }) {
+  const panel = signedIn ? tradeAccountPanel(view) : null;
+  if (panel) {
+    return (
+      <section className="section" id="apply">
+        <div key={view} className="apply-panel trade-account-panel">
+          <div className="apply-intro">
+            <p className="eyebrow">{panel.eyebrow}</p>
+            <h2>{panel.title}</h2>
+          </div>
+          <div className="trade-account-body">
+            <p>{panel.text}</p>
+            <Link className="button" to={panel.link.to}>{panel.link.label}</Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
+  return (
+    <section className="section" id="apply">
+      <div className="apply-panel">
+        <div className="apply-intro">
+          <p className="eyebrow">OPEN AN ACCOUNT</p>
+          <h2>Open a trade account</h2>
+          <button className="button" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button>
+        </div>
+        <ol className="apply-steps">
+          <li>
+            <h3>Apply online</h3>
+            <p>Tell us about your store — business name, EIN, state retail tobacco license number and resale certificate. Takes a few minutes.</p>
+          </li>
+          <li>
+            <h3>We verify</h3>
+            {/* No approval time is promised (AW-246, owner answer 2026-10).
+                TODO(owner): Does the team check each license with the state? Kept as published. (AW-281) */}
+            <p>Our team checks your license with the state before approving your account. Wholesale pricing and ordering unlock when you sign in.</p>
+          </li>
+          <li>
+            <h3>Order &amp; receive</h3>
+            <p>Order online or by phone for next-day delivery on our trucks when the stop is on a delivery route, or will-call pickup at the Birmingham warehouse during business hours.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+  );
+}
+
+// The facts the owner confirmed (AW-005, 2026-10), in a band under the hero:
+// 20 years in business, 100% authentic products, and where every product
+// comes from. Nothing else: no count of accounts, no "three generations",
+// and never "direct from the manufacturer" alone.
+export function TrustBand() {
+  return (
+    <section className="trust-band" aria-labelledby="trust-band-title">
+      <h2 id="trust-band-title" className="sr-only">About Alabama Wholesale</h2>
+      <ul className="trust-facts">
+        {TRUST.map((fact) => (
+          <li key={fact.label} className="trust-fact"><span className="trust-figure">{fact.figure}</span> <span className="trust-label">{fact.label}</span></li>
+        ))}
+      </ul>
+      <p className="trust-sourcing">{SOURCING}</p>
+    </section>
+  );
+}
+
+// account is useAuth's ('loading' | 'signed-out' | 'no-profile' | 'ready'),
+// through App's cardProps: the cards and the account panel tell a guest from
+// a signed-in buyer whose profile is still loading (NEW-002, NEW-050).
+export function HomePage({
+  products, departments, profile, account = profile ? 'ready' : 'signed-out', isApprovedBuyer, priceOf, pricesStatus, priceTier = null,
+  cart, addLine, decLine, onLoginClick, onApplyClick, signedIn = false,
+}) {
+  // The home rails leave the SKU off the card; category, search and product
+  // pages keep it (AW-060).
+  const card = (p) => (
+    <ProductCard key={p.id} p={p} profile={profile} account={account} isApprovedBuyer={isApprovedBuyer} priceOf={priceOf} pricesStatus={pricesStatus} cart={cart}
+                 addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} showSku={false} />
+  );
+  // TODO(owner): Which products are really new and which are bestsellers, plus dedicated hero and department images? (AW-056)
+  // Tags and homepage rank (AW-119), RAIL_LENGTH cards each (AW-061). Each
+  // rail links to All products (/catalog): it mixes departments, and the site
+  // has no listing of every new or bestselling product (AW-056).
+  const { newArrivals, bestsellers } = homeRails(products, { limit: RAIL_LENGTH, hasPhoto });
+  // Whose prices the rails show, for an approved buyer (AW-107).
+  const priceNote = isApprovedBuyer ? <p className="result-note">{tierPriceNote(priceTier)}</p> : null;
+  // The hero photos staff keep in Admin -> Homepage, or the bundled ones
+  // (AW-119); while `pending` the hero holds their box empty (NEW-008).
+  const { slides, pending } = useHomeSlides();
+
+  return (
+    <>
+      <HomeHero signedIn={signedIn} onApplyClick={onApplyClick} slides={slides} pending={pending} />
+      <TrustBand />
+
+      {/* What the business offers, straight after the hero and its trust
+          band (AW-059): an icon, the claim and a link to the page that
+          explains it, or, for volume pricing, the trade desk's email and
+          phone. */}
+      <section className="services">
+        <h2 className="sr-only">Services</h2>
+        <div className="service">
+          <span className="service-icon" aria-hidden="true"><Icon name="truck" /></span>
+          <h3>Next-day delivery, our own trucks</h3>
+          {/* The threshold comes from content.js (AW-283). */}
+          <p>{`We run our own delivery service on routes in Alabama, Mississippi and Georgia. Free delivery on orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} when the stop is on a delivery route. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
+          <Link className="text-link" to="/delivery">Delivery and service area</Link>
+        </div>
+        {/* No Net-30 terms and no published volume discounts: volume
+            pricing goes through the trade desk (AW-025, owner answer 2026-10),
+            so the line's own email and phone links are this service's links. */}
+        <div className="service">
+          <span className="service-icon" aria-hidden="true"><Icon name="tag" /></span>
+          <h3>Buying in volume?</h3><p><VolumePricing /></p>
+        </div>
+        {/* TODO(owner): Is a tobacco license required for every trade account, or only for tobacco, vapor, and nicotine? This sentence is unchanged until you decide. (AW-129) */}
+        <div className="service">
+          <span className="service-icon" aria-hidden="true"><Icon name="shield" /></span>
+          <h3>Licensed businesses only</h3><p>We verify your state retail tobacco license and resale certificate before your first order. No consumer sales, no exceptions — 21+ trade accounts only.</p>
+          <Link className="text-link" to="/apply">How to apply</Link>
+        </div>
+      </section>
+
+      <section className="section" id="catalog">
+        <div className="section-head">
+          <div><p className="eyebrow">FULL ASSORTMENT</p><h2>Shop by department</h2></div>
+          <Link to="/catalog">Browse the catalog</Link>
+        </div>
+        {/* One tile per department (AW-060, AW-061): a chosen photo, then the
+            name, counts and biggest lines on a solid band, never on the photo.
+            The name is the link, stretched over the tile (AW-170). */}
+        <div className="dept-grid">
+          {departments.map(c => {
+            const photo = departmentPhoto(products, c.key);
+            return (
+              <div className="dept-tile" key={c.key}>
+                <div className="dept-tile-media">
+                  {photo && <Picture picture={photo.picture ?? { src: photo.img }} alt="" sizes={DEPT_SIZES} />}
+                </div>
+                <div className="dept-tile-body">
+                  <h3><Link className="dept-tile-link" to={dept(c.key)}>{c.label}</Link></h3>
+                  <p className="dept-tile-count">{parts([productCount(c.count), count(c.subs.length, 'product line', 'product lines')])}</p>
+                  <p className="dept-tile-lines">{parts(topLines(products, c.key))}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="section" id="new-arrivals">
+        <div className="section-head">
+          <div><p className="eyebrow">FRESH INVENTORY</p><h2>New arrivals</h2>{priceNote}</div>
+          <Link to="/catalog">Browse all products</Link>
+        </div>
+        <div className="card-grid">
+          {newArrivals.map(card)}
+        </div>
+      </section>
+
+      <section className="section" id="bestsellers">
+        <div className="section-head">
+          <div><p className="eyebrow">PROVEN MOVERS</p><h2>Bestsellers</h2>{priceNote}</div>
+          <Link to="/catalog">Browse all products</Link>
+        </div>
+        <div className="card-grid">
+          {bestsellers.map(card)}
+        </div>
+      </section>
+
+      <section className="editorials" aria-label="Collections">
+        {/* TODO(owner): Licensed photos for the novelties collection card and the tobacco collection card. (AW-058) */}
+        <div className="editorial-card cream">
+          <Picture className="bg" picture={EDITORIAL_BG.picture} alt="" aria-hidden="true" sizes={SIZES.editorial} />
+          {/* Kratom is off the site (AW-001, answered 2026-10), so the headline names the Hookah & Shisha line in its place. */}
+          {/* TODO(owner): After legal review, may this card still advertise detox? Kept as published. (AW-001) */}
+          <div><p className="eyebrow">EXOTICS &amp; NOVELTIES</p><h2>Disposables, detox,<br />hookah &amp; more.</h2><Link className="text-link" to={dept('NOVELTIES')}>Browse novelties</Link></div>
+        </div>
+        <div className="editorial-card purple">
+          <div><p className="eyebrow">THE CORE BUSINESS</p><h2>Tobacco, wraps<br />&amp; accessories.</h2><Link className="text-link" to={dept('TOBACCO')}>Browse tobacco</Link></div>
+        </div>
+      </section>
+
+      <AccountSection signedIn={signedIn} view={accountView(profile, account)} onApplyClick={onApplyClick} />
+    </>
+  );
+}

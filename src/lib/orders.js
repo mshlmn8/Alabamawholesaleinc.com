@@ -1,42 +1,341 @@
-// Order submission helper. Writes to Supabase when configured; otherwise falls
-// back to Netlify Forms (which captures the lead even without a database).
+// Placing an order. The database function keeps its old name, submit_quote,
+// though customers place orders, never quotes (owner answer 2026-10,
+// AW-024). Prices, totals and the reference number are made inside it; the
+// browser sends the buyer's details and, per line, the product id, variant
+// label and quantity. Only a signed-in, approved account that isn't on hold
+// gets this far (QuotePage's gate, AW-014); once 20261014111000 is applied
+// the function refuses anyone else too, with the hints sign_in_required,
+// account_not_approved and account_suspended. The licence answers it still
+// takes are sent empty: approved accounts gave theirs when they applied.
+//
+// The current submit_quote (supabase/migrations/20261009130000_submit_quote_v3.sql)
+// makes the reference itself (AW-049), needs a ship-to address only for
+// delivery (AW-079), keeps PR #12's rule that a guest or unapproved account
+// quoting tobacco or vape lines gives a license number, a resale certificate
+// and the 21+ confirmation (AW-014, src/lib/regulated.js), and refuses bad
+// input, suspended accounts and floods with a typed hint (AW-198, AW-201),
+// which quoteErrorMessage() turns into text for the buyer.
+//
+// The live database may be older (the owner applies migrations later). A
+// signature it doesn't have fails with "no such function" (PGRST202 / 42883),
+// and the order is sent once more with the next older one:
+//   current   15 arguments, no p_ref_num             (20261009130000)
+//   licensed  16 arguments: p_ref_num + the answers  (20261008190000, PR #12)
+//   legacy    13 arguments: p_ref_num, the answers
+//             go in the notes                        (20260925120000)
+// The two older ones store the reference they are sent, so it is made here
+// (40 random bits), and they need an address even for will-call, so will-call
+// sends the warehouse address. The signature that worked is remembered for
+// the rest of the visit, so a live database without the new functions costs
+// one call per order after the first.
+//
+// Each call gives up after QUOTE_SUBMIT_TIMEOUT_MS (AW-194,
+// src/lib/network.js). A call that timed out may still have been saved, so
+// it is never sent again with an older signature: the buyer is told to call
+// before submitting again, with the reference an older signature was sent
+// with (the only reference ever shown for an order that wasn't confirmed).
+// A call whose connection dropped before the answer came back is just as
+// uncertain, and is worded the same way (NEW-061).
 
+import { currentSite } from '../data/siteFacts.js';
+import { DELIVERY_STATE_NOTE } from '../data/quoteRules.js';
+import { MISSING_FUNCTION_CODES } from './pricing.js';
+import { QTY_RANGE_TEXT } from './quantity.js';
+import { QUOTE_SUBMIT_TIMEOUT_MS, isOffline, isTimeoutError, timeoutError, timeoutSignal } from './network.js';
 import { supabase } from './supabase.js';
 
-export const submitOrder = async ({ profile, refNum, formData, items, totalUnits, subtotal }) => {
-  if (!supabase) return { source: 'netlify', ok: true }; // caller handles Netlify path
+const text = (value) => String(value ?? '').trim();
+const textOrNull = (value) => text(value) || null;
 
-  const { data: order, error } = await supabase
-    .from('orders')
-    .insert({
-      ref_num: refNum,
-      user_id: profile?.id || null,
-      business: formData.business,
-      contact: formData.contact,
-      email: formData.email,
-      phone: formData.phone,
-      delivery: formData.delivery,
-      preferred_date: formData.preferredDate || null,
-      notes: formData.notes || null,
-      total_units: totalUnits,
-      subtotal: subtotal ?? null,
-    })
-    .select()
-    .single();
-  if (error) throw error;
+const isMissingFunction = (error) => MISSING_FUNCTION_CODES.includes(error?.code);
 
-  if (items.length) {
-    const rows = items.map(it => ({
-      order_id: order.id,
-      product_id: it.id,
-      product_name: it.name,
-      sku: it.sku,
+// A request that got no answer because the connection failed (NEW-061):
+// postgrest-js resolves a fetch that threw as { code: '', hint: '', message:
+// 'TypeError: Failed to fetch' } (Chrome; Safari says 'Load failed', Firefox
+// 'NetworkError when attempting to fetch resource.'). It may have reached
+// the server before the connection dropped. A server's refusal always has a
+// code.
+const TRANSPORT_FAILURE = /^TypeError\b|Failed to fetch|Load failed|NetworkError/;
+export const isTransportFailure = (err) => !!err && !err.hint && !err.code && TRANSPORT_FAILURE.test(String(err.message || ''));
+
+// The arguments of the current call. Will-call sends no address, whatever
+// the hidden address fields still hold. The state is sent upper-case. The
+// licence answers (PR #12's guest fields, AW-014) are empty unless the form
+// data has them: checkout no longer asks, as only approved accounts order.
+export function quoteParams(formData, items) {
+  const willCall = formData.delivery === 'willcall';
+  return {
+    p_business: text(formData.business),
+    p_contact: text(formData.contact),
+    p_email: text(formData.email),
+    p_phone: text(formData.phone),
+    p_delivery: formData.delivery,
+    p_preferred_date: formData.preferredDate || null,
+    p_notes: textOrNull(formData.notes),
+    p_ship_street: willCall ? null : text(formData.shipStreet),
+    p_ship_city: willCall ? null : text(formData.shipCity),
+    p_ship_state: willCall ? null : text(formData.shipState).toUpperCase(),
+    p_ship_zip: willCall ? null : text(formData.shipZip),
+    p_items: items.map((it) => ({
+      product_id: it.productId,
+      variant: it.variant || null,
       qty: it.qty,
-      unit_price: profile ? it.price : null,
-    }));
-    const { error: itemsErr } = await supabase.from('order_items').insert(rows);
-    if (itemsErr) throw itemsErr;
+    })),
+    p_license_no: textOrNull(formData.licenseNo),
+    p_resale_cert: textOrNull(formData.resaleCert),
+    p_purchasers_21: Boolean(formData.purchasers21),
+  };
+}
+
+// 'ALW-O-' and 10 hex digits (40 random bits), the shape of the references
+// the server makes for an approved account's order. Only for a database
+// without the current submit_quote.
+const HEX = '0123456789ABCDEF';
+export function makeClientRef(getRandomValues = (bytes) => globalThis.crypto.getRandomValues(bytes)) {
+  const bytes = getRandomValues(new Uint8Array(5));
+  return `ALW-O-${Array.from(bytes, (b) => HEX[b >> 4] + HEX[b & 15]).join('')}`;
+}
+
+// The older functions require a ship-to address for will-call too: the
+// warehouse's, as staff set it (Admin -> Site settings, AW-030).
+function withPickupAddress(args) {
+  const noAddress = !args.p_ship_street && !args.p_ship_city && !args.p_ship_state && !args.p_ship_zip;
+  if (args.p_delivery === 'willcall' && noAddress) {
+    const site = currentSite();
+    args.p_ship_street = site.addressStreet;
+    args.p_ship_city = site.addressCity;
+    args.p_ship_state = site.addressState;
+    args.p_ship_zip = site.addressZip;
+  }
+  return args;
+}
+
+// The arguments of PR #12's 16-argument call, from the current ones.
+export function licensedQuoteParams(params, refNum = makeClientRef()) {
+  return withPickupAddress({ p_ref_num: refNum, ...params });
+}
+
+// The arguments of the 13-argument call, from the current ones. It has no
+// license parameters, so the answers go in the notes instead of being lost.
+export function legacyQuoteParams(params, refNum = makeClientRef()) {
+  const { p_license_no: licenseNo, p_resale_cert: resaleCert, p_purchasers_21: purchasers21, ...rest } = params;
+  const licenseNote = [
+    licenseNo ? `State tobacco/retail license #: ${licenseNo}` : '',
+    resaleCert ? `Sales-tax / resale certificate #: ${resaleCert}` : '',
+    purchasers21 ? 'Confirmed: valid tobacco retail license and purchasers are 21+.' : '',
+  ].filter(Boolean).join('\n');
+  return withPickupAddress({
+    p_ref_num: refNum,
+    ...rest,
+    p_notes: [rest.p_notes, licenseNote].filter(Boolean).join('\n') || null,
+  });
+}
+
+const SIGNATURES = ['current', 'licensed', 'legacy'];
+let workingSignature = null;
+export const resetQuoteSignatureForTests = () => { workingSignature = null; };
+
+// One submit_quote call, abandoned after timeoutMs: { data, error }.
+async function callSubmitQuote(client, args, timeoutMs) {
+  const t = timeoutSignal(timeoutMs);
+  try {
+    const request = client.rpc('submit_quote', args);
+    return await (typeof request?.abortSignal === 'function' ? request.abortSignal(t.signal) : request);
+  } catch (error) {
+    return { data: null, error };
+  } finally {
+    t.clear();
+  }
+}
+
+// Saves the order. Resolves { ok, order, legacy }, where order is what
+// submit_quote returned ({ id, ref_num, total_units, subtotal, and from the
+// current function kind, priced_lines, unpriced_lines }) and legacy says an
+// older signature saved it; throws the error otherwise (quoteErrorMessage()
+// words it). A call that took too long throws code 'timeout', with refNum
+// when an older signature was sent that reference.
+// The orders inbox hears about a saved order from checkout, through Netlify
+// Forms (src/lib/orderNotification.js; owner answer 2026-10, AW-050, AW-024).
+export async function submitOrder({ formData, items }, { client = supabase, timeoutMs = QUOTE_SUBMIT_TIMEOUT_MS } = {}) {
+  if (!client) {
+    const err = new Error('Orders can’t be placed online right now.');
+    err.code = 'unavailable';
+    throw err;
   }
 
-  return { source: 'supabase', ok: true, order };
+  const params = quoteParams(formData, items);
+  const order = workingSignature ? [workingSignature, ...SIGNATURES.filter((s) => s !== workingSignature)] : SIGNATURES;
+  let refNum = null; // one client reference for every older call of this submit
+  let missing = null;
+  for (const signature of order) {
+    let args = params;
+    if (signature !== 'current') {
+      refNum = refNum || makeClientRef();
+      args = signature === 'licensed' ? licensedQuoteParams(params, refNum) : legacyQuoteParams(params, refNum);
+    }
+    const { data, error } = await callSubmitQuote(client, args, timeoutMs);
+    if (error && isMissingFunction(error)) { missing = error; continue; }
+    if (error && isTimeoutError(error)) {
+      const late = Object.assign(timeoutError('The order took too long.'), { cause: error });
+      if (signature !== 'current') late.refNum = refNum;
+      throw late;
+    }
+    // Lost on the way: never sent again, and an older signature's reference
+    // goes with it, as for a timeout (NEW-061).
+    if (error && signature !== 'current' && isTransportFailure(error)) {
+      throw Object.assign(new Error(String(error.message)), { code: '', cause: error, refNum });
+    }
+    if (error) throw error;
+    if (!data?.id) throw new Error('The order was not saved.');
+    workingSignature = signature;
+    return { ok: true, order: data, legacy: signature !== 'current' };
+  }
+  workingSignature = null;
+  throw missing;
+}
+
+// Today's date in Birmingham (YYYY-MM-DD), the earliest preferred date
+// submit_quote accepts (AW-198).
+export function todayInBirmingham(now = new Date()) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(now).map((p) => [p.type, p.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+// Text for the hints submit_quote raises. An object is a sentence around the
+// trade desk's phone and email (CallOrEmail's before/after); a string stands
+// alone.
+const HINT_MESSAGES = {
+  account_suspended: { before: 'Ordering is paused on this account. Call', after: ' and a trade rep will help you sort it out.' },
+  // 20261014111000: only a signed-in, approved account places orders
+  // (AW-014). The page had a session or approval the server no longer sees.
+  sign_in_required: 'You’re signed out, so this order wasn’t sent. Sign in, then place it again.',
+  account_not_approved: 'Your account is being reviewed, so this order wasn’t sent. You can place orders once it’s approved.',
+  rate_limited: { before: 'Too many orders in a short time, so this one wasn’t sent. Try again in a few minutes, or call the trade desk at', after: '.' },
+  contact_required: 'Fill in the business, contact, email and phone.',
+  field_too_long: 'One of the fields is too long. Shorten it and submit again.',
+  invalid_email: 'Enter a valid email address.',
+  address_required: 'Enter the ship-to street, city, state and ZIP, or choose will-call pickup.',
+  invalid_zip: 'Enter a 5-digit ZIP code (or ZIP+4).',
+  invalid_state: 'Enter the 2-letter state code, for example AL.',
+  delivery_state: DELIVERY_STATE_NOTE,
+  past_date: 'Choose a preferred date from today on.',
+  // Only for an account the server doesn't see as approved (older
+  // databases): approved accounts' licences were checked when they applied.
+  license_required: { before: 'This order has tobacco or vape items, which need an approved trade account. Call', after: ' and the trade desk will help.' },
+  // AW-200: the remaining ones.
+  no_items: 'Add at least one item before you submit.',
+  // submit_quote takes 200 lines; the storefront has no constant for that.
+  too_many_items: { before: 'This order has more lines than one order can take. Split it into two, or call', after: '.' },
+  invalid_delivery: 'Choose delivery or will-call pickup.',
+  ref_unavailable: { before: 'We couldn’t assign a reference number, so nothing was sent. Try again in a moment, or call', after: '.' },
+  invalid_quantity: `Quantities must be ${QTY_RANGE_TEXT}.`,
+  // The 13- and 16-argument functions refuse a reference they already have
+  // ("This quote was already submitted"): a double send, or a retry after a
+  // lost answer.
+  already_submitted: { before: 'This order may already have been sent. Call', after: ' before you place it again.' },
+};
+
+// Hints about one product (the order-line trigger, 20261011110000, puts its
+// id in the error's details). They name it when the request's lines say
+// which one it is.
+const PRODUCT_HINT_MESSAGES = {
+  product_unavailable: (name) => (name
+    ? `‘${name}’ is no longer available. Remove it, then submit again.`
+    : 'An item in this order is no longer available, so nothing was sent. Reload the page to see which, remove it, then submit again.'),
+  variant_required: (name) => (name
+    ? `Choose a variant for ‘${name}’, then submit again.`
+    : 'Choose a variant for every product that has more than one, then submit again.'),
+  unknown_variant: (name) => (name
+    ? `The variant chosen for ‘${name}’ is no longer offered. Choose another, then submit again.`
+    : 'One of the chosen variants is no longer offered. Choose another, then submit again.'),
+  variant_unavailable: (name) => (name
+    ? `‘${name}’ can’t be ordered right now. Choose another variant or remove it, then submit again.`
+    : 'One of the chosen variants can’t be ordered right now. Choose another or remove it, then submit again.'),
+};
+
+// A database without 20261009130000 (or 20261011110000) raises these without
+// a hint: the hint is read from the message instead.
+const MESSAGE_HINTS = [
+  [/^Product is not available/, 'product_unavailable'],
+  [/^Invalid quantity/, 'invalid_quantity'],
+  [/^Choose a variant for /, 'variant_required'],
+  [/^Unknown variant for /, 'unknown_variant'],
+  [/^Too many items/, 'too_many_items'],
+  [/^Add at least one item/, 'no_items'],
+  [/^A ship-to address is required/, 'address_required'],
+  [/^Contact details are required/, 'contact_required'],
+  [/^Invalid delivery method/, 'invalid_delivery'],
+  [/^This quote was already submitted/, 'already_submitted'],
+  // PR #12's 16-argument function raises the license rule without a hint.
+  [/tobacco license, resale certificate, and 21\+ confirmation/i, 'license_required'],
+];
+const hintOf = (err) => {
+  if (err?.hint) return err.hint;
+  const message = String(err?.message || '');
+  return MESSAGE_HINTS.find(([pattern]) => pattern.test(message))?.[1] || null;
+};
+
+// The product a hint is about, as the buyer's lines name it: by the id in
+// the error's details, else from the message ("Choose a variant for <name>").
+const NAMED_IN_MESSAGE = /^(?:Choose a variant|Unknown variant) for (.+)$/;
+const baseName = (it) => (it.variant && String(it.name).endsWith(` — ${it.variant}`)
+  ? String(it.name).slice(0, -(it.variant.length + 3))
+  : String(it.name));
+function productNameOf(err, items) {
+  const id = Number(String(err?.details ?? '').trim());
+  const lines = Number.isInteger(id) && id > 0 ? items.filter((it) => Number(it?.productId) === id && it?.name) : [];
+  // One line names its variant too; several lines of the product, the product.
+  if (lines.length === 1) return String(lines[0].name);
+  if (lines.length > 1) return baseName(lines[0]);
+  return NAMED_IN_MESSAGE.exec(String(err?.message || '').trim())?.[1] || null;
+}
+
+export const QUOTE_ERROR_GENERIC = { before: 'We couldn’t place this order. Please call the trade desk at', after: '.' };
+export const QUOTE_UNAVAILABLE = { before: 'Orders can’t be placed online right now. Call', after: ' and the trade desk will take your order.' };
+export const QUOTE_OFFLINE = 'You’re offline, so nothing was sent. Reconnect and submit again.';
+
+// A submit that may have been saved (AW-194, NEW-061): it took too long and
+// the page stopped waiting, or the connection dropped before the answer.
+// With the reference an older signature was sent, the trade desk can look
+// it up.
+const mayHaveBeenSaved = (before, refNum) => (refNum
+  ? { before, after: ` and give order reference ${refNum} before you place it again.` }
+  : { before, after: ' before you place it again, so it isn’t sent twice.' });
+export const quoteTimeoutMessage = (refNum = null) =>
+  mayHaveBeenSaved('We stopped waiting for an answer, and the order may have been saved. Call', refNum);
+export const quoteConnectionMessage = (refNum = null) =>
+  mayHaveBeenSaved('The connection dropped before an answer came back, and the order may have been saved. Call', refNum);
+
+// What to tell the buyer when submitOrder() failed: a timeout first, then
+// the text for its hint (naming the product from `items`, the lines that
+// were sent), then a request whose connection failed, else the generic
+// "call the trade desk" copy. A request that got no answer (a transport
+// failure, or the browser went offline while it was on its way: checkout
+// sends nothing while offline) may have been saved (NEW-061). Never a
+// reference number for an order that failed; one that may have been saved
+// is cited only with "may".
+export function quoteErrorMessage(err, { items = [] } = {}) {
+  if (isTimeoutError(err)) return quoteTimeoutMessage(err.refNum || null);
+  if (err?.code === 'unavailable') return QUOTE_UNAVAILABLE;
+  const hint = hintOf(err);
+  if (hint && PRODUCT_HINT_MESSAGES[hint]) return PRODUCT_HINT_MESSAGES[hint](productNameOf(err, items || []));
+  if (hint && HINT_MESSAGES[hint]) return HINT_MESSAGES[hint];
+  if (isTransportFailure(err) || (!err?.code && isOffline())) return quoteConnectionMessage(err?.refNum || null);
+  return QUOTE_ERROR_GENERIC;
+}
+
+// The form field a hint is about (quoteForm names), so the page can mark it.
+const HINT_FIELDS = {
+  invalid_email: 'email',
+  address_required: 'shipStreet',
+  invalid_zip: 'shipZip',
+  invalid_state: 'shipState',
+  delivery_state: 'shipState',
+  past_date: 'preferredDate',
+};
+export const quoteErrorField = (err) => {
+  const hint = hintOf(err);
+  return (hint && HINT_FIELDS[hint]) || null;
 };

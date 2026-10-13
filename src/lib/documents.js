@@ -1,0 +1,405 @@
+// Optional trade-application proof: state retail tobacco license and resale
+// certificate. Numbers stay required on the profile; these files are not.
+// Uploads run only when a session exists. The storage path is
+// {user id}/{document type}/{time}-{file}: every upload is a new object, and
+// the replaced one stays in the bucket, so profile_document_history
+// (20261008193000) still points at a file when a license is renewed (AW-197,
+// AW-254). Since 20261009140000 the storage and profile_documents policies
+// require exactly that layout and accept at most 10 uploads per account in
+// 24 hours (AW-207). Uploads never overwrite (upsert off): since
+// 20261012100000 no account may change a stored object, so the file staff
+// approved stays the one they saw (AW-197).
+
+import { supabase } from './supabase.js';
+import { preloadStorage, storageOf } from './storageClient.js';
+import { isChunkLoadError } from './chunks.js';
+import { OFFLINE_MESSAGE, isNetworkError, slowMessage, unavailableMessage } from './errors.js';
+import { REQUEST_TIMEOUT_MS, isOffline, isTimeoutError, timeoutSignal } from './network.js';
+import { fetchAllRows } from './paging.js';
+
+export const DOCUMENT_BUCKET = 'application-documents';
+export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+
+// PDF, JPG or PNG only (AW-347). HEIC/HEIF is no longer offered: Chrome and
+// Firefox can't show it to staff (the admin's View link downloaded an
+// unreadable file), and iPhone Safari converts a photo to JPEG when the
+// picker doesn't list HEIC. 20261012100000 takes image/heic and image/heif
+// off the bucket's allowed_mime_types too. That list gates new uploads only,
+// so HEIC files sent before this keep their type and still open. With no
+// HEIC there is no HEIC-sequence content type to map either, which makes
+// AW-251 moot.
+export const DOCUMENT_ACCEPT = '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png';
+
+export const DOCUMENT_TYPES = [
+  { id: 'tobacco_license', label: 'State retail tobacco license' },
+  { id: 'resale_certificate', label: 'Resale certificate' },
+];
+
+const ALLOWED_EXT = new Set(['pdf', 'jpg', 'jpeg', 'png']);
+const ALLOWED_MIME = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+]);
+const MIME_FOR_EXT = {
+  pdf: 'application/pdf',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+};
+// What sniffDocumentType() must find in a file with each extension.
+const TYPE_FOR_EXT = { pdf: 'pdf', jpg: 'jpeg', jpeg: 'jpeg', png: 'png' };
+const MIME_FOR_TYPE = { pdf: 'application/pdf', jpeg: 'image/jpeg', png: 'image/png' };
+
+// What an applicant sees when the database refuses a document upload: with
+// the client's own path, that is the upload limit (AW-207).
+export const DOCUMENTS_REFUSED_MESSAGE = 'We couldn’t accept that file (at most 10 uploads a day). Email it to the trade desk instead.';
+
+// A refusal by row-level security: 42501 from PostgREST, or a 403 / RLS
+// message from Storage.
+export function isDocumentPermissionError(err) {
+  if (!err) return false;
+  const code = String(err.code ?? '');
+  const status = String(err.statusCode ?? err.status ?? '');
+  return code === '42501' || status === '403' || /row-level security/i.test(String(err.message || ''));
+}
+
+// A file name as the page shows it (AW-264): up to `max` characters whole,
+// a longer one as its first 26 and last 10 (which keep the extension) around
+// an ellipsis. The full name goes in a title attribute beside it. Counted in
+// code points, so an emoji is never cut in half.
+export function shortFileName(name, max = 40) {
+  const chars = Array.from(String(name ?? ''));
+  if (chars.length <= max) return chars.join('');
+  return `${chars.slice(0, 26).join('')}…${chars.slice(-10).join('')}`;
+}
+
+// What a picked file that can't be sent says, here and from Storage. A file
+// checked here is named (AW-244); Storage's refusals don't say which file.
+// HEIC is no longer taken (AW-347, above).
+export const FILE_MISSING_MESSAGE = 'Choose a PDF, JPG or PNG file.';
+export const FILE_TYPE_MESSAGE = 'Use a PDF, JPG or PNG file.';
+export const FILE_TOO_LARGE_MESSAGE = 'That file is over the 10 MB limit.';
+export const DOCUMENT_UPLOAD_FAILED_MESSAGE = 'That file did not upload. You can try again, or send proof later.';
+const fileLabel = (name) => shortFileName(name) || 'That file';
+export const fileTypeMessage = (name) => `${fileLabel(name)} isn’t a PDF, JPG or PNG file.`;
+export const fileTooLargeMessage = (name) => `${fileLabel(name)} is over the 10 MB limit.`;
+
+// Storage answers a too-large or wrong-type file with its own status code
+// (often inside an HTTP 400) and English text.
+const storageStatus = (err) => [err?.statusCode, err?.status].map((v) => String(v ?? ''));
+
+// The sentence for a failed upload (AW-084). Never the error's own text:
+// Storage's and the database's messages ('new row violates row-level security
+// policy', 'mime type image/heic-sequence is not supported') mean nothing to
+// an applicant. Offline and a request that gave up get errors.js's copy
+// (AW-344, AW-194).
+export function documentErrorMessage(err) {
+  if (isDocumentPermissionError(err)) return DOCUMENTS_REFUSED_MESSAGE;
+  // This file's own check (uploadProfileDocument), before anything is sent:
+  // only its own sentences, for the file it checked.
+  if (err?.code === 'invalid_file') {
+    const own = [FILE_MISSING_MESSAGE, fileTypeMessage(err.fileName), fileTooLargeMessage(err.fileName), DOCUMENT_CONTENT_MESSAGE];
+    return own.find((text) => text === err.message) || FILE_TYPE_MESSAGE;
+  }
+  const message = String(err?.message || '');
+  const status = storageStatus(err);
+  if (status.includes('413') || /exceeded the maximum allowed size|payload too large/i.test(message)) return FILE_TOO_LARGE_MESSAGE;
+  if (status.includes('415') || err?.code === 'invalid_mime_type' || /mime type/i.test(message)) return FILE_TYPE_MESSAGE;
+  if (isOffline()) return OFFLINE_MESSAGE;
+  if (isTimeoutError(err)) return slowMessage('Document upload');
+  // Storage's code didn't download (AW-179, src/lib/storageClient.js) counts as the connection.
+  if (isNetworkError(err) || isChunkLoadError(err) || Number(err?.status) >= 500) return unavailableMessage('Document upload');
+  return DOCUMENT_UPLOAD_FAILED_MESSAGE;
+}
+
+const extensionOf = (file) => (file?.name || '').split('.').pop()?.toLowerCase();
+
+// The quick check, by name, declared type and size: synchronous, so a pick
+// can be refused at once. checkDocumentFile() adds the content check.
+export function validateDocumentFile(file) {
+  if (!file) return FILE_MISSING_MESSAGE;
+  const ext = extensionOf(file);
+  const mime = (file.type || '').toLowerCase();
+  const extOk = ALLOWED_EXT.has(ext);
+  const mimeOk = !mime || mime === 'application/octet-stream' || ALLOWED_MIME.has(mime);
+  if (!extOk || !mimeOk) return fileTypeMessage(file.name);
+  if (file.size > MAX_DOCUMENT_BYTES) return fileTooLargeMessage(file.name);
+  return null;
+}
+
+// How many bytes from the start of a file sniffDocumentType() reads.
+const SNIFF_BYTES = 1024;
+const PDF_MARKER = [0x25, 0x50, 0x44, 0x46, 0x2d]; // %PDF-
+const UTF8_BOM = [0xef, 0xbb, 0xbf];
+const ASCII_WHITESPACE = new Set([0x09, 0x0a, 0x0c, 0x0d, 0x20]); // tab, LF, FF, CR, space
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+async function readHead(file) {
+  const head = file.slice(0, SNIFF_BYTES);
+  if (typeof head.arrayBuffer === 'function') return new Uint8Array(await head.arrayBuffer());
+  // Browsers without Blob.arrayBuffer() (Safari before 14).
+  return new Uint8Array(await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(head);
+  }));
+}
+
+const matchesAt = (bytes, signature, at = 0) => signature.every((byte, i) => bytes[at + i] === byte);
+
+// A PDF starts with '%PDF-' (AW-347). Only a UTF-8 byte order mark and ASCII
+// whitespace may come before it, within the bytes read. PDF readers forgive
+// other bytes in front, but a file that starts with anything else, such as a
+// web page with the marker further down, isn't taken as a PDF.
+function startsAsPdf(bytes) {
+  let at = matchesAt(bytes, UTF8_BOM) ? UTF8_BOM.length : 0;
+  while (at < bytes.length && ASCII_WHITESPACE.has(bytes[at])) at++;
+  return matchesAt(bytes, PDF_MARKER, at);
+}
+
+// What a file's first bytes say it is (AW-347): 'pdf', 'jpeg', 'png', or
+// null for anything else, or a file that can't be read. Its name and the
+// type the browser declares (often empty or application/octet-stream) say
+// nothing about what is inside.
+export async function sniffDocumentType(file) {
+  if (!file || typeof file.slice !== 'function') return null;
+  let bytes;
+  try {
+    bytes = await readHead(file);
+  } catch {
+    return null;
+  }
+  if (matchesAt(bytes, [0xff, 0xd8, 0xff])) return 'jpeg';
+  if (matchesAt(bytes, PNG_SIGNATURE)) return 'png';
+  if (startsAsPdf(bytes)) return 'pdf';
+  return null;
+}
+
+export const DOCUMENT_CONTENT_MESSAGE = 'That file doesn’t look like a PDF, JPG or PNG. Choose the original file, or email it to the trade desk.';
+
+// validateDocumentFile(), then the content must be a PDF, JPEG or PNG that
+// matches the extension (.jpg and .jpeg are both JPEG). Returns
+// { problem, type }: problem is null for a good file, type its sniffed type.
+async function inspectDocumentFile(file) {
+  const problem = validateDocumentFile(file);
+  if (problem) return { problem, type: null };
+  const type = await sniffDocumentType(file);
+  if (!type || type !== TYPE_FOR_EXT[extensionOf(file)]) return { problem: DOCUMENT_CONTENT_MESSAGE, type };
+  return { problem: null, type };
+}
+
+// The full check before a file is accepted (AW-347): a message, or null.
+// Only the browser looks at the bytes: storage checks the declared type
+// and nothing reads the file on the server (BACKEND.md, documents).
+// TODO(owner): Should uploaded licence documents also be checked on the server, by a Supabase Edge Function that reads each new file's first bytes and removes one that isn't a real PDF, JPEG or PNG? Not built: today only the site checks, so an upload made outside the site can still store a disguised file. (AW-347)
+export async function checkDocumentFile(file) {
+  return (await inspectDocumentFile(file)).problem;
+}
+
+export function formatUploadedOn(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Uploaded';
+  const formatted = date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  return `Uploaded on ${formatted}`;
+}
+
+function safeFilename(name) {
+  const base = String(name || 'document').split(/[/\\]/).pop();
+  const cleaned = base.replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^\.+/, '');
+  return (cleaned || 'document').slice(0, 180);
+}
+
+// The sniffed type when it is known (AW-347), else what the file declares.
+// HEIC is no longer taken, so there is no HEIC-sequence type to map (AW-251).
+function contentTypeFor(file, type = null) {
+  if (MIME_FOR_TYPE[type]) return MIME_FOR_TYPE[type];
+  const mime = (file.type || '').toLowerCase();
+  if (mime === 'image/jpg') return 'image/jpeg';
+  if (ALLOWED_MIME.has(mime)) return mime;
+  const ext = (file.name || '').split('.').pop()?.toLowerCase();
+  return MIME_FOR_EXT[ext] || 'application/octet-stream';
+}
+
+// What goes up for `file` as `type`. supabase-js sends a File or Blob as
+// multipart form data, and Storage takes the type of that part, which is the
+// file's own: the contentType option only travels with a raw body. A file
+// whose own type isn't the one to store (none at all, octet-stream, or one
+// its content contradicts) goes up as a slice of itself with that type;
+// slice copies nothing.
+function uploadBody(file, type) {
+  if ((file.type || '').toLowerCase() === type || typeof file.slice !== 'function') return file;
+  return file.slice(0, file.size, type);
+}
+
+// Gives up after REQUEST_TIMEOUT_MS (AW-194) and throws, like any failed
+// load. Uploads have no time limit: a large file on a slow line takes long.
+export async function listProfileDocuments(userId) {
+  if (!supabase || !userId) return [];
+  const t = timeoutSignal(REQUEST_TIMEOUT_MS);
+  try {
+    const { data, error } = await supabase
+      .from('profile_documents')
+      .select('profile_id, document_type, storage_path, original_filename, uploaded_at')
+      .eq('profile_id', userId)
+      .abortSignal(t.signal);
+    if (error) throw error;
+    return data || [];
+  } finally {
+    t.clear();
+  }
+}
+
+// Every account's documents (Admin -> Accounts), a page of 1000 at a time
+// (AW-199), ordered by the table's unique key.
+export async function listAllProfileDocuments() {
+  if (!supabase) return [];
+  const { data, error } = await fetchAllRows(() => supabase
+    .from('profile_documents')
+    .select('profile_id, document_type, storage_path, original_filename, uploaded_at')
+    .order('profile_id')
+    .order('document_type'));
+  if (error) throw error;
+  return data || [];
+}
+
+// Storage's answer when an object name is taken: statusCode '409' (error
+// 'Duplicate', 'The resource already exists'), inside an HTTP 400 or 409.
+export function isDuplicateObjectError(err) {
+  if (!err) return false;
+  const codes = [err.statusCode, err.status, err.code, err.error].map((v) => String(v ?? ''));
+  return codes.includes('409')
+    || codes.some((code) => /^(duplicate|keyalreadyexists|23505)$/i.test(code))
+    || /already exists/i.test(String(err.message || ''));
+}
+
+const documentPath = (userId, documentType, file, time) => `${userId}/${documentType}/${time}-${safeFilename(file.name)}`;
+
+// No-ops when there is no session, so a signup that still needs email
+// confirmation never calls storage. The caller can retry once a session exists.
+export async function uploadProfileDocument(session, documentType, file) {
+  if (!supabase || !session?.user?.id) return { attempted: false };
+  if (!DOCUMENT_TYPES.some(doc => doc.id === documentType)) {
+    throw new Error('Unknown document.');
+  }
+  // A disguised file is refused here, before anything reaches storage.
+  const { problem, type } = await inspectDocumentFile(file);
+  if (problem) throw Object.assign(new Error(problem), { code: 'invalid_file', fileName: file?.name });
+
+  const userId = session.user.id;
+  // A new object name keeps the previous file in the bucket when a license is renewed.
+  let time = Date.now();
+  let path = documentPath(userId, documentType, file, time);
+
+  const { error: existingError } = await supabase
+    .from('profile_documents')
+    .select('storage_path')
+    .eq('profile_id', userId)
+    .eq('document_type', documentType)
+    .maybeSingle();
+  if (existingError) throw existingError;
+
+  const contentType = contentTypeFor(file, type);
+  const body = uploadBody(file, contentType);
+  // Upsert off (AW-197): an upload only ever adds an object. Overwriting
+  // needs an UPDATE policy, which 20261012100000 removes; adding works on the
+  // database before and after it. If the name is already taken (two uploads
+  // in the same millisecond), try once more under a new one.
+  // Storage's code is downloaded the first time it is needed (AW-179).
+  const storage = await storageOf(supabase);
+  const send = () => storage.from(DOCUMENT_BUCKET).upload(path, body, { upsert: false, contentType });
+  let { error: uploadError } = await send();
+  if (uploadError && isDuplicateObjectError(uploadError)) {
+    time = Math.max(Date.now(), time + 1);
+    path = documentPath(userId, documentType, file, time);
+    ({ error: uploadError } = await send());
+  }
+  if (uploadError) throw uploadError;
+
+  const uploaded_at = new Date().toISOString();
+  const row = {
+    profile_id: userId,
+    document_type: documentType,
+    storage_path: path,
+    original_filename: String(file.name || 'document').slice(0, 240),
+    uploaded_at,
+  };
+  const { error: rowError } = await supabase
+    .from('profile_documents')
+    .upsert(row, { onConflict: 'profile_id,document_type' });
+  if (rowError) throw rowError;
+
+  return { attempted: true, ...row };
+}
+
+// Uploads each chosen file in turn. One that fails doesn't stop the next
+// (AW-085): results says, per document type, { ok: true, record } or
+// { ok: false, error } (the error as thrown; show documentErrorMessage(error)).
+export async function uploadSelectedProof(session, filesByType) {
+  if (!supabase || !session?.user?.id) return { attempted: false, results: {} };
+  let attempted = false;
+  const results = {};
+  for (const doc of DOCUMENT_TYPES) {
+    const file = filesByType?.[doc.id];
+    if (!file) continue;
+    attempted = true;
+    try {
+      const record = await uploadProfileDocument(session, doc.id, file);
+      results[doc.id] = { ok: true, record };
+    } catch (error) {
+      results[doc.id] = { ok: false, error };
+    }
+  }
+  return { attempted, results };
+}
+
+// Starts downloading Storage's code (AW-179) when a panel that uploads or
+// opens documents shows, so the first upload or link doesn't wait for it.
+export function prepareDocumentStorage() {
+  preloadStorage(supabase);
+}
+
+// A signed URL for a stored document, valid for `expiresIn` seconds.
+export async function createDocumentViewUrl(storagePath, expiresIn = 600) {
+  if (!supabase || !storagePath) return null;
+  const storage = await storageOf(supabase);
+  const { data, error } = await storage.from(DOCUMENT_BUCKET).createSignedUrl(storagePath, expiresIn);
+  if (error || !data?.signedUrl) throw error || new Error('Could not open that file.');
+  return data.signedUrl;
+}
+
+// How long a document link opened from Admin -> Accounts stays valid (AW-208).
+export const DOCUMENT_VIEW_SECONDS = 60;
+
+// Opens a stored document in a new tab, signed at the moment it is clicked
+// with a short expiry (AW-208): nothing is signed ahead of time, so no link
+// on screen goes stale. The tab opens at once, inside the click, so popup
+// blockers allow it, and the signed URL is loaded into it when it arrives.
+// Returns { ok: true, url, blocked } (blocked: no tab could be opened, so
+// the caller offers `url` as a link) or { ok: false, error }, after closing
+// the tab.
+export async function openDocument(storagePath, { expiresIn = DOCUMENT_VIEW_SECONDS } = {}) {
+  let tab = null;
+  try {
+    tab = window.open('', '_blank');
+  } catch {
+    tab = null;
+  }
+  // The document's page gets no handle on this one (what noopener does;
+  // window.open with 'noopener' returns no tab to load the URL into).
+  if (tab) {
+    try { tab.opener = null; } catch { /* already cut off */ }
+  }
+  try {
+    const url = await createDocumentViewUrl(storagePath, expiresIn);
+    if (!url) throw new Error('Could not open that file.');
+    if (!tab) return { ok: true, url, blocked: true };
+    tab.location.replace(url);
+    return { ok: true, url, blocked: false };
+  } catch (error) {
+    try { tab?.close(); } catch { /* already closed */ }
+    return { ok: false, error };
+  }
+}

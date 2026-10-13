@@ -1,0 +1,2 @@
+# Local build plugin, registered in netlify.toml (AW-355). See index.js.
+name: image-cache

@@ -4,5 +4,27 @@ dist-ssr
 .vite
 *.log
 .DS_Store
+
+# Test output (Playwright traces and reports, coverage).
+test-results/
+playwright-report/
+blob-report/
+coverage/
 .env
-.env.local
+.env.*
+!.env.example
+
+# Rendered by scripts/build-images.mjs before dev/build — never committed.
+public/img/
+src/assets/generated/
+public/favicon.ico
+public/favicon-32.png
+public/apple-touch-icon.png
+public/icon-192.png
+public/icon-512.png
+public/icon-maskable-512.png
+public/og.jpg
+
+# The owner's price files (BACKEND.md, "Loading your list prices"). Prices
+# never go in the repository (AW-002, AW-003).
+supabase/private/

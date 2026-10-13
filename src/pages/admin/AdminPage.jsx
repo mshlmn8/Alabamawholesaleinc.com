@@ -1,297 +1,287 @@
 // Admin dashboard: orders, account approvals, product catalog edits.
 // All write paths use the row-level-security policies in 20260517000001_rls_policies.sql.
+// The sections live in OrdersSection.jsx, AccountsSection.jsx and
+// ProductsSection.jsx; this file is the access gate and the section links,
+// and re-exports the sections' helpers.
+//
+// Each section has its own URL (AW-118, src/lib/adminRoutes.js): /admin
+// (Orders), /admin/orders?status=…, /admin/orders/:id/print?doc=pick|slip
+// (AW-110), /admin/accounts?status=… (AW-268), /admin/products?q=…,
+// /admin/pricing (the tier discounts, AW-114), /admin/homepage (the hero
+// photos and the rails, AW-119), /admin/settings (the announcements, phone,
+// email, hours and address, AW-030). Bare /admin also has "How to use
+// Admin" (AdminHelp.jsx).
+//
+// Approved admin and staff accounts use it (AW-030, owner answer 2026-10;
+// is_staff_or_admin() in the database). Staff don't get Pricing, or the
+// role and tier controls in Accounts: those are an admin's alone.
+// Every admin URL is the same page to the router (pageKey 'admin'), so moving
+// between sections and filters keeps the scroll position and focus, and Back
+// returns to the previous section. A detail view (the product editor,
+// /admin/products/:id and /new; an order's print view; an account's page,
+// /admin/accounts/:id, AW-113) moves focus itself, and hands back a
+// returnFocusId that its list focuses when it shows again: by its own Back
+// link, or by the browser's Back (NEW-036), which the route change below
+// catches.
+//
+// The Orders and Accounts searches are kept here, not in the URL (they name
+// people), so they survive a visit to a print view or an account's page. Opening Orders (a print view included)
+// is a visit: orders placed since the previous one are marked New (AW-111,
+// ordersSeen.js).
 
-import React, { useEffect, useState } from 'react';
-import { ChevronRight, Check, X, Edit2, Save } from 'lucide-react';
-import { C, body, display, mono } from '../../data/theme.js';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, navigate } from '../../lib/router.js';
 import { supabase } from '../../lib/supabase.js';
+import { preloadStorage } from '../../lib/storageClient.js';
+import { adminHref, adminPath, adminSection } from '../../lib/adminRoutes.js';
+import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
+import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
+import { ADMIN_GATE_HEADINGS, adminGate, isApprovedAdmin, isApprovedStaff, isStaffRole } from '../../lib/accountStatus.js';
+import { OrdersTab, printLinkId } from './OrdersSection.jsx';
+import { AccountsTab } from './AccountsSection.jsx';
+import { NEW_PRODUCT_LINK_ID, ProductsTab, editLinkId } from './ProductsSection.jsx';
+import { PricingTab } from './PricingSection.jsx';
+import { HomepageTab, RAILS_HEADING_ID, railEditId } from './HomepageSection.jsx';
+import { SiteSettingsTab } from './SiteSettingsSection.jsx';
+import { AdminHelp } from './AdminHelp.jsx';
+import { PrintSheet } from './PrintSheet.jsx';
+import { printDoc } from './printSheet.js';
+import { accountLinkId } from './accountDetail.js';
+import { AdminStatus, useAdminStatus } from './AdminStatus.jsx';
+import { useOrdersSeen } from './ordersSeen.js';
 
-const TABS = [
-  { id: 'orders',   label: 'Orders'   },
+export {
+  ORDER_STATES, LEGACY_ORDER_STATES, hasQuoteWorkflow, isQuote, orderActionError, loadListPrices, suggestedUnitPrice,
+  parseOrderLines, orderEmail, ADMIN_ORDER_SELECT,
+} from './OrdersSection.jsx';
+export { approvalEmail, approvalLine } from './AccountsSection.jsx';
+export { loadAdminProducts } from './ProductsSection.jsx';
+
+// admin: an admin's alone (staff don't get the link, AW-030).
+const SECTIONS = [
+  { id: 'orders', label: 'Orders' },
   { id: 'accounts', label: 'Accounts' },
   { id: 'products', label: 'Products' },
+  { id: 'pricing', label: 'Pricing', admin: true },
+  { id: 'homepage', label: 'Homepage' },
+  { id: 'settings', label: 'Site settings' },
 ];
+export const PRICING_ADMIN_ONLY = 'Pricing tiers are changed by an admin. Ask the owner to change a tier’s discount or an account’s tier.';
+const NO_QUERY = Object.freeze({});
 
-export function AdminPage({ profile, goHome }) {
-  const [tab, setTab] = useState('orders');
+// The control that opened a detail view, for its list to focus when the
+// view closes (NEW-036): `before` is the detail view's route, `after` the
+// route shown now; null when `after` isn't that view's list. printFrom: the
+// print link the orders list opened the print view with ({ linkId }).
+export function detailOpener(before, after, { printFrom = null } = {}) {
+  if (before?.id == null || after?.id != null) return null;
+  const from = adminSection(before);
+  const to = adminSection(after);
+  if (from === 'orders' && before.view === 'print' && to === 'orders') {
+    return printFrom?.linkId || printLinkId(before.id, printDoc(before.query?.doc));
+  }
+  if (from === 'accounts' && to === 'accounts') return accountLinkId(before.id);
+  if (from === 'products' && to === 'products') return before.id === 'new' ? NEW_PRODUCT_LINK_ID : editLinkId(before.id);
+  // The editor opened from Admin -> Homepage's rails goes back there (NEW-076).
+  if (from === 'products' && to === 'homepage' && before.query?.back === 'homepage') {
+    return before.id === 'new' ? RAILS_HEADING_ID : railEditId(before.id);
+  }
+  return null;
+}
 
-  if (!profile || profile.role !== 'admin') {
+// route: the admin route (parseAdminPath); bare /admin shows Orders.
+// onCatalogChange: a product was edited; the storefront loads the catalog
+// again so this tab shows the edit at once (AW-191).
+export function AdminPage({
+  profile, account = profile ? 'ready' : 'signed-out', onSignIn, onRetry, retrying = false, onSignOut, signingOut = false,
+  onCatalogChange, route = { page: 'admin' },
+}) {
+  const status = useAdminStatus();
+  const section = adminSection(route);
+  const query = route.query || NO_QUERY;
+  const detail = route.id != null;
+  // Each section's last list filters, so its link brings them back after a
+  // visit to another section or a detail view.
+  const [lastQuery, setLastQuery] = useState({});
+  if (!detail && lastQuery[section] !== query) setLastQuery({ ...lastQuery, [section]: query });
+  // The control a section's list focuses when a detail view closes (e.g. the
+  // Edit link of the product just saved).
+  const [returnFocusId, setReturnFocusId] = useState(null);
+  // A detail view's own Back link names that control itself as it leaves
+  // (after a save, the saved product's Edit link): the route change it
+  // makes then adds nothing (NEW-036).
+  const handedBack = useRef(false);
+  const returnFocusTo = useCallback((id) => {
+    if (id) handedBack.current = true;
+    setReturnFocusId(id);
+  }, []);
+  // The product editor URL a link opened (Products' list or the Homepage
+  // rails), so leaving the editor goes Back to that page (NEW-076).
+  const [productOpenedFrom, setProductOpenedFrom] = useState(null);
+  // Orders: the search box, and the print view the list opened
+  // ({ path, linkId }), so Back from it goes back in history to the list.
+  const [orderSearch, setOrderSearch] = useState('');
+  const [printFrom, setPrintFrom] = useState(null);
+  const [accountSearch, setAccountSearch] = useState('');
+  // The account page the Accounts list opened (its URL), so leaving it goes
+  // Back in history to the list.
+  const [accountOpenedFrom, setAccountOpenedFrom] = useState(null);
+  // A detail view closed by the browser's Back (or Forward) rather than its
+  // own Back link (NEW-036): the list focuses the control that opened it,
+  // as the link would have done. What remembered the opening is forgotten,
+  // so a later Back link on a view opened another way doesn't go back in
+  // history.
+  const previousRoute = useRef(route);
+  useEffect(() => {
+    const before = previousRoute.current;
+    previousRoute.current = route;
+    if (before === route || before?.id == null || route.id != null) return;
+    const handled = handedBack.current;
+    handedBack.current = false;
+    const opener = detailOpener(before, route, { printFrom });
+    setPrintFrom(null);
+    setAccountOpenedFrom(null);
+    setProductOpenedFrom(null);
+    if (opener && !handled) setReturnFocusId(opener);
+  }, [route, printFrom]);
+  // The admin area is for approved admin and staff accounts; roles and
+  // pricing tiers for approved admins (AW-030).
+  const staffAccess = isApprovedStaff(profile);
+  const approvedAdmin = isApprovedAdmin(profile);
+  const ordersSince = useOrdersSeen(staffAccess && account === 'ready' && section === 'orders', supabase);
+  // Photo uploads and document links need Storage, whose code loads on
+  // demand (AW-179): start that for staff now, so the first one doesn't wait.
+  useEffect(() => {
+    if (staffAccess) preloadStorage(supabase);
+  }, [staffAccess]);
+  // A filter change replaces the history entry and keeps the scroll position.
+  // options.force: the change keeps any unsaved edit, so it skips the leave guard.
+  const setQuery = (next, options = {}) => navigate(adminHref({ section, query: next }), { replace: true, scroll: false, ...options });
+  // Back from a print view: back in history when the list opened it (the
+  // list's filters and scroll position come back), else the link's own
+  // navigation; either way the print link that opened it takes focus.
+  const leavePrint = (event) => {
+    if (printFrom) returnFocusTo(printFrom.linkId);
+    const back = printFrom && printFrom.path === window.location.pathname;
+    setPrintFrom(null);
+    if (back) {
+      event.preventDefault();
+      window.history.back();
+    }
+  };
+  // The address bar shows only the checked query: keys the section doesn't
+  // know (a pasted ?email=…) and default values are dropped from it too.
+  useEffect(() => {
+    if (!route.section || window.location.pathname !== adminPath(route)) return;
+    const canonical = adminHref(route);
+    if (window.location.pathname + window.location.search !== canonical) {
+      navigate(canonical + window.location.hash, { replace: true, scroll: false, force: true });
+    }
+  }, [route]);
+
+  // While auth loads, a real admin sees "Loading", not "access denied"
+  // (AW-087). Not a dead end otherwise (AW-232): signed-out visitors can sign
+  // in, and signed-in accounts without the admin or staff role get a way
+  // back. The server boundary is RLS (is_staff_or_admin(), is_admin()); this
+  // is only what the page shows.
+  // (Laid out like the dashboard, so its heading stays put when it loads.)
+  if (account === 'loading' || account === 'no-profile') {
     return (
-      <section className="px-3 md:px-6 lg:px-10 py-16 text-center" style={{ ...body }}>
-        <h2 style={{ ...display, fontWeight: 800, color: C.navy }} className="text-2xl mb-2">Access denied</h2>
-        <p style={{ color: C.muted }}>Admin role required.</p>
+      <section>
+        <div className="page-head">
+          <Breadcrumbs items={[HOME_CRUMB, { label: 'Admin' }]} />
+          <p className="eyebrow">TRADE DESK</p>
+          <h1>Admin</h1>
+          {account === 'loading'
+            ? <AccountLoading />
+            : <AccountProblem onRetry={onRetry} retrying={retrying} onSignOut={onSignOut} signingOut={signingOut} />}
+        </div>
+      </section>
+    );
+  }
+  // Only an approved admin or staff account gets the dashboard, as only
+  // those pass is_staff_or_admin() in the database (AW-352, AW-030). A
+  // suspended or pending one is told their access is on hold. App titles the
+  // tab by the same gate (adminGate, NEW-020), so the title names what is on
+  // screen.
+  const gate = adminGate(profile, account);
+  if (gate) {
+    const held = isStaffRole(profile?.role);
+    return (
+      <section className="page-head">
+        <Breadcrumbs items={[HOME_CRUMB, { label: 'Admin' }]} />
+        <p className="eyebrow">TRADE DESK</p>
+        <h1>{ADMIN_GATE_HEADINGS[gate]}</h1>
+        <p>{held
+          ? `Your ${profile.role === 'staff' ? 'staff' : 'admin'} access is on hold. Contact the owner.`
+          : profile
+            ? 'The admin area is only open to Alabama Wholesale staff accounts. Your account doesn’t have access.'
+            : 'The admin area is only open to Alabama Wholesale staff accounts. Sign in with a staff account to continue.'}</p>
+        <div className="dialog-actions compact-actions">
+          {profile
+            ? <Link className="button" to="/account">My account</Link>
+            : <button className="button" type="button" onClick={onSignIn}>Sign in</button>}
+          <Link className="text-link" to="/">Back to home</Link>
+        </div>
       </section>
     );
   }
 
+  // .admin-page: on phones its pill rows wrap instead of scrolling sideways
+  // (AW-266).
   return (
-    <section className="px-3 md:px-6 lg:px-10 py-5 md:py-10" style={{ ...body }}>
-      <div className="max-w-[1400px] mx-auto">
-        <div className="flex items-center gap-2 text-[11px] md:text-xs uppercase mb-5"
-             style={{ ...mono, letterSpacing: '0.12em', fontWeight: 600 }}>
-          <button onClick={goHome} className="hover:text-[#DB6433]" style={{ color: C.muted }}>Home</button>
-          <ChevronRight size={11} style={{ color: C.muted }} />
-          <span style={{ color: C.navy }}>Admin</span>
-        </div>
-
-        <h1 style={{ ...display, fontWeight: 800, color: C.navy }} className="text-3xl md:text-5xl leading-tight mb-6">
-          Admin
-        </h1>
-
-        <div className="flex gap-1 mb-6 border-b" style={{ borderColor: C.border }}>
-          {TABS.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-                    className="px-4 py-3 text-xs uppercase font-bold transition-colors"
-                    style={{
-                      ...mono, letterSpacing: '0.15em',
-                      color: tab === t.id ? C.orange : C.muted,
-                      borderBottom: `3px solid ${tab === t.id ? C.orange : 'transparent'}`,
-                      marginBottom: -1,
-                    }}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        {tab === 'orders'   && <OrdersTab />}
-        {tab === 'accounts' && <AccountsTab />}
-        {tab === 'products' && <ProductsTab />}
-      </div>
-    </section>
-  );
-}
-
-function OrdersTab() {
-  const [orders, setOrders] = useState(null);
-  const [filter, setFilter] = useState('new');
-
-  const reload = () => {
-    supabase
-      .from('orders')
-      .select('*, order_items(id, product_name, sku, qty, unit_price), profiles(business, name, pricing_tier)')
-      .order('created_at', { ascending: false })
-      .limit(200)
-      .then(({ data }) => setOrders(data || []));
-  };
-  useEffect(reload, []);
-
-  const updateStatus = async (id, status) => {
-    await supabase.from('orders').update({ status }).eq('id', id);
-    reload();
-  };
-
-  if (!orders) return <div style={{ color: C.muted }}>Loading…</div>;
-  const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter);
-
-  return (
-    <div>
-      <div className="flex gap-2 mb-4">
-        {['new','contacted','fulfilled','cancelled','all'].map(s => (
-          <button key={s} onClick={() => setFilter(s)}
-                  className="px-3 py-1.5 text-[10px] uppercase font-bold"
-                  style={{
-                    ...mono, letterSpacing: '0.14em',
-                    background: filter === s ? C.navy : 'white',
-                    color:      filter === s ? 'white' : C.navy,
-                    border: `1px solid ${C.border}`,
-                  }}>
-            {s} ({orders.filter(o => s === 'all' || o.status === s).length})
-          </button>
-        ))}
+    <section className="admin-page">
+      <div className="page-head">
+        <Breadcrumbs items={[HOME_CRUMB, { label: 'Admin' }]} />
+        <p className="eyebrow">TRADE DESK</p>
+        <h1>Admin</h1>
+        <p>{approvedAdmin
+          ? 'Orders, account approvals, catalog edits, pricing tiers, the home page and the site settings.'
+          : 'Orders, account approvals, catalog edits, the home page and the site settings.'}</p>
       </div>
 
-      {filtered.map(o => (
-        <div key={o.id} className="mb-3" style={{ background: 'white', border: `1px solid ${C.border}` }}>
-          <div className="px-4 py-3 border-b flex flex-wrap items-center justify-between gap-3"
-               style={{ borderColor: C.borderSoft, background: C.bg }}>
-            <div>
-              <div style={{ ...mono, fontWeight: 700, color: C.navy }} className="text-xs uppercase">{o.ref_num}</div>
-              <div className="text-[11px]" style={{ color: C.muted }}>
-                {new Date(o.created_at).toLocaleString()} · {o.business} · {o.contact} · {o.email} · {o.phone}
-                {o.profiles?.pricing_tier && <span> · tier: <b>{o.profiles.pricing_tier}</b></span>}
-              </div>
-            </div>
-            <select value={o.status} onChange={e => updateStatus(o.id, e.target.value)}
-                    className="px-2 py-1 text-[11px] uppercase font-bold cursor-pointer"
-                    style={{ ...mono, letterSpacing: '0.15em', background: 'white', border: `1px solid ${C.border}` }}>
-              {['new','contacted','fulfilled','cancelled'].map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          <ul className="px-4 py-2 text-sm">
-            {(o.order_items || []).map(it => (
-              <li key={it.id} className="flex justify-between py-1">
-                <span>{it.qty} × {it.product_name} <span style={{ color: C.mutedSoft }}>({it.sku})</span></span>
-                <span style={{ ...mono, color: C.navy }}>{it.unit_price != null ? `$${(it.unit_price * it.qty).toFixed(2)}` : '—'}</span>
-              </li>
-            ))}
-          </ul>
-          {o.notes && <div className="px-4 pb-3 text-[12px]" style={{ color: C.muted }}>Notes: {o.notes}</div>}
-        </div>
+      <nav className="sub-pills admin-sections" aria-label="Admin sections">
+        {SECTIONS.filter((s) => approvedAdmin || !s.admin).map(s => {
+          const current = s.id === section;
+          return (
+            <Link
+              key={s.id}
+              to={adminHref({ section: s.id, query: current && !detail ? query : lastQuery[s.id] })}
+              className={`sub-pill${current ? ' active' : ''}`}
+              aria-current={current ? 'page' : undefined}
+            >
+              {s.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* The admin home: how to do the everyday jobs (AW-030, AW-031). */}
+      {!route.section && <AdminHelp admin={approvedAdmin} />}
+      {section === 'orders' && route.view === 'print' && route.id != null && (
+        <PrintSheet orderId={route.id} doc={query.doc} listHref={adminHref({ section: 'orders', query: lastQuery.orders })} onBack={leavePrint} />
+      )}
+      {section === 'orders' && !detail && (
+        <OrdersTab query={query} onQuery={setQuery} notify={status.show} search={orderSearch} onSearch={setOrderSearch} since={ordersSince}
+          onOpenPrint={(href, linkId) => setPrintFrom({ path: href.split('?')[0], linkId })}
+          returnFocusId={returnFocusId} onReturnFocus={returnFocusTo} />
+      )}
+      {section === 'accounts' && (
+        <AccountsTab route={route} query={query} onQuery={setQuery} currentAdminId={profile.id} viewer={profile} notify={status.show} search={accountSearch} onSearch={setAccountSearch}
+          returnFocusId={returnFocusId} onReturnFocus={returnFocusTo} openedFrom={accountOpenedFrom} onOpen={setAccountOpenedFrom} />
+      )}
+      {section === 'products' && (
+        <ProductsTab route={route} query={query} onQuery={setQuery} onCatalogChange={onCatalogChange} notify={status.show}
+          returnFocusId={returnFocusId} onReturnFocus={returnFocusTo} openedFrom={productOpenedFrom} onOpen={setProductOpenedFrom} />
+      )}
+      {section === 'pricing' && (approvedAdmin ? <PricingTab notify={status.show} /> : (
+        <div className="callout info admin-slides-missing"><p>{PRICING_ADMIN_ONLY}</p></div>
       ))}
-      {filtered.length === 0 && <p style={{ color: C.muted }}>No orders in this state.</p>}
-    </div>
-  );
-}
-
-function AccountsTab() {
-  const [profiles, setProfiles] = useState(null);
-  const reload = () => {
-    supabase.from('profiles').select('*').order('created_at', { ascending: false }).then(({ data }) => setProfiles(data || []));
-  };
-  useEffect(reload, []);
-
-  const updateProfile = async (id, patch) => {
-    await supabase.from('profiles').update(patch).eq('id', id);
-    reload();
-  };
-
-  if (!profiles) return <div style={{ color: C.muted }}>Loading…</div>;
-
-  return (
-    <table className="w-full text-sm" style={{ background: 'white', border: `1px solid ${C.border}` }}>
-      <thead style={{ background: C.bg }}>
-        <tr>
-          {['Business','Contact','Email','Status','Tier','Role','Actions'].map(h => (
-            <th key={h} className="px-3 py-2 text-left text-[10px] uppercase" style={{ ...mono, letterSpacing: '0.15em', color: C.muted }}>{h}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {profiles.map(p => (
-          <tr key={p.id} className="border-t" style={{ borderColor: C.borderSoft }}>
-            <td className="px-3 py-2">{p.business || '—'}</td>
-            <td className="px-3 py-2">{p.name}</td>
-            <td className="px-3 py-2 text-[12px]">{p.email}</td>
-            <td className="px-3 py-2">
-              <select value={p.status} onChange={e => updateProfile(p.id, { status: e.target.value })}
-                      className="text-[11px] px-1 py-0.5 border" style={{ borderColor: C.border }}>
-                <option value="pending">pending</option>
-                <option value="approved">approved</option>
-                <option value="suspended">suspended</option>
-              </select>
-            </td>
-            <td className="px-3 py-2">
-              <select value={p.pricing_tier} onChange={e => updateProfile(p.id, { pricing_tier: e.target.value })}
-                      className="text-[11px] px-1 py-0.5 border" style={{ borderColor: C.border }}>
-                <option value="standard">standard</option>
-                <option value="silver">silver</option>
-                <option value="gold">gold</option>
-              </select>
-            </td>
-            <td className="px-3 py-2">
-              <select value={p.role} onChange={e => updateProfile(p.id, { role: e.target.value })}
-                      className="text-[11px] px-1 py-0.5 border" style={{ borderColor: C.border }}>
-                <option value="customer">customer</option>
-                <option value="admin">admin</option>
-              </select>
-            </td>
-            <td className="px-3 py-2">
-              {p.status === 'pending' && (
-                <button onClick={() => updateProfile(p.id, { status: 'approved' })}
-                        className="px-2 py-0.5 text-[10px] uppercase font-bold inline-flex items-center gap-1"
-                        style={{ ...mono, letterSpacing: '0.12em', background: C.greenTag, color: 'white' }}>
-                  <Check size={11} /> Approve
-                </button>
-              )}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
-function ProductsTab() {
-  const [rows, setRows] = useState(null);
-  const [editing, setEditing] = useState(null);
-  const [search, setSearch] = useState('');
-
-  const reload = () => {
-    supabase.from('products').select('*').order('id').then(({ data }) => setRows(data || []));
-  };
-  useEffect(reload, []);
-
-  const save = async (id, patch) => {
-    await supabase.from('products').update(patch).eq('id', id);
-    setEditing(null);
-    reload();
-  };
-
-  if (!rows) return <div style={{ color: C.muted }}>Loading…</div>;
-
-  const filtered = !search ? rows : rows.filter(r =>
-    r.name.toLowerCase().includes(search.toLowerCase()) ||
-    r.brand.toLowerCase().includes(search.toLowerCase()) ||
-    r.sku.toLowerCase().includes(search.toLowerCase())
-  );
-
-  return (
-    <div>
-      <input type="search" placeholder="Search products…" value={search} onChange={e => setSearch(e.target.value)}
-             className="w-full max-w-md mb-4 px-3 py-2 text-sm outline-none"
-             style={{ background: 'white', border: `1px solid ${C.border}` }} />
-      <div className="text-xs mb-2" style={{ color: C.muted }}>
-        {filtered.length} of {rows.length} products
-      </div>
-      <table className="w-full text-sm" style={{ background: 'white', border: `1px solid ${C.border}` }}>
-        <thead style={{ background: C.bg }}>
-          <tr>
-            {['ID','Name','Brand','Category','Price','Tag','Active',''].map(h => (
-              <th key={h} className="px-3 py-2 text-left text-[10px] uppercase" style={{ ...mono, letterSpacing: '0.15em', color: C.muted }}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {filtered.slice(0, 200).map(p => editing?.id === p.id ? (
-            <tr key={p.id} className="border-t" style={{ borderColor: C.borderSoft, background: C.orangeLite }}>
-              <td className="px-3 py-2">{p.id}</td>
-              <td className="px-3 py-2"><input value={editing.name} onChange={e => setEditing({...editing, name: e.target.value})} className="px-1 py-0.5 w-full border" style={{ borderColor: C.border }} /></td>
-              <td className="px-3 py-2"><input value={editing.brand} onChange={e => setEditing({...editing, brand: e.target.value})} className="px-1 py-0.5 w-full border" style={{ borderColor: C.border }} /></td>
-              <td className="px-3 py-2 text-[12px]">{p.cat} / {p.sub}</td>
-              <td className="px-3 py-2"><input type="number" step="0.01" value={editing.price} onChange={e => setEditing({...editing, price: parseFloat(e.target.value)})} className="px-1 py-0.5 w-24 border" style={{ borderColor: C.border }} /></td>
-              <td className="px-3 py-2">
-                <select value={editing.tag || ''} onChange={e => setEditing({...editing, tag: e.target.value || null})} className="px-1 py-0.5 border" style={{ borderColor: C.border }}>
-                  <option value="">—</option>
-                  <option value="BESTSELLER">BESTSELLER</option>
-                  <option value="NEW">NEW</option>
-                  <option value="DEAL">DEAL</option>
-                  <option value="PREMIUM">PREMIUM</option>
-                </select>
-              </td>
-              <td className="px-3 py-2">
-                <input type="checkbox" checked={editing.active} onChange={e => setEditing({...editing, active: e.target.checked})} />
-              </td>
-              <td className="px-3 py-2 flex gap-1">
-                <button onClick={() => save(p.id, { name: editing.name, brand: editing.brand, price: editing.price, tag: editing.tag, active: editing.active })}
-                        className="px-2 py-0.5 text-[10px] uppercase font-bold inline-flex items-center gap-1"
-                        style={{ ...mono, letterSpacing: '0.12em', background: C.orange, color: 'white' }}>
-                  <Save size={11} /> Save
-                </button>
-                <button onClick={() => setEditing(null)} className="px-2 py-0.5 text-[10px] uppercase" style={{ ...mono, letterSpacing: '0.12em', color: C.muted }}>
-                  Cancel
-                </button>
-              </td>
-            </tr>
-          ) : (
-            <tr key={p.id} className="border-t" style={{ borderColor: C.borderSoft }}>
-              <td className="px-3 py-2">{p.id}</td>
-              <td className="px-3 py-2">{p.name}</td>
-              <td className="px-3 py-2">{p.brand}</td>
-              <td className="px-3 py-2 text-[12px]" style={{ color: C.muted }}>{p.cat} / {p.sub}</td>
-              <td className="px-3 py-2" style={{ ...mono, color: C.navy }}>${Number(p.price).toFixed(2)}</td>
-              <td className="px-3 py-2">{p.tag || '—'}</td>
-              <td className="px-3 py-2">{p.active ? '✓' : '✗'}</td>
-              <td className="px-3 py-2">
-                <button onClick={() => setEditing({ ...p })} className="px-2 py-0.5 text-[10px] uppercase font-bold inline-flex items-center gap-1"
-                        style={{ ...mono, letterSpacing: '0.12em', background: 'white', color: C.navy, border: `1px solid ${C.border}` }}>
-                  <Edit2 size={11} /> Edit
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {filtered.length > 200 && <div className="text-xs mt-2" style={{ color: C.muted }}>Showing first 200 — narrow the search to see others.</div>}
-    </div>
+      {section === 'homepage' && (
+        <HomepageTab notify={status.show} onOpenProduct={setProductOpenedFrom} returnFocusId={returnFocusId} onReturnFocus={returnFocusTo} />
+      )}
+      {section === 'settings' && <SiteSettingsTab notify={status.show} />}
+      <AdminStatus status={status} />
+    </section>
   );
 }

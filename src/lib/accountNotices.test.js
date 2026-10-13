@@ -1,0 +1,131 @@
+// Which account notices show, and their wording (AW-015, AW-048, AW-336, AW-337, AW-047).
+import { describe, expect, it, vi } from 'vitest';
+import { accountNotices, signOutMessage } from './accountNotices.js';
+
+const act = () => ({
+  signIn: vi.fn(), requestReset: vi.fn(), signOutHere: vi.fn(), retryProfile: vi.fn(), dismissLink: vi.fn(),
+  viewApplication: vi.fn(), dismissSessionEnded: vi.fn(), dismissConnectionProblem: vi.fn(), dismissSignOut: vi.fn(),
+});
+const ids = (list) => list.map((n) => n.id);
+
+describe('signOutMessage', () => {
+  it('says how the sign-out went', () => {
+    expect(signOutMessage({ ok: true, scope: 'local' })).toBe('You’re signed out.');
+    expect(signOutMessage({ ok: false, scope: 'local' })).toBe('You’re signed out on this computer.');
+    expect(signOutMessage({ ok: true, scope: 'global' })).toMatch(/all your devices/);
+    expect(signOutMessage({ ok: false, scope: 'global' })).toMatch(/other devices may still be signed in/);
+  });
+
+  it('says the cart is kept for the next sign-in when it had items (AW-189)', () => {
+    expect(signOutMessage({ ok: true, scope: 'local' }, { cartSaved: true })).toBe('You’re signed out. The items you added are saved on this computer for your next sign-in.');
+    expect(signOutMessage({ ok: false, scope: 'local' }, { cartSaved: false })).toBe('You’re signed out on this computer.');
+  });
+});
+
+describe('accountNotices', () => {
+  it('shows nothing for an ordinary visit', () => {
+    expect(accountNotices({ account: 'signed-out' }, act())).toEqual([]);
+  });
+
+  it('explains an expired link with a way forward, never Supabase’s text (AW-015)', () => {
+    const a = act();
+    const [notice] = accountNotices({ linkError: { code: 'otp_expired', network: false, forReset: false } }, a);
+    expect(notice).toMatchObject({ id: 'link-error', title: 'That email link has expired or was already used' });
+    expect(notice.text).not.toMatch(/password reset link/i);
+    expect(notice.actions.map((x) => x.label)).toEqual(['Sign in', 'Reset password']);
+    notice.onDismiss();
+    expect(a.dismissLink).toHaveBeenCalled();
+  });
+
+  it('leaves a reset link’s problem to the reset page', () => {
+    expect(accountNotices({ linkError: { code: 'otp_expired', forReset: true } }, act())).toEqual([]);
+  });
+
+  it('confirms a sign-up link', () => {
+    expect(ids(accountNotices({ linkConfirmed: 'signup' }, act()))).toEqual(['link-confirmed']);
+    expect(accountNotices({ linkConfirmed: 'invite' }, act())).toEqual([]);
+  });
+
+  it('points an application under review at its status after the confirmation link (AW-016)', () => {
+    const a = act();
+    for (const linkConfirmed of ['signup', 'email']) {
+      const [notice] = accountNotices({ linkConfirmed, account: 'ready', profileStatus: 'pending', routePage: 'home' }, a);
+      expect(notice).toMatchObject({
+        id: 'link-confirmed',
+        title: 'Your email is confirmed',
+        text: 'You’re signed in. Your application is waiting for review — see its status and add your license documents on your trade account page.',
+      });
+      expect(notice.actions.map((x) => x.label)).toEqual(['View application status']);
+      notice.actions[0].onClick();
+      notice.onDismiss();
+    }
+    expect(a.viewApplication).toHaveBeenCalledTimes(2);
+    expect(a.dismissLink).toHaveBeenCalledTimes(2);
+    // Already on that page: no link to it.
+    expect(accountNotices({ linkConfirmed: 'signup', account: 'ready', profileStatus: 'pending', routePage: 'apply' }, a)[0].actions).toEqual([]);
+  });
+
+  it('keeps the plain confirmation for an approved account, or one whose profile did not load (AW-016)', () => {
+    const plain = { id: 'link-confirmed', text: 'Your email is confirmed and you’re signed in.' };
+    for (const state of [
+      { account: 'ready', profileStatus: 'approved' },
+      { account: 'ready', profileStatus: 'suspended' },
+      { account: 'no-profile' },
+      {},
+    ]) {
+      const [notice] = accountNotices({ linkConfirmed: 'signup', ...state }, act());
+      expect(notice, JSON.stringify(state)).toMatchObject(plain);
+      expect(notice.title).toBeUndefined();
+      expect(notice.actions).toBeUndefined();
+    }
+  });
+
+  it('waits for the account to load, so the confirmation appears once with the right wording (AW-016)', () => {
+    expect(accountNotices({ linkConfirmed: 'signup', account: 'loading' }, act())).toEqual([]);
+  });
+
+  it('says when the session ended, with a sign-in (AW-048)', () => {
+    const a = act();
+    const [notice] = accountNotices({ sessionEnded: true }, a);
+    expect(notice.title).toBe('Your session has ended');
+    expect(notice.text).toMatch(/the items you added/);
+    notice.actions[0].onClick();
+    expect(a.signIn).toHaveBeenCalled();
+  });
+
+  it('words an ended staff session on /admin for staff, and leaves the sign-in to the admin page (NEW-044)', () => {
+    const [notice] = accountNotices({ sessionEnded: true, routePage: 'admin', account: 'signed-out' }, act());
+    expect(notice).toMatchObject({ id: 'session-ended', tone: 'warn', title: 'Your session has ended', text: 'Sign in again to continue.' });
+    expect(notice.text).not.toMatch(/pricing|items|orders/);
+    expect(notice.actions).toEqual([]);
+    expect(typeof notice.onDismiss).toBe('function');
+    // Every other page keeps the buyer's wording and its Sign in.
+    for (const routePage of ['home', 'category', 'quote', 'account']) {
+      const [buyer] = accountNotices({ sessionEnded: true, routePage }, act());
+      expect(buyer.text, routePage).toMatch(/account pricing/);
+      expect(buyer.actions.map((x) => x.label)).toEqual(['Sign in']);
+    }
+  });
+
+  it('offers to sign out when the account service is out of reach (AW-047)', () => {
+    const a = act();
+    const [notice] = accountNotices({ connectionProblem: true }, a);
+    expect(notice.actions[0].label).toBe('Sign out on this computer');
+    notice.actions[0].onClick();
+    expect(a.signOutHere).toHaveBeenCalled();
+    expect(accountNotices({ connectionProblem: true, signingOut: true }, a)[0].actions[0]).toMatchObject({ label: 'Signing out…', disabled: true });
+  });
+
+  it('flags a missing profile except on the pages that explain it (AW-089)', () => {
+    expect(ids(accountNotices({ account: 'no-profile', routePage: 'quote' }, act()))).toEqual(['no-profile']);
+    expect(accountNotices({ account: 'no-profile', routePage: 'account' }, act())).toEqual([]);
+    expect(accountNotices({ account: 'no-profile', routePage: 'admin' }, act())).toEqual([]);
+    // /apply offers Try again and Sign out itself (NEW-002).
+    expect(accountNotices({ account: 'no-profile', routePage: 'apply' }, act())).toEqual([]);
+    expect(ids(accountNotices({ account: 'no-profile', routePage: 'category' }, act()))).toEqual(['no-profile']);
+  });
+
+  it('shows the sign-out result (AW-336)', () => {
+    expect(accountNotices({ signOutText: 'You’re signed out.' }, act())).toMatchObject([{ id: 'signed-out', text: 'You’re signed out.' }]);
+  });
+});

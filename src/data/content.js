@@ -1,108 +1,330 @@
-// Storefront content: company info, marketing copy, hero slides, FAQs, and
-// welcome-popup offers. PRODUCTS lives in ./products.js.
+// Storefront content: the business facts (company, hours, minimum order,
+// free-delivery threshold), the licensed-only line, the volume-pricing line,
+// the ticker, the home hero's copy and photos, the trust band, the department
+// photos, the storage keys and the policy date. The warehouse photos are in
+// ./warehousePhotos.js, PRODUCTS in ./products.js. BRANDS and FAQS are not
+// shown anywhere; they wait on owner answers (see each one).
 
-import { IMG } from './theme.js';
+import { heroImage } from '../lib/images.js';
+import { HERO_REEL } from './warehousePhotos.js';
+import { formatMoney, formatMoneyShort } from '../lib/format.js';
+
+// ---------------------------------------------------------------------------
+// Business facts (AW-283)
+//
+// Contact details, opening hours, the minimum order and the free-delivery
+// threshold are defined once, here. Pages, meta and the copy arrays below
+// print them from these constants (money with formatMoney/formatMoneyShort),
+// never as literals; src/data/facts.test.js scans the source for strays and
+// checks the copies in index.html (structured data, boot shell) and
+// public/site.webmanifest against these values.
+
+// The warehouse's clock. Every printed time is in this zone
+// (src/lib/orders.js todayInBirmingham uses the same one).
+export const TIME_ZONE = 'America/Chicago';
+export const TIME_ZONE_LABEL = 'CT';
+export const TIME_ZONE_NAME = 'Central Time';
+
+// Opening hours, one row per run of days. dayOfWeek, opens and closes are the
+// schema.org openingHoursSpecification fields (24-hour clock) that index.html
+// repeats; days and long are the short and spelled-out labels pages print.
+// TODO(owner): Which dates is the warehouse closed for holidays (or open
+// shorter hours), and are these hours Central Time? The contact page says
+// "Holiday hours can differ" and prints the hours as CT until then. (AW-275)
+export const HOURS = [
+  { days: 'Mon–Fri', long: 'Monday – Friday', dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], opens: '07:00', closes: '18:00' },
+  { days: 'Sat–Sun', long: 'Saturday – Sunday', dayOfWeek: ['Saturday', 'Sunday'], opens: '08:00', closes: '17:30' }
+];
+
+const NBSP = '\u00A0';
+const WORD_JOINER = '\u2060';
+
+// '18:00' → '6:00 PM'.
+export function clockLabel(time) {
+  const [hours, minutes] = String(time).split(':').map(Number);
+  return `${hours % 12 || 12}:${String(minutes).padStart(2, '0')} ${hours < 12 ? 'AM' : 'PM'}`;
+}
+
+// Hours that cannot wrap inside themselves (AW-275): every space becomes a
+// no-break space and a word joiner follows every en dash, because browsers
+// otherwise break after a dash, even one followed by a no-break space
+// ('Mon–' | 'Fri …', '8:00 AM –' | '5:30 PM'). Meta text uses nowrap: false.
+const keepTogether = (text) => text.replace(/ /g, NBSP).replace(/–/g, `–${WORD_JOINER}`);
+
+// '7:00 AM – 6:00 PM'.
+export function hoursRange(row, { nowrap = true } = {}) {
+  const text = `${clockLabel(row.opens)} – ${clockLabel(row.closes)}`;
+  return nowrap ? keepTogether(text) : text;
+}
+
+// 'Mon–Fri 7:00 AM – 6:00 PM CT'.
+export function hoursLine(row, { nowrap = true, zone = true } = {}) {
+  const text = `${row.days} ${hoursRange(row, { nowrap: false })}${zone ? ` ${TIME_ZONE_LABEL}` : ''}`;
+  return nowrap ? keepTogether(text) : text;
+}
+
+const WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+// Open or closed at `now` by `hours`, on the clock in `timeZone` (AW-275):
+// { open: true, closes } while open, otherwise { open: false, opens, inDays,
+// day } for the next opening (inDays 0 is later today). null without hours.
+// Holiday closures are not known (see the TODO at HOURS).
+export function openStatus(now, hours = HOURS, timeZone = TIME_ZONE) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+    timeZone, weekday: 'long', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(now).map(p => [p.type, p.value]));
+  // Some engines print midnight as 24:00.
+  const time = `${parts.hour === '24' ? '00' : parts.hour}:${parts.minute}`;
+  const today = WEEK.indexOf(parts.weekday);
+  for (let inDays = 0; inDays <= 7; inDays += 1) {
+    const day = WEEK[(today + inDays) % 7];
+    const row = hours.find(r => r.dayOfWeek.includes(day));
+    if (!row) continue;
+    if (inDays === 0 && time >= row.opens && time < row.closes) return { open: true, closes: row.closes };
+    if (inDays > 0 || time < row.opens) return { open: false, opens: row.opens, inDays, day };
+  }
+  return null;
+}
+
+// 'Open now · closes 6:00 PM CT', 'Closed · opens 8:00 AM CT',
+// 'Closed · opens tomorrow 7:00 AM CT'; '' without hours.
+export function openStatusLabel(status) {
+  if (!status) return '';
+  const at = (time) => keepTogether(`${clockLabel(time)} ${TIME_ZONE_LABEL}`);
+  if (status.open) return `Open now · closes ${at(status.closes)}`;
+  const when = status.inDays === 0 ? '' : status.inDays === 1 ? 'tomorrow ' : `${status.day} `;
+  return `Closed · opens ${when}${at(status.opens)}`;
+}
+
+// The label for this moment, or '' if the browser cannot read the Central
+// Time clock. Components read the clock through this, never themselves
+// (react-hooks/purity).
+export function openStatusNow() {
+  try {
+    return openStatusLabel(openStatus(new Date()));
+  } catch {
+    return '';
+  }
+}
 
 export const COMPANY = {
+  // TODO(owner): Is the legal name "Alabama Wholesale Inc" or "Alabama
+  // Wholesale Inc." (with the period)? The header prints "ALABAMA WHOLESALE
+  // INC."; the name is unchanged until you say. (AW-283)
   name: 'Alabama Wholesale Inc',
-  phone: '(205) 555-0199',
-  phoneRaw: '+12055550199',
-  whatsapp: '12055550199',
-  email: 'trade@alabamawholesale.com',
-  addressShort: '613 Graymont Ave N, Birmingham AL 35203',
+  // The published phone (owner answer, 2026-09-28 and 2026-10): header,
+  // footer, contact page, Help, FAQ, every tel: link, and index.html's
+  // structured data and boot shell (src/data/facts.test.js checks them).
+  phone: '(205) 458-4788',
+  phoneRaw: '+12054584788',
+  // TODO(owner): Which domain email address is monitored, so it can replace the Gmail address? (AW-127)
+  email: 'Alabamawholesaleinc@gmail.com',
+  // With the comma the footer and addressLine2 use (NEW-066).
+  addressShort: '613 Graymont Ave N, Birmingham, AL 35203',
   addressLine1: '613 Graymont Ave N',
   addressLine2: 'Birmingham, AL 35203',
-  hoursLine1: 'Mon–Fri 7:00 AM – 6:00 PM',
-  hoursLine2: 'Sat–Sun 8:00 AM – 5:00 PM'
+  // The same address in parts: the will-call address a quote sends to a
+  // database without submit_quote v3 (src/lib/orders.js, AW-079).
+  addressStreet: '613 Graymont Ave N',
+  addressCity: 'Birmingham',
+  addressState: 'AL',
+  addressZip: '35203',
+  // 'Mon–Fri 7:00 AM – 6:00 PM CT', unbreakable (AW-275).
+  hoursLine1: hoursLine(HOURS[0]),
+  hoursLine2: hoursLine(HOURS[1])
 };
 
-export const ANNOUNCEMENTS = [
-  '★ FREE DELIVERY on orders over $1,500 in Alabama, Mississippi & Georgia',
-  '★ NET-30 TERMS available for approved retail accounts',
-  '★ SAME-DAY WILL-CALL · Order by 11AM, pick up the same afternoon',
-  '★ VOLUME DISCOUNTS · Save up to 18% on pallet quantities'
-];
+// TODO(owner): Free delivery "over $1,500" (ticker, cart, quote, delivery
+// pages) or "$1,500 or more" (FAQ)? Both wordings are unchanged until
+// you say. (AW-283)
+export const FREE_DELIVERY_THRESHOLD = 1500;
+// TODO(owner): Is the $500 minimum order a hard rule that blocks submission, or only a guideline that orders below it may still be submitted? It is not enforced; checkout only notes it. (AW-076)
+export const ORDER_MINIMUM = 500;
 
-export const SHOP_CATS = [
-  { name: 'TOBACCO',       count: 68, color: ['#3A1F1A', '#8C6F3D'], icon: 'cigar' },
-  { name: 'NOVELTIES',     count: 51, color: ['#2D1A4A', '#9333EA'], icon: 'vape' },
-  { name: 'MERCHANDISE',   count: 60, color: ['#1A1A1A', '#DB6433'], icon: 'shopping' },
-  { name: 'CANDIES',       count: 57, color: ['#A0282E', '#F59E0B'], icon: 'candy' },
-  { name: 'FOOD STUFF',    count: 25, color: ['#1F4A3D', '#10B981'], icon: 'snack' },
-  { name: 'GROCERY',       count: 47, color: ['#1F4A2A', '#22C55E'], icon: 'cleaning' },
-  { name: 'MOTOR OIL',     count: 16, color: ['#1F2A1A', '#EF4444'], icon: 'oil' },
-  { name: 'DRINKS & BAGS', count: 44, color: ['#1F2A4A', '#0EA5E9'], icon: 'drink' }
-];
+// The licensed-only statement, in one wording wherever the site prints it:
+// the trade-only strip above the header (upper-cased there by CSS) and the
+// footer's legal bar (AW-285). The policy pages keep their own legal text.
+export const LICENSED_ONLY = 'Wholesale to licensed retail businesses only · No consumer sales · 21+';
 
-export const HERO_SLIDES = [
-  // To use video: set videoUrl to a public MP4 URL (or leave null for image)
-  // For demo, all use images. Replace with your real product videos.
-  { eyebrow: 'NEW THIS WEEK', title: 'The brands your customers ask for.', sub: 'Tobacco, novelties, candy, beverages, motor oil, household and more — over 368 SKUs ready to ship from our Birmingham warehouse.', cta1: 'Shop Catalog', cta2: 'Apply for Account', img: IMG.hero_candy, videoUrl: null, accent: 'orange', goCat: 'NOVELTIES' },
-  { eyebrow: 'BESTSELLING NOVELTIES', title: 'Geekbar 25K — now in stock.', sub: 'World\'s first 3D curved screen disposable. Full flavor lineup available, ready to ship today.', cta1: 'Shop Novelties', cta2: 'See All Vape', img: IMG.hero_vape, videoUrl: null, accent: 'navy', goCat: 'NOVELTIES' },
-  { eyebrow: 'COUNTER ESSENTIALS', title: 'BIC lighters & merchandise.', sub: 'Stock up the counter for less. Volume pricing on Bic, Eagle torches, Lattafa air freshener and more.', cta1: 'Shop Merchandise', cta2: 'View Displays', img: IMG.hero_lighters, videoUrl: null, accent: 'orange', goCat: 'MERCHANDISE' },
-  { eyebrow: 'DRINKS & BEVERAGES', title: 'Gatorade, Monster, Red Bull — by the case.', sub: 'Free delivery within 100 miles of Birmingham on orders over $1,500. Net-30 terms for approved accounts.', cta1: 'Shop Drinks', cta2: 'Get a Quote', img: IMG.hero_gatorade, videoUrl: null, accent: 'navy', goCat: 'DRINKS & BAGS' }
-];
+// Volume pricing (AW-025, owner answer 2026-10): there are no Net-30 terms
+// and no published volume discounts; volume pricing is agreed with the trade
+// desk. This one sentence stands where the old claims were: the trade bar,
+// the home page's services and the Trade terms (ContactLinks.jsx
+// VolumePricing prints it with the email and phone as links). With another
+// phone (Admin -> Site settings, AW-030) it names that one.
+export const volumePricingText = (phone) => `For volume pricing, email us or call ${phone}.`;
+export const VOLUME_PRICING = volumePricingText(COMPANY.phone);
 
+// The trade bar's announcements (after the trade notice, TradeBar.jsx), with
+// the phone the site publishes. Staff can replace them in Admin -> Site
+// settings (src/data/siteFacts.js, AW-030); until then these show.
+export const announcementsFor = (phone) => [
+  `★ FREE DELIVERY on orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} on our delivery routes in Alabama, Mississippi & Georgia`,
+  '★ WILL-CALL · Pickup at the Birmingham warehouse during business hours',
+  `★ ${volumePricingText(phone)}`
+];
+export const ANNOUNCEMENTS = announcementsFor(COMPANY.phone);
+
+// The home page's pitch: the h1's supporting line (HomeHero) and the meta
+// description (src/lib/meta.js HOME_DESCRIPTION, index.html), so the page
+// says what the search result says (AW-004). It is the description as
+// published, shortened to fit a search result (155 characters, AW-318) by
+// dropping only its closing 'from our Birmingham warehouse'; the hero's
+// eyebrow still names Birmingham, and nothing new is claimed.
+// The delivery wording (next-day, the three states) should come from the
+// business-facts module once the commerce lane's AW-283 lands.
+// TODO(owner): Approve the home page's title (HOME_TITLE, "Wholesale Tobacco, Vapes & Candy · Alabama Wholesale Inc" in search results and tabs) and this description, the line under the home headline. (AW-318)
+export const HOME_PITCH = 'Wholesale tobacco, vapes, candy, drinks, grocery and motor oil for licensed retailers. Next-day delivery on our routes in Alabama, Mississippi and Georgia.';
+
+// The home page's title before the site name (src/lib/meta.js, index.html):
+// the products people search for, within 60 characters with the name
+// (AW-318). TODO(owner) above.
+export const HOME_TITLE = 'Wholesale Tobacco, Vapes & Candy';
+
+// The home page's split hero (src/components/HomeHero.jsx, AW-004): the
+// eyebrow comes from the site's former title, and the line under the h1 is
+// the meta description. The photos beside it rotate through the owner's
+// warehouse reel (AW-006, owner answer 2026-10).
+// TODO(owner): Approve the home headline "Wholesale for licensed retailers." and its supporting line. (AW-004)
+export const HOME_HERO = {
+  eyebrow: 'WHOLESALE DISTRIBUTOR · BIRMINGHAM, AL',
+  title: 'Wholesale for licensed retailers.',
+  text: HOME_PITCH,
+};
+
+// The photos beside the home hero (src/components/HeroCarousel.jsx): the
+// owner's 8-photo highlight reel of the warehouse (HERO_REEL in
+// ./warehousePhotos.js, AW-006), until Admin -> Homepage's rows replace it
+// (src/lib/homeSlides.js). The contact page shows the other 29 photos
+// (src/pages/support/WarehousePhotos.jsx). Each slide describes its photo in
+// `alt` and links to its department (goCat) or nowhere (null), like a
+// home_slides row. heroImage() supplies img (plain URL) and picture (the
+// responsive WebP/JPEG set) from the photo in src/assets. None of the eight
+// shows a nicotine product, so none carries the FDA statement (a home_slides
+// row can: nicotine_warning).
+export const HERO_SLIDES = HERO_REEL.map(({ file, alt, goCat }) => ({ ...heroImage(file), alt, goCat, nicotineWarning: false }));
+
+// The product whose photo stands for each department on the home page's
+// "Shop by department" tiles (AW-061), by catalog id: a clean packshot from
+// one of the department's bigger product lines that the New arrivals and
+// Bestsellers rails don't already show. None is a nicotine product, because
+// the tiles carry no FDA statement, and none is from a line waiting on the
+// legal review (AW-001). Novelties' two biggest lines are exactly those
+// (Disposable Vapes, nicotine; Wellness Pills, under review; Mushroom
+// Products, the biggest before, is delisted), so its photo comes from Hookah &
+// Shisha. A product missing from the live catalog, or without a photo, gives
+// way to the first suitable one in the department's biggest line that has
+// one (departmentPhoto in src/pages/HomePage.jsx).
+// TODO(owner): Approve these eight department photos, or supply a photo for each department. (AW-061, see AW-056)
+export const DEPARTMENT_PHOTOS = {
+  TOBACCO: 347, // Zig-Zag hemp wraps (Wraps & Leafs)
+  NOVELTIES: 314, // Coco Nara hookah charcoal (Hookah & Shisha)
+  MERCHANDISE: 196, // Advil (OTC & Health)
+  CANDIES: 163, // M&M's (Chocolate Bars)
+  'FOOD STUFF': 48, // Ritz crackers (Chips & Crackers)
+  GROCERY: 20, // Vaseline healing jelly (Personal Care)
+  'MOTOR OIL': 102, // Havoline motor oil (Motor Oil)
+  'DRINKS & BAGS': 249, // Sprite (Sodas)
+};
+
+// Not shown on the site. Kept for a possible brand strip under the hero
+// (AW-005); AW-328 removes only the exports no open finding needs.
 export const BRANDS = ["HERSHEY'S", 'GATORADE', 'BIC', 'WD-40', 'GEEK BAR', 'GAIN', 'STP', 'WHITE OWL', 'TWANGERZ', 'POM POM', 'NEON', 'JOB'];
 
+// The trust band under the home hero (AW-005, owner answers 2026-10): 20
+// years in business and 100% authentic are confirmed; the sourcing sentence
+// is the owner's: everything comes from the manufacturer or from a
+// middleman such as a wholesaler, so the site never says "direct from the
+// manufacturer" alone. No count of accounts or routes, and no "three
+// generations" or "family owned", is published.
+export const YEARS_IN_BUSINESS = 20;
+export const SOURCING = 'Every product comes from the manufacturer or an established wholesale distributor.';
+// Each fact as the band prints it: a figure and its label, which read as one
+// phrase ("20 years in business"); CSS sets the label in capitals.
 export const TRUST = [
-  { icon: 'ShieldCheck', title: '100% Authentic',        blurb: 'Sourced direct from manufacturers and authorized distributors. Every SKU verified.' },
-  { icon: 'Truck',       title: 'Free Delivery $1,500+', blurb: 'Same-day pickup or next-day delivery throughout Alabama, Georgia & Mississippi.' },
-  { icon: 'Tag',         title: 'Volume Discounts',      blurb: 'Tiered case and pallet pricing. Save up to 18% on pallet-quantity orders.' },
-  { icon: 'Users',       title: 'Family Owned',          blurb: 'Three generations serving Southeast retailers. Real relationships, honest pricing.' }
+  { figure: String(YEARS_IN_BUSINESS), label: 'years in business' },
+  { figure: '100%', label: 'authentic products' },
 ];
 
+// Not shown on the site. Kept for the FAQ page AW-279 asks the owner to
+// confirm; Help stands in for it until then (AW-328). The answers follow
+// the owner's 2026-10 answers: no Net-30, no volume discounts (volume
+// pricing through the trade desk) and no approval time (AW-025, AW-246).
+// TODO(owner): Confirm the FAQ answers before they are published. (AW-279)
 export const FAQS = [
   { q: 'Do I need a business license to order?',
     a: 'Yes. Alabama Wholesale only sells to licensed retailers. You\'ll need a valid retail business license, sales tax / resale certificate, and (for tobacco/vape products) a tobacco permit for your state. We verify all documents during account approval.' },
   { q: 'What is your minimum order?',
-    a: 'There is no minimum order amount once your wholesale account is approved. However, free delivery only applies to orders of $1,500 or more. Smaller orders qualify for will-call pickup or paid freight.' },
-  { q: 'How long does account approval take?',
-    a: 'Most applications are approved within 24 hours. Net-30 terms require credit verification which can add 2–3 business days. You can also call us at (205) 555-0199 to expedite.' },
+    a: `The minimum order is ${formatMoney(ORDER_MINIMUM)}. Free delivery applies to orders of ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} or more when the stop is on a delivery route. Will-call is pickup at the Birmingham warehouse during business hours.` },
+  { q: 'How does account approval work?',
+    a: `A trade rep reviews each application and checks the license and resale certificate. Wholesale pricing and ordering unlock when the account is approved. Questions about an application? Call us at ${COMPANY.phone}.` },
   { q: 'What areas do you deliver to?',
-    a: 'We deliver throughout Alabama, Georgia, Mississippi, Tennessee, and parts of Florida and Louisiana. Free delivery on $1,500+ orders within 100 miles of Birmingham. Outside that radius, freight is calculated at order time.' },
+    a: `We deliver on routes in Alabama, Mississippi and Georgia. Next-day delivery on our own trucks and free delivery on orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} apply when the stop is on a delivery route.` },
   { q: 'Can I pick up my order in person?',
-    a: 'Yes. Our Birmingham warehouse offers same-day will-call. Order by 11 AM and your products will be ready to pick up the same afternoon. We\'re located at 613 Graymont Ave N.' },
-  { q: 'How does pallet / volume pricing work?',
-    a: 'Discounts kick in starting at 5 cases (5%) and scale up to 18% off for 5+ pallet orders. The discount is applied automatically at checkout. Contact your trade rep for custom mixed-pallet pricing.' },
+    a: `Yes. Will-call is pickup at the Birmingham warehouse, ${COMPANY.addressLine1}, during business hours: ${HOURS.map(row => `${row.dayOfWeek[0]}–${row.dayOfWeek[row.dayOfWeek.length - 1]} ${clockLabel(row.opens)}–${clockLabel(row.closes)}`).join(', ')}.` },
+  { q: 'Do you offer volume pricing?',
+    a: `For volume pricing, email us at ${COMPANY.email} or call ${COMPANY.phone}.` },
   { q: 'What payment methods do you accept?',
-    a: 'Cash, check, ACH transfer, all major credit cards (Visa, Mastercard, Amex, Discover), and Net-30 terms for approved accounts. Card payments may include a small processing fee on orders over $5,000.' },
-  { q: 'Do you ship out of state?',
-    a: 'For tobacco and vape products, we follow PACT Act and state-by-state regulations. Some products may not be shippable to certain states. Other categories (candy, beverages, household, automotive) ship freely throughout the Southeast.' }
+    a: 'Cash, checks, and electronic wiring and transfers.' },
+  { q: 'Do you deliver outside Alabama, Mississippi and Georgia?',
+    a: 'Delivery is currently on routes in Alabama, Mississippi and Georgia.' }
 ];
 
-export const WELCOME_OFFERS = [
-  {
-    type: 'NEW',
-    color: '#DB6433',
-    title: 'Geekbar Pulse X 25K — In Stock Now',
-    body: 'World-first 3D curved screen disposable. All 12 flavors available, ready to ship today from our Birmingham warehouse.',
-    cta: 'Shop Vapes',
-    target: 'NOVELTIES'
-  },
-  {
-    type: 'RESTOCK',
-    color: '#1E1B5C',
-    title: 'BIC Lighters — Counter Displays Restocked',
-    body: '50-count assorted color displays back in stock. Perfect for high-traffic counters. Volume pricing available.',
-    cta: 'Shop Lighters',
-    target: 'MERCHANDISE'
-  },
-  {
-    type: 'SALE',
-    color: '#1F7A47',
-    title: 'Pallet Rates — Up To 18% Off',
-    body: 'Save up to 18% on pallet quantities. Mix and match any combination of SKUs. Net-30 terms for approved accounts.',
-    cta: 'Get a Quote',
-    target: null
-  }
-];
-
+// What the site keeps in the browser. The privacy policy names every key and
+// says why (AW-027; PolicyPage.test.jsx checks), so a new key goes there too.
 export const STORAGE = {
+  // localStorage: the dated 21+ confirmation (src/lib/ageGate.js, AW-340).
   age: 'aw-age-verified',
-  cart: 'aw-cart',
-  user: 'aw-trade-user',
-  welcome: 'aw-welcome-seen'
+  // sessionStorage: "No, exit" on the age gate, for this tab's session (AW-176).
+  ageDeclined: 'aw-age-declined',
+  // localStorage: the cart, one per account on this device plus one for
+  // guests ('aw-cart-v3:guest', 'aw-cart-v3:<user id>'), its lines in the
+  // order they were added (NEW-065), and lines from an older cart that still
+  // need a variant ('aw-cart-legacy:<owner>'). See src/lib/cartStorage.js
+  // (AW-189, AW-354). The v2 carts ('aw-cart-v2:<owner>') and the first
+  // builds' 'aw-cart', 'aw-trade-user' and 'aw-welcome-seen' are moved or
+  // removed there.
+  cart: 'aw-cart-v3',
+  cartLegacy: 'aw-cart-legacy',
+  // sessionStorage only, never localStorage: this tab's last order receipt
+  // (or an older quote's), one record { owner, entryKey, receipt }, so a reload or Back
+  // keeps the confirmation. It holds the buyer's contact details and is
+  // cleared on sign-out. See src/lib/receipt.js (AW-012, AW-022).
+  receipt: 'aw-last-receipt',
+  // sessionStorage only, never localStorage: this tab's draft of the checkout
+  // form, one record { owner, data, savedAt }, so leaving /checkout or a
+  // reload keeps what was typed. It holds contact details and is cleared on
+  // a successful order and on sign-out. The key keeps its old name, so a
+  // draft typed before checkout moved from /quote survives. See
+  // src/lib/quoteDraft.js (AW-080).
+  quoteDraft: 'aw-quote-draft'
 };
 
-export const FREE_DELIVERY_THRESHOLD = 1500;
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+// A policy date as the pages print it (AW-277): '2026-10-10' is
+// 'October 10, 2026', and a month alone, '2026-09', is 'September 2026'.
+// Worked out from the digits, so no time zone can move the day.
+export function policyDateLabel(iso) {
+  const [, year, month, day] = /^(\d{4})-(\d{2})(?:-(\d{2}))?$/.exec(String(iso)) || [];
+  const name = MONTH_NAMES[Number(month) - 1];
+  if (!name) return String(iso);
+  return day ? `${name} ${Number(day)}, ${year}` : `${name} ${year}`;
+}
+
+// The day the Trade terms and Privacy policy last changed (ISO), which the
+// two pages print in a <time> element, and the version a trade application
+// records acceptance of (profiles.terms_version, AW-019): the same date, so
+// one edit here dates both pages and the record. Change it whenever either
+// policy changes. Applications sent before October 10, 2026 recorded
+// '2026-09', the month the pages printed then.
+// TODO(owner): approve the Trade terms and Privacy policy version the
+// application records acceptance of (AW-019).
+// TODO(owner): The exact date each policy should show. (AW-277)
+export const POLICIES_UPDATED_ON = '2026-10-10';
+export const POLICIES_UPDATED = policyDateLabel(POLICIES_UPDATED_ON);
+export const TERMS_VERSION = POLICIES_UPDATED_ON;
+// The Delivery policy's own date (AW-130, AW-277). Its terms haven't changed
+// since September 2026, so it doesn't take the date above, and an
+// application doesn't record it.
+export const DELIVERY_POLICY_UPDATED_ON = '2026-09';

@@ -1,0 +1,276 @@
+// Every piece of URL knowledge for the storefront (AW-043, AW-185, AW-188):
+// the path URLs, a parser that never throws, validation against the loaded
+// catalog with canonical redirects, the department filter query string
+// (AW-008) and the legacy '#/' links from the old hash router.
+//
+// Pure functions only: scripts/build-sitemap.mjs imports this file in Node.
+//
+//   /                                   home (anchors: /#new-arrivals, /#bestsellers)
+//   /catalog                            all products
+//   /category/:dept[/:line]?q=&sort=&tags=&brand=&variants=1
+//                                       brand: brand slugs, comma-separated (AW-067)
+//   /product/:id
+//   /search?q=                          search results (AW-007; q clipped to 200 characters)
+//   /checkout /account /admin            (/quote is the old checkout address:
+//                                       it redirects to /checkout, AW-024)
+//   /contact /delivery /shipping /privacy /terms /apply /reset-password
+//
+// Department and product-line segments are slugs of the catalog's names
+// ('DRINKS & BAGS' -> drinks-and-bags). Any spelling that slugs the same way
+// (/category/TOBACCO, /category/DRINKS%20%26%20BAGS) resolves and is
+// redirected to the canonical slug.
+//
+// Adding a route touches: PATH_SECTIONS and parseUrl, pathFor, meta.js
+// pageText, App's renderRoute switch, NOINDEX_PAGES, scripts/build-sitemap.mjs
+// and netlify.toml, whose rewrites answer each page path with index.html and
+// every other path with a 404 (NEW-088). scripts/netlify-redirects.test.mjs
+// fails until a new path has its rewrite.
+
+// The admin sections' URLs are in ./adminRoutes.js.
+import { adminHref, adminPath, parseAdminPath } from './adminRoutes.js';
+import { DELISTED_LINE_DEPARTMENT, DELISTED_LINE_SLUGS } from '../data/delisted.js';
+
+// The production origin. VITE_SITE_URL overrides it (see src/lib/meta.js and
+// scripts/build-sitemap.mjs); this is the domain the site already uses.
+// TODO(owner): Register the production domain and connect it in Netlify; VITE_SITE_URL overrides this. (AW-052)
+export const DEFAULT_SITE_URL = 'https://alabamawholesaleinc.com';
+
+// Normalises a configured site URL to `https://host` with no trailing slash.
+// Anything that is not an absolute http(s) origin falls back to the default.
+export function siteUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return DEFAULT_SITE_URL;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return DEFAULT_SITE_URL;
+    return `${url.origin}${url.pathname.replace(/\/+$/, '')}`;
+  } catch {
+    return DEFAULT_SITE_URL;
+  }
+}
+
+// Static support pages: /<page> — see src/pages/support/.
+export const SUPPORT_PAGES = ['catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply', 'reset-password'];
+// Pages that take no parameters.
+const SIMPLE_PAGES = ['checkout', 'account', 'admin', ...SUPPORT_PAGES];
+// Every first path segment parseUrl answers ('/' and '/index.html' are the
+// home page). Any other is not found, here and on Netlify (NEW-088), so a new
+// section goes in this list or it never resolves.
+export const PATH_SECTIONS = ['product', 'category', 'search', ...SIMPLE_PAGES];
+// Old addresses of a page, as { old section: page }. Each one parses as its
+// page, so App redirects it to the page's own path (and '#/quote' from the
+// hash router lands there too); netlify.toml moves it permanently, so it is
+// in no list above and never in the sitemap. Customers place orders, not
+// quotes (owner answer 2026-10, AW-024): checkout moved from /quote.
+export const MOVED_SECTIONS = Object.freeze({ quote: 'checkout' });
+
+// Kept out of search engines (robots noindex) and out of the sitemap.
+export const NOINDEX_PAGES = ['checkout', 'account', 'admin', 'reset-password', 'search', 'not-found'];
+
+// Department page sort orders; 'featured' is the default and never written.
+// 'brand' is Brand: A to Z (AW-067).
+export const SORTS = ['featured', 'name-asc', 'name-desc', 'brand', 'variants', 'price-low', 'price-high'];
+// Featured filters, as catalog tag values. The URL carries them in lower case.
+export const TAGS = ['BESTSELLER', 'NEW', 'DEAL', 'PREMIUM'];
+
+// 'DRINKS & BAGS' -> 'drinks-and-bags', 'Men’s Care' -> 'mens-care'.
+export function slugify(text) {
+  return String(text ?? '')
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/['’‘`]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+// decodeURIComponent throws on malformed escapes (a link cut off mid-escape,
+// e.g. /category/%E0%A4%A). Those become null, and the route not-found.
+const decode = (segment) => {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return null;
+  }
+};
+
+const searchParams = (search) => {
+  try {
+    return new URLSearchParams(search || '');
+  } catch {
+    return new URLSearchParams();
+  }
+};
+
+// Brand filters (AW-067) are brand slugs ('Swisher Sweets' -> swisher-sweets):
+// at most 30, each a plain slug of up to 60 characters, deduplicated and in
+// name order, so one set of brands has one URL. Whether a slug names a brand
+// in the department is the page's business; anything else is dropped here.
+const BRAND_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+export const MAX_BRANDS = 30;
+const brandSlugs = (list) => [...new Set((list || []).map((b) => String(b ?? '').trim().toLowerCase()))]
+  .filter((b) => b.length <= 60 && BRAND_SLUG.test(b))
+  .slice(0, MAX_BRANDS)
+  .sort();
+
+// The department filters in a query string. Unknown values are ignored.
+export function parseCategoryQuery(search) {
+  const params = searchParams(search);
+  const q = (params.get('q') || '').slice(0, 200);
+  const sort = SORTS.includes(params.get('sort')) ? params.get('sort') : 'featured';
+  const wanted = (params.get('tags') || '').split(',').map((t) => t.trim().toUpperCase());
+  const tags = TAGS.filter((t) => wanted.includes(t));
+  const brands = brandSlugs((params.get('brand') || '').split(','));
+  const variants = params.get('variants') === '1';
+  return { q, sort, tags, brands, variants };
+}
+
+export const EMPTY_CATEGORY_QUERY = Object.freeze({ q: '', sort: 'featured', tags: [], brands: [], variants: false });
+
+// The query string for department filters, in a fixed order; '' when none.
+export function categoryQueryString(query = EMPTY_CATEGORY_QUERY) {
+  const params = new URLSearchParams();
+  const q = String(query.q || '').trim();
+  if (q) params.set('q', q);
+  if (query.sort && query.sort !== 'featured' && SORTS.includes(query.sort)) params.set('sort', query.sort);
+  const tags = TAGS.filter((t) => (query.tags || []).includes(t));
+  if (tags.length) params.set('tags', tags.map((t) => t.toLowerCase()).join(','));
+  const brands = brandSlugs(query.brands);
+  if (brands.length) params.set('brand', brands.join(','));
+  if (query.variants) params.set('variants', '1');
+  const text = params.toString().replace(/%2C/g, ',');
+  return text ? `?${text}` : '';
+}
+
+// Reads a URL (pathname and search) into a raw route. Parameters are not yet
+// checked against the catalog; resolveRoute does that. Never throws.
+export function parseUrl({ pathname = '/', search = '' } = {}) {
+  const segments = String(pathname).split('/').filter(Boolean).map(decode);
+  if (segments.some((s) => s === null)) return { page: 'not-found' };
+  const [first, ...rest] = segments;
+  if (!first) return { page: 'home' };
+  const section = first.toLowerCase();
+  if (section === 'index.html' && rest.length === 0) return { page: 'home' };
+  if (Object.prototype.hasOwnProperty.call(MOVED_SECTIONS, section)) return rest.length === 0 ? { page: MOVED_SECTIONS[section] } : { page: 'not-found' };
+  if (!PATH_SECTIONS.includes(section)) return { page: 'not-found' };
+  if (section === 'product') return rest.length === 1 ? { page: 'product', id: rest[0] } : { page: 'not-found', kind: rest.length ? 'page' : 'product' };
+  if (section === 'category') {
+    if (rest.length === 1 || rest.length === 2) {
+      return { page: 'category', dept: rest[0], sub: rest[1] ?? null, query: parseCategoryQuery(search) };
+    }
+    return { page: 'not-found', kind: rest.length ? 'page' : 'department' };
+  }
+  if (section === 'search' && rest.length === 0) return { page: 'search', q: (searchParams(search).get('q') || '').slice(0, 200) };
+  if (section === 'admin') return parseAdminPath(rest, search);
+  if (SIMPLE_PAGES.includes(section) && rest.length === 0) return { page: section };
+  return { page: 'not-found' };
+}
+
+// Canonical product ids are positive integers written without leading zeros.
+const productIdOf = (id) => (/^\d{1,9}$/.test(String(id)) ? Number(id) : null);
+
+// Checks a raw route against the catalog. Returns the route the pages render
+// (department and line keys as the catalog spells them, numeric product ids)
+// or a not-found route. Unknown things are never echoed into headings,
+// breadcrumbs or titles.
+//
+// A product line taken off the site (src/data/delisted.js, AW-001:
+// /category/novelties/kratom-and-kava, /category/novelties/mushroom-products)
+// is its department's page, so App redirects the old address there instead
+// of showing "not found"; netlify.toml answers the same addresses with a
+// permanent redirect. Only while the catalog has no such line: the delisted
+// lines are in no catalog the storefront loads.
+//
+// A not-found route for an address that cannot name anything in any catalog
+// (/product/abc, /product/0, /product with no id, /category with no key)
+// carries malformed: true. Only the other ones (/product/99999, an unknown
+// department or line) may still turn up in the live catalog, so only they
+// wait for it (App.jsx, AW-204); a malformed one is "not found" at once
+// (AW-188).
+export function resolveRoute(raw, { departments = [], products = [] } = {}) {
+  if (raw.page === 'category') {
+    const slug = slugify(raw.dept);
+    if (!slug) return { page: 'not-found', kind: 'department', malformed: true };
+    const dept = departments.find((d) => slugify(d.key) === slug);
+    if (!dept) return { page: 'not-found', kind: 'department' };
+    let sub = null;
+    if (raw.sub != null) {
+      const subSlug = slugify(raw.sub);
+      if (!subSlug) return { page: 'not-found', kind: 'line', category: dept.key, malformed: true };
+      sub = dept.subs.find((s) => slugify(s) === subSlug) || null;
+      if (!sub && dept.key === DELISTED_LINE_DEPARTMENT && DELISTED_LINE_SLUGS.includes(subSlug)) return { page: 'category', category: dept.key, sub: null, query: raw.query || EMPTY_CATEGORY_QUERY };
+      if (!sub) return { page: 'not-found', kind: 'line', category: dept.key };
+    }
+    return { page: 'category', category: dept.key, sub, query: raw.query || EMPTY_CATEGORY_QUERY };
+  }
+  if (raw.page === 'product') {
+    const productId = productIdOf(raw.id);
+    if (productId === null || productId < 1) return { page: 'not-found', kind: 'product', malformed: true };
+    if (!products.some((p) => Number(p.id) === productId)) return { page: 'not-found', kind: 'product' };
+    return { page: 'product', productId };
+  }
+  if (raw.page === 'not-found') {
+    const kind = raw.kind || 'page';
+    // parseUrl gives a product or department kind only to an address that
+    // is missing its id or key.
+    return kind === 'page' ? { page: 'not-found', kind } : { page: 'not-found', kind, malformed: true };
+  }
+  return raw;
+}
+
+// The path of a route, without its query string. Not-found routes have none.
+export function pathFor(route) {
+  switch (route?.page) {
+    case 'home': return '/';
+    case 'product': return `/product/${route.productId}`;
+    case 'category': return `/category/${slugify(route.category)}${route.sub ? `/${slugify(route.sub)}` : ''}`;
+    case 'search': return '/search';
+    case 'admin': return adminPath(route);
+    case 'not-found': return null;
+    default: return SIMPLE_PAGES.includes(route?.page) ? `/${route.page}` : '/';
+  }
+}
+
+// The href for a route: its path plus the department filters or search query.
+export function hrefFor(route) {
+  const path = pathFor(route) ?? '/';
+  if (route?.page === 'category') return path + categoryQueryString(route.query);
+  if (route?.page === 'admin') return adminHref(route);
+  if (route?.page === 'search') {
+    const q = String(route.q || '').trim();
+    return q ? `${path}?${new URLSearchParams({ q })}` : path;
+  }
+  return path;
+}
+
+// Identifies the rendered page, e.g. to reset per-page state on navigation.
+export function routeKey(route) {
+  if (route?.page === 'not-found') return `not-found:${route.kind || 'page'}${route.category ? `:${route.category}` : ''}`;
+  return hrefFor(route);
+}
+
+// Identifies the page a URL shows, ignoring the product line and filters of a
+// department page. Moving between two URLs with the same page key keeps the
+// scroll position and focus; anything else is a new page. Each search query
+// is a page of its own (its h1 takes focus and is announced), whatever its
+// case or outer spaces.
+export function pageKeyFor({ pathname = '/', search = '' } = {}) {
+  const raw = parseUrl({ pathname, search });
+  if (raw.page === 'category') return `category:${slugify(raw.dept)}`;
+  if (raw.page === 'product') return `product:${productIdOf(raw.id) ?? raw.id}`;
+  if (raw.page === 'search') return `search:${raw.q.trim().toLowerCase()}`;
+  return raw.page;
+}
+
+// Old hash-router links ('/#/category/TOBACCO', '/#/product/12') map to their
+// path. Anything else in the fragment ('#access_token=…', '#error=…',
+// '#type=recovery', '#new-arrivals') is not a route and returns null, so
+// Supabase auth links reach the auth layer untouched. A second fragment
+// after the route ('#/reset-password#access_token=…') is kept.
+export function legacyHashTarget(hash) {
+  const match = /^#!?(\/[^#]*)(#.*)?$/.exec(String(hash || ''));
+  if (!match) return null;
+  // One leading slash: '#//host' must not become a protocol-relative URL.
+  return `/${match[1].replace(/^\/+/, '')}${match[2] || ''}`;
+}

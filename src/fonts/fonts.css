@@ -1,0 +1,199 @@
+/* Barlow Condensed (500-800) + DM Sans variable (400-700), Latin subsets.
+   Bundled locally under the SIL Open Font License; see the OFL files here. */
+
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./barlow-condensed-latin-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./barlow-condensed-latin-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./barlow-condensed-latin-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('./barlow-condensed-latin-800.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('./dm-sans-latin-variable.woff2') format('woff2');
+}
+
+/* Metric-matched fallbacks (AW-178). While the files above load, or when they
+   are blocked, text renders in a local font scaled to the same widths and line
+   metrics, so nothing re-wraps or moves when the web font swaps in. The stacks
+   in src/index.css are --display: 'Barlow Condensed', 'Barlow Condensed
+   Fallback', sans-serif and --body: 'DM Sans', 'DM Sans Fallback', sans-serif.
+
+   Measured, not guessed (Chromium, 2026-09-29, /tmp/aw-p2p3-p3/fontmetrics.mjs):
+   each woff2 above and each local() font below was loaded with FontFace and
+   measured with canvas measureText at 100px on the text each weight sets:
+     body 400          a support-page paragraph (mostly lower case)
+     body 600          mixed-case labels ('Add to quote · Geek Bar Pulse X 25K …')
+     body 700          the breadcrumb 'HOME / NOVELTIES & VAPES / GEEK BAR PULSE X 25K'
+     display 500, 600  tile initials and numbers ('GB 68 51 60 SW BI')
+     display 700       headings ('Contact & visit · Disposables, detox, kratom …')
+   size-adjust      = web width / fallback width
+   ascent-override  = web fontBoundingBoxAscent  / (font size × size-adjust)
+   descent-override = web fontBoundingBoxDescent / (font size × size-adjust)
+   DM Sans has a 0.99 ascent and 0.31 descent, Barlow Condensed 1.00 and 0.20,
+   and neither has a line gap. With these values each fallback matches the web
+   font's width on its measuring text to within 0.01%, and its ascent and
+   descent exactly.
+   Liberation Sans (Linux) has Arial's advance widths, so Arial's values fit it.
+   The condensed alternates share Arial Narrow's values: iOS Helvetica Neue
+   Condensed Bold measured 2% wider than Arial Narrow Bold; Android Roboto
+   Condensed is not installed here and is unmeasured. Impact and Verdana are no
+   longer in the stacks.
+
+   Last resorts for devices with no condensed face at all (AW-178: Windows
+   without Office has no Arial Narrow; Android has no Arial Narrow or Arial),
+   where the display text used to fall back to the plain, much wider
+   sans-serif: a wide face scaled down to Barlow Condensed's widths. --display
+   is 'Barlow Condensed', 'Barlow Condensed Fallback', 'Barlow Condensed
+   Fallback Wide', 'Barlow Condensed Fallback Roboto', sans-serif.
+   Measured the same way (Chromium, 2026-10-09, /tmp/aw-final-fix-7/
+   fontmetrics.mjs and fontcalc.mjs): 700 on the 67 heading strings of the
+   storefront's pages (h1 to h3; 'Wholesale for licensed retailers.', 'Shop by
+   department', 'Contact & visit', …), 500 and 600 on the initials and
+   numbers above plus '01 02 … 08' and 'AL MS GA'. On the heading strings this
+   method gives Arial Narrow Bold 92.27%, against 92.81% above. Arial Bold and
+   Roboto Bold differ by 5% (700: 75.67% and 80.66%), so each has its own
+   family; Liberation Sans shares Arial's values. The Roboto files measured
+   were Roboto 2 (static Regular and Bold); Android's own Roboto is unmeasured.
+   Ascent and descent follow from Barlow Condensed's 1.00 and 0.20 as above.
+   Bahnschrift SemiBold Condensed (Windows 10 and later) would be a closer
+   shape, but it isn't installed here, so it is unmeasured and left out. Where
+   none of these exist, text falls back to the plain sans-serif. */
+@font-face {
+  font-family: 'DM Sans Fallback';
+  font-weight: 400;
+  src: local('Arial'), local('ArialMT'), local('Liberation Sans'), local('LiberationSans');
+  size-adjust: 103.43%;
+  ascent-override: 95.72%;
+  descent-override: 29.97%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'DM Sans Fallback';
+  font-weight: 600;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('LiberationSans-Bold');
+  size-adjust: 98.02%;
+  ascent-override: 101%;
+  descent-override: 31.62%;
+  line-gap-override: 0%;
+}
+/* A real bold face, so the browser never synthesises bold from Arial. */
+@font-face {
+  font-family: 'DM Sans Fallback';
+  font-weight: 700;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('LiberationSans-Bold');
+  size-adjust: 95.05%;
+  ascent-override: 104.16%;
+  descent-override: 32.61%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Barlow Condensed Fallback';
+  font-weight: 500;
+  src: local('Arial Narrow'), local('ArialNarrow'), local('Arial Narrow Bold'), local('ArialNarrow-Bold'),
+    local('Roboto Condensed'), local('RobotoCondensed-Regular'), local('HelveticaNeue-CondensedBold');
+  size-adjust: 84.33%;
+  ascent-override: 118.58%;
+  descent-override: 23.72%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Barlow Condensed Fallback';
+  font-weight: 600;
+  src: local('Arial Narrow Bold'), local('ArialNarrow-Bold'), local('Arial Narrow'),
+    local('Roboto Condensed Bold'), local('RobotoCondensed-Bold'), local('HelveticaNeue-CondensedBold');
+  size-adjust: 84.56%;
+  ascent-override: 118.26%;
+  descent-override: 23.65%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Barlow Condensed Fallback';
+  font-weight: 700;
+  src: local('Arial Narrow Bold'), local('ArialNarrow-Bold'), local('Arial Narrow'),
+    local('Roboto Condensed Bold'), local('RobotoCondensed-Bold'), local('HelveticaNeue-CondensedBold');
+  size-adjust: 92.81%;
+  ascent-override: 107.74%;
+  descent-override: 21.55%;
+  line-gap-override: 0%;
+}
+/* Wide last resort: Arial (Windows, macOS) or Liberation Sans (Linux). */
+@font-face {
+  font-family: 'Barlow Condensed Fallback Wide';
+  font-weight: 500;
+  src: local('Arial'), local('ArialMT'), local('Liberation Sans'), local('LiberationSans');
+  size-adjust: 71.16%;
+  ascent-override: 140.53%;
+  descent-override: 28.11%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Barlow Condensed Fallback Wide';
+  font-weight: 600;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('LiberationSans-Bold');
+  size-adjust: 71.42%;
+  ascent-override: 140.01%;
+  descent-override: 28%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Barlow Condensed Fallback Wide';
+  font-weight: 700;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('LiberationSans-Bold');
+  size-adjust: 75.67%;
+  ascent-override: 132.16%;
+  descent-override: 26.43%;
+  line-gap-override: 0%;
+}
+/* Wide last resort on Android and Chrome OS: Roboto. */
+@font-face {
+  font-family: 'Barlow Condensed Fallback Roboto';
+  font-weight: 500;
+  src: local('Roboto'), local('Roboto-Regular');
+  size-adjust: 73.44%;
+  ascent-override: 136.17%;
+  descent-override: 27.23%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Barlow Condensed Fallback Roboto';
+  font-weight: 600;
+  src: local('Roboto Bold'), local('Roboto-Bold');
+  size-adjust: 73.66%;
+  ascent-override: 135.76%;
+  descent-override: 27.15%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Barlow Condensed Fallback Roboto';
+  font-weight: 700;
+  src: local('Roboto Bold'), local('Roboto-Bold');
+  size-adjust: 80.66%;
+  ascent-override: 123.98%;
+  descent-override: 24.8%;
+  line-gap-override: 0%;
+}

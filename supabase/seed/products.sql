@@ -1,383 +1,807 @@
--- Seed catalog: 368 SKUs. Idempotent via on conflict do update.
--- Regenerate with: node /tmp/gen_seed.js > supabase/seed/products.sql
+-- Seed catalog: 368 SKUs, generated from src/data/products.js by scripts/build-seed.mjs.
+-- Regenerate with: npm run seed.
+--
+-- Insert-only (AW-032): a row whose id already exists is left alone (on conflict do
+-- nothing), so re-applying this file never overwrites an admin's edits to names,
+-- brands, tags, prices or the active flag. Corrections to existing rows ship as
+-- idempotent UPDATE data migrations in supabase/migrations/. Rows products.js marks
+-- active: false (the delisted Kratom & Kava and Mushroom Products rows, AW-001) start
+-- inactive.
+--
+-- No prices (AW-003, AW-002): products.price is set only in the database, through
+-- Admin -> Products or a private SQL file under supabase/private/ (gitignored). A new
+-- row starts with a null price, which the storefront shows as "Price on request".
+--
+-- Needs supabase/migrations/20260927120000_product_copy.sql (description, sell_unit),
+-- 20261009100000_price_boundary.sql (price nullable) and 20261009110000_variant_model.sql
+-- (variant_axis; no flavors column). Postgres checks NOT NULL before ON CONFLICT, so on a
+-- database without the price-boundary migration every row fails, including ids that
+-- already exist.
 
-insert into public.products (id, name, brand, cat, sub, sku, flavors, variants, img, tag, price, active) values
-  (1, 'SS', 'SS', 'TOBACCO', 'Cigars & Cigarillos', 'AW-SS', 15, '["diamond","red","green","white grape","silver","grape","mango blaze","cookies & cream"]'::jsonb, 'ss_cigarillos.avif', null, 41.76, true),
-  (2, 'WO', 'WO', 'TOBACCO', 'Cigars & Cigarillos', 'AW-WO', 12, '["Silver","platinum","red sweet","green sweet","black sweet","emerald","white grape","swirl Triple grape"]'::jsonb, 'wo_cigarillos.jpg', null, 84.34, true),
-  (3, 'Game', 'Game', 'TOBACCO', 'Cigars & Cigarillos', 'AW-GAME', 11, '["diamond","silver","red sweet","green","black sweet","honey","white grape","grape"]'::jsonb, 'game_cigarillos.webp', null, 62.97, true),
-  (4, 'BLK', 'BLK', 'TOBACCO', 'Cigars & Cigarillos', 'AW-BLK', 7, '["smooth","wine","berry","grape","cherry","cocoa","cream"]'::jsonb, 'blk_cigarillos.avif', null, 80, true),
-  (5, '4K Cigars', '4K Cigars', 'TOBACCO', 'Cigars & Cigarillos', 'AW-4K-CIGARS', 9, '["Red sweet","watermelon","Napa grape","white grape","diamond","green","black sweet","watermelon grape"]'::jsonb, '4k_cigarillos.webp', null, 51.51, true),
-  (6, 'Game Mini', 'Game', 'TOBACCO', 'Cigars & Cigarillos', 'AW-GAME-MINI', 3, '["diamond","red sweet","black sweet"]'::jsonb, 'game_mini.webp', null, 85.05, true),
-  (7, 'SS mini', 'SS mini', 'TOBACCO', 'Cigars & Cigarillos', 'AW-SS-MINI', 4, '["diamond","red","grape","green"]'::jsonb, null, null, 45.1, true),
-  (8, 'SS leaf', 'SS leaf', 'TOBACCO', 'Wraps & Leafs', 'AW-SS-LEAF', 8, '["Irish cream","honey","sweet aromatic","red","green","peach","dark leaf","dark aromatic"]'::jsonb, 'ss_leaf.jpg', null, 27.02, true),
-  (9, 'Ez roll', 'Ez roll', 'TOBACCO', 'Cigars & Cigarillos', 'AW-EZ-ROLL', 10, '["flavorless","OGK","sour apple","wet mango","purple haze","strawberry","blueberry","Jamaican rum"]'::jsonb, null, null, 103.53, true),
-  (10, '4K wrap', '4K wrap', 'TOBACCO', 'Wraps & Leafs', 'AW-4K-WRAP', 8, '["diamond","white grape","red sweet","green sweet","black sweet","Napa grape","blueberry","watermelon"]'::jsonb, '4k_wraps.jpg', null, 84.59, true),
-  (11, 'Backwoods 5pk', 'Backwoods', 'TOBACCO', 'Cigars & Cigarillos', 'AW-BACKWOODS-5PK', 8, '["banana","honey berry","sweet aromatic","original","Russian cream","vanilla","Black Russian","Irish cream"]'::jsonb, 'backwoods_5pk.webp', 'BESTSELLER', 45.4, true),
-  (12, 'Loose leafs 2pk $2.99 OR $1.99', 'Loose', 'TOBACCO', 'Wraps & Leafs', 'AW-LOOSE-LEAFS-2P', 6, '["cinnamon milk","sweet","honey","cookies cream","natural","amber dream"]'::jsonb, 'loose_leafs_2_99_1_99.webp', null, 61.46, true),
-  (13, 'Havana leaf', 'Havana', 'TOBACCO', 'Wraps & Leafs', 'AW-HAVANA-LEAF', 9, '["milk cookies","sweet aromatic","strawberry","8 Miles","Russian cream","Purple","yellow","honey bourbon"]'::jsonb, null, null, 62.02, true),
-  (14, 'Kite', 'Kite', 'TOBACCO', 'Cigarettes', 'AW-KITE', 0, '[]'::jsonb, 'kite.png', null, 43.33, true),
-  (15, 'Royal bunts mini', 'Royal', 'TOBACCO', 'Cigars & Cigarillos', 'AW-ROYAL-BUNTS-MI', 3, '["naked","sweet","OGK"]'::jsonb, null, null, 35.9, true),
-  (16, 'Backwoods singles', 'Backwoods', 'TOBACCO', 'Cigars & Cigarillos', 'AW-BACKWOODS-SING', 4, '["Russian cream","honey berry","sweet aromatic","original"]'::jsonb, 'backwoods_5pk.webp', null, 98.78, true),
-  (17, 'B&M 25ct', 'B&M 25ct', 'TOBACCO', 'Cigars & Cigarillos', 'AW-B-M-25CT', 11, '["Regular","woodtip","sweet","sweet woodtip","casino","casino woodtip","wine","wine woodtip"]'::jsonb, 'b_m_25ct.webp', null, 39.59, true),
-  (18, 'ZYN 6mg', 'ZYN 6mg', 'TOBACCO', 'Pouches & ZYN', 'AW-ZYN-6MG', 7, '["cinnamon","wintergreen","citrus","peppermint","chill","spearmint","coffee"]'::jsonb, 'zyn_6mg.webp', null, 48.98, true),
-  (19, 'ZYN 3mg', 'ZYN 3mg', 'TOBACCO', 'Pouches & ZYN', 'AW-ZYN-3MG', 6, '["cinnamon","wintergreen","citrus","peppermint","chill","spearmint"]'::jsonb, 'zyn_6mg.webp', null, 50.5, true),
-  (20, 'Vaseline', 'Vaseline', 'GROCERY', 'Personal Care', 'AW-VASELINE', 2, '["big","small"]'::jsonb, 'vaseline_jelly.webp', null, 26.02, true),
-  (21, 'Men deodorant', 'Men deodorant', 'GROCERY', 'Personal Care', 'AW-MEN-DEODORANT', 2, '["small","big"]'::jsonb, 'men_s_deodorant.jpg', null, 19.55, true),
-  (22, 'Tweaker', 'Tweaker', 'MERCHANDISE', 'OTC & Health', 'AW-TWEAKER', 7, '["berry","grape","watermelon","peach","freedom pop","tropical","sour apple"]'::jsonb, 'tweaker.webp', null, 77.22, true),
-  (23, 'Tylenol', 'Tylenol', 'MERCHANDISE', 'OTC & Health', 'AW-TYLENOL', 4, '["sinus","extra","PM","cold & flu"]'::jsonb, null, null, 70.65, true),
-  (24, 'Goodys', 'Goodys', 'MERCHANDISE', 'OTC & Health', 'AW-GOODYS', 7, '["2pk","6pk","red","PM","4pk orange","4pk mixed fruit","4pk hangover"]'::jsonb, null, null, 44.39, true),
-  (25, 'Claritin', 'Claritin', 'MERCHANDISE', 'OTC & Health', 'AW-CLARITIN', 0, '[]'::jsonb, null, null, 38.33, true),
-  (26, 'Benadryl', 'Benadryl', 'MERCHANDISE', 'OTC & Health', 'AW-BENADRYL', 0, '[]'::jsonb, null, null, 64.09, true),
-  (27, 'Duracell', 'Duracell', 'MERCHANDISE', 'Electronics', 'AW-DURACELL', 7, '["9V","AAA4","AA4","D2","AAA2","AA2","C2"]'::jsonb, 'duracell_batteries.jpg', null, 38.58, true),
-  (28, 'Rhino pills 2pk', 'Rhino', 'MERCHANDISE', 'Honey & Energy', 'AW-RHINO-PILLS-2P', 3, '["purple","black","gold"]'::jsonb, 'rhino_pills_2pk.webp', null, 35.55, true),
-  (29, 'Carmex', 'Carmex', 'MERCHANDISE', 'Counter Goods', 'AW-CARMEX', 3, '["Tubes","jars","stick"]'::jsonb, 'carmex_tubes.webp', null, 21.91, true),
-  (30, 'Visine', 'Visine', 'MERCHANDISE', 'OTC & Health', 'AW-VISINE', 0, '[]'::jsonb, null, null, 78.23, true),
-  (31, 'Bic', 'Bic', 'MERCHANDISE', 'Lighters & Torches', 'AW-BIC', 5, '["mini","big","playboy","astrology","design"]'::jsonb, 'bic_lighters.jpg', 'BESTSELLER', 28.98, true),
-  (32, 'Bluntpowers', 'Bluntpowers', 'MERCHANDISE', 'Counter Goods', 'AW-BLUNTPOWERS', 33, '["Cantaloupe","pineapple","polo blue","celebration","cool water","baby powder","blueberry","issey miyake"]'::jsonb, 'bluntpowers.webp', null, 55, true),
-  (33, 'White R-neck', 'White', 'MERCHANDISE', 'Apparel', 'AW-WHITE-R-NECK', 9, '["S","M","L","1X","2X","3X","4X","5X"]'::jsonb, null, null, 54.74, true),
-  (34, 'Black R-neck', 'Black', 'MERCHANDISE', 'Apparel', 'AW-BLACK-R-NECK', 9, '["S","M","L","1X","2X","3X","4X","5X"]'::jsonb, null, null, 39.09, true),
-  (35, 'Butterfinger', 'Butterfinger', 'CANDIES', 'Chocolate Bars', 'AW-BUTTERFINGER', 2, '["king size","regular"]'::jsonb, 'butterfinger_regular.jpg', null, 32.8, true),
-  (36, 'Now and later', 'Now and', 'CANDIES', 'Sweets & Gummies', 'AW-NOW-AND-LATER', 6, '["grape","green apple","tropical punch","watermelon","cherry","strawberry"]'::jsonb, 'now_later.jpg', null, 34.32, true),
-  (37, 'Airheads 36ct', 'Airheads', 'CANDIES', 'Sweets & Gummies', 'AW-AIRHEADS-36CT', 6, '["sour blue","white mystery","watermelon","blue","cherry","orange"]'::jsonb, 'airheads_36ct.webp', null, 21.41, true),
-  (38, 'Wriggly slim pack', 'Wriggly', 'CANDIES', 'Sweets & Gummies', 'AW-WRIGGLY-SLIM-P', 5, '["spearmint","doublemint","winterfresh","big red","juicy fruity"]'::jsonb, null, null, 25.4, true),
-  (39, 'Ferrara', 'Ferrara', 'CANDIES', 'Sweets & Gummies', 'AW-FERRARA', 2, '["Lemonheads","BBB"]'::jsonb, 'ferrara_bbb.webp', null, 40.98, true),
-  (40, 'Wriggly 50¢', 'Wriggly', 'CANDIES', 'Sweets & Gummies', 'AW-WRIGGLY-50', 3, '["spearmint","double mint","juicy fruit"]'::jsonb, 'wriggly_50c.webp', null, 38.66, true),
-  (41, 'Trident', 'Trident', 'CANDIES', 'Gum & Mints', 'AW-TRIDENT', 4, '["wintergreen","spearmint","peppermint","tropical"]'::jsonb, null, null, 14.6, true),
-  (42, 'Orbit', 'Orbit', 'CANDIES', 'Gum & Mints', 'AW-ORBIT', 3, '["sweet mint","peppermint","spearmint"]'::jsonb, null, null, 10.86, true),
-  (43, 'Mentos', 'Mentos', 'CANDIES', 'Gum & Mints', 'AW-MENTOS', 3, '["strawberry","mint","fruit"]'::jsonb, 'mentos.webp', null, 34.68, true),
-  (44, 'Mike & Ike', 'Mike', 'CANDIES', 'Sweets & Gummies', 'AW-MIKE-IKE', 7, '["watermelon","grape","blue raspberry","sour blue","green","cherry","blue"]'::jsonb, 'mike_ike.webp', null, 38.79, true),
-  (45, 'Argo corn starch', 'Argo', 'FOOD STUFF', 'Cooking Basics', 'AW-ARGO-CORN-STAR', 0, '[]'::jsonb, 'argo_corn_starch.webp', null, 20.5, true),
-  (46, 'Imperial sugar', 'Imperial', 'FOOD STUFF', 'Cooking Basics', 'AW-IMPERIAL-SUGAR', 2, '["small","big"]'::jsonb, 'imperial_sugar.webp', null, 42.52, true),
-  (47, 'Cheezit', 'Cheezit', 'FOOD STUFF', 'Chips & Crackers', 'AW-CHEEZIT', 4, '["extra bold","white cheddar","original","hot & spicy"]'::jsonb, 'cheezit.jpg', null, 28.98, true),
-  (48, 'Ritz', 'Ritz', 'FOOD STUFF', 'Chips & Crackers', 'AW-RITZ', 3, '["peanut butter","cheese","original"]'::jsonb, null, null, 23.53, true),
-  (49, 'Pop tarts', 'Pop tarts', 'FOOD STUFF', 'Chips & Crackers', 'AW-POP-TARTS', 3, '["strawberry","s''mores","brown sugar cinnamon"]'::jsonb, 'pop_tarts.webp', null, 25.95, true),
-  (50, 'Clover hill', 'Clover', 'FOOD STUFF', 'Quick Meals', 'AW-CLOVER-HILL', 2, '["big Texas","honey bun"]'::jsonb, null, null, 44.94, true),
-  (51, 'Cereal cups', 'Cereal', 'FOOD STUFF', 'Quick Meals', 'AW-CEREAL-CUPS', 4, '["Frosted Flakes","Apple jack","Froot Loops","Corn Pops"]'::jsonb, 'cereal_cups.jpg', null, 30, true),
-  (52, 'Gurleys', 'Gurleys', 'FOOD STUFF', 'Cookies', 'AW-GURLEYS', 4, '["butter flies","circus peanuts","watermelon rings","gummy worms"]'::jsonb, null, null, 21.31, true),
-  (53, 'Glass cleaner', 'Glass', 'GROCERY', 'Cleaning', 'AW-GLASS-CLEANER', 2, '["oxy power","original"]'::jsonb, null, null, 6.82, true),
-  (54, 'Stay free pads', 'Stay', 'GROCERY', 'Personal Care', 'AW-STAY-FREE-PADS', 3, '["Small","Medium","big"]'::jsonb, null, null, 14.9, true),
-  (55, 'STP', 'STP', 'MOTOR OIL', 'Motor Oil', 'AW-STP', 9, '["black","octane","red","White fuel injector","water remover","silver","power steering","brake fluid"]'::jsonb, 'stp_oil_treatment.webp', 'BESTSELLER', 41.17, true),
-  (56, 'Saxon', 'Saxon', 'MOTOR OIL', 'Motor Oil', 'AW-SAXON', 10, '["5w30","5w20","10w30","10w40","20w50","Type A","Type F","Multipurpose"]'::jsonb, 'saxon_motor_oil.png', 'BESTSELLER', 44.2, true),
-  (57, 'Pure guard', 'Pure', 'MOTOR OIL', 'Motor Oil', 'AW-PURE-GUARD', 3, '["5w30","10w30","10w40"]'::jsonb, null, null, 43.83, true),
-  (58, 'Faygo bottles', 'Faygo', 'DRINKS & BAGS', 'Sodas', 'AW-FAYGO-BOTTLES', 9, '["redpop","rock & rye","orange","grape","cotton candy","peach","fireworks","moon mist"]'::jsonb, 'faygo_bottles_20oz.jpg', null, 18.64, true),
-  (59, 'Arizona', 'Arizona', 'DRINKS & BAGS', 'Juices & Teas', 'AW-ARIZONA', 10, '["RX","strawberry kiwi","watermelon","frosty chill","tropical chill","green tea","fruit punch","orange"]'::jsonb, 'arizona.webp', null, 13.14, true),
-  (60, 'Geekbar 15K', 'Geekbar', 'NOVELTIES', 'Disposable Vapes', 'AW-GEEKBAR-15K', 2, '["Blue razz ice","Fuckin fab"]'::jsonb, 'geekbar_15k.webp', 'BESTSELLER', 43.23, true),
-  (61, 'Geekbar 25K', 'Geekbar', 'NOVELTIES', 'Disposable Vapes', 'AW-GEEKBAR-25K', 2, '["Sour straws","sour mango pineapple"]'::jsonb, 'geekbar_25k_pulse.webp', 'BESTSELLER', 38.18, true),
-  (62, 'Foger Full kit', 'Foger', 'NOVELTIES', 'Disposable Vapes', 'AW-FOGER-FULL-KIT', 28, '["Coconut cupcake","Strawberry kiwi","Red velvet cupcake","Watermelon ice Kiwi dragon berry","Mexico mango","Omg b burst","White gummy","Blue rancher"]'::jsonb, 'foger_full_kit.jpg', 'NEW', 44.24, true),
-  (63, 'Foger Pods', 'Foger', 'NOVELTIES', 'Vape Pods', 'AW-FOGER-PODS', 26, '["Sour Apple ice","Vanilla ice cream","Pineapple coconut","Kiwi dragon berry","White gummy","California cherry","Strawberry watermelon","Strawberry ice"]'::jsonb, 'foger_pods.webp', null, 91.71, true),
-  (64, 'RAZ 25K', 'RAZ 25K', 'NOVELTIES', 'Disposable Vapes', 'AW-RAZ-25K', 0, '[]'::jsonb, null, 'NEW', 55.35, true),
-  (65, 'RAZ Vue Full kit', 'RAZ Vue', 'NOVELTIES', 'Disposable Vapes', 'AW-RAZ-VUE-FULL-K', 0, '[]'::jsonb, null, null, 114.94, true),
-  (66, 'RAZ Vue Pods', 'RAZ Vue', 'NOVELTIES', 'Vape Pods', 'AW-RAZ-VUE-PODS', 0, '[]'::jsonb, null, null, 88.68, true),
-  (67, 'Kang 8000', 'Kang', 'NOVELTIES', 'Disposable Vapes', 'AW-KANG-8000', 0, '[]'::jsonb, 'kang_vape_65k.jpg', null, 51.31, true),
-  (68, 'Kang 65K', 'Kang', 'NOVELTIES', 'Disposable Vapes', 'AW-KANG-65K', 0, '[]'::jsonb, 'kang_vape_65k.jpg', null, 58.38, true),
-  (69, 'Shroom Puff disposable 3 Gram', 'Shroom', 'NOVELTIES', 'Mushroom Products', 'AW-SHROOM-PUFF-DI', 5, '["Blue","watermelon","strawberry","pineapple","green"]'::jsonb, null, null, 59.39, true),
-  (70, 'Shroom Puff Pre rolls 2pk', 'Shroom', 'NOVELTIES', 'Mushroom Products', 'AW-SHROOM-PUFF-PR', 0, '[]'::jsonb, null, null, 62.42, true),
-  (71, 'Shroom Puff pre rolls jars', 'Shroom', 'NOVELTIES', 'Mushroom Products', 'AW-SHROOM-PUFF-PR', 0, '[]'::jsonb, null, null, 28.08, true),
-  (72, 'Shroom puff Gummies', 'Shroom', 'NOVELTIES', 'Mushroom Products', 'AW-SHROOM-PUFF-GU', 0, '[]'::jsonb, null, null, 32.12, true),
-  (73, 'Mental Health disposable 4 gram', 'Mental', 'NOVELTIES', 'Mushroom Products', 'AW-MENTAL-HEALTH-', 0, '[]'::jsonb, null, null, 112.92, true),
-  (74, 'Mental Health pre rolls 2pk', 'Mental', 'NOVELTIES', 'Mushroom Products', 'AW-MENTAL-HEALTH-', 3, '["Purple dragon","strawberry","blueberry"]'::jsonb, null, null, 48.28, true),
-  (75, 'Wava kava', 'Wava', 'NOVELTIES', 'Kratom & Kava', 'AW-WAVA-KAVA', 4, '["Blueberry","strawberry banana","mango","assorted"]'::jsonb, null, 'NEW', 112.92, true),
-  (76, 'Mazza Shots', 'Mazza', 'NOVELTIES', 'Kratom & Kava', 'AW-MAZZA-SHOTS', 4, '["Purple","ruby","yellow","assorted"]'::jsonb, null, 'NEW', 95.75, true),
-  (77, 'Slapwoods 5pk', 'Slapwoods', 'TOBACCO', 'Cigars & Cigarillos', 'AW-SLAPWOODS-5PK', 6, '["Russian cream","natural","sweet","banana","bloodshot","Black Russian"]'::jsonb, 'slapwoods_5pk.webp', null, 43.98, true),
-  (78, 'B&M 5pk', 'B&M 5pk', 'TOBACCO', 'Cigars & Cigarillos', 'AW-B-M-5PK', 10, '["regular","woodtip","select","wine","wine woodtip","cream","apple","jazz"]'::jsonb, 'b_m_5pk.jpg', null, 24.99, true),
-  (79, 'Game leaf 3pk', 'Game', 'TOBACCO', 'Wraps & Leafs', 'AW-GAME-LEAF-3PK', 3, '["Russian cream","natural","cognac"]'::jsonb, 'game_leaf_3pk.jpg', null, 87.37, true),
-  (80, 'SS wraps', 'SS wraps', 'TOBACCO', 'Wraps & Leafs', 'AW-SS-WRAPS', 3, '["Red","peach","Irish cream"]'::jsonb, 'ss_wraps.webp', null, 104.69, true),
-  (81, 'SS twin pack', 'SS twin', 'TOBACCO', 'Cigars & Cigarillos', 'AW-SS-TWIN-PACK', 4, '["Mini diamond","mini red","red","diamond"]'::jsonb, 'ss_twin_pack_mini.jpg', null, 25.6, true),
-  (82, 'Pompom', 'Pompom', 'TOBACCO', 'Cigars & Cigarillos', 'AW-POMPOM', 2, '["Red","green"]'::jsonb, 'pompom.jpg', 'DEAL', 40, true),
-  (83, 'Dutch master', 'Dutch', 'TOBACCO', 'Cigars & Cigarillos', 'AW-DUTCH-MASTER', 11, '["Gold","honey","Java","blue","diamond","silver","Irish fusion","OG fusion"]'::jsonb, 'dutch_master.jpg', null, 71.51, true),
-  (84, 'Good times flat wraps', 'Good', 'TOBACCO', 'Wraps & Leafs', 'AW-GOOD-TIMES-FLA', 7, '["Natural","diamond","vanilla","fruit punch","mango","strawberry kiwi","chocolate"]'::jsonb, 'good_times_flat_wraps.jpg', null, 41.36, true),
-  (85, 'Zigzag Wraps', 'Zigzag', 'TOBACCO', 'Wraps & Leafs', 'AW-ZIGZAG-WRAPS', 4, '["Straight up","grape","melon","mango"]'::jsonb, 'zigzag_wraps.webp', null, 38.48, true),
-  (86, 'Seneca', 'Seneca', 'TOBACCO', 'Cigarettes', 'AW-SENECA', 8, '["Menthol 100","menthol short","red 100","red short","silver 100","silver short","blue 100","blue short"]'::jsonb, 'seneca_120.png', null, 63.88, true),
-  (87, 'Old tyme', 'Old tyme', 'DRINKS & BAGS', 'Sodas', 'AW-OLD-TYME', 14, '["Fruit punch","blue","mango","pineapple","grape","purple passion","pina colada","strawberry kiwi"]'::jsonb, null, null, 32.08, true),
-  (88, 'Tropical Fantasy', 'Tropical', 'DRINKS & BAGS', 'Juices & Teas', 'AW-TROPICAL-FANTA', 11, '["Blue","fruit punch","grape","pineapple","strawberry lemonade","kiwi strawberry","green","lemonade"]'::jsonb, null, null, 15.34, true),
-  (89, 'Faygo cans', 'Faygo', 'DRINKS & BAGS', 'Sodas', 'AW-FAYGO-CANS', 14, '["Cola","fruit punch","redpop","pineapple","peach","kiwi strawberry","moon mist","lemon twist"]'::jsonb, 'faygo_bottles_20oz.jpg', null, 47.92, true),
-  (90, 'Bags', 'Bags', 'DRINKS & BAGS', 'Bags & Carriers', 'AW-BAGS', 3, '["1/6","1/8","1/10"]'::jsonb, 'haribo_bags.webp', null, 47.97, true),
-  (91, 'Paper bags', 'Paper', 'DRINKS & BAGS', 'Bags & Carriers', 'AW-PAPER-BAGS', 3, '["#1","#2","#4"]'::jsonb, 'paper_bags_2.webp', null, 40.55, true),
-  (92, 'Register papers', 'Register', 'DRINKS & BAGS', 'Bags & Carriers', 'AW-REGISTER-PAPER', 5, '["Big","small","EBT","credit card","fuel pump"]'::jsonb, null, null, 38.09, true),
-  (93, '6pk beer carriers', '6pk beer', 'DRINKS & BAGS', 'Bags & Carriers', 'AW-6PK-BEER-CARRI', 0, '[]'::jsonb, null, null, 30.39, true),
-  (94, 'Beer ringers', 'Beer', 'DRINKS & BAGS', 'Bags & Carriers', 'AW-BEER-RINGERS', 0, '[]'::jsonb, null, null, 31.75, true),
-  (95, 'Trash can liners', 'Trash', 'DRINKS & BAGS', 'Bags & Carriers', 'AW-TRASH-CAN-LINE', 0, '[]'::jsonb, null, null, 23.51, true),
-  (96, 'Autoguard', 'Autoguard', 'MOTOR OIL', 'Motor Oil', 'AW-AUTOGUARD', 3, '["Power steering","brake fluid","antifreeze"]'::jsonb, 'autoguard_brake_fluid.webp', null, 44.36, true),
-  (97, '2-cycle oil', '2-cycle', 'MOTOR OIL', 'Lubricants', 'AW-2-CYCLE-OIL', 0, '[]'::jsonb, '2_cycle_oil.webp', null, 38.22, true),
-  (98, 'DEF 2.5 gal', 'DEF 2.5', 'MOTOR OIL', 'Fluids', 'AW-DEF-2-5-GAL', 0, '[]'::jsonb, 'blue_def_2_5_gal.jpg', null, 12.2, true),
-  (99, 'Peak antifreeze', 'Peak', 'MOTOR OIL', 'Fluids', 'AW-PEAK-ANTIFREEZ', 0, '[]'::jsonb, 'peak_antifreeze.webp', null, 38.5, true),
-  (100, 'Cheap antifreeze', 'Cheap', 'MOTOR OIL', 'Fluids', 'AW-CHEAP-ANTIFREE', 0, '[]'::jsonb, null, null, 28.08, true),
-  (101, 'GTX Castrol', 'GTX Castrol', 'MOTOR OIL', 'Motor Oil', 'AW-GTX-CASTROL', 5, '["5w30","5w20","10w30","10w40","20w50"]'::jsonb, 'gtx_castrol.jpg', null, 18.7, true),
-  (102, 'Havoline', 'Havoline', 'MOTOR OIL', 'Motor Oil', 'AW-HAVOLINE', 5, '["5w30","5w20","10w30","10w40","20w50"]'::jsonb, 'havoline.webp', null, 29.05, true),
-  (103, 'Windshield washer', 'Windshield', 'MOTOR OIL', 'Fluids', 'AW-WINDSHIELD-WAS', 0, '[]'::jsonb, 'windshield_washer_2.webp', null, 19.87, true),
-  (104, 'Tire inflators', 'Tire', 'MOTOR OIL', 'Auto Accessories', 'AW-TIRE-INFLATORS', 2, '["With hose","without hose"]'::jsonb, 'tire_fixer_with_hose.jpg', null, 52.68, true),
-  (105, 'WD-40', 'WD-40', 'MOTOR OIL', 'Lubricants', 'AW-WD-40', 2, '["Big","small"]'::jsonb, 'wd_40_big.jpg', 'DEAL', 31.95, true),
-  (106, 'Sandwich bags', 'Sandwich', 'GROCERY', 'Bags & Storage', 'AW-SANDWICH-BAGS', 2, '["Homesmart","Goodsense"]'::jsonb, 'sandwich_bags.webp', null, 21.57, true),
-  (107, 'Trash bags', 'Trash', 'GROCERY', 'Bags & Storage', 'AW-TRASH-BAGS', 4, '["13gal","23gal","kitchen","lawn"]'::jsonb, null, null, 17.05, true),
-  (108, 'Tampax', 'Tampax', 'GROCERY', 'Personal Care', 'AW-TAMPAX', 2, '["Yellow","green"]'::jsonb, 'tampax.webp', null, 8.2, true),
-  (109, 'Ajax Dishwasher', 'Ajax', 'GROCERY', 'Cleaning', 'AW-AJAX-DISHWASHE', 6, '["Blue","red","yellow","orange","green","purple"]'::jsonb, null, null, 39.47, true),
-  (110, 'Brillo dishwasher', 'Brillo', 'GROCERY', 'Cleaning', 'AW-BRILLO-DISHWAS', 5, '["Blue","yellow","orange","yellow","green"]'::jsonb, 'brillo_dishwasher.png', null, 33.13, true),
-  (111, 'Tide liquid', 'Tide', 'GROCERY', 'Laundry & Detergent', 'AW-TIDE-LIQUID', 2, '["Big","small"]'::jsonb, 'tide.jpg', null, 16.36, true),
-  (112, 'Gain liquid', 'Gain', 'GROCERY', 'Laundry & Detergent', 'AW-GAIN-LIQUID', 2, '["Big","small"]'::jsonb, 'gain.jpg', null, 18.02, true),
-  (113, 'Clorox', 'Clorox', 'GROCERY', 'Cleaning', 'AW-CLOROX', 3, '["Big","medium","small"]'::jsonb, null, null, 18.86, true),
-  (114, 'Ajax bleach', 'Ajax', 'GROCERY', 'Cleaning', 'AW-AJAX-BLEACH', 0, '[]'::jsonb, 'ajax_bleach.jpg', null, 32.92, true),
-  (115, 'Dove soap', 'Dove', 'GROCERY', 'Personal Care', 'AW-DOVE-SOAP', 1, '["Original"]'::jsonb, 'dove_soap.jpg', null, 30.74, true),
-  (116, 'Irish spring soap', 'Irish', 'GROCERY', 'Personal Care', 'AW-IRISH-SPRING-S', 0, '[]'::jsonb, 'irish_spring_soap.jpg', null, 39.19, true),
-  (117, 'Awesome laundry', 'Awesome', 'GROCERY', 'Cleaning', 'AW-AWESOME-LAUNDR', 2, '["Red","orange"]'::jsonb, null, null, 4.76, true),
-  (118, 'Foam plates', 'Foam', 'GROCERY', 'Paper & Plastic', 'AW-FOAM-PLATES', 2, '["Big","small"]'::jsonb, null, null, 6.02, true),
-  (119, 'Foam bowls', 'Foam', 'GROCERY', 'Paper & Plastic', 'AW-FOAM-BOWLS', 0, '[]'::jsonb, null, null, 29.73, true),
-  (120, 'Foam cups', 'Foam', 'GROCERY', 'Paper & Plastic', 'AW-FOAM-CUPS', 4, '["20oz","16oz","12oz","8oz"]'::jsonb, 'foam_cups.jpg', null, 35.39, true),
-  (121, 'Plastic', 'Plastic', 'GROCERY', 'Paper & Plastic', 'AW-PLASTIC', 3, '["Spoons","forks","Assorted cutlery"]'::jsonb, null, null, 36.52, true),
-  (122, '4pk tissues', '4pk tissues', 'GROCERY', 'Paper & Plastic', 'AW-4PK-TISSUES', 1, '["Case"]'::jsonb, '4pk_tissues.avif', null, 10.34, true),
-  (123, 'Paper towels', 'Paper', 'GROCERY', 'Paper & Plastic', 'AW-PAPER-TOWELS', 1, '["Case"]'::jsonb, 'paper_towels.jpg', null, 31.87, true),
-  (124, 'Single tissues', 'Single', 'GROCERY', 'Paper & Plastic', 'AW-SINGLE-TISSUES', 1, '["Case"]'::jsonb, 'single_tissues.jpg', null, 28.56, true),
-  (125, 'Baby diapers', 'Baby', 'GROCERY', 'Personal Care', 'AW-BABY-DIAPERS', 3, '["Big","small","medium"]'::jsonb, null, null, 36.24, true),
-  (126, 'Baby wipes', 'Baby', 'GROCERY', 'Personal Care', 'AW-BABY-WIPES', 2, '["Boys","girls"]'::jsonb, null, null, 19.19, true),
-  (127, 'Drain opener', 'Drain', 'GROCERY', 'Cleaning', 'AW-DRAIN-OPENER', 0, '[]'::jsonb, null, null, 13.61, true),
-  (128, 'Fabulouso', 'Fabulouso', 'GROCERY', 'Cleaning', 'AW-FABULOUSO', 2, '["Small","big"]'::jsonb, 'fabulouso.avif', null, 23.51, true),
-  (129, 'Home air fresheners', 'Home', 'GROCERY', 'Other Grocery', 'AW-HOME-AIR-FRESH', 0, '[]'::jsonb, null, null, 37.17, true),
-  (130, 'Brillo basics all purpose cleaner', 'Brillo', 'GROCERY', 'Cleaning', 'AW-BRILLO-BASICS-', 4, '["Yellow","orange","purple","brown"]'::jsonb, null, null, 38.94, true),
-  (131, 'Matches', 'Matches', 'GROCERY', 'Hardware', 'AW-MATCHES', 2, '["Small","big"]'::jsonb, null, null, 30.46, true),
-  (132, 'Charcoal bags small', 'Charcoal', 'GROCERY', 'Hardware', 'AW-CHARCOAL-BAGS-', 2, '["White","red"]'::jsonb, null, null, 30.14, true),
-  (133, 'Charcoal bags big', 'Charcoal', 'GROCERY', 'Hardware', 'AW-CHARCOAL-BAGS-', 2, '["White","red"]'::jsonb, null, null, 9.77, true),
-  (134, 'Rubbing alcohol', 'Rubbing', 'GROCERY', 'Personal Care', 'AW-RUBBING-ALCOHO', 2, '["White","green"]'::jsonb, null, null, 16.08, true),
-  (135, 'Hydro peroxide', 'Hydro', 'GROCERY', 'Personal Care', 'AW-HYDRO-PEROXIDE', 0, '[]'::jsonb, null, null, 7.71, true),
-  (136, 'Always pads', 'Always', 'GROCERY', 'Personal Care', 'AW-ALWAYS-PADS', 3, '["Big","medium","small"]'::jsonb, null, null, 12.84, true),
-  (137, 'Nail clippers', 'Nail', 'GROCERY', 'Hardware', 'AW-NAIL-CLIPPERS', 2, '["Big","small"]'::jsonb, null, null, 27.51, true),
-  (138, 'Charcoal lighter fluid', 'Charcoal', 'GROCERY', 'Hardware', 'AW-CHARCOAL-LIGHT', 2, '["Big","small"]'::jsonb, null, null, 10.7, true),
-  (139, 'Vinut', 'Vinut', 'DRINKS & BAGS', 'Juices & Teas', 'AW-VINUT', 8, '["Watermelon","pineapple","mango","soursop","passion fruit","cranberry","apple","orange"]'::jsonb, null, null, 23.43, true),
-  (140, 'Tropicana small', 'Tropicana', 'DRINKS & BAGS', 'Juices & Teas', 'AW-TROPICANA-SMAL', 6, '["Orange","pineapple orange","grape","cranberry","kiwi strawberry lemonade","ruby red"]'::jsonb, null, null, 48.04, true),
-  (141, 'Tropical Fantasy Aloe Vera', 'Tropical', 'DRINKS & BAGS', 'Juices & Teas', 'AW-TROPICAL-FANTA', 6, '["Watermelon","strawberry","mango","peach","pineapple","original"]'::jsonb, null, null, 37.78, true),
-  (142, 'Calypso', 'Calypso', 'DRINKS & BAGS', 'Juices & Teas', 'AW-CALYPSO', 4, '["Tropical mango","original","paradise punch","kiwi lemonade"]'::jsonb, null, null, 24.25, true),
-  (143, 'Red Bull 12oz', 'Red Bull', 'DRINKS & BAGS', 'Energy Drinks', 'AW-RED-BULL-12OZ', 11, '["Regular","watermelon","yellow","white peach","wild berries","green","white","sugar free"]'::jsonb, null, 'BESTSELLER', 27.96, true),
-  (144, 'Redbull 8oz', 'Redbull', 'DRINKS & BAGS', 'Other Drinks', 'AW-REDBULL-8OZ', 11, '["Regular","watermelon","yellow","white peach","wild berries","green","white","sugar free"]'::jsonb, null, null, 43.47, true),
-  (145, 'Redbull 16oz', 'Redbull', 'DRINKS & BAGS', 'Other Drinks', 'AW-REDBULL-16OZ', 0, '[]'::jsonb, null, null, 41.17, true),
-  (146, 'Redbull 20oz', 'Redbull', 'DRINKS & BAGS', 'Other Drinks', 'AW-REDBULL-20OZ', 0, '[]'::jsonb, null, null, 40.23, true),
-  (147, 'Magnum', 'Magnum', 'MERCHANDISE', 'Adult Wellness', 'AW-MAGNUM', 10, '["Regular","XL","bareskin","thin","ecstasy","Raw","Discovery pack","Jar big"]'::jsonb, 'magnum.jpg', null, 60.8, true),
-  (148, 'Trojan', 'Trojan', 'MERCHANDISE', 'Adult Wellness', 'AW-TROJAN', 7, '["Bareskin","ultra thin","ecstasy","her pleasure","Pleasure pack","G spot","double ecstasy"]'::jsonb, 'trojan.webp', null, 29.49, true),
-  (149, 'Rolling dice', 'Rolling', 'MERCHANDISE', 'Counter Goods', 'AW-ROLLING-DICE', 3, '["Big","small","colored"]'::jsonb, null, null, 5, true),
-  (150, 'Cables', 'Cables', 'MERCHANDISE', 'Electronics', 'AW-CABLES', 12, '["iPhone","Type C","Android","Car charger","home charger","iPhone To type C","Type C To Type C","Home charger with type C"]'::jsonb, null, null, 64.59, true),
-  (151, 'White V-neck', 'White', 'MERCHANDISE', 'Apparel', 'AW-WHITE-V-NECK', 9, '["S","M","L","1X","2X","3X","4X","5X"]'::jsonb, null, null, 51.96, true),
-  (152, 'Black V-neck:', 'Black', 'MERCHANDISE', 'Apparel', 'AW-BLACK-V-NECK', 9, '["S","M","L","1X","2X","3X","4X","5X"]'::jsonb, null, null, 26.71, true),
-  (153, 'White Long Sleeve', 'White', 'MERCHANDISE', 'Apparel', 'AW-WHITE-LONG-SLE', 9, '["S","M","L","1X","2X","3X","4X","5X"]'::jsonb, null, null, 26.96, true),
-  (154, 'Black Long Sleeve', 'Black', 'MERCHANDISE', 'Apparel', 'AW-BLACK-LONG-SLE', 9, '["S","M","L","1X","2X","3X","4X","5X"]'::jsonb, null, null, 50.45, true),
-  (155, 'White Thermals', 'White', 'MERCHANDISE', 'Apparel', 'AW-WHITE-THERMALS', 9, '["S","M","L","1X","2X","3X","4X","5X"]'::jsonb, null, null, 28.48, true),
-  (156, 'Black Thermals', 'Black', 'MERCHANDISE', 'Apparel', 'AW-BLACK-THERMALS', 9, '["S","M","L","1X","2X","3X","4X","5X"]'::jsonb, null, null, 37.57, true),
-  (157, 'Winterhats', 'Winterhats', 'MERCHANDISE', 'Apparel', 'AW-WINTERHATS', 7, '["Black","white","grey","red","blue","green","purple"]'::jsonb, null, null, 70.65, true),
-  (158, 'Socks', 'Socks', 'MERCHANDISE', 'Apparel', 'AW-SOCKS', 2, '["White","black"]'::jsonb, null, null, 54.49, true),
-  (159, 'Little trees', 'Little', 'MERCHANDISE', 'Air Fresheners & Incense', 'AW-LITTLE-TREES', 3, '["Assorted display","black ice single","black ice pack"]'::jsonb, null, null, 17.12, true),
-  (160, 'A-Shirt White', 'A-Shirt', 'MERCHANDISE', 'Apparel', 'AW-A-SHIRT-WHITE', 9, '["S","M","L","1X","2X","3X","4X","5X"]'::jsonb, null, null, 8.78, true),
-  (161, 'A-Shirts Black', 'A-Shirts', 'MERCHANDISE', 'Apparel', 'AW-A-SHIRTS-BLACK', 9, '["S","M","L","1X","2X","3X","4X","5X"]'::jsonb, null, null, 76.71, true),
-  (162, 'Snickers', 'Snickers', 'CANDIES', 'Chocolate Bars', 'AW-SNICKERS', 4, '["Regular","King size","Almond reg","almond king size"]'::jsonb, 'snickers_almond_share.webp', 'BESTSELLER', 34.05, true),
-  (163, 'M&M’s', 'M&M’s', 'CANDIES', 'Chocolate Bars', 'AW-M-M-S', 4, '["Yellow reg","yellow share size","chocolate reg","chocolate king size"]'::jsonb, 'm_m_s_chocolate_share.jpg', null, 24.14, true),
-  (164, 'KitKat', 'KitKat', 'CANDIES', 'Chocolate Bars', 'AW-KITKAT', 4, '["Regular","King size","vanilla reg","vanilla king size"]'::jsonb, 'kitkat_king_size.webp', null, 14.38, true),
-  (165, 'Twix', 'Twix', 'CANDIES', 'Chocolate Bars', 'AW-TWIX', 2, '["Regular","king size"]'::jsonb, 'twix_regular.webp', null, 23.08, true),
-  (166, 'Reese’s', 'Reese’s', 'CANDIES', 'Chocolate Bars', 'AW-REESE-S', 12, '["Cups regular","cups king size","white cups reg","white cups king size","pieces reg","pieces king size","fast break reg","fast break king size"]'::jsonb, 'reese_s.jpg', 'BESTSELLER', 29.2, true),
-  (167, 'Almond joy', 'Almond', 'CANDIES', 'Chocolate Bars', 'AW-ALMOND-JOY', 2, '["Regular","king size"]'::jsonb, 'almond_joy_3.jpg', null, 23.23, true),
-  (168, 'Mounds', 'Mounds', 'CANDIES', 'Chocolate Bars', 'AW-MOUNDS', 2, '["Regular","king size"]'::jsonb, 'mounds_bar_king_size.jpg', null, 36.65, true),
-  (169, 'Skittles', 'Skittles', 'CANDIES', 'Sweets & Gummies', 'AW-SKITTLES', 10, '["Red reg","red king size","wildberry reg","wildberry king size","sour reg","sour king size","blue reg","blue king size"]'::jsonb, 'skittles.jpg', 'BESTSELLER', 26.1, true),
-  (170, 'Payday', 'Payday', 'CANDIES', 'Chocolate Bars', 'AW-PAYDAY', 2, '["Regular","king size"]'::jsonb, 'payday_king_size.jpg', null, 14.47, true),
-  (171, 'Hershey', 'Hershey', 'CANDIES', 'Chocolate Bars', 'AW-HERSHEY', 8, '["Milk reg","milk king size","cookies reg","cookies king","almond reg","almond king","Mr. Goodbar reg","Mr. Goodbar king"]'::jsonb, 'hershey.jpg', 'BESTSELLER', 22.11, true),
-  (172, '3-musketeers', '3-musketeers', 'CANDIES', 'Chocolate Bars', 'AW-3-MUSKETEERS', 2, '["Regular","king size"]'::jsonb, '3_musketeers_regular.webp', null, 12.07, true),
-  (173, 'Rip Rolls', 'Rip Rolls', 'CANDIES', 'Sweets & Gummies', 'AW-RIP-ROLLS', 7, '["Strawberry","green apple","rainbow","blue","grape","cherry","watermelon"]'::jsonb, 'rip_rolls.webp', null, 43.94, true),
-  (174, 'Longboy Jar', 'Longboy', 'CANDIES', 'Jars', 'AW-LONGBOY-JAR', 0, '[]'::jsonb, 'longboy_jar.webp', null, 17.17, true),
-  (175, 'Chico-stick Jar', 'Chico-stick', 'CANDIES', 'Jars', 'AW-CHICO-STICK-JA', 0, '[]'::jsonb, 'chico_stick_jar.webp', null, 17.8, true),
-  (176, 'PB jar', 'PB jar', 'CANDIES', 'Jars', 'AW-PB-JAR', 0, '[]'::jsonb, 'pb_jar.jpg', null, 35.68, true),
-  (177, 'Haribo Jar', 'Haribo', 'CANDIES', 'Jars', 'AW-HARIBO-JAR', 0, '[]'::jsonb, 'haribo_jar.jpg', null, 37.85, true),
-  (178, 'Sour punch Jar', 'Sour', 'CANDIES', 'Jars', 'AW-SOUR-PUNCH-JAR', 2, '["Small","big"]'::jsonb, 'sour_punch_jar.webp', null, 21.59, true),
-  (179, 'Laffy taffy Jar', 'Laffy', 'CANDIES', 'Jars', 'AW-LAFFY-TAFFY-JA', 4, '["Assorted","blue","banana","green apple"]'::jsonb, 'laffy_taffy_bucket.webp', null, 40.4, true),
-  (180, 'Laffy taffy ropes', 'Laffy', 'CANDIES', 'Sweets & Gummies', 'AW-LAFFY-TAFFY-RO', 7, '["White mystery","blue","banana","cherry","strawberry","green apple","grape"]'::jsonb, 'laffy_taffy_ropes.webp', null, 18.27, true),
-  (181, 'Sour straws', 'Sour', 'CANDIES', 'Sweets & Gummies', 'AW-SOUR-STRAWS', 2, '["Blue raspberry","rainbow"]'::jsonb, 'sour_power_straws.jpg', null, 31.53, true),
-  (182, 'Sour punch', 'Sour', 'CANDIES', 'Sweets & Gummies', 'AW-SOUR-PUNCH', 5, '["Blue raspberry","strawberry","watermelon","grape","rainbow"]'::jsonb, 'sour_punch_jar.webp', null, 24.28, true),
-  (183, 'Extra Gum', 'Extra', 'CANDIES', 'Gum & Mints', 'AW-EXTRA-GUM', 5, '["Watermelon","spearmint","peppermint","polar ice","winter fresh"]'::jsonb, null, null, 24.15, true),
-  (184, 'Tueni', 'Tueni', 'CANDIES', 'Sweets & Gummies', 'AW-TUENI', 11, '["Lemon","tropical","blue raspberry","green apple","mango","pineapple","banana","grape"]'::jsonb, 'tueni_chews.jpg', 'NEW', 26.68, true),
-  (185, 'Frooties', 'Frooties', 'CANDIES', 'Sweets & Gummies', 'AW-FROOTIES', 0, '[]'::jsonb, 'frooties.webp', null, 22.83, true),
-  (186, 'Blowpop', 'Blowpop', 'CANDIES', 'Sweets & Gummies', 'AW-BLOWPOP', 5, '["Regular","blue razz","black cherry","watermelon","caramel apple"]'::jsonb, 'blowpop.webp', null, 23.84, true),
-  (187, 'Gusher box', 'Gusher', 'CANDIES', 'Sweets & Gummies', 'AW-GUSHER-BOX', 1, '["Regular"]'::jsonb, 'gushers_box.webp', null, 42.63, true),
-  (188, 'Nerds pouch', 'Nerds', 'CANDIES', 'Sweets & Gummies', 'AW-NERDS-POUCH', 3, '["Red","blue","cherry lemonade"]'::jsonb, 'nerds_pouches_1.webp', null, 20.77, true),
-  (189, 'Mamba Big bar', 'Mamba', 'CANDIES', 'Sweets & Gummies', 'AW-MAMBA-BIG-BAR', 3, '["Original","sour","tropical"]'::jsonb, 'mamba_big_bars.jpg', null, 16.04, true),
-  (190, 'Mamba small', 'Mamba', 'CANDIES', 'Sweets & Gummies', 'AW-MAMBA-SMALL', 3, '["Regular","tropical","sour"]'::jsonb, 'mamba_big_bars.jpg', null, 43.6, true),
-  (191, 'Mint lumps', 'Mint', 'CANDIES', 'Sweets & Gummies', 'AW-MINT-LUMPS', 0, '[]'::jsonb, 'mint_lumps.jpg', null, 32.23, true),
-  (192, 'Cherry lumps', 'Cherry', 'CANDIES', 'Sweets & Gummies', 'AW-CHERRY-LUMPS', 0, '[]'::jsonb, 'cherry_lumps.jpg', null, 18.58, true),
-  (193, 'Pure eyes', 'Pure', 'MERCHANDISE', 'OTC & Health', 'AW-PURE-EYES', 0, '[]'::jsonb, null, null, 50.7, true),
-  (194, '5-hour Extra', '5-hour', 'MERCHANDISE', 'Energy Shots', 'AW-5-HOUR-EXTRA', 7, '["Berry","blue raspberry","grape","mango peach","strawberry watermelon","strawberry banana","tidal twist"]'::jsonb, '5_hour_extra.jpg', null, 9.79, true),
-  (195, '5-hour regular', '5-hour', 'MERCHANDISE', 'Energy Shots', 'AW-5-HOUR-REGULAR', 2, '["Berry","grape"]'::jsonb, null, null, 32.02, true),
-  (196, 'Advil', 'Advil', 'MERCHANDISE', 'OTC & Health', 'AW-ADVIL', 6, '["Regular","Sinus","PM","dual action","liquid gels","allergy"]'::jsonb, null, null, 75.7, true),
-  (197, 'Haribo Bags', 'Haribo', 'CANDIES', 'Bags', 'AW-HARIBO-BAGS', 7, '["Gold bears","gold bears tropical","gold bears sour","sour streamers","Smurfs","sour Smurfs","twin snakes"]'::jsonb, 'haribo_bags.webp', null, 11.79, true),
-  (198, 'Trolli bags', 'Trolli', 'CANDIES', 'Bags', 'AW-TROLLI-BAGS', 3, '["Sour brite crawlers","peach","octopus"]'::jsonb, 'trolli_bags.webp', null, 42.92, true),
-  (199, 'Gushers bags', 'Gushers', 'CANDIES', 'Bags', 'AW-GUSHERS-BAGS', 0, '[]'::jsonb, 'gushers_bags.jpg', null, 30.74, true),
-  (200, 'Nerds bags', 'Nerds', 'CANDIES', 'Bags', 'AW-NERDS-BAGS', 4, '["Red","blue","yellow","cherry lemonade"]'::jsonb, 'nerds_pouches_1.webp', null, 22.15, true),
-  (201, 'Lifesaver bags', 'Lifesaver', 'CANDIES', 'Bags', 'AW-LIFESAVER-BAGS', 7, '["5-flavors","collision","wildberry","sours","fruit rings","XO rings","exotics"]'::jsonb, 'lifesaver_bags.webp', null, 40.97, true),
-  (202, 'Rips bags', 'Rips', 'CANDIES', 'Bags', 'AW-RIPS-BAGS', 1, '["Grape"]'::jsonb, 'rips_bags.webp', null, 31.7, true),
-  (203, 'Welches bags', 'Welches', 'CANDIES', 'Bags', 'AW-WELCHES-BAGS', 0, '[]'::jsonb, 'welches_bags.webp', null, 26.75, true),
-  (204, 'Welches', 'Welches', 'DRINKS & BAGS', 'Juices & Teas', 'AW-WELCHES', 7, '["Cranberry","fruit punch","apple","grape","orange pineapple","mango passion","orange"]'::jsonb, 'welches_juice.jpg', null, 14.47, true),
-  (205, 'Pepsi', 'Pepsi', 'DRINKS & BAGS', 'Sodas', 'AW-PEPSI', 0, '[]'::jsonb, null, null, 14.17, true),
-  (206, 'Dr Pepper', 'Dr Pepper', 'DRINKS & BAGS', 'Sodas', 'AW-DR-PEPPER', 0, '[]'::jsonb, null, null, 53.95, true),
-  (207, '20oz Minute Maid', '20oz', 'DRINKS & BAGS', 'Juices & Teas', 'AW-20OZ-MINUTE-MA', 9, '["Blue","fruit punch","berry","lemonade","pink lemonade","watermelon","peach","kiwi strawberry"]'::jsonb, null, null, 32.89, true),
-  (208, '12oz Minute Maid', '12oz', 'DRINKS & BAGS', 'Juices & Teas', 'AW-12OZ-MINUTE-MA', 6, '["Orange pineapple","orange","cranberry","raspberry","apple","tropical"]'::jsonb, '12oz_minute_maid_juice.webp', null, 17.4, true),
-  (209, '24/7', '24/7', 'TOBACCO', 'Cigarettes', 'AW-24-7', 8, '["Menthol 100","menthol short","red 100","red short","silver 100","silver short","gold 100","gold short"]'::jsonb, '24_7.jpg', null, 83.28, true),
-  (210, 'Seneca Filter', 'Seneca', 'TOBACCO', 'Cigarettes', 'AW-SENECA-FILTER', 0, '[]'::jsonb, 'seneca_filter_cigarettes.jpg', null, 76.71, true),
-  (211, 'Cheyenne', 'Cheyenne', 'TOBACCO', 'Cigarettes', 'AW-CHEYENNE', 0, '[]'::jsonb, null, null, 26.71, true),
-  (212, 'Ice bags', 'Ice bags', 'DRINKS & BAGS', 'Bags & Carriers', 'AW-ICE-BAGS', 2, '["8lbs","10lbs"]'::jsonb, null, null, 29.55, true),
-  (213, 'Lil leaf wraps', 'Lil leaf', 'TOBACCO', 'Wraps & Leafs', 'AW-LIL-LEAF-WRAPS', 1, '["Original"]'::jsonb, null, null, 68.08, true),
-  (214, 'Tropicana big', 'Tropicana', 'DRINKS & BAGS', 'Juices & Teas', 'AW-TROPICANA-BIG', 4, '["Orange","cranberry","apple","ruby red"]'::jsonb, null, null, 12.15, true),
-  (215, 'Alcapone leafs', 'Alcapone', 'TOBACCO', 'Wraps & Leafs', 'AW-ALCAPONE-LEAFS', 3, '["Rum","original","cognac"]'::jsonb, 'alcapone_wraps.jpg', null, 75.5, true),
-  (216, 'Grinders', 'Grinders', 'NOVELTIES', 'Smoke Accessories', 'AW-GRINDERS', 3, '["Big","medium","small"]'::jsonb, null, null, 47.27, true),
-  (217, 'Detox champ', 'Detox', 'NOVELTIES', 'Detox', 'AW-DETOX-CHAMP', 6, '["Blueberry","fruit punch","lemon lime","açaí berry","kiwi strawberry","grape"]'::jsonb, 'detox_champ.jpg', null, 118.98, true),
-  (218, 'Q carbo 16', 'Q carbo', 'NOVELTIES', 'Detox', 'AW-Q-CARBO-16', 4, '["Grape","red","strawberry mango","orange"]'::jsonb, null, 'BESTSELLER', 46.26, true),
-  (219, 'Happy valentines jar', 'Happy', 'NOVELTIES', 'Wellness Pills', 'AW-HAPPY-VALENTIN', 3, '["4 inch","6 inch","colored"]'::jsonb, null, null, 95.75, true),
-  (220, 'Scales', 'Scales', 'NOVELTIES', 'Smoke Accessories', 'AW-SCALES', 3, '["Big","medium","small"]'::jsonb, null, null, 54.34, true),
-  (221, 'Cheap scales', 'Cheap', 'NOVELTIES', 'Smoke Accessories', 'AW-CHEAP-SCALES', 3, '["Bog","medium","small"]'::jsonb, null, null, 83.63, true),
-  (222, 'Pepcid complete', 'Pepcid', 'MERCHANDISE', 'OTC & Health', 'AW-PEPCID-COMPLET', 0, '[]'::jsonb, null, null, 74.94, true),
-  (223, 'Bayer', 'Bayer', 'MERCHANDISE', 'OTC & Health', 'AW-BAYER', 0, '[]'::jsonb, null, null, 69.39, true),
-  (224, 'Mucinex DM', 'Mucinex', 'MERCHANDISE', 'OTC & Health', 'AW-MUCINEX-DM', 0, '[]'::jsonb, null, null, 20.15, true),
-  (225, 'Women deodorant', 'Women', 'GROCERY', 'Personal Care', 'AW-WOMEN-DEODORAN', 0, '[]'::jsonb, 'women_s_deodorant.webp', null, 11.47, true),
-  (226, 'Excedrin', 'Excedrin', 'MERCHANDISE', 'OTC & Health', 'AW-EXCEDRIN', 2, '["Extra","migraine"]'::jsonb, null, null, 55.25, true),
-  (227, 'BC', 'BC', 'MERCHANDISE', 'OTC & Health', 'AW-BC', 3, '["6pk","2pk","arthritis"]'::jsonb, null, null, 42.87, true),
-  (228, 'Stanback', 'Stanback', 'MERCHANDISE', 'OTC & Health', 'AW-STANBACK', 2, '["6pk","2pk"]'::jsonb, null, null, 65.1, true),
-  (229, 'Tums small', 'Tums', 'MERCHANDISE', 'OTC & Health', 'AW-TUMS-SMALL', 3, '["Assorted fruit","berries","mint"]'::jsonb, null, null, 43.63, true),
-  (230, 'Tums big', 'Tums', 'MERCHANDISE', 'OTC & Health', 'AW-TUMS-BIG', 3, '["Assorted fruit","berries","mint"]'::jsonb, null, null, 65.1, true),
-  (231, 'Rolaids', 'Rolaids', 'MERCHANDISE', 'OTC & Health', 'AW-ROLAIDS', 2, '["Mint","fruit"]'::jsonb, null, null, 30.5, true),
-  (232, 'Alani', 'Alani', 'DRINKS & BAGS', 'Energy Drinks', 'AW-ALANI', 3, '["Cherry slush","blue slush","sherbet"]'::jsonb, null, null, 27.55, true),
-  (233, 'Nesquick', 'Nesquick', 'DRINKS & BAGS', 'Dairy & Milk', 'AW-NESQUICK', 4, '["Chocolate","strawberry","vanilla","strawberry banana"]'::jsonb, null, null, 51.69, true),
-  (234, 'Foco', 'Foco', 'DRINKS & BAGS', 'Juices & Teas', 'AW-FOCO', 2, '["Big","small"]'::jsonb, null, null, 34.48, true),
-  (235, 'Kuii nata', 'Kuii', 'DRINKS & BAGS', 'Juices & Teas', 'AW-KUII-NATA', 5, '["Melon","original","strawberry","mango","pineapple"]'::jsonb, null, null, 39.63, true),
-  (236, 'OHM bags small', 'OHM bags', 'TOBACCO', 'Loose Tobacco Bags', 'AW-OHM-BAGS-SMALL', 4, '["Bold","menthol","blue","natural"]'::jsonb, null, null, 101.26, true),
-  (237, 'OHM bags big', 'OHM bags', 'TOBACCO', 'Loose Tobacco Bags', 'AW-OHM-BAGS-BIG', 6, '["Bold","menthol","blue","natural","Turkish red","menthol gold"]'::jsonb, null, null, 31.71, true),
-  (238, 'Gambler bags big', 'Gambler', 'TOBACCO', 'Loose Tobacco Bags', 'AW-GAMBLER-BAGS-B', 4, '["Red","gold","silver","menthol"]'::jsonb, null, null, 58.28, true),
-  (239, 'Gambler bags small', 'Gambler', 'TOBACCO', 'Loose Tobacco Bags', 'AW-GAMBLER-BAGS-S', 4, '["Red","gold","silver","menthol"]'::jsonb, null, null, 53.28, true),
-  (240, 'American club bags big', 'American', 'TOBACCO', 'Loose Tobacco Bags', 'AW-AMERICAN-CLUB-', 3, '["Menthol","red","blue"]'::jsonb, 'american_club.png', null, 68.03, true),
-  (241, 'American club bags small', 'American', 'TOBACCO', 'Loose Tobacco Bags', 'AW-AMERICAN-CLUB-', 3, '["Menthol","red","blue"]'::jsonb, 'american_club.png', null, 31.26, true),
-  (242, 'Gambler tubes', 'Gambler', 'TOBACCO', 'Tubes & Filters', 'AW-GAMBLER-TUBES', 6, '["Gold 100","gold king","menthol 100","menthol king","red 100","red king"]'::jsonb, 'gambler_tubes.webp', null, 17.07, true),
-  (243, 'Tube cuts', 'Tube', 'TOBACCO', 'Tubes & Filters', 'AW-TUBE-CUTS', 8, '["Gold 100","gold king","menthol 100","menthol king","orange 100","orange king","silver 100","silver king"]'::jsonb, 'tube_cuts.webp', null, 61.91, true),
-  (244, 'Shargio tubes', 'Shargio', 'TOBACCO', 'Tubes & Filters', 'AW-SHARGIO-TUBES', 6, '["Green 250","green 200","blue 250","blue 200","red 250","red 200"]'::jsonb, 'shargio_tubes.jpg', null, 39.19, true),
-  (245, 'Blunteffect incense', 'Blunteffect', 'MERCHANDISE', 'Air Fresheners & Incense', 'AW-BLUNTEFFECT-IN', 3, '["Small","medium","big"]'::jsonb, 'blunteffect_incense_medium.webp', null, 31.76, true),
-  (246, 'Cheap incense', 'Cheap', 'MERCHANDISE', 'Air Fresheners & Incense', 'AW-CHEAP-INCENSE', 3, '["Small","medium","big"]'::jsonb, null, null, 53.98, true),
-  (247, 'Lattafa air freshener', 'Lattafa', 'MERCHANDISE', 'Air Fresheners & Incense', 'AW-LATTAFA-AIR-FR', 1, '["Pink"]'::jsonb, 'lattafa_air_freshener.webp', null, 78.98, true),
-  (248, 'Coke', 'Coke', 'DRINKS & BAGS', 'Sodas', 'AW-COKE', 0, '[]'::jsonb, null, null, 28.94, true),
-  (249, 'Sprite', 'Sprite', 'DRINKS & BAGS', 'Sodas', 'AW-SPRITE', 2, '["Regular","tropical"]'::jsonb, null, null, 14.33, true),
-  (250, 'Cheap lighters', 'Cheap', 'MERCHANDISE', 'Lighters & Torches', 'AW-CHEAP-LIGHTERS', 0, '[]'::jsonb, 'cheap_lighters.jpg', null, 31.01, true),
-  (251, 'Supreme', 'Supreme', 'TOBACCO', 'Cigars & Cigarillos', 'AW-SUPREME', 2, '["Green","haze"]'::jsonb, 'supreme.jpg', null, 109.29, true),
-  (252, 'Playing cards', 'Playing', 'MERCHANDISE', 'Counter Goods', 'AW-PLAYING-CARDS', 2, '["Aviator","cheap"]'::jsonb, null, null, 71.66, true),
-  (253, 'Ajax detergent', 'Ajax', 'GROCERY', 'Cleaning', 'AW-AJAX-DETERGENT', 0, '[]'::jsonb, null, null, 34.46, true),
-  (254, 'Luffbar', 'Luffbar', 'NOVELTIES', 'Disposable Vapes', 'AW-LUFFBAR', 1, '["Alaska"]'::jsonb, null, null, 96.76, true),
-  (255, 'Raw papers', 'Raw papers', 'TOBACCO', 'Papers & Cones', 'AW-RAW-PAPERS', 2, '["Classic 1 1/4","classic king size slim"]'::jsonb, 'raw_papers.jpg', null, 98.18, true),
-  (256, 'Raw cones', 'Raw cones', 'TOBACCO', 'Papers & Cones', 'AW-RAW-CONES', 6, '["Classic 6X","classic 3X","organic 6X","organic 3X","black 6X","black 3X"]'::jsonb, 'raw_cones.jpg', null, 55.9, true),
-  (257, 'Top Paper', 'Top Paper', 'TOBACCO', 'Papers & Cones', 'AW-TOP-PAPER', 2, '["Jar","box"]'::jsonb, 'top_paper.jpg', null, 43.43, true),
-  (258, 'Psyched pre rolls jars', 'Psyched', 'NOVELTIES', 'Mushroom Products', 'AW-PSYCHED-PRE-RO', 1, '["Any flavor"]'::jsonb, null, null, 40.2, true),
-  (259, 'Paper plates', 'Paper', 'GROCERY', 'Paper & Plastic', 'AW-PAPER-PLATES', 2, '["Big","small"]'::jsonb, null, null, 27.55, true),
-  (260, 'Backwoods true wraps', 'Backwoods', 'TOBACCO', 'Wraps & Leafs', 'AW-BACKWOODS-TRUE', 3, '["Original","vanilla","aromatic"]'::jsonb, null, null, 42.97, true),
-  (261, 'Lighter leash', 'Lighter', 'MERCHANDISE', 'Lighters & Torches', 'AW-LIGHTER-LEASH', 3, '["Regular","with clip","with design"]'::jsonb, null, null, 70.15, true),
-  (262, 'Efrutti jar', 'Efrutti', 'CANDIES', 'Jars', 'AW-EFRUTTI-JAR', 1, '["Blue"]'::jsonb, 'efrutti_jar.webp', null, 35.86, true),
-  (263, 'WO mini', 'WO mini', 'TOBACCO', 'Cigars & Cigarillos', 'AW-WO-MINI', 4, '["Silver","red sweet","white grape","blue raspberry"]'::jsonb, 'wo_mini.png', null, 83.93, true),
-  (264, 'NyQuil', 'NyQuil', 'MERCHANDISE', 'OTC & Health', 'AW-NYQUIL', 0, '[]'::jsonb, null, null, 33.78, true),
-  (265, 'Hard steel', 'Hard', 'MERCHANDISE', 'Honey & Energy', 'AW-HARD-STEEL', 6, '["Shots","honey","pills","gold shots","gold honey","gold pills"]'::jsonb, 'hard_steel_honey.avif', 'PREMIUM', 24.19, true),
-  (266, 'Blue wolf honey', 'Blue', 'MERCHANDISE', 'Honey & Energy', 'AW-BLUE-WOLF-HONE', 0, '[]'::jsonb, null, null, 38.33, true),
-  (267, 'ZYN European', 'ZYN European', 'TOBACCO', 'Pouches & ZYN', 'AW-ZYN-EUROPEAN', 1, '["Mix"]'::jsonb, 'zyn_6mg.webp', null, 50.4, true),
-  (268, 'Sour strips', 'Sour', 'CANDIES', 'Sweets & Gummies', 'AW-SOUR-STRIPS', 1, '["Blue"]'::jsonb, null, null, 26.76, true),
-  (269, 'Airheads soda', 'Airheads', 'DRINKS & BAGS', 'Sodas', 'AW-AIRHEADS-SODA', 5, '["Green","red","blue","pink","orange"]'::jsonb, null, null, 20.73, true),
-  (270, 'Monster', 'Monster', 'DRINKS & BAGS', 'Energy Drinks', 'AW-MONSTER', 3, '["Green","white","blue"]'::jsonb, null, 'DEAL', 47.62, true),
-  (271, 'Snickers chocolate milk', 'Snickers', 'DRINKS & BAGS', 'Dairy & Milk', 'AW-SNICKERS-CHOCO', 0, '[]'::jsonb, null, null, 45.52, true),
-  (272, 'Jumex', 'Jumex', 'DRINKS & BAGS', 'Juices & Teas', 'AW-JUMEX', 5, '["Mango","guava","strawberries banana","peach","pineapple cocount"]'::jsonb, null, null, 22.08, true),
-  (273, 'Loose leafs splits diamond wraps', 'Loose', 'TOBACCO', 'Wraps & Leafs', 'AW-LOOSE-LEAFS-SP', 0, '[]'::jsonb, 'loose_leafs_wraps_5pk.webp', null, 84.09, true),
-  (274, 'Raw guarana wraps', 'Raw guarana', 'TOBACCO', 'Wraps & Leafs', 'AW-RAW-GUARANA-WR', 0, '[]'::jsonb, null, null, 42.87, true),
-  (275, 'Jolly rancher 5lbs', 'Jolly', 'CANDIES', 'Sweets & Gummies', 'AW-JOLLY-RANCHER-', 0, '[]'::jsonb, 'jolly_rancher_5lbs.webp', null, 35.59, true),
-  (276, 'Now and later jar', 'Now and', 'CANDIES', 'Jars', 'AW-NOW-AND-LATER-', 0, '[]'::jsonb, 'now_later_jar.webp', null, 41.8, true),
-  (277, 'Jungle jollies', 'Jungle', 'CANDIES', 'Sweets & Gummies', 'AW-JUNGLE-JOLLIES', 0, '[]'::jsonb, 'jungle_jollies.jpg', null, 36.33, true),
-  (278, 'Van holt', 'Van holt', 'FOOD STUFF', 'Quick Meals', 'AW-VAN-HOLT', 5, '["Big papa","hot mama","garlic Joe","kosher","dill"]'::jsonb, 'van_holt_pickles.jpg', null, 27.97, true),
-  (279, 'Yakisoba', 'Yakisoba', 'FOOD STUFF', 'Quick Meals', 'AW-YAKISOBA', 2, '["Beef","chicken"]'::jsonb, 'yakisoba_noodles.jpg', null, 19.49, true),
-  (280, 'Coastal', 'Coastal', 'MOTOR OIL', 'Motor Oil', 'AW-COASTAL', 2, '["5w30","5w20"]'::jsonb, 'coastal_moto_oil.jpg', null, 44.56, true),
-  (281, 'Hush hit pre rolls 2pk', 'Hush', 'NOVELTIES', 'Mushroom Products', 'AW-HUSH-HIT-PRE-R', 1, '["Blue dream"]'::jsonb, null, null, 116.96, true),
-  (282, 'JOB papers', 'JOB papers', 'TOBACCO', 'Papers & Cones', 'AW-JOB-PAPERS', 4, '["1.5","1.25","1.0","1.5 slim"]'::jsonb, 'job_papers.jpg', 'BESTSELLER', 93.83, true),
-  (283, 'Duct tape', 'Duct', 'GROCERY', 'Hardware', 'AW-DUCT-TAPE', 0, '[]'::jsonb, null, null, 14.02, true),
-  (284, 'Clear tape', 'Clear', 'GROCERY', 'Hardware', 'AW-CLEAR-TAPE', 0, '[]'::jsonb, null, null, 26.78, true),
-  (285, 'Shroom bang pre rolls 2pk', 'Shroom', 'NOVELTIES', 'Mushroom Products', 'AW-SHROOM-BANG-PR', 2, '["Purple","blue"]'::jsonb, null, null, 36.16, true),
-  (286, 'AA cellular Bluetooth headphones', 'AA cellular', 'MERCHANDISE', 'Electronics', 'AW-AA-CELLULAR-BL', 0, '[]'::jsonb, null, null, 12.57, true),
-  (287, 'Eagle torches', 'Eagle', 'MERCHANDISE', 'Lighters & Torches', 'AW-EAGLE-TORCHES', 3, '["Big","medium","small"]'::jsonb, 'eagles_torches_3.jpg', null, 66.86, true),
-  (288, 'Blue monkey pre rolls 2pk', 'Blue', 'NOVELTIES', 'Mushroom Products', 'AW-BLUE-MONKEY-PR', 2, '["Space monkey","blue razz"]'::jsonb, null, null, 38.18, true),
-  (289, 'Psyched disposable 9000mg', 'Psyched', 'NOVELTIES', 'Mushroom Products', 'AW-PSYCHED-DISPOS', 1, '["Snow lotus"]'::jsonb, null, null, 82.62, true),
-  (290, 'Powerade big', 'Powerade', 'DRINKS & BAGS', 'Sports Drinks', 'AW-POWERADE-BIG', 4, '["Blue","red","grape","yellow"]'::jsonb, 'powerade_20oz.webp', null, 48.65, true),
-  (291, 'Powerade small', 'Powerade', 'DRINKS & BAGS', 'Sports Drinks', 'AW-POWERADE-SMALL', 4, '["Blue","red","grape","yellow"]'::jsonb, 'powerade_20oz.webp', null, 19.97, true),
-  (292, 'Electrolyte', 'Electrolyte', 'DRINKS & BAGS', 'Energy Drinks', 'AW-ELECTROLYTE', 1, '["Blue"]'::jsonb, 'electrolyte.webp', null, 46.31, true),
-  (293, 'Sip happens', 'Sip happens', 'NOVELTIES', 'Kratom & Kava', 'AW-SIP-HAPPENS', 0, '[]'::jsonb, null, null, 118.98, true),
-  (294, 'PIK 16mg', 'PIK 16mg', 'TOBACCO', 'Pouches & ZYN', 'AW-PIK-16MG', 1, '["Wintergreen"]'::jsonb, 'pik_16mg.jpg', null, 81.76, true),
-  (295, 'Snack wraps', 'Snack', 'FOOD STUFF', 'Chips & Crackers', 'AW-SNACK-WRAPS', 2, '["40ct","12ct"]'::jsonb, null, null, 45.95, true),
-  (296, 'Jelly holes pre rolls', 'Jelly', 'NOVELTIES', 'Mushroom Products', 'AW-JELLY-HOLES-PR', 1, '["Dirty girl"]'::jsonb, null, null, 112.92, true),
-  (297, 'Toothbrushes', 'Toothbrushes', 'GROCERY', 'Personal Care', 'AW-TOOTHBRUSHES', 0, '[]'::jsonb, null, null, 27.79, true),
-  (298, 'Shroom rolls pre rolls jars', 'Shroom', 'NOVELTIES', 'Mushroom Products', 'AW-SHROOM-ROLLS-P', 0, '[]'::jsonb, null, null, 49.29, true),
-  (299, 'Psyched 6000mg disposable', 'Psyched', 'NOVELTIES', 'Mushroom Products', 'AW-PSYCHED-6000MG', 1, '["Snow lotus"]'::jsonb, null, null, 43.23, true),
-  (300, 'Melted mushroom pre rolls 2pk', 'Melted', 'NOVELTIES', 'Mushroom Products', 'AW-MELTED-MUSHROO', 1, '["Blue razz"]'::jsonb, null, null, 110.9, true),
-  (301, 'Xuno pills', 'Xuno', 'NOVELTIES', 'Wellness Pills', 'AW-XUNO-PILLS', 0, '[]'::jsonb, null, null, 54.34, true),
-  (302, 'Better me pills', 'Better', 'NOVELTIES', 'Wellness Pills', 'AW-BETTER-ME-PILL', 0, '[]'::jsonb, null, null, 119.99, true),
-  (303, 'High gravity pills', 'High', 'NOVELTIES', 'Wellness Pills', 'AW-HIGH-GRAVITY-P', 0, '[]'::jsonb, null, null, 80.6, true),
-  (304, 'Third eye pills', 'Third', 'NOVELTIES', 'Wellness Pills', 'AW-THIRD-EYE-PILL', 0, '[]'::jsonb, null, null, 99.79, true),
-  (305, 'Tyson wraps', 'Tyson', 'TOBACCO', 'Wraps & Leafs', 'AW-TYSON-WRAPS', 0, '[]'::jsonb, 'tyson_wraps.jpg', null, 102.07, true),
-  (306, 'Stoned mushroom gummies bags regular', 'Stoned', 'NOVELTIES', 'Mushroom Products', 'AW-STONED-MUSHROO', 0, '[]'::jsonb, null, null, 89.69, true),
-  (307, 'Stoned honey mushroom bags', 'Stoned', 'NOVELTIES', 'Mushroom Products', 'AW-STONED-HONEY-M', 0, '[]'::jsonb, null, null, 113.93, true),
-  (308, 'Upass', 'Upass', 'NOVELTIES', 'Detox', 'AW-UPASS', 0, '[]'::jsonb, 'upass.webp', null, 114.94, true),
-  (309, 'Water bongs', 'Water', 'NOVELTIES', 'Smoke Accessories', 'AW-WATER-BONGS', 0, '[]'::jsonb, null, null, 112.92, true),
-  (310, 'Geekbar mate', 'Geekbar', 'NOVELTIES', 'Disposable Vapes', 'AW-GEEKBAR-MATE', 0, '[]'::jsonb, 'geekbar_15k.webp', null, 94.74, true),
-  (311, 'Geekbar mate pods', 'Geekbar', 'NOVELTIES', 'Vape Pods', 'AW-GEEKBAR-MATE-P', 0, '[]'::jsonb, null, null, 112.92, true),
-  (312, 'Stoned blue lotus gummies bags', 'Stoned', 'NOVELTIES', 'Mushroom Products', 'AW-STONED-BLUE-LO', 0, '[]'::jsonb, null, null, 106.86, true),
-  (313, 'Psyched blue lotus gummies 25ct box', 'Psyched', 'NOVELTIES', 'Mushroom Products', 'AW-PSYCHED-BLUE-L', 0, '[]'::jsonb, null, null, 22.02, true),
-  (314, 'Coco Nara charcoal', 'Coco', 'NOVELTIES', 'Hookah & Shisha', 'AW-COCO-NARA-CHAR', 4, '["Big","small","medium","1kg"]'::jsonb, null, null, 95.75, true),
-  (315, 'Alfakher 50 gram', 'Alfakher', 'NOVELTIES', 'Hookah & Shisha', 'AW-ALFAKHER-50-GR', 1, '["Mint"]'::jsonb, 'alfakher_50_gram.webp', null, 70.5, true),
-  (316, 'Alfakher 250 gram', 'Alfakher', 'NOVELTIES', 'Hookah & Shisha', 'AW-ALFAKHER-250-G', 1, '["Mint"]'::jsonb, 'alfakher_250_gram.webp', null, 71.51, true),
-  (317, 'Alfakher 1KG', 'Alfakher', 'NOVELTIES', 'Hookah & Shisha', 'AW-ALFAKHER-1KG', 1, '["Mint"]'::jsonb, 'alfakher_250_gram.webp', null, 49.29, true),
-  (318, 'Tyson papers', 'Tyson', 'TOBACCO', 'Papers & Cones', 'AW-TYSON-PAPERS', 2, '["Yellow","regular"]'::jsonb, 'tyson_wraps.jpg', null, 40.5, true),
-  (319, 'Wild hemp', 'Wild', 'TOBACCO', 'Wraps & Leafs', 'AW-WILD-HEMP', 1, '["Natural"]'::jsonb, 'wild_hemps.jpg', null, 15.1, true),
-  (320, 'King palm', 'King', 'TOBACCO', 'Wraps & Leafs', 'AW-KING-PALM', 1, '["Regular"]'::jsonb, 'king_palm.jpg', null, 81.16, true),
-  (321, 'VIP gold honey', 'VIP gold', 'MERCHANDISE', 'Honey & Energy', 'AW-VIP-GOLD-HONEY', 0, '[]'::jsonb, 'vip_gold_honey.webp', 'PREMIUM', 29.49, true),
-  (322, 'Secret miracle honey', 'Secret', 'MERCHANDISE', 'Honey & Energy', 'AW-SECRET-MIRACLE', 0, '[]'::jsonb, 'secret_miracle_honey_1.jpg', null, 37.82, true),
-  (323, 'Beer salts bottles', 'Beer', 'FOOD STUFF', 'Sauces & Salts', 'AW-BEER-SALTS-BOT', 2, '["Lemon lime","lime"]'::jsonb, 'twang_beer_salts_bottles.jpg', null, 46.96, true),
-  (324, 'Beer salts packets', 'Beer', 'FOOD STUFF', 'Sauces & Salts', 'AW-BEER-SALTS-PAC', 2, '["Yellow","green"]'::jsonb, 'twang_beer_salts_packets.webp', null, 37.67, true),
-  (325, 'Jarritos', 'Jarritos', 'DRINKS & BAGS', 'Juices & Teas', 'AW-JARRITOS', 1, '["Orange"]'::jsonb, 'jarritos.jpg', null, 14.13, true),
-  (326, 'Maruchan cups', 'Maruchan', 'FOOD STUFF', 'Quick Meals', 'AW-MARUCHAN-CUPS', 3, '["Chicken","beef","shrimp"]'::jsonb, 'maruchan_packs.jpg', null, 40.9, true),
-  (327, 'Maruchan packs', 'Maruchan', 'FOOD STUFF', 'Quick Meals', 'AW-MARUCHAN-PACKS', 3, '["Chicken","beef","shrimp"]'::jsonb, 'maruchan_packs.jpg', null, 25.35, true),
-  (328, 'Takis', 'Takis', 'FOOD STUFF', 'Chips & Crackers', 'AW-TAKIS', 4, '["Fuego small","fuego big","blue heat small","blue heat big"]'::jsonb, 'takis.webp', 'BESTSELLER', 17.07, true),
-  (329, 'Raw', 'Raw', 'TOBACCO', 'Cigars & Cigarillos', 'AW-RAW', 1, '["Tips"]'::jsonb, 'raw_papers.jpg', null, 26.86, true),
-  (330, 'High hemp', 'High', 'TOBACCO', 'Wraps & Leafs', 'AW-HIGH-HEMP', 1, '["Organic"]'::jsonb, 'high_hemp_organic.webp', null, 79.64, true),
-  (331, 'Panasonic', 'Panasonic', 'MERCHANDISE', 'Electronics', 'AW-PANASONIC', 1, '["AAA2"]'::jsonb, null, null, 51.96, true),
-  (332, 'Black tiger honey', 'Black', 'MERCHANDISE', 'Honey & Energy', 'AW-BLACK-TIGER-HO', 2, '["Flat box","round box"]'::jsonb, 'black_tiger_honey.jpg', 'PREMIUM', 8.28, true),
-  (333, 'Gain dishwasher', 'Gain', 'GROCERY', 'Laundry & Detergent', 'AW-GAIN-DISHWASHE', 0, '[]'::jsonb, 'gain.jpg', null, 7.83, true),
-  (334, 'Bandaids', 'Bandaids', 'MERCHANDISE', 'OTC & Health', 'AW-BANDAIDS', 0, '[]'::jsonb, null, null, 29.74, true),
-  (335, 'Gatorade small', 'Gatorade', 'DRINKS & BAGS', 'Sports Drinks', 'AW-GATORADE-SMALL', 1, '["Blue"]'::jsonb, null, null, 51.72, true),
-  (336, 'Gatorade big', 'Gatorade', 'DRINKS & BAGS', 'Sports Drinks', 'AW-GATORADE-BIG', 1, '["Blue"]'::jsonb, null, 'BESTSELLER', 28.62, true),
-  (337, 'Bob Marley papers', 'Bob Marley', 'TOBACCO', 'Papers & Cones', 'AW-BOB-MARLEY-PAP', 9, '["Yellow small","yellow big","yellow big with tips","organic small","organic big","organic big with tips","silver small","silver big"]'::jsonb, 'bob_marley_papers.jpg', null, 41.11, true),
-  (338, 'Grabba leaf', 'Grabba', 'TOBACCO', 'Wraps & Leafs', 'AW-GRABBA-LEAF', 4, '["Big","small","small yellow","big yellow"]'::jsonb, 'grabba_leaf_small.webp', null, 50.9, true),
-  (339, 'Billionaire wraps', 'Billionaire', 'TOBACCO', 'Wraps & Leafs', 'AW-BILLIONAIRE-WR', 1, '["Russian cream"]'::jsonb, 'billionaire_wraps.jpg', null, 49.09, true),
-  (340, 'Slapwoods singles', 'Slapwoods', 'TOBACCO', 'Cigars & Cigarillos', 'AW-SLAPWOODS-SING', 1, '["Russian cream"]'::jsonb, 'slapwoods_5pk.webp', null, 92.77, true),
-  (341, 'Silly dots pills', 'Silly', 'NOVELTIES', 'Wellness Pills', 'AW-SILLY-DOTS-PIL', 1, '["Cherry"]'::jsonb, null, null, 48.28, true),
-  (342, 'Dubai chocolate', 'Dubai', 'CANDIES', 'Chocolate Bars', 'AW-DUBAI-CHOCOLAT', 2, '["Small","big"]'::jsonb, null, 'NEW', 31.01, true),
-  (343, 'Gummy', 'Gummy', 'CANDIES', 'Gum & Mints', 'AW-GUMMY', 6, '["Burger","pizza","hotdog","cupcake","SpongeBob","sour burger"]'::jsonb, 'efrutti_gummy.webp', null, 18.5, true),
-  (344, 'Krazy glue', 'Krazy', 'GROCERY', 'Hardware', 'AW-KRAZY-GLUE', 0, '[]'::jsonb, 'krazy_glue.jpg', null, 18.34, true),
-  (345, 'Super glue', 'Super', 'GROCERY', 'Hardware', 'AW-SUPER-GLUE', 0, '[]'::jsonb, null, null, 26.38, true),
-  (346, 'Monster Java', 'Monster', 'DRINKS & BAGS', 'Energy Drinks', 'AW-MONSTER-JAVA', 0, '[]'::jsonb, null, null, 26.05, true),
-  (347, 'Zigzag hemp wraps', 'Zigzag', 'TOBACCO', 'Wraps & Leafs', 'AW-ZIGZAG-HEMP-WR', 1, '["Natural"]'::jsonb, 'zigzag_hemp_wraps.jpg', null, 39.69, true),
-  (348, 'Oreo', 'Oreo', 'FOOD STUFF', 'Cookies', 'AW-OREO', 1, '["Regular"]'::jsonb, 'oreo_cookies_single.jpg', 'BESTSELLER', 49.19, true),
-  (349, 'Nutter butter', 'Nutter', 'FOOD STUFF', 'Cookies', 'AW-NUTTER-BUTTER', 1, '["Regular"]'::jsonb, null, null, 44.74, true),
-  (350, 'Uncle Al’s', 'Uncle', 'FOOD STUFF', 'Cookies', 'AW-UNCLE-AL-S', 0, '[]'::jsonb, 'uncle_al_s_cookies.jpg', null, 33.23, true),
-  (351, 'Uncle Al’s cookies', 'Uncle', 'FOOD STUFF', 'Cookies', 'AW-UNCLE-AL-S-COO', 1, '["Lemon ice"]'::jsonb, 'uncle_al_s_cookies.jpg', null, 18.68, true),
-  (352, 'Louisiana Hot sauce', 'Louisiana', 'FOOD STUFF', 'Sauces & Salts', 'AW-LOUISIANA-HOT-', 0, '[]'::jsonb, 'louisiana_hot_sauce.jpg', null, 48.98, true),
-  (353, 'Instant coffee', 'Instant', 'FOOD STUFF', 'Coffee', 'AW-INSTANT-COFFEE', 2, '["Small","big"]'::jsonb, null, null, 11.61, true),
-  (354, 'Folgers coffee', 'Folgers', 'FOOD STUFF', 'Coffee', 'AW-FOLGERS-COFFEE', 1, '["Small"]'::jsonb, null, null, 39.69, true),
-  (355, 'Gold band', 'Gold', 'MOTOR OIL', 'Motor Oil', 'AW-GOLD-BAND', 1, '["Type A"]'::jsonb, 'gold_band.jpg', null, 48.28, true),
-  (356, 'Gas cans', 'Gas cans', 'MOTOR OIL', 'Auto Accessories', 'AW-GAS-CANS', 3, '["1 gal","2gal","5 gal"]'::jsonb, null, null, 30.1, true),
-  (357, 'Starbust bars', 'Starbust', 'CANDIES', 'Sweets & Gummies', 'AW-STARBUST-BARS', 1, '["Fave reds share size"]'::jsonb, null, null, 14.91, true),
-  (358, 'Lifesaver share size gummies', 'Lifesaver', 'CANDIES', 'Gum & Mints', 'AW-LIFESAVER-SHAR', 1, '["Wildberry"]'::jsonb, 'lifesaver_gummies_share_size.webp', null, 41.05, true),
-  (359, 'Cooking oil', 'Cooking', 'FOOD STUFF', 'Cooking Basics', 'AW-COOKING-OIL', 2, '["Small","big"]'::jsonb, 'cooking_oil.webp', null, 43.33, true),
-  (360, 'Bug juice', 'Bug juice', 'DRINKS & BAGS', 'Juices & Teas', 'AW-BUG-JUICE', 1, '["Blue"]'::jsonb, null, null, 38.82, true),
-  (361, 'Dominoes sugar', 'Dominoes', 'FOOD STUFF', 'Cooking Basics', 'AW-DOMINOES-SUGAR', 2, '["Small","big"]'::jsonb, null, null, 37.07, true),
-  (362, 'Disposable gloved', 'Disposable', 'GROCERY', 'Hardware', 'AW-DISPOSABLE-GLO', 2, '["M size","L size"]'::jsonb, null, null, 18.14, true),
-  (363, 'Durags', 'Durags', 'MERCHANDISE', 'Apparel', 'AW-DURAGS', 2, '["Black","white"]'::jsonb, null, null, 61.31, true),
-  (364, 'Wave caps', 'Wave', 'MERCHANDISE', 'Apparel', 'AW-WAVE-CAPS', 2, '["Black","white"]'::jsonb, null, null, 68.13, true),
-  (365, 'Orajel', 'Orajel', 'MERCHANDISE', 'OTC & Health', 'AW-ORAJEL', 0, '[]'::jsonb, null, null, 59.29, true),
-  (366, 'Garcia Vega', 'Garcia', 'TOBACCO', 'Cigars & Cigarillos', 'AW-GARCIA-VEGA', 1, '["Green"]'::jsonb, null, null, 47.57, true),
-  (367, 'Loose leafs 5pk', 'Loose', 'TOBACCO', 'Wraps & Leafs', 'AW-LOOSE-LEAFS-5P', 1, '["Watermelon"]'::jsonb, 'loose_leafs_wraps_5pk.webp', null, 109.49, true),
-  (368, 'Camo wraps', 'Camo', 'TOBACCO', 'Wraps & Leafs', 'AW-CAMO-WRAPS', 1, '["Natural"]'::jsonb, null, null, 90.55, true)
-on conflict (id) do update set
-  name = excluded.name,
-  brand = excluded.brand,
-  cat = excluded.cat,
-  sub = excluded.sub,
-  sku = excluded.sku,
-  flavors = excluded.flavors,
-  variants = excluded.variants,
-  img = excluded.img,
-  tag = excluded.tag,
-  price = excluded.price;
+-- Ids and SKUs (NEW-022): Admin -> Products takes new ids from products_id_seq, the
+-- id space products.js rows use. A seed id that is already in the table under another
+-- SKU is skipped by the insert below (NOTICE). A new seed id whose SKU another product
+-- already uses would fail the insert, or store the SKU twice: this stops the file
+-- first (EXCEPTION). A new products.js row needs an id above
+-- `select max(id) from public.products` on the live database.
+do $$
+declare
+  v_skipped text;
+  v_taken text;
+begin
+  with seed (id, sku) as (
+    values (1, 'AW-SS')
+      , (2, 'AW-WO')
+      , (3, 'AW-GAME')
+      , (4, 'AW-BLK')
+      , (5, 'AW-4K-CIGARS')
+      , (6, 'AW-GAME-MINI')
+      , (7, 'AW-SS-MINI')
+      , (8, 'AW-SS-LEAF')
+      , (9, 'AW-EZ-ROLL')
+      , (10, 'AW-4K-WRAP')
+      , (11, 'AW-BACKWOODS-5PK')
+      , (12, 'AW-LOOSE-LEAFS-2PK')
+      , (13, 'AW-HAVANA-LEAF')
+      , (14, 'AW-KITE')
+      , (15, 'AW-ROYAL-BLUNTS-MINI')
+      , (16, 'AW-BACKWOODS-SINGLES')
+      , (17, 'AW-B-M-25CT')
+      , (18, 'AW-ZYN-6MG')
+      , (19, 'AW-ZYN-3MG')
+      , (20, 'AW-VASELINE')
+      , (21, 'AW-MEN-DEODORANT')
+      , (22, 'AW-TWEAKER')
+      , (23, 'AW-TYLENOL')
+      , (24, 'AW-GOODYS')
+      , (25, 'AW-CLARITIN')
+      , (26, 'AW-BENADRYL')
+      , (27, 'AW-DURACELL')
+      , (28, 'AW-RHINO-PILLS-2PK')
+      , (29, 'AW-CARMEX')
+      , (30, 'AW-VISINE')
+      , (31, 'AW-BIC')
+      , (32, 'AW-BLUNTPOWERS')
+      , (33, 'AW-WHITE-R-NECK')
+      , (34, 'AW-BLACK-R-NECK')
+      , (35, 'AW-BUTTERFINGER')
+      , (36, 'AW-NOW-AND-LATER')
+      , (37, 'AW-AIRHEADS-36CT')
+      , (38, 'AW-WRIGLEY-SLIM-PACK')
+      , (39, 'AW-FERRARA')
+      , (40, 'AW-WRIGLEY-50')
+      , (41, 'AW-TRIDENT')
+      , (42, 'AW-ORBIT')
+      , (43, 'AW-MENTOS')
+      , (44, 'AW-MIKE-IKE')
+      , (45, 'AW-ARGO-CORN-STARCH')
+      , (46, 'AW-IMPERIAL-SUGAR')
+      , (47, 'AW-CHEEZIT')
+      , (48, 'AW-RITZ')
+      , (49, 'AW-POP-TARTS')
+      , (50, 'AW-CLOVER-HILL')
+      , (51, 'AW-CEREAL-CUPS')
+      , (52, 'AW-GURLEYS')
+      , (53, 'AW-GLASS-CLEANER')
+      , (54, 'AW-STAY-FREE-PADS')
+      , (55, 'AW-STP')
+      , (56, 'AW-SAXON')
+      , (57, 'AW-PURE-GUARD')
+      , (58, 'AW-FAYGO-BOTTLES')
+      , (59, 'AW-ARIZONA')
+      , (60, 'AW-GEEKBAR-15K')
+      , (61, 'AW-GEEKBAR-25K')
+      , (62, 'AW-FOGER-FULL-KIT')
+      , (63, 'AW-FOGER-PODS')
+      , (64, 'AW-RAZ-25K')
+      , (65, 'AW-RAZ-VUE-FULL-KIT')
+      , (66, 'AW-RAZ-VUE-PODS')
+      , (67, 'AW-KANG-8000')
+      , (68, 'AW-KANG-65K')
+      , (69, 'AW-SHROOM-PUFF-DISPOSABLE')
+      , (70, 'AW-SHROOM-PUFF-PREROLLS-2PK')
+      , (71, 'AW-SHROOM-PUFF-PREROLLS-JAR')
+      , (72, 'AW-SHROOM-PUFF-GUMMIES')
+      , (73, 'AW-MENTAL-HEALTH-DISP-4G')
+      , (74, 'AW-MENTAL-HEALTH-PREROLLS-2PK')
+      , (75, 'AW-WAVA-KAVA')
+      , (76, 'AW-MAZZA-SHOTS')
+      , (77, 'AW-SLAPWOODS-5PK')
+      , (78, 'AW-B-M-5PK')
+      , (79, 'AW-GAME-LEAF-3PK')
+      , (80, 'AW-SS-WRAPS')
+      , (81, 'AW-SS-TWIN-PACK')
+      , (82, 'AW-POMPOM')
+      , (83, 'AW-DUTCH-MASTERS')
+      , (84, 'AW-GOOD-TIMES-FLAT')
+      , (85, 'AW-ZIGZAG-WRAPS')
+      , (86, 'AW-SENECA')
+      , (87, 'AW-OLD-TYME')
+      , (88, 'AW-TROPICAL-FANTASY')
+      , (89, 'AW-FAYGO-CANS')
+      , (90, 'AW-T-SHIRT-BAGS')
+      , (91, 'AW-PAPER-BAGS')
+      , (92, 'AW-REGISTER-PAPER')
+      , (93, 'AW-6PK-BEER-CARRIERS')
+      , (94, 'AW-BEER-RINGERS')
+      , (95, 'AW-TRASH-CAN-LINERS')
+      , (96, 'AW-AUTOGUARD')
+      , (97, 'AW-2-CYCLE-OIL')
+      , (98, 'AW-DEF-2-5-GAL')
+      , (99, 'AW-PEAK-ANTIFREEZE')
+      , (100, 'AW-CHEAP-ANTIFREEZE')
+      , (101, 'AW-GTX-CASTROL')
+      , (102, 'AW-HAVOLINE')
+      , (103, 'AW-WINDSHIELD-WASHER')
+      , (104, 'AW-TIRE-INFLATORS')
+      , (105, 'AW-WD-40')
+      , (106, 'AW-SANDWICH-BAGS')
+      , (107, 'AW-TRASH-BAGS')
+      , (108, 'AW-TAMPAX')
+      , (109, 'AW-AJAX-DISH-LIQUID')
+      , (110, 'AW-BRILLO-DISH-LIQUID')
+      , (111, 'AW-TIDE-LIQUID')
+      , (112, 'AW-GAIN-LIQUID')
+      , (113, 'AW-CLOROX')
+      , (114, 'AW-AJAX-BLEACH')
+      , (115, 'AW-DOVE-SOAP')
+      , (116, 'AW-IRISH-SPRING-SOAP')
+      , (117, 'AW-AWESOME-LAUNDRY')
+      , (118, 'AW-FOAM-PLATES')
+      , (119, 'AW-FOAM-BOWLS')
+      , (120, 'AW-FOAM-CUPS')
+      , (121, 'AW-PLASTIC-CUTLERY')
+      , (122, 'AW-4PK-TISSUES')
+      , (123, 'AW-PAPER-TOWELS')
+      , (124, 'AW-SINGLE-TISSUES')
+      , (125, 'AW-BABY-DIAPERS')
+      , (126, 'AW-BABY-WIPES')
+      , (127, 'AW-DRAIN-OPENER')
+      , (128, 'AW-FABULOSO')
+      , (129, 'AW-HOME-AIR-FRESHENERS')
+      , (130, 'AW-BRILLO-BASICS')
+      , (131, 'AW-MATCHES')
+      , (132, 'AW-CHARCOAL-BAGS-SMALL')
+      , (133, 'AW-CHARCOAL-BAGS-BIG')
+      , (134, 'AW-RUBBING-ALCOHOL')
+      , (135, 'AW-HYDRO-PEROXIDE')
+      , (136, 'AW-ALWAYS-PADS')
+      , (137, 'AW-NAIL-CLIPPERS')
+      , (138, 'AW-CHARCOAL-LIGHTER')
+      , (139, 'AW-VINUT')
+      , (140, 'AW-TROPICANA-SMALL')
+      , (141, 'AW-TROPICAL-FANTASY-ALOE')
+      , (142, 'AW-CALYPSO')
+      , (143, 'AW-REDBULL-12OZ')
+      , (144, 'AW-REDBULL-8OZ')
+      , (145, 'AW-REDBULL-16OZ')
+      , (146, 'AW-REDBULL-20OZ')
+      , (147, 'AW-MAGNUM')
+      , (148, 'AW-TROJAN')
+      , (149, 'AW-ROLLING-DICE')
+      , (150, 'AW-CABLES')
+      , (151, 'AW-WHITE-V-NECK')
+      , (152, 'AW-BLACK-V-NECK')
+      , (153, 'AW-WHITE-LONG-SLEEVE')
+      , (154, 'AW-BLACK-LONG-SLEEVE')
+      , (155, 'AW-WHITE-THERMALS')
+      , (156, 'AW-BLACK-THERMALS')
+      , (157, 'AW-WINTERHATS')
+      , (158, 'AW-SOCKS')
+      , (159, 'AW-LITTLE-TREES')
+      , (160, 'AW-A-SHIRT-WHITE')
+      , (161, 'AW-A-SHIRTS-BLACK')
+      , (162, 'AW-SNICKERS')
+      , (163, 'AW-M-M-S')
+      , (164, 'AW-KITKAT')
+      , (165, 'AW-TWIX')
+      , (166, 'AW-REESE-S')
+      , (167, 'AW-ALMOND-JOY')
+      , (168, 'AW-MOUNDS')
+      , (169, 'AW-SKITTLES')
+      , (170, 'AW-PAYDAY')
+      , (171, 'AW-HERSHEY')
+      , (172, 'AW-3-MUSKETEERS')
+      , (173, 'AW-RIP-ROLLS')
+      , (174, 'AW-LONGBOY-JAR')
+      , (175, 'AW-CHICK-O-STICK-JAR')
+      , (176, 'AW-PB-JAR')
+      , (177, 'AW-HARIBO-JAR')
+      , (178, 'AW-SOUR-PUNCH-JAR')
+      , (179, 'AW-LAFFY-TAFFY-JAR')
+      , (180, 'AW-LAFFY-TAFFY-ROPES')
+      , (181, 'AW-SOUR-STRAWS')
+      , (182, 'AW-SOUR-PUNCH')
+      , (183, 'AW-EXTRA-GUM')
+      , (184, 'AW-TUENI')
+      , (185, 'AW-FROOTIES')
+      , (186, 'AW-BLOWPOP')
+      , (187, 'AW-GUSHER-BOX')
+      , (188, 'AW-NERDS-POUCH')
+      , (189, 'AW-MAMBA-BIG-BAR')
+      , (190, 'AW-MAMBA-SMALL')
+      , (191, 'AW-MINT-LUMPS')
+      , (192, 'AW-CHERRY-LUMPS')
+      , (193, 'AW-PURE-EYES')
+      , (194, 'AW-5-HOUR-EXTRA')
+      , (195, 'AW-5-HOUR-REGULAR')
+      , (196, 'AW-ADVIL')
+      , (197, 'AW-HARIBO-BAGS')
+      , (198, 'AW-TROLLI-BAGS')
+      , (199, 'AW-GUSHERS-BAGS')
+      , (200, 'AW-NERDS-BAGS')
+      , (201, 'AW-LIFESAVER-BAGS')
+      , (202, 'AW-RIPS-BAGS')
+      , (203, 'AW-WELCHES-BAGS')
+      , (204, 'AW-WELCHES')
+      , (205, 'AW-PEPSI')
+      , (206, 'AW-DR-PEPPER')
+      , (207, 'AW-20OZ-MINUTE-MAID')
+      , (208, 'AW-12OZ-MINUTE-MAID')
+      , (209, 'AW-24-7')
+      , (210, 'AW-SENECA-FILTER')
+      , (211, 'AW-CHEYENNE')
+      , (212, 'AW-ICE-BAGS')
+      , (213, 'AW-LIL-LEAF-WRAPS')
+      , (214, 'AW-TROPICANA-BIG')
+      , (215, 'AW-ALCAPONE-LEAFS')
+      , (216, 'AW-GRINDERS')
+      , (217, 'AW-DETOX-CHAMP')
+      , (218, 'AW-Q-CARBO-16')
+      , (219, 'AW-HAPPY-VALENTINES')
+      , (220, 'AW-SCALES')
+      , (221, 'AW-CHEAP-SCALES')
+      , (222, 'AW-PEPCID-COMPLETE')
+      , (223, 'AW-BAYER')
+      , (224, 'AW-MUCINEX-DM')
+      , (225, 'AW-WOMEN-DEODORANT')
+      , (226, 'AW-EXCEDRIN')
+      , (227, 'AW-BC')
+      , (228, 'AW-STANBACK')
+      , (229, 'AW-TUMS-SMALL')
+      , (230, 'AW-TUMS-BIG')
+      , (231, 'AW-ROLAIDS')
+      , (232, 'AW-ALANI')
+      , (233, 'AW-NESQUIK')
+      , (234, 'AW-FOCO')
+      , (235, 'AW-KUII-NATA')
+      , (236, 'AW-OHM-BAGS-SMALL')
+      , (237, 'AW-OHM-BAGS-BIG')
+      , (238, 'AW-GAMBLER-BAGS-BIG')
+      , (239, 'AW-GAMBLER-BAGS-SMALL')
+      , (240, 'AW-AMERICAN-CLUB-BIG')
+      , (241, 'AW-AMERICAN-CLUB-SMALL')
+      , (242, 'AW-GAMBLER-TUBES')
+      , (243, 'AW-TUBE-CUTS')
+      , (244, 'AW-SHARGIO-TUBES')
+      , (245, 'AW-BLUNTEFFECT-INCENSE')
+      , (246, 'AW-CHEAP-INCENSE')
+      , (247, 'AW-LATTAFA-AIR-FRESHENER')
+      , (248, 'AW-COKE')
+      , (249, 'AW-SPRITE')
+      , (250, 'AW-CHEAP-LIGHTERS')
+      , (251, 'AW-SUPREME')
+      , (252, 'AW-PLAYING-CARDS')
+      , (253, 'AW-AJAX-DETERGENT')
+      , (254, 'AW-LUFFBAR')
+      , (255, 'AW-RAW-PAPERS')
+      , (256, 'AW-RAW-CONES')
+      , (257, 'AW-TOP-PAPER')
+      , (258, 'AW-PSYCHED-PRE-ROLLS')
+      , (259, 'AW-PAPER-PLATES')
+      , (260, 'AW-BACKWOODS-TRUE')
+      , (261, 'AW-LIGHTER-LEASH')
+      , (262, 'AW-EFRUTTI-JAR')
+      , (263, 'AW-WO-MINI')
+      , (264, 'AW-NYQUIL')
+      , (265, 'AW-HARD-STEEL')
+      , (266, 'AW-BLUE-WOLF-HONEY')
+      , (267, 'AW-ZYN-EUROPEAN')
+      , (268, 'AW-SOUR-STRIPS')
+      , (269, 'AW-AIRHEADS-SODA')
+      , (270, 'AW-MONSTER')
+      , (271, 'AW-SNICKERS-CHOCOLATE')
+      , (272, 'AW-JUMEX')
+      , (273, 'AW-LOOSE-LEAFS-SPLITS')
+      , (274, 'AW-RAW-GUARANA-WRAPS')
+      , (275, 'AW-JOLLY-RANCHER')
+      , (276, 'AW-NOW-AND-LATER-GIANT')
+      , (277, 'AW-JUNGLE-JOLLIES')
+      , (278, 'AW-VAN-HOLT')
+      , (279, 'AW-YAKISOBA')
+      , (280, 'AW-COASTAL')
+      , (281, 'AW-HUSH-HIT-PRE-ROLLS')
+      , (282, 'AW-JOB-PAPERS')
+      , (283, 'AW-DUCT-TAPE')
+      , (284, 'AW-CLEAR-TAPE')
+      , (285, 'AW-SHROOM-BANG-PRE-ROLLS')
+      , (286, 'AW-AA-CELLULAR-BLUETOOTH')
+      , (287, 'AW-EAGLE-TORCHES')
+      , (288, 'AW-BLUE-MONKEY-PRE-ROLLS')
+      , (289, 'AW-PSYCHED-DISPOSABLE')
+      , (290, 'AW-POWERADE-BIG')
+      , (291, 'AW-POWERADE-SMALL')
+      , (292, 'AW-ELECTROLIT')
+      , (293, 'AW-SIP-HAPPENS')
+      , (294, 'AW-PIK-16MG')
+      , (295, 'AW-SNACK-WRAPS')
+      , (296, 'AW-JELLY-HOLES-PRE-ROLLS')
+      , (297, 'AW-TOOTHBRUSHES')
+      , (298, 'AW-SHROOM-ROLLS-PRE-ROLLS')
+      , (299, 'AW-PSYCHED-6000MG')
+      , (300, 'AW-MELTED-MUSHROOM')
+      , (301, 'AW-XUNO-PILLS')
+      , (302, 'AW-BETTER-ME-PILLS')
+      , (303, 'AW-HIGH-GRAVITY-PILLS')
+      , (304, 'AW-THIRD-EYE-PILLS')
+      , (305, 'AW-TYSON-WRAPS')
+      , (306, 'AW-STONED-MUSHROOM')
+      , (307, 'AW-STONED-HONEY-MUSHROOM')
+      , (308, 'AW-UPASS')
+      , (309, 'AW-WATER-BONGS')
+      , (310, 'AW-GEEKBAR-MATE')
+      , (311, 'AW-GEEKBAR-MATE-PODS')
+      , (312, 'AW-STONED-BLUE-LOTUS')
+      , (313, 'AW-PSYCHED-BLUE-LOTUS')
+      , (314, 'AW-COCO-NARA-CHARCOAL')
+      , (315, 'AW-ALFAKHER-50-GRAM')
+      , (316, 'AW-ALFAKHER-250-GRAM')
+      , (317, 'AW-ALFAKHER-1KG')
+      , (318, 'AW-TYSON-PAPERS')
+      , (319, 'AW-WILD-HEMP')
+      , (320, 'AW-KING-PALM')
+      , (321, 'AW-VIP-GOLD-HONEY')
+      , (322, 'AW-SECRET-MIRACLE')
+      , (323, 'AW-BEER-SALTS-BOTTLES')
+      , (324, 'AW-BEER-SALTS-PACKETS')
+      , (325, 'AW-JARRITOS')
+      , (326, 'AW-MARUCHAN-CUPS')
+      , (327, 'AW-MARUCHAN-PACKS')
+      , (328, 'AW-TAKIS')
+      , (329, 'AW-RAW-TIPS')
+      , (330, 'AW-HIGH-HEMP')
+      , (331, 'AW-PANASONIC')
+      , (332, 'AW-BLACK-TIGER-HONEY')
+      , (333, 'AW-GAIN-DISH-LIQUID')
+      , (334, 'AW-BANDAIDS')
+      , (335, 'AW-GATORADE-SMALL')
+      , (336, 'AW-GATORADE-BIG')
+      , (337, 'AW-BOB-MARLEY-PAPERS')
+      , (338, 'AW-GRABBA-LEAF')
+      , (339, 'AW-BILLIONAIRE-WRAPS')
+      , (340, 'AW-SLAPWOODS-SINGLES')
+      , (341, 'AW-SILLY-DOTS-PILLS')
+      , (342, 'AW-DUBAI-CHOCOLATE')
+      , (343, 'AW-GUMMY')
+      , (344, 'AW-KRAZY-GLUE')
+      , (345, 'AW-SUPER-GLUE')
+      , (346, 'AW-MONSTER-JAVA')
+      , (347, 'AW-ZIGZAG-HEMP-WRAPS')
+      , (348, 'AW-OREO')
+      , (349, 'AW-NUTTER-BUTTER')
+      , (350, 'AW-UNCLE-AL-S')
+      , (351, 'AW-UNCLE-AL-S-COOKIES')
+      , (352, 'AW-LOUISIANA-HOT')
+      , (353, 'AW-INSTANT-COFFEE')
+      , (354, 'AW-FOLGERS-COFFEE')
+      , (355, 'AW-GOLD-BAND')
+      , (356, 'AW-GAS-CANS')
+      , (357, 'AW-STARBURST-BARS')
+      , (358, 'AW-LIFESAVER-SHARE')
+      , (359, 'AW-COOKING-OIL')
+      , (360, 'AW-BUG-JUICE')
+      , (361, 'AW-DOMINO-SUGAR')
+      , (362, 'AW-DISPOSABLE-GLOVES')
+      , (363, 'AW-DURAGS')
+      , (364, 'AW-WAVE-CAPS')
+      , (365, 'AW-ORAJEL')
+      , (366, 'AW-GARCIA-VEGA')
+      , (367, 'AW-LOOSE-LEAFS-5PK')
+      , (368, 'AW-CAMO-WRAPS')
+  )
+  select
+    (select string_agg(format('%s (seed SKU %s, database SKU %s)', s.id, upper(btrim(s.sku)), upper(btrim(p.sku))), ', ' order by s.id)
+     from seed s
+     join public.products p on p.id = s.id
+     where upper(btrim(p.sku)) is distinct from upper(btrim(s.sku))),
+    (select string_agg(format('%s (seed id %s, database id %s)', upper(btrim(s.sku)), s.id, p.id), ', ' order by s.id)
+     from seed s
+     join public.products p on upper(btrim(p.sku)) = upper(btrim(s.sku)) and p.id <> s.id
+     where not exists (select 1 from public.products e where e.id = s.id))
+  into v_skipped, v_taken;
+
+  if v_skipped is not null then
+    raise notice 'Seed rows skipped: these ids are already in public.products with another SKU, and the database keeps its row: %. A product added in Admin -> Products may have taken the id; give a new products.js row an id above select max(id) from public.products.', v_skipped;
+  end if;
+  if v_taken is not null then
+    raise exception 'Seed not applied: these SKUs are already used by another product: %', v_taken
+      using hint = 'Give the products.js row another SKU, or the id the database already has for it, then run npm run seed and apply the file again.';
+  end if;
+end $$;
+
+insert into public.products (id, name, brand, cat, sub, sku, variants, variant_axis, img, tag, active, description, sell_unit) values
+  (1, 'Swisher Sweets cigarillos', 'Swisher Sweets', 'TOBACCO', 'Cigars & Cigarillos', 'AW-SS', '["Diamond","Red","Green","White grape","Silver","Grape","Mango blaze","Cookies & cream"]'::jsonb, 'Variety', 'ss_cigarillos.avif', null, true, 'Swisher Sweets cigarillos in resealable foil pouches, from the cigar and cigarillo line in our Tobacco department. Eight varieties: Diamond, Red, Green, White grape, Silver, Grape, Mango blaze and Cookies & cream.', ''),
+  (2, 'White Owl cigarillos', 'White Owl', 'TOBACCO', 'Cigars & Cigarillos', 'AW-WO', '["Silver","Platinum","Red sweet","Green sweet","Black sweet","Emerald","White grape","Swirl Triple grape"]'::jsonb, 'Variety', 'wo_cigarillos.jpg', null, true, 'White Owl cigarillos from the cigar and cigarillo line in our Tobacco department. Eight varieties: Silver, Platinum, Red sweet, Green sweet, Black sweet, Emerald, White grape and Swirl Triple grape.', ''),
+  (3, 'Game cigarillos', 'Game', 'TOBACCO', 'Cigars & Cigarillos', 'AW-GAME', '["Diamond","Silver","Red sweet","Green","Black sweet","Honey","White grape","Grape"]'::jsonb, 'Variety', 'game_cigarillos.webp', null, true, 'Game cigarillos from the cigar and cigarillo line in our Tobacco department. Eight varieties: Diamond, Silver, Red sweet, Green, Black sweet, Honey, White grape and Grape.', ''),
+  (4, 'Swisher Sweets BLK cigarillos', 'Swisher Sweets', 'TOBACCO', 'Cigars & Cigarillos', 'AW-BLK', '["Smooth","Wine","Berry","Grape","Cherry","Cocoa","Cream"]'::jsonb, 'Variety', 'blk_cigarillos.avif', null, true, 'Swisher Sweets BLK tipped cigarillos in 2-count resealable pouches. Seven varieties: Smooth, Wine, Berry, Grape, Cherry, Cocoa and Cream.', ''),
+  (5, '4K''s cigarillos', '4K''s', 'TOBACCO', 'Cigars & Cigarillos', 'AW-4K-CIGARS', '["Red sweet","Watermelon","Napa grape","White grape","Diamond","Green","Black sweet","Watermelon grape"]'::jsonb, 'Variety', '4k_cigarillos.webp', null, true, '4K''s cigarillos from the cigar and cigarillo line in our Tobacco department. Eight varieties: Red sweet, Watermelon, Napa grape, White grape, Diamond, Green, Black sweet and Watermelon grape.', ''),
+  (6, 'Game Mini cigarillos', 'Game', 'TOBACCO', 'Cigars & Cigarillos', 'AW-GAME-MINI', '["Diamond","Red sweet","Black sweet"]'::jsonb, 'Variety', 'game_mini.webp', null, true, 'Game Minis, the small-format Game cigarillo. Three varieties: Diamond, Red sweet and Black sweet.', ''),
+  (7, 'Swisher Sweets Mini cigarillos', 'Swisher Sweets', 'TOBACCO', 'Cigars & Cigarillos', 'AW-SS-MINI', '["Diamond","Red","Grape","Green"]'::jsonb, 'Variety', 'p7-swisher-sweets-mini-cigarillos.jpg', null, true, 'Swisher Sweets Mini cigarillos, the small-format Swisher Sweets. Four varieties: Diamond, Red, Grape and Green.', ''),
+  (8, 'Swisher Sweets Leaf', 'Swisher Sweets', 'TOBACCO', 'Wraps & Leafs', 'AW-SS-LEAF', '["Irish cream","Honey","Sweet aromatic","Red","Green","Peach","Dark leaf","Dark aromatic"]'::jsonb, 'Flavor', 'ss_leaf.jpg', null, true, 'Swisher Sweets Leaf natural leaf cigars. Eight flavors: Irish cream, Honey, Sweet aromatic, Red, Green, Peach, Dark leaf and Dark aromatic.', ''),
+  (9, 'Royal Blunts EZ Roll', 'Royal Blunts', 'TOBACCO', 'Cigars & Cigarillos', 'AW-EZ-ROLL', '["Flavorless","OGK","Sour apple","Wet mango","Purple haze","Strawberry","Blueberry","Jamaican rum"]'::jsonb, 'Variety', null, null, true, 'EZ Roll from the cigar and cigarillo line in our Tobacco department. Eight varieties: Flavorless, OGK, Sour apple, Wet mango, Purple haze, Strawberry, Blueberry and Jamaican rum.', ''),
+  (10, '4K''s Wraps', '4K''s', 'TOBACCO', 'Wraps & Leafs', 'AW-4K-WRAP', '["Diamond","White grape","Red sweet","Green sweet","Black sweet","Napa grape","Blueberry","Watermelon"]'::jsonb, 'Flavor', '4k_wraps.jpg', null, true, '4K''s flavored cigar wraps. Eight flavors: Diamond, White grape, Red sweet, Green sweet, Black sweet, Napa grape, Blueberry and Watermelon.', ''),
+  (11, 'Backwoods cigars 5-pack', 'Backwoods', 'TOBACCO', 'Cigars & Cigarillos', 'AW-BACKWOODS-5PK', '["Banana","Honey berry","Sweet aromatic","Original","Russian cream","Vanilla","Black Russian","Irish cream"]'::jsonb, 'Variety', 'backwoods_5pk.webp', 'BESTSELLER', true, 'Backwoods natural leaf cigars in 5-packs. Eight varieties: Banana, Honey berry, Sweet aromatic, Original, Russian cream, Vanilla, Black Russian and Irish cream.', '5-pack'),
+  (12, 'LooseLeaf wraps 2-pack', 'LooseLeaf', 'TOBACCO', 'Wraps & Leafs', 'AW-LOOSE-LEAFS-2PK', '["Cinnamon milk","Sweet","Honey","Cookies & cream","Natural","Amber dream"]'::jsonb, 'Flavor', 'loose_leafs_2_99_1_99.webp', null, true, 'LooseLeaf flavored wraps in 2-packs, stocked at the $2.99 and $1.99 price points. Six flavors: Cinnamon milk, Sweet, Honey, Cookies & cream, Natural and Amber dream.', '2-pack'),
+  (13, 'Havana Leaf little wraps', 'Havana Leaf', 'TOBACCO', 'Wraps & Leafs', 'AW-HAVANA-LEAF', '["Milk cookies","Sweet aromatic","Strawberry","8 Miles","Russian cream","Purple","Yellow","Honey bourbon"]'::jsonb, 'Flavor', null, null, true, 'Havana Leaf wraps from the wraps and leaf line in our Tobacco department. Eight flavors: Milk cookies, Sweet aromatic, Strawberry, 8 Miles, Russian cream, Purple, Yellow and Honey bourbon.', ''),
+  (14, 'Kite cigarette tobacco', 'Kite', 'TOBACCO', 'Cigarettes', 'AW-KITE', '[]'::jsonb, null, 'kite.png', null, true, 'Kite mentholated cigarette tobacco pouches for roll-your-own customers.', ''),
+  (15, 'Royal Blunts mini', 'Royal Blunts', 'TOBACCO', 'Cigars & Cigarillos', 'AW-ROYAL-BLUNTS-MINI', '["Naked","Sweet","OGK"]'::jsonb, 'Variety', 'p15-royal-blunts-mini.jpg', null, true, 'Royal Blunts mini from the cigar and cigarillo line in our Tobacco department. Three varieties: Naked, Sweet and OGK.', ''),
+  (16, 'Backwoods cigars singles', 'Backwoods', 'TOBACCO', 'Cigars & Cigarillos', 'AW-BACKWOODS-SINGLES', '["Russian cream","Honey berry","Sweet aromatic","Original"]'::jsonb, 'Variety', 'backwoods_5pk.webp', null, true, 'Backwoods natural leaf cigars sold as singles. Four varieties: Russian cream, Honey berry, Sweet aromatic and Original.', 'single'),
+  (17, 'Black & Mild cigars 25-count', 'Black & Mild', 'TOBACCO', 'Cigars & Cigarillos', 'AW-B-M-25CT', '["Regular","Woodtip","Sweet","Sweet woodtip","Casino","Casino woodtip","Wine","Wine woodtip"]'::jsonb, 'Variety', 'b_m_25ct.webp', null, true, 'Black & Mild pipe-tobacco cigars in the 25-count upright box. Eight varieties: Regular, Woodtip, Sweet, Sweet woodtip, Casino, Casino woodtip, Wine and Wine woodtip.', '25-count box'),
+  (18, 'ZYN nicotine pouches 6mg', 'ZYN', 'TOBACCO', 'Pouches & ZYN', 'AW-ZYN-6MG', '["Cinnamon","Wintergreen","Citrus","Peppermint","Chill","Spearmint","Coffee"]'::jsonb, 'Flavor', 'zyn_6mg.webp', null, true, 'ZYN 6mg nicotine pouches. Seven flavors: Cinnamon, Wintergreen, Citrus, Peppermint, Chill, Spearmint and Coffee.', ''),
+  (19, 'ZYN nicotine pouches 3mg', 'ZYN', 'TOBACCO', 'Pouches & ZYN', 'AW-ZYN-3MG', '["Cinnamon","Wintergreen","Citrus","Peppermint","Chill","Spearmint"]'::jsonb, 'Flavor', 'zyn_6mg.webp', null, true, 'ZYN 3mg nicotine pouches. Six flavors: Cinnamon, Wintergreen, Citrus, Peppermint, Chill and Spearmint.', ''),
+  (20, 'Vaseline healing jelly', 'Vaseline', 'GROCERY', 'Personal Care', 'AW-VASELINE', '["Big","Small"]'::jsonb, 'Size', 'vaseline_jelly.webp', null, true, 'Vaseline Original healing jelly. Two sizes: Big and Small.', ''),
+  (21, 'Speed Stick men''s deodorant', 'Speed Stick', 'GROCERY', 'Personal Care', 'AW-MEN-DEODORANT', '["Small","Big"]'::jsonb, 'Size', 'p21-speed-stick-mens-deodorant.jpg', null, true, 'Speed Stick men''s deodorant. Two sizes: Small and Big.', ''),
+  (22, 'Tweaker energy shots', 'Tweaker', 'MERCHANDISE', 'OTC & Health', 'AW-TWEAKER', '["Berry","Grape","Watermelon","Peach","Freedom pop","Tropical","Sour apple"]'::jsonb, 'Variety', 'tweaker.webp', null, true, 'Tweaker energy shots. Seven varieties: Berry, Grape, Watermelon, Peach, Freedom pop, Tropical and Sour apple.', ''),
+  (23, 'Tylenol', 'Tylenol', 'MERCHANDISE', 'OTC & Health', 'AW-TYLENOL', '["Sinus","Extra","PM","Cold & flu"]'::jsonb, 'Variety', 'p23-tylenol.jpg', null, true, 'Tylenol pain reliever for the OTC shelf. Four varieties: Sinus, Extra, PM and Cold & flu.', ''),
+  (24, 'Goody''s headache powders', 'Goody''s', 'MERCHANDISE', 'OTC & Health', 'AW-GOODYS', '["2pk","6pk","Red","PM","4pk orange","4pk mixed fruit","4pk hangover"]'::jsonb, 'Variety', 'p24-goodys-headache-powders.jpg', null, true, 'Goody''s headache powders in 2-count, 6-count and 4-count flavored packs. Seven varieties: 2pk, 6pk, Red, PM, 4pk orange, 4pk mixed fruit and 4pk hangover.', ''),
+  (25, 'Claritin allergy relief', 'Claritin', 'MERCHANDISE', 'OTC & Health', 'AW-CLARITIN', '[]'::jsonb, null, 'p25-claritin.jpg', null, true, 'Claritin allergy relief for the OTC shelf.', ''),
+  (26, 'Benadryl', 'Benadryl', 'MERCHANDISE', 'OTC & Health', 'AW-BENADRYL', '[]'::jsonb, null, 'p26-benadryl.jpg', null, true, 'Benadryl allergy relief for the OTC shelf.', ''),
+  (27, 'Duracell batteries', 'Duracell', 'MERCHANDISE', 'Electronics', 'AW-DURACELL', '["9V","AAA 4-pack","AA 4-pack","D 2-pack","AAA 2-pack","AA 2-pack","C 2-pack"]'::jsonb, 'Size', 'duracell_batteries.jpg', null, true, 'Duracell alkaline batteries in carded packs. Seven sizes: 9V, AAA 4-pack, AA 4-pack, D 2-pack, AAA 2-pack, AA 2-pack and C 2-pack.', ''),
+  (28, 'Rhino pills 2-pack', 'Rhino', 'MERCHANDISE', 'Honey & Energy', 'AW-RHINO-PILLS-2PK', '["Purple","Black","Gold"]'::jsonb, 'Color', 'rhino_pills_2pk.webp', null, true, 'Rhino 2-count pill cards. Three colors: Purple, Black and Gold.', '2-pack'),
+  (29, 'Carmex lip balm', 'Carmex', 'MERCHANDISE', 'Counter Goods', 'AW-CARMEX', '["Tubes","Jars","Stick"]'::jsonb, 'Variety', 'carmex_tubes.webp', null, true, 'Carmex medicated lip balm. Three varieties: Tubes, Jars and Stick.', ''),
+  (30, 'Visine', 'Visine', 'MERCHANDISE', 'OTC & Health', 'AW-VISINE', '[]'::jsonb, null, 'p30-visine.jpg', null, true, 'Visine eye drops for the OTC shelf, from the OTC and health line in our Merchandise department.', ''),
+  (31, 'BIC lighters', 'BIC', 'MERCHANDISE', 'Lighters & Torches', 'AW-BIC', '["Mini","Big","Playboy","Astrology","Design"]'::jsonb, 'Variety', 'bic_lighters.jpg', 'BESTSELLER', true, 'BIC pocket lighters in counter trays. Five varieties: Mini, Big, Playboy, Astrology and Design.', ''),
+  (32, 'BluntPower air freshener spray', 'BluntPower', 'MERCHANDISE', 'Air Fresheners & Incense', 'AW-BLUNTPOWERS', '["Cantaloupe","Pineapple","Polo blue","Celebration","Cool water","Baby powder","Blueberry","Issey miyake"]'::jsonb, 'Variety', 'bluntpowers.webp', null, true, 'BluntPower air freshener sprays. Eight scents: Cantaloupe, Pineapple, Polo blue, Celebration, Cool water, Baby powder, Blueberry and Issey miyake.', ''),
+  (33, 'White round-neck shirts', 'Assorted', 'MERCHANDISE', 'Apparel', 'AW-WHITE-R-NECK', '["S","M","L","1X","2X","3X","4X","5X"]'::jsonb, 'Size', null, null, true, 'White round-neck shirts. Eight sizes: S, M, L, 1X, 2X, 3X, 4X and 5X.', ''),
+  (34, 'Black round-neck shirts', 'Assorted', 'MERCHANDISE', 'Apparel', 'AW-BLACK-R-NECK', '["S","M","L","1X","2X","3X","4X","5X"]'::jsonb, 'Size', null, null, true, 'Black round-neck shirts. Eight sizes: S, M, L, 1X, 2X, 3X, 4X and 5X.', ''),
+  (35, 'Butterfinger bars', 'Butterfinger', 'CANDIES', 'Chocolate Bars', 'AW-BUTTERFINGER', '["King size","Regular"]'::jsonb, 'Size', 'butterfinger_regular.jpg', null, true, 'Butterfinger candy bars. Two sizes: King size and Regular.', ''),
+  (36, 'Now and Later chews', 'Now and Later', 'CANDIES', 'Sweets & Gummies', 'AW-NOW-AND-LATER', '["Grape","Green apple","Tropical punch","Watermelon","Cherry","Strawberry"]'::jsonb, 'Flavor', 'now_later.jpg', null, true, 'Now and Later taffy chews. Six flavors: Grape, Green apple, Tropical punch, Watermelon, Cherry and Strawberry.', ''),
+  (37, 'Airheads bars 36-count', 'Airheads', 'CANDIES', 'Sweets & Gummies', 'AW-AIRHEADS-36CT', '["Sour blue","White mystery","Watermelon","Blue","Cherry","Orange"]'::jsonb, 'Flavor', 'airheads_36ct.webp', null, true, 'Airheads taffy bars in the 36-count box. Six flavors: Sour blue, White mystery, Watermelon, Blue, Cherry and Orange.', '36-count box'),
+  (38, 'Wrigley''s slim pack gum', 'Wrigley''s', 'CANDIES', 'Sweets & Gummies', 'AW-WRIGLEY-SLIM-PACK', '["Spearmint","Doublemint","Winterfresh","Big Red","Juicy Fruit"]'::jsonb, 'Flavor', 'p38-wrigleys-slim-pack-gum.webp', null, true, 'Wrigley''s gum in slim packs. Five flavors: Spearmint, Doublemint, Winterfresh, Big Red and Juicy Fruit.', ''),
+  (39, 'Ferrara candy boxes', 'Ferrara', 'CANDIES', 'Sweets & Gummies', 'AW-FERRARA', '["Lemonheads","Boston Baked Beans"]'::jsonb, 'Variety', 'ferrara_bbb.webp', null, true, 'Ferrara theater-box candy. Two varieties: Lemonheads and Boston Baked Beans.', ''),
+  (40, 'Wrigley''s 50¢ gum', 'Wrigley''s', 'CANDIES', 'Sweets & Gummies', 'AW-WRIGLEY-50', '["Spearmint","Doublemint","Juicy Fruit"]'::jsonb, 'Flavor', 'wriggly_50c.webp', null, true, 'Wrigley''s 5-stick gum at the 50¢ price point. Three flavors: Spearmint, Doublemint and Juicy Fruit.', ''),
+  (41, 'Trident gum', 'Trident', 'CANDIES', 'Gum & Mints', 'AW-TRIDENT', '["Wintergreen","Spearmint","Peppermint","Tropical"]'::jsonb, 'Flavor', 'p41-trident-gum.jpg', null, true, 'Trident gum from the gum and mints line in our Candies department. Four flavors: Wintergreen, Spearmint, Peppermint and Tropical.', ''),
+  (42, 'Orbit gum', 'Orbit', 'CANDIES', 'Gum & Mints', 'AW-ORBIT', '["Sweet mint","Peppermint","Spearmint"]'::jsonb, 'Flavor', 'p42-orbit-gum.png', null, true, 'Orbit gum from the gum and mints line in our Candies department. Three flavors: Sweet mint, Peppermint and Spearmint.', ''),
+  (43, 'Mentos', 'Mentos', 'CANDIES', 'Gum & Mints', 'AW-MENTOS', '["Strawberry","Mint","Fruit"]'::jsonb, 'Flavor', 'mentos.webp', null, true, 'Mentos chewy mints in rolls. Three flavors: Strawberry, Mint and Fruit.', ''),
+  (44, 'Mike and Ike', 'Mike and Ike', 'CANDIES', 'Sweets & Gummies', 'AW-MIKE-IKE', '["Watermelon","Grape","Blue raspberry","Sour blue","Green","Cherry","Blue"]'::jsonb, 'Flavor', 'mike_ike.webp', null, true, 'Mike and Ike chewy candy boxes. Seven flavors: Watermelon, Grape, Blue raspberry, Sour blue, Green, Cherry and Blue.', ''),
+  (45, 'Argo corn starch', 'Argo', 'FOOD STUFF', 'Cooking Basics', 'AW-ARGO-CORN-STARCH', '[]'::jsonb, null, 'argo_corn_starch.webp', null, true, 'Argo corn starch, from the cooking basics line in our Food Stuff department.', ''),
+  (46, 'Imperial Sugar', 'Imperial Sugar', 'FOOD STUFF', 'Cooking Basics', 'AW-IMPERIAL-SUGAR', '["Small","Big"]'::jsonb, 'Size', 'imperial_sugar.webp', null, true, 'Imperial Sugar pure cane sugar bags. Two sizes: Small and Big.', ''),
+  (47, 'Cheez-It crackers', 'Cheez-It', 'FOOD STUFF', 'Chips & Crackers', 'AW-CHEEZIT', '["Extra bold","White cheddar","Original","Hot & spicy"]'::jsonb, 'Flavor', 'cheezit.jpg', null, true, 'Cheez-It baked snack crackers in Grab''n Go bags. Four flavors: Extra bold, White cheddar, Original and Hot & spicy.', ''),
+  (48, 'Ritz crackers', 'Ritz', 'FOOD STUFF', 'Chips & Crackers', 'AW-RITZ', '["Peanut butter","Cheese","Original"]'::jsonb, 'Flavor', 'p48-ritz-crackers.png', null, true, 'Ritz cracker sandwiches. Three flavors: Peanut butter, Cheese and Original.', ''),
+  (49, 'Pop-Tarts', 'Pop-Tarts', 'FOOD STUFF', 'Chips & Crackers', 'AW-POP-TARTS', '["Strawberry","S''mores","Brown sugar cinnamon"]'::jsonb, 'Flavor', 'pop_tarts.webp', null, true, 'Pop-Tarts toaster pastries in counter displays. Three flavors: Strawberry, S''mores and Brown sugar cinnamon.', ''),
+  (50, 'Cloverhill pastries', 'Cloverhill', 'FOOD STUFF', 'Quick Meals', 'AW-CLOVER-HILL', '["Big Texas","Honey bun"]'::jsonb, 'Variety', 'p50-cloverhill-pastries.jpg', null, true, 'Cloverhill bakery pastries. Two varieties: Big Texas and Honey bun.', ''),
+  (51, 'Cereal cups', 'Assorted', 'FOOD STUFF', 'Quick Meals', 'AW-CEREAL-CUPS', '["Frosted Flakes","Apple Jacks","Froot Loops","Corn Pops"]'::jsonb, 'Variety', 'cereal_cups.jpg', null, true, 'Single-serve cereal cups. Four varieties: Frosted Flakes, Apple Jacks, Froot Loops and Corn Pops.', ''),
+  (52, 'Gurley''s candy bags', 'Gurley''s', 'CANDIES', 'Bags', 'AW-GURLEYS', '["Butterflies","Circus peanuts","Watermelon rings","Gummy worms"]'::jsonb, 'Variety', 'p52-gurleys-candy-bags.jpg', null, true, 'Gurley''s candy peg bags. Four varieties: Butterflies, Circus peanuts, Watermelon rings and Gummy worms.', ''),
+  (53, 'Glass cleaner', 'Assorted', 'GROCERY', 'Cleaning', 'AW-GLASS-CLEANER', '["Oxy power","Original"]'::jsonb, 'Variety', null, null, true, 'Glass cleaner from the cleaning line in our Grocery department. Two varieties: Oxy power and Original.', ''),
+  (54, 'Stayfree pads', 'Stayfree', 'GROCERY', 'Personal Care', 'AW-STAY-FREE-PADS', '["Small","Medium","Big"]'::jsonb, 'Size', 'p54-stayfree-pads.jpg', null, true, 'Stayfree pads from the personal care line in our Grocery department. Three sizes: Small, Medium and Big.', ''),
+  (55, 'STP oil treatments & additives', 'STP', 'MOTOR OIL', 'Motor Oil', 'AW-STP', '["Black","Octane","Red","White fuel injector","Water remover","Silver","Power steering","Brake fluid"]'::jsonb, 'Type', 'stp_oil_treatment.webp', 'BESTSELLER', true, 'STP oil treatment, fuel additives and fluids. Eight products: Black, Octane, Red, White fuel injector, Water remover, Silver, Power steering and Brake fluid.', ''),
+  (56, 'Saxon motor oil & fluids', 'Saxon', 'MOTOR OIL', 'Motor Oil', 'AW-SAXON', '["5W-30","5W-20","10W-30","10W-40","20W-50","Type A","Type F","Multipurpose"]'::jsonb, 'Type', 'saxon_motor_oil.png', 'BESTSELLER', true, 'Saxon motor oil and transmission fluid. Eight grades and fluids: 5W-30, 5W-20, 10W-30, 10W-40, 20W-50, Type A, Type F and Multipurpose.', ''),
+  (57, 'Pure Guard motor oil', 'Pure Guard', 'MOTOR OIL', 'Motor Oil', 'AW-PURE-GUARD', '["5W-30","10W-30","10W-40"]'::jsonb, 'Type', 'p57-pure-guard-motor-oil.jpg', null, true, 'Pure Guard motor oil. Three grades: 5W-30, 10W-30 and 10W-40.', ''),
+  (58, 'Faygo bottles 20 oz', 'Faygo', 'DRINKS & BAGS', 'Sodas', 'AW-FAYGO-BOTTLES', '["Redpop","Rock & rye","Orange","Grape","Cotton candy","Peach","Fireworks","Moon mist"]'::jsonb, 'Flavor', 'faygo_bottles_20oz.jpg', null, true, 'Faygo soda in 20 oz bottles. Eight flavors: Redpop, Rock & rye, Orange, Grape, Cotton candy, Peach, Fireworks and Moon mist.', ''),
+  (59, 'Arizona beverages', 'Arizona', 'DRINKS & BAGS', 'Juices & Teas', 'AW-ARIZONA', '["RX","Strawberry kiwi","Watermelon","Frosty chill","Tropical chill","Green tea","Fruit punch","Orange"]'::jsonb, 'Flavor', 'arizona.webp', null, true, 'Arizona iced teas, juice drinks and RX energy in cans. Eight flavors: RX, Strawberry kiwi, Watermelon, Frosty chill, Tropical chill, Green tea, Fruit punch and Orange.', ''),
+  (60, 'Geek Bar Pulse 15K', 'Geek Bar', 'NOVELTIES', 'Disposable Vapes', 'AW-GEEKBAR-15K', '["Blue razz ice","F*** fab"]'::jsonb, 'Flavor', 'geekbar_15k.webp', 'BESTSELLER', true, 'Geek Bar Pulse 15,000-puff disposable vape. Two flavors: Blue razz ice and F*** fab.', ''),
+  (61, 'Geek Bar Pulse X 25K', 'Geek Bar', 'NOVELTIES', 'Disposable Vapes', 'AW-GEEKBAR-25K', '["Sour straws","Sour mango pineapple"]'::jsonb, 'Flavor', 'geekbar_25k_pulse.webp', 'BESTSELLER', true, 'Geek Bar Pulse X 25,000-puff disposable vape with the 3D curved screen. Two flavors: Sour straws and Sour mango pineapple.', ''),
+  (62, 'Foger Switch Pro full kit', 'Foger', 'NOVELTIES', 'Disposable Vapes', 'AW-FOGER-FULL-KIT', '["Coconut cupcake","Strawberry kiwi","Red velvet cupcake","Watermelon ice","Kiwi dragon berry","Mexico mango","Omg b burst","White gummy","Blue rancher"]'::jsonb, 'Flavor', 'foger_full_kit.jpg', 'NEW', true, 'Foger Switch Pro disposable and power bank, full kit. Nine flavors: Coconut cupcake, Strawberry kiwi, Red velvet cupcake, Watermelon ice, Kiwi dragon berry, Mexico mango, Omg b burst, White gummy and Blue rancher.', ''),
+  (63, 'Foger Switch Pro pods', 'Foger', 'NOVELTIES', 'Vape Pods', 'AW-FOGER-PODS', '["Sour apple ice","Vanilla ice cream","Pineapple coconut","Kiwi dragon berry","White gummy","California cherry","Strawberry watermelon","Strawberry ice"]'::jsonb, 'Flavor', 'foger_pods.webp', null, true, 'Foger Switch Pro replacement pods for the Switch Pro charging device. Eight flavors: Sour apple ice, Vanilla ice cream, Pineapple coconut, Kiwi dragon berry, White gummy, California cherry, Strawberry watermelon and Strawberry ice.', ''),
+  (64, 'RAZ 25K', 'RAZ', 'NOVELTIES', 'Disposable Vapes', 'AW-RAZ-25K', '[]'::jsonb, null, 'p64-raz-25k.webp', 'NEW', true, 'RAZ 25K from the disposable vape line in our Novelties department.', ''),
+  (65, 'RAZ Vue full kit', 'RAZ', 'NOVELTIES', 'Disposable Vapes', 'AW-RAZ-VUE-FULL-KIT', '[]'::jsonb, null, 'p65-raz-vue-full-kit.webp', null, true, 'RAZ Vue full kit from the disposable vape line in our Novelties department.', ''),
+  (66, 'RAZ Vue Pods', 'RAZ', 'NOVELTIES', 'Vape Pods', 'AW-RAZ-VUE-PODS', '[]'::jsonb, null, 'p66-raz-vue-pods.webp', null, true, 'RAZ Vue Pods from the vape pod line in our Novelties department.', ''),
+  (67, 'Kangvape 8000', 'Kangvape', 'NOVELTIES', 'Disposable Vapes', 'AW-KANG-8000', '[]'::jsonb, null, 'kang_vape_65k.jpg', null, true, 'Kangvape 8000-puff disposable vape, from the disposable vape line in our Novelties department.', ''),
+  (68, 'Kangvape 65K', 'Kangvape', 'NOVELTIES', 'Disposable Vapes', 'AW-KANG-65K', '[]'::jsonb, null, 'kang_vape_65k.jpg', null, true, 'Kangvape 65,000-puff disposable vape, from the disposable vape line in our Novelties department.', ''),
+  (69, 'Shroom Puff disposable 3 Gram', 'Shroom Puff', 'NOVELTIES', 'Mushroom Products', 'AW-SHROOM-PUFF-DISPOSABLE', '["Blue","Watermelon","Strawberry","Pineapple","Green"]'::jsonb, 'Flavor', 'p69-shroom-puff-disposable-3g.jpg', null, false, 'Shroom Puff disposable 3 Gram from the mushroom product line in our Novelties department. Five flavors: Blue, Watermelon, Strawberry, Pineapple and Green.', '3 g disposable'),
+  (70, 'Shroom Puff Pre rolls 2pk', 'Shroom Puff', 'NOVELTIES', 'Mushroom Products', 'AW-SHROOM-PUFF-PREROLLS-2PK', '[]'::jsonb, null, 'p70-shroom-puff-pre-rolls-2pk.jpg', null, false, 'Shroom Puff Pre rolls 2pk from the mushroom product line in our Novelties department.', '2-pack'),
+  (71, 'Shroom Puff pre rolls jars', 'Shroom Puff', 'NOVELTIES', 'Mushroom Products', 'AW-SHROOM-PUFF-PREROLLS-JAR', '[]'::jsonb, null, 'p71-shroom-puff-pre-rolls-jar.jpg', null, false, 'Shroom Puff pre rolls jars from the mushroom product line in our Novelties department.', 'jar'),
+  (72, 'Shroom puff Gummies', 'Shroom Puff', 'NOVELTIES', 'Mushroom Products', 'AW-SHROOM-PUFF-GUMMIES', '[]'::jsonb, null, 'p72-shroom-puff-gummies.jpg', null, false, 'Shroom puff Gummies from the mushroom product line in our Novelties department.', ''),
+  (73, 'Mental Health disposable 4 gram', 'Mental Health', 'NOVELTIES', 'Mushroom Products', 'AW-MENTAL-HEALTH-DISP-4G', '[]'::jsonb, null, 'p73-mental-health-disposable-4g.webp', null, false, 'Mental Health disposable 4 gram from the mushroom product line in our Novelties department.', '4 g disposable'),
+  (74, 'Mental Health pre rolls 2pk', 'Mental Health', 'NOVELTIES', 'Mushroom Products', 'AW-MENTAL-HEALTH-PREROLLS-2PK', '["Purple dragon","Strawberry","Blueberry"]'::jsonb, 'Flavor', 'p74-mental-health-pre-rolls-2pk.webp', null, false, 'Mental Health pre rolls 2pk from the mushroom product line in our Novelties department. Three flavors: Purple dragon, Strawberry and Blueberry.', '2-pack'),
+  (75, 'Wava kava', 'Wava', 'NOVELTIES', 'Kratom & Kava', 'AW-WAVA-KAVA', '["Blueberry","Strawberry banana","Mango","Assorted"]'::jsonb, 'Flavor', 'p75-wava-kava.webp', 'NEW', false, 'Wava kava from the kratom and kava line in our Novelties department. Four flavors: Blueberry, Strawberry banana, Mango and Assorted.', ''),
+  (76, 'Mazza Shots', 'Mazza', 'NOVELTIES', 'Kratom & Kava', 'AW-MAZZA-SHOTS', '["Purple","Ruby","Yellow","Assorted"]'::jsonb, 'Flavor', 'p76-mazza-shots.jpg', 'NEW', false, 'Mazza Shots from the kratom and kava line in our Novelties department. Four flavors: Purple, Ruby, Yellow and Assorted.', ''),
+  (77, 'Slapwoods cigar wraps 5-pack', 'Slapwoods', 'TOBACCO', 'Cigars & Cigarillos', 'AW-SLAPWOODS-5PK', '["Russian cream","Natural","Sweet","Banana","Bloodshot","Black Russian"]'::jsonb, 'Variety', 'slapwoods_5pk.webp', null, true, 'Slapwoods natural leaf cigar wraps, five wraps per pack. Six varieties: Russian cream, Natural, Sweet, Banana, Bloodshot and Black Russian.', '5-pack'),
+  (78, 'Black & Mild cigars 5-pack', 'Black & Mild', 'TOBACCO', 'Cigars & Cigarillos', 'AW-B-M-5PK', '["Regular","Woodtip","Select","Wine","Wine woodtip","Cream","Apple","Jazz"]'::jsonb, 'Variety', 'b_m_5pk.jpg', null, true, 'Black & Mild pipe-tobacco cigars in 5-packs. Eight varieties: Regular, Woodtip, Select, Wine, Wine woodtip, Cream, Apple and Jazz.', '5-pack'),
+  (79, 'Game Leaf cigars 3-pack', 'Game', 'TOBACCO', 'Wraps & Leafs', 'AW-GAME-LEAF-3PK', '["Russian cream","Natural","Cognac"]'::jsonb, 'Flavor', 'game_leaf_3pk.jpg', null, true, 'Game Leaf natural leaf cigars in 3-count pouches. Three flavors: Russian cream, Natural and Cognac.', '3-pack'),
+  (80, 'Swisher Sweets Leaf Wraps', 'Swisher Sweets', 'TOBACCO', 'Wraps & Leafs', 'AW-SS-WRAPS', '["Red","Peach","Irish cream"]'::jsonb, 'Flavor', 'ss_wraps.webp', null, true, 'Swisher Sweets Leaf natural tobacco leaf wraps. Three flavors: Red, Peach and Irish cream.', ''),
+  (81, 'Swisher Sweets Mini twin pack', 'Swisher Sweets', 'TOBACCO', 'Cigars & Cigarillos', 'AW-SS-TWIN-PACK', '["Mini diamond","Mini red","Red","Diamond"]'::jsonb, 'Variety', 'ss_twin_pack_mini.jpg', null, true, 'Swisher Sweets twin packs, mixing Mini and regular cigarillos. Four varieties: Mini diamond, Mini red, Red and Diamond.', 'twin pack'),
+  (82, 'Pom Pom cigarillos', 'Pom Pom', 'TOBACCO', 'Cigars & Cigarillos', 'AW-POMPOM', '["Red","Green"]'::jsonb, 'Color', 'pompom.jpg', 'DEAL', true, 'Pom Pom cigarillos from the cigar and cigarillo line in our Tobacco department. Two colors: Red and Green.', ''),
+  (83, 'Dutch Masters cigarillos', 'Dutch Masters', 'TOBACCO', 'Cigars & Cigarillos', 'AW-DUTCH-MASTERS', '["Gold","Honey","Java","Blue","Diamond","Silver","Irish fusion","OG fusion"]'::jsonb, 'Variety', 'dutch_master.jpg', null, true, 'Dutch Masters cigarillos in 2-count pouches. Eight varieties: Gold, Honey, Java, Blue, Diamond, Silver, Irish fusion and OG fusion.', ''),
+  (84, 'Good Times Flat Wraps', 'Good Times', 'TOBACCO', 'Wraps & Leafs', 'AW-GOOD-TIMES-FLAT', '["Natural","Diamond","Vanilla","Fruit punch","Mango","Strawberry kiwi","Chocolate"]'::jsonb, 'Flavor', 'good_times_flat_wraps.jpg', null, true, 'Good Times Flat Wraps, flavored flat cigar wraps. Seven flavors: Natural, Diamond, Vanilla, Fruit punch, Mango, Strawberry kiwi and Chocolate.', ''),
+  (85, 'Zig-Zag wraps', 'Zig-Zag', 'TOBACCO', 'Wraps & Leafs', 'AW-ZIGZAG-WRAPS', '["Straight up","Grape","Melon","Mango"]'::jsonb, 'Flavor', 'zigzag_wraps.webp', null, true, 'Zig-Zag cigar wraps in the counter display. Four flavors: Straight up, Grape, Melon and Mango.', ''),
+  (86, 'Seneca cigarettes', 'Seneca', 'TOBACCO', 'Cigarettes', 'AW-SENECA', '["Menthol 100","Menthol short","Red 100","Red short","Silver 100","Silver short","Blue 100","Blue short"]'::jsonb, 'Variety', 'seneca_120.png', null, true, 'Seneca cigarettes in 100s and shorts. Eight varieties: Menthol 100, Menthol short, Red 100, Red short, Silver 100, Silver short, Blue 100 and Blue short.', ''),
+  (87, 'Old Tyme soda', 'Old Tyme', 'DRINKS & BAGS', 'Sodas', 'AW-OLD-TYME', '["Fruit punch","Blue","Mango","Pineapple","Grape","Purple passion","Pina colada","Strawberry kiwi"]'::jsonb, 'Flavor', null, null, true, 'Old Tyme soda from the soda line in our Drinks & Bags department. Eight flavors: Fruit punch, Blue, Mango, Pineapple, Grape, Purple passion, Pina colada and Strawberry kiwi.', ''),
+  (88, 'Tropical Fantasy', 'Tropical Fantasy', 'DRINKS & BAGS', 'Juices & Teas', 'AW-TROPICAL-FANTASY', '["Blue","Fruit punch","Grape","Pineapple","Strawberry lemonade","Kiwi strawberry","Green","Lemonade"]'::jsonb, 'Flavor', 'p88-tropical-fantasy.jpg', null, true, 'Tropical Fantasy fruit drinks. Eight flavors: Blue, Fruit punch, Grape, Pineapple, Strawberry lemonade, Kiwi strawberry, Green and Lemonade.', ''),
+  (89, 'Faygo cans', 'Faygo', 'DRINKS & BAGS', 'Sodas', 'AW-FAYGO-CANS', '["Cola","Fruit punch","Redpop","Pineapple","Peach","Kiwi strawberry","Moon mist","Lemon twist"]'::jsonb, 'Flavor', 'faygo_bottles_20oz.jpg', null, true, 'Faygo soda in cans. Eight flavors: Cola, Fruit punch, Redpop, Pineapple, Peach, Kiwi strawberry, Moon mist and Lemon twist.', ''),
+  (90, 'Plastic T-shirt bags', 'Assorted', 'DRINKS & BAGS', 'Bags & Carriers', 'AW-T-SHIRT-BAGS', '["1/6","1/8","1/10"]'::jsonb, 'Size', null, null, true, 'Plastic T-shirt carry-out bags. Three sizes: 1/6, 1/8 and 1/10.', ''),
+  (91, 'Paper bags', 'Assorted', 'DRINKS & BAGS', 'Bags & Carriers', 'AW-PAPER-BAGS', '["#1","#2","#4"]'::jsonb, 'Size', 'paper_bags_2.webp', null, true, 'Kraft paper bags. Three sizes: #1, #2 and #4.', ''),
+  (92, 'Register paper rolls', 'Assorted', 'DRINKS & BAGS', 'Bags & Carriers', 'AW-REGISTER-PAPER', '["Big","Small","EBT","Credit card","Fuel pump"]'::jsonb, 'Type', null, null, true, 'Register and terminal paper rolls. Five types: Big, Small, EBT, Credit card and Fuel pump.', ''),
+  (93, '6-pack beer carriers', 'Assorted', 'DRINKS & BAGS', 'Bags & Carriers', 'AW-6PK-BEER-CARRIERS', '[]'::jsonb, null, null, null, true, '6-pack beer carriers, from the bags and carriers line in our Drinks & Bags department.', ''),
+  (94, 'Beer ringers', 'Assorted', 'DRINKS & BAGS', 'Bags & Carriers', 'AW-BEER-RINGERS', '[]'::jsonb, null, null, null, true, 'Beer ringers from the bags and carriers line in our Drinks & Bags department.', ''),
+  (95, 'Trash can liners', 'Assorted', 'DRINKS & BAGS', 'Bags & Carriers', 'AW-TRASH-CAN-LINERS', '[]'::jsonb, null, null, null, true, 'Trash can liners, from the bags and carriers line in our Drinks & Bags department.', ''),
+  (96, 'Autoguard fluids', 'Autoguard', 'MOTOR OIL', 'Motor Oil', 'AW-AUTOGUARD', '["Power steering","Brake fluid","Antifreeze"]'::jsonb, 'Type', 'autoguard_brake_fluid.webp', null, true, 'Autoguard automotive fluids. Three fluids: Power steering, Brake fluid and Antifreeze.', ''),
+  (97, 'Itasca 2-cycle engine oil', 'Itasca', 'MOTOR OIL', 'Lubricants', 'AW-2-CYCLE-OIL', '[]'::jsonb, null, '2_cycle_oil.webp', null, true, 'Itasca Outdoors 2-cycle engine oil in 8 oz bottles.', ''),
+  (98, 'PEAK BlueDEF diesel exhaust fluid 2.5 gal', 'PEAK', 'MOTOR OIL', 'Fluids', 'AW-DEF-2-5-GAL', '[]'::jsonb, null, 'blue_def_2_5_gal.jpg', null, true, 'PEAK BlueDEF diesel exhaust fluid in the 2.5 gallon jug.', '2.5 gal jug'),
+  (99, 'PEAK antifreeze', 'PEAK', 'MOTOR OIL', 'Fluids', 'AW-PEAK-ANTIFREEZE', '[]'::jsonb, null, 'peak_antifreeze.webp', null, true, 'PEAK antifreeze and coolant, from the automotive fluid line in our Motor Oil department.', ''),
+  (100, 'Value antifreeze', 'Assorted', 'MOTOR OIL', 'Fluids', 'AW-CHEAP-ANTIFREEZE', '[]'::jsonb, null, null, null, true, 'Value antifreeze and coolant, from the automotive fluid line in our Motor Oil department.', ''),
+  (101, 'Castrol GTX motor oil', 'Castrol', 'MOTOR OIL', 'Motor Oil', 'AW-GTX-CASTROL', '["5W-30","5W-20","10W-30","10W-40","20W-50"]'::jsonb, 'Type', 'gtx_castrol.jpg', null, true, 'Castrol GTX motor oil in quarts. Five grades: 5W-30, 5W-20, 10W-30, 10W-40 and 20W-50.', ''),
+  (102, 'Havoline motor oil', 'Havoline', 'MOTOR OIL', 'Motor Oil', 'AW-HAVOLINE', '["5W-30","5W-20","10W-30","10W-40","20W-50"]'::jsonb, 'Type', 'havoline.webp', null, true, 'Havoline motor oil in quarts. Five grades: 5W-30, 5W-20, 10W-30, 10W-40 and 20W-50.', ''),
+  (103, 'PEAK windshield washer fluid', 'PEAK', 'MOTOR OIL', 'Fluids', 'AW-WINDSHIELD-WASHER', '[]'::jsonb, null, 'windshield_washer_2.webp', null, true, 'PEAK windshield washer fluid, from the automotive fluid line in our Motor Oil department.', ''),
+  (104, 'Tire inflators', 'Assorted', 'MOTOR OIL', 'Auto Accessories', 'AW-TIRE-INFLATORS', '["With hose","Without hose"]'::jsonb, 'Variety', 'tire_fixer_with_hose.jpg', null, true, 'Aerosol tire inflator and sealer. Two varieties: With hose and Without hose.', ''),
+  (105, 'WD-40', 'WD-40', 'MOTOR OIL', 'Lubricants', 'AW-WD-40', '["Big","Small"]'::jsonb, 'Size', 'wd_40_big.jpg', 'DEAL', true, 'WD-40 multi-use lubricant spray. Two sizes: Big and Small.', ''),
+  (106, 'Sandwich bags', 'Assorted', 'GROCERY', 'Bags & Storage', 'AW-SANDWICH-BAGS', '["Homesmart","Goodsense"]'::jsonb, 'Variety', 'sandwich_bags.webp', null, true, 'Fold-top sandwich bags. Two brands: Homesmart and Goodsense.', ''),
+  (107, 'Trash bags', 'Assorted', 'GROCERY', 'Bags & Storage', 'AW-TRASH-BAGS', '["13 gal","23 gal","Kitchen","Lawn"]'::jsonb, 'Variety', null, null, true, 'Trash bags from the bags and storage line in our Grocery department. Four varieties: 13 gal, 23 gal, Kitchen and Lawn.', ''),
+  (108, 'Tampax tampons', 'Tampax', 'GROCERY', 'Personal Care', 'AW-TAMPAX', '["Yellow","Green"]'::jsonb, 'Color', 'tampax.webp', null, true, 'Tampax tampons from the personal care line in our Grocery department. Two colors: Yellow and Green.', ''),
+  (109, 'Ajax dish liquid', 'Ajax', 'GROCERY', 'Cleaning', 'AW-AJAX-DISH-LIQUID', '["Blue","Red","Yellow","Orange","Green","Purple"]'::jsonb, 'Color', 'p109-ajax-dish-liquid.png', null, true, 'Ajax dish liquid. Six colors: Blue, Red, Yellow, Orange, Green and Purple.', ''),
+  (110, 'Brillo Basics dish liquid', 'Brillo', 'GROCERY', 'Cleaning', 'AW-BRILLO-DISH-LIQUID', '["Blue","Yellow","Orange","Green"]'::jsonb, 'Color', 'p110-brillo-basics-dish-liquid.png', null, true, 'Brillo Basics dish liquid. Four colors: Blue, Yellow, Orange and Green.', ''),
+  (111, 'Tide liquid detergent', 'Tide', 'GROCERY', 'Laundry & Detergent', 'AW-TIDE-LIQUID', '["Big","Small"]'::jsonb, 'Size', 'tide.jpg', null, true, 'Tide liquid laundry detergent. Two sizes: Big and Small.', ''),
+  (112, 'Gain liquid detergent', 'Gain', 'GROCERY', 'Laundry & Detergent', 'AW-GAIN-LIQUID', '["Big","Small"]'::jsonb, 'Size', 'gain.jpg', null, true, 'Gain liquid laundry detergent. Two sizes: Big and Small.', ''),
+  (113, 'Clorox', 'Clorox', 'GROCERY', 'Cleaning', 'AW-CLOROX', '["Big","Medium","Small"]'::jsonb, 'Size', 'p113-clorox.png', null, true, 'Clorox from the cleaning line in our Grocery department. Three sizes: Big, Medium and Small.', ''),
+  (114, 'Ajax powder cleanser with bleach', 'Ajax', 'GROCERY', 'Cleaning', 'AW-AJAX-BLEACH', '[]'::jsonb, null, 'ajax_bleach.jpg', null, true, 'Ajax powder cleanser with bleach, from the cleaning line in our Grocery department.', ''),
+  (115, 'Dove bar soap', 'Dove', 'GROCERY', 'Personal Care', 'AW-DOVE-SOAP', '["Original"]'::jsonb, null, 'dove_soap.jpg', null, true, 'Dove beauty bar soap. Stocked in one variety: Original.', ''),
+  (116, 'Irish Spring bar soap', 'Irish Spring', 'GROCERY', 'Personal Care', 'AW-IRISH-SPRING-SOAP', '[]'::jsonb, null, 'irish_spring_soap.jpg', null, true, 'Irish Spring deodorant bar soap, from the personal care line in our Grocery department.', ''),
+  (117, 'LA''s Totally Awesome laundry detergent', 'LA''s Totally Awesome', 'GROCERY', 'Cleaning', 'AW-AWESOME-LAUNDRY', '["Red","Orange"]'::jsonb, 'Color', 'p117-las-totally-awesome-laundry.jpg', null, true, 'LA''s Totally Awesome laundry detergent. Two colors: Red and Orange.', ''),
+  (118, 'Foam plates', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-FOAM-PLATES', '["Big","Small"]'::jsonb, 'Size', null, null, true, 'Foam plates from the paper and plastic line in our Grocery department. Two sizes: Big and Small.', ''),
+  (119, 'Foam bowls', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-FOAM-BOWLS', '[]'::jsonb, null, null, null, true, 'Foam bowls from the paper and plastic line in our Grocery department.', ''),
+  (120, 'Foam cups', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-FOAM-CUPS', '["20 oz","16 oz","12 oz","8 oz"]'::jsonb, 'Size', 'foam_cups.jpg', null, true, 'Insulated foam cups. Four sizes: 20 oz, 16 oz, 12 oz and 8 oz.', ''),
+  (121, 'Plastic cutlery', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-PLASTIC-CUTLERY', '["Spoons","Forks","Assorted cutlery"]'::jsonb, 'Type', null, null, true, 'Plastic cutlery from the paper and plastic line in our Grocery department. Three types: Spoons, Forks and Assorted cutlery.', ''),
+  (122, 'Bath tissue 4-pack', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-4PK-TISSUES', '[]'::jsonb, null, '4pk_tissues.avif', null, true, 'Bath tissue in 4-roll packs, stocked by the case.', '4-pack'),
+  (123, 'Paper towels', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-PAPER-TOWELS', '[]'::jsonb, null, 'paper_towels.jpg', null, true, 'Paper towel rolls, sold by the case.', 'case'),
+  (124, 'Bath tissue single rolls', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-SINGLE-TISSUES', '[]'::jsonb, null, 'single_tissues.jpg', null, true, 'Bath tissue in single rolls, sold by the case.', 'case'),
+  (125, 'Baby diapers', 'Assorted', 'GROCERY', 'Personal Care', 'AW-BABY-DIAPERS', '["Small","Medium","Big"]'::jsonb, 'Size', null, null, true, 'Baby diapers from the personal care line in our Grocery department. Three sizes: Small, Medium and Big.', ''),
+  (126, 'Baby wipes', 'Assorted', 'GROCERY', 'Personal Care', 'AW-BABY-WIPES', '["Boys","Girls"]'::jsonb, 'Variety', null, null, true, 'Baby wipes from the personal care line in our Grocery department. Two varieties: Boys and Girls.', ''),
+  (127, 'Drain opener', 'Assorted', 'GROCERY', 'Cleaning', 'AW-DRAIN-OPENER', '[]'::jsonb, null, null, null, true, 'Drain opener from the cleaning line in our Grocery department.', ''),
+  (128, 'Fabuloso', 'Fabuloso', 'GROCERY', 'Cleaning', 'AW-FABULOSO', '["Small","Big"]'::jsonb, 'Size', 'p128-fabuloso.avif', null, true, 'Fabuloso multi-purpose cleaner. Two sizes: Small and Big.', ''),
+  (129, 'Home air fresheners', 'Assorted', 'GROCERY', 'Other Grocery', 'AW-HOME-AIR-FRESHENERS', '[]'::jsonb, null, null, null, true, 'Home air fresheners, from the grocery line in our Grocery department.', ''),
+  (130, 'Brillo Basics all-purpose cleaner', 'Brillo', 'GROCERY', 'Cleaning', 'AW-BRILLO-BASICS', '["Yellow","Orange","Purple","Brown"]'::jsonb, 'Color', 'p130-brillo-basics-cleaner.jpg', null, true, 'Brillo Basics all-purpose cleaner. Four colors: Yellow, Orange, Purple and Brown.', ''),
+  (131, 'Matches', 'Assorted', 'GROCERY', 'Hardware', 'AW-MATCHES', '["Small","Big"]'::jsonb, 'Size', null, null, true, 'Matches from the hardware line in our Grocery department. Two sizes: Small and Big.', ''),
+  (132, 'Charcoal bags (small)', 'Assorted', 'GROCERY', 'Hardware', 'AW-CHARCOAL-BAGS-SMALL', '["White","Red"]'::jsonb, 'Color', null, null, true, 'Charcoal in small bags. Two colors: White and Red.', ''),
+  (133, 'Charcoal bags (big)', 'Assorted', 'GROCERY', 'Hardware', 'AW-CHARCOAL-BAGS-BIG', '["White","Red"]'::jsonb, 'Color', null, null, true, 'Charcoal in big bags. Two colors: White and Red.', ''),
+  (134, 'Rubbing alcohol', 'Assorted', 'GROCERY', 'Personal Care', 'AW-RUBBING-ALCOHOL', '["White","Green"]'::jsonb, 'Color', null, null, true, 'Rubbing alcohol from the personal care line in our Grocery department. Two colors: White and Green.', ''),
+  (135, 'Hydrogen peroxide', 'Assorted', 'GROCERY', 'Personal Care', 'AW-HYDRO-PEROXIDE', '[]'::jsonb, null, null, null, true, 'Hydrogen peroxide, from the personal care line in our Grocery department.', ''),
+  (136, 'Always pads', 'Always', 'GROCERY', 'Personal Care', 'AW-ALWAYS-PADS', '["Big","Medium","Small"]'::jsonb, 'Size', 'p136-always-pads.jpg', null, true, 'Always pads from the personal care line in our Grocery department. Three sizes: Big, Medium and Small.', ''),
+  (137, 'Nail clippers', 'Assorted', 'GROCERY', 'Hardware', 'AW-NAIL-CLIPPERS', '["Big","Small"]'::jsonb, 'Size', null, null, true, 'Nail clippers from the hardware line in our Grocery department. Two sizes: Big and Small.', ''),
+  (138, 'Charcoal lighter fluid', 'Assorted', 'GROCERY', 'Hardware', 'AW-CHARCOAL-LIGHTER', '["Big","Small"]'::jsonb, 'Size', null, null, true, 'Charcoal lighter fluid. Two sizes: Big and Small.', ''),
+  (139, 'Vinut', 'Vinut', 'DRINKS & BAGS', 'Juices & Teas', 'AW-VINUT', '["Watermelon","Pineapple","Mango","Soursop","Passion fruit","Cranberry","Apple","Orange"]'::jsonb, 'Flavor', null, null, true, 'Vinut juice drinks. Eight flavors: Watermelon, Pineapple, Mango, Soursop, Passion fruit, Cranberry, Apple and Orange.', ''),
+  (140, 'Tropicana juice (small)', 'Tropicana', 'DRINKS & BAGS', 'Juices & Teas', 'AW-TROPICANA-SMALL', '["Orange","Pineapple orange","Grape","Cranberry","Kiwi strawberry lemonade","Ruby red"]'::jsonb, 'Flavor', 'p140-tropicana-juice-small.jpg', null, true, 'Tropicana juice in the small bottle. Six flavors: Orange, Pineapple orange, Grape, Cranberry, Kiwi strawberry lemonade and Ruby red.', ''),
+  (141, 'Tropical Fantasy Aloe Vera', 'Tropical Fantasy', 'DRINKS & BAGS', 'Juices & Teas', 'AW-TROPICAL-FANTASY-ALOE', '["Watermelon","Strawberry","Mango","Peach","Pineapple","Original"]'::jsonb, 'Flavor', null, null, true, 'Tropical Fantasy aloe vera drinks. Six flavors: Watermelon, Strawberry, Mango, Peach, Pineapple and Original.', ''),
+  (142, 'Calypso lemonade', 'Calypso', 'DRINKS & BAGS', 'Juices & Teas', 'AW-CALYPSO', '["Tropical mango","Original","Paradise punch","Kiwi lemonade"]'::jsonb, 'Flavor', 'p142-calypso-lemonade.jpg', null, true, 'Calypso lemonade. Four flavors: Tropical mango, Original, Paradise punch and Kiwi lemonade.', ''),
+  (143, 'Red Bull 12 oz', 'Red Bull', 'DRINKS & BAGS', 'Energy Drinks', 'AW-REDBULL-12OZ', '["Regular","Watermelon","Yellow","White peach","Wild berries","Green","White","Sugar free"]'::jsonb, 'Variety', 'p143-red-bull-12oz.jpg', 'BESTSELLER', true, 'Red Bull energy drink in 12 oz cans. Eight varieties: Regular, Watermelon, Yellow, White peach, Wild berries, Green, White and Sugar free.', ''),
+  (144, 'Red Bull 8 oz', 'Red Bull', 'DRINKS & BAGS', 'Energy Drinks', 'AW-REDBULL-8OZ', '["Regular","Watermelon","Yellow","White peach","Wild berries","Green","White","Sugar free"]'::jsonb, 'Variety', 'p144-red-bull-8oz.jpg', null, true, 'Red Bull energy drink in 8 oz cans. Eight varieties: Regular, Watermelon, Yellow, White peach, Wild berries, Green, White and Sugar free.', ''),
+  (145, 'Red Bull 16 oz', 'Red Bull', 'DRINKS & BAGS', 'Energy Drinks', 'AW-REDBULL-16OZ', '[]'::jsonb, null, 'p145-red-bull-16oz.jpg', null, true, 'Red Bull energy drink in 16 oz cans, from the energy drink line in our Drinks & Bags department.', ''),
+  (146, 'Red Bull 20 oz', 'Red Bull', 'DRINKS & BAGS', 'Energy Drinks', 'AW-REDBULL-20OZ', '[]'::jsonb, null, 'p146-red-bull-20oz.jpg', null, true, 'Red Bull energy drink in 20 oz cans, from the energy drink line in our Drinks & Bags department.', ''),
+  (147, 'Trojan Magnum condoms', 'Trojan', 'MERCHANDISE', 'Adult Wellness', 'AW-MAGNUM', '["Regular","XL","Bareskin","Thin","Ecstasy","Raw","Discovery pack","Jar big"]'::jsonb, 'Variety', 'magnum.jpg', null, true, 'Trojan Magnum condoms. Eight varieties: Regular, XL, Bareskin, Thin, Ecstasy, Raw, Discovery pack and Jar big.', ''),
+  (148, 'Trojan condoms', 'Trojan', 'MERCHANDISE', 'Adult Wellness', 'AW-TROJAN', '["Bareskin","Ultra thin","Ecstasy","Her pleasure","Pleasure pack","G spot","Double ecstasy"]'::jsonb, 'Variety', 'trojan.webp', null, true, 'Trojan condoms from the adult wellness line in our Merchandise department. Seven varieties: Bareskin, Ultra thin, Ecstasy, Her pleasure, Pleasure pack, G spot and Double ecstasy.', ''),
+  (149, 'Rolling dice', 'Assorted', 'MERCHANDISE', 'Counter Goods', 'AW-ROLLING-DICE', '["Big","Small","Colored"]'::jsonb, 'Variety', 'p149-rolling-dice.jpg', null, true, 'Rolling dice from the counter goods line in our Merchandise department. Three varieties: Big, Small and Colored.', ''),
+  (150, 'Phone cables & chargers', 'Assorted', 'MERCHANDISE', 'Electronics', 'AW-CABLES', '["iPhone (Lightning)","USB-C","Android","Car charger","Home charger","Lightning to USB-C","USB-C to USB-C","Home charger with USB-C"]'::jsonb, 'Type', 'p150-phone-cables.jpg', null, true, 'Phone cables and chargers for the counter display. Eight types: iPhone (Lightning), USB-C, Android, Car charger, Home charger, Lightning to USB-C, USB-C to USB-C and Home charger with USB-C.', ''),
+  (151, 'White V-neck shirts', 'Assorted', 'MERCHANDISE', 'Apparel', 'AW-WHITE-V-NECK', '["S","M","L","1X","2X","3X","4X","5X"]'::jsonb, 'Size', 'p151-white-v-neck.jpg', null, true, 'White V-neck shirts. Eight sizes: S, M, L, 1X, 2X, 3X, 4X and 5X.', ''),
+  (152, 'Black V-neck shirts', 'Assorted', 'MERCHANDISE', 'Apparel', 'AW-BLACK-V-NECK', '["S","M","L","1X","2X","3X","4X","5X"]'::jsonb, 'Size', null, null, true, 'Black V-neck shirts. Eight sizes: S, M, L, 1X, 2X, 3X, 4X and 5X.', ''),
+  (153, 'White long-sleeve shirts', 'Assorted', 'MERCHANDISE', 'Apparel', 'AW-WHITE-LONG-SLEEVE', '["S","M","L","1X","2X","3X","4X","5X"]'::jsonb, 'Size', null, null, true, 'White long-sleeve shirts. Eight sizes: S, M, L, 1X, 2X, 3X, 4X and 5X.', ''),
+  (154, 'Black long-sleeve shirts', 'Assorted', 'MERCHANDISE', 'Apparel', 'AW-BLACK-LONG-SLEEVE', '["S","M","L","1X","2X","3X","4X","5X"]'::jsonb, 'Size', null, null, true, 'Black long-sleeve shirts. Eight sizes: S, M, L, 1X, 2X, 3X, 4X and 5X.', ''),
+  (155, 'White thermals', 'Assorted', 'MERCHANDISE', 'Apparel', 'AW-WHITE-THERMALS', '["S","M","L","1X","2X","3X","4X","5X"]'::jsonb, 'Size', null, null, true, 'White thermal shirts. Eight sizes: S, M, L, 1X, 2X, 3X, 4X and 5X.', ''),
+  (156, 'Black thermals', 'Assorted', 'MERCHANDISE', 'Apparel', 'AW-BLACK-THERMALS', '["S","M","L","1X","2X","3X","4X","5X"]'::jsonb, 'Size', null, null, true, 'Black thermal shirts. Eight sizes: S, M, L, 1X, 2X, 3X, 4X and 5X.', ''),
+  (157, 'Winter hats', 'Assorted', 'MERCHANDISE', 'Apparel', 'AW-WINTERHATS', '["Black","White","Grey","Red","Blue","Green","Purple"]'::jsonb, 'Color', null, null, true, 'Winter hats from the apparel line in our Merchandise department. Seven colors: Black, White, Grey, Red, Blue, Green and Purple.', ''),
+  (158, 'Socks', 'Assorted', 'MERCHANDISE', 'Apparel', 'AW-SOCKS', '["White","Black"]'::jsonb, 'Color', null, null, true, 'Socks from the apparel line in our Merchandise department. Two colors: White and Black.', ''),
+  (159, 'Little Trees air fresheners', 'Little Trees', 'MERCHANDISE', 'Air Fresheners & Incense', 'AW-LITTLE-TREES', '["Assorted display","Black ice single","Black ice pack"]'::jsonb, 'Format', 'p159-little-trees.jpg', null, true, 'Little Trees hanging air fresheners. Three formats: Assorted display, Black ice single and Black ice pack.', ''),
+  (160, 'White A-shirts', 'Assorted', 'MERCHANDISE', 'Apparel', 'AW-A-SHIRT-WHITE', '["S","M","L","1X","2X","3X","4X","5X"]'::jsonb, 'Size', null, null, true, 'White A-shirt tank undershirts. Eight sizes: S, M, L, 1X, 2X, 3X, 4X and 5X.', ''),
+  (161, 'Black A-shirts', 'Assorted', 'MERCHANDISE', 'Apparel', 'AW-A-SHIRTS-BLACK', '["S","M","L","1X","2X","3X","4X","5X"]'::jsonb, 'Size', null, null, true, 'Black A-shirt tank undershirts. Eight sizes: S, M, L, 1X, 2X, 3X, 4X and 5X.', ''),
+  (162, 'Snickers bars', 'Snickers', 'CANDIES', 'Chocolate Bars', 'AW-SNICKERS', '["Regular","King size","Almond, regular","Almond, king size"]'::jsonb, 'Variety', 'snickers_almond_share.webp', 'BESTSELLER', true, 'Snickers candy bars. Four varieties: Regular; King size; Almond, regular; and Almond, king size.', ''),
+  (163, 'M&M''s', 'M&M''s', 'CANDIES', 'Chocolate Bars', 'AW-M-M-S', '["Yellow, regular","Yellow, share size","Chocolate, regular","Chocolate, king size"]'::jsonb, 'Variety', 'm_m_s_chocolate_share.jpg', null, true, 'M&M''s chocolate candies. Four varieties: Yellow, regular; Yellow, share size; Chocolate, regular; and Chocolate, king size.', ''),
+  (164, 'Kit Kat bars', 'Kit Kat', 'CANDIES', 'Chocolate Bars', 'AW-KITKAT', '["Regular","King size","Vanilla, regular","Vanilla, king size"]'::jsonb, 'Variety', 'kitkat_king_size.webp', null, true, 'Kit Kat wafer bars. Four varieties: Regular; King size; Vanilla, regular; and Vanilla, king size.', ''),
+  (165, 'Twix bars', 'Twix', 'CANDIES', 'Chocolate Bars', 'AW-TWIX', '["Regular","King size"]'::jsonb, 'Size', 'twix_regular.webp', null, true, 'Twix cookie bars. Two sizes: Regular and King size.', ''),
+  (166, 'Reese''s', 'Reese''s', 'CANDIES', 'Chocolate Bars', 'AW-REESE-S', '["Cups, regular","Cups, king size","White cups, regular","White cups, king size","Pieces, regular","Pieces, king size","Fast break, regular","Fast break, king size"]'::jsonb, 'Variety', 'reese_s.jpg', 'BESTSELLER', true, 'Reese''s peanut butter candy. Eight varieties: Cups, regular; Cups, king size; White cups, regular; White cups, king size; Pieces, regular; Pieces, king size; Fast break, regular; and Fast break, king size.', ''),
+  (167, 'Almond Joy bars', 'Almond Joy', 'CANDIES', 'Chocolate Bars', 'AW-ALMOND-JOY', '["Regular","King size"]'::jsonb, 'Size', 'almond_joy_3.jpg', null, true, 'Almond Joy coconut and almond bars. Two sizes: Regular and King size.', ''),
+  (168, 'Mounds bars', 'Mounds', 'CANDIES', 'Chocolate Bars', 'AW-MOUNDS', '["Regular","King size"]'::jsonb, 'Size', 'mounds_bar_king_size.jpg', null, true, 'Mounds dark chocolate coconut bars. Two sizes: Regular and King size.', ''),
+  (169, 'Skittles', 'Skittles', 'CANDIES', 'Sweets & Gummies', 'AW-SKITTLES', '["Red, regular","Red, king size","Wildberry, regular","Wildberry, king size","Sour, regular","Sour, king size","Blue, regular","Blue, king size"]'::jsonb, 'Variety', 'skittles.jpg', 'BESTSELLER', true, 'Skittles chewy candy. Eight varieties: Red, regular; Red, king size; Wildberry, regular; Wildberry, king size; Sour, regular; Sour, king size; Blue, regular; and Blue, king size.', ''),
+  (170, 'PayDay bars', 'PayDay', 'CANDIES', 'Chocolate Bars', 'AW-PAYDAY', '["Regular","King size"]'::jsonb, 'Size', 'payday_king_size.jpg', null, true, 'PayDay peanut caramel bars. Two sizes: Regular and King size.', ''),
+  (171, 'Hershey''s bars', 'Hershey''s', 'CANDIES', 'Chocolate Bars', 'AW-HERSHEY', '["Milk, regular","Milk, king size","Cookies, regular","Cookies, king size","Almond, regular","Almond, king size","Mr. Goodbar, regular","Mr. Goodbar, king size"]'::jsonb, 'Variety', 'hershey.jpg', 'BESTSELLER', true, 'Hershey''s chocolate bars. Eight varieties: Milk, regular; Milk, king size; Cookies, regular; Cookies, king size; Almond, regular; Almond, king size; Mr. Goodbar, regular; and Mr. Goodbar, king size.', ''),
+  (172, '3 Musketeers bars', '3 Musketeers', 'CANDIES', 'Chocolate Bars', 'AW-3-MUSKETEERS', '["Regular","King size"]'::jsonb, 'Size', '3_musketeers_regular.webp', null, true, '3 Musketeers nougat bars. Two sizes: Regular and King size.', ''),
+  (173, 'Rip Rolls', 'Rip Rolls', 'CANDIES', 'Sweets & Gummies', 'AW-RIP-ROLLS', '["Strawberry","Green apple","Rainbow","Blue","Grape","Cherry","Watermelon"]'::jsonb, 'Flavor', 'rip_rolls.webp', null, true, 'Rip Rolls sour licorice rolls in the counter display. Seven flavors: Strawberry, Green apple, Rainbow, Blue, Grape, Cherry and Watermelon.', ''),
+  (174, 'Long Boys coconut candy tub', 'Long Boys', 'CANDIES', 'Jars', 'AW-LONGBOY-JAR', '[]'::jsonb, null, 'longboy_jar.webp', null, true, 'Long Boys coconut candy in the counter tub.', 'tub'),
+  (175, 'Chick-O-Stick jar', 'Chick-O-Stick', 'CANDIES', 'Jars', 'AW-CHICK-O-STICK-JAR', '[]'::jsonb, null, 'chico_stick_jar.webp', null, true, 'Chick-O-Stick peanut butter candy in the 160-count jar.', '160-count jar'),
+  (176, 'Atkinson''s Peanut Butter Bars jar', 'Atkinson''s', 'CANDIES', 'Jars', 'AW-PB-JAR', '[]'::jsonb, null, 'pb_jar.jpg', null, true, 'Atkinson''s Peanut Butter Bars in the counter jar.', 'jar'),
+  (177, 'Haribo Goldbears tub', 'Haribo', 'CANDIES', 'Jars', 'AW-HARIBO-JAR', '[]'::jsonb, null, 'haribo_jar.jpg', null, true, 'Haribo Goldbears gummy bears in the counter tub.', 'tub'),
+  (178, 'Sour Punch Twists tub', 'Sour Punch', 'CANDIES', 'Jars', 'AW-SOUR-PUNCH-JAR', '["Small","Big"]'::jsonb, 'Size', 'sour_punch_jar.webp', null, true, 'Sour Punch Twists in the counter tub. Two sizes: Small and Big.', 'tub'),
+  (179, 'Laffy Taffy tub', 'Laffy Taffy', 'CANDIES', 'Jars', 'AW-LAFFY-TAFFY-JAR', '["Assorted","Blue","Banana","Green apple"]'::jsonb, 'Flavor', 'laffy_taffy_bucket.webp', null, true, 'Laffy Taffy in the 145-count tub. Four flavors: Assorted, Blue, Banana and Green apple.', '145-count tub'),
+  (180, 'Laffy Taffy ropes', 'Laffy Taffy', 'CANDIES', 'Sweets & Gummies', 'AW-LAFFY-TAFFY-ROPES', '["White mystery","Blue","Banana","Cherry","Strawberry","Green apple","Grape"]'::jsonb, 'Flavor', 'laffy_taffy_ropes.webp', null, true, 'Laffy Taffy ropes. Seven flavors: White mystery, Blue, Banana, Cherry, Strawberry, Green apple and Grape.', ''),
+  (181, 'Sour Power Straws', 'Sour Power', 'CANDIES', 'Sweets & Gummies', 'AW-SOUR-STRAWS', '["Blue raspberry","Rainbow"]'::jsonb, 'Flavor', 'sour_power_straws.jpg', null, true, 'Sour Power Straws sour candy straws. Two flavors: Blue raspberry and Rainbow.', ''),
+  (182, 'Sour Punch candy', 'Sour Punch', 'CANDIES', 'Sweets & Gummies', 'AW-SOUR-PUNCH', '["Blue raspberry","Strawberry","Watermelon","Grape","Rainbow"]'::jsonb, 'Flavor', 'sour_punch_jar.webp', null, true, 'Sour Punch sour candy. Five flavors: Blue raspberry, Strawberry, Watermelon, Grape and Rainbow.', ''),
+  (183, 'Extra Gum', 'Extra', 'CANDIES', 'Gum & Mints', 'AW-EXTRA-GUM', '["Watermelon","Spearmint","Peppermint","Polar ice","Winterfresh"]'::jsonb, 'Flavor', 'p183-extra-gum.jpg', null, true, 'Extra Gum from the gum and mints line in our Candies department. Five flavors: Watermelon, Spearmint, Peppermint, Polar ice and Winterfresh.', ''),
+  (184, 'Tueni chews', 'Tueni', 'CANDIES', 'Sweets & Gummies', 'AW-TUENI', '["Lemon","Tropical","Blue raspberry","Green apple","Mango","Pineapple","Banana","Grape"]'::jsonb, 'Flavor', 'tueni_chews.jpg', 'NEW', true, 'Tueni fruit chews in counter boxes. Eight flavors: Lemon, Tropical, Blue raspberry, Green apple, Mango, Pineapple, Banana and Grape.', ''),
+  (185, 'Tootsie Frooties', 'Tootsie', 'CANDIES', 'Sweets & Gummies', 'AW-FROOTIES', '[]'::jsonb, null, 'frooties.webp', null, true, 'Tootsie Frooties chewy candy bags, from the sweets and gummies line in our Candies department.', ''),
+  (186, 'Charms Blow Pop', 'Charms', 'CANDIES', 'Sweets & Gummies', 'AW-BLOWPOP', '["Regular","Blue razz","Black cherry","Watermelon","Caramel apple"]'::jsonb, 'Variety', 'blowpop.webp', null, true, 'Charms Blow Pop lollipops in the 48-count display. Five varieties: Regular, Blue razz, Black cherry, Watermelon and Caramel apple.', '48-count display'),
+  (187, 'Gushers box', 'Gushers', 'CANDIES', 'Sweets & Gummies', 'AW-GUSHER-BOX', '["Regular"]'::jsonb, null, 'gushers_box.webp', null, true, 'Gushers fruit snacks in the variety box. Stocked in one variety: Regular.', 'box'),
+  (188, 'Nerds Gummy Clusters pouches', 'Nerds', 'CANDIES', 'Sweets & Gummies', 'AW-NERDS-POUCH', '["Red","Blue","Cherry lemonade"]'::jsonb, 'Flavor', 'nerds_pouches_1.webp', null, true, 'Nerds Gummy Clusters share pouches. Three flavors: Red, Blue and Cherry lemonade.', ''),
+  (189, 'Mamba big bars', 'Mamba', 'CANDIES', 'Sweets & Gummies', 'AW-MAMBA-BIG-BAR', '["Original","Sour","Tropical"]'::jsonb, 'Flavor', 'mamba_big_bars.jpg', null, true, 'Mamba fruit chews in big bars. Three flavors: Original, Sour and Tropical.', ''),
+  (190, 'Mamba (small)', 'Mamba', 'CANDIES', 'Sweets & Gummies', 'AW-MAMBA-SMALL', '["Regular","Tropical","Sour"]'::jsonb, 'Variety', 'mamba_big_bars.jpg', null, true, 'Mamba fruit chews in the small size. Three varieties: Regular, Tropical and Sour.', ''),
+  (191, 'Mint candy lumps', 'Candyman''s', 'CANDIES', 'Sweets & Gummies', 'AW-MINT-LUMPS', '[]'::jsonb, null, 'mint_lumps.jpg', null, true, 'Mint candy lumps in the counter dispenser box.', ''),
+  (192, 'Cherry candy lumps', 'Candyman''s', 'CANDIES', 'Sweets & Gummies', 'AW-CHERRY-LUMPS', '[]'::jsonb, null, 'cherry_lumps.jpg', null, true, 'Cherry candy lumps in the counter dispenser box.', ''),
+  (193, 'Pure Eyes redness relief', 'Pure Eyes', 'MERCHANDISE', 'OTC & Health', 'AW-PURE-EYES', '[]'::jsonb, null, 'p193-pure-eyes.avif', null, true, 'Pure Eyes from the OTC and health line in our Merchandise department.', ''),
+  (194, '5-hour Energy Extra Strength', '5-hour Energy', 'MERCHANDISE', 'Energy Shots', 'AW-5-HOUR-EXTRA', '["Berry","Blue raspberry","Grape","Mango peach","Strawberry watermelon","Strawberry banana","Tidal twist"]'::jsonb, 'Flavor', '5_hour_extra.jpg', null, true, '5-hour Energy Extra Strength shots. Seven flavors: Berry, Blue raspberry, Grape, Mango peach, Strawberry watermelon, Strawberry banana and Tidal twist.', ''),
+  (195, '5-hour Energy Regular Strength', '5-hour Energy', 'MERCHANDISE', 'Energy Shots', 'AW-5-HOUR-REGULAR', '["Berry","Grape"]'::jsonb, 'Flavor', 'p195-5-hour-energy-regular.jpg', null, true, '5-hour Energy Regular Strength shots. Two flavors: Berry and Grape.', ''),
+  (196, 'Advil', 'Advil', 'MERCHANDISE', 'OTC & Health', 'AW-ADVIL', '["Regular","Sinus","PM","Dual action","Liquid gels","Allergy"]'::jsonb, 'Variety', 'p196-advil.jpg', null, true, 'Advil pain reliever for the OTC shelf. Six varieties: Regular, Sinus, PM, Dual action, Liquid gels and Allergy.', ''),
+  (197, 'Haribo gummy bags', 'Haribo', 'CANDIES', 'Bags', 'AW-HARIBO-BAGS', '["Gold bears","Gold bears tropical","Gold bears sour","Sour streamers","Smurfs","Sour Smurfs","Twin snakes"]'::jsonb, 'Variety', 'haribo_bags.webp', null, true, 'Haribo gummy candy peg bags. Seven varieties: Gold bears, Gold bears tropical, Gold bears sour, Sour streamers, Smurfs, Sour Smurfs and Twin snakes.', ''),
+  (198, 'Trolli bags', 'Trolli', 'CANDIES', 'Bags', 'AW-TROLLI-BAGS', '["Sour brite crawlers","Peach","Octopus"]'::jsonb, 'Variety', 'trolli_bags.webp', null, true, 'Trolli gummy candy peg bags. Three varieties: Sour brite crawlers, Peach and Octopus.', ''),
+  (199, 'Gushers bags', 'Gushers', 'CANDIES', 'Bags', 'AW-GUSHERS-BAGS', '[]'::jsonb, null, 'gushers_bags.jpg', null, true, 'Gushers fruit snack bags, from the candy bag line in our Candies department.', ''),
+  (200, 'Nerds bags', 'Nerds', 'CANDIES', 'Bags', 'AW-NERDS-BAGS', '["Red","Blue","Yellow","Cherry lemonade"]'::jsonb, 'Flavor', 'nerds_pouches_1.webp', null, true, 'Nerds candy peg bags. Four flavors: Red, Blue, Yellow and Cherry lemonade.', ''),
+  (201, 'Life Savers Gummies bags', 'Life Savers', 'CANDIES', 'Bags', 'AW-LIFESAVER-BAGS', '["5 Flavors","Collision","Wildberry","Sours","Fruit rings","XO rings","Exotics"]'::jsonb, 'Variety', 'lifesaver_bags.webp', null, true, 'Life Savers Gummies peg bags. Seven varieties: 5 Flavors, Collision, Wildberry, Sours, Fruit rings, XO rings and Exotics.', ''),
+  (202, 'Rips bags', 'Rips', 'CANDIES', 'Bags', 'AW-RIPS-BAGS', '["Grape"]'::jsonb, null, 'rips_bags.webp', null, true, 'Rips candy peg bags. Stocked in one variety: Grape.', ''),
+  (203, 'Welch''s Fruit Snacks bags', 'Welch''s', 'CANDIES', 'Bags', 'AW-WELCHES-BAGS', '[]'::jsonb, null, 'welches_bags.webp', null, true, 'Welch''s Fruit Snacks bags, from the candy bag line in our Candies department.', ''),
+  (204, 'Welch''s juice', 'Welch''s', 'DRINKS & BAGS', 'Juices & Teas', 'AW-WELCHES', '["Cranberry","Fruit punch","Apple","Grape","Orange pineapple","Mango passion","Orange"]'::jsonb, 'Flavor', 'welches_juice.jpg', null, true, 'Welch''s juice drinks. Seven flavors: Cranberry, Fruit punch, Apple, Grape, Orange pineapple, Mango passion and Orange.', ''),
+  (205, 'Pepsi', 'Pepsi', 'DRINKS & BAGS', 'Sodas', 'AW-PEPSI', '[]'::jsonb, null, 'p205-pepsi.jpg', null, true, 'Pepsi from the soda line in our Drinks & Bags department.', ''),
+  (206, 'Dr Pepper', 'Dr Pepper', 'DRINKS & BAGS', 'Sodas', 'AW-DR-PEPPER', '[]'::jsonb, null, 'p206-dr-pepper.jpg', null, true, 'Dr Pepper from the soda line in our Drinks & Bags department.', ''),
+  (207, 'Minute Maid 20 oz', 'Minute Maid', 'DRINKS & BAGS', 'Juices & Teas', 'AW-20OZ-MINUTE-MAID', '["Blue","Fruit punch","Berry","Lemonade","Pink lemonade","Watermelon","Peach","Kiwi strawberry"]'::jsonb, 'Flavor', 'p207-minute-maid-20oz.jpg', null, true, 'Minute Maid juice drinks in 20 oz bottles. Eight flavors: Blue, Fruit punch, Berry, Lemonade, Pink lemonade, Watermelon, Peach and Kiwi strawberry.', ''),
+  (208, 'Minute Maid 12 oz', 'Minute Maid', 'DRINKS & BAGS', 'Juices & Teas', 'AW-12OZ-MINUTE-MAID', '["Orange pineapple","Orange","Cranberry","Raspberry","Apple","Tropical"]'::jsonb, 'Flavor', '12oz_minute_maid_juice.webp', null, true, 'Minute Maid juice in 12 oz bottles. Six flavors: Orange pineapple, Orange, Cranberry, Raspberry, Apple and Tropical.', ''),
+  (209, '24/7 cigarettes', '24/7', 'TOBACCO', 'Cigarettes', 'AW-24-7', '["Menthol 100","Menthol short","Red 100","Red short","Silver 100","Silver short","Gold 100","Gold short"]'::jsonb, 'Variety', '24_7.jpg', null, true, '24/7 cigarettes in 100s and shorts. Eight varieties: Menthol 100, Menthol short, Red 100, Red short, Silver 100, Silver short, Gold 100 and Gold short.', ''),
+  (210, 'Seneca filtered cigars', 'Seneca', 'TOBACCO', 'Cigarettes', 'AW-SENECA-FILTER', '[]'::jsonb, null, 'seneca_filter_cigarettes.jpg', null, true, 'Seneca filtered cigars, cigarette-style little cigars.', ''),
+  (211, 'Cheyenne filtered cigars', 'Cheyenne', 'TOBACCO', 'Cigarettes', 'AW-CHEYENNE', '[]'::jsonb, null, null, null, true, 'Cheyenne from the cigarette line in our Tobacco department.', ''),
+  (212, 'Ice bags', 'Assorted', 'DRINKS & BAGS', 'Bags & Carriers', 'AW-ICE-BAGS', '["8 lb","10 lb"]'::jsonb, 'Size', null, null, true, 'Ice bags from the bags and carriers line in our Drinks & Bags department. Two sizes: 8 lb and 10 lb.', ''),
+  (213, 'Lil Leaf wraps', 'Lil Leaf', 'TOBACCO', 'Wraps & Leafs', 'AW-LIL-LEAF-WRAPS', '["Original"]'::jsonb, null, null, null, true, 'Lil Leaf wraps from the wraps and leaf line in our Tobacco department. Stocked in one variety: Original.', ''),
+  (214, 'Tropicana juice (big)', 'Tropicana', 'DRINKS & BAGS', 'Juices & Teas', 'AW-TROPICANA-BIG', '["Orange","Cranberry","Apple","Ruby red"]'::jsonb, 'Flavor', 'p214-tropicana-juice-big.jpg', null, true, 'Tropicana juice in the big bottle. Four flavors: Orange, Cranberry, Apple and Ruby red.', ''),
+  (215, 'Al Capone Leaf Wraps', 'Al Capone', 'TOBACCO', 'Wraps & Leafs', 'AW-ALCAPONE-LEAFS', '["Rum","Original","Cognac"]'::jsonb, 'Flavor', 'alcapone_wraps.jpg', null, true, 'Al Capone natural leaf wraps. Three flavors: Rum, Original and Cognac.', ''),
+  (216, 'Grinders', 'Assorted', 'NOVELTIES', 'Smoke Accessories', 'AW-GRINDERS', '["Big","Medium","Small"]'::jsonb, 'Size', 'p216-grinders.webp', null, true, 'Grinders from the smoke accessory line in our Novelties department. Three sizes: Big, Medium and Small.', ''),
+  (217, 'Champ Detox drink', 'Champ', 'NOVELTIES', 'Detox', 'AW-DETOX-CHAMP', '["Blueberry","Fruit punch","Lemon lime","Açaí berry","Kiwi strawberry","Grape"]'::jsonb, 'Flavor', 'detox_champ.jpg', null, true, 'Champ Detox drinks. Six flavors: Blueberry, Fruit punch, Lemon lime, Açaí berry, Kiwi strawberry and Grape.', ''),
+  (218, 'Herbal Clean QCarbo16', 'Herbal Clean', 'NOVELTIES', 'Detox', 'AW-Q-CARBO-16', '["Grape","Red","Strawberry mango","Orange"]'::jsonb, 'Flavor', 'p_qcarbo.jpg', 'BESTSELLER', true, 'Herbal Clean QCarbo16 detox drink, 16 oz. Four flavors: Grape, Red, Strawberry mango and Orange.', ''),
+  (219, 'Happy valentines jar', 'Happy', 'NOVELTIES', 'Gifts', 'AW-HAPPY-VALENTINES', '["4 inch","6 inch","Colored"]'::jsonb, 'Variety', null, null, true, 'Happy valentines jar, a novelty gift sold from a counter jar. Three varieties: 4 inch, 6 inch and Colored.', ''),
+  (220, 'Scales', 'Assorted', 'NOVELTIES', 'Smoke Accessories', 'AW-SCALES', '["Big","Medium","Small"]'::jsonb, 'Size', null, null, true, 'Scales from the smoke accessory line in our Novelties department. Three sizes: Big, Medium and Small.', ''),
+  (221, 'Value scales', 'Assorted', 'NOVELTIES', 'Smoke Accessories', 'AW-CHEAP-SCALES', '["Big","Medium","Small"]'::jsonb, 'Size', null, null, true, 'Value scales from the smoke accessory line in our Novelties department. Three sizes: Big, Medium and Small.', ''),
+  (222, 'Pepcid Complete', 'Pepcid', 'MERCHANDISE', 'OTC & Health', 'AW-PEPCID-COMPLETE', '[]'::jsonb, null, 'p222-pepcid-complete.jpg', null, true, 'Pepcid Complete antacid for the OTC shelf.', ''),
+  (223, 'Bayer', 'Bayer', 'MERCHANDISE', 'OTC & Health', 'AW-BAYER', '[]'::jsonb, null, 'p223-bayer.jpg', null, true, 'Bayer aspirin for the OTC shelf, from the OTC and health line in our Merchandise department.', ''),
+  (224, 'Mucinex DM', 'Mucinex', 'MERCHANDISE', 'OTC & Health', 'AW-MUCINEX-DM', '[]'::jsonb, null, 'p224-mucinex-dm.jpg', null, true, 'Mucinex DM cough and chest congestion relief.', ''),
+  (225, 'Lady Speed Stick women''s deodorant', 'Lady Speed Stick', 'GROCERY', 'Personal Care', 'AW-WOMEN-DEODORANT', '[]'::jsonb, null, 'p225-lady-speed-stick-deodorant.webp', null, true, 'Lady Speed Stick women''s deodorant, from the personal care line in our Grocery department.', ''),
+  (226, 'Excedrin', 'Excedrin', 'MERCHANDISE', 'OTC & Health', 'AW-EXCEDRIN', '["Extra","Migraine"]'::jsonb, 'Variety', 'p226-excedrin.jpg', null, true, 'Excedrin headache relief for the OTC shelf. Two varieties: Extra and Migraine.', ''),
+  (227, 'BC Powder', 'BC', 'MERCHANDISE', 'OTC & Health', 'AW-BC', '["6pk","2pk","Arthritis"]'::jsonb, 'Variety', 'p227-bc-powder.jpg', null, true, 'BC headache powders. Three varieties: 6pk, 2pk and Arthritis.', ''),
+  (228, 'Stanback headache powder', 'Stanback', 'MERCHANDISE', 'OTC & Health', 'AW-STANBACK', '["6pk","2pk"]'::jsonb, 'Size', 'p228-stanback.jpg', null, true, 'Stanback headache powders. Two sizes: 6pk and 2pk.', ''),
+  (229, 'Tums (small)', 'Tums', 'MERCHANDISE', 'OTC & Health', 'AW-TUMS-SMALL', '["Assorted fruit","Berries","Mint"]'::jsonb, 'Variety', 'p229-tums-small.jpg', null, true, 'Tums antacid tablets in the small size. Three varieties: Assorted fruit, Berries and Mint.', ''),
+  (230, 'Tums (big)', 'Tums', 'MERCHANDISE', 'OTC & Health', 'AW-TUMS-BIG', '["Assorted fruit","Berries","Mint"]'::jsonb, 'Variety', 'p230-tums-big.jpg', null, true, 'Tums antacid tablets in the big size. Three varieties: Assorted fruit, Berries and Mint.', ''),
+  (231, 'Rolaids', 'Rolaids', 'MERCHANDISE', 'OTC & Health', 'AW-ROLAIDS', '["Mint","Fruit"]'::jsonb, 'Variety', 'p231-rolaids.jpg', null, true, 'Rolaids antacid tablets. Two varieties: Mint and Fruit.', ''),
+  (232, 'Alani Nu energy drink', 'Alani Nu', 'DRINKS & BAGS', 'Energy Drinks', 'AW-ALANI', '["Cherry slush","Blue slush","Sherbet"]'::jsonb, 'Flavor', 'p232-alani-nu.jpg', null, true, 'Alani Nu energy drink. Three flavors: Cherry slush, Blue slush and Sherbet.', ''),
+  (233, 'Nesquik', 'Nesquik', 'DRINKS & BAGS', 'Dairy & Milk', 'AW-NESQUIK', '["Chocolate","Strawberry","Vanilla","Strawberry banana"]'::jsonb, 'Flavor', 'p233-nesquik.jpg', null, true, 'Nesquik flavored milk. Four flavors: Chocolate, Strawberry, Vanilla and Strawberry banana.', ''),
+  (234, 'Foco', 'Foco', 'DRINKS & BAGS', 'Juices & Teas', 'AW-FOCO', '["Big","Small"]'::jsonb, 'Size', 'p234-foco.jpg', null, true, 'Foco juice drinks. Two sizes: Big and Small.', ''),
+  (235, 'Kuii nata', 'Kuii', 'DRINKS & BAGS', 'Juices & Teas', 'AW-KUII-NATA', '["Melon","Original","Strawberry","Mango","Pineapple"]'::jsonb, 'Flavor', 'p235-kuii-nata.png', null, true, 'Kuii nata from the juice and tea line in our Drinks & Bags department. Five flavors: Melon, Original, Strawberry, Mango and Pineapple.', ''),
+  (236, 'OHM pipe tobacco, small bag', 'OHM', 'TOBACCO', 'Loose Tobacco Bags', 'AW-OHM-BAGS-SMALL', '["Bold","Menthol","Blue","Natural"]'::jsonb, 'Variety', 'p236-ohm-pipe-tobacco-small-bag.jpg', null, true, 'OHM pipe tobacco in the small bag. Four varieties: Bold, Menthol, Blue and Natural.', ''),
+  (237, 'OHM pipe tobacco, big bag', 'OHM', 'TOBACCO', 'Loose Tobacco Bags', 'AW-OHM-BAGS-BIG', '["Bold","Menthol","Blue","Natural","Turkish red","Menthol gold"]'::jsonb, 'Variety', 'p237-ohm-pipe-tobacco-big-bag.jpg', null, true, 'OHM pipe tobacco in the big bag. Six varieties: Bold, Menthol, Blue, Natural, Turkish red and Menthol gold.', ''),
+  (238, 'Gambler pipe tobacco, big bag', 'Gambler', 'TOBACCO', 'Loose Tobacco Bags', 'AW-GAMBLER-BAGS-BIG', '["Red","Gold","Silver","Menthol"]'::jsonb, 'Variety', 'p238-gambler-pipe-tobacco-big-bag.jpg', null, true, 'Gambler pipe tobacco in the big bag. Four varieties: Red, Gold, Silver and Menthol.', ''),
+  (239, 'Gambler pipe tobacco, small bag', 'Gambler', 'TOBACCO', 'Loose Tobacco Bags', 'AW-GAMBLER-BAGS-SMALL', '["Red","Gold","Silver","Menthol"]'::jsonb, 'Variety', 'p239-gambler-pipe-tobacco-small-bag.jpg', null, true, 'Gambler pipe tobacco in the small bag. Four varieties: Red, Gold, Silver and Menthol.', ''),
+  (240, 'American Club pipe tobacco, big bag', 'American Club', 'TOBACCO', 'Loose Tobacco Bags', 'AW-AMERICAN-CLUB-BIG', '["Menthol","Red","Blue"]'::jsonb, 'Variety', 'american_club.png', null, true, 'American Club pipe tobacco in the big bag. Three varieties: Menthol, Red and Blue.', ''),
+  (241, 'American Club pipe tobacco, small bag', 'American Club', 'TOBACCO', 'Loose Tobacco Bags', 'AW-AMERICAN-CLUB-SMALL', '["Menthol","Red","Blue"]'::jsonb, 'Variety', 'american_club.png', null, true, 'American Club pipe tobacco in the small bag. Three varieties: Menthol, Red and Blue.', ''),
+  (242, 'Gambler cigarette tubes', 'Gambler', 'TOBACCO', 'Tubes & Filters', 'AW-GAMBLER-TUBES', '["Gold 100","Gold king size","Menthol 100","Menthol king size","Red 100","Red king size"]'::jsonb, 'Variety', 'gambler_tubes.webp', null, true, 'Gambler cigarette filter tubes, 200 per box. Six varieties: Gold 100, Gold king size, Menthol 100, Menthol king size, Red 100 and Red king size.', 'box of 200'),
+  (243, 'Gambler Tube Cut cigarette tubes', 'Gambler', 'TOBACCO', 'Tubes & Filters', 'AW-TUBE-CUTS', '["Gold 100","Gold king size","Menthol 100","Menthol king size","Orange 100","Orange king size","Silver 100","Silver king size"]'::jsonb, 'Variety', 'tube_cuts.webp', null, true, 'Gambler Tube Cut cigarette filter tubes, 200 per box. Eight varieties: Gold 100, Gold king size, Menthol 100, Menthol king size, Orange 100, Orange king size, Silver 100 and Silver king size.', 'box of 200'),
+  (244, 'Shargio cigarette tubes', 'Shargio', 'TOBACCO', 'Tubes & Filters', 'AW-SHARGIO-TUBES', '["Green 250","Green 200","Blue 250","Blue 200","Red 250","Red 200"]'::jsonb, 'Variety', 'shargio_tubes.jpg', null, true, 'Shargio cigarette filter tubes. Six varieties: Green 250, Green 200, Blue 250, Blue 200, Red 250 and Red 200.', ''),
+  (245, 'BluntEffects incense', 'BluntEffects', 'MERCHANDISE', 'Air Fresheners & Incense', 'AW-BLUNTEFFECT-INCENSE', '["Small","Medium","Big"]'::jsonb, 'Size', 'blunteffect_incense_medium.webp', null, true, 'BluntEffects jumbo hand-dipped incense. Three sizes: Small, Medium and Big.', ''),
+  (246, 'Value incense', 'Assorted', 'MERCHANDISE', 'Air Fresheners & Incense', 'AW-CHEAP-INCENSE', '["Small","Medium","Big"]'::jsonb, 'Size', null, null, true, 'Value incense from the air freshener and incense line in our Merchandise department. Three sizes: Small, Medium and Big.', ''),
+  (247, 'Lattafa air freshener', 'Lattafa', 'MERCHANDISE', 'Air Fresheners & Incense', 'AW-LATTAFA-AIR-FRESHENER', '["Pink"]'::jsonb, null, 'lattafa_air_freshener.webp', null, true, 'Lattafa air freshener sprays. Stocked in one variety: Pink.', ''),
+  (248, 'Coca-Cola', 'Coca-Cola', 'DRINKS & BAGS', 'Sodas', 'AW-COKE', '[]'::jsonb, null, 'p248-coke.jpg', null, true, 'Coca-Cola from the soda line in our Drinks & Bags department.', ''),
+  (249, 'Sprite', 'Sprite', 'DRINKS & BAGS', 'Sodas', 'AW-SPRITE', '["Regular","Tropical"]'::jsonb, 'Variety', 'p249-sprite.jpg', null, true, 'Sprite from the soda line in our Drinks & Bags department. Two varieties: Regular and Tropical.', ''),
+  (250, 'Value lighters', 'Assorted', 'MERCHANDISE', 'Lighters & Torches', 'AW-CHEAP-LIGHTERS', '[]'::jsonb, null, 'cheap_lighters.jpg', null, true, 'Value pocket lighters in counter trays, from the lighter and torch line in our Merchandise department.', ''),
+  (251, 'Supreme cigarillos', 'Supreme', 'TOBACCO', 'Cigars & Cigarillos', 'AW-SUPREME', '["Green","Haze"]'::jsonb, 'Variety', 'supreme.jpg', null, true, 'Supreme cigarillos in pre-priced 5-count packs. Two varieties: Green and Haze.', ''),
+  (252, 'Playing cards', 'Assorted', 'MERCHANDISE', 'Counter Goods', 'AW-PLAYING-CARDS', '["Aviator","Cheap"]'::jsonb, 'Variety', null, null, true, 'Playing cards from the counter goods line in our Merchandise department. Two varieties: Aviator and Cheap.', ''),
+  (253, 'Ajax detergent', 'Ajax', 'GROCERY', 'Cleaning', 'AW-AJAX-DETERGENT', '[]'::jsonb, null, null, null, true, 'Ajax detergent from the cleaning line in our Grocery department.', ''),
+  (254, 'Luffbar', 'Luffbar', 'NOVELTIES', 'Disposable Vapes', 'AW-LUFFBAR', '["Alaska"]'::jsonb, null, 'p254-luffbar.jpg', null, true, 'Luffbar from the disposable vape line in our Novelties department. Stocked in one variety: Alaska.', ''),
+  (255, 'RAW rolling papers', 'RAW', 'TOBACCO', 'Papers & Cones', 'AW-RAW-PAPERS', '["Classic 1 1/4","Classic king size slim"]'::jsonb, 'Size', 'raw_papers.jpg', null, true, 'RAW Classic rolling papers. Two sizes: Classic 1 1/4 and Classic king size slim.', ''),
+  (256, 'RAW cones', 'RAW', 'TOBACCO', 'Papers & Cones', 'AW-RAW-CONES', '["Classic 6X","Classic 3X","Organic 6X","Organic 3X","Black 6X","Black 3X"]'::jsonb, 'Variety', 'raw_cones.jpg', null, true, 'RAW pre-rolled cones in Classic, Organic and Black. Six varieties: Classic 6X, Classic 3X, Organic 6X, Organic 3X, Black 6X and Black 3X.', ''),
+  (257, 'TOP rolling papers', 'TOP', 'TOBACCO', 'Papers & Cones', 'AW-TOP-PAPER', '["Jar","Box"]'::jsonb, 'Format', 'top_paper.jpg', null, true, 'TOP fine gummed rolling papers. Two formats: Jar and Box.', ''),
+  (258, 'Psyched pre rolls jars', 'Psyched', 'NOVELTIES', 'Mushroom Products', 'AW-PSYCHED-PRE-ROLLS', '["Any flavor"]'::jsonb, null, null, null, false, 'Psyched pre rolls jars from the mushroom product line in our Novelties department. Stocked in one variety: Any flavor.', 'jar'),
+  (259, 'Paper plates', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-PAPER-PLATES', '["Big","Small"]'::jsonb, 'Size', null, null, true, 'Paper plates from the paper and plastic line in our Grocery department. Two sizes: Big and Small.', ''),
+  (260, 'Backwoods True Wraps', 'Backwoods', 'TOBACCO', 'Wraps & Leafs', 'AW-BACKWOODS-TRUE', '["Original","Vanilla","Aromatic"]'::jsonb, 'Flavor', 'p260-backwoods-true-wraps.webp', null, true, 'Backwoods True Wraps from the wraps and leaf line in our Tobacco department. Three flavors: Original, Vanilla and Aromatic.', ''),
+  (261, 'Lighter Leash', 'Lighter Leash', 'MERCHANDISE', 'Lighters & Torches', 'AW-LIGHTER-LEASH', '["Regular","With clip","With design"]'::jsonb, 'Variety', 'p261-lighter-leash.jpg', null, true, 'Lighter Leash retractable lighter holders. Three varieties: Regular, With clip and With design.', ''),
+  (262, 'eFrutti jar', 'eFrutti', 'CANDIES', 'Jars', 'AW-EFRUTTI-JAR', '["Blue"]'::jsonb, null, 'efrutti_jar.webp', null, true, 'eFrutti gummy candy jar. Stocked in one variety: Blue.', 'jar'),
+  (263, 'White Owl Mini cigarillos', 'White Owl', 'TOBACCO', 'Cigars & Cigarillos', 'AW-WO-MINI', '["Silver","Red sweet","White grape","Blue raspberry"]'::jsonb, 'Variety', 'wo_mini.png', null, true, 'White Owl Mini cigarillos, the short-and-smooth White Owl format. Four varieties: Silver, Red sweet, White grape and Blue raspberry.', ''),
+  (264, 'NyQuil', 'NyQuil', 'MERCHANDISE', 'OTC & Health', 'AW-NYQUIL', '[]'::jsonb, null, 'p264-nyquil.png', null, true, 'NyQuil cold and flu relief for the OTC shelf.', ''),
+  (265, 'Hard Steel', 'Hard Steel', 'MERCHANDISE', 'Honey & Energy', 'AW-HARD-STEEL', '["Shots","Honey","Pills","Gold shots","Gold honey","Gold pills"]'::jsonb, 'Variety', 'hard_steel_honey.avif', 'PREMIUM', true, 'Hard Steel honey, shots and pills. Six flavors: Shots, Honey, Pills, Gold shots, Gold honey and Gold pills.', ''),
+  (266, 'Blue Wolf honey', 'Blue Wolf', 'MERCHANDISE', 'Honey & Energy', 'AW-BLUE-WOLF-HONEY', '[]'::jsonb, null, null, null, true, 'Blue Wolf honey from the honey and energy line in our Merchandise department.', ''),
+  (267, 'ZYN European mix', 'ZYN', 'TOBACCO', 'Pouches & ZYN', 'AW-ZYN-EUROPEAN', '[]'::jsonb, null, 'zyn_6mg.webp', null, true, 'ZYN nicotine pouches, European assortment.', ''),
+  (268, 'Sour Strips', 'Sour Strips', 'CANDIES', 'Sweets & Gummies', 'AW-SOUR-STRIPS', '["Blue"]'::jsonb, null, 'p268-sour-strips-blue-raspberry.jpg', null, true, 'Sour Strips sour candy. Stocked in one variety: Blue.', ''),
+  (269, 'Airheads soda', 'Airheads', 'DRINKS & BAGS', 'Sodas', 'AW-AIRHEADS-SODA', '["Green","Red","Blue","Pink","Orange"]'::jsonb, 'Color', null, null, true, 'Airheads soda from the soda line in our Drinks & Bags department. Five colors: Green, Red, Blue, Pink and Orange.', ''),
+  (270, 'Monster Energy', 'Monster', 'DRINKS & BAGS', 'Energy Drinks', 'AW-MONSTER', '["Green","White","Blue"]'::jsonb, 'Color', 'p270-monster-energy.jpg', 'DEAL', true, 'Monster Energy drinks. Three colors: Green, White and Blue.', ''),
+  (271, 'Snickers chocolate milk', 'Snickers', 'DRINKS & BAGS', 'Dairy & Milk', 'AW-SNICKERS-CHOCOLATE', '[]'::jsonb, null, 'p271-snickers-chocolate-milk.jpg', null, true, 'Snickers chocolate milk, from the dairy and milk line in our Drinks & Bags department.', ''),
+  (272, 'Jumex', 'Jumex', 'DRINKS & BAGS', 'Juices & Teas', 'AW-JUMEX', '["Mango","Guava","Strawberry banana","Peach","Pineapple coconut"]'::jsonb, 'Flavor', 'p272-jumex.jpg', null, true, 'Jumex fruit drinks. Five flavors: Mango, Guava, Strawberry banana, Peach and Pineapple coconut.', ''),
+  (273, 'LooseLeaf splits diamond wraps', 'LooseLeaf', 'TOBACCO', 'Wraps & Leafs', 'AW-LOOSE-LEAFS-SPLITS', '[]'::jsonb, null, 'loose_leafs_wraps_5pk.webp', null, true, 'LooseLeaf Diamond wraps in the splits format.', ''),
+  (274, 'RAW Guarana wraps', 'RAW', 'TOBACCO', 'Wraps & Leafs', 'AW-RAW-GUARANA-WRAPS', '[]'::jsonb, null, null, null, true, 'RAW Guarana wraps from the wraps and leaf line in our Tobacco department.', ''),
+  (275, 'Jolly Rancher hard candy 5 lb bag', 'Jolly Rancher', 'CANDIES', 'Sweets & Gummies', 'AW-JOLLY-RANCHER', '[]'::jsonb, null, 'jolly_rancher_5lbs.webp', null, true, 'Jolly Rancher hard candy in the 5 lb bulk bag.', '5 lb bag'),
+  (276, 'Now and Later Giant Chewy jar', 'Now and Later', 'CANDIES', 'Jars', 'AW-NOW-AND-LATER-GIANT', '[]'::jsonb, null, 'now_later_jar.webp', null, true, 'Now and Later Giant Chewy taffy in the counter jar.', 'jar'),
+  (277, 'Jungle Jollies', 'Jungle Jollies', 'CANDIES', 'Sweets & Gummies', 'AW-JUNGLE-JOLLIES', '[]'::jsonb, null, 'jungle_jollies.jpg', null, true, 'Jungle Jollies candy in counter boxes, from the sweets and gummies line in our Candies department.', ''),
+  (278, 'Van Holten''s Pickle-In-A-Pouch', 'Van Holten''s', 'FOOD STUFF', 'Quick Meals', 'AW-VAN-HOLT', '["Big papa","Hot mama","Garlic Joe","Kosher","Dill"]'::jsonb, 'Flavor', 'van_holt_pickles.jpg', null, true, 'Van Holten''s whole pickles in pouches. Five flavors: Big papa, Hot mama, Garlic Joe, Kosher and Dill.', ''),
+  (279, 'Maruchan Yakisoba', 'Maruchan', 'FOOD STUFF', 'Quick Meals', 'AW-YAKISOBA', '["Beef","Chicken"]'::jsonb, 'Flavor', 'yakisoba_noodles.jpg', null, true, 'Maruchan Yakisoba noodle trays. Two flavors: Beef and Chicken.', ''),
+  (280, 'Coastal motor oil', 'Coastal', 'MOTOR OIL', 'Motor Oil', 'AW-COASTAL', '["5W-30","5W-20"]'::jsonb, 'Type', 'p280-coastal-motor-oil.jpg', null, true, 'Coastal synthetic blend motor oil in quarts. Two grades: 5W-30 and 5W-20.', ''),
+  (281, 'Hush hit pre rolls 2pk', 'Hush Hit', 'NOVELTIES', 'Mushroom Products', 'AW-HUSH-HIT-PRE-ROLLS', '["Blue dream"]'::jsonb, null, 'p281-hush-hit-pre-rolls-2pk.jpg', null, false, 'Hush hit pre rolls 2pk from the mushroom product line in our Novelties department. Stocked in one variety: Blue dream.', '2-pack'),
+  (282, 'JOB rolling papers', 'JOB', 'TOBACCO', 'Papers & Cones', 'AW-JOB-PAPERS', '["1.5","1.25","1.0","1.5 slim"]'::jsonb, 'Size', 'job_papers.jpg', 'BESTSELLER', true, 'JOB rolling papers. Four sizes: 1.5, 1.25, 1.0 and 1.5 slim.', ''),
+  (283, 'Duct tape', 'Assorted', 'GROCERY', 'Hardware', 'AW-DUCT-TAPE', '[]'::jsonb, null, null, null, true, 'Duct tape from the hardware line in our Grocery department.', ''),
+  (284, 'Clear tape', 'Assorted', 'GROCERY', 'Hardware', 'AW-CLEAR-TAPE', '[]'::jsonb, null, null, null, true, 'Clear tape from the hardware line in our Grocery department.', ''),
+  (285, 'Shroom bang pre rolls 2pk', 'Shroom Bang', 'NOVELTIES', 'Mushroom Products', 'AW-SHROOM-BANG-PRE-ROLLS', '["Purple","Blue"]'::jsonb, 'Color', 'p285-shroom-bang-pre-rolls-2pk.webp', null, false, 'Shroom bang pre rolls 2pk from the mushroom product line in our Novelties department. Two colors: Purple and Blue.', '2-pack'),
+  (286, 'AA Cellular Bluetooth headphones', 'AA Cellular', 'MERCHANDISE', 'Electronics', 'AW-AA-CELLULAR-BLUETOOTH', '[]'::jsonb, null, null, null, true, 'AA Cellular Bluetooth headphones, from the electronics line in our Merchandise department.', ''),
+  (287, 'Eagle Torch lighters', 'Eagle Torch', 'MERCHANDISE', 'Lighters & Torches', 'AW-EAGLE-TORCHES', '["Big","Medium","Small"]'::jsonb, 'Size', 'eagles_torches_3.jpg', null, true, 'Eagle Torch lighters in counter displays. Three sizes: Big, Medium and Small.', ''),
+  (288, 'Blue monkey pre rolls 2pk', 'Blue Monkey', 'NOVELTIES', 'Mushroom Products', 'AW-BLUE-MONKEY-PRE-ROLLS', '["Space monkey","Blue razz"]'::jsonb, 'Flavor', null, null, false, 'Blue monkey pre rolls 2pk from the mushroom product line in our Novelties department. Two flavors: Space monkey and Blue razz.', '2-pack'),
+  (289, 'Psyched disposable 9000mg', 'Psyched', 'NOVELTIES', 'Mushroom Products', 'AW-PSYCHED-DISPOSABLE', '["Snow lotus"]'::jsonb, null, null, null, false, 'Psyched disposable 9000mg from the mushroom product line in our Novelties department. Stocked in one variety: Snow lotus.', ''),
+  (290, 'Powerade (big)', 'Powerade', 'DRINKS & BAGS', 'Sports Drinks', 'AW-POWERADE-BIG', '["Blue","Red","Grape","Yellow"]'::jsonb, 'Flavor', 'powerade_20oz.webp', null, true, 'Powerade in the big bottle. Four flavors: Blue, Red, Grape and Yellow.', ''),
+  (291, 'Powerade (small)', 'Powerade', 'DRINKS & BAGS', 'Sports Drinks', 'AW-POWERADE-SMALL', '["Blue","Red","Grape","Yellow"]'::jsonb, 'Flavor', 'powerade_20oz.webp', null, true, 'Powerade in the small bottle. Four flavors: Blue, Red, Grape and Yellow.', ''),
+  (292, 'Electrolit', 'Electrolit', 'DRINKS & BAGS', 'Energy Drinks', 'AW-ELECTROLIT', '["Blue"]'::jsonb, null, 'p292-electrolit.webp', null, true, 'Electrolit electrolyte hydration drink. Stocked in one variety: Blue.', ''),
+  (293, 'Sip happens', 'Sip Happens', 'NOVELTIES', 'Kratom & Kava', 'AW-SIP-HAPPENS', '[]'::jsonb, null, null, null, false, 'Sip happens from the kratom and kava line in our Novelties department.', ''),
+  (294, 'PIK nicotine pouches 16mg', 'PIK', 'TOBACCO', 'Pouches & ZYN', 'AW-PIK-16MG', '["Wintergreen"]'::jsonb, null, 'pik_16mg.jpg', null, true, 'PIK 16mg nicotine pouches, 20 per can. Stocked in one variety: Wintergreen.', 'can of 20'),
+  (295, 'Snack wraps', 'Assorted', 'FOOD STUFF', 'Chips & Crackers', 'AW-SNACK-WRAPS', '["40ct","12ct"]'::jsonb, 'Size', null, null, true, 'Snack wraps, a chips brand. Two sizes: 40ct and 12ct. Flavors vary by availability.', ''),
+  (296, 'Jelly holes pre rolls', 'Jelly Holes', 'NOVELTIES', 'Mushroom Products', 'AW-JELLY-HOLES-PRE-ROLLS', '["Dirty girl"]'::jsonb, null, 'p296-jelly-holes-pre-rolls.jpg', null, false, 'Jelly holes pre rolls from the mushroom product line in our Novelties department. Stocked in one variety: Dirty girl.', ''),
+  (297, 'Toothbrushes', 'Assorted', 'GROCERY', 'Personal Care', 'AW-TOOTHBRUSHES', '[]'::jsonb, null, null, null, true, 'Toothbrushes from the personal care line in our Grocery department.', ''),
+  (298, 'Shroom rolls pre rolls jars', 'Shroom Rolls', 'NOVELTIES', 'Mushroom Products', 'AW-SHROOM-ROLLS-PRE-ROLLS', '[]'::jsonb, null, null, null, false, 'Shroom rolls pre rolls jars from the mushroom product line in our Novelties department.', 'jar'),
+  (299, 'Psyched 6000mg disposable', 'Psyched', 'NOVELTIES', 'Mushroom Products', 'AW-PSYCHED-6000MG', '["Snow lotus"]'::jsonb, null, 'p299-psyched-6000mg-disposable.webp', null, false, 'Psyched 6000mg disposable from the mushroom product line in our Novelties department. Stocked in one variety: Snow lotus.', ''),
+  (300, 'Melted mushroom pre rolls 2pk', 'Melted', 'NOVELTIES', 'Mushroom Products', 'AW-MELTED-MUSHROOM', '["Blue razz"]'::jsonb, null, null, null, false, 'Melted mushroom pre rolls 2pk from the mushroom product line in our Novelties department. Stocked in one variety: Blue razz.', '2-pack'),
+  (301, 'Xuno pills', 'Xuno', 'NOVELTIES', 'Wellness Pills', 'AW-XUNO-PILLS', '[]'::jsonb, null, null, null, true, 'Xuno pills from the wellness pill line in our Novelties department.', ''),
+  (302, 'Better me pills', 'Better Me', 'NOVELTIES', 'Wellness Pills', 'AW-BETTER-ME-PILLS', '[]'::jsonb, null, null, null, true, 'Better me pills from the wellness pill line in our Novelties department.', ''),
+  (303, 'High gravity pills', 'High Gravity', 'NOVELTIES', 'Wellness Pills', 'AW-HIGH-GRAVITY-PILLS', '[]'::jsonb, null, null, null, true, 'High gravity pills from the wellness pill line in our Novelties department.', ''),
+  (304, 'Third eye pills', 'Third Eye', 'NOVELTIES', 'Wellness Pills', 'AW-THIRD-EYE-PILLS', '[]'::jsonb, null, null, null, true, 'Third eye pills from the wellness pill line in our Novelties department.', ''),
+  (305, 'Tyson 2.0 blunt wraps', 'Tyson 2.0', 'TOBACCO', 'Wraps & Leafs', 'AW-TYSON-WRAPS', '[]'::jsonb, null, 'tyson_wraps.jpg', null, true, 'Tyson 2.0 blunt wraps by Futurola in the counter display box.', ''),
+  (306, 'Stoned mushroom gummies bags regular', 'Stoned', 'NOVELTIES', 'Mushroom Products', 'AW-STONED-MUSHROOM', '[]'::jsonb, null, null, null, false, 'Stoned mushroom gummies bags regular from the mushroom product line in our Novelties department.', ''),
+  (307, 'Stoned honey mushroom bags', 'Stoned', 'NOVELTIES', 'Mushroom Products', 'AW-STONED-HONEY-MUSHROOM', '[]'::jsonb, null, 'p307-stoned-honey-mushroom-bags.webp', null, false, 'Stoned honey mushroom bags from the mushroom product line in our Novelties department.', ''),
+  (308, 'UPass', 'UPass', 'NOVELTIES', 'Detox', 'AW-UPASS', '[]'::jsonb, null, 'upass.webp', null, true, 'UPass toxin-free synthetic urine, 3 oz, from the detox line in our Novelties department.', ''),
+  (309, 'Water bongs', 'Assorted', 'NOVELTIES', 'Smoke Accessories', 'AW-WATER-BONGS', '[]'::jsonb, null, 'p309-water-bongs.webp', null, true, 'Water bongs from the smoke accessory line in our Novelties department.', ''),
+  (310, 'Geek Bar Mate 60K', 'Geek Bar', 'NOVELTIES', 'Disposable Vapes', 'AW-GEEKBAR-MATE', '[]'::jsonb, null, 'p310-geek-bar-mate-60k.webp', null, true, 'Geek Bar Mate from the disposable vape line in our Novelties department.', ''),
+  (311, 'Geek Bar Mate 60K pods', 'Geek Bar', 'NOVELTIES', 'Vape Pods', 'AW-GEEKBAR-MATE-PODS', '[]'::jsonb, null, null, null, true, 'Geek Bar Mate pods from the vape pod line in our Novelties department.', ''),
+  (312, 'Stoned blue lotus gummies bags', 'Stoned', 'NOVELTIES', 'Mushroom Products', 'AW-STONED-BLUE-LOTUS', '[]'::jsonb, null, 'p312-stoned-blue-lotus-gummies.webp', null, false, 'Stoned blue lotus gummies bags from the mushroom product line in our Novelties department.', ''),
+  (313, 'Psyched blue lotus gummies 25ct box', 'Psyched', 'NOVELTIES', 'Mushroom Products', 'AW-PSYCHED-BLUE-LOTUS', '[]'::jsonb, null, null, null, false, 'Psyched blue lotus gummies 25ct box from the mushroom product line in our Novelties department.', '25-count box'),
+  (314, 'Coco Nara hookah charcoal', 'Coco Nara', 'NOVELTIES', 'Hookah & Shisha', 'AW-COCO-NARA-CHARCOAL', '["Small","Medium","Big","1 kg"]'::jsonb, 'Size', 'p314-coco-nara-hookah-charcoal.webp', null, true, 'Coco Nara coconut hookah charcoal. Four sizes: Small, Medium, Big and 1 kg.', ''),
+  (315, 'Al Fakher shisha 50 g', 'Al Fakher', 'NOVELTIES', 'Hookah & Shisha', 'AW-ALFAKHER-50-GRAM', '["Mint"]'::jsonb, null, 'alfakher_50_gram.webp', null, true, 'Al Fakher hookah tobacco in the 50 g tin. Stocked in one variety: Mint.', '50 g tin'),
+  (316, 'Al Fakher shisha 250 g', 'Al Fakher', 'NOVELTIES', 'Hookah & Shisha', 'AW-ALFAKHER-250-GRAM', '["Mint"]'::jsonb, null, 'alfakher_250_gram.webp', null, true, 'Al Fakher hookah tobacco in the 250 g tin. Stocked in one variety: Mint.', '250 g tin'),
+  (317, 'Al Fakher shisha 1 kg', 'Al Fakher', 'NOVELTIES', 'Hookah & Shisha', 'AW-ALFAKHER-1KG', '["Mint"]'::jsonb, null, 'alfakher_250_gram.webp', null, true, 'Al Fakher hookah tobacco in the 1 kg tin. Stocked in one variety: Mint.', '1 kg tin'),
+  (318, 'Tyson 2.0 rolling papers', 'Tyson 2.0', 'TOBACCO', 'Papers & Cones', 'AW-TYSON-PAPERS', '["Yellow","Regular"]'::jsonb, 'Variety', 'tyson_wraps.jpg', null, true, 'Tyson 2.0 rolling papers. Two varieties: Yellow and Regular.', ''),
+  (319, 'Wild Hemp hemp wraps', 'Wild Hemp', 'TOBACCO', 'Wraps & Leafs', 'AW-WILD-HEMP', '["Natural"]'::jsonb, null, 'wild_hemps.jpg', null, true, 'Wild Hemp hemp wraps in 2-count packs. Stocked in one variety: Natural.', ''),
+  (320, 'King Palm rolls', 'King Palm', 'TOBACCO', 'Wraps & Leafs', 'AW-KING-PALM', '["Regular"]'::jsonb, null, 'king_palm.jpg', null, true, 'King Palm hand-rolled leaf rolls in 2-count mini packs. Stocked in one variety: Regular.', ''),
+  (321, 'VIP Royal Honey gold', 'VIP', 'MERCHANDISE', 'Honey & Energy', 'AW-VIP-GOLD-HONEY', '[]'::jsonb, null, 'vip_gold_honey.webp', 'PREMIUM', true, 'VIP Royal Honey gold sachets, from the honey and energy line in our Merchandise department.', ''),
+  (322, 'Secret Miracle Honey', 'Secret Miracle', 'MERCHANDISE', 'Honey & Energy', 'AW-SECRET-MIRACLE', '[]'::jsonb, null, 'secret_miracle_honey_1.jpg', null, true, 'Secret Miracle Honey, VIP extra strength box.', ''),
+  (323, 'Twang beer salt bottles', 'Twang', 'FOOD STUFF', 'Sauces & Salts', 'AW-BEER-SALTS-BOTTLES', '["Lemon lime","Lime"]'::jsonb, 'Flavor', 'twang_beer_salts_bottles.jpg', null, true, 'Twang beer salt shaker bottles. Two flavors: Lemon lime and Lime.', ''),
+  (324, 'Twangerz beer salt packets', 'Twang', 'FOOD STUFF', 'Sauces & Salts', 'AW-BEER-SALTS-PACKETS', '["Yellow","Green"]'::jsonb, 'Color', 'twang_beer_salts_packets.webp', null, true, 'Twangerz flavored salt packets in the counter display. Two colors: Yellow and Green.', ''),
+  (325, 'Jarritos soda', 'Jarritos', 'DRINKS & BAGS', 'Sodas', 'AW-JARRITOS', '["Orange"]'::jsonb, null, 'jarritos.jpg', null, true, 'Jarritos soda in glass bottles. Stocked in one variety: Orange.', ''),
+  (326, 'Maruchan ramen cups', 'Maruchan', 'FOOD STUFF', 'Quick Meals', 'AW-MARUCHAN-CUPS', '["Chicken","Beef","Shrimp"]'::jsonb, 'Flavor', 'maruchan_packs.jpg', null, true, 'Maruchan instant ramen cups. Three flavors: Chicken, Beef and Shrimp.', ''),
+  (327, 'Maruchan ramen packs', 'Maruchan', 'FOOD STUFF', 'Quick Meals', 'AW-MARUCHAN-PACKS', '["Chicken","Beef","Shrimp"]'::jsonb, 'Flavor', 'maruchan_packs.jpg', null, true, 'Maruchan ramen noodle soup packs. Three flavors: Chicken, Beef and Shrimp.', ''),
+  (328, 'Takis chips', 'Takis', 'FOOD STUFF', 'Chips & Crackers', 'AW-TAKIS', '["Fuego small","Fuego big","Blue heat small","Blue heat big"]'::jsonb, 'Variety', 'takis.webp', 'BESTSELLER', true, 'Takis rolled tortilla chips. Four varieties: Fuego small, Fuego big, Blue heat small and Blue heat big.', ''),
+  (329, 'RAW tips', 'RAW', 'TOBACCO', 'Papers & Cones', 'AW-RAW-TIPS', '[]'::jsonb, null, 'raw_papers.jpg', null, true, 'RAW rolling tips from the papers and cones line in our Tobacco department.', ''),
+  (330, 'High Hemp organic wraps', 'High Hemp', 'TOBACCO', 'Wraps & Leafs', 'AW-HIGH-HEMP', '[]'::jsonb, null, 'high_hemp_organic.webp', null, true, 'High Hemp organic hemp wraps.', ''),
+  (331, 'Panasonic batteries', 'Panasonic', 'MERCHANDISE', 'Electronics', 'AW-PANASONIC', '["AAA 2-pack"]'::jsonb, null, null, null, true, 'Panasonic batteries in carded packs. Stocked in one variety: AAA 2-pack.', ''),
+  (332, 'Black Tiger Honey', 'Black Tiger', 'MERCHANDISE', 'Honey & Energy', 'AW-BLACK-TIGER-HONEY', '["Flat box","Round box"]'::jsonb, 'Format', 'black_tiger_honey.jpg', 'PREMIUM', true, 'Black Tiger Honey sachets with ashwagandha. Two flavors: Flat box and Round box.', ''),
+  (333, 'Gain dish liquid', 'Gain', 'GROCERY', 'Laundry & Detergent', 'AW-GAIN-DISH-LIQUID', '[]'::jsonb, null, 'gain.jpg', null, true, 'Gain dish liquid, from the laundry and detergent line in our Grocery department.', ''),
+  (334, 'Bandaids', 'Assorted', 'MERCHANDISE', 'OTC & Health', 'AW-BANDAIDS', '[]'::jsonb, null, 'p334-bandaids.jpg', null, true, 'Adhesive bandages, from the OTC and health line in our Merchandise department.', ''),
+  (335, 'Gatorade (small)', 'Gatorade', 'DRINKS & BAGS', 'Sports Drinks', 'AW-GATORADE-SMALL', '["Blue"]'::jsonb, null, 'p_gatorade.jpg', null, true, 'Gatorade in the small bottle. Stocked in one variety: Blue.', ''),
+  (336, 'Gatorade (big)', 'Gatorade', 'DRINKS & BAGS', 'Sports Drinks', 'AW-GATORADE-BIG', '["Blue"]'::jsonb, null, 'p_gatorade.jpg', 'BESTSELLER', true, 'Gatorade in the big bottle. Stocked in one variety: Blue.', ''),
+  (337, 'Bob Marley rolling papers', 'Bob Marley', 'TOBACCO', 'Papers & Cones', 'AW-BOB-MARLEY-PAPERS', '["Yellow small","Yellow big","Yellow big with tips","Organic small","Organic big","Organic big with tips","Silver small","Silver big"]'::jsonb, 'Variety', 'bob_marley_papers.jpg', null, true, 'Bob Marley rolling papers. Eight varieties: Yellow small, Yellow big, Yellow big with tips, Organic small, Organic big, Organic big with tips, Silver small and Silver big.', ''),
+  (338, 'Grabba Leaf', 'Grabba Leaf', 'TOBACCO', 'Wraps & Leafs', 'AW-GRABBA-LEAF', '["Big","Small","Small yellow","Big yellow"]'::jsonb, 'Variety', 'grabba_leaf_small.webp', null, true, 'Grabba Leaf whole tobacco leaf. Four varieties: Big, Small, Small yellow and Big yellow.', ''),
+  (339, 'Billionaire hemp wraps', 'Billionaire', 'TOBACCO', 'Wraps & Leafs', 'AW-BILLIONAIRE-WRAPS', '["Russian cream"]'::jsonb, null, 'billionaire_wraps.jpg', null, true, 'Billionaire hemp wraps. Stocked in one variety: Russian cream.', ''),
+  (340, 'Slapwoods cigar wraps singles', 'Slapwoods', 'TOBACCO', 'Cigars & Cigarillos', 'AW-SLAPWOODS-SINGLES', '["Russian cream"]'::jsonb, null, 'slapwoods_5pk.webp', null, true, 'Slapwoods natural leaf cigar wraps sold as singles. Stocked in one variety: Russian cream.', 'single'),
+  (341, 'Silly dots pills', 'Silly Dots', 'NOVELTIES', 'Wellness Pills', 'AW-SILLY-DOTS-PILLS', '["Cherry"]'::jsonb, null, null, null, true, 'Silly dots pills from the wellness pill line in our Novelties department. Stocked in one variety: Cherry.', ''),
+  (342, 'Dubai chocolate', 'Assorted', 'CANDIES', 'Chocolate Bars', 'AW-DUBAI-CHOCOLATE', '["Small","Big"]'::jsonb, 'Size', null, 'NEW', true, 'Dubai chocolate bars. Two sizes: Small and Big.', ''),
+  (343, 'Gummy novelty candy', 'Assorted', 'CANDIES', 'Sweets & Gummies', 'AW-GUMMY', '["Burger","Pizza","Hotdog","Cupcake","SpongeBob","Sour burger"]'::jsonb, 'Variety', 'efrutti_gummy.webp', null, true, 'Novelty gummy candy shaped like burgers, pizza, hot dogs and cupcakes. Six varieties: Burger, Pizza, Hotdog, Cupcake, SpongeBob and Sour burger.', ''),
+  (344, 'Krazy Glue', 'Krazy Glue', 'GROCERY', 'Hardware', 'AW-KRAZY-GLUE', '[]'::jsonb, null, 'krazy_glue.jpg', null, true, 'Krazy Glue all-purpose super glue, from the hardware line in our Grocery department.', ''),
+  (345, 'Super glue', 'Assorted', 'GROCERY', 'Hardware', 'AW-SUPER-GLUE', '[]'::jsonb, null, null, null, true, 'Super glue from the hardware line in our Grocery department.', ''),
+  (346, 'Monster Java', 'Monster', 'DRINKS & BAGS', 'Energy Drinks', 'AW-MONSTER-JAVA', '[]'::jsonb, null, 'p346-monster-java.jpg', null, true, 'Monster Java coffee energy drink, from the energy drink line in our Drinks & Bags department.', ''),
+  (347, 'Zig-Zag hemp wraps', 'Zig-Zag', 'TOBACCO', 'Wraps & Leafs', 'AW-ZIGZAG-HEMP-WRAPS', '["Natural"]'::jsonb, null, 'zigzag_hemp_wraps.jpg', null, true, 'Zig-Zag hemp wraps in 2-count packs. Stocked in one variety: Natural.', ''),
+  (348, 'Oreo cookies', 'Oreo', 'FOOD STUFF', 'Cookies', 'AW-OREO', '["Regular"]'::jsonb, null, 'oreo_cookies_single.jpg', 'BESTSELLER', true, 'Oreo cookies in single-serve packs. Stocked in one variety: Regular.', ''),
+  (349, 'Nutter Butter cookies', 'Nutter Butter', 'FOOD STUFF', 'Cookies', 'AW-NUTTER-BUTTER', '["Regular"]'::jsonb, null, 'p349-nutter-butter-cookies.png', null, true, 'Nutter Butter peanut butter sandwich cookies. Stocked in one variety: Regular.', ''),
+  (350, 'Uncle Al''s cookies', 'Uncle Al''s', 'FOOD STUFF', 'Cookies', 'AW-UNCLE-AL-S', '[]'::jsonb, null, null, null, true, 'Uncle Al''s cookies, from the cookie line in our Food Stuff department. Flavors vary by availability.', ''),
+  (351, 'Uncle Al''s creme', 'Uncle Al''s', 'FOOD STUFF', 'Cookies', 'AW-UNCLE-AL-S-COOKIES', '[]'::jsonb, null, null, null, true, 'Uncle Al''s creme, from the cookie line in our Food Stuff department. Flavors vary by availability.', ''),
+  (352, 'Louisiana Hot Sauce', 'Louisiana', 'FOOD STUFF', 'Sauces & Salts', 'AW-LOUISIANA-HOT', '[]'::jsonb, null, 'louisiana_hot_sauce.jpg', null, true, 'Louisiana Hot Sauce bottles, from the sauces and salts line in our Food Stuff department.', ''),
+  (353, 'Instant coffee', 'Assorted', 'FOOD STUFF', 'Coffee', 'AW-INSTANT-COFFEE', '["Small","Big"]'::jsonb, 'Size', null, null, true, 'Instant coffee from the coffee line in our Food Stuff department. Two sizes: Small and Big.', ''),
+  (354, 'Folgers coffee (small)', 'Folgers', 'FOOD STUFF', 'Coffee', 'AW-FOLGERS-COFFEE', '[]'::jsonb, null, 'p354-folgers-coffee.jpg', null, true, 'Folgers coffee in the small size, from the coffee line in our Food Stuff department.', ''),
+  (355, 'Gold Band lubricants', 'Gold Band', 'MOTOR OIL', 'Motor Oil', 'AW-GOLD-BAND', '["Type A"]'::jsonb, null, 'gold_band.jpg', null, true, 'Gold Band automotive lubricants. Stocked in one variety: Type A.', ''),
+  (356, 'Gas cans', 'Assorted', 'MOTOR OIL', 'Auto Accessories', 'AW-GAS-CANS', '["1 gal","2 gal","5 gal"]'::jsonb, 'Size', 'p356-gas-cans.webp', null, true, 'Gas cans from the auto accessory line in our Motor Oil department. Three sizes: 1 gal, 2 gal and 5 gal.', ''),
+  (357, 'Starburst bars', 'Starburst', 'CANDIES', 'Sweets & Gummies', 'AW-STARBURST-BARS', '["Fave reds share size"]'::jsonb, null, 'p357-starburst-favereds-share-size.png', null, true, 'Starburst fruit chew bars. Stocked in one variety: Fave reds share size.', ''),
+  (358, 'Life Savers Gummies share size', 'Life Savers', 'CANDIES', 'Sweets & Gummies', 'AW-LIFESAVER-SHARE', '["Wildberry"]'::jsonb, null, 'lifesaver_gummies_share_size.webp', null, true, 'Life Savers Gummies share-size bags, 15 per box. Stocked in one variety: Wildberry.', 'box of 15'),
+  (359, 'Cooking oil (1-2-3 vegetable oil)', '1-2-3', 'FOOD STUFF', 'Cooking Basics', 'AW-COOKING-OIL', '["Small","Big"]'::jsonb, 'Size', 'cooking_oil.webp', null, true, '1-2-3 vegetable cooking oil. Two sizes: Small and Big.', ''),
+  (360, 'Bug Juice', 'Bug Juice', 'DRINKS & BAGS', 'Juices & Teas', 'AW-BUG-JUICE', '["Blue"]'::jsonb, null, 'p360-bug-juice.png', null, true, 'Bug Juice fruit drink. Stocked in one variety: Blue.', ''),
+  (361, 'Domino sugar', 'Domino', 'FOOD STUFF', 'Cooking Basics', 'AW-DOMINO-SUGAR', '["Small","Big"]'::jsonb, 'Size', 'p361-domino-sugar.jpg', null, true, 'Domino sugar from the cooking basics line in our Food Stuff department. Two sizes: Small and Big.', ''),
+  (362, 'Disposable gloves', 'Assorted', 'GROCERY', 'Hardware', 'AW-DISPOSABLE-GLOVES', '["Medium","Large"]'::jsonb, 'Size', null, null, true, 'Disposable gloves. Two sizes: Medium and Large.', ''),
+  (363, 'Durags', 'Assorted', 'MERCHANDISE', 'Apparel', 'AW-DURAGS', '["Black","White"]'::jsonb, 'Color', null, null, true, 'Durags from the apparel line in our Merchandise department. Two colors: Black and White.', ''),
+  (364, 'Wave caps', 'Assorted', 'MERCHANDISE', 'Apparel', 'AW-WAVE-CAPS', '["Black","White"]'::jsonb, 'Color', null, null, true, 'Wave caps from the apparel line in our Merchandise department. Two colors: Black and White.', ''),
+  (365, 'Orajel', 'Orajel', 'MERCHANDISE', 'OTC & Health', 'AW-ORAJEL', '[]'::jsonb, null, 'p365-orajel.jpg', null, true, 'Orajel oral pain relief for the OTC shelf.', ''),
+  (366, 'Garcia y Vega cigars', 'Garcia y Vega', 'TOBACCO', 'Cigars & Cigarillos', 'AW-GARCIA-VEGA', '["Green"]'::jsonb, null, 'p366-garcia-y-vega-cigars.jpg', null, true, 'Garcia y Vega cigars from the cigar and cigarillo line in our Tobacco department. Stocked in one variety: Green.', ''),
+  (367, 'LooseLeaf wraps 5-pack', 'LooseLeaf', 'TOBACCO', 'Wraps & Leafs', 'AW-LOOSE-LEAFS-5PK', '["Watermelon"]'::jsonb, null, 'loose_leafs_wraps_5pk.webp', null, true, 'LooseLeaf flavored wraps in 5-packs. Stocked in one variety: Watermelon.', '5-pack'),
+  (368, 'Camo wraps', 'Camo', 'TOBACCO', 'Wraps & Leafs', 'AW-CAMO-WRAPS', '["Natural"]'::jsonb, null, 'p368-camo-wraps-natural.webp', null, true, 'Camo wraps from the wraps and leaf line in our Tobacco department. Stocked in one variety: Natural.', '')
+on conflict (id) do nothing;
+
+-- Moves products_id_seq (20261010120000_admin_product_editor.sql) past the ids above, so
+-- the next product added in Admin -> Products gets a new id. Never moves it back.
+do $$
+begin
+  if to_regclass('public.products_id_seq') is not null then
+    perform setval(
+      'public.products_id_seq',
+      greatest(
+        coalesce((select max(id) from public.products), 0) + 1,
+        (select case when is_called then last_value + 1 else last_value end from public.products_id_seq)
+      ),
+      false
+    );
+  end if;
+end $$;

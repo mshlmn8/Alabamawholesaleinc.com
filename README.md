@@ -1,22 +1,44 @@
 # Alabama Wholesale Inc
 
-Wholesale retail catalog website. 368 SKUs across 8 departments — tobacco, novelties, merchandise, candies, food stuff, grocery, motor oil, drinks & bags.
+Editorial wholesale storefront for licensed retailers. 368 SKUs across 8 departments — tobacco, novelties, merchandise, candies, food stuff, grocery, motor oil, drinks & bags — shipping from Birmingham.
 
-## Improvements in this version
+**Going live?** Follow [SETUP.md](SETUP.md): update the database with one file, deploy on Netlify, connect the domain, and the first checks, click by click.
 
-- Working global product search in the desktop and mobile header
-- Quick-order panel for fast B2B quote building by SKU, brand, flavor, or category
-- Persistent age verification, cart contents, and trade sign-in state via `localStorage`
-- Welcome popup now appears only once per browser instead of every verified visit
-- Cart drawer now includes a free-delivery progress meter for the $1,500 threshold
-- Escape key closes open drawers and modals; open overlays lock background scrolling
-- Product cards have stronger hover states and faster quote controls
-- Embedded base64 images were moved into `src/assets/` so the production bundle is smaller and images are cacheable
-- Vite build now splits React/vendor/icon code into separate cacheable chunks
+Every page uses the 2A editorial system: Barlow Condensed and DM Sans (bundled in `src/fonts/`), purple / cream / orange, and plain CSS in `src/index.css`. Home, catalog, product, checkout, cart, the sign-in dialog, the support pages, account (`/account`) and admin (`/admin`) all share it, with no CSS framework.
+
+## Pages
+
+Every page has a real path URL (History API router, `src/lib/router.js` and `src/lib/routes.js`). Netlify serves `index.html` for every page path (`netlify.toml`), and any other path with status 404 (NETLIFY-DEPLOY.md, "Page paths and 404s"); old `#/…` links redirect to their path.
+
+| Route | Page |
+| ----- | ---- |
+| `/` | Home — split hero with a photo carousel, services, shop by department, new arrivals (`/#new-arrivals`), bestsellers (`/#bestsellers`), collections, and the steps to open a trade account |
+| `/catalog` | All products: every department, product line and SKU |
+| `/category/<department>[/<line>]` | Department catalog, optionally one product line, e.g. `/category/drinks-and-bags/energy-drinks`. Search, sort and filters live in the query string (`?q=&sort=&tags=&variants=1`) |
+| `/product/<id>` | Product detail |
+| `/search?q=` | Search results for name, brand, department, SKU and variants (marked `noindex`) |
+| `/checkout` | Checkout. Only a signed-in, approved trade account places an order; a guest sees the cart with Sign in and Apply, and an account under review that it can order once approved (AW-014, AW-024). `/quote`, the old address, redirects here. The words come from `BASKET` in `src/data/terms.js` |
+| `/account` | Trade account and order history |
+| `/admin`, `/admin/orders`, `/admin/accounts`, `/admin/products`, `/admin/pricing` | Admin back office: orders (`/admin/orders/<id>/print` for the pick list or packing slip), accounts (`/admin/accounts/<id>`), products (`/admin/products/<id>`, `/admin/products/new`) and pricing tiers. Filters that name no person live in the query string (`src/lib/adminRoutes.js`) |
+| `/contact`, `/delivery`, `/shipping`, `/privacy`, `/terms`, `/apply`, `/reset-password` | Support pages |
+
+Any other address shows a not-found page with a catalog search and the departments (marked `noindex`), served with status 404 when no page has that path (NEW-088). Department and line segments are slugs of the catalog names; other spellings (`/category/TOBACCO`) redirect to the canonical one. `npm run build` also writes `dist/sitemap.xml` and `dist/robots.txt` from the catalog the build reads (the live products table, else the bundled copy; `scripts/build-sitemap.mjs`, `scripts/catalog-source.mjs`), and a page file for every catalog and support page with that page's own title, description, canonical link and share tags, for crawlers and link previews that run no script (`scripts/build-route-heads.mjs`). Catalog changes made in Admin reach them with the next deploy (NETLIFY-DEPLOY.md, "Pages and the catalog").
+
+Also on the storefront:
+
+- 21+ age gate over the page (the page stays crawlable underneath), remembered in `localStorage` for a set period and cleared on sign-out (`src/lib/ageGate.js`; the period is an owner question, see `docs/OWNER-TODO.md`)
+- Header search across name, brand, department, SKU, and variants
+- Category menu for the eight departments
+- Cart drawer. The cart is kept in `localStorage`, one per account on the device plus one for guests, and stays in step across open tabs; signing in adds the guest cart to the account's, and signing out leaves the next person an empty cart. Lines the catalog no longer has are flagged instead of dropped, and carts from earlier builds are moved over once (`src/lib/cartStorage.js`). Escape closes the cart, sign-in, and help overlays and unlocks page scrolling
+- The catalog is read from Supabase's `products` table (`src/lib/catalog.jsx`). The copy built into the site shows first and is the fallback: a slow or failed load says so and offers **Try again**, a product only the live catalog has shows a loading view instead of "not found", open tabs load it again after five minutes away or when the connection comes back, and checkout checks it once more before sending
+- Orders are saved by the `submit_quote` function in Supabase, which prices the lines on the server and, once `20261014111000` is applied, takes orders only from signed-in, approved accounts. A copy of each saved order is emailed to the orders inbox through Netlify Forms (`src/lib/orderNotification.js`; NETLIFY-DEPLOY.md, "Order emails"). While the form is being filled in, a draft is kept in `sessionStorage` for that tab, so leaving `/checkout` or a reload keeps what was typed; it is cleared on a successful submit and on sign-out (`src/lib/quoteDraft.js`). If saving fails, checkout shows an error with the trade desk's phone number and email; there is no other fallback. After a save, the lines that were sent leave the cart and the page shows a printable receipt (reference, lines, delivery details). It is kept in `sessionStorage` for that tab only, so a reload or Back shows it again, and it is cleared on sign-out (`src/lib/receipt.js`)
+- Trade sign-in and account applications through Supabase Auth. One provider (`src/lib/auth.jsx`) holds the session and profile; account pages wait for them instead of flashing a signed-out view, and email links are handled by `src/lib/authLink.js` (see BACKEND.md, "Email links"). Changing the password while signed in asks for the current password first and then signs the account out on its other devices (BACKEND.md, "Password changes (AW-349)")
+
+Trade prices are kept only in Supabase: the site's code and the product seed carry none. Approved accounts see their tier's prices, which the `my_prices()` database function works out; guests, pending and suspended accounts get no prices. The public API stops serving the price column once `supabase/migrations/20261009100000_price_boundary.sql` is applied (see BACKEND.md, "How pricing tiers work" and "Release checklist").
 
 ## Run locally
 
-You need **Node.js 20+** installed (matches `.nvmrc` and Netlify build env). From this folder:
+You need **Node.js 24** (the version in `.nvmrc`, which the Netlify build and CI also use; `nvm use` picks it up). `.npmrc` sets `engine-strict`, so npm refuses to install on an unsupported Node version. From this folder:
 
 ```bash
 npm install
@@ -25,70 +47,77 @@ npm run dev
 
 Then open http://localhost:3000
 
+## Checks
+
+| Command | What it runs |
+| ------- | ------------ |
+| `npm run lint` | ESLint (flat config in `eslint.config.js`: React, React Hooks, jsx-a11y and the project rule `aw/translate-safe-text`); warnings fail it |
+| `npm test` | Vitest unit and component tests (`src/**/*.test.{js,jsx}`, `scripts/**/*.test.mjs`, jsdom) |
+| `npm run test:db` | Replays `supabase/migrations` and the seed in an in-memory Postgres (PGlite) and runs the assertions in `supabase/tests/*.sql`; then does the same from a copy of the live database through `supabase/release/apply-to-live-database.sql` and checks the result matches a fresh install (BACKEND.md, "The release file") |
+| `npm run test:e2e` | Builds the site and runs the Playwright smoke test in `tests/smoke` against `vite preview` (run `npx playwright install chromium` once first) |
+
+After adding or changing a migration or the seed (`npm run seed`), run `npm run release:sql` and commit the regenerated `supabase/release/apply-to-live-database.sql`, the one file the owner runs on the live database; `npm test` fails until it matches.
+
+GitHub Actions (`.github/workflows/ci.yml`) runs all four, plus `npm audit --omit=dev --audit-level=high` (and a non-blocking `npm audit --audit-level=high` that also covers the build and test tools) and a check that the production build refuses to run without the Supabase settings. Dependabot (`.github/dependabot.yml`) opens weekly update PRs.
+
+### Planned toolchain upgrades
+
+The build runs on Vite 7 with `@vitejs/plugin-react` 5 and React 18. Two upgrades are planned as their own changes (AW-211), not bundled into a Dependabot PR:
+
+- **Vite 8 with `@vitejs/plugin-react` 6.** Vite 8 bundles with Rolldown instead of Rollup, so check that the `manualChunks` split in `vite.config.js` still produces the separate `vendor` and `supabase` chunks and that the pages App.jsx loads with `React.lazy` are still files of their own (AW-179; the build fails when `scripts/chunk-urls.mjs` can't find one, since `src/lib/chunks.js` fetches them ahead into the cache, NEW-006), then run the full checks above.
+- **React 19, after launch.** Plan it with the ESLint plugins: `eslint-plugin-react` and `eslint-plugin-jsx-a11y` do not declare ESLint 10 support yet, so ESLint stays on 9 for now.
+
+### Supported browsers
+
+The site supports the browsers `build.target` in `vite.config.js` names: Safari 14, Chrome 87, Edge 88 and Firefox 78, and anything newer. esbuild rewrites newer syntax for them, but not newer built-in functions, so `npm run lint` refuses `Array.prototype.at`, `findLast`, `toSorted` and the like, `Object.hasOwn`, `structuredClone`, `AbortSignal.timeout` and `new Intl.ListFormat` in `src/`, and `scripts/check-compat.mjs` checks the built files after `vite build` (NEW-019). In CSS, give a `dvh` height a `vh` line just before it, and keep `:has()` selectors in rules of their own: a browser that can't read one selector drops the whole list (`src/styles.test.js` checks both). To drop an old browser, raise `build.target` and this list together.
+
+### Text that Google Translate can break
+
+Translated pages replace React's text nodes, so a string that can change, appear or disappear must be the only child of an element that is always rendered: build one template string (`` {`Showing ${n} of ${total} items`} ``) or give the changing part its own `<span>`. `npm run lint` enforces this with `aw/translate-safe-text` (`scripts/eslint/translate-safe-text.mjs`), and `src/lib/domGuard.js` keeps a missed spot from blanking the page.
+
 ## Build for production
 
 ```bash
 npm run build
 ```
 
-Output goes to `dist/`. Upload the contents of that folder to any static host — Netlify, Vercel, Cloudflare Pages, GitHub Pages, or your own server.
-
-## Deploy to Netlify (drag-and-drop)
-
-1. Run `npm run build`
-2. Go to https://app.netlify.com/drop
-3. Drag the `dist` folder onto the page
-4. Done
-
-## Deploy to Vercel
-
-```bash
-npm i -g vercel
-vercel
-```
+Output goes to `dist/`; `npm run preview` serves it locally, with the security headers and Content-Security-Policy from `netlify.toml` (NETLIFY-DEPLOY.md, "Headers and caching"). The build also fails when that policy would block an inline script in `dist/index.html` (`scripts/check-headers.mjs`), when the built JavaScript calls a built-in function the supported browsers lack (`scripts/check-compat.mjs`), and without `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (see [BACKEND.md](BACKEND.md)). The site deploys from Git through Netlify; see [NETLIFY-DEPLOY.md](NETLIFY-DEPLOY.md). Do not drag and drop `dist/` onto Netlify.
 
 ## Customize
 
-Most storefront logic is in **`src/App.jsx`**. Product and hero images now live in **`src/assets/`** for better production performance. Look for these constants near the top to change things:
+`src/App.jsx` is the root: age gate, auth, cart and route state, the page layout and the route switch. Pages live in `src/pages/` (storefront pages at the top level; `account/`, `admin/` and `support/` below it), shared pieces in `src/components/`, and logic in `src/lib/`: `routes.js` (URLs, validation, canonical paths), `router.js` (History API router, `<Link>`, scroll, focus and Back-closes-dialog behaviour), `announce.js` (the shared polite live region), `ageGate.js` (the dated 21+ confirmation, synced across tabs), `meta.js` (titles, canonical and share tags from one `SITE_URL`), `search.js`, `departments.js`, `cart.js`, `pricing.js`, `format.js` (money and labels), `errors.js` (shared error copy) and `domGuard.js`. Product photos live in **`src/assets/products/`** and hero photos in **`src/assets/`**; each product row in `src/data/products.js` names its photo file.
 
-| Constant         | What it controls                                              |
-| ---------------- | ------------------------------------------------------------- |
-| `IMG`            | Product/logo/hero image asset references in `src/assets/`      |
-| `C`              | Brand colors (orange `#DB6433` + navy `#1E1B5C`)              |
-| `COMPANY`        | Address, phone, hours, email, WhatsApp number                 |
-| `ANNOUNCEMENTS`  | The rotating banner at the top of the page                    |
-| `NAV_CATEGORIES` | Mega-menu departments + sub-categories                        |
-| `PRODUCTS`       | All 368 products (id, name, brand, cat, sub, sku, price, etc) |
-| `SHOP_CATS`      | The 8 department tiles on the home page                       |
-| `HERO_SLIDES`    | The auto-playing carousel slides (set `videoUrl` for video)   |
-| `BRANDS`         | The scrolling brand marquee                                   |
-| `WELCOME_OFFERS` | Content of the welcome popup (NEW / RESTOCK / SALE entries)   |
-| `FAQS`           | Q&A pairs in the FAQ section                                  |
+| What | Where |
+| ---- | ----- |
+| Editorial colors and type | `src/index.css` (`--purple`, `--orange`, `--cream`, `--display`, `--body`) |
+| Logo | `IMG` in `src/data/theme.js` |
+| Hero photos (the owner's 8-photo warehouse reel; staff replace them in Admin → Homepage) | `HERO_REEL` in `src/data/warehousePhotos.js`, built into `HERO_SLIDES` in `src/data/content.js` |
+| Warehouse photos on the contact page (the other 29), each photo's description, and which are grouped under the FDA statement | `WAREHOUSE_GALLERY` in `src/data/warehousePhotos.js`; the photos are `src/assets/hero_wh_*.jpg`, named after what they show; `src/data/warehousePhotos.test.js` checks all 37 are shown once |
+| Business facts: address, phone, email, hours, minimum order, free-delivery threshold | `COMPANY`, `HOURS`, `ORDER_MINIMUM` and `FREE_DELIVERY_THRESHOLD` in `src/data/content.js`; pages print them from there (money through `formatMoney`/`formatMoneyShort`), and `src/data/facts.test.js` fails when the phone, address, hours, minimum or threshold is typed into another source file |
+| Wording: the apply and sign-in labels, the basket (an order), the licensed-only line | `src/data/terms.js` (`APPLY_LABEL`, `SIGN_IN_LABEL`, `BASKET`); `LICENSED_ONLY` in `src/data/content.js` |
+| Trade bar announcements | `ANNOUNCEMENTS` in `src/data/content.js`, after the trade notice (`TRADE_NOTICE` in `src/components/TradeBar.jsx`) |
+| Trust band under the home hero (20 years in business, 100% authentic, where products come from) | `TRUST`, `YEARS_IN_BUSINESS` and `SOURCING` in `src/data/content.js` |
+| The volume-pricing line (no Net-30, no published volume discounts) | `VOLUME_PRICING` in `src/data/content.js`; `VolumePricing` in `src/components/ContactLinks.jsx` prints it with the email and phone as links. `src/data/claims.test.js` fails if Net-30, volume discounts, an approval time, "three generations" or "direct from the manufacturer" comes back |
+| Departments and product lines | `departmentsFor()` in `src/lib/departments.js`, derived from `cat` and `sub` in `src/data/products.js` (in `NAV_ORDER`) |
+| The 368 products | `PRODUCTS` in `src/data/products.js` |
+| Account and admin styles | the `account / admin` block in `src/index.css` |
 
-## Adding videos to the hero carousel
+`BRANDS` and `FAQS` in `src/data/content.js` stay unpublished until the owner confirms them (see `docs/OWNER-TODO.md`).
 
-Find `HERO_SLIDES` in `src/App.jsx`. For any slide, set `videoUrl` to a public MP4 URL:
+### Images
 
-```js
-{ eyebrow: 'NEW THIS WEEK', title: '...', img: IMG.hero_candy,
-  videoUrl: 'https://your-cdn.com/clip.mp4',   // <-- this
-  ... }
-```
+`npm run images` (run automatically before `dev` and `build`) renders every photo in `src/assets/products/` and `src/assets/hero_*.jpg` into WebP sizes (320, 480, 640 and 1024px wide for products, never enlarged) with JPEG fallbacks up to 640px, plus a 112px JPEG thumbnail of each product for the search, cart and checkout lists. A product photo wider than 1024px also gets one larger WebP, up to 1600px, that only the product page's enlarged view (the zoom dialog) asks for; its name carries its own hash (`SETTINGS.zoom`), so the other sizes keep theirs. Product photos are first framed at one scale (AW-287): the photo's own near-white or transparent margins are measured off, and the product is placed on a canvas of the card tile's 1.1 aspect where it spans 89% of the limiting side, so every product fills about 80% of its card whatever margins the source came with. Photos with a dark or busy edge are framed whole. Only the margins change; the product's pixels are never scaled up or edited (`FRAME` in `scripts/image-pipeline.mjs`). The files go to `public/img/` (served at `/img/`), and each name carries a hash of the photo and its settings (`kite--640x640-1a2b3c4d.jpg`), so Netlify serves them as immutable. One small manifest, `src/assets/generated/manifest.json`, lists every photo's hash and sizes; `src/lib/images.js` builds the URLs from it. The script also builds the favicon set and `og.jpg` share image in `public/` from `src/assets/logo.jpg`. All of these outputs are gitignored; only the original photos are committed. Drop a new photo into `src/assets/products/`, reference its filename in `products.js`, and the next dev/build run picks it up.
 
-Use short 5-10 second silent loops. Vimeo direct MP4s, Cloudflare Stream, or S3 work well.
+Re-runs compare content hashes, not file dates, so an unchanged photo is never rendered again, even in a fresh checkout. Netlify keeps the outputs between deploys with a local build plugin (`netlify/plugins/image-cache`), and CI with a cache step, so a deploy renders only new or changed photos. To re-render everything, bump `VERSION` in `scripts/image-pipeline.mjs` (sizes, quality and the other settings already change the hash); to rebuild the brand files after changing how they are drawn, bump `BRAND_VERSION` in `scripts/build-images.mjs`. The card and product-page `sizes` in `src/lib/images.js` are worked out from the grid and photo-frame CSS; change them with it (`src/lib/images.test.js` reads the CSS and fails when they drift apart).
 
 ## Stack
 
 - React 18
-- Vite 5 (build tool)
-- Tailwind CSS 3 (utility classes)
-- Lucide React (icons)
-- Supabase (Postgres + Auth + RLS) — optional; see [BACKEND.md](BACKEND.md)
+- Vite 7
+- Plain CSS with `:root` design tokens and an explicit reset in `src/index.css` for every page, including Account and Admin (no Tailwind)
+- Supabase (Postgres + Auth + RLS); see [BACKEND.md](BACKEND.md)
 
-The site works as a pure static catalog when no Supabase env vars are set.
-Once `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are configured, real
-trade accounts, order history, and the admin dashboard light up. See
-[BACKEND.md](BACKEND.md) for the setup recipe.
+Without `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, `npm run dev` still serves the catalog, but trade accounts, orders, order history and the admin dashboard are off, and `npm run build` stops with an error (set `ALLOW_NO_BACKEND=1` to build a static-only preview on purpose). See [BACKEND.md](BACKEND.md).
 
 ## License
 

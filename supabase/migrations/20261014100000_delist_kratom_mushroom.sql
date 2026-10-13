@@ -1,0 +1,52 @@
+-- Delist every Kratom & Kava and every mushroom product (AW-001, the owner's
+-- answer of 2026-10).
+--
+-- Data only: the 22 products below are deactivated (active = false). Nothing
+-- is deleted: order history keeps its links and snapshots, staff still see
+-- them in Admin -> Products as inactive, and a buyer's saved cart line of one
+-- shows "no longer available". No schema, function or privilege changes.
+--   Kratom & Kava:     #75 Wava kava, #76 Mazza Shots, #293 Sip happens.
+--   Mushroom Products: #69-#74 (Shroom Puff, Mental Health), #258, #289,
+--                      #299, #313 (Psyched), #281 (Hush Hit), #285 (Shroom
+--                      Bang), #288 (Blue Monkey), #296 (Jelly Holes), #298
+--                      (Shroom Rolls), #300 (Melted), #306, #307, #312
+--                      (Stoned): the whole line, its blue-lotus items
+--                      included.
+-- No mushroom product is filed in another line. Detox, Wellness Pills and the
+-- Honey & Energy enhancement items were not part of the answer and stay as
+-- they are.
+--
+-- The rows reach a new database through the seed already inactive
+-- (src/data/products.js marks them `active: false`). This file is for a
+-- database that has them: it changes a row only while it is still active, so
+-- running it again changes nothing (AW-032).
+--
+-- Once they are inactive, guests and buyers can't read them
+-- (products_public_read returns active rows), submit_quote and the order-line
+-- trigger refuse them (hint product_unavailable), and my_prices() leaves them
+-- out. The storefront already leaves them out before this file is applied
+-- (src/data/delisted.js: hydrateProducts in src/lib/catalogRows.js, and the
+-- build's sitemap and page files through scripts/catalog-source.mjs), and
+-- their old line addresses redirect to the Novelties department
+-- (src/lib/routes.js, netlify.toml). This file closes the database side:
+-- until it is applied, a quote or order sent by hand through the API could
+-- still name one.
+--
+-- To bring one back later (the owner's call): set it active in Admin ->
+-- Products and take it out of src/data/delisted.js (see the note there).
+--
+-- Release order: any time, before or after the frontend, also on its own.
+
+update public.products set active = false
+where id in (69, 70, 71, 72, 73, 74, 75, 76, 258, 281, 285, 288, 289, 293, 296, 298, 299, 300, 306, 307, 312, 313)
+  and active;
+
+-- ---------------------------------------------------------------------------
+-- Reverse (AW-213). Not run; copy into the SQL editor to undo this
+-- migration. It also reactivates a row staff had deactivated before this file
+-- ran; check Admin -> Products afterwards. The new frontend keeps the
+-- delisted lines off the storefront either way (src/data/delisted.js).
+--
+-- update public.products set active = true
+-- where id in (69, 70, 71, 72, 73, 74, 75, 76, 258, 281, 285, 288, 289, 293, 296, 298, 299, 300, 306, 307, 312, 313)
+--   and not active;

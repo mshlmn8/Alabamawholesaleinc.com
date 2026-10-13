@@ -1,0 +1,116 @@
+# Lint, unit tests, migration checks, the production build and the Playwright
+# smoke test on every push to main and every pull request (AW-209).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      # Placeholder backend settings, for this job only: production builds
+      # refuse to run without them (AW-053). They point at no real project,
+      # and the smoke test aborts every request that leaves the preview server.
+      VITE_SUPABASE_URL: https://ci-placeholder.supabase.co
+      VITE_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Audit shipped dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      # The build and test tools too (NEW-045: a high-severity advisory in
+      # source-map-js, a dev-only dependency, passed the step above). It shows
+      # as a warning, not a failure: an advisory in a dev tool shouldn't block
+      # a release, but it should be seen and fixed with `npm update <pkg>`.
+      - name: Audit all dependencies (non-blocking)
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Lint
+        run: npm run lint
+
+      # The rendered photos and brand files (scripts/build-images.mjs), so the
+      # build renders only new or changed photos (AW-355). Every rendition's
+      # name is a content hash, so an older cache (restore-keys) is safe: the
+      # script re-renders what changed and removes what is stale. The paths
+      # are the ones netlify/plugins/image-cache keeps between Netlify builds.
+      # Restored before the unit tests, which then see the image manifest.
+      - name: Cache rendered images
+        uses: actions/cache@v6
+        with:
+          path: |
+            public/img
+            src/assets/generated
+            public/favicon.ico
+            public/favicon-32.png
+            public/apple-touch-icon.png
+            public/icon-192.png
+            public/icon-512.png
+            public/icon-maskable-512.png
+            public/og.jpg
+          key: images-${{ hashFiles('src/assets/products/**', 'src/assets/hero_*', 'src/assets/logo.jpg', 'scripts/build-images.mjs', 'scripts/image-pipeline.mjs') }}
+          restore-keys: images-
+
+      - name: Unit tests
+        run: npm test
+
+      # A fresh install, then the owner's release file
+      # (supabase/release/apply-to-live-database.sql) on a copy of the live
+      # database, compared with the fresh install (BACKEND.md, "The release
+      # file").
+      - name: Migration checks (PGlite)
+        run: npm run test:db
+
+      - name: Production build refuses missing backend settings
+        run: |
+          if out=$(VITE_SUPABASE_URL= VITE_SUPABASE_ANON_KEY= npx vite build --outDir "$RUNNER_TEMP/no-backend" 2>&1); then
+            echo "::error::vite build succeeded without VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY"
+            exit 1
+          fi
+          echo "$out" | grep -q "Production build stopped" || { echo "$out"; exit 1; }
+
+      - name: Build
+        run: npm run build
+        env:
+          # The placeholder project doesn't exist: the sitemap and the page
+          # files come from the bundled catalog without asking it
+          # (scripts/catalog-source.mjs, NEW-087), as the smoke tests expect.
+          ALLOW_NO_BACKEND: '1'
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke test
+        run: npm run test:e2e
+        env:
+          # Serve the dist/ built above instead of building again.
+          SMOKE_SKIP_BUILD: '1'
+
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore

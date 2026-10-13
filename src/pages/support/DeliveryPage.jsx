@@ -1,0 +1,129 @@
+// Delivery & service area: own-truck routes in Alabama, Mississippi and
+// Georgia, will-call at the Birmingham warehouse, and a state-level check that
+// always points the customer to the trade desk to confirm their stop.
+//
+// The check also takes the store's ZIP code (AW-123, Cursor PR #13), but
+// there is no route list to look it up in yet, so a ZIP only changes the
+// answer to "call to confirm whether <ZIP> is on a route". Nothing is
+// guessed from it.
+
+import { useState } from 'react';
+import { FREE_DELIVERY_THRESHOLD, ORDER_MINIMUM } from '../../data/content.js';
+import { DELIVERY_STATES, OTHER_STATES } from '../../data/onboarding.js';
+import { formatMoney, formatMoneyShort } from '../../lib/format.js';
+import { Link } from '../../lib/router.js';
+import { useSite } from '../../lib/siteSettings.js';
+import { PhoneLink } from '../../components/ContactLinks.jsx';
+import { PageHead, SupportLayout, ContactStrip, supportApplyLabel } from './SupportShell.jsx';
+
+const ROUTE_STATE_NAMES = DELIVERY_STATES.map(s => s.name);
+const routeStates = `${ROUTE_STATE_NAMES.slice(0, -1).join(', ')} and ${ROUTE_STATE_NAMES[ROUTE_STATE_NAMES.length - 1]}`;
+
+// signedIn: the side nav calls /apply 'Trade account' (NEW-047).
+export function DeliveryPage({ signedIn = false }) {
+  const site = useSite();
+  const [stateCode, setStateCode] = useState('');
+  const [zip, setZip] = useState('');
+  // TODO(owner): Which ZIP codes or 3-digit prefixes are on each delivery route, what are each route's delivery days and order cutoff, and which cities or counties are served? (AW-123)
+  const zipEntered = /^[0-9]{5}$/.test(zip);
+  const routeState = DELIVERY_STATES.find(s => s.code === stateCode);
+  const otherState = OTHER_STATES.find(s => s.code === stateCode);
+
+  return (
+    <section className="support-page">
+      <PageHead crumb="Delivery & service area" eyebrow="OUR OWN TRUCKS" title="Delivery & service area">
+        <p>{`We run our own delivery routes across ${routeStates} from the Birmingham warehouse. When your store is on a route, your order rides on our truck and arrives the next day.`}</p>
+      </PageHead>
+      <SupportLayout current="delivery" applyLabel={supportApplyLabel(signedIn)}>
+
+      <div className="info-grid">
+        <article className="info-card">
+          <p className="eyebrow">ROUTE DELIVERY</p>
+          <h2>Next day, on our trucks</h2>
+          {/* TODO(owner): Approve shorter wording for the route-delivery card ('on a delivery route' is said twice), e.g. 'Next-day delivery on our own trucks when your stop is on a delivery route, and free delivery on orders over FREE_DELIVERY_THRESHOLD.' (AW-276) */}
+          <p>{`Next-day delivery on our own trucks when your stop is on a delivery route. Free delivery on orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} when the stop is on a route.`}</p>
+        </article>
+        <article className="info-card">
+          {/* TODO(owner): Warehouse photo, will-call lead time, entrance and parking, and payment at pickup. (AW-124) */}
+          <p className="eyebrow">WILL-CALL</p>
+          <h2>Pick up in Birmingham</h2>
+          <p>{`Will-call is pickup at ${site.addressLine1}, ${site.addressLine2} during business hours. ${site.hoursLines.join(', ')}.`}</p>
+          <Link className="text-link" to="/contact">Contact &amp; visit</Link>
+        </article>
+        <article className="info-card">
+          <p className="eyebrow">MINIMUM ORDER</p>
+          {/* The heading is the whole fact; no sentence repeats it (AW-276). */}
+          <h2>{`${formatMoney(ORDER_MINIMUM)} minimum`}</h2>
+        </article>
+      </div>
+
+      <section className="eligibility" aria-labelledby="eligibility-title">
+        <div>
+          <p className="eyebrow">SERVICE AREA CHECK</p>
+          <h2 id="eligibility-title">Is my store in the service area?</h2>
+          <p>Our routes are planned stop by stop, so this check only confirms the states we drive in. Call to confirm your stop before you count on next-day delivery.</p>
+        </div>
+        <form className="eligibility-form" onSubmit={(e) => e.preventDefault()}>
+          <label htmlFor="delivery-zip">Store ZIP code</label>
+          <input id="delivery-zip" type="text" inputMode="numeric" maxLength={5} autoComplete="postal-code" value={zip} onChange={(e) => setZip(e.target.value.replace(/\D/g, '').slice(0, 5))} />
+          <label htmlFor="delivery-state">State your store is in</label>
+          <select id="delivery-state" value={stateCode} onChange={(e) => setStateCode(e.target.value)} autoComplete="address-level1">
+            <option value="">Choose a state…</option>
+            <optgroup label="Delivery routes">
+              {DELIVERY_STATES.map(s => <option key={s.code} value={s.code}>{s.name}</option>)}
+            </optgroup>
+            <optgroup label="Other">
+              {OTHER_STATES.map(s => <option key={s.code} value={s.code}>{s.name}</option>)}
+            </optgroup>
+          </select>
+          <div className="eligibility-result" role="status" aria-live="polite">
+            {routeState && (
+              <>
+                <b>{`We run delivery routes in ${routeState.name}.`}</b>
+                <span>Routes don’t reach every address. Call <PhoneLink /> to confirm <span>{zipEntered ? `whether ${zip} is on a route` : 'your stop'}</span> and delivery day before you count on next-day delivery.</span>
+              </>
+            )}
+            {/* Outside the route states: says so, then the next steps (AW-270). */}
+            {otherState && (
+              <>
+                <b>{otherState.code === 'XX' ? 'Your state isn’t on our delivery routes.' : `${otherState.name} isn’t on our delivery routes.`}</b>
+                <span>{`Delivery is currently on routes in ${routeStates}.`}</span>
+                <span>You can pick up orders at will-call in Birmingham, or call <PhoneLink /> to ask about your area.</span>
+                <Link className="text-link" to="/contact">Contact &amp; visit</Link>
+              </>
+            )}
+            {!stateCode && zipEntered && (
+              <span>Call <PhoneLink /> to confirm whether <span>{zip}</span> is on a route. Route days and the order cutoff are confirmed by the trade desk.</span>
+            )}
+          </div>
+        </form>
+      </section>
+
+      <div className="support-columns">
+        <section className="support-block" aria-labelledby="how-title">
+          <p className="eyebrow">HOW ROUTE DELIVERY WORKS</p>
+          <h2 id="how-title">From order to your back door</h2>
+          <ol className="next-steps">
+            <li><b>Place your order.</b><span>Online with your trade account, or by phone with the trade desk.</span></li>
+            <li><b>We confirm the details.</b><span>The trade desk confirms your route, timing and anything specific to your delivery — dock hours, pallets, substitutions.</span></li>
+            <li><b>Our driver delivers.</b><span>Count the cases and check for damage while the driver is there.</span></li>
+          </ol>
+        </section>
+        <section className="support-block" aria-labelledby="states-title">
+          <p className="eyebrow">WHERE WE DRIVE</p>
+          <h2 id="states-title">Route states</h2>
+          <ul className="state-list">
+            {DELIVERY_STATES.map(s => <li key={s.code}><b>{s.code}</b><span>{s.name}</span></li>)}
+          </ul>
+          <p className="support-note">Tobacco and vapor products are delivered to the licensed retail business on the account only.</p>
+          <div className="dialog-actions compact-actions">
+            <Link className="text-link" to="/shipping">Delivery policy</Link>
+          </div>
+        </section>
+      </div>
+      </SupportLayout>
+
+      <ContactStrip eyebrow="CONFIRM YOUR STOP" title="Ask about your route" />
+    </section>
+  );
+}

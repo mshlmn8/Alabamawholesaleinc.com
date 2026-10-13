@@ -1,124 +1,174 @@
-// Trade-account dashboard: profile summary + order history.
+// Trade-account dashboard: profile summary, quick reorder by SKU, and order
+// history with a Reorder action per order.
+//
+// While the session and profile load it says so instead of showing the
+// signed-out view (AW-186); a profile that fails to load gets Try again and
+// Sign out (AW-089). App keys this page by account (AW-190). Under the email,
+// Change password and Sign out (AW-252); Sign out, like the header's, only
+// ends this browser's session, and "Sign out of all devices" ends the
+// buyer's sessions everywhere (AW-337).
+//
+// A pending applicant uploads license documents right here (AW-085): the
+// application dialog's 'View account status' and its failed-upload notes
+// link to #documents. Approved and suspended accounts keep a link to /apply.
+//
+// Signed out, it says what a trade account gives and offers Sign in and
+// Apply (AW-086). The header's Quick Reorder links to #quick-reorder; a guest
+// gets the sign-in dialog over this page, and once the account has loaded
+// the section is brought into view with its heading focused.
+//
+// Order history is OrderHistory (AW-104, AW-105): it gives up on a stalled
+// request (AW-194), says when the buyer is offline and loads on reconnect
+// (AW-344), and a load that failed says so in words, with Try again and the
+// trade desk's phone and email (AW-326, AW-084).
 
-import React, { useEffect, useState } from 'react';
-import { ChevronRight, Package, Clock, CheckCircle, XCircle } from 'lucide-react';
-import { C, body, display, mono } from '../../data/theme.js';
-import { supabase } from '../../lib/supabase.js';
+import { useEffect, useRef } from 'react';
+import { Link, revealAnchor, useLocation } from '../../lib/router.js';
+import { tierDiscountText, tierName } from '../../lib/pricing.js';
+import { Breadcrumbs, HOME_CRUMB } from '../../components/Breadcrumbs.jsx';
+import { AccountLoading, AccountProblem } from '../../components/AccountStatus.jsx';
+import { CallOrEmail } from '../../components/ContactLinks.jsx';
+import { ApplicationDocuments } from '../../components/DocumentUploads.jsx';
+import { accountStatusLabel, roleLabel } from '../../lib/accountLabels.js';
+import { isStaffRole } from '../../lib/accountStatus.js';
+import { QuickReorder } from './QuickReorder.jsx';
+import { OrderHistory } from './OrderHistory.jsx';
 
-const STATUS_META = {
-  new:        { label: 'New',        color: '#1E1B5C', icon: Clock },
-  contacted:  { label: 'Contacted',  color: '#DB6433', icon: Clock },
-  fulfilled:  { label: 'Fulfilled',  color: '#1F7A47', icon: CheckCircle },
-  cancelled:  { label: 'Cancelled',  color: '#6B6B6B', icon: XCircle },
-};
+// Order history that didn't load (AW-084, AW-326) lives with the history now.
+export { ORDERS_LOAD_ERROR, ORDER_HISTORY_ERRORS, OrdersLoadError } from './OrderHistory.jsx';
 
-export function AccountPage({ profile, goHome }) {
-  const [orders, setOrders] = useState(null);
-  const [error, setError] = useState(null);
+// The sections a link can open My account at (AW-086): Quick Reorder from
+// the header, the license documents from the application dialog.
+const REVEALED_SECTIONS = ['quick-reorder', 'documents'];
+// What a trade account gives, for a visitor who is signed out (AW-086).
+export const SIGNED_OUT_TEXT = 'A trade account shows your order history, lets you reorder by SKU with Quick Reorder, and shows your wholesale prices once it is approved.';
 
+export function AccountPage({
+  profile, account = profile ? 'ready' : 'signed-out', onSignIn, onApplyClick, onRetry, retrying = false, onSignOut, onSignOutEverywhere,
+  signingOut = false, products = [], addLines, onOpenCart, isApprovedBuyer, isBackendConfigured = true, priceOf, pricesStatus, priceTier = null,
+}) {
+  // A link to #quick-reorder or #documents that arrived before the account
+  // did (a guest's Quick Reorder, then sign-in; a reload): when the account
+  // turns ready, the section comes into view with its heading focused, once.
+  // A page that was ready from the start had that from the router, and a
+  // saved scroll position (Back, a reload) is left alone.
+  const location = useLocation();
+  const ready = account === 'ready' && !!profile;
+  const wasReady = useRef(ready);
+  const { hash } = location;
+  const restored = !!location.restore;
   useEffect(() => {
-    if (!supabase || !profile) return;
-    supabase
-      .from('orders')
-      .select('id, ref_num, status, total_units, subtotal, created_at, order_items(id, product_name, sku, qty, unit_price)')
-      .eq('user_id', profile.id)
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) setError(error.message);
-        else setOrders(data || []);
-      });
-  }, [profile?.id]);
+    const was = wasReady.current;
+    wasReady.current = ready;
+    const id = hash.slice(1);
+    if (!ready || was || restored || !REVEALED_SECTIONS.includes(id)) return undefined;
+    return revealAnchor(id);
+  }, [ready, hash, restored]);
 
-  if (!profile) {
+  // The same heading element in every state, so focus on it survives the
+  // profile arriving.
+  if (account !== 'ready' || !profile) {
     return (
-      <section className="px-3 md:px-6 lg:px-10 py-16 text-center">
-        <p style={{ color: C.muted }}>Sign in to view your account.</p>
+      <section>
+        <div className="page-head">
+          <Breadcrumbs items={[HOME_CRUMB, { label: 'My account' }]} />
+          <p className="eyebrow">TRADE ACCOUNT</p>
+          <h1>My account</h1>
+          {account === 'loading' && <AccountLoading />}
+          {account === 'no-profile' && (
+            <AccountProblem onRetry={onRetry} retrying={retrying} onSignOut={onSignOut} signingOut={signingOut} />
+          )}
+          {account === 'signed-out' && <p>{SIGNED_OUT_TEXT}</p>}
+          {account === 'signed-out' && (onSignIn || onApplyClick) && (
+            <div className="dialog-actions compact-actions">
+              {onSignIn && <button className="button" type="button" onClick={onSignIn}>Sign in</button>}
+              {onApplyClick && <button className="button ghost" type="button" onClick={onApplyClick}>Apply for a trade account</button>}
+            </div>
+          )}
+        </div>
       </section>
     );
   }
 
+  const statusTone = profile.status === 'approved' ? 'ok' : 'warn';
+  // The tier and what it means, from my_prices() once the prices are in
+  // ('Silver · 5% off list', AW-265); until then the tier's name.
+  const tierText = pricesStatus === 'ready' && priceTier ? tierDiscountText(priceTier) : tierName(profile.pricing_tier);
+
   return (
-    <section className="px-3 md:px-6 lg:px-10 py-5 md:py-10" style={{ ...body }}>
-      <div className="max-w-[1200px] mx-auto">
-        <div className="flex items-center gap-2 text-[11px] md:text-xs uppercase mb-5"
-             style={{ ...mono, letterSpacing: '0.12em', fontWeight: 600 }}>
-          <button onClick={goHome} className="hover:text-[#DB6433]" style={{ color: C.muted }}>Home</button>
-          <ChevronRight size={11} style={{ color: C.muted }} />
-          <span style={{ color: C.navy }}>My Account</span>
+    <section>
+      <div className="page-head">
+        <Breadcrumbs items={[HOME_CRUMB, { label: 'My account' }]} />
+        <p className="eyebrow">TRADE ACCOUNT</p>
+        <h1>{profile.business || profile.name}</h1>
+        <p>{profile.email}</p>
+        {/* The password and this browser's sign-out, also on phones, where
+            the header's Sign Out is in the menu (AW-252). */}
+        <div className="dialog-actions compact-actions account-links">
+          <Link className="text-link" to="/reset-password">Change password</Link>
+          {/* Says 'Signing out…' while it works, like every other sign-out
+              control; on phones the header's is hidden (NEW-068). */}
+          {onSignOut && <button className="text-link" type="button" onClick={onSignOut} disabled={signingOut}><span>{signingOut ? 'Signing out…' : 'Sign out'}</span></button>}
         </div>
-
-        <h1 style={{ ...display, fontWeight: 800, color: C.navy }} className="text-3xl md:text-5xl leading-tight mb-2">
-          {profile.business || profile.name}
-        </h1>
-        <p className="text-sm" style={{ color: C.muted }}>{profile.email}</p>
-
-        <div className="grid md:grid-cols-3 gap-3 md:gap-4 mt-6 md:mt-8">
-          <Card label="Account status" value={profile.status} accent={profile.status === 'approved' ? C.greenTag : C.orange} />
-          <Card label="Pricing tier"   value={profile.pricing_tier} />
-          <Card label="Role"           value={profile.role} />
-        </div>
-
-        {profile.status === 'pending' && (
-          <div className="mt-6 px-4 py-3 text-sm" style={{ background: '#FFF5EC', border: `1px solid ${C.orange}`, color: C.navy }}>
-            Your account is awaiting approval. A trade rep will verify your retail license and activate pricing within one business day.
-          </div>
-        )}
-
-        <h2 style={{ ...display, fontWeight: 800, color: C.navy }} className="text-xl md:text-2xl mt-10 mb-4">
-          Order history
-        </h2>
-
-        {error && <div className="text-sm" style={{ color: '#B84F23' }}>Couldn&apos;t load orders: {error}</div>}
-        {orders === null && !error && <div className="text-sm" style={{ color: C.muted }}>Loading…</div>}
-        {orders && orders.length === 0 && (
-          <div className="p-6 text-center" style={{ background: 'white', border: `1px solid ${C.border}` }}>
-            <Package size={32} style={{ color: C.mutedSoft, margin: '0 auto 1rem' }} />
-            <p style={{ color: C.muted }}>No orders yet.</p>
-          </div>
-        )}
-        {orders && orders.map(o => {
-          const meta = STATUS_META[o.status] || STATUS_META.new;
-          const Icon = meta.icon;
-          return (
-            <div key={o.id} className="mb-3" style={{ background: 'white', border: `1px solid ${C.border}` }}>
-              <div className="px-4 md:px-5 py-3 md:py-4 flex flex-wrap items-center justify-between gap-3 border-b" style={{ borderColor: C.borderSoft, background: C.bg }}>
-                <div>
-                  <div style={{ ...mono, fontWeight: 700, letterSpacing: '0.12em', color: C.navy }} className="text-xs uppercase">
-                    {o.ref_num}
-                  </div>
-                  <div className="text-[11px]" style={{ color: C.muted }}>
-                    {new Date(o.created_at).toLocaleString()} · {o.total_units} unit{o.total_units === 1 ? '' : 's'}
-                    {o.subtotal != null && ` · $${Number(o.subtotal).toFixed(2)}`}
-                  </div>
-                </div>
-                <span className="px-2.5 py-1 text-[10px] uppercase font-bold flex items-center gap-1.5"
-                      style={{ ...mono, letterSpacing: '0.15em', background: meta.color, color: 'white' }}>
-                  <Icon size={11} /> {meta.label}
-                </span>
-              </div>
-              <ul>
-                {(o.order_items || []).map(it => (
-                  <li key={it.id} className="px-4 md:px-5 py-2 flex items-center justify-between text-sm border-b last:border-b-0" style={{ borderColor: C.borderSoft }}>
-                    <span style={{ color: C.text }}>{it.qty} × {it.product_name} <span style={{ color: C.mutedSoft }}>({it.sku})</span></span>
-                    {it.unit_price != null && (
-                      <span style={{ ...mono, fontWeight: 600, color: C.navy }}>${Number(it.unit_price * it.qty).toFixed(2)}</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          );
-        })}
       </div>
+
+      {/* Labels, not database values (AW-149); the role only for staff. */}
+      <div className="account-stats">
+        <Stat label="Account status" value={accountStatusLabel(profile.status)} tone={statusTone} />
+        <Stat label="Pricing tier" value={tierText} asWritten />
+        {isStaffRole(profile.role) && <Stat label="Role" value={roleLabel(profile.role)} />}
+      </div>
+
+      {/* A suspended account is told why nothing can be ordered, and who to
+          call (AW-101): the sentence the cart and checkout use. */}
+      {profile.status === 'suspended' && (
+        <p className="notice">Ordering is paused on this account. <CallOrEmail after=" and a trade rep will help you sort it out." /></p>
+      )}
+
+      {/* Licence proof stays reachable after approval (AW-254). */}
+      {profile.status !== 'pending' && (
+        <p className="notice">License and resale documents: <Link className="text-link" to="/apply">view or replace</Link></p>
+      )}
+
+      {profile.status === 'pending' && (
+        // No approval time is promised (AW-246, owner answer 2026-10).
+        <p className="notice">Your account is awaiting approval. A trade rep will verify your retail license and activate pricing.</p>
+      )}
+
+      {profile.status === 'pending' && <ApplicationDocuments status="pending" disabled={!isBackendConfigured} id="documents" />}
+
+      {onSignOutEverywhere && (
+        <div className="account-signout">
+          <button className="button ghost" type="button" onClick={onSignOutEverywhere} disabled={signingOut}>
+            <span>{signingOut ? 'Signing out…' : 'Sign out of all devices'}</span>
+          </button>
+          <p className="result-note">Ends your sessions on every computer and phone, including this one. Sign out, at the top of this page, only signs out this browser.</p>
+        </div>
+      )}
+
+      <section className="section" id="quick-reorder">
+        <div className="section-head">
+          <div>
+            <p className="eyebrow">QUICK REORDER</p>
+            <h2>Reorder by SKU</h2>
+          </div>
+        </div>
+        <QuickReorder products={products} addLines={addLines} onOpenCart={onOpenCart} isApprovedBuyer={isApprovedBuyer}
+                      priceOf={priceOf} pricesStatus={pricesStatus} />
+      </section>
+
+      {/* Keyed: another account starts from nothing (AW-326). */}
+      <OrderHistory key={profile.id} userId={profile.id} products={products} addLines={addLines} onOpenCart={onOpenCart} />
     </section>
   );
 }
 
-function Card({ label, value, accent }) {
+// asWritten: the value is already in sentence case ('Silver · 5% off list').
+function Stat({ label, value, tone, asWritten = false }) {
   return (
-    <div className="p-4" style={{ background: 'white', border: `1px solid ${C.border}` }}>
-      <div className="text-[10px] uppercase mb-1.5" style={{ ...mono, letterSpacing: '0.22em', color: C.muted, fontWeight: 600 }}>{label}</div>
-      <div style={{ ...display, fontWeight: 800, color: accent || C.navy, textTransform: 'capitalize' }} className="text-lg">{value}</div>
+    <div className={`stat-card${tone ? ` ${tone}` : ''}`}>
+      <span>{label}</span>
+      <b className={asWritten ? 'as-written' : undefined}>{value}</b>
     </div>
   );
 }
