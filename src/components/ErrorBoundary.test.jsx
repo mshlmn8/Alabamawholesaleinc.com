@@ -41,9 +41,9 @@ describe('ErrorBoundary', () => {
   it('says a page whose code didn’t download wasn’t loaded, with the same Reload (AW-179)', () => {
     quietConsole();
     for (const message of [
-      'Failed to fetch dynamically imported module: https://alabamawholesaleinc.com/assets/AdminPage-abc.js',
+      'Failed to fetch dynamically imported module: https://alabama-wholesale.com/assets/AdminPage-abc.js',
       'Importing a module script failed.',
-      'error loading dynamically imported module: https://alabamawholesaleinc.com/assets/AdminPage-abc.js',
+      'error loading dynamically imported module: https://alabama-wholesale.com/assets/AdminPage-abc.js',
       'Unable to preload CSS for /assets/AdminPage-abc.css',
     ]) {
       const { unmount } = render(<ErrorBoundary resetKey="a"><NotLoaded message={message} /></ErrorBoundary>);

@@ -32,7 +32,7 @@ build` also writes `dist/sitemap.xml` from the catalog; `public/robots.txt`
 points at it.
 
 Optional: `VITE_SITE_URL` sets the public origin used for canonical links,
-share tags and the sitemap. It defaults to `https://alabamawholesaleinc.com`;
+share tags and the sitemap. It defaults to `https://alabama-wholesale.com`;
 set it only if the site moves to another domain. It reaches every absolute
 URL a crawler reads without running the app (AW-052): `index.html`'s share
 image (`og:image`, `twitter:image`) and structured data
@@ -43,7 +43,7 @@ the production domain's copy, for the dev server only.
 
 <!-- TODO(owner): Register the production domain (or name the final one), connect it in Netlify as the primary domain with HTTPS, add the www name so Netlify redirects it to the primary one, and set the Supabase Auth Site URL once the domain resolves. (AW-052) -->
 
-SETUP.md, part C, connects `alabamawholesaleinc.com` with the registrar's
+SETUP.md, part C, connects `alabama-wholesale.com` with the registrar's
 DNS left in place: an `A` record for the bare name pointing at Netlify's
 load balancer (`75.2.60.5`) and a `www` `CNAME` to the project's
 `<name>.netlify.app` address; Netlify then adds the certificate and

@@ -529,12 +529,12 @@ test.describe('page files', () => {
       expect(html).toMatch(new RegExp(`<title>${title.source.slice(1)}`));
       expect(tag(html, 'property', 'og:title')).toMatch(title);
       expect(tag(html, 'name', 'twitter:title')).toMatch(title);
-      expect(tag(html, 'property', 'og:url')).toBe(`https://alabamawholesaleinc.com${path}`);
-      expect(html).toContain(`<link rel="canonical" href="https://alabamawholesaleinc.com${path}" />`);
+      expect(tag(html, 'property', 'og:url')).toBe(`https://alabama-wholesale.com${path}`);
+      expect(html).toContain(`<link rel="canonical" href="https://alabama-wholesale.com${path}" />`);
       expect(html.includes('id="aw-breadcrumbs"')).toBe(path !== '/contact');
     }
     // The product's own photo is its share image.
-    expect(tag(await (await request.get('/product/61')).text(), 'property', 'og:image')).toMatch(/^https:\/\/alabamawholesaleinc\.com\/img\/.+\.jpg$/);
+    expect(tag(await (await request.get('/product/61')).text(), 'property', 'og:image')).toMatch(/^https:\/\/alabama-wholesale\.com\/img\/.+\.jpg$/);
   });
 
   test('the app starts from a page file as from index.html', async ({ page }) => {
@@ -545,7 +545,7 @@ test.describe('page files', () => {
     // Moving on in the app rewrites the head the file came with.
     await page.locator('main a.card-link').first().click();
     await expect(page).toHaveURL(/\/product\/\d+$/);
-    await expect.poll(() => page.locator('link[rel="canonical"]').getAttribute('href')).toBe(`https://alabamawholesaleinc.com${new URL(page.url()).pathname}`);
+    await expect.poll(() => page.locator('link[rel="canonical"]').getAttribute('href')).toBe(`https://alabama-wholesale.com${new URL(page.url()).pathname}`);
     await expect(page.locator('link[rel="canonical"]')).toHaveCount(1);
     await expect(page.locator('#aw-breadcrumbs')).toHaveCount(1);
     expect(errors).toEqual([]);
@@ -557,8 +557,8 @@ test('sitemap.xml lists path URLs only', async ({ request }) => {
   const response = await request.get('/sitemap.xml');
   expect(response.ok()).toBe(true);
   const xml = await response.text();
-  expect(xml).toContain('<loc>https://alabamawholesaleinc.com/product/12</loc>');
-  expect(xml).toContain('<loc>https://alabamawholesaleinc.com/category/tobacco</loc>');
+  expect(xml).toContain('<loc>https://alabama-wholesale.com/product/12</loc>');
+  expect(xml).toContain('<loc>https://alabama-wholesale.com/category/tobacco</loc>');
   expect(xml).not.toContain('#');
   expect(xml).not.toContain('/quote');
   expect(xml).not.toContain('/checkout');

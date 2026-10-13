@@ -495,7 +495,7 @@ describe('applyPageMeta', () => {
   });
 
   it('reads one SITE_URL, the production domain unless VITE_SITE_URL is set', () => {
-    expect(SITE_URL).toBe(import.meta.env.VITE_SITE_URL ? SITE_URL : 'https://alabamawholesaleinc.com');
+    expect(SITE_URL).toBe(import.meta.env.VITE_SITE_URL ? SITE_URL : 'https://alabama-wholesale.com');
     expect(DEFAULT_IMAGE.url).toBe(`${SITE_URL}/og.jpg`);
   });
 });

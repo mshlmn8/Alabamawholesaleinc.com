@@ -70,10 +70,10 @@ Open <https://supabase.com/dashboard> and click the site's project.
       **Secure password change**, **Save**.
 5. **Tell Supabase the site's address.** **Authentication → URL
    Configuration**:
-   - **Site URL**: `https://alabamawholesaleinc.com` → **Save**.
+   - **Site URL**: `https://alabama-wholesale.com` → **Save**.
    - **Redirect URLs** → **Add URL**, once for each of
-     `https://alabamawholesaleinc.com/` and
-     `https://alabamawholesaleinc.com/reset-password`.
+     `https://alabama-wholesale.com/` and
+     `https://alabama-wholesale.com/reset-password`.
    - After part B, add your Netlify address the same way (for example
      `https://alabama-wholesale.netlify.app/` and
      `https://alabama-wholesale.netlify.app/reset-password`), so sign-up
@@ -113,7 +113,7 @@ Open <https://app.netlify.com>.
      key.
 
    A third, `VITE_SITE_URL`, is only for a domain other than
-   `alabamawholesaleinc.com`: set it to `https://` and that domain.
+   `alabama-wholesale.com`: set it to `https://` and that domain.
 4. Click **Deploy**. The first build takes a few minutes. If it fails with
    "the Supabase settings are missing or invalid", fix the two values, then
    **Deploys → Trigger deploy → Deploy project**.
@@ -138,25 +138,24 @@ Open <https://app.netlify.com>.
 
 ## C. The domain
 
-1. If you don't own `alabamawholesaleinc.com` yet, buy it at your registrar
-   (Hostinger: **Domains → Get a new domain**).
+1. The domain `alabama-wholesale.com` is in your GoDaddy account (Domain
+   Portfolio). Keep auto-renew on.
 2. In Netlify: **Domain management** → **Add a domain** → **Add a domain
-   you already own**, type `alabamawholesaleinc.com`, **Verify**, **Add
-   domain**. Netlify also adds `www.alabamawholesaleinc.com` and sends it
+   you already own**, type `alabama-wholesale.com`, **Verify**, **Add
+   domain**. Netlify also adds `www.alabama-wholesale.com` and sends it
    to the main name, then shows the DNS records it needs.
-3. At the registrar (Hostinger: **Domains** → the domain → **DNS /
-   Nameservers** → **DNS records**):
-   - Delete the **A** and **AAAA** records named `@`, and a **CNAME** named
-     `www` if there is one.
-   - Add an **A** record: name `@`, points to `75.2.60.5`.
-   - Add a **CNAME** record: name `www`, target your Netlify address
-     (`<name>.netlify.app`).
-   - Leave every other record (MX, TXT) alone. If Netlify's domain page
-     shows different values, use Netlify's.
+3. At GoDaddy: **Domain Portfolio** → `alabama-wholesale.com` → **DNS**:
+   - Change the **A** record named `@` so it points to `75.2.60.5`, and
+     delete any other **A** or **AAAA** record named `@`.
+   - Change the **CNAME** record named `www` so it points to your Netlify
+     address (`<name>.netlify.app`).
+   - Leave every other record alone, above all the **MX** and **TXT**
+     records: they run the domain's Microsoft 365 email. If Netlify's
+     domain page shows different values, use Netlify's.
 4. Wait until Netlify no longer shows "Awaiting External DNS" (minutes to a
    few hours). Netlify then turns on HTTPS by itself; if **HTTPS** still
    says it is waiting, click **Verify DNS configuration**. Open
-   <https://alabamawholesaleinc.com> to check.
+   <https://alabama-wholesale.com> to check.
 
 ## D. First checks after launch
 
