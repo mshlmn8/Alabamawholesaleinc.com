@@ -1,0 +1,4 @@
+node -v (shell/nvm): v24.20.0
+dev server pid 38714 binary: /opt/homebrew/Cellar/node/26.8.1/bin/node
+.nvmrc: 20
+  NODE_VERSION = "20"

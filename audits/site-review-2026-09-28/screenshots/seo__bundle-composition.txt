@@ -1,0 +1,51 @@
+
+== index-oAaUhUgX.js total 636677 bytes, gzip 169475
+  119379  18.8% Users/mashaal/Documents/ChatGPT/Alabama Wholesale Online Website/alabamawholesaleinc-2a-editorial/src/data/products.js
+   97978  15.4% npm:@supabase/auth-js
+   72061  11.3% Users/mashaal/Documents/ChatGPT/Alabama Wholesale Online Website/alabamawholesaleinc-2a-editorial/src/lib/images.js
+   59864   9.4% Users/mashaal/Documents/ChatGPT/Alabama Wholesale Online Website/alabamawholesaleinc-2a-editorial/src/App.jsx
+   30917   4.9% npm:@supabase/realtime-js
+   25140   3.9% npm:@supabase/phoenix
+   21420   3.4% npm:@supabase/storage-js
+   16028   2.5% npm:@supabase/postgrest-js
+   15246   2.4% Users/mashaal/Documents/ChatGPT/Alabama Wholesale Online Website/alabamawholesaleinc-2a-editorial/src/components/AuthModal.jsx
+    9630   1.5% Users/mashaal/Documents/ChatGPT/Alabama Wholesale Online Website/alabamawholesaleinc-2a-editorial/src/pages/admin/AdminPage.jsx
+    6771   1.1% npm:@supabase/supabase-js
+    5807   0.9% Users/mashaal/Documents/ChatGPT/Alabama Wholesale Online Website/alabamawholesaleinc-2a-editorial/src/pages/support/PolicyPage.jsx
+    5538   0.9% npm:iceberg-js
+    5341   0.8% Users/mashaal/Documents/ChatGPT/Alabama Wholesale Online Website/alabamawholesaleinc-2a-editorial/src/assets/generated/p356-gas-cans--320x320.webp?url
+    5313   0.8% Users/mashaal/Documents/ChatGPT/Alabama Wholesale Online Website/alabamawholesaleinc-2a-editorial/src/assets/generated/p216-grinders--320x320.jpg?url
+    4835   0.8% Users/mashaal/Documents/ChatGPT/Alabama Wholesale Online Website/alabamawholesaleinc-2a-editorial/src/pages/account/AccountPage.jsx
+    4824   0.8% Users/mashaal/Documents/ChatGPT/Alabama Wholesale Online Website/alabamawholesaleinc-2a-editorial/src/pages/support/DeliveryPage.jsx
+    4613   0.7% Users/mashaal/Documents/ChatGPT/Alabama Wholesale Online Website/alabamawholesaleinc-2a-editorial/src/assets/generated/p151-white-v-neck--320x339.jpg?url
+    4596   0.7% Users/mashaal/Documents/ChatGPT/Alabama Wholesale Online Website/alabamawholesaleinc-2a-editorial/src/pages/support/ApplyPage.jsx
+    4416   0.7% Users/mashaal/Documents/ChatGPT/Alabama Wholesale Online Website/alabamawholesaleinc-2a-editorial/src/pages/support/ResetPasswordPage.jsx
+    4293   0.7% Users/mashaal/Documents/ChatGPT/Alabama Wholesale Online Website/alabamawholesaleinc-2a-editorial/src/pages/account/QuickReorder.jsx
+    3905   0.6% Users/mashaal/Documents/ChatGPT/Alabama Wholesale Online Website/alabamawholesaleinc-2a-editorial/src/pages/support/ContactPage.jsx
+    3461   0.5% Users/mashaal/Documents/ChatGPT/Alabama Wholesale Online Website/alabamawholesaleinc-2a-editorial/src/assets/generated/paper_bags_2--320x320.webp?url
+    3447   0.5% Users/mashaal/Documents/ChatGPT/Alabama Wholesale Online Website/alabamawholesaleinc-2a-editorial/src/lib/lines.js
+    3445   0.5% Users/mashaal/Documents/ChatGPT/Alabama Wholesale Online Website/alabamawholesaleinc-2a-editorial/src/assets/generated/p150-phone-cables--320x237.webp?url
+    3444   0.5% Users/mashaal/Documents/ChatGPT/Alabama Wholesale Online Website/alabamawholesaleinc-2a-editorial/src/lib/documents.js
+    3241   0.5% Users/mashaal/Documents/ChatGPT/Alabama Wholesale Online Website/alabamawholesaleinc-2a-editorial/src/assets/generated/p216-grinders--320x320.webp?url
+    3101   0.5% Users/mashaal/Documents/ChatGPT/Alabama Wholesale Online Website/alabamawholesaleinc-2a-editorial/src/components/DocumentUploads.jsx
+    2804   0.4% npm:@supabase/functions-js
+    2742   0.4% Users/mashaal/Documents/ChatGPT/Alabama Wholesale Online Website/alabamawholesaleinc-2a-editorial/src/pages/support/CatalogIndexPage.jsx
+
+== vendor-nf7bT_Uh.js total 140011 bytes, gzip 45297
+  129498  92.5% npm:react-dom
+    6638   4.7% npm:react
+    3875   2.8% npm:scheduler
+
+  206596   53252 gz supabase (all packages)
+  119379   26952 gz src/data/products.js
+   94371   39183 gz inlined generated images
+   72061    9751 gz src/lib/images.js
+   59864   15862 gz src/App.jsx
+   15246    4390 gz src/components/AuthModal.jsx
+    5807    2355 gz src/pages/support/PolicyPage.jsx
+    4824    1729 gz src/pages/support/DeliveryPage.jsx
+    4596    1754 gz src/pages/support/ApplyPage.jsx
+    4416    1694 gz src/pages/support/ResetPasswordPage.jsx
+    3905    1383 gz src/pages/support/ContactPage.jsx
+    3447    1438 gz src/lib/lines.js
+   25303    9508 gz admin + account pages (AdminPage, AccountPage, QuickReorder, DocumentUploads, documents.js)

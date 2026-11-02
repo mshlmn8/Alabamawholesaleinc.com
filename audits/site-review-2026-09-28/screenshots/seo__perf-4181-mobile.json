@@ -1,0 +1,453 @@
+[
+ {
+  "fcp": 2636,
+  "lcp": 6996,
+  "lcpEl": "IMG. ",
+  "lcpUrl": "hero_vape--500x500-DDtY_p-L.webp",
+  "lcpCandidates": [
+   [
+    2636,
+    "DIV.trade-only WHOLESALE TO LI",
+    ""
+   ],
+   [
+    3376,
+    "IMG. ",
+    "hero_candy--700x441-Bb2bpoMf.webp"
+   ],
+   [
+    6996,
+    "IMG. ",
+    "hero_vape--500x500-DDtY_p-L.webp"
+   ]
+  ],
+  "cls": 0.0032,
+  "clsEntries": [
+   {
+    "t": 4093.0999999996275,
+    "v": 0.003175897425305082,
+    "src": [
+     "#text. {\"y\":43,\"h\":30.5}->{\"y\":43,\"h\":30.5}",
+     "BUTTON. {\"y\":519.9375,\"h\":44}->{\"y\":519.9375,\"h\":44}",
+     "DIV.aw-account-actions {\"y\":90,\"h\":44}->{\"y\":90,\"h\":44}",
+     "A.trade-call {\"y\":1,\"h\":34}->{\"y\":1,\"h\":34}",
+     "BUTTON. {\"y\":434,\"h\":40}->{\"y\":434,\"h\":40}"
+    ]
+   }
+  ],
+  "longtasks": [
+   {
+    "t": 2389,
+    "d": 61
+   }
+  ],
+  "tbt": 11,
+  "domContentLoaded": 2450,
+  "load": 2450,
+  "totalTransfer": 760405,
+  "requests": 22,
+  "by": {
+   "script:js": {
+    "n": 1,
+    "bytes": 169739
+   },
+   "other:js": {
+    "n": 1,
+    "bytes": 45559
+   },
+   "link:css": {
+    "n": 1,
+    "bytes": 12978
+   },
+   "img:jpg": {
+    "n": 1,
+    "bytes": 8542
+   },
+   "img:webp": {
+    "n": 14,
+    "bytes": 454204
+   },
+   "css:woff2": {
+    "n": 3,
+    "bytes": 67448
+   },
+   "fetch:asc": {
+    "n": 1,
+    "bytes": 0
+   }
+  },
+  "route": "#/",
+  "run": 0,
+  "wall": 8114
+ },
+ {
+  "fcp": 2592,
+  "lcp": 6964,
+  "lcpEl": "IMG. ",
+  "lcpUrl": "hero_vape--500x500-DDtY_p-L.webp",
+  "lcpCandidates": [
+   [
+    2592,
+    "DIV.trade-only WHOLESALE TO LI",
+    ""
+   ],
+   [
+    3552,
+    "IMG. ",
+    "hero_candy--700x441-Bb2bpoMf.webp"
+   ],
+   [
+    6964,
+    "IMG. ",
+    "hero_vape--500x500-DDtY_p-L.webp"
+   ]
+  ],
+  "cls": 0.0032,
+  "clsEntries": [
+   {
+    "t": 4078.60000000149,
+    "v": 0.003175897425305082,
+    "src": [
+     "#text. {\"y\":43,\"h\":30.5}->{\"y\":43,\"h\":30.5}",
+     "BUTTON. {\"y\":519.9375,\"h\":44}->{\"y\":519.9375,\"h\":44}",
+     "DIV.aw-account-actions {\"y\":90,\"h\":44}->{\"y\":90,\"h\":44}",
+     "A.trade-call {\"y\":1,\"h\":34}->{\"y\":1,\"h\":34}",
+     "BUTTON. {\"y\":434,\"h\":40}->{\"y\":434,\"h\":40}"
+    ]
+   }
+  ],
+  "longtasks": [],
+  "tbt": 0,
+  "domContentLoaded": 2427,
+  "load": 2427,
+  "totalTransfer": 760405,
+  "requests": 22,
+  "by": {
+   "other:js": {
+    "n": 1,
+    "bytes": 45559
+   },
+   "script:js": {
+    "n": 1,
+    "bytes": 169739
+   },
+   "link:css": {
+    "n": 1,
+    "bytes": 12978
+   },
+   "img:jpg": {
+    "n": 1,
+    "bytes": 8542
+   },
+   "img:webp": {
+    "n": 14,
+    "bytes": 454204
+   },
+   "fetch:asc": {
+    "n": 1,
+    "bytes": 0
+   },
+   "css:woff2": {
+    "n": 3,
+    "bytes": 67448
+   }
+  },
+  "route": "#/",
+  "run": 1,
+  "wall": 8113
+ },
+ {
+  "fcp": 2576,
+  "lcp": 3736,
+  "lcpEl": "IMG. ",
+  "lcpUrl": "ss_cigarillos--640x640-BjkxS-uW.webp",
+  "lcpCandidates": [
+   [
+    2576,
+    "P. Wholesale tobacco for licen",
+    ""
+   ],
+   [
+    3736,
+    "IMG. ",
+    "ss_cigarillos--640x640-BjkxS-uW.webp"
+   ]
+  ],
+  "cls": 0.0063,
+  "clsEntries": [
+   {
+    "t": 4108.699999999255,
+    "v": 0.0063470378014086086,
+    "src": [
+     "#text. {\"y\":365.25,\"h\":39.09375}->{\"y\":364.25,\"h\":39.09375}",
+     "#text. {\"y\":43,\"h\":30.5}->{\"y\":43,\"h\":30.5}",
+     "BUTTON.sub-pill  {\"y\":430.4375,\"h\":40}->{\"y\":430.4375,\"h\":40}",
+     "#text. {\"y\":283,\"h\":17}->{\"y\":282,\"h\":17}",
+     "BUTTON.sub-pill  {\"y\":430.4375,\"h\":40}->{\"y\":430.4375,\"h\":40}"
+    ]
+   }
+  ],
+  "longtasks": [],
+  "tbt": 0,
+  "domContentLoaded": 2419,
+  "load": 2420,
+  "totalTransfer": 730653,
+  "requests": 20,
+  "by": {
+   "script:js": {
+    "n": 1,
+    "bytes": 169739
+   },
+   "other:js": {
+    "n": 1,
+    "bytes": 45559
+   },
+   "link:css": {
+    "n": 1,
+    "bytes": 12978
+   },
+   "img:jpg": {
+    "n": 1,
+    "bytes": 8542
+   },
+   "css:woff2": {
+    "n": 3,
+    "bytes": 67448
+   },
+   "img:webp": {
+    "n": 12,
+    "bytes": 424452
+   },
+   "fetch:asc": {
+    "n": 1,
+    "bytes": 0
+   }
+  },
+  "route": "#/category/TOBACCO",
+  "run": 0,
+  "wall": 8077
+ },
+ {
+  "fcp": 2656,
+  "lcp": 3804,
+  "lcpEl": "IMG. ",
+  "lcpUrl": "ss_cigarillos--640x640-BjkxS-uW.webp",
+  "lcpCandidates": [
+   [
+    2656,
+    "P. Wholesale tobacco for licen",
+    ""
+   ],
+   [
+    3804,
+    "IMG. ",
+    "ss_cigarillos--640x640-BjkxS-uW.webp"
+   ]
+  ],
+  "cls": 0.0063,
+  "clsEntries": [
+   {
+    "t": 4185.5,
+    "v": 0.0063470378014086086,
+    "src": [
+     "#text. {\"y\":365.25,\"h\":39.09375}->{\"y\":364.25,\"h\":39.09375}",
+     "#text. {\"y\":43,\"h\":30.5}->{\"y\":43,\"h\":30.5}",
+     "BUTTON.sub-pill  {\"y\":430.4375,\"h\":40}->{\"y\":430.4375,\"h\":40}",
+     "#text. {\"y\":283,\"h\":17}->{\"y\":282,\"h\":17}",
+     "BUTTON.sub-pill  {\"y\":430.4375,\"h\":40}->{\"y\":430.4375,\"h\":40}"
+    ]
+   }
+  ],
+  "longtasks": [
+   {
+    "t": 2383,
+    "d": 54
+   }
+  ],
+  "tbt": 4,
+  "domContentLoaded": 2437,
+  "load": 2438,
+  "totalTransfer": 730653,
+  "requests": 20,
+  "by": {
+   "script:js": {
+    "n": 1,
+    "bytes": 169739
+   },
+   "other:js": {
+    "n": 1,
+    "bytes": 45559
+   },
+   "link:css": {
+    "n": 1,
+    "bytes": 12978
+   },
+   "img:jpg": {
+    "n": 1,
+    "bytes": 8542
+   },
+   "css:woff2": {
+    "n": 3,
+    "bytes": 67448
+   },
+   "img:webp": {
+    "n": 12,
+    "bytes": 424452
+   },
+   "fetch:asc": {
+    "n": 1,
+    "bytes": 0
+   }
+  },
+  "route": "#/category/TOBACCO",
+  "run": 1,
+  "wall": 8127
+ },
+ {
+  "fcp": 2616,
+  "lcp": 3872,
+  "lcpEl": "IMG. ",
+  "lcpUrl": "geekbar_25k_pulse--608x608-n3Y7_Tlh.webp",
+  "lcpCandidates": [
+   [
+    2616,
+    "H1. Geek Bar Pulse X 25K",
+    ""
+   ],
+   [
+    3872,
+    "IMG. ",
+    "geekbar_25k_pulse--608x608-n3Y7_Tlh.webp"
+   ]
+  ],
+  "cls": 0.1704,
+  "clsEntries": [
+   {
+    "t": 4281.0999999996275,
+    "v": 0.1703823141091736,
+    "src": [
+     "DIV.pd-grid {\"y\":304.5,\"h\":518.5}->{\"y\":280,\"h\":543}",
+     "#text. {\"y\":43,\"h\":30.5}->{\"y\":43,\"h\":30.5}",
+     "DIV.aw-account-actions {\"y\":90,\"h\":44}->{\"y\":90,\"h\":44}",
+     "SPAN. {\"y\":270,\"h\":16.5}->{\"y\":235.75,\"h\":16.5}",
+     "BUTTON. {\"y\":226,\"h\":36}->{\"y\":226,\"h\":36}"
+    ]
+   }
+  ],
+  "longtasks": [
+   {
+    "t": 2384,
+    "d": 55
+   }
+  ],
+  "tbt": 5,
+  "domContentLoaded": 2439,
+  "load": 2439,
+  "totalTransfer": 456225,
+  "requests": 12,
+  "by": {
+   "script:js": {
+    "n": 1,
+    "bytes": 169739
+   },
+   "link:css": {
+    "n": 1,
+    "bytes": 12978
+   },
+   "other:js": {
+    "n": 1,
+    "bytes": 45559
+   },
+   "img:jpg": {
+    "n": 1,
+    "bytes": 8542
+   },
+   "img:webp": {
+    "n": 5,
+    "bytes": 165004
+   },
+   "css:woff2": {
+    "n": 2,
+    "bytes": 52468
+   },
+   "fetch:asc": {
+    "n": 1,
+    "bytes": 0
+   }
+  },
+  "route": "#/product/61",
+  "run": 0,
+  "wall": 6456
+ },
+ {
+  "fcp": 2544,
+  "lcp": 4044,
+  "lcpEl": "IMG. ",
+  "lcpUrl": "geekbar_25k_pulse--608x608-n3Y7_Tlh.webp",
+  "lcpCandidates": [
+   [
+    2544,
+    "H1. Geek Bar Pulse X 25K",
+    ""
+   ],
+   [
+    4044,
+    "IMG. ",
+    "geekbar_25k_pulse--608x608-n3Y7_Tlh.webp"
+   ]
+  ],
+  "cls": 0.1704,
+  "clsEntries": [
+   {
+    "t": 4247.300000000745,
+    "v": 0.1703823141091736,
+    "src": [
+     "DIV.pd-grid {\"y\":304.5,\"h\":518.5}->{\"y\":280,\"h\":543}",
+     "#text. {\"y\":43,\"h\":30.5}->{\"y\":43,\"h\":30.5}",
+     "DIV.aw-account-actions {\"y\":90,\"h\":44}->{\"y\":90,\"h\":44}",
+     "SPAN. {\"y\":270,\"h\":16.5}->{\"y\":235.75,\"h\":16.5}",
+     "BUTTON. {\"y\":226,\"h\":36}->{\"y\":226,\"h\":36}"
+    ]
+   }
+  ],
+  "longtasks": [],
+  "tbt": 0,
+  "domContentLoaded": 2418,
+  "load": 2418,
+  "totalTransfer": 456225,
+  "requests": 12,
+  "by": {
+   "script:js": {
+    "n": 1,
+    "bytes": 169739
+   },
+   "other:js": {
+    "n": 1,
+    "bytes": 45559
+   },
+   "link:css": {
+    "n": 1,
+    "bytes": 12978
+   },
+   "img:jpg": {
+    "n": 1,
+    "bytes": 8542
+   },
+   "img:webp": {
+    "n": 5,
+    "bytes": 165004
+   },
+   "css:woff2": {
+    "n": 2,
+    "bytes": 52468
+   },
+   "fetch:asc": {
+    "n": 1,
+    "bytes": 0
+   }
+  },
+  "route": "#/product/61",
+  "run": 1,
+  "wall": 6427
+ }
+]

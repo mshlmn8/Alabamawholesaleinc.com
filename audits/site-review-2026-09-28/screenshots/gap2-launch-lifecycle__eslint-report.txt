@@ -1,0 +1,56 @@
+
+/private/tmp/claude-501/-Users-mashaal-Desktop-alabamawholesaleinc-com/f8834e07-0508-40c1-940d-7c9c1672d112/scratchpad/pw/gap2lc-lint/src/App.jsx
+   1:8    warning  'React' is defined but never used  no-unused-vars
+  50:112  error    Empty block statement              no-empty
+
+/private/tmp/claude-501/-Users-mashaal-Desktop-alabamawholesaleinc-com/f8834e07-0508-40c1-940d-7c9c1672d112/scratchpad/pw/gap2lc-lint/src/components/AuthModal.jsx
+  6:8  warning  'React' is defined but never used  no-unused-vars
+
+/private/tmp/claude-501/-Users-mashaal-Desktop-alabamawholesaleinc-com/f8834e07-0508-40c1-940d-7c9c1672d112/scratchpad/pw/gap2lc-lint/src/components/DocumentUploads.jsx
+  5:8  warning  'React' is defined but never used  no-unused-vars
+
+/private/tmp/claude-501/-Users-mashaal-Desktop-alabamawholesaleinc-com/f8834e07-0508-40c1-940d-7c9c1672d112/scratchpad/pw/gap2lc-lint/src/components/ModalLayer.jsx
+  7:8  warning  'React' is defined but never used  no-unused-vars
+
+/private/tmp/claude-501/-Users-mashaal-Desktop-alabamawholesaleinc-com/f8834e07-0508-40c1-940d-7c9c1672d112/scratchpad/pw/gap2lc-lint/src/components/Picture.jsx
+  1:8  warning  'React' is defined but never used  no-unused-vars
+
+/private/tmp/claude-501/-Users-mashaal-Desktop-alabamawholesaleinc-com/f8834e07-0508-40c1-940d-7c9c1672d112/scratchpad/pw/gap2lc-lint/src/components/ServiceUnavailable.jsx
+  5:8  warning  'React' is defined but never used  no-unused-vars
+
+/private/tmp/claude-501/-Users-mashaal-Desktop-alabamawholesaleinc-com/f8834e07-0508-40c1-940d-7c9c1672d112/scratchpad/pw/gap2lc-lint/src/lib/useAuth.js
+  61:6  warning  React Hook useEffect has a missing dependency: 'session.user'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/private/tmp/claude-501/-Users-mashaal-Desktop-alabamawholesaleinc-com/f8834e07-0508-40c1-940d-7c9c1672d112/scratchpad/pw/gap2lc-lint/src/pages/account/AccountPage.jsx
+   4:8  warning  'React' is defined but never used                                                                           no-unused-vars
+  41:6  warning  React Hook useEffect has a missing dependency: 'profile'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/private/tmp/claude-501/-Users-mashaal-Desktop-alabamawholesaleinc-com/f8834e07-0508-40c1-940d-7c9c1672d112/scratchpad/pw/gap2lc-lint/src/pages/account/QuickReorder.jsx
+  6:8  warning  'React' is defined but never used  no-unused-vars
+
+/private/tmp/claude-501/-Users-mashaal-Desktop-alabamawholesaleinc-com/f8834e07-0508-40c1-940d-7c9c1672d112/scratchpad/pw/gap2lc-lint/src/pages/admin/AdminPage.jsx
+  4:8  warning  'React' is defined but never used  no-unused-vars
+
+/private/tmp/claude-501/-Users-mashaal-Desktop-alabamawholesaleinc-com/f8834e07-0508-40c1-940d-7c9c1672d112/scratchpad/pw/gap2lc-lint/src/pages/support/ApplyPage.jsx
+  4:8  warning  'React' is defined but never used  no-unused-vars
+
+/private/tmp/claude-501/-Users-mashaal-Desktop-alabamawholesaleinc-com/f8834e07-0508-40c1-940d-7c9c1672d112/scratchpad/pw/gap2lc-lint/src/pages/support/CatalogIndexPage.jsx
+  5:8  warning  'React' is defined but never used  no-unused-vars
+
+/private/tmp/claude-501/-Users-mashaal-Desktop-alabamawholesaleinc-com/f8834e07-0508-40c1-940d-7c9c1672d112/scratchpad/pw/gap2lc-lint/src/pages/support/ContactPage.jsx
+  4:8  warning  'React' is defined but never used  no-unused-vars
+
+/private/tmp/claude-501/-Users-mashaal-Desktop-alabamawholesaleinc-com/f8834e07-0508-40c1-940d-7c9c1672d112/scratchpad/pw/gap2lc-lint/src/pages/support/DeliveryPage.jsx
+  5:8  warning  'React' is defined but never used  no-unused-vars
+
+/private/tmp/claude-501/-Users-mashaal-Desktop-alabamawholesaleinc-com/f8834e07-0508-40c1-940d-7c9c1672d112/scratchpad/pw/gap2lc-lint/src/pages/support/PolicyPage.jsx
+  3:8  warning  'React' is defined but never used  no-unused-vars
+
+/private/tmp/claude-501/-Users-mashaal-Desktop-alabamawholesaleinc-com/f8834e07-0508-40c1-940d-7c9c1672d112/scratchpad/pw/gap2lc-lint/src/pages/support/ResetPasswordPage.jsx
+  5:8  warning  'React' is defined but never used  no-unused-vars
+
+/private/tmp/claude-501/-Users-mashaal-Desktop-alabamawholesaleinc-com/f8834e07-0508-40c1-940d-7c9c1672d112/scratchpad/pw/gap2lc-lint/src/pages/support/SupportShell.jsx
+  4:8  warning  'React' is defined but never used  no-unused-vars
+
+✖ 19 problems (1 error, 18 warnings)
+

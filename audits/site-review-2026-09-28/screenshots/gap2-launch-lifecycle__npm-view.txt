@@ -1,0 +1,45 @@
+=== vite
+8.3.1
+{  "alpha": "6.0.0-alpha.24",  "previous": "7.3.6",  "beta": "8.3.0-beta.1",  "latest": "8.3.1"}
+{  "node": "^20.19.0 || >=22.12.0"}
+{  "tsx": "^4.8.1",  "jiti": ">=1.21.0",  "less": "^4.0.0",  "sass": "^1.70.0",  "yaml": "^2.4.2",  "stylus": ">=0.54.8",  "terser": "^5.16.0",  "esbuild": "^0.27.0 || ^0.28.0",  "sugarss": "^5.0.0",  "@types/node": "^20.19.0 || >=22.12.0",  "sass-embedded": "^1.70.0",  "@vitejs/devtools": "^0.7.1"}
+=== @vitejs/plugin-react
+6.1.1
+{  "alpha": "3.0.0-alpha.2",  "beta": "6.0.0-beta.0",  "latest": "6.1.1"}
+{  "node": "^20.19.0 || >=22.12.0"}
+{  "vite": "^8.0.0",  "oxc-transform-react": "^0.145.0",  "@rolldown/plugin-babel": "^0.1.7 || ^0.2.0",  "babel-plugin-react-compiler": "^1.0.0"}
+=== react
+19.3.0
+{  "beta": "19.0.0-beta-26f2496093-20240514",  "rc": "19.0.0-rc.1",  "next": "19.3.0-canary-d5736f09-20260507",  "backport": "19.0.8",  "latest": "19.3.0",  "canary": "19.3.0-canary-d083ec1d-20260922",  "experimental": "0.0.0-experimental-d083ec1d-20260922"}
+{  "node": ">=0.10.0"}
+
+=== react-dom
+19.3.0
+{  "beta": "19.0.0-beta-26f2496093-20240514",  "rc": "19.0.0-rc.1",  "next": "19.3.0-canary-d5736f09-20260507",  "backport": "19.0.8",  "latest": "19.3.0",  "experimental": "0.0.0-experimental-d083ec1d-20260922",  "canary": "19.3.0-canary-d083ec1d-20260922"}
+
+{  "react": "^19.3.0"}
+=== @supabase/supabase-js
+2.117.2
+{  "rc": "2.100.0-rc.0",  "next": "3.0.0-next.29",  "beta": "2.112.0-beta.0",  "latest": "2.117.2",  "canary": "2.117.2-canary.0"}
+{  "node": ">=22.0.0"}
+{  "@opentelemetry/api": ">=1.0.0"}
+=== tailwindcss
+4.3.3
+{  "next": "4.0.0",  "v3-lts": "3.4.19",  "latest": "4.3.3",  "insiders": "0.0.0-insiders.fa81d69"}
+
+
+=== postcss
+8.5.28
+{  "latest": "8.5.28"}
+{  "node": "^10 || ^12 || >=14"}
+
+=== autoprefixer
+10.6.1
+{  "latest": "10.6.1"}
+{  "node": "^10 || ^12 || >=14"}
+{  "postcss": "^8.1.0"}
+=== sharp
+0.35.5
+{  "latest": "0.35.5",  "next": "0.35.5-rc.1"}
+{  "node": ">=20.9.0"}
+

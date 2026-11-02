@@ -1,0 +1,220 @@
+[
+ {
+  "fcp": 2596,
+  "lcp": 7108,
+  "lcpEl": "IMG. ",
+  "lcpUrl": "hero_vape--500x500-DDtY_p-L.webp",
+  "lcpCandidates": [
+   [
+    2596,
+    "DIV.trade-only WHOLESALE TO LI",
+    ""
+   ],
+   [
+    3472,
+    "IMG. ",
+    "hero_candy--700x441-Bb2bpoMf.webp"
+   ],
+   [
+    7108,
+    "IMG. ",
+    "hero_vape--500x500-DDtY_p-L.webp"
+   ]
+  ],
+  "cls": 0.0032,
+  "clsEntries": [
+   {
+    "t": 4071.4000000003725,
+    "v": 0.003175897425305082,
+    "src": [
+     "#text. {\"y\":43,\"h\":30.5}->{\"y\":43,\"h\":30.5}",
+     "BUTTON. {\"y\":519.9375,\"h\":44}->{\"y\":519.9375,\"h\":44}",
+     "DIV.aw-account-actions {\"y\":90,\"h\":44}->{\"y\":90,\"h\":44}",
+     "A.trade-call {\"y\":1,\"h\":34}->{\"y\":1,\"h\":34}",
+     "BUTTON. {\"y\":434,\"h\":40}->{\"y\":434,\"h\":40}"
+    ]
+   }
+  ],
+  "longtasks": [],
+  "tbt": 0,
+  "domContentLoaded": 2443,
+  "load": 2443,
+  "totalTransfer": 760405,
+  "requests": 22,
+  "by": {
+   "other:js": {
+    "n": 1,
+    "bytes": 45559
+   },
+   "script:js": {
+    "n": 1,
+    "bytes": 169739
+   },
+   "link:css": {
+    "n": 1,
+    "bytes": 12978
+   },
+   "img:jpg": {
+    "n": 1,
+    "bytes": 8542
+   },
+   "img:webp": {
+    "n": 14,
+    "bytes": 454204
+   },
+   "css:woff2": {
+    "n": 3,
+    "bytes": 67448
+   },
+   "fetch:asc": {
+    "n": 1,
+    "bytes": 0
+   }
+  },
+  "route": "#/",
+  "run": 0,
+  "wall": 8149
+ },
+ {
+  "fcp": 2584,
+  "lcp": 3768,
+  "lcpEl": "IMG. ",
+  "lcpUrl": "ss_cigarillos--640x640-BjkxS-uW.webp",
+  "lcpCandidates": [
+   [
+    2584,
+    "P. Wholesale tobacco for licen",
+    ""
+   ],
+   [
+    3768,
+    "IMG. ",
+    "ss_cigarillos--640x640-BjkxS-uW.webp"
+   ]
+  ],
+  "cls": 0.0063,
+  "clsEntries": [
+   {
+    "t": 4138.700000001118,
+    "v": 0.0063470378014086086,
+    "src": [
+     "#text. {\"y\":365.25,\"h\":39.09375}->{\"y\":364.25,\"h\":39.09375}",
+     "#text. {\"y\":43,\"h\":30.5}->{\"y\":43,\"h\":30.5}",
+     "BUTTON.sub-pill  {\"y\":430.4375,\"h\":40}->{\"y\":430.4375,\"h\":40}",
+     "#text. {\"y\":283,\"h\":17}->{\"y\":282,\"h\":17}",
+     "BUTTON.sub-pill  {\"y\":430.4375,\"h\":40}->{\"y\":430.4375,\"h\":40}"
+    ]
+   }
+  ],
+  "longtasks": [],
+  "tbt": 0,
+  "domContentLoaded": 2429,
+  "load": 2429,
+  "totalTransfer": 730653,
+  "requests": 20,
+  "by": {
+   "script:js": {
+    "n": 1,
+    "bytes": 169739
+   },
+   "other:js": {
+    "n": 1,
+    "bytes": 45559
+   },
+   "link:css": {
+    "n": 1,
+    "bytes": 12978
+   },
+   "img:jpg": {
+    "n": 1,
+    "bytes": 8542
+   },
+   "css:woff2": {
+    "n": 3,
+    "bytes": 67448
+   },
+   "img:webp": {
+    "n": 12,
+    "bytes": 424452
+   },
+   "fetch:asc": {
+    "n": 1,
+    "bytes": 0
+   }
+  },
+  "route": "#/category/TOBACCO",
+  "run": 0,
+  "wall": 8081
+ },
+ {
+  "fcp": 2556,
+  "lcp": 4048,
+  "lcpEl": "IMG. ",
+  "lcpUrl": "geekbar_25k_pulse--608x608-n3Y7_Tlh.webp",
+  "lcpCandidates": [
+   [
+    2556,
+    "H1. Geek Bar Pulse X 25K",
+    ""
+   ],
+   [
+    4048,
+    "IMG. ",
+    "geekbar_25k_pulse--608x608-n3Y7_Tlh.webp"
+   ]
+  ],
+  "cls": 0.1704,
+  "clsEntries": [
+   {
+    "t": 4253.9000000003725,
+    "v": 0.1703823141091736,
+    "src": [
+     "DIV.pd-grid {\"y\":304.5,\"h\":518.5}->{\"y\":280,\"h\":543}",
+     "#text. {\"y\":43,\"h\":30.5}->{\"y\":43,\"h\":30.5}",
+     "DIV.aw-account-actions {\"y\":90,\"h\":44}->{\"y\":90,\"h\":44}",
+     "SPAN. {\"y\":270,\"h\":16.5}->{\"y\":235.75,\"h\":16.5}",
+     "BUTTON. {\"y\":226,\"h\":36}->{\"y\":226,\"h\":36}"
+    ]
+   }
+  ],
+  "longtasks": [],
+  "tbt": 0,
+  "domContentLoaded": 2435,
+  "load": 2435,
+  "totalTransfer": 456225,
+  "requests": 12,
+  "by": {
+   "script:js": {
+    "n": 1,
+    "bytes": 169739
+   },
+   "link:css": {
+    "n": 1,
+    "bytes": 12978
+   },
+   "other:js": {
+    "n": 1,
+    "bytes": 45559
+   },
+   "img:jpg": {
+    "n": 1,
+    "bytes": 8542
+   },
+   "img:webp": {
+    "n": 5,
+    "bytes": 165004
+   },
+   "css:woff2": {
+    "n": 2,
+    "bytes": 52468
+   },
+   "fetch:asc": {
+    "n": 1,
+    "bytes": 0
+   }
+  },
+  "route": "#/product/61",
+  "run": 0,
+  "wall": 6439
+ }
+]
