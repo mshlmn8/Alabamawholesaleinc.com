@@ -1,0 +1,32 @@
+{
+ "products (live row count, copy columns from 20260927120000)": {
+  "status": 206,
+  "contentRange": "0-0/368",
+  "body": "[{\"id\":1,\"description\":\"Swisher Sweets cigarillos in resealable foil pouches, from the cigar and cigarillo line in our Tobacco department. Eight varieties: Diamond, Red, Green, White grape, Silver, Gr"
+ },
+ "profiles.ein (20260927000000)": {
+  "status": 200,
+  "contentRange": "*/0",
+  "body": "[]"
+ },
+ "orders.ship_street (20260925120000)": {
+  "status": 200,
+  "contentRange": "*/0",
+  "body": "[]"
+ },
+ "order_items.variant (20260925120000)": {
+  "status": 200,
+  "contentRange": "*/0",
+  "body": "[]"
+ },
+ "profile_documents table (20260927180000)": {
+  "status": 200,
+  "contentRange": "*/0",
+  "body": "[]"
+ },
+ "pricing_tiers": {
+  "status": 206,
+  "contentRange": "0-0/3",
+  "body": "[{\"tier\":\"standard\",\"discount_pct\":0.00,\"label\":\"Standard\"}]"
+ }
+}

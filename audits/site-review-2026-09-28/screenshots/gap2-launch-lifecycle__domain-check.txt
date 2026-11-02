@@ -1,0 +1,13 @@
+# 2026-09-28T05:47:58Z
+## dig A alabamawholesaleinc.com
+;; ->>HEADER<<- opcode: QUERY, status: NXDOMAIN, id: 40194
+;; flags: qr rd ra; QUERY: 1, ANSWER: 0, AUTHORITY: 1, ADDITIONAL: 1
+## nslookup via 8.8.8.8
+** server can't find alabamawholesaleinc.com: NXDOMAIN
+
+## whois.verisign-grs.com
+No match for domain "ALABAMAWHOLESALEINC.COM".
+>>> Last update of whois database: 2026-09-28T05:47:45Z <<<
+
+## control: dig google.com
+142.251.214.78

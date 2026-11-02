@@ -1,0 +1,14 @@
+✔ lineKey round-trips (0.656792ms)
+✔ legacy {id:qty} cart from the old site: multi-variant lines stay bare (blocking) (0.256167ms)
+✔ non-object stored carts do not create lines (0.442542ms)
+✔ SKU resolution prefers the longest base (0.166833ms)
+✔ bare SKU of a multi-variant product asks for a variant (0.058ms)
+✔ variant SKU suffix (0.044709ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 42.302583

@@ -1,0 +1,68 @@
+{
+ "desktop": {
+  "badge": "6",
+  "cartBtnLabel": "Cart, 6 items",
+  "storedCartAfterLoad": "{\"1\":3,\"14\":1,\"162\":2}",
+  "leftoverKeys": [
+   [
+    "aw-cart",
+    "{\"1\":3,\"14\":1,\"162\":2}"
+   ],
+   [
+    "aw-welcome-seen",
+    "yes"
+   ],
+   [
+    "aw-age-verified",
+    "yes"
+   ],
+   [
+    "aw-trade-user",
+    "{\"id\":\"00000000-0000-0000-0000-000000000000\",\"name\":\"Test Buyer\",\"email\":\"buyer@example.te"
+   ]
+  ],
+  "noticeShown": 0,
+  "drawerText": "Your order × Swisher Sweets cigarillos AW-SS · Choose a variant Choose variant × Kite cigarette tobacco AW-KITE − 1 + × Snickers bars AW-SNICKERS · Choose a variant Choose variant × Estimated total Sign in for pricing Request quote ↗ Sign in for account pricing The minimum order is $500.00. Free delivery over $1,500 applies on a delivery route in AL, MS & GA. Will-call is pickup at the Birmingham warehouse during business hours.",
+  "quoteText": "Home / REQUEST QUOTE QUOTE REQUEST Request your quote Review your items and submit. The minimum order is $500.00. A trade desk rep will confirm pricing, availability and delivery within one business day. Swisher Sweets cigarillos AW-SS Choose a variant before submitting. Choose variant × Kite cigarette tobacco AW-KITE − 1 + × Snickers bars AW-SNICKERS Choose a variant before submitting. Choose variant × Clear all items Your details BUSINESS CONTACT EMAIL PHONE STREET CITY STATE ZIP DELIVERY METHOD Next-day delivery (on route) Will-call pickup PREFERRED DATE NOTES 6 units Pricing after sign-in Choose a variant for every product that has more than one. Submit quote request ↗ The minimum order is $500.00. Orders over $1,500 qualify for free delivery on a delivery route in AL, MS & GA. Will-call is pickup at the Birmingham warehouse during business hours. Tobacco products supplied to licensed retailers only — 21+.",
+  "submitDisabled": true,
+  "submitText": "Submit quote request ↗",
+  "logs": {
+   "pageErrors": [],
+   "console": [],
+   "blocked": 0
+  }
+ },
+ "mobile": {
+  "badge": "6",
+  "cartBtnLabel": "Cart, 6 items",
+  "storedCartAfterLoad": "{\"1\":3,\"14\":1,\"162\":2}",
+  "leftoverKeys": [
+   [
+    "aw-cart",
+    "{\"1\":3,\"14\":1,\"162\":2}"
+   ],
+   [
+    "aw-welcome-seen",
+    "yes"
+   ],
+   [
+    "aw-age-verified",
+    "yes"
+   ],
+   [
+    "aw-trade-user",
+    "{\"id\":\"00000000-0000-0000-0000-000000000000\",\"name\":\"Test Buyer\",\"email\":\"buyer@example.te"
+   ]
+  ],
+  "noticeShown": 0,
+  "drawerText": "Your order × Swisher Sweets cigarillos AW-SS · Choose a variant Choose variant × Kite cigarette tobacco AW-KITE − 1 + × Snickers bars AW-SNICKERS · Choose a variant Choose variant × Estimated total Sign in for pricing Request quote ↗ Sign in for account pricing The minimum order is $500.00. Free delivery over $1,500 applies on a delivery route in AL, MS & GA. Will-call is pickup at the Birmingham warehouse during business hours.",
+  "quoteText": "Home / REQUEST QUOTE QUOTE REQUEST Request your quote Review your items and submit. The minimum order is $500.00. A trade desk rep will confirm pricing, availability and delivery within one business day. Swisher Sweets cigarillos AW-SS Choose a variant before submitting. Choose variant × Kite cigarette tobacco AW-KITE − 1 + × Snickers bars AW-SNICKERS Choose a variant before submitting. Choose variant × Clear all items Your details BUSINESS CONTACT EMAIL PHONE STREET CITY STATE ZIP DELIVERY METHOD Next-day delivery (on route) Will-call pickup PREFERRED DATE NOTES 6 units Pricing after sign-in Choose a variant for every product that has more than one. Submit quote request ↗ The minimum order is $500.00. Orders over $1,500 qualify for free delivery on a delivery route in AL, MS & GA. Will-call is pickup at the Birmingham warehouse during business hours. Tobacco products supplied to licensed retailers only — 21+.",
+  "submitDisabled": true,
+  "submitText": "Submit quote request ↗",
+  "logs": {
+   "pageErrors": [],
+   "console": [],
+   "blocked": 0
+  }
+ }
+}

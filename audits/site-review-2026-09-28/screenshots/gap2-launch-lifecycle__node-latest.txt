@@ -1,0 +1,4 @@
+v20. latest v20.20.2 2026-03-24 lts Iron security true
+v22. latest v22.23.3 2026-09-23 lts Jod security false
+v24. latest v24.21.0 2026-09-07 lts Krypton security false
+v26. latest v26.10.0 2026-09-21 lts false security false

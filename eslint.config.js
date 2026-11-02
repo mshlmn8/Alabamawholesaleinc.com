@@ -14,7 +14,7 @@ const aw = { rules: { 'translate-safe-text': translateSafeText } };
 
 export default [
   {
-    ignores: ['dist/', 'src/assets/generated/', 'playwright-report/', 'test-results/', 'coverage/']
+    ignores: ['dist/', 'src/assets/generated/', 'playwright-report/', 'test-results/', 'coverage/', 'audits/']
   },
   js.configs.recommended,
   {

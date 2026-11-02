@@ -119,6 +119,10 @@ Re-runs compare content hashes, not file dates, so an unchanged photo is never r
 
 Without `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, `npm run dev` still serves the catalog, but trade accounts, orders, order history and the admin dashboard are off, and `npm run build` stops with an error (set `ALLOW_NO_BACKEND=1` to build a static-only preview on purpose). See [BACKEND.md](BACKEND.md).
 
+## Site review
+
+The September 2026 review of the site (355 findings, `AW-001`…`AW-355`, the ids in code comments and commit messages) is in [audits/site-review-2026-09-28/](audits/site-review-2026-09-28/00-START-HERE.md), with each finding's status in [STATUS.md](audits/site-review-2026-09-28/STATUS.md).
+
 ## License
 
 Proprietary — © 2026 Alabama Wholesale Inc.

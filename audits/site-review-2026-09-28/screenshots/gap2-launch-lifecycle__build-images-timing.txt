@@ -1,0 +1,1 @@
+build-images cold run (12-core Mac, Node 24.20.0, sharp 0.35.4): 276 sources -> 1284 files, 64.1s script time (real 66.26s); warm rerun 1.6s

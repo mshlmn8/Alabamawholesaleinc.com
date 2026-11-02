@@ -1,0 +1,15 @@
+Local dist/ built: Sep 26 22:08:58 2026 (commit bf94cca, 18 commits / 12 non-merge behind HEAD d19d7dc)
+.env.local mtime: Sep 26 23:59:56 2026
+dist/assets/*.js 'supabase': 0
+dist/assets/*.js 'auth/v1': 0
+dist/assets/*.js 'rest/v1': 0
+dist/assets/*.js 'aw-auth': 0
+dist/assets/*.js 'submit_quote': 0
+dist/assets/*.js 'can’t be saved right now': 4
+Old Desktop dist index-D3CurPUo.js 'supabase.co': 0
+Domain occurrences:
+public/sitemap.xml:10
+public/robots.txt:1
+index.html:6
+;; ->>HEADER<<- opcode: QUERY, status: NXDOMAIN, id: 56795
+No match for domain "ALABAMAWHOLESALEINC.COM".
