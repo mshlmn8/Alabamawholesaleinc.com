@@ -1,7 +1,8 @@
-// Stage 1 of the warehouse sheet (November 2026): names and departments only.
-// Photos are stage 2 (img stays null, the card says "Photo coming soon").
-// Prices and specifications are stage 3: no price field, and variants are
-// empty because flavors, sizes and strengths were not on the sheet.
+// Stage 1 of the warehouse sheet (November 2026): names and departments.
+// Photos listed in stage1Photos.js are transparent PNGs from the brand's own
+// site. Every other row still has no photo. Prices and specifications are
+// stage 3: no price field, and variants are empty because flavors, sizes and
+// strengths were not on the sheet.
 // Rows already in src/data/products.js are not repeated here.
 //
 // Kratom & Kava and Mushroom Products stay off the site, the same October
@@ -11,6 +12,8 @@
 //
 // Ids start at 369 and follow this list. Append new rows; do not reorder
 // these, or a SKU already seeded keeps the old id.
+
+import { STAGE1_PHOTOS } from './stage1Photos.js';
 
 const FIRST_ID = 369;
 const DELISTED_SUBS = new Set(['Mushroom Products', 'Kratom & Kava']);
@@ -334,7 +337,7 @@ function build([name, brand, cat, sub, sku], index) {
     sku,
     sellUnit: sellUnitOf(name),
     variants: [],
-    img: null,
+    img: STAGE1_PHOTOS[sku] ?? null,
     tag: null,
     description: sku === 'AW-JUUL-PODS-4PK'
       ? 'Juul pods 4-pack menthol, 5%, from the vape pods line in our Novelties department.'
