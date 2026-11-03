@@ -4,8 +4,8 @@
 --
 -- Every database update the live Supabase project doesn't have yet, in order,
 -- in one file. The live project has the updates up to and including
--- 20260927180000_application_documents.sql; this file has the 34 after it
--- (20261008190000 to 20261103120000), then the product seed.
+-- 20260927180000_application_documents.sql; this file has the 35 after it
+-- (20261008190000 to 20261103140000), then the product seed.
 --
 -- How to run it (SETUP.md, part A): back up the database first. Then in
 -- Supabase open SQL Editor, start a new query, paste this whole file and
@@ -60,7 +60,8 @@
 --   32. 20261014120000_staff_role.sql
 --   33. 20261014121000_site_settings.sql
 --   34. 20261103120000_stage2_product_photos.sql
---   35. products.sql (the product seed)
+--   35. 20261103140000_stage2_more_photos.sql
+--   36. products.sql (the product seed)
 
 -- =============================================================================
 -- Check: is this the live database, without these updates yet?
@@ -79,7 +80,7 @@ begin
 end $$;
 
 -- =============================================================================
--- 1 of 35: 20261008190000_quote_tobacco_license.sql
+-- 1 of 36: 20261008190000_quote_tobacco_license.sql
 -- supabase/migrations/20261008190000_quote_tobacco_license.sql, word for word.
 -- =============================================================================
 
@@ -236,7 +237,7 @@ revoke all on function public.submit_quote(text, text, text, text, text, text, d
 grant execute on function public.submit_quote(text, text, text, text, text, text, date, text, text, text, text, text, jsonb, text, text, boolean) to anon, authenticated;
 
 -- =============================================================================
--- 2 of 35: 20261008191000_profile_store_address.sql
+-- 2 of 36: 20261008191000_profile_store_address.sql
 -- supabase/migrations/20261008191000_profile_store_address.sql, word for word.
 -- =============================================================================
 
@@ -282,7 +283,7 @@ end;
 $$;
 
 -- =============================================================================
--- 3 of 35: 20261008192000_profile_self_update_guard.sql
+-- 3 of 36: 20261008192000_profile_self_update_guard.sql
 -- supabase/migrations/20261008192000_profile_self_update_guard.sql, word for word.
 -- =============================================================================
 
@@ -317,7 +318,7 @@ create trigger a_protect_profile_columns
   for each row execute function public.protect_profile_columns();
 
 -- =============================================================================
--- 4 of 35: 20261008193000_profile_approval_audit.sql
+-- 4 of 36: 20261008193000_profile_approval_audit.sql
 -- supabase/migrations/20261008193000_profile_approval_audit.sql, word for word.
 -- =============================================================================
 
@@ -484,7 +485,7 @@ create policy application_documents_owner_delete on storage.objects
   );
 
 -- =============================================================================
--- 5 of 35: 20261008194000_strip_signup_metadata.sql
+-- 5 of 36: 20261008194000_strip_signup_metadata.sql
 -- supabase/migrations/20261008194000_strip_signup_metadata.sql, word for word.
 -- =============================================================================
 
@@ -536,7 +537,7 @@ end;
 $$;
 
 -- =============================================================================
--- 6 of 35: 20261008195000_application_consent.sql
+-- 6 of 36: 20261008195000_application_consent.sql
 -- supabase/migrations/20261008195000_application_consent.sql, word for word.
 -- =============================================================================
 
@@ -603,7 +604,7 @@ end;
 $$;
 
 -- =============================================================================
--- 7 of 35: 20261008200000_variant_prices_and_quote_workflow.sql
+-- 7 of 36: 20261008200000_variant_prices_and_quote_workflow.sql
 -- supabase/migrations/20261008200000_variant_prices_and_quote_workflow.sql, word for word.
 -- =============================================================================
 
@@ -814,7 +815,7 @@ grant execute on function public.admin_price_order(uuid, jsonb) to authenticated
 grant execute on function public.admin_convert_quote(uuid, uuid) to authenticated;
 
 -- =============================================================================
--- 8 of 35: 20261009100000_price_boundary.sql
+-- 8 of 36: 20261009100000_price_boundary.sql
 -- supabase/migrations/20261009100000_price_boundary.sql, word for word.
 -- =============================================================================
 
@@ -1121,7 +1122,7 @@ alter table public.profiles
 -- alter table public.products alter column price set not null;
 
 -- =============================================================================
--- 9 of 35: 20261009110000_variant_model.sql
+-- 9 of 36: 20261009110000_variant_model.sql
 -- supabase/migrations/20261009110000_variant_model.sql, word for word.
 -- =============================================================================
 
@@ -1645,7 +1646,7 @@ where p.id = v.id and p.description = v.old_text;
 -- alter table public.products drop column if exists variant_axis;
 
 -- =============================================================================
--- 10 of 35: 20261009120000_catalog_corrections.sql
+-- 10 of 36: 20261009120000_catalog_corrections.sql
 -- supabase/migrations/20261009120000_catalog_corrections.sql, word for word.
 -- =============================================================================
 
@@ -2576,7 +2577,7 @@ where p.id = v.id
 -- where p.id = v.id and p.sku = v.new_sku;
 
 -- =============================================================================
--- 11 of 35: 20261009130000_submit_quote_v3.sql
+-- 11 of 36: 20261009130000_submit_quote_v3.sql
 -- supabase/migrations/20261009130000_submit_quote_v3.sql, word for word.
 -- =============================================================================
 
@@ -3031,7 +3032,7 @@ grant execute on function public.submit_quote(text, text, text, text, text, text
 -- drop table if exists public.quote_throttle;
 
 -- =============================================================================
--- 12 of 35: 20261009140000_profile_and_document_boundaries.sql
+-- 12 of 36: 20261009140000_profile_and_document_boundaries.sql
 -- supabase/migrations/20261009140000_profile_and_document_boundaries.sql, word for word.
 -- =============================================================================
 
@@ -3434,7 +3435,7 @@ create policy application_documents_owner_update on storage.objects
 --   set search_path = public as $$ select coalesce((select role = 'admin' from public.profiles where id = auth.uid()), false); $$;
 
 -- =============================================================================
--- 13 of 35: 20261009150000_quote_workflow.sql
+-- 13 of 36: 20261009150000_quote_workflow.sql
 -- supabase/migrations/20261009150000_quote_workflow.sql, word for word.
 -- =============================================================================
 
@@ -3696,7 +3697,7 @@ grant execute on function public.admin_convert_quote(uuid, uuid) to authenticate
 --   20261008200000 definition
 
 -- =============================================================================
--- 14 of 35: 20261010120000_admin_product_editor.sql
+-- 14 of 36: 20261010120000_admin_product_editor.sql
 -- supabase/migrations/20261010120000_admin_product_editor.sql, word for word.
 -- =============================================================================
 
@@ -3900,7 +3901,7 @@ create policy product_images_admin_delete on storage.objects
 -- drop sequence if exists public.products_id_seq;
 
 -- =============================================================================
--- 15 of 35: 20261010121000_admin_bulk_products.sql
+-- 15 of 36: 20261010121000_admin_bulk_products.sql
 -- supabase/migrations/20261010121000_admin_bulk_products.sql, word for word.
 -- =============================================================================
 
@@ -4096,7 +4097,7 @@ alter table public.pricing_tiers add constraint pricing_tiers_discount_range
 -- drop function if exists public.admin_bulk_adjust_prices(integer[], numeric, numeric, boolean);
 
 -- =============================================================================
--- 16 of 35: 20261010122000_order_operations.sql
+-- 16 of 36: 20261010122000_order_operations.sql
 -- supabase/migrations/20261010122000_order_operations.sql, word for word.
 -- =============================================================================
 
@@ -4391,7 +4392,7 @@ end $$;
 -- drop table if exists public.order_events;
 
 -- =============================================================================
--- 17 of 35: 20261010130000_catalog_apostrophes.sql
+-- 17 of 36: 20261010130000_catalog_apostrophes.sql
 -- supabase/migrations/20261010130000_catalog_apostrophes.sql, word for word.
 -- =============================================================================
 
@@ -4433,7 +4434,7 @@ update public.products set brand = 'Reese''s' where id = 166 and brand = 'Reeseâ
 -- update public.products set brand = 'Reeseâ€™s' where id = 166 and brand = 'Reese''s';
 
 -- =============================================================================
--- 18 of 35: 20261010131000_photo_filenames.sql
+-- 18 of 36: 20261010131000_photo_filenames.sql
 -- supabase/migrations/20261010131000_photo_filenames.sql, word for word.
 -- =============================================================================
 
@@ -4498,7 +4499,7 @@ update public.products p
 --    and p.img = v.new_img;
 
 -- =============================================================================
--- 19 of 35: 20261011110000_order_item_hints.sql
+-- 19 of 36: 20261011110000_order_item_hints.sql
 -- supabase/migrations/20261011110000_order_item_hints.sql, word for word.
 -- =============================================================================
 
@@ -4646,7 +4647,7 @@ revoke all on function public.enforce_order_item_price() from public, anon, auth
 -- revoke all on function public.enforce_order_item_price() from public, anon, authenticated;
 
 -- =============================================================================
--- 20 of 35: 20261011111000_profile_role_audit.sql
+-- 20 of 36: 20261011111000_profile_role_audit.sql
 -- supabase/migrations/20261011111000_profile_role_audit.sql, word for word.
 -- =============================================================================
 
@@ -4742,7 +4743,7 @@ revoke all on function public.log_profile_status() from public, anon, authentica
 -- alter table public.profile_status_log drop column if exists old_role, drop column if exists new_role;
 
 -- =============================================================================
--- 21 of 35: 20261011130000_catalog_names.sql
+-- 21 of 36: 20261011130000_catalog_names.sql
 -- supabase/migrations/20261011130000_catalog_names.sql, word for word.
 -- =============================================================================
 
@@ -4834,7 +4835,7 @@ update public.products set name = 'Gold Band lubricants' where id = 355 and name
 -- update public.products set name = 'Gold Band' where id = 355 and name = 'Gold Band lubricants';
 
 -- =============================================================================
--- 22 of 35: 20261011131000_home_slides.sql
+-- 22 of 36: 20261011131000_home_slides.sql
 -- supabase/migrations/20261011131000_home_slides.sql, word for word.
 -- =============================================================================
 
@@ -5007,7 +5008,7 @@ where not exists (select 1 from public.home_slides);
 -- drop function if exists public.stamp_home_slide_editor();
 
 -- =============================================================================
--- 23 of 35: 20261012100000_document_storage_lock.sql
+-- 23 of 36: 20261012100000_document_storage_lock.sql
 -- supabase/migrations/20261012100000_document_storage_lock.sql, word for word.
 -- =============================================================================
 
@@ -5074,7 +5075,7 @@ where id = 'application-documents';
 -- where id = 'application-documents';
 
 -- =============================================================================
--- 24 of 35: 20261012110000_carts.sql
+-- 24 of 36: 20261012110000_carts.sql
 -- supabase/migrations/20261012110000_carts.sql, word for word.
 -- =============================================================================
 
@@ -5204,7 +5205,7 @@ grant all on public.carts to service_role;
 -- drop function if exists public.cart_lines_valid(jsonb);
 
 -- =============================================================================
--- 25 of 35: 20261012120000_product_description_hidden.sql
+-- 25 of 36: 20261012120000_product_description_hidden.sql
 -- supabase/migrations/20261012120000_product_description_hidden.sql, word for word.
 -- =============================================================================
 
@@ -5252,7 +5253,7 @@ grant select (description_hidden) on public.products to anon, authenticated;
 -- alter table public.products drop column if exists description_hidden;
 
 -- =============================================================================
--- 26 of 35: 20261012130000_catalog_fixups.sql
+-- 26 of 36: 20261012130000_catalog_fixups.sql
 -- supabase/migrations/20261012130000_catalog_fixups.sql, word for word.
 -- =============================================================================
 
@@ -5360,7 +5361,7 @@ update public.products set sell_unit = 'single' where id in (16, 340) and sell_u
 -- update public.products set sell_unit = '' where id in (16, 340) and sell_unit = 'single';
 
 -- =============================================================================
--- 27 of 35: 20261012140000_admin_import_create.sql
+-- 27 of 36: 20261012140000_admin_import_create.sql
 -- supabase/migrations/20261012140000_admin_import_create.sql, word for word.
 -- =============================================================================
 
@@ -5542,7 +5543,7 @@ grant execute on function public.admin_import_products_v2(jsonb) to authenticate
 -- drop function if exists public.admin_import_products_v2(jsonb);
 
 -- =============================================================================
--- 28 of 35: 20261014100000_delist_kratom_mushroom.sql
+-- 28 of 36: 20261014100000_delist_kratom_mushroom.sql
 -- supabase/migrations/20261014100000_delist_kratom_mushroom.sql, word for word.
 -- =============================================================================
 
@@ -5600,7 +5601,7 @@ where id in (69, 70, 71, 72, 73, 74, 75, 76, 258, 281, 285, 288, 289, 293, 296, 
 --   and not active;
 
 -- =============================================================================
--- 29 of 35: 20261014101000_catalog_owner_answers.sql
+-- 29 of 36: 20261014101000_catalog_owner_answers.sql
 -- supabase/migrations/20261014101000_catalog_owner_answers.sql, word for word.
 -- =============================================================================
 
@@ -5681,7 +5682,7 @@ update public.products set description = 'Uncle Al''s cookies, from the cookie l
 -- update public.products set sub = 'Wellness Pills' where id = 219 and sub = 'Gifts';
 
 -- =============================================================================
--- 30 of 35: 20261014110000_home_slides_warehouse_reel.sql
+-- 30 of 36: 20261014110000_home_slides_warehouse_reel.sql
 -- supabase/migrations/20261014110000_home_slides_warehouse_reel.sql, word for word.
 -- =============================================================================
 
@@ -5770,7 +5771,7 @@ end $$;
 -- end $$;
 
 -- =============================================================================
--- 31 of 35: 20261014111000_orders_approved_accounts_only.sql
+-- 31 of 36: 20261014111000_orders_approved_accounts_only.sql
 -- supabase/migrations/20261014111000_orders_approved_accounts_only.sql, word for word.
 -- =============================================================================
 
@@ -6144,7 +6145,7 @@ grant execute on function public.submit_quote(text, text, text, text, text, text
 -- drop function public.require_ordering_account();
 
 -- =============================================================================
--- 32 of 35: 20261014120000_staff_role.sql
+-- 32 of 36: 20261014120000_staff_role.sql
 -- supabase/migrations/20261014120000_staff_role.sql, word for word.
 -- =============================================================================
 
@@ -6887,7 +6888,7 @@ grant execute on function public.admin_import_products_v2(jsonb) to authenticate
 -- drop function if exists public.is_staff_or_admin();
 
 -- =============================================================================
--- 33 of 35: 20261014121000_site_settings.sql
+-- 33 of 36: 20261014121000_site_settings.sql
 -- supabase/migrations/20261014121000_site_settings.sql, word for word.
 -- =============================================================================
 
@@ -7064,7 +7065,7 @@ insert into public.site_settings (id) values (true) on conflict (id) do nothing;
 -- drop function if exists public.site_settings_lines_ok(text[], integer, integer);
 
 -- =============================================================================
--- 34 of 35: 20261103120000_stage2_product_photos.sql
+-- 34 of 36: 20261103120000_stage2_product_photos.sql
 -- supabase/migrations/20261103120000_stage2_product_photos.sql, word for word.
 -- =============================================================================
 
@@ -7120,7 +7121,94 @@ update public.products p
 --    and p.img = v.new_img;
 
 -- =============================================================================
--- 35 of 35: products.sql
+-- 35 of 36: 20261103140000_stage2_more_photos.sql
+-- supabase/migrations/20261103140000_stage2_more_photos.sql, word for word.
+-- =============================================================================
+
+-- More stage 2 packshots for rows already in the database (November 2026).
+--
+-- Data only: products that still have no photo get the transparent PNG the
+-- catalog now names. A fresh database gets the same filenames from the
+-- regenerated seed. No schema, function or privilege changes.
+--   #311 Geek Bar Mate 60K pods
+--   #369 Al Capone cigars 10-pack
+--   #373 Djarum cigars
+--   #386 Jungo leaf 2-pack
+--   #389 LooseLeaf slugs
+--   #394 ALP nicotine pouches 9mg
+--   #413 MFU 70K
+--   #414 MFU 80K
+--   #529 BluntEffects candles
+--   #569 Sour Jacks
+--   #573 5 Gum
+--   #576 Extra gum share size
+--   #595 Chips Ahoy cookies
+--   #599 Coffee-Mate
+--   #608 OKF aloe vera with fruit
+--   #609 OKF Farmer's aloe vera
+--   #611 Skittles beverage
+--
+-- A row changes only while img is still null, so a photo an admin has set
+-- is kept, and running this file again changes nothing (AW-032).
+--
+-- Ids, SKUs and variant labels don't change.
+--
+-- Release order: AFTER the frontend that ships these files.
+
+update public.products p
+   set img = v.new_img
+  from (values
+    (311, 'p311-geekbar-mate-pods.png'),
+    (369, 'p369-al-capone-10pk.png'),
+    (373, 'p373-djarum.png'),
+    (386, 'p386-jungo-leaf.png'),
+    (389, 'p389-looseleaf-slugs.png'),
+    (394, 'p394-alp-9mg.png'),
+    (413, 'p413-mfu-70k.png'),
+    (414, 'p414-mfu-80k.png'),
+    (529, 'p529-blunteffects-candles.png'),
+    (569, 'p569-sour-jacks.png'),
+    (573, 'p573-5-gum.png'),
+    (576, 'p576-extra-share.png'),
+    (595, 'p595-chips-ahoy.png'),
+    (599, 'p599-coffee-mate.png'),
+    (608, 'p608-okf-aloe-fruit.png'),
+    (609, 'p609-okf-farmers-aloe.png'),
+    (611, 'p611-skittles-drink.png')
+  ) as v(id, new_img)
+ where p.id = v.id
+   and p.img is null;
+
+-- ---------------------------------------------------------------------------
+-- Reverse (AW-213). Not run. Clears the photo only where the row still
+-- names the file this migration wrote.
+--
+-- update public.products p
+--    set img = null
+--   from (values
+--     (311, 'p311-geekbar-mate-pods.png'),
+--     (369, 'p369-al-capone-10pk.png'),
+--     (373, 'p373-djarum.png'),
+--     (386, 'p386-jungo-leaf.png'),
+--     (389, 'p389-looseleaf-slugs.png'),
+--     (394, 'p394-alp-9mg.png'),
+--     (413, 'p413-mfu-70k.png'),
+--     (414, 'p414-mfu-80k.png'),
+--     (529, 'p529-blunteffects-candles.png'),
+--     (569, 'p569-sour-jacks.png'),
+--     (573, 'p573-5-gum.png'),
+--     (576, 'p576-extra-share.png'),
+--     (595, 'p595-chips-ahoy.png'),
+--     (599, 'p599-coffee-mate.png'),
+--     (608, 'p608-okf-aloe-fruit.png'),
+--     (609, 'p609-okf-farmers-aloe.png'),
+--     (611, 'p611-skittles-drink.png')
+--   ) as v(id, new_img)
+--  where p.id = v.id
+--    and p.img = v.new_img;
+
+-- =============================================================================
+-- 36 of 36: products.sql
 -- supabase/seed/products.sql, word for word: adds the products whose id is new and
 -- never changes a product that is already there (prices, names and the
 -- active flag staff set in Admin stay as they are).
@@ -8110,7 +8198,7 @@ insert into public.products (id, name, brand, cat, sub, sku, variants, variant_a
   (308, 'UPass', 'UPass', 'NOVELTIES', 'Detox', 'AW-UPASS', '[]'::jsonb, null, 'upass.webp', null, true, 'UPass toxin-free synthetic urine, 3 oz, from the detox line in our Novelties department.', ''),
   (309, 'Water bongs', 'Assorted', 'NOVELTIES', 'Smoke Accessories', 'AW-WATER-BONGS', '[]'::jsonb, null, 'p309-water-bongs.webp', null, true, 'Water bongs from the smoke accessory line in our Novelties department.', ''),
   (310, 'Geek Bar Mate 60K', 'Geek Bar', 'NOVELTIES', 'Disposable Vapes', 'AW-GEEKBAR-MATE', '[]'::jsonb, null, 'p310-geek-bar-mate-60k.webp', null, true, 'Geek Bar Mate from the disposable vape line in our Novelties department.', ''),
-  (311, 'Geek Bar Mate 60K pods', 'Geek Bar', 'NOVELTIES', 'Vape Pods', 'AW-GEEKBAR-MATE-PODS', '[]'::jsonb, null, null, null, true, 'Geek Bar Mate pods from the vape pod line in our Novelties department.', ''),
+  (311, 'Geek Bar Mate 60K pods', 'Geek Bar', 'NOVELTIES', 'Vape Pods', 'AW-GEEKBAR-MATE-PODS', '[]'::jsonb, null, 'p311-geekbar-mate-pods.png', null, true, 'Geek Bar Mate pods from the vape pod line in our Novelties department.', ''),
   (312, 'Stoned blue lotus gummies bags', 'Stoned', 'NOVELTIES', 'Mushroom Products', 'AW-STONED-BLUE-LOTUS', '[]'::jsonb, null, 'p312-stoned-blue-lotus-gummies.webp', null, false, 'Stoned blue lotus gummies bags from the mushroom product line in our Novelties department.', ''),
   (313, 'Psyched blue lotus gummies 25ct box', 'Psyched', 'NOVELTIES', 'Mushroom Products', 'AW-PSYCHED-BLUE-LOTUS', '[]'::jsonb, null, null, null, false, 'Psyched blue lotus gummies 25ct box from the mushroom product line in our Novelties department.', '25-count box'),
   (314, 'Coco Nara hookah charcoal', 'Coco Nara', 'NOVELTIES', 'Hookah & Shisha', 'AW-COCO-NARA-CHARCOAL', '["Small","Medium","Big","1 kg"]'::jsonb, 'Size', 'p314-coco-nara-hookah-charcoal.webp', null, true, 'Coco Nara coconut hookah charcoal. Four sizes: Small, Medium, Big and 1 kg.', ''),
@@ -8168,11 +8256,11 @@ insert into public.products (id, name, brand, cat, sub, sku, variants, variant_a
   (366, 'Garcia y Vega cigars', 'Garcia y Vega', 'TOBACCO', 'Cigars & Cigarillos', 'AW-GARCIA-VEGA', '["Green"]'::jsonb, null, 'p366-garcia-y-vega-cigars.jpg', null, true, 'Garcia y Vega cigars from the cigar and cigarillo line in our Tobacco department. Stocked in one variety: Green.', ''),
   (367, 'LooseLeaf wraps 5-pack', 'LooseLeaf', 'TOBACCO', 'Wraps & Leafs', 'AW-LOOSE-LEAFS-5PK', '["Watermelon"]'::jsonb, null, 'loose_leafs_wraps_5pk.webp', null, true, 'LooseLeaf flavored wraps in 5-packs. Stocked in one variety: Watermelon.', '5-pack'),
   (368, 'Camo wraps', 'Camo', 'TOBACCO', 'Wraps & Leafs', 'AW-CAMO-WRAPS', '["Natural"]'::jsonb, null, 'p368-camo-wraps-natural.webp', null, true, 'Camo wraps from the wraps and leaf line in our Tobacco department. Stocked in one variety: Natural.', ''),
-  (369, 'Al Capone cigars 10-pack', 'Al Capone', 'TOBACCO', 'Cigars & Cigarillos', 'AW-AL-CAPONE-10PK', '[]'::jsonb, null, null, null, true, 'Al Capone cigars 10-pack from the cigars and cigarillos line in our Tobacco department.', '10-pack'),
+  (369, 'Al Capone cigars 10-pack', 'Al Capone', 'TOBACCO', 'Cigars & Cigarillos', 'AW-AL-CAPONE-10PK', '[]'::jsonb, null, 'p369-al-capone-10pk.png', null, true, 'Al Capone cigars 10-pack from the cigars and cigarillos line in our Tobacco department.', '10-pack'),
   (370, 'Al Capone tower with filter', 'Al Capone', 'TOBACCO', 'Cigars & Cigarillos', 'AW-AL-CAPONE-TOWER-FILTER', '[]'::jsonb, null, null, null, true, 'Al Capone tower with filter from the cigars and cigarillos line in our Tobacco department.', ''),
   (371, 'Al Capone tower without filter', 'Al Capone', 'TOBACCO', 'Cigars & Cigarillos', 'AW-AL-CAPONE-TOWER', '[]'::jsonb, null, null, null, true, 'Al Capone tower without filter from the cigars and cigarillos line in our Tobacco department.', ''),
   (372, 'Backwoods True pack 2-pack', 'Backwoods', 'TOBACCO', 'Cigars & Cigarillos', 'AW-BACKWOODS-TRUE-2PK', '[]'::jsonb, null, null, null, true, 'Backwoods True pack 2-pack from the cigars and cigarillos line in our Tobacco department.', '2-pack'),
-  (373, 'Djarum cigars', 'Djarum', 'TOBACCO', 'Cigars & Cigarillos', 'AW-DJARUM', '[]'::jsonb, null, null, null, true, 'Djarum cigars from the cigars and cigarillos line in our Tobacco department.', ''),
+  (373, 'Djarum cigars', 'Djarum', 'TOBACCO', 'Cigars & Cigarillos', 'AW-DJARUM', '[]'::jsonb, null, 'p373-djarum.png', null, true, 'Djarum cigars from the cigars and cigarillos line in our Tobacco department.', ''),
   (374, 'Hav-A-Tampa cigars', 'Hav-A-Tampa', 'TOBACCO', 'Cigars & Cigarillos', 'AW-HAV-A-TAMPA', '[]'::jsonb, null, null, null, true, 'Hav-A-Tampa cigars from the cigars and cigarillos line in our Tobacco department.', ''),
   (375, 'Jackpot cigarillos', 'Jackpot', 'TOBACCO', 'Cigars & Cigarillos', 'AW-JACKPOT', '[]'::jsonb, null, null, null, true, 'Jackpot cigarillos from the cigars and cigarillos line in our Tobacco department.', ''),
   (376, 'Optimo cigars', 'Optimo', 'TOBACCO', 'Cigars & Cigarillos', 'AW-OPTIMO', '[]'::jsonb, null, null, null, true, 'Optimo cigars from the cigars and cigarillos line in our Tobacco department.', ''),
@@ -8185,15 +8273,15 @@ insert into public.products (id, name, brand, cat, sub, sku, variants, variant_a
   (383, 'Blazy Susan wraps', 'Blazy Susan', 'TOBACCO', 'Wraps & Leafs', 'AW-BLAZY-SUSAN', '[]'::jsonb, null, 'p383-blazy-susan.png', null, true, 'Blazy Susan wraps from the wraps and leafs line in our Tobacco department.', ''),
   (384, 'Bob Marley wraps', 'Bob Marley', 'TOBACCO', 'Wraps & Leafs', 'AW-BOB-MARLEY-WRAPS', '[]'::jsonb, null, 'p384-bob-marley-wraps.png', null, true, 'Bob Marley wraps from the wraps and leafs line in our Tobacco department.', ''),
   (385, 'Hemparillo rillo size blunts', 'Hemparillo', 'TOBACCO', 'Wraps & Leafs', 'AW-HEMPARILLO', '[]'::jsonb, null, 'p385-hemparillo.png', null, true, 'Hemparillo rillo size blunts from the wraps and leafs line in our Tobacco department.', ''),
-  (386, 'Jungo leaf 2-pack', 'Jungo', 'TOBACCO', 'Wraps & Leafs', 'AW-JUNGO-LEAF-2PK', '[]'::jsonb, null, null, null, true, 'Jungo leaf 2-pack from the wraps and leafs line in our Tobacco department.', '2-pack'),
+  (386, 'Jungo leaf 2-pack', 'Jungo', 'TOBACCO', 'Wraps & Leafs', 'AW-JUNGO-LEAF-2PK', '[]'::jsonb, null, 'p386-jungo-leaf.png', null, true, 'Jungo leaf 2-pack from the wraps and leafs line in our Tobacco department.', '2-pack'),
   (387, 'King Palm Goji wraps', 'King Palm', 'TOBACCO', 'Wraps & Leafs', 'AW-KING-PALM-GOJI', '[]'::jsonb, null, 'p387-king-palm-goji.png', null, true, 'King Palm Goji wraps from the wraps and leafs line in our Tobacco department.', ''),
   (388, 'LooseLeaf crushed', 'LooseLeaf', 'TOBACCO', 'Wraps & Leafs', 'AW-LOOSELEAF-CRUSHED', '[]'::jsonb, null, 'p388-looseleaf-crushed.png', null, true, 'LooseLeaf crushed from the wraps and leafs line in our Tobacco department.', ''),
-  (389, 'LooseLeaf slugs', 'LooseLeaf', 'TOBACCO', 'Wraps & Leafs', 'AW-LOOSELEAF-SLUGS', '[]'::jsonb, null, null, null, true, 'LooseLeaf slugs from the wraps and leafs line in our Tobacco department.', ''),
+  (389, 'LooseLeaf slugs', 'LooseLeaf', 'TOBACCO', 'Wraps & Leafs', 'AW-LOOSELEAF-SLUGS', '[]'::jsonb, null, 'p389-looseleaf-slugs.png', null, true, 'LooseLeaf slugs from the wraps and leafs line in our Tobacco department.', ''),
   (390, 'Metro Leaf wraps', 'Metro Leaf', 'TOBACCO', 'Wraps & Leafs', 'AW-METRO-LEAF', '[]'::jsonb, null, null, null, true, 'Metro Leaf wraps from the wraps and leafs line in our Tobacco department.', ''),
   (391, 'American Spirit tobacco', 'American Spirit', 'TOBACCO', 'Cigarettes', 'AW-AMERICAN-SPIRIT', '[]'::jsonb, null, null, null, true, 'American Spirit tobacco from the cigarettes line in our Tobacco department.', ''),
   (392, 'Bugler tobacco', 'Bugler', 'TOBACCO', 'Cigarettes', 'AW-BUGLER', '[]'::jsonb, null, null, null, true, 'Bugler tobacco from the cigarettes line in our Tobacco department.', ''),
   (393, 'ALP nicotine pouches 6mg', 'ALP', 'TOBACCO', 'Pouches & ZYN', 'AW-ALP-6MG', '[]'::jsonb, null, 'p393-alp-6mg.png', null, true, 'ALP nicotine pouches 6mg from the pouches and ZYN line in our Tobacco department.', ''),
-  (394, 'ALP nicotine pouches 9mg', 'ALP', 'TOBACCO', 'Pouches & ZYN', 'AW-ALP-9MG', '[]'::jsonb, null, null, null, true, 'ALP nicotine pouches 9mg from the pouches and ZYN line in our Tobacco department.', ''),
+  (394, 'ALP nicotine pouches 9mg', 'ALP', 'TOBACCO', 'Pouches & ZYN', 'AW-ALP-9MG', '[]'::jsonb, null, 'p394-alp-9mg.png', null, true, 'ALP nicotine pouches 9mg from the pouches and ZYN line in our Tobacco department.', ''),
   (395, 'PIK nicotine pouches 6mg', 'PIK', 'TOBACCO', 'Pouches & ZYN', 'AW-PIK-6MG', '[]'::jsonb, null, null, null, true, 'PIK nicotine pouches 6mg from the pouches and ZYN line in our Tobacco department.', ''),
   (396, 'Rouge nicotine pouches', 'Rouge', 'TOBACCO', 'Pouches & ZYN', 'AW-ROUGE-POUCHES', '[]'::jsonb, null, null, null, true, 'Rouge nicotine pouches from the pouches and ZYN line in our Tobacco department.', ''),
   (397, 'Bob Marley cones', 'Bob Marley', 'TOBACCO', 'Papers & Cones', 'AW-BOB-MARLEY-CONES', '[]'::jsonb, null, 'p397-bob-marley-cones.png', null, true, 'Bob Marley cones from the papers and cones line in our Tobacco department.', ''),
@@ -8212,8 +8300,8 @@ insert into public.products (id, name, brand, cat, sub, sku, variants, variant_a
   (410, 'Kadobar 40K', 'Kadobar', 'NOVELTIES', 'Disposable Vapes', 'AW-KADOBAR-40K', '[]'::jsonb, null, 'p410-kadobar-40k.png', null, true, 'Kadobar 40K from the disposable vapes line in our Novelties department.', ''),
   (411, 'Lost Mary 35K', 'Lost Mary', 'NOVELTIES', 'Disposable Vapes', 'AW-LOST-MARY-35K', '[]'::jsonb, null, 'p411-lost-mary-35k.png', null, true, 'Lost Mary 35K from the disposable vapes line in our Novelties department.', ''),
   (412, 'MFU 150K', 'MFU', 'NOVELTIES', 'Disposable Vapes', 'AW-MFU-150K', '[]'::jsonb, null, 'p412-mfu-150k.png', null, true, 'MFU 150K from the disposable vapes line in our Novelties department.', ''),
-  (413, 'MFU 70K', 'MFU', 'NOVELTIES', 'Disposable Vapes', 'AW-MFU-70K', '[]'::jsonb, null, null, null, true, 'MFU 70K from the disposable vapes line in our Novelties department.', ''),
-  (414, 'MFU 80K', 'MFU', 'NOVELTIES', 'Disposable Vapes', 'AW-MFU-80K', '[]'::jsonb, null, null, null, true, 'MFU 80K from the disposable vapes line in our Novelties department.', ''),
+  (413, 'MFU 70K', 'MFU', 'NOVELTIES', 'Disposable Vapes', 'AW-MFU-70K', '[]'::jsonb, null, 'p413-mfu-70k.png', null, true, 'MFU 70K from the disposable vapes line in our Novelties department.', ''),
+  (414, 'MFU 80K', 'MFU', 'NOVELTIES', 'Disposable Vapes', 'AW-MFU-80K', '[]'::jsonb, null, 'p414-mfu-80k.png', null, true, 'MFU 80K from the disposable vapes line in our Novelties department.', ''),
   (415, 'Nexa 35K', 'Nexa', 'NOVELTIES', 'Disposable Vapes', 'AW-NEXA-35K', '[]'::jsonb, null, 'p415-nexa-35k.png', null, true, 'Nexa 35K from the disposable vapes line in our Novelties department.', ''),
   (416, 'Nexa 80K', 'Nexa', 'NOVELTIES', 'Disposable Vapes', 'AW-NEXA-80K', '[]'::jsonb, null, null, null, true, 'Nexa 80K from the disposable vapes line in our Novelties department.', ''),
   (417, 'North 5000', 'North', 'NOVELTIES', 'Disposable Vapes', 'AW-NORTH-5000', '[]'::jsonb, null, 'p417-north-5000.png', null, true, 'North 5000 from the disposable vapes line in our Novelties department.', ''),
@@ -8328,7 +8416,7 @@ insert into public.products (id, name, brand, cat, sub, sku, variants, variant_a
   (526, 'Squeeze toy', 'Assorted', 'MERCHANDISE', 'Toys', 'AW-SQUEEZE-TOY', '[]'::jsonb, null, null, null, true, 'Squeeze toy from the toys line in our Merchandise department.', ''),
   (527, 'Incense singles', 'Assorted', 'MERCHANDISE', 'Air Fresheners & Incense', 'AW-INCENSE-SINGLES', '[]'::jsonb, null, null, null, true, 'Incense singles from the air fresheners and incense line in our Merchandise department.', 'single'),
   (528, 'Arya candles', 'Arya', 'MERCHANDISE', 'Air Fresheners & Incense', 'AW-ARYA-CANDLES', '[]'::jsonb, null, null, null, true, 'Arya candles from the air fresheners and incense line in our Merchandise department.', ''),
-  (529, 'BluntEffects candles', 'BluntEffects', 'MERCHANDISE', 'Air Fresheners & Incense', 'AW-BLUNTEFFECTS-CANDLES', '[]'::jsonb, null, null, null, true, 'BluntEffects candles from the air fresheners and incense line in our Merchandise department.', ''),
+  (529, 'BluntEffects candles', 'BluntEffects', 'MERCHANDISE', 'Air Fresheners & Incense', 'AW-BLUNTEFFECTS-CANDLES', '[]'::jsonb, null, 'p529-blunteffects-candles.png', null, true, 'BluntEffects candles from the air fresheners and incense line in our Merchandise department.', ''),
   (530, 'BluntLife incense', 'BluntLife', 'MERCHANDISE', 'Air Fresheners & Incense', 'AW-BLUNTLIFE-INCENSE', '[]'::jsonb, null, null, null, true, 'BluntLife incense from the air fresheners and incense line in our Merchandise department.', ''),
   (531, 'Chinese red box', 'Assorted', 'MERCHANDISE', 'Air Fresheners & Incense', 'AW-CHINESE-RED-BOX', '[]'::jsonb, null, null, null, true, 'Chinese red box from the air fresheners and incense line in our Merchandise department.', ''),
   (532, 'Lighter flints', 'Assorted', 'MERCHANDISE', 'Lighters & Torches', 'AW-LIGHTER-FLINTS', '[]'::jsonb, null, null, null, true, 'Lighter flints from the lighters and torches line in our Merchandise department.', ''),
@@ -8368,14 +8456,14 @@ insert into public.products (id, name, brand, cat, sub, sku, variants, variant_a
   (566, 'Fruit slice pops', 'Assorted', 'CANDIES', 'Sweets & Gummies', 'AW-FRUIT-SLICE-POPS', '[]'::jsonb, null, null, null, true, 'Fruit slice pops from the sweets and gummies line in our Candies department.', ''),
   (567, 'Lemon squeeze', 'Assorted', 'CANDIES', 'Sweets & Gummies', 'AW-LEMON-SQUEEZE', '[]'::jsonb, null, null, null, true, 'Lemon squeeze from the sweets and gummies line in our Candies department.', ''),
   (568, 'Life Savers hard candy', 'Life Savers', 'CANDIES', 'Sweets & Gummies', 'AW-LIFESAVERS-HARD', '[]'::jsonb, null, 'p568-lifesavers-hard.png', null, true, 'Life Savers hard candy from the sweets and gummies line in our Candies department.', ''),
-  (569, 'Sour Jacks', 'Sour Jacks', 'CANDIES', 'Sweets & Gummies', 'AW-SOUR-JACKS', '[]'::jsonb, null, null, null, true, 'Sour Jacks from the sweets and gummies line in our Candies department.', ''),
+  (569, 'Sour Jacks', 'Sour Jacks', 'CANDIES', 'Sweets & Gummies', 'AW-SOUR-JACKS', '[]'::jsonb, null, 'p569-sour-jacks.png', null, true, 'Sour Jacks from the sweets and gummies line in our Candies department.', ''),
   (570, 'Top Pops', 'Top Pops', 'CANDIES', 'Sweets & Gummies', 'AW-TOP-POPS', '[]'::jsonb, null, null, null, true, 'Top Pops from the sweets and gummies line in our Candies department.', ''),
   (571, 'Toxic Waste Slime Licker', 'Toxic Waste', 'CANDIES', 'Sweets & Gummies', 'AW-SLIME-LICKER', '[]'::jsonb, null, 'p571-slime-licker.png', null, true, 'Toxic Waste Slime Licker from the sweets and gummies line in our Candies department.', ''),
   (572, 'Toy candies', 'Assorted', 'CANDIES', 'Sweets & Gummies', 'AW-TOY-CANDIES', '[]'::jsonb, null, null, null, true, 'Toy candies from the sweets and gummies line in our Candies department.', ''),
-  (573, '5 Gum', '5 Gum', 'CANDIES', 'Gum & Mints', 'AW-5-GUM', '[]'::jsonb, null, null, null, true, '5 Gum from the gum and mints line in our Candies department.', ''),
+  (573, '5 Gum', '5 Gum', 'CANDIES', 'Gum & Mints', 'AW-5-GUM', '[]'::jsonb, null, 'p573-5-gum.png', null, true, '5 Gum from the gum and mints line in our Candies department.', ''),
   (574, 'Dentyne', 'Dentyne', 'CANDIES', 'Gum & Mints', 'AW-DENTYNE', '[]'::jsonb, null, 'p574-dentyne.png', null, true, 'Dentyne from the gum and mints line in our Candies department.', ''),
   (575, 'Dubble Bubble gum jar', 'Dubble Bubble', 'CANDIES', 'Gum & Mints', 'AW-DUBBLE-BUBBLE-JAR', '[]'::jsonb, null, 'p575-dubble-bubble.png', null, true, 'Dubble Bubble gum jar from the gum and mints line in our Candies department.', 'jar'),
-  (576, 'Extra gum share size', 'Extra', 'CANDIES', 'Gum & Mints', 'AW-EXTRA-SHARE', '[]'::jsonb, null, null, null, true, 'Extra gum share size from the gum and mints line in our Candies department.', ''),
+  (576, 'Extra gum share size', 'Extra', 'CANDIES', 'Gum & Mints', 'AW-EXTRA-SHARE', '[]'::jsonb, null, 'p576-extra-share.png', null, true, 'Extra gum share size from the gum and mints line in our Candies department.', ''),
   (577, 'Halls', 'Halls', 'CANDIES', 'Gum & Mints', 'AW-HALLS', '[]'::jsonb, null, 'p577-halls.png', null, true, 'Halls from the gum and mints line in our Candies department.', ''),
   (578, 'Wrigley''s king size gum', 'Wrigley''s', 'CANDIES', 'Gum & Mints', 'AW-WRIGLEYS-KING', '[]'::jsonb, null, null, null, true, 'Wrigley''s king size gum from the gum and mints line in our Candies department.', ''),
   (579, 'Candyman''s bags', 'Candyman''s', 'CANDIES', 'Bags', 'AW-CANDYMAN-BAGS', '[]'::jsonb, null, null, null, true, 'Candyman''s bags from the bags line in our Candies department.', ''),
@@ -8394,11 +8482,11 @@ insert into public.products (id, name, brand, cat, sub, sku, variants, variant_a
   (592, 'Vienna sausage', 'Assorted', 'FOOD STUFF', 'Quick Meals', 'AW-VIENNA-SAUSAGE', '[]'::jsonb, null, null, null, true, 'Vienna sausage from the quick meals line in our Food Stuff department.', ''),
   (593, 'Ranch dressing', 'Assorted', 'FOOD STUFF', 'Sauces & Salts', 'AW-RANCH', '[]'::jsonb, null, null, null, true, 'Ranch dressing from the sauces and salts line in our Food Stuff department.', ''),
   (594, 'Sauces', 'Assorted', 'FOOD STUFF', 'Sauces & Salts', 'AW-SAUCES', '[]'::jsonb, null, null, null, true, 'Sauces from the sauces and salts line in our Food Stuff department.', ''),
-  (595, 'Chips Ahoy cookies', 'Chips Ahoy', 'FOOD STUFF', 'Cookies', 'AW-CHIPS-AHOY', '[]'::jsonb, null, null, null, true, 'Chips Ahoy cookies from the cookies line in our Food Stuff department.', ''),
+  (595, 'Chips Ahoy cookies', 'Chips Ahoy', 'FOOD STUFF', 'Cookies', 'AW-CHIPS-AHOY', '[]'::jsonb, null, 'p595-chips-ahoy.png', null, true, 'Chips Ahoy cookies from the cookies line in our Food Stuff department.', ''),
   (596, 'Keebler wafers', 'Keebler', 'FOOD STUFF', 'Cookies', 'AW-KEEBLER-WAFERS', '[]'::jsonb, null, 'p596-keebler-wafers.png', null, true, 'Keebler wafers from the cookies line in our Food Stuff department.', ''),
   (597, 'Rice Krispies Treats', 'Rice Krispies', 'FOOD STUFF', 'Cookies', 'AW-RICE-KRISPIES', '[]'::jsonb, null, 'p597-rice-krispies.png', null, true, 'Rice Krispies Treats from the cookies line in our Food Stuff department.', ''),
   (598, 'Uncle Al''s wafers', 'Uncle Al''s', 'FOOD STUFF', 'Cookies', 'AW-UNCLE-ALS-WAFERS', '[]'::jsonb, null, null, null, true, 'Uncle Al''s wafers from the cookies line in our Food Stuff department.', ''),
-  (599, 'Coffee-Mate', 'Coffee-Mate', 'FOOD STUFF', 'Coffee', 'AW-COFFEE-MATE', '[]'::jsonb, null, null, null, true, 'Coffee-Mate from the coffee line in our Food Stuff department.', ''),
+  (599, 'Coffee-Mate', 'Coffee-Mate', 'FOOD STUFF', 'Coffee', 'AW-COFFEE-MATE', '[]'::jsonb, null, 'p599-coffee-mate.png', null, true, 'Coffee-Mate from the coffee line in our Food Stuff department.', ''),
   (600, 'Armor All', 'Armor All', 'MOTOR OIL', 'Auto Accessories', 'AW-ARMOR-ALL', '[]'::jsonb, null, 'p600-armor-all.png', null, true, 'Armor All from the auto accessories line in our Motor Oil department.', ''),
   (601, 'Booster cables', 'Assorted', 'MOTOR OIL', 'Auto Accessories', 'AW-BOOSTER-CABLES', '[]'::jsonb, null, null, null, true, 'Booster cables from the auto accessories line in our Motor Oil department.', ''),
   (602, 'Car ash tray', 'Assorted', 'MOTOR OIL', 'Auto Accessories', 'AW-CAR-ASH-TRAY', '[]'::jsonb, null, null, null, true, 'Car ash tray from the auto accessories line in our Motor Oil department.', ''),
@@ -8407,10 +8495,10 @@ insert into public.products (id, name, brand, cat, sub, sku, variants, variant_a
   (605, 'Starting fluid', 'Assorted', 'MOTOR OIL', 'Fluids', 'AW-STARTING-FLUID', '[]'::jsonb, null, null, null, true, 'Starting fluid from the fluids line in our Motor Oil department.', ''),
   (606, 'Fanta', 'Fanta', 'DRINKS & BAGS', 'Sodas', 'AW-FANTA', '[]'::jsonb, null, 'p606-fanta.png', null, true, 'Fanta from the sodas line in our Drinks & Bags department.', ''),
   (607, 'Mistic juice', 'Mistic', 'DRINKS & BAGS', 'Juices & Teas', 'AW-MISTIC', '[]'::jsonb, null, null, null, true, 'Mistic juice from the juices and teas line in our Drinks & Bags department.', ''),
-  (608, 'OKF aloe vera with fruit', 'OKF', 'DRINKS & BAGS', 'Juices & Teas', 'AW-OKF-ALOE-FRUIT', '[]'::jsonb, null, null, null, true, 'OKF aloe vera with fruit from the juices and teas line in our Drinks & Bags department.', ''),
-  (609, 'OKF Farmer''s aloe vera', 'OKF', 'DRINKS & BAGS', 'Juices & Teas', 'AW-OKF-FARMERS-ALOE', '[]'::jsonb, null, null, null, true, 'OKF Farmer''s aloe vera from the juices and teas line in our Drinks & Bags department.', ''),
+  (608, 'OKF aloe vera with fruit', 'OKF', 'DRINKS & BAGS', 'Juices & Teas', 'AW-OKF-ALOE-FRUIT', '[]'::jsonb, null, 'p608-okf-aloe-fruit.png', null, true, 'OKF aloe vera with fruit from the juices and teas line in our Drinks & Bags department.', ''),
+  (609, 'OKF Farmer''s aloe vera', 'OKF', 'DRINKS & BAGS', 'Juices & Teas', 'AW-OKF-FARMERS-ALOE', '[]'::jsonb, null, 'p609-okf-farmers-aloe.png', null, true, 'OKF Farmer''s aloe vera from the juices and teas line in our Drinks & Bags department.', ''),
   (610, 'Pocas Splash', 'Pocas', 'DRINKS & BAGS', 'Juices & Teas', 'AW-POCAS', '[]'::jsonb, null, 'p610-pocas.png', null, true, 'Pocas Splash from the juices and teas line in our Drinks & Bags department.', ''),
-  (611, 'Skittles beverage', 'Skittles', 'DRINKS & BAGS', 'Juices & Teas', 'AW-SKITTLES-DRINK', '[]'::jsonb, null, null, null, true, 'Skittles beverage from the juices and teas line in our Drinks & Bags department.', ''),
+  (611, 'Skittles beverage', 'Skittles', 'DRINKS & BAGS', 'Juices & Teas', 'AW-SKITTLES-DRINK', '[]'::jsonb, null, 'p611-skittles-drink.png', null, true, 'Skittles beverage from the juices and teas line in our Drinks & Bags department.', ''),
   (612, 'Toxic Waste juice', 'Toxic Waste', 'DRINKS & BAGS', 'Juices & Teas', 'AW-TOXIC-WASTE-JUICE', '[]'::jsonb, null, null, null, true, 'Toxic Waste juice from the juices and teas line in our Drinks & Bags department.', ''),
   (613, 'V8 juice', 'V8', 'DRINKS & BAGS', 'Juices & Teas', 'AW-V8', '[]'::jsonb, null, 'p613-v8.png', null, true, 'V8 juice from the juices and teas line in our Drinks & Bags department.', ''),
   (614, 'Total War', 'Total War', 'DRINKS & BAGS', 'Energy Drinks', 'AW-TOTAL-WAR', '[]'::jsonb, null, 'p614-total-war.png', null, true, 'Total War from the energy drinks line in our Drinks & Bags department.', ''),

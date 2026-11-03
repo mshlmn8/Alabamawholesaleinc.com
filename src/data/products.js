@@ -742,7 +742,7 @@ export const CATALOG = [
     description: "Water bongs from the smoke accessory line in our Novelties department." },
   { id: 310, name: "Geek Bar Mate 60K", brand: "Geek Bar", cat: "NOVELTIES", sub: "Disposable Vapes", sku: "AW-GEEKBAR-MATE", sellUnit: "", variants: [], img: "p310-geek-bar-mate-60k.webp", tag: null,
     description: "Geek Bar Mate from the disposable vape line in our Novelties department." },
-  { id: 311, name: "Geek Bar Mate 60K pods", brand: "Geek Bar", cat: "NOVELTIES", sub: "Vape Pods", sku: "AW-GEEKBAR-MATE-PODS", sellUnit: "", variants: [], img: null, tag: null,
+  { id: 311, name: "Geek Bar Mate 60K pods", brand: "Geek Bar", cat: "NOVELTIES", sub: "Vape Pods", sku: "AW-GEEKBAR-MATE-PODS", sellUnit: "", variants: [], img: "p311-geekbar-mate-pods.png", tag: null,
     description: "Geek Bar Mate pods from the vape pod line in our Novelties department." },
   { id: 312, name: "Stoned blue lotus gummies bags", brand: "Stoned", cat: "NOVELTIES", sub: "Mushroom Products", sku: "AW-STONED-BLUE-LOTUS", sellUnit: "", variants: [], img: "p312-stoned-blue-lotus-gummies.webp", tag: null, active: false,
     description: "Stoned blue lotus gummies bags from the mushroom product line in our Novelties department." },
