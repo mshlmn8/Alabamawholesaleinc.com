@@ -260,11 +260,11 @@ describe('HomePage department tiles', () => {
       }
       return null;
     };
-    // The chosen product is missing from the live catalog. Without it, Cigars
-    // & Cigarillos ties Wraps & Leafs as the biggest line, but holds only
-    // nicotine products, so the photo comes from Wraps & Leafs: #319, hemp.
+    // The chosen product is missing from the live catalog. Wraps & Leafs stays
+    // the biggest line. Its first photo that is not a nicotine product is
+    // still #319, hemp: the new wraps have no photo yet.
     const without = PRODUCTS.filter((p) => p.id !== DEPARTMENT_PHOTOS.TOBACCO);
-    expect(topLines(without, 'TOBACCO', 2)).toEqual(['Cigars & Cigarillos', 'Wraps & Leafs']);
+    expect(topLines(without, 'TOBACCO', 2)).toEqual(['Wraps & Leafs', 'Cigars & Cigarillos']);
     const fallback = departmentPhoto(without, 'TOBACCO');
     expect(fallback).toBe(firstSuitable(without, 'TOBACCO'));
     expect(fallback.id).toBe(319);

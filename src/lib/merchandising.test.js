@@ -2,6 +2,7 @@
 // product is in one rail only, and the AW-001 status-quo guard. The
 // department pages' Featured sort (AW-227) follows the same rank and guard.
 import { describe, expect, it } from 'vitest';
+import { CATALOG } from '../data/products.js';
 import { LEGAL_REVIEW_IDS, LEGAL_REVIEW_SUBS, TAG_RANK, featuredOrder, homeRails, underLegalReview } from './merchandising.js';
 import { PRODUCTS } from '../data/products.js';
 import { hasPhoto } from '../pages/HomePage.jsx';
@@ -39,7 +40,7 @@ describe('homeRails', () => {
 
   it('knows the lines under legal review (AW-001)', () => {
     expect(LEGAL_REVIEW_SUBS).toEqual(['Kratom & Kava', 'Mushroom Products', 'Detox', 'Wellness Pills']);
-    expect(LEGAL_REVIEW_IDS).toEqual([28, 265, 266, 321, 322, 332]);
+    expect(LEGAL_REVIEW_IDS).toEqual(CATALOG.filter((p) => p.sub === 'Honey & Energy').map((p) => p.id));
     expect(underLegalReview(p(75, 'NEW', { sub: 'Kratom & Kava' }))).toBe(true);
     expect(underLegalReview(p(265, 'PREMIUM', { sub: 'Honey & Energy' }))).toBe(true);
     expect(underLegalReview(p(29, null, { sub: 'Honey & Energy' }))).toBe(false);

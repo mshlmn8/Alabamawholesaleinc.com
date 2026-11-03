@@ -68,7 +68,7 @@ const MAX_PAGES = 50;
 // with 42501), and nothing but my_prices() hands prices out. A column added to
 // products needs its own `grant select (<column>)` in that migration's style
 // before it can be listed here.
-// TODO(owner): What is the real wholesale list price of each of the 368 SKUs? The prices in the database are placeholders; load the real ones through Admin -> Products or a private SQL file under supabase/private/ (BACKEND.md, "Loading your list prices"). (AW-002)
+// TODO(owner): What is the real wholesale list price of each SKU? The prices in the database are placeholders, and stage 1 rows have none yet; load the real ones through Admin -> Products or a private SQL file under supabase/private/ (BACKEND.md, "Loading your list prices"). (AW-002)
 // variant_axis and unavailable_variants come with
 // 20261009110000_variant_model.sql (AW-128, AW-030), which also drops the
 // old flavors count (AW-332).

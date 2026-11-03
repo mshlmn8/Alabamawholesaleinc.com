@@ -7069,7 +7069,7 @@ insert into public.site_settings (id) values (true) on conflict (id) do nothing;
 -- active flag staff set in Admin stay as they are).
 -- =============================================================================
 
--- Seed catalog: 368 SKUs, generated from src/data/products.js by scripts/build-seed.mjs.
+-- Seed catalog: 620 SKUs, generated from src/data/products.js by scripts/build-seed.mjs.
 -- Regenerate with: npm run seed.
 --
 -- Insert-only (AW-032): a row whose id already exists is left alone (on conflict do
@@ -7469,6 +7469,258 @@ begin
       , (366, 'AW-GARCIA-VEGA')
       , (367, 'AW-LOOSE-LEAFS-5PK')
       , (368, 'AW-CAMO-WRAPS')
+      , (369, 'AW-AL-CAPONE-10PK')
+      , (370, 'AW-AL-CAPONE-TOWER-FILTER')
+      , (371, 'AW-AL-CAPONE-TOWER')
+      , (372, 'AW-BACKWOODS-TRUE-2PK')
+      , (373, 'AW-DJARUM')
+      , (374, 'AW-HAV-A-TAMPA')
+      , (375, 'AW-JACKPOT')
+      , (376, 'AW-OPTIMO')
+      , (377, 'AW-SNOOP-2PK')
+      , (378, 'AW-SNOOP-4PK')
+      , (379, 'AW-BACKWOODS-TRUE-WRAP-2PK')
+      , (380, 'AW-BIG-BOL')
+      , (381, 'AW-BIG-LEAF-SINGLES')
+      , (382, 'AW-BIG-LEAF-3PK')
+      , (383, 'AW-BLAZY-SUSAN')
+      , (384, 'AW-BOB-MARLEY-WRAPS')
+      , (385, 'AW-HEMPARILLO')
+      , (386, 'AW-JUNGO-LEAF-2PK')
+      , (387, 'AW-KING-PALM-GOJI')
+      , (388, 'AW-LOOSELEAF-CRUSHED')
+      , (389, 'AW-LOOSELEAF-SLUGS')
+      , (390, 'AW-METRO-LEAF')
+      , (391, 'AW-AMERICAN-SPIRIT')
+      , (392, 'AW-BUGLER')
+      , (393, 'AW-ALP-6MG')
+      , (394, 'AW-ALP-9MG')
+      , (395, 'AW-PIK-6MG')
+      , (396, 'AW-ROUGE-POUCHES')
+      , (397, 'AW-BOB-MARLEY-CONES')
+      , (398, 'AW-GOOD-TIMES-PAPER-JAR')
+      , (399, 'AW-JOB-PAPERS-RED-JAR')
+      , (400, 'AW-OCB-CONES')
+      , (401, 'AW-OCB-PAPERS')
+      , (402, 'AW-BIDI-STICK')
+      , (403, 'AW-BREEZE')
+      , (404, 'AW-FIFTY-BAR')
+      , (405, 'AW-FOGER-BIT-35K')
+      , (406, 'AW-GEEKBAR-50K')
+      , (407, 'AW-GEEKBAR-CLR')
+      , (408, 'AW-GEEKBAR-PULSE-2')
+      , (409, 'AW-GEEKBAR-X2-50K')
+      , (410, 'AW-KADOBAR-40K')
+      , (411, 'AW-LOST-MARY-35K')
+      , (412, 'AW-MFU-150K')
+      , (413, 'AW-MFU-70K')
+      , (414, 'AW-MFU-80K')
+      , (415, 'AW-NEXA-35K')
+      , (416, 'AW-NEXA-80K')
+      , (417, 'AW-NORTH-5000')
+      , (418, 'AW-TARBAR')
+      , (419, 'AW-DOOM-PODS')
+      , (420, 'AW-EXTRE-BAR-PODS')
+      , (421, 'AW-JUUL-PODS-2PK')
+      , (422, 'AW-JUUL-PODS-4PK')
+      , (423, 'AW-MFU-PODS')
+      , (424, 'AW-ADALYA-50G')
+      , (425, 'AW-ALFAKHER-CHARCOAL')
+      , (426, 'AW-FLAT-HOOKAH')
+      , (427, 'AW-HOOKAH-HOSE')
+      , (428, 'AW-HOOKAH-TIPS')
+      , (429, 'AW-LOST-SHISHA-80K')
+      , (430, 'AW-MAZAYA')
+      , (431, 'AW-OLIT-PRO')
+      , (432, 'AW-OLIT-40K')
+      , (433, 'AW-PLOOX-NEST')
+      , (434, 'AW-PLOOX-SALOON')
+      , (435, 'AW-PLOOX-PODS')
+      , (436, 'AW-PLOOX-75K')
+      , (437, 'AW-SKE-SHISHA')
+      , (438, 'AW-STARBUZZ-CHARCOAL')
+      , (439, 'AW-THREE-KINGS')
+      , (440, 'AW-TITANIUM-CHARCOAL')
+      , (441, 'AW-D-TEK-SCALES')
+      , (442, 'AW-GAS-MASK')
+      , (443, 'AW-GLASS-PENS')
+      , (444, 'AW-GLASS-PIPES')
+      , (445, 'AW-GLASS-TIPS')
+      , (446, 'AW-OOZE-GLASS-BOWL')
+      , (447, 'AW-OOZE-PENS')
+      , (448, 'AW-ROLLING-TRAYS')
+      , (449, 'AW-SMOKING-PIPES')
+      , (450, 'AW-WAX-BONGS')
+      , (451, 'AW-BUZZY-CBD-CBG')
+      , (452, 'AW-MELLOW-FELLOW')
+      , (453, 'AW-MELLOW-FELLOW-GUMMIES')
+      , (454, 'AW-BLUE-INFINITY-PREROLLS')
+      , (455, 'AW-BLUE-MONKEY-FLOWER')
+      , (456, 'AW-BLUE-MONKEY-GUMMIES-BAGS')
+      , (457, 'AW-BLUE-MONKEY-GUMMIES-JARS')
+      , (458, 'AW-BUZZY-3G')
+      , (459, 'AW-BUZZY-CBD-LOTUS')
+      , (460, 'AW-BUZZY-CBD-MUSHROOM')
+      , (461, 'AW-BUZZY-MUSHROOM')
+      , (462, 'AW-DOUBLE-STACKED-BITES')
+      , (463, 'AW-GOOD-MUSHROOM-2G')
+      , (464, 'AW-HARMONY-MUSHROOM')
+      , (465, 'AW-HUSH-HIT-JAR')
+      , (466, 'AW-MAGIC-TRIP-GUMMIES')
+      , (467, 'AW-MENTAL-HEALTH-CARTRIDGES')
+      , (468, 'AW-MIND-MELT')
+      , (469, 'AW-PSYCHED-MUSHROOM-9000')
+      , (470, 'AW-PSYCHED-PREROLLS-2PK')
+      , (471, 'AW-SHROOM-BANG-4G')
+      , (472, 'AW-SHROOM-BANG-PILLS')
+      , (473, 'AW-SHROOM-ROLLS-2PK')
+      , (474, 'AW-SILLY-FARMS-CHOCOLATE')
+      , (475, 'AW-SILLY-FARMS-GUMMIES')
+      , (476, 'AW-SPRINKLES-SHROOM')
+      , (477, 'AW-STONED-CHOCOLATE')
+      , (478, 'AW-STONED-GUMMIES-2PK')
+      , (479, 'AW-HOUSE-OF-DREAM')
+      , (480, 'AW-ULTRA-WHITE-LOTUS')
+      , (481, 'AW-KAVA-KALM')
+      , (482, 'AW-ADDALL')
+      , (483, 'AW-BUZZERS')
+      , (484, 'AW-SLEEP-WALKER-2PK')
+      , (485, 'AW-STACKER')
+      , (486, 'AW-THIZZIES')
+      , (487, 'AW-THIRD-EYE-2PK')
+      , (488, 'AW-BLACK-BULL-HONEY')
+      , (489, 'AW-BLACK-HORSE-HONEY')
+      , (490, 'AW-ETUMAX-PINK-HONEY')
+      , (491, 'AW-LIBIGROW-2PK')
+      , (492, 'AW-PINK-PUSSY-HONEY')
+      , (493, 'AW-RHINO-PILLS-1PK')
+      , (494, 'AW-RHINO-SHOTS')
+      , (495, 'AW-SEX-GUMMIES')
+      , (496, 'AW-VIAGRA-BOX')
+      , (497, 'AW-VIP-SEX-PILLS')
+      , (498, 'AW-ALEVE')
+      , (499, 'AW-ALKA-SELTZER')
+      , (500, 'AW-DAYQUIL')
+      , (501, 'AW-DRAMAMINE')
+      , (502, 'AW-MIDOL')
+      , (503, 'AW-MOTRIN')
+      , (504, 'AW-PEPTO-BISMOL')
+      , (505, 'AW-PREGNANCY-TEST')
+      , (506, 'AW-STOMACH-RELIEF')
+      , (507, 'AW-ZYRTEC')
+      , (508, 'AW-ENERGY-NOW')
+      , (509, 'AW-HAPPY-DAZE')
+      , (510, 'AW-HAPPY-HOUR')
+      , (511, 'AW-JUJU-SHOTS')
+      , (512, 'AW-BACKPACKS')
+      , (513, 'AW-BANDANA')
+      , (514, 'AW-NOSE-RINGS')
+      , (515, 'AW-SUNGLASSES')
+      , (516, 'AW-AIRPODS')
+      , (517, 'AW-BOTTLE-OPENER')
+      , (518, 'AW-CHAPSTICK')
+      , (519, 'AW-CUBA-PERFUMES')
+      , (520, 'AW-JEWELRY-DISPLAY')
+      , (521, 'AW-KNIVES-DISPLAY')
+      , (522, 'AW-ROSE-PENS')
+      , (523, 'AW-STAGE-PLANKS')
+      , (524, 'AW-RACING-CARS')
+      , (525, 'AW-ROBOT-TOYS')
+      , (526, 'AW-SQUEEZE-TOY')
+      , (527, 'AW-INCENSE-SINGLES')
+      , (528, 'AW-ARYA-CANDLES')
+      , (529, 'AW-BLUNTEFFECTS-CANDLES')
+      , (530, 'AW-BLUNTLIFE-INCENSE')
+      , (531, 'AW-CHINESE-RED-BOX')
+      , (532, 'AW-LIGHTER-FLINTS')
+      , (533, 'AW-NEON-BUTANE')
+      , (534, 'AW-RONSON-BUTANE')
+      , (535, 'AW-ZIPPO-BUTANE')
+      , (536, 'AW-ZIPPO-LIGHTER-FLUID')
+      , (537, 'AW-BABY-BOTTLES')
+      , (538, 'AW-HAIR-RUBBER-BANDS')
+      , (539, 'AW-HAND-SOAP')
+      , (540, 'AW-MOUTHWASH')
+      , (541, 'AW-NAIL-POLISH-REMOVER')
+      , (542, 'AW-RAZOR-BLADES')
+      , (543, 'AW-SUNSCREEN')
+      , (544, 'AW-TOOTH-FLOSS')
+      , (545, 'AW-TOOTHPASTE')
+      , (546, 'AW-AJAX-DISHWASHER')
+      , (547, 'AW-AJAX-DISHWASHER-BIG')
+      , (548, 'AW-CHORE-BOY')
+      , (549, 'AW-BAGGIES')
+      , (550, 'AW-ALUMINUM-FOIL')
+      , (551, 'AW-STRAWS')
+      , (552, 'AW-PLASTIC-CUPS')
+      , (553, 'AW-CAN-OPENER')
+      , (554, 'AW-PAINTERS-TAPE')
+      , (555, 'AW-PRICE-GUN-LABELS')
+      , (556, 'AW-SLIP-JOINT-PLIERS')
+      , (557, 'AW-SQUEEGEE')
+      , (558, 'AW-STICKY-GLOVES')
+      , (559, 'AW-WORKING-GLOVES')
+      , (560, 'AW-CAT-FOOD')
+      , (561, 'AW-DOG-FOOD')
+      , (562, 'AW-MILKY-WAY')
+      , (563, 'AW-AIRHEADS-BITES')
+      , (564, 'AW-AIRHEADS-XTREMES')
+      , (565, 'AW-BIG-TOY-CANDIES')
+      , (566, 'AW-FRUIT-SLICE-POPS')
+      , (567, 'AW-LEMON-SQUEEZE')
+      , (568, 'AW-LIFESAVERS-HARD')
+      , (569, 'AW-SOUR-JACKS')
+      , (570, 'AW-TOP-POPS')
+      , (571, 'AW-SLIME-LICKER')
+      , (572, 'AW-TOY-CANDIES')
+      , (573, 'AW-5-GUM')
+      , (574, 'AW-DENTYNE')
+      , (575, 'AW-DUBBLE-BUBBLE-JAR')
+      , (576, 'AW-EXTRA-SHARE')
+      , (577, 'AW-HALLS')
+      , (578, 'AW-WRIGLEYS-KING')
+      , (579, 'AW-CANDYMAN-BAGS')
+      , (580, 'AW-FRUIT-PEELERS')
+      , (581, 'AW-BOB-STRIPES-JAR')
+      , (582, 'AW-GUSHMELLOW-JAR')
+      , (583, 'AW-FLOUR')
+      , (584, 'AW-BAKING-SODA')
+      , (585, 'AW-MORTON-SALT')
+      , (586, 'AW-KEEBLER-CRACKERS')
+      , (587, 'AW-PRINGLES-BIG')
+      , (588, 'AW-PRINGLES-SMALL')
+      , (589, 'AW-SALTINES')
+      , (590, 'AW-ARMOUR-SAUSAGE')
+      , (591, 'AW-LIBBYS-SAUSAGE')
+      , (592, 'AW-VIENNA-SAUSAGE')
+      , (593, 'AW-RANCH')
+      , (594, 'AW-SAUCES')
+      , (595, 'AW-CHIPS-AHOY')
+      , (596, 'AW-KEEBLER-WAFERS')
+      , (597, 'AW-RICE-KRISPIES')
+      , (598, 'AW-UNCLE-ALS-WAFERS')
+      , (599, 'AW-COFFEE-MATE')
+      , (600, 'AW-ARMOR-ALL')
+      , (601, 'AW-BOOSTER-CABLES')
+      , (602, 'AW-CAR-ASH-TRAY')
+      , (603, 'AW-SAFE-CANS')
+      , (604, 'AW-TIRE-REPAIR')
+      , (605, 'AW-STARTING-FLUID')
+      , (606, 'AW-FANTA')
+      , (607, 'AW-MISTIC')
+      , (608, 'AW-OKF-ALOE-FRUIT')
+      , (609, 'AW-OKF-FARMERS-ALOE')
+      , (610, 'AW-POCAS')
+      , (611, 'AW-SKITTLES-DRINK')
+      , (612, 'AW-TOXIC-WASTE-JUICE')
+      , (613, 'AW-V8')
+      , (614, 'AW-TOTAL-WAR')
+      , (615, 'AW-YOO-HOO')
+      , (616, 'AW-AQUAFINA')
+      , (617, 'AW-DASANI')
+      , (618, 'AW-NIAGARA')
+      , (619, 'AW-SPORT-WATER')
+      , (620, 'AW-TOPO-CHICO')
   )
   select
     (select string_agg(format('%s (seed SKU %s, database SKU %s)', s.id, upper(btrim(s.sku)), upper(btrim(p.sku))), ', ' order by s.id)
@@ -7858,7 +8110,259 @@ insert into public.products (id, name, brand, cat, sub, sku, variants, variant_a
   (365, 'Orajel', 'Orajel', 'MERCHANDISE', 'OTC & Health', 'AW-ORAJEL', '[]'::jsonb, null, 'p365-orajel.jpg', null, true, 'Orajel oral pain relief for the OTC shelf.', ''),
   (366, 'Garcia y Vega cigars', 'Garcia y Vega', 'TOBACCO', 'Cigars & Cigarillos', 'AW-GARCIA-VEGA', '["Green"]'::jsonb, null, 'p366-garcia-y-vega-cigars.jpg', null, true, 'Garcia y Vega cigars from the cigar and cigarillo line in our Tobacco department. Stocked in one variety: Green.', ''),
   (367, 'LooseLeaf wraps 5-pack', 'LooseLeaf', 'TOBACCO', 'Wraps & Leafs', 'AW-LOOSE-LEAFS-5PK', '["Watermelon"]'::jsonb, null, 'loose_leafs_wraps_5pk.webp', null, true, 'LooseLeaf flavored wraps in 5-packs. Stocked in one variety: Watermelon.', '5-pack'),
-  (368, 'Camo wraps', 'Camo', 'TOBACCO', 'Wraps & Leafs', 'AW-CAMO-WRAPS', '["Natural"]'::jsonb, null, 'p368-camo-wraps-natural.webp', null, true, 'Camo wraps from the wraps and leaf line in our Tobacco department. Stocked in one variety: Natural.', '')
+  (368, 'Camo wraps', 'Camo', 'TOBACCO', 'Wraps & Leafs', 'AW-CAMO-WRAPS', '["Natural"]'::jsonb, null, 'p368-camo-wraps-natural.webp', null, true, 'Camo wraps from the wraps and leaf line in our Tobacco department. Stocked in one variety: Natural.', ''),
+  (369, 'Al Capone cigars 10-pack', 'Al Capone', 'TOBACCO', 'Cigars & Cigarillos', 'AW-AL-CAPONE-10PK', '[]'::jsonb, null, null, null, true, 'Al Capone cigars 10-pack from the cigars and cigarillos line in our Tobacco department.', '10-pack'),
+  (370, 'Al Capone tower with filter', 'Al Capone', 'TOBACCO', 'Cigars & Cigarillos', 'AW-AL-CAPONE-TOWER-FILTER', '[]'::jsonb, null, null, null, true, 'Al Capone tower with filter from the cigars and cigarillos line in our Tobacco department.', ''),
+  (371, 'Al Capone tower without filter', 'Al Capone', 'TOBACCO', 'Cigars & Cigarillos', 'AW-AL-CAPONE-TOWER', '[]'::jsonb, null, null, null, true, 'Al Capone tower without filter from the cigars and cigarillos line in our Tobacco department.', ''),
+  (372, 'Backwoods True pack 2-pack', 'Backwoods', 'TOBACCO', 'Cigars & Cigarillos', 'AW-BACKWOODS-TRUE-2PK', '[]'::jsonb, null, null, null, true, 'Backwoods True pack 2-pack from the cigars and cigarillos line in our Tobacco department.', '2-pack'),
+  (373, 'Djarum cigars', 'Djarum', 'TOBACCO', 'Cigars & Cigarillos', 'AW-DJARUM', '[]'::jsonb, null, null, null, true, 'Djarum cigars from the cigars and cigarillos line in our Tobacco department.', ''),
+  (374, 'Hav-A-Tampa cigars', 'Hav-A-Tampa', 'TOBACCO', 'Cigars & Cigarillos', 'AW-HAV-A-TAMPA', '[]'::jsonb, null, null, null, true, 'Hav-A-Tampa cigars from the cigars and cigarillos line in our Tobacco department.', ''),
+  (375, 'Jackpot cigarillos', 'Jackpot', 'TOBACCO', 'Cigars & Cigarillos', 'AW-JACKPOT', '[]'::jsonb, null, null, null, true, 'Jackpot cigarillos from the cigars and cigarillos line in our Tobacco department.', ''),
+  (376, 'Optimo cigars', 'Optimo', 'TOBACCO', 'Cigars & Cigarillos', 'AW-OPTIMO', '[]'::jsonb, null, null, null, true, 'Optimo cigars from the cigars and cigarillos line in our Tobacco department.', ''),
+  (377, 'Snoop Dogg cigarillos 2-pack', 'Snoop Dogg', 'TOBACCO', 'Cigars & Cigarillos', 'AW-SNOOP-2PK', '[]'::jsonb, null, null, null, true, 'Snoop Dogg cigarillos 2-pack from the cigars and cigarillos line in our Tobacco department.', '2-pack'),
+  (378, 'Snoop Dogg cigarillos 4-pack', 'Snoop Dogg', 'TOBACCO', 'Cigars & Cigarillos', 'AW-SNOOP-4PK', '[]'::jsonb, null, null, null, true, 'Snoop Dogg cigarillos 4-pack from the cigars and cigarillos line in our Tobacco department.', '4-pack'),
+  (379, 'Backwoods True wrap 2-pack', 'Backwoods', 'TOBACCO', 'Wraps & Leafs', 'AW-BACKWOODS-TRUE-WRAP-2PK', '[]'::jsonb, null, null, null, true, 'Backwoods True wrap 2-pack from the wraps and leafs line in our Tobacco department.', '2-pack'),
+  (380, 'Big Bol wraps', 'Big Bol', 'TOBACCO', 'Wraps & Leafs', 'AW-BIG-BOL', '[]'::jsonb, null, null, null, true, 'Big Bol wraps from the wraps and leafs line in our Tobacco department.', ''),
+  (381, 'Big Leaf wraps singles', 'Big Leaf', 'TOBACCO', 'Wraps & Leafs', 'AW-BIG-LEAF-SINGLES', '[]'::jsonb, null, null, null, true, 'Big Leaf wraps singles from the wraps and leafs line in our Tobacco department.', 'single'),
+  (382, 'Big Leaf wraps 3-pack', 'Big Leaf', 'TOBACCO', 'Wraps & Leafs', 'AW-BIG-LEAF-3PK', '[]'::jsonb, null, null, null, true, 'Big Leaf wraps 3-pack from the wraps and leafs line in our Tobacco department.', '3-pack'),
+  (383, 'Blazy Susan wraps', 'Blazy Susan', 'TOBACCO', 'Wraps & Leafs', 'AW-BLAZY-SUSAN', '[]'::jsonb, null, null, null, true, 'Blazy Susan wraps from the wraps and leafs line in our Tobacco department.', ''),
+  (384, 'Bob Marley wraps', 'Bob Marley', 'TOBACCO', 'Wraps & Leafs', 'AW-BOB-MARLEY-WRAPS', '[]'::jsonb, null, null, null, true, 'Bob Marley wraps from the wraps and leafs line in our Tobacco department.', ''),
+  (385, 'Hemparillo rillo size blunts', 'Hemparillo', 'TOBACCO', 'Wraps & Leafs', 'AW-HEMPARILLO', '[]'::jsonb, null, null, null, true, 'Hemparillo rillo size blunts from the wraps and leafs line in our Tobacco department.', ''),
+  (386, 'Jungo leaf 2-pack', 'Jungo', 'TOBACCO', 'Wraps & Leafs', 'AW-JUNGO-LEAF-2PK', '[]'::jsonb, null, null, null, true, 'Jungo leaf 2-pack from the wraps and leafs line in our Tobacco department.', '2-pack'),
+  (387, 'King Palm Goji wraps', 'King Palm', 'TOBACCO', 'Wraps & Leafs', 'AW-KING-PALM-GOJI', '[]'::jsonb, null, null, null, true, 'King Palm Goji wraps from the wraps and leafs line in our Tobacco department.', ''),
+  (388, 'LooseLeaf crushed', 'LooseLeaf', 'TOBACCO', 'Wraps & Leafs', 'AW-LOOSELEAF-CRUSHED', '[]'::jsonb, null, null, null, true, 'LooseLeaf crushed from the wraps and leafs line in our Tobacco department.', ''),
+  (389, 'LooseLeaf slugs', 'LooseLeaf', 'TOBACCO', 'Wraps & Leafs', 'AW-LOOSELEAF-SLUGS', '[]'::jsonb, null, null, null, true, 'LooseLeaf slugs from the wraps and leafs line in our Tobacco department.', ''),
+  (390, 'Metro Leaf wraps', 'Metro Leaf', 'TOBACCO', 'Wraps & Leafs', 'AW-METRO-LEAF', '[]'::jsonb, null, null, null, true, 'Metro Leaf wraps from the wraps and leafs line in our Tobacco department.', ''),
+  (391, 'American Spirit tobacco', 'American Spirit', 'TOBACCO', 'Cigarettes', 'AW-AMERICAN-SPIRIT', '[]'::jsonb, null, null, null, true, 'American Spirit tobacco from the cigarettes line in our Tobacco department.', ''),
+  (392, 'Bugler tobacco', 'Bugler', 'TOBACCO', 'Cigarettes', 'AW-BUGLER', '[]'::jsonb, null, null, null, true, 'Bugler tobacco from the cigarettes line in our Tobacco department.', ''),
+  (393, 'ALP nicotine pouches 6mg', 'ALP', 'TOBACCO', 'Pouches & ZYN', 'AW-ALP-6MG', '[]'::jsonb, null, null, null, true, 'ALP nicotine pouches 6mg from the pouches and ZYN line in our Tobacco department.', ''),
+  (394, 'ALP nicotine pouches 9mg', 'ALP', 'TOBACCO', 'Pouches & ZYN', 'AW-ALP-9MG', '[]'::jsonb, null, null, null, true, 'ALP nicotine pouches 9mg from the pouches and ZYN line in our Tobacco department.', ''),
+  (395, 'PIK nicotine pouches 6mg', 'PIK', 'TOBACCO', 'Pouches & ZYN', 'AW-PIK-6MG', '[]'::jsonb, null, null, null, true, 'PIK nicotine pouches 6mg from the pouches and ZYN line in our Tobacco department.', ''),
+  (396, 'Rouge nicotine pouches', 'Rouge', 'TOBACCO', 'Pouches & ZYN', 'AW-ROUGE-POUCHES', '[]'::jsonb, null, null, null, true, 'Rouge nicotine pouches from the pouches and ZYN line in our Tobacco department.', ''),
+  (397, 'Bob Marley cones', 'Bob Marley', 'TOBACCO', 'Papers & Cones', 'AW-BOB-MARLEY-CONES', '[]'::jsonb, null, null, null, true, 'Bob Marley cones from the papers and cones line in our Tobacco department.', ''),
+  (398, 'Good Times paper jar', 'Good Times', 'TOBACCO', 'Papers & Cones', 'AW-GOOD-TIMES-PAPER-JAR', '[]'::jsonb, null, null, null, true, 'Good Times paper jar from the papers and cones line in our Tobacco department.', 'jar'),
+  (399, 'JOB papers red jar', 'JOB', 'TOBACCO', 'Papers & Cones', 'AW-JOB-PAPERS-RED-JAR', '[]'::jsonb, null, null, null, true, 'JOB papers red jar from the papers and cones line in our Tobacco department.', 'jar'),
+  (400, 'OCB cones', 'OCB', 'TOBACCO', 'Papers & Cones', 'AW-OCB-CONES', '[]'::jsonb, null, null, null, true, 'OCB cones from the papers and cones line in our Tobacco department.', ''),
+  (401, 'OCB papers', 'OCB', 'TOBACCO', 'Papers & Cones', 'AW-OCB-PAPERS', '[]'::jsonb, null, null, null, true, 'OCB papers from the papers and cones line in our Tobacco department.', ''),
+  (402, 'Bidi Stick', 'Bidi Stick', 'NOVELTIES', 'Disposable Vapes', 'AW-BIDI-STICK', '[]'::jsonb, null, null, null, true, 'Bidi Stick from the disposable vapes line in our Novelties department.', ''),
+  (403, 'Breeze', 'Breeze', 'NOVELTIES', 'Disposable Vapes', 'AW-BREEZE', '[]'::jsonb, null, null, null, true, 'Breeze from the disposable vapes line in our Novelties department.', ''),
+  (404, 'Fifty Bar', 'Fifty Bar', 'NOVELTIES', 'Disposable Vapes', 'AW-FIFTY-BAR', '[]'::jsonb, null, null, null, true, 'Fifty Bar from the disposable vapes line in our Novelties department.', ''),
+  (405, 'Foger Bit 35K', 'Foger', 'NOVELTIES', 'Disposable Vapes', 'AW-FOGER-BIT-35K', '[]'::jsonb, null, null, null, true, 'Foger Bit 35K from the disposable vapes line in our Novelties department.', ''),
+  (406, 'Geek Bar 50K', 'Geek Bar', 'NOVELTIES', 'Disposable Vapes', 'AW-GEEKBAR-50K', '[]'::jsonb, null, null, null, true, 'Geek Bar 50K from the disposable vapes line in our Novelties department.', ''),
+  (407, 'Geek Bar CLR', 'Geek Bar', 'NOVELTIES', 'Disposable Vapes', 'AW-GEEKBAR-CLR', '[]'::jsonb, null, null, null, true, 'Geek Bar CLR from the disposable vapes line in our Novelties department.', ''),
+  (408, 'Geek Bar Pulse 2', 'Geek Bar', 'NOVELTIES', 'Disposable Vapes', 'AW-GEEKBAR-PULSE-2', '[]'::jsonb, null, null, null, true, 'Geek Bar Pulse 2 from the disposable vapes line in our Novelties department.', ''),
+  (409, 'Geek Bar X2 50K', 'Geek Bar', 'NOVELTIES', 'Disposable Vapes', 'AW-GEEKBAR-X2-50K', '[]'::jsonb, null, null, null, true, 'Geek Bar X2 50K from the disposable vapes line in our Novelties department.', ''),
+  (410, 'Kadobar 40K', 'Kadobar', 'NOVELTIES', 'Disposable Vapes', 'AW-KADOBAR-40K', '[]'::jsonb, null, null, null, true, 'Kadobar 40K from the disposable vapes line in our Novelties department.', ''),
+  (411, 'Lost Mary 35K', 'Lost Mary', 'NOVELTIES', 'Disposable Vapes', 'AW-LOST-MARY-35K', '[]'::jsonb, null, null, null, true, 'Lost Mary 35K from the disposable vapes line in our Novelties department.', ''),
+  (412, 'MFU 150K', 'MFU', 'NOVELTIES', 'Disposable Vapes', 'AW-MFU-150K', '[]'::jsonb, null, null, null, true, 'MFU 150K from the disposable vapes line in our Novelties department.', ''),
+  (413, 'MFU 70K', 'MFU', 'NOVELTIES', 'Disposable Vapes', 'AW-MFU-70K', '[]'::jsonb, null, null, null, true, 'MFU 70K from the disposable vapes line in our Novelties department.', ''),
+  (414, 'MFU 80K', 'MFU', 'NOVELTIES', 'Disposable Vapes', 'AW-MFU-80K', '[]'::jsonb, null, null, null, true, 'MFU 80K from the disposable vapes line in our Novelties department.', ''),
+  (415, 'Nexa 35K', 'Nexa', 'NOVELTIES', 'Disposable Vapes', 'AW-NEXA-35K', '[]'::jsonb, null, null, null, true, 'Nexa 35K from the disposable vapes line in our Novelties department.', ''),
+  (416, 'Nexa 80K', 'Nexa', 'NOVELTIES', 'Disposable Vapes', 'AW-NEXA-80K', '[]'::jsonb, null, null, null, true, 'Nexa 80K from the disposable vapes line in our Novelties department.', ''),
+  (417, 'North 5000', 'North', 'NOVELTIES', 'Disposable Vapes', 'AW-NORTH-5000', '[]'::jsonb, null, null, null, true, 'North 5000 from the disposable vapes line in our Novelties department.', ''),
+  (418, 'Tarbar', 'Tarbar', 'NOVELTIES', 'Disposable Vapes', 'AW-TARBAR', '[]'::jsonb, null, null, null, true, 'Tarbar from the disposable vapes line in our Novelties department.', ''),
+  (419, 'Doom pods', 'Doom', 'NOVELTIES', 'Vape Pods', 'AW-DOOM-PODS', '[]'::jsonb, null, null, null, true, 'Doom pods from the vape pods line in our Novelties department.', ''),
+  (420, 'Extre bar pods', 'Extre', 'NOVELTIES', 'Vape Pods', 'AW-EXTRE-BAR-PODS', '[]'::jsonb, null, null, null, true, 'Extre bar pods from the vape pods line in our Novelties department.', ''),
+  (421, 'Juul pods 2-pack', 'Juul', 'NOVELTIES', 'Vape Pods', 'AW-JUUL-PODS-2PK', '[]'::jsonb, null, null, null, true, 'Juul pods 2-pack from the vape pods line in our Novelties department.', '2-pack'),
+  (422, 'Juul pods 4-pack menthol', 'Juul', 'NOVELTIES', 'Vape Pods', 'AW-JUUL-PODS-4PK', '[]'::jsonb, null, null, null, true, 'Juul pods 4-pack menthol, 5%, from the vape pods line in our Novelties department.', '4-pack'),
+  (423, 'MFU pods', 'MFU', 'NOVELTIES', 'Vape Pods', 'AW-MFU-PODS', '[]'::jsonb, null, null, null, true, 'MFU pods from the vape pods line in our Novelties department.', ''),
+  (424, 'Adalya shisha 50 g', 'Adalya', 'NOVELTIES', 'Hookah & Shisha', 'AW-ADALYA-50G', '[]'::jsonb, null, null, null, true, 'Adalya shisha 50 g from the hookah and shisha line in our Novelties department.', '50 g'),
+  (425, 'Al Fakher charcoal', 'Al Fakher', 'NOVELTIES', 'Hookah & Shisha', 'AW-ALFAKHER-CHARCOAL', '[]'::jsonb, null, null, null, true, 'Al Fakher charcoal from the hookah and shisha line in our Novelties department.', ''),
+  (426, 'Flat hookah', 'Assorted', 'NOVELTIES', 'Hookah & Shisha', 'AW-FLAT-HOOKAH', '[]'::jsonb, null, null, null, true, 'Flat hookah from the hookah and shisha line in our Novelties department.', ''),
+  (427, 'Hookah hose', 'Assorted', 'NOVELTIES', 'Hookah & Shisha', 'AW-HOOKAH-HOSE', '[]'::jsonb, null, null, null, true, 'Hookah hose from the hookah and shisha line in our Novelties department.', ''),
+  (428, 'Hookah tips', 'Assorted', 'NOVELTIES', 'Hookah & Shisha', 'AW-HOOKAH-TIPS', '[]'::jsonb, null, null, null, true, 'Hookah tips from the hookah and shisha line in our Novelties department.', ''),
+  (429, 'Lost shisha vape 80K', 'Lost', 'NOVELTIES', 'Hookah & Shisha', 'AW-LOST-SHISHA-80K', '[]'::jsonb, null, null, null, true, 'Lost shisha vape 80K from the hookah and shisha line in our Novelties department.', ''),
+  (430, 'Mazaya shisha', 'Mazaya', 'NOVELTIES', 'Hookah & Shisha', 'AW-MAZAYA', '[]'::jsonb, null, null, null, true, 'Mazaya shisha from the hookah and shisha line in our Novelties department.', ''),
+  (431, 'Olit Pro hookah', 'Olit', 'NOVELTIES', 'Hookah & Shisha', 'AW-OLIT-PRO', '[]'::jsonb, null, null, null, true, 'Olit Pro hookah from the hookah and shisha line in our Novelties department.', ''),
+  (432, 'Olit shisha vape 40K', 'Olit', 'NOVELTIES', 'Hookah & Shisha', 'AW-OLIT-40K', '[]'::jsonb, null, null, null, true, 'Olit shisha vape 40K from the hookah and shisha line in our Novelties department.', ''),
+  (433, 'Ploox Nest hookah', 'Ploox', 'NOVELTIES', 'Hookah & Shisha', 'AW-PLOOX-NEST', '[]'::jsonb, null, null, null, true, 'Ploox Nest hookah from the hookah and shisha line in our Novelties department.', ''),
+  (434, 'Ploox Saloon shisha vape', 'Ploox', 'NOVELTIES', 'Hookah & Shisha', 'AW-PLOOX-SALOON', '[]'::jsonb, null, null, null, true, 'Ploox Saloon shisha vape from the hookah and shisha line in our Novelties department.', ''),
+  (435, 'Ploox shisha pods', 'Ploox', 'NOVELTIES', 'Hookah & Shisha', 'AW-PLOOX-PODS', '[]'::jsonb, null, null, null, true, 'Ploox shisha pods from the hookah and shisha line in our Novelties department.', ''),
+  (436, 'Ploox shisha vape 75K', 'Ploox', 'NOVELTIES', 'Hookah & Shisha', 'AW-PLOOX-75K', '[]'::jsonb, null, null, null, true, 'Ploox shisha vape 75K from the hookah and shisha line in our Novelties department.', ''),
+  (437, 'SKE shisha vape', 'SKE', 'NOVELTIES', 'Hookah & Shisha', 'AW-SKE-SHISHA', '[]'::jsonb, null, null, null, true, 'SKE shisha vape from the hookah and shisha line in our Novelties department.', ''),
+  (438, 'Starbuzz charcoal', 'Starbuzz', 'NOVELTIES', 'Hookah & Shisha', 'AW-STARBUZZ-CHARCOAL', '[]'::jsonb, null, null, null, true, 'Starbuzz charcoal from the hookah and shisha line in our Novelties department.', ''),
+  (439, 'Three Kings charcoal', 'Three Kings', 'NOVELTIES', 'Hookah & Shisha', 'AW-THREE-KINGS', '[]'::jsonb, null, null, null, true, 'Three Kings charcoal from the hookah and shisha line in our Novelties department.', ''),
+  (440, 'Titanium charcoal', 'Assorted', 'NOVELTIES', 'Hookah & Shisha', 'AW-TITANIUM-CHARCOAL', '[]'::jsonb, null, null, null, true, 'Titanium charcoal from the hookah and shisha line in our Novelties department.', ''),
+  (441, 'D-Tek scales', 'D-Tek', 'NOVELTIES', 'Smoke Accessories', 'AW-D-TEK-SCALES', '[]'::jsonb, null, null, null, true, 'D-Tek scales from the smoke accessories line in our Novelties department.', ''),
+  (442, 'Gas mask', 'Assorted', 'NOVELTIES', 'Smoke Accessories', 'AW-GAS-MASK', '[]'::jsonb, null, null, null, true, 'Gas mask from the smoke accessories line in our Novelties department.', ''),
+  (443, 'Glass pens', 'Assorted', 'NOVELTIES', 'Smoke Accessories', 'AW-GLASS-PENS', '[]'::jsonb, null, null, null, true, 'Glass pens from the smoke accessories line in our Novelties department.', ''),
+  (444, 'Glass pipes', 'Assorted', 'NOVELTIES', 'Smoke Accessories', 'AW-GLASS-PIPES', '[]'::jsonb, null, null, null, true, 'Glass pipes from the smoke accessories line in our Novelties department.', ''),
+  (445, 'Glass tips', 'Assorted', 'NOVELTIES', 'Smoke Accessories', 'AW-GLASS-TIPS', '[]'::jsonb, null, null, null, true, 'Glass tips from the smoke accessories line in our Novelties department.', ''),
+  (446, 'Ooze glass bowl', 'Ooze', 'NOVELTIES', 'Smoke Accessories', 'AW-OOZE-GLASS-BOWL', '[]'::jsonb, null, null, null, true, 'Ooze glass bowl from the smoke accessories line in our Novelties department.', ''),
+  (447, 'Ooze pens', 'Ooze', 'NOVELTIES', 'Smoke Accessories', 'AW-OOZE-PENS', '[]'::jsonb, null, null, null, true, 'Ooze pens from the smoke accessories line in our Novelties department.', ''),
+  (448, 'Rolling trays', 'Assorted', 'NOVELTIES', 'Smoke Accessories', 'AW-ROLLING-TRAYS', '[]'::jsonb, null, null, null, true, 'Rolling trays from the smoke accessories line in our Novelties department.', ''),
+  (449, 'Smoking pipes', 'Assorted', 'NOVELTIES', 'Smoke Accessories', 'AW-SMOKING-PIPES', '[]'::jsonb, null, null, null, true, 'Smoking pipes from the smoke accessories line in our Novelties department.', ''),
+  (450, 'Wax bongs', 'Assorted', 'NOVELTIES', 'Smoke Accessories', 'AW-WAX-BONGS', '[]'::jsonb, null, null, null, true, 'Wax bongs from the smoke accessories line in our Novelties department.', ''),
+  (451, 'Buzzy disposable CBD + CBG', 'Buzzy', 'NOVELTIES', 'CBD', 'AW-BUZZY-CBD-CBG', '[]'::jsonb, null, null, null, true, 'Buzzy disposable CBD + CBG from the CBD line in our Novelties department.', ''),
+  (452, 'Mellow Fellow beverage', 'Mellow Fellow', 'NOVELTIES', 'CBD', 'AW-MELLOW-FELLOW', '[]'::jsonb, null, null, null, true, 'Mellow Fellow beverage from the CBD line in our Novelties department.', ''),
+  (453, 'Mellow Fellow gummies', 'Mellow Fellow', 'NOVELTIES', 'CBD', 'AW-MELLOW-FELLOW-GUMMIES', '[]'::jsonb, null, null, null, true, 'Mellow Fellow gummies from the CBD line in our Novelties department.', ''),
+  (454, 'Blue Infinity pre rolls 2-pack', 'Blue Infinity', 'NOVELTIES', 'Mushroom Products', 'AW-BLUE-INFINITY-PREROLLS', '[]'::jsonb, null, null, null, false, 'Blue Infinity pre rolls 2-pack from the mushroom products line in our Novelties department.', '2-pack'),
+  (455, 'Blue Monkey flower', 'Blue Monkey', 'NOVELTIES', 'Mushroom Products', 'AW-BLUE-MONKEY-FLOWER', '[]'::jsonb, null, null, null, false, 'Blue Monkey flower from the mushroom products line in our Novelties department.', ''),
+  (456, 'Blue Monkey gummies bags', 'Blue Monkey', 'NOVELTIES', 'Mushroom Products', 'AW-BLUE-MONKEY-GUMMIES-BAGS', '[]'::jsonb, null, null, null, false, 'Blue Monkey gummies bags from the mushroom products line in our Novelties department.', ''),
+  (457, 'Blue Monkey gummies jars', 'Blue Monkey', 'NOVELTIES', 'Mushroom Products', 'AW-BLUE-MONKEY-GUMMIES-JARS', '[]'::jsonb, null, null, null, false, 'Blue Monkey gummies jars from the mushroom products line in our Novelties department.', 'jar'),
+  (458, 'Buzzy disposable 3 g', 'Buzzy', 'NOVELTIES', 'Mushroom Products', 'AW-BUZZY-3G', '[]'::jsonb, null, null, null, false, 'Buzzy disposable 3 g from the mushroom products line in our Novelties department.', '3 g'),
+  (459, 'Buzzy disposable CBD + blue lotus', 'Buzzy', 'NOVELTIES', 'Mushroom Products', 'AW-BUZZY-CBD-LOTUS', '[]'::jsonb, null, null, null, false, 'Buzzy disposable CBD + blue lotus from the mushroom products line in our Novelties department.', ''),
+  (460, 'Buzzy disposable CBD + mushroom', 'Buzzy', 'NOVELTIES', 'Mushroom Products', 'AW-BUZZY-CBD-MUSHROOM', '[]'::jsonb, null, null, null, false, 'Buzzy disposable CBD + mushroom from the mushroom products line in our Novelties department.', ''),
+  (461, 'Buzzy disposable mushroom', 'Buzzy', 'NOVELTIES', 'Mushroom Products', 'AW-BUZZY-MUSHROOM', '[]'::jsonb, null, null, null, false, 'Buzzy disposable mushroom from the mushroom products line in our Novelties department.', ''),
+  (462, 'Double stacked bites gummies', 'Assorted', 'NOVELTIES', 'Mushroom Products', 'AW-DOUBLE-STACKED-BITES', '[]'::jsonb, null, null, null, false, 'Double stacked bites gummies from the mushroom products line in our Novelties department.', ''),
+  (463, 'Goo''d Mushroom disposable 2.2 g', 'Goo''d', 'NOVELTIES', 'Mushroom Products', 'AW-GOOD-MUSHROOM-2G', '[]'::jsonb, null, null, null, false, 'Goo''d Mushroom disposable 2.2 g from the mushroom products line in our Novelties department.', '2.2 g'),
+  (464, 'Harmony Dubai mushroom chocolate', 'Harmony', 'NOVELTIES', 'Mushroom Products', 'AW-HARMONY-MUSHROOM', '[]'::jsonb, null, null, null, false, 'Harmony Dubai mushroom chocolate from the mushroom products line in our Novelties department.', ''),
+  (465, 'Hush Hit pre rolls jar', 'Hush Hit', 'NOVELTIES', 'Mushroom Products', 'AW-HUSH-HIT-JAR', '[]'::jsonb, null, null, null, false, 'Hush Hit pre rolls jar from the mushroom products line in our Novelties department.', 'jar'),
+  (466, 'Magic Trip gummies 2-count', 'Magic Trip', 'NOVELTIES', 'Mushroom Products', 'AW-MAGIC-TRIP-GUMMIES', '[]'::jsonb, null, null, null, false, 'Magic Trip gummies 2-count from the mushroom products line in our Novelties department.', '2-count'),
+  (467, 'Mental Health cartridges', 'Mental Health', 'NOVELTIES', 'Mushroom Products', 'AW-MENTAL-HEALTH-CARTRIDGES', '[]'::jsonb, null, null, null, false, 'Mental Health cartridges from the mushroom products line in our Novelties department.', ''),
+  (468, 'Mind melt mushroom pills', 'Assorted', 'NOVELTIES', 'Mushroom Products', 'AW-MIND-MELT', '[]'::jsonb, null, null, null, false, 'Mind melt mushroom pills from the mushroom products line in our Novelties department.', ''),
+  (469, 'Psyched mushroom disposable 9000mg', 'Psyched', 'NOVELTIES', 'Mushroom Products', 'AW-PSYCHED-MUSHROOM-9000', '[]'::jsonb, null, null, null, false, 'Psyched mushroom disposable 9000mg from the mushroom products line in our Novelties department.', ''),
+  (470, 'Psyched pre rolls 2-pack', 'Psyched', 'NOVELTIES', 'Mushroom Products', 'AW-PSYCHED-PREROLLS-2PK', '[]'::jsonb, null, null, null, false, 'Psyched pre rolls 2-pack from the mushroom products line in our Novelties department.', '2-pack'),
+  (471, 'Shroom Bang disposable 4 g', 'Shroom Bang', 'NOVELTIES', 'Mushroom Products', 'AW-SHROOM-BANG-4G', '[]'::jsonb, null, null, null, false, 'Shroom Bang disposable 4 g from the mushroom products line in our Novelties department.', '4 g'),
+  (472, 'Shroom Bang pills', 'Shroom Bang', 'NOVELTIES', 'Mushroom Products', 'AW-SHROOM-BANG-PILLS', '[]'::jsonb, null, null, null, false, 'Shroom Bang pills from the mushroom products line in our Novelties department.', ''),
+  (473, 'Shroom Rolls pre rolls 2-pack', 'Shroom Rolls', 'NOVELTIES', 'Mushroom Products', 'AW-SHROOM-ROLLS-2PK', '[]'::jsonb, null, null, null, false, 'Shroom Rolls pre rolls 2-pack from the mushroom products line in our Novelties department.', '2-pack'),
+  (474, 'Silly Farms chocolate', 'Silly Farms', 'NOVELTIES', 'Mushroom Products', 'AW-SILLY-FARMS-CHOCOLATE', '[]'::jsonb, null, null, null, false, 'Silly Farms chocolate from the mushroom products line in our Novelties department.', ''),
+  (475, 'Silly Farms gummies', 'Silly Farms', 'NOVELTIES', 'Mushroom Products', 'AW-SILLY-FARMS-GUMMIES', '[]'::jsonb, null, null, null, false, 'Silly Farms gummies from the mushroom products line in our Novelties department.', ''),
+  (476, 'Sprinkles shroom vape', 'Sprinkles', 'NOVELTIES', 'Mushroom Products', 'AW-SPRINKLES-SHROOM', '[]'::jsonb, null, null, null, false, 'Sprinkles shroom vape from the mushroom products line in our Novelties department.', ''),
+  (477, 'Stoned mushroom chocolate', 'Stoned', 'NOVELTIES', 'Mushroom Products', 'AW-STONED-CHOCOLATE', '[]'::jsonb, null, null, null, false, 'Stoned mushroom chocolate from the mushroom products line in our Novelties department.', ''),
+  (478, 'Stoned mushroom gummies 2-pack', 'Stoned', 'NOVELTIES', 'Mushroom Products', 'AW-STONED-GUMMIES-2PK', '[]'::jsonb, null, null, null, false, 'Stoned mushroom gummies 2-pack from the mushroom products line in our Novelties department.', '2-pack'),
+  (479, 'The House of Dream pre rolls 2-pack', 'The House of Dream', 'NOVELTIES', 'Mushroom Products', 'AW-HOUSE-OF-DREAM', '[]'::jsonb, null, null, null, false, 'The House of Dream pre rolls 2-pack from the mushroom products line in our Novelties department.', '2-pack'),
+  (480, 'Ultra White Lotus disposable', 'Ultra White Lotus', 'NOVELTIES', 'Mushroom Products', 'AW-ULTRA-WHITE-LOTUS', '[]'::jsonb, null, null, null, false, 'Ultra White Lotus disposable from the mushroom products line in our Novelties department.', ''),
+  (481, 'Kava Kalm', 'Kava Kalm', 'NOVELTIES', 'Kratom & Kava', 'AW-KAVA-KALM', '[]'::jsonb, null, null, null, false, 'Kava Kalm from the kratom and kava line in our Novelties department.', ''),
+  (482, 'Addall pills', 'Addall', 'NOVELTIES', 'Wellness Pills', 'AW-ADDALL', '[]'::jsonb, null, null, null, true, 'Addall pills from the wellness pills line in our Novelties department.', ''),
+  (483, 'Buzzers pills', 'Buzzers', 'NOVELTIES', 'Wellness Pills', 'AW-BUZZERS', '[]'::jsonb, null, null, null, true, 'Buzzers pills from the wellness pills line in our Novelties department.', ''),
+  (484, 'Sleep Walker pills 2-pack', 'Sleep Walker', 'NOVELTIES', 'Wellness Pills', 'AW-SLEEP-WALKER-2PK', '[]'::jsonb, null, null, null, true, 'Sleep Walker pills 2-pack from the wellness pills line in our Novelties department.', '2-pack'),
+  (485, 'Stacker pills', 'Stacker', 'NOVELTIES', 'Wellness Pills', 'AW-STACKER', '[]'::jsonb, null, null, null, true, 'Stacker pills from the wellness pills line in our Novelties department.', ''),
+  (486, 'Thizzies pills', 'Thizzies', 'NOVELTIES', 'Wellness Pills', 'AW-THIZZIES', '[]'::jsonb, null, null, null, true, 'Thizzies pills from the wellness pills line in our Novelties department.', ''),
+  (487, 'Third eye pills 2-pack', 'Third Eye', 'NOVELTIES', 'Wellness Pills', 'AW-THIRD-EYE-2PK', '[]'::jsonb, null, null, null, true, 'Third eye pills 2-pack from the wellness pills line in our Novelties department.', '2-pack'),
+  (488, 'Black Bull honey', 'Black Bull', 'MERCHANDISE', 'Honey & Energy', 'AW-BLACK-BULL-HONEY', '[]'::jsonb, null, null, null, true, 'Black Bull honey from the honey and energy line in our Merchandise department.', ''),
+  (489, 'Black Horse honey', 'Black Horse', 'MERCHANDISE', 'Honey & Energy', 'AW-BLACK-HORSE-HONEY', '[]'::jsonb, null, null, null, true, 'Black Horse honey from the honey and energy line in our Merchandise department.', ''),
+  (490, 'Etumax pink honey', 'Etumax', 'MERCHANDISE', 'Honey & Energy', 'AW-ETUMAX-PINK-HONEY', '[]'::jsonb, null, null, null, true, 'Etumax pink honey from the honey and energy line in our Merchandise department.', ''),
+  (491, 'Libigrow pills 2-pack', 'Libigrow', 'MERCHANDISE', 'Honey & Energy', 'AW-LIBIGROW-2PK', '[]'::jsonb, null, null, null, true, 'Libigrow pills 2-pack from the honey and energy line in our Merchandise department.', '2-pack'),
+  (492, 'Pink Pussy honey', 'Pink Pussy', 'MERCHANDISE', 'Honey & Energy', 'AW-PINK-PUSSY-HONEY', '[]'::jsonb, null, null, null, true, 'Pink Pussy honey from the honey and energy line in our Merchandise department.', ''),
+  (493, 'Rhino pills 1-pack', 'Rhino', 'MERCHANDISE', 'Honey & Energy', 'AW-RHINO-PILLS-1PK', '[]'::jsonb, null, null, null, true, 'Rhino pills 1-pack from the honey and energy line in our Merchandise department.', '1-pack'),
+  (494, 'Rhino shots', 'Rhino', 'MERCHANDISE', 'Honey & Energy', 'AW-RHINO-SHOTS', '[]'::jsonb, null, null, null, true, 'Rhino shots from the honey and energy line in our Merchandise department.', ''),
+  (495, 'Sex gummies', 'Assorted', 'MERCHANDISE', 'Honey & Energy', 'AW-SEX-GUMMIES', '[]'::jsonb, null, null, null, true, 'Sex gummies from the honey and energy line in our Merchandise department.', ''),
+  (496, 'Viagra box', 'Assorted', 'MERCHANDISE', 'Honey & Energy', 'AW-VIAGRA-BOX', '[]'::jsonb, null, null, null, true, 'Viagra box from the honey and energy line in our Merchandise department.', ''),
+  (497, 'VIP Gold sex pills', 'VIP', 'MERCHANDISE', 'Honey & Energy', 'AW-VIP-SEX-PILLS', '[]'::jsonb, null, null, null, true, 'VIP Gold sex pills from the honey and energy line in our Merchandise department.', ''),
+  (498, 'Aleve', 'Aleve', 'MERCHANDISE', 'OTC & Health', 'AW-ALEVE', '[]'::jsonb, null, null, null, true, 'Aleve from the OTC and health line in our Merchandise department.', ''),
+  (499, 'Alka-Seltzer', 'Alka-Seltzer', 'MERCHANDISE', 'OTC & Health', 'AW-ALKA-SELTZER', '[]'::jsonb, null, null, null, true, 'Alka-Seltzer from the OTC and health line in our Merchandise department.', ''),
+  (500, 'DayQuil', 'DayQuil', 'MERCHANDISE', 'OTC & Health', 'AW-DAYQUIL', '[]'::jsonb, null, null, null, true, 'DayQuil from the OTC and health line in our Merchandise department.', ''),
+  (501, 'Dramamine', 'Dramamine', 'MERCHANDISE', 'OTC & Health', 'AW-DRAMAMINE', '[]'::jsonb, null, null, null, true, 'Dramamine from the OTC and health line in our Merchandise department.', ''),
+  (502, 'Midol', 'Midol', 'MERCHANDISE', 'OTC & Health', 'AW-MIDOL', '[]'::jsonb, null, null, null, true, 'Midol from the OTC and health line in our Merchandise department.', ''),
+  (503, 'Motrin', 'Motrin', 'MERCHANDISE', 'OTC & Health', 'AW-MOTRIN', '[]'::jsonb, null, null, null, true, 'Motrin from the OTC and health line in our Merchandise department.', ''),
+  (504, 'Pepto-Bismol', 'Pepto-Bismol', 'MERCHANDISE', 'OTC & Health', 'AW-PEPTO-BISMOL', '[]'::jsonb, null, null, null, true, 'Pepto-Bismol from the OTC and health line in our Merchandise department.', ''),
+  (505, 'Pregnancy test', 'Assorted', 'MERCHANDISE', 'OTC & Health', 'AW-PREGNANCY-TEST', '[]'::jsonb, null, null, null, true, 'Pregnancy test from the OTC and health line in our Merchandise department.', ''),
+  (506, 'Stomach relief', 'Assorted', 'MERCHANDISE', 'OTC & Health', 'AW-STOMACH-RELIEF', '[]'::jsonb, null, null, null, true, 'Stomach relief from the OTC and health line in our Merchandise department.', ''),
+  (507, 'Zyrtec', 'Zyrtec', 'MERCHANDISE', 'OTC & Health', 'AW-ZYRTEC', '[]'::jsonb, null, null, null, true, 'Zyrtec from the OTC and health line in our Merchandise department.', ''),
+  (508, 'Energy Now shots', 'Energy Now', 'MERCHANDISE', 'Energy Shots', 'AW-ENERGY-NOW', '[]'::jsonb, null, null, null, true, 'Energy Now shots from the energy shots line in our Merchandise department.', ''),
+  (509, 'Happy Daze shots', 'Happy Daze', 'MERCHANDISE', 'Energy Shots', 'AW-HAPPY-DAZE', '[]'::jsonb, null, null, null, true, 'Happy Daze shots from the energy shots line in our Merchandise department.', ''),
+  (510, 'Happy Hour shots', 'Happy Hour', 'MERCHANDISE', 'Energy Shots', 'AW-HAPPY-HOUR', '[]'::jsonb, null, null, null, true, 'Happy Hour shots from the energy shots line in our Merchandise department.', ''),
+  (511, 'Juju shots', 'Juju', 'MERCHANDISE', 'Energy Shots', 'AW-JUJU-SHOTS', '[]'::jsonb, null, null, null, true, 'Juju shots from the energy shots line in our Merchandise department.', ''),
+  (512, 'Backpacks', 'Assorted', 'MERCHANDISE', 'Apparel', 'AW-BACKPACKS', '[]'::jsonb, null, null, null, true, 'Backpacks from the apparel line in our Merchandise department.', ''),
+  (513, 'Bandana', 'Assorted', 'MERCHANDISE', 'Apparel', 'AW-BANDANA', '[]'::jsonb, null, null, null, true, 'Bandana from the apparel line in our Merchandise department.', ''),
+  (514, 'Nose rings', 'Assorted', 'MERCHANDISE', 'Apparel', 'AW-NOSE-RINGS', '[]'::jsonb, null, null, null, true, 'Nose rings from the apparel line in our Merchandise department.', ''),
+  (515, 'Sunglasses', 'Assorted', 'MERCHANDISE', 'Apparel', 'AW-SUNGLASSES', '[]'::jsonb, null, null, null, true, 'Sunglasses from the apparel line in our Merchandise department.', ''),
+  (516, 'AirPods earbuds', 'Assorted', 'MERCHANDISE', 'Electronics', 'AW-AIRPODS', '[]'::jsonb, null, null, null, true, 'AirPods earbuds from the electronics line in our Merchandise department.', ''),
+  (517, 'Bottle opener', 'Assorted', 'MERCHANDISE', 'Counter Goods', 'AW-BOTTLE-OPENER', '[]'::jsonb, null, null, null, true, 'Bottle opener from the counter goods line in our Merchandise department.', ''),
+  (518, 'ChapStick', 'ChapStick', 'MERCHANDISE', 'Counter Goods', 'AW-CHAPSTICK', '[]'::jsonb, null, null, null, true, 'ChapStick from the counter goods line in our Merchandise department.', ''),
+  (519, 'Cuba perfumes', 'Cuba', 'MERCHANDISE', 'Counter Goods', 'AW-CUBA-PERFUMES', '[]'::jsonb, null, null, null, true, 'Cuba perfumes from the counter goods line in our Merchandise department.', ''),
+  (520, 'Jewelry display', 'Assorted', 'MERCHANDISE', 'Counter Goods', 'AW-JEWELRY-DISPLAY', '[]'::jsonb, null, null, null, true, 'Jewelry display from the counter goods line in our Merchandise department.', ''),
+  (521, 'Knives display', 'Assorted', 'MERCHANDISE', 'Counter Goods', 'AW-KNIVES-DISPLAY', '[]'::jsonb, null, null, null, true, 'Knives display from the counter goods line in our Merchandise department.', ''),
+  (522, 'Rose pens', 'Assorted', 'MERCHANDISE', 'Counter Goods', 'AW-ROSE-PENS', '[]'::jsonb, null, null, null, true, 'Rose pens from the counter goods line in our Merchandise department.', ''),
+  (523, 'Stage planks', 'Assorted', 'MERCHANDISE', 'Counter Goods', 'AW-STAGE-PLANKS', '[]'::jsonb, null, null, null, true, 'Stage planks from the counter goods line in our Merchandise department.', ''),
+  (524, 'Racing cars display', 'Assorted', 'MERCHANDISE', 'Toys', 'AW-RACING-CARS', '[]'::jsonb, null, null, null, true, 'Racing cars display from the toys line in our Merchandise department.', ''),
+  (525, 'Robot toys display', 'Assorted', 'MERCHANDISE', 'Toys', 'AW-ROBOT-TOYS', '[]'::jsonb, null, null, null, true, 'Robot toys display from the toys line in our Merchandise department.', ''),
+  (526, 'Squeeze toy', 'Assorted', 'MERCHANDISE', 'Toys', 'AW-SQUEEZE-TOY', '[]'::jsonb, null, null, null, true, 'Squeeze toy from the toys line in our Merchandise department.', ''),
+  (527, 'Incense singles', 'Assorted', 'MERCHANDISE', 'Air Fresheners & Incense', 'AW-INCENSE-SINGLES', '[]'::jsonb, null, null, null, true, 'Incense singles from the air fresheners and incense line in our Merchandise department.', 'single'),
+  (528, 'Arya candles', 'Arya', 'MERCHANDISE', 'Air Fresheners & Incense', 'AW-ARYA-CANDLES', '[]'::jsonb, null, null, null, true, 'Arya candles from the air fresheners and incense line in our Merchandise department.', ''),
+  (529, 'BluntEffects candles', 'BluntEffects', 'MERCHANDISE', 'Air Fresheners & Incense', 'AW-BLUNTEFFECTS-CANDLES', '[]'::jsonb, null, null, null, true, 'BluntEffects candles from the air fresheners and incense line in our Merchandise department.', ''),
+  (530, 'BluntLife incense', 'BluntLife', 'MERCHANDISE', 'Air Fresheners & Incense', 'AW-BLUNTLIFE-INCENSE', '[]'::jsonb, null, null, null, true, 'BluntLife incense from the air fresheners and incense line in our Merchandise department.', ''),
+  (531, 'Chinese red box', 'Assorted', 'MERCHANDISE', 'Air Fresheners & Incense', 'AW-CHINESE-RED-BOX', '[]'::jsonb, null, null, null, true, 'Chinese red box from the air fresheners and incense line in our Merchandise department.', ''),
+  (532, 'Lighter flints', 'Assorted', 'MERCHANDISE', 'Lighters & Torches', 'AW-LIGHTER-FLINTS', '[]'::jsonb, null, null, null, true, 'Lighter flints from the lighters and torches line in our Merchandise department.', ''),
+  (533, 'Neon butane', 'Neon', 'MERCHANDISE', 'Lighters & Torches', 'AW-NEON-BUTANE', '[]'::jsonb, null, null, null, true, 'Neon butane from the lighters and torches line in our Merchandise department.', ''),
+  (534, 'Ronson butane', 'Ronson', 'MERCHANDISE', 'Lighters & Torches', 'AW-RONSON-BUTANE', '[]'::jsonb, null, null, null, true, 'Ronson butane from the lighters and torches line in our Merchandise department.', ''),
+  (535, 'Zippo butane', 'Zippo', 'MERCHANDISE', 'Lighters & Torches', 'AW-ZIPPO-BUTANE', '[]'::jsonb, null, null, null, true, 'Zippo butane from the lighters and torches line in our Merchandise department.', ''),
+  (536, 'Zippo lighter fluid', 'Zippo', 'MERCHANDISE', 'Lighters & Torches', 'AW-ZIPPO-LIGHTER-FLUID', '[]'::jsonb, null, null, null, true, 'Zippo lighter fluid from the lighters and torches line in our Merchandise department.', ''),
+  (537, 'Baby bottles', 'Assorted', 'GROCERY', 'Personal Care', 'AW-BABY-BOTTLES', '[]'::jsonb, null, null, null, true, 'Baby bottles from the personal care line in our Grocery department.', ''),
+  (538, 'Hair rubber bands', 'Assorted', 'GROCERY', 'Personal Care', 'AW-HAIR-RUBBER-BANDS', '[]'::jsonb, null, null, null, true, 'Hair rubber bands from the personal care line in our Grocery department.', ''),
+  (539, 'Hand soap', 'Assorted', 'GROCERY', 'Personal Care', 'AW-HAND-SOAP', '[]'::jsonb, null, null, null, true, 'Hand soap from the personal care line in our Grocery department.', ''),
+  (540, 'Mouthwash', 'Assorted', 'GROCERY', 'Personal Care', 'AW-MOUTHWASH', '[]'::jsonb, null, null, null, true, 'Mouthwash from the personal care line in our Grocery department.', ''),
+  (541, 'Nail polish remover', 'Assorted', 'GROCERY', 'Personal Care', 'AW-NAIL-POLISH-REMOVER', '[]'::jsonb, null, null, null, true, 'Nail polish remover from the personal care line in our Grocery department.', ''),
+  (542, 'Razor blades', 'Assorted', 'GROCERY', 'Personal Care', 'AW-RAZOR-BLADES', '[]'::jsonb, null, null, null, true, 'Razor blades from the personal care line in our Grocery department.', ''),
+  (543, 'Sunscreen', 'Assorted', 'GROCERY', 'Personal Care', 'AW-SUNSCREEN', '[]'::jsonb, null, null, null, true, 'Sunscreen from the personal care line in our Grocery department.', ''),
+  (544, 'Tooth floss', 'Assorted', 'GROCERY', 'Personal Care', 'AW-TOOTH-FLOSS', '[]'::jsonb, null, null, null, true, 'Tooth floss from the personal care line in our Grocery department.', ''),
+  (545, 'Toothpaste', 'Assorted', 'GROCERY', 'Personal Care', 'AW-TOOTHPASTE', '[]'::jsonb, null, null, null, true, 'Toothpaste from the personal care line in our Grocery department.', ''),
+  (546, 'Ajax dishwasher detergent', 'Ajax', 'GROCERY', 'Cleaning', 'AW-AJAX-DISHWASHER', '[]'::jsonb, null, null, null, true, 'Ajax dishwasher detergent from the cleaning line in our Grocery department.', ''),
+  (547, 'Ajax dishwasher detergent (big)', 'Ajax', 'GROCERY', 'Cleaning', 'AW-AJAX-DISHWASHER-BIG', '[]'::jsonb, null, null, null, true, 'Ajax dishwasher detergent (big) from the cleaning line in our Grocery department.', ''),
+  (548, 'Chore Boy scrubbers', 'Chore Boy', 'GROCERY', 'Cleaning', 'AW-CHORE-BOY', '[]'::jsonb, null, null, null, true, 'Chore Boy scrubbers from the cleaning line in our Grocery department.', ''),
+  (549, 'Baggies', 'Assorted', 'GROCERY', 'Bags & Storage', 'AW-BAGGIES', '[]'::jsonb, null, null, null, true, 'Baggies from the bags and storage line in our Grocery department.', ''),
+  (550, 'Aluminum foil', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-ALUMINUM-FOIL', '[]'::jsonb, null, null, null, true, 'Aluminum foil from the paper and plastic line in our Grocery department.', ''),
+  (551, 'Straws', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-STRAWS', '[]'::jsonb, null, null, null, true, 'Straws from the paper and plastic line in our Grocery department.', ''),
+  (552, 'Plastic cups', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-PLASTIC-CUPS', '[]'::jsonb, null, null, null, true, 'Plastic cups from the paper and plastic line in our Grocery department.', ''),
+  (553, 'Can opener', 'Assorted', 'GROCERY', 'Hardware', 'AW-CAN-OPENER', '[]'::jsonb, null, null, null, true, 'Can opener from the hardware line in our Grocery department.', ''),
+  (554, 'Painter''s tape', 'Assorted', 'GROCERY', 'Hardware', 'AW-PAINTERS-TAPE', '[]'::jsonb, null, null, null, true, 'Painter''s tape from the hardware line in our Grocery department.', ''),
+  (555, 'Price gun labels', 'Assorted', 'GROCERY', 'Hardware', 'AW-PRICE-GUN-LABELS', '[]'::jsonb, null, null, null, true, 'Price gun labels from the hardware line in our Grocery department.', ''),
+  (556, 'Slip joint pliers', 'Assorted', 'GROCERY', 'Hardware', 'AW-SLIP-JOINT-PLIERS', '[]'::jsonb, null, null, null, true, 'Slip joint pliers from the hardware line in our Grocery department.', ''),
+  (557, 'Squeegee', 'Assorted', 'GROCERY', 'Hardware', 'AW-SQUEEGEE', '[]'::jsonb, null, null, null, true, 'Squeegee from the hardware line in our Grocery department.', ''),
+  (558, 'Sticky gloves', 'Assorted', 'GROCERY', 'Hardware', 'AW-STICKY-GLOVES', '[]'::jsonb, null, null, null, true, 'Sticky gloves from the hardware line in our Grocery department.', ''),
+  (559, 'Working gloves', 'Assorted', 'GROCERY', 'Hardware', 'AW-WORKING-GLOVES', '[]'::jsonb, null, null, null, true, 'Working gloves from the hardware line in our Grocery department.', ''),
+  (560, 'Cat food cans', 'Assorted', 'GROCERY', 'Pet Food', 'AW-CAT-FOOD', '[]'::jsonb, null, null, null, true, 'Cat food cans from the pet food line in our Grocery department.', ''),
+  (561, 'Dog food cans', 'Assorted', 'GROCERY', 'Pet Food', 'AW-DOG-FOOD', '[]'::jsonb, null, null, null, true, 'Dog food cans from the pet food line in our Grocery department.', ''),
+  (562, 'Milky Way bars', 'Milky Way', 'CANDIES', 'Chocolate Bars', 'AW-MILKY-WAY', '[]'::jsonb, null, null, null, true, 'Milky Way bars from the chocolate bars line in our Candies department.', ''),
+  (563, 'Airheads bites', 'Airheads', 'CANDIES', 'Sweets & Gummies', 'AW-AIRHEADS-BITES', '[]'::jsonb, null, null, null, true, 'Airheads bites from the sweets and gummies line in our Candies department.', ''),
+  (564, 'Airheads Xtremes', 'Airheads', 'CANDIES', 'Sweets & Gummies', 'AW-AIRHEADS-XTREMES', '[]'::jsonb, null, null, null, true, 'Airheads Xtremes from the sweets and gummies line in our Candies department.', ''),
+  (565, 'Big toy candies', 'Assorted', 'CANDIES', 'Sweets & Gummies', 'AW-BIG-TOY-CANDIES', '[]'::jsonb, null, null, null, true, 'Big toy candies from the sweets and gummies line in our Candies department.', ''),
+  (566, 'Fruit slice pops', 'Assorted', 'CANDIES', 'Sweets & Gummies', 'AW-FRUIT-SLICE-POPS', '[]'::jsonb, null, null, null, true, 'Fruit slice pops from the sweets and gummies line in our Candies department.', ''),
+  (567, 'Lemon squeeze', 'Assorted', 'CANDIES', 'Sweets & Gummies', 'AW-LEMON-SQUEEZE', '[]'::jsonb, null, null, null, true, 'Lemon squeeze from the sweets and gummies line in our Candies department.', ''),
+  (568, 'Life Savers hard candy', 'Life Savers', 'CANDIES', 'Sweets & Gummies', 'AW-LIFESAVERS-HARD', '[]'::jsonb, null, null, null, true, 'Life Savers hard candy from the sweets and gummies line in our Candies department.', ''),
+  (569, 'Sour Jacks', 'Sour Jacks', 'CANDIES', 'Sweets & Gummies', 'AW-SOUR-JACKS', '[]'::jsonb, null, null, null, true, 'Sour Jacks from the sweets and gummies line in our Candies department.', ''),
+  (570, 'Top Pops', 'Top Pops', 'CANDIES', 'Sweets & Gummies', 'AW-TOP-POPS', '[]'::jsonb, null, null, null, true, 'Top Pops from the sweets and gummies line in our Candies department.', ''),
+  (571, 'Toxic Waste Slime Licker', 'Toxic Waste', 'CANDIES', 'Sweets & Gummies', 'AW-SLIME-LICKER', '[]'::jsonb, null, null, null, true, 'Toxic Waste Slime Licker from the sweets and gummies line in our Candies department.', ''),
+  (572, 'Toy candies', 'Assorted', 'CANDIES', 'Sweets & Gummies', 'AW-TOY-CANDIES', '[]'::jsonb, null, null, null, true, 'Toy candies from the sweets and gummies line in our Candies department.', ''),
+  (573, '5 Gum', '5 Gum', 'CANDIES', 'Gum & Mints', 'AW-5-GUM', '[]'::jsonb, null, null, null, true, '5 Gum from the gum and mints line in our Candies department.', ''),
+  (574, 'Dentyne', 'Dentyne', 'CANDIES', 'Gum & Mints', 'AW-DENTYNE', '[]'::jsonb, null, null, null, true, 'Dentyne from the gum and mints line in our Candies department.', ''),
+  (575, 'Dubble Bubble gum jar', 'Dubble Bubble', 'CANDIES', 'Gum & Mints', 'AW-DUBBLE-BUBBLE-JAR', '[]'::jsonb, null, null, null, true, 'Dubble Bubble gum jar from the gum and mints line in our Candies department.', 'jar'),
+  (576, 'Extra gum share size', 'Extra', 'CANDIES', 'Gum & Mints', 'AW-EXTRA-SHARE', '[]'::jsonb, null, null, null, true, 'Extra gum share size from the gum and mints line in our Candies department.', ''),
+  (577, 'Halls', 'Halls', 'CANDIES', 'Gum & Mints', 'AW-HALLS', '[]'::jsonb, null, null, null, true, 'Halls from the gum and mints line in our Candies department.', ''),
+  (578, 'Wrigley''s king size gum', 'Wrigley''s', 'CANDIES', 'Gum & Mints', 'AW-WRIGLEYS-KING', '[]'::jsonb, null, null, null, true, 'Wrigley''s king size gum from the gum and mints line in our Candies department.', ''),
+  (579, 'Candyman''s bags', 'Candyman''s', 'CANDIES', 'Bags', 'AW-CANDYMAN-BAGS', '[]'::jsonb, null, null, null, true, 'Candyman''s bags from the bags line in our Candies department.', ''),
+  (580, 'Fruit Peelers bags (small)', 'Fruit Peelers', 'CANDIES', 'Bags', 'AW-FRUIT-PEELERS', '[]'::jsonb, null, null, null, true, 'Fruit Peelers bags (small) from the bags line in our Candies department.', ''),
+  (581, 'Bob stripes jar', 'Assorted', 'CANDIES', 'Jars', 'AW-BOB-STRIPES-JAR', '[]'::jsonb, null, null, null, true, 'Bob stripes jar from the jars line in our Candies department.', 'jar'),
+  (582, 'Gushmellow jar', 'Gushmellow', 'CANDIES', 'Jars', 'AW-GUSHMELLOW-JAR', '[]'::jsonb, null, null, null, true, 'Gushmellow jar from the jars line in our Candies department.', 'jar'),
+  (583, 'All-purpose flour', 'Assorted', 'FOOD STUFF', 'Cooking Basics', 'AW-FLOUR', '[]'::jsonb, null, null, null, true, 'All-purpose flour from the cooking basics line in our Food Stuff department.', ''),
+  (584, 'Baking soda', 'Assorted', 'FOOD STUFF', 'Cooking Basics', 'AW-BAKING-SODA', '[]'::jsonb, null, null, null, true, 'Baking soda from the cooking basics line in our Food Stuff department.', ''),
+  (585, 'Morton Salt', 'Morton', 'FOOD STUFF', 'Cooking Basics', 'AW-MORTON-SALT', '[]'::jsonb, null, null, null, true, 'Morton Salt from the cooking basics line in our Food Stuff department.', ''),
+  (586, 'Keebler crackers', 'Keebler', 'FOOD STUFF', 'Chips & Crackers', 'AW-KEEBLER-CRACKERS', '[]'::jsonb, null, null, null, true, 'Keebler crackers from the chips and crackers line in our Food Stuff department.', ''),
+  (587, 'Pringles (big)', 'Pringles', 'FOOD STUFF', 'Chips & Crackers', 'AW-PRINGLES-BIG', '[]'::jsonb, null, null, null, true, 'Pringles (big) from the chips and crackers line in our Food Stuff department.', ''),
+  (588, 'Pringles (small)', 'Pringles', 'FOOD STUFF', 'Chips & Crackers', 'AW-PRINGLES-SMALL', '[]'::jsonb, null, null, null, true, 'Pringles (small) from the chips and crackers line in our Food Stuff department.', ''),
+  (589, 'Saltines', 'Assorted', 'FOOD STUFF', 'Chips & Crackers', 'AW-SALTINES', '[]'::jsonb, null, null, null, true, 'Saltines from the chips and crackers line in our Food Stuff department.', ''),
+  (590, 'Armour sausage', 'Armour', 'FOOD STUFF', 'Quick Meals', 'AW-ARMOUR-SAUSAGE', '[]'::jsonb, null, null, null, true, 'Armour sausage from the quick meals line in our Food Stuff department.', ''),
+  (591, 'Libby''s sausage', 'Libby''s', 'FOOD STUFF', 'Quick Meals', 'AW-LIBBYS-SAUSAGE', '[]'::jsonb, null, null, null, true, 'Libby''s sausage from the quick meals line in our Food Stuff department.', ''),
+  (592, 'Vienna sausage', 'Assorted', 'FOOD STUFF', 'Quick Meals', 'AW-VIENNA-SAUSAGE', '[]'::jsonb, null, null, null, true, 'Vienna sausage from the quick meals line in our Food Stuff department.', ''),
+  (593, 'Ranch dressing', 'Assorted', 'FOOD STUFF', 'Sauces & Salts', 'AW-RANCH', '[]'::jsonb, null, null, null, true, 'Ranch dressing from the sauces and salts line in our Food Stuff department.', ''),
+  (594, 'Sauces', 'Assorted', 'FOOD STUFF', 'Sauces & Salts', 'AW-SAUCES', '[]'::jsonb, null, null, null, true, 'Sauces from the sauces and salts line in our Food Stuff department.', ''),
+  (595, 'Chips Ahoy cookies', 'Chips Ahoy', 'FOOD STUFF', 'Cookies', 'AW-CHIPS-AHOY', '[]'::jsonb, null, null, null, true, 'Chips Ahoy cookies from the cookies line in our Food Stuff department.', ''),
+  (596, 'Keebler wafers', 'Keebler', 'FOOD STUFF', 'Cookies', 'AW-KEEBLER-WAFERS', '[]'::jsonb, null, null, null, true, 'Keebler wafers from the cookies line in our Food Stuff department.', ''),
+  (597, 'Rice Krispies Treats', 'Rice Krispies', 'FOOD STUFF', 'Cookies', 'AW-RICE-KRISPIES', '[]'::jsonb, null, null, null, true, 'Rice Krispies Treats from the cookies line in our Food Stuff department.', ''),
+  (598, 'Uncle Al''s wafers', 'Uncle Al''s', 'FOOD STUFF', 'Cookies', 'AW-UNCLE-ALS-WAFERS', '[]'::jsonb, null, null, null, true, 'Uncle Al''s wafers from the cookies line in our Food Stuff department.', ''),
+  (599, 'Coffee-Mate', 'Coffee-Mate', 'FOOD STUFF', 'Coffee', 'AW-COFFEE-MATE', '[]'::jsonb, null, null, null, true, 'Coffee-Mate from the coffee line in our Food Stuff department.', ''),
+  (600, 'Armor All', 'Armor All', 'MOTOR OIL', 'Auto Accessories', 'AW-ARMOR-ALL', '[]'::jsonb, null, null, null, true, 'Armor All from the auto accessories line in our Motor Oil department.', ''),
+  (601, 'Booster cables', 'Assorted', 'MOTOR OIL', 'Auto Accessories', 'AW-BOOSTER-CABLES', '[]'::jsonb, null, null, null, true, 'Booster cables from the auto accessories line in our Motor Oil department.', ''),
+  (602, 'Car ash tray', 'Assorted', 'MOTOR OIL', 'Auto Accessories', 'AW-CAR-ASH-TRAY', '[]'::jsonb, null, null, null, true, 'Car ash tray from the auto accessories line in our Motor Oil department.', ''),
+  (603, 'Safe cans', 'Assorted', 'MOTOR OIL', 'Auto Accessories', 'AW-SAFE-CANS', '[]'::jsonb, null, null, null, true, 'Safe cans from the auto accessories line in our Motor Oil department.', ''),
+  (604, 'Tire repair kits', 'Assorted', 'MOTOR OIL', 'Auto Accessories', 'AW-TIRE-REPAIR', '[]'::jsonb, null, null, null, true, 'Tire repair kits from the auto accessories line in our Motor Oil department.', ''),
+  (605, 'Starting fluid', 'Assorted', 'MOTOR OIL', 'Fluids', 'AW-STARTING-FLUID', '[]'::jsonb, null, null, null, true, 'Starting fluid from the fluids line in our Motor Oil department.', ''),
+  (606, 'Fanta', 'Fanta', 'DRINKS & BAGS', 'Sodas', 'AW-FANTA', '[]'::jsonb, null, null, null, true, 'Fanta from the sodas line in our Drinks & Bags department.', ''),
+  (607, 'Mistic juice', 'Mistic', 'DRINKS & BAGS', 'Juices & Teas', 'AW-MISTIC', '[]'::jsonb, null, null, null, true, 'Mistic juice from the juices and teas line in our Drinks & Bags department.', ''),
+  (608, 'OKF aloe vera with fruit', 'OKF', 'DRINKS & BAGS', 'Juices & Teas', 'AW-OKF-ALOE-FRUIT', '[]'::jsonb, null, null, null, true, 'OKF aloe vera with fruit from the juices and teas line in our Drinks & Bags department.', ''),
+  (609, 'OKF Farmer''s aloe vera', 'OKF', 'DRINKS & BAGS', 'Juices & Teas', 'AW-OKF-FARMERS-ALOE', '[]'::jsonb, null, null, null, true, 'OKF Farmer''s aloe vera from the juices and teas line in our Drinks & Bags department.', ''),
+  (610, 'Pocas Splash', 'Pocas', 'DRINKS & BAGS', 'Juices & Teas', 'AW-POCAS', '[]'::jsonb, null, null, null, true, 'Pocas Splash from the juices and teas line in our Drinks & Bags department.', ''),
+  (611, 'Skittles beverage', 'Skittles', 'DRINKS & BAGS', 'Juices & Teas', 'AW-SKITTLES-DRINK', '[]'::jsonb, null, null, null, true, 'Skittles beverage from the juices and teas line in our Drinks & Bags department.', ''),
+  (612, 'Toxic Waste juice', 'Toxic Waste', 'DRINKS & BAGS', 'Juices & Teas', 'AW-TOXIC-WASTE-JUICE', '[]'::jsonb, null, null, null, true, 'Toxic Waste juice from the juices and teas line in our Drinks & Bags department.', ''),
+  (613, 'V8 juice', 'V8', 'DRINKS & BAGS', 'Juices & Teas', 'AW-V8', '[]'::jsonb, null, null, null, true, 'V8 juice from the juices and teas line in our Drinks & Bags department.', ''),
+  (614, 'Total War', 'Total War', 'DRINKS & BAGS', 'Energy Drinks', 'AW-TOTAL-WAR', '[]'::jsonb, null, null, null, true, 'Total War from the energy drinks line in our Drinks & Bags department.', ''),
+  (615, 'Yoo-hoo', 'Yoo-hoo', 'DRINKS & BAGS', 'Dairy & Milk', 'AW-YOO-HOO', '[]'::jsonb, null, null, null, true, 'Yoo-hoo from the dairy and milk line in our Drinks & Bags department.', ''),
+  (616, 'Aquafina', 'Aquafina', 'DRINKS & BAGS', 'Water', 'AW-AQUAFINA', '[]'::jsonb, null, null, null, true, 'Aquafina from the water line in our Drinks & Bags department.', ''),
+  (617, 'Dasani', 'Dasani', 'DRINKS & BAGS', 'Water', 'AW-DASANI', '[]'::jsonb, null, null, null, true, 'Dasani from the water line in our Drinks & Bags department.', ''),
+  (618, 'Niagara water', 'Niagara', 'DRINKS & BAGS', 'Water', 'AW-NIAGARA', '[]'::jsonb, null, null, null, true, 'Niagara water from the water line in our Drinks & Bags department.', ''),
+  (619, 'Sport water', 'Assorted', 'DRINKS & BAGS', 'Water', 'AW-SPORT-WATER', '[]'::jsonb, null, null, null, true, 'Sport water from the water line in our Drinks & Bags department.', ''),
+  (620, 'Topo Chico', 'Topo Chico', 'DRINKS & BAGS', 'Water', 'AW-TOPO-CHICO', '[]'::jsonb, null, null, null, true, 'Topo Chico from the water line in our Drinks & Bags department.', '')
 on conflict (id) do nothing;
 
 -- Moves products_id_seq (20261010120000_admin_product_editor.sql) past the ids above, so

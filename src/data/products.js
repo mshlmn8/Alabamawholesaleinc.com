@@ -1,4 +1,4 @@
-// 368 rows across 8 departments, 346 of them on the site (22 are delisted,
+// 620 rows across 8 departments, 570 of them on the site (50 are delisted,
 // AW-001). Edit here to add/remove products. The
 // departments and their product lines are derived from the cat + sub fields
 // below (departmentsFor in ../lib/departments.js) — no separate list to sync.
@@ -45,7 +45,12 @@
 // print sheets and old carts still name them (src/data/delisted.js). PRODUCTS
 // below leaves them out, the seed writes them inactive, and
 // supabase/migrations/20261014100000_delist_kratom_mushroom.sql deactivates
-// them in a database that already has them.
+// them in a database that already has them. Rows added to those lines in
+// stage 1 (./stage1Catalog.js) start inactive the same way.
+//
+// Stage 1 (November 2026): ./stage1Catalog.js adds the warehouse sheet's
+// names that were not already a row. Photos are stage 2 (img is null) and
+// prices and specifications are stage 3 (no price, no invented variants).
 //
 // TODO(owner): After legal review, which of Detox, Wellness Pills, and the
 // Honey & Energy enhancement items should be delisted, de-featured, or kept?
@@ -91,6 +96,7 @@
 
 import { productImage, sharedImageFiles } from '../lib/images.js';
 import { isDelisted } from './delisted.js';
+import { STAGE1_ROWS } from './stage1Catalog.js';
 
 export const NAV_ORDER = ['TOBACCO', 'NOVELTIES', 'MERCHANDISE', 'CANDIES', 'FOOD STUFF', 'GROCERY', 'MOTOR OIL', 'DRINKS & BAGS'];
 
@@ -861,6 +867,9 @@ export const CATALOG = [
     description: "LooseLeaf flavored wraps in 5-packs. Stocked in one variety: Watermelon." },
   { id: 368, name: "Camo wraps", brand: "Camo", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-CAMO-WRAPS", sellUnit: "", variants: ["Natural"], img: "p368-camo-wraps-natural.webp", tag: null,
     description: "Camo wraps from the wraps and leaf line in our Tobacco department. Stocked in one variety: Natural." },
+  // Stage 1 (November 2026): names and departments from the warehouse sheet.
+  // Photos, prices and specifications are later stages (./stage1Catalog.js).
+  ...STAGE1_ROWS,
 ];
 
 // img becomes the small JPEG URL (thumbnails, plain <img>), picture the

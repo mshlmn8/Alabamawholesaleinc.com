@@ -1,6 +1,6 @@
 # Alabama Wholesale Inc
 
-Editorial wholesale storefront for licensed retailers. 368 SKUs across 8 departments — tobacco, novelties, merchandise, candies, food stuff, grocery, motor oil, drinks & bags — shipping from Birmingham.
+Editorial wholesale storefront for licensed retailers. 620 catalog rows, 570 of them on the site, across 8 departments — tobacco, novelties, merchandise, candies, food stuff, grocery, motor oil, drinks & bags — shipping from Birmingham.
 
 **Going live?** Follow [SETUP.md](SETUP.md): update the database with one file, deploy on Netlify, connect the domain, and the first checks, click by click.
 
@@ -99,7 +99,7 @@ Output goes to `dist/`; `npm run preview` serves it locally, with the security h
 | Trust band under the home hero (20 years in business, 100% authentic, where products come from) | `TRUST`, `YEARS_IN_BUSINESS` and `SOURCING` in `src/data/content.js` |
 | The volume-pricing line (no Net-30, no published volume discounts) | `VOLUME_PRICING` in `src/data/content.js`; `VolumePricing` in `src/components/ContactLinks.jsx` prints it with the email and phone as links. `src/data/claims.test.js` fails if Net-30, volume discounts, an approval time, "three generations" or "direct from the manufacturer" comes back |
 | Departments and product lines | `departmentsFor()` in `src/lib/departments.js`, derived from `cat` and `sub` in `src/data/products.js` (in `NAV_ORDER`) |
-| The 368 products | `PRODUCTS` in `src/data/products.js` |
+| The 620 catalog rows (570 on the site) | `CATALOG` in `src/data/products.js` (`PRODUCTS` is the rows on the site); stage 1 names are `src/data/stage1Catalog.js` |
 | Account and admin styles | the `account / admin` block in `src/index.css` |
 
 `BRANDS` and `FAQS` in `src/data/content.js` stay unpublished until the owner confirms them (see `docs/OWNER-TODO.md`).

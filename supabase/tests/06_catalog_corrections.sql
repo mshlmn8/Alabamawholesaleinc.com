@@ -59,13 +59,15 @@ begin
 
   -- The restricted lines keep their rows and wording (owner decision 2,
   -- AW-001). Kratom & Kava and Mushroom Products are delisted (the owner's
-  -- answer, 2026-10): their 22 rows are kept, inactive; the other three lines'
-  -- 14 stay active (#219 moved to Gifts, 20261014101000; test 25).
-  assert (select count(*) from public.products where sub in ('Kratom & Kava', 'Mushroom Products', 'Detox', 'Wellness Pills', 'Honey & Energy')) = 36,
+  -- answer, 2026-10, plus the stage 1 rows filed in those lines): kept,
+  -- inactive. Detox, Wellness Pills and Honey & Energy stay active (#219
+  -- moved to Gifts, 20261014101000; test 25). Stage 1 added rows to the
+  -- published lines too.
+  assert (select count(*) from public.products where sub in ('Kratom & Kava', 'Mushroom Products', 'Detox', 'Wellness Pills', 'Honey & Energy')) = 80,
     'the restricted lines keep their rows';
-  assert (select count(*) from public.products where sub in ('Kratom & Kava', 'Mushroom Products') and not active) = 22,
+  assert (select count(*) from public.products where sub in ('Kratom & Kava', 'Mushroom Products') and not active) = 50,
     'the delisted lines are inactive, not deleted';
-  assert (select count(*) from public.products where sub in ('Detox', 'Wellness Pills', 'Honey & Energy') and active) = 14,
+  assert (select count(*) from public.products where sub in ('Detox', 'Wellness Pills', 'Honey & Energy') and active) = 30,
     'Detox, Wellness Pills and Honey & Energy stay published';
   assert (select variants from public.products where id = 258) = '["Any flavor"]'::jsonb, 'restricted rows keep their labels';
 end $$;

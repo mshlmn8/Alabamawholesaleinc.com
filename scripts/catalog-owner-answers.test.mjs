@@ -25,6 +25,9 @@ const ANSWERS = read('supabase/migrations/20261014101000_catalog_owner_answers.s
 const DELIST_TEST = read('supabase/tests/24_catalog_delisting.sql');
 const ANSWERS_TEST = read('supabase/tests/25_catalog_owner_answers.sql');
 
+// The October migration names these 22 ids. Stage 1 rows in the same lines
+// are inserted inactive by the seed and are not in that file.
+const MIGRATION_DELISTED_IDS = [69, 70, 71, 72, 73, 74, 75, 76, 258, 281, 285, 288, 289, 293, 296, 298, 299, 300, 306, 307, 312, 313];
 // What the live database holds before these files (the previous seed, and
 // 20261012130000's name for #350), for the columns they change.
 const BEFORE = {
@@ -32,7 +35,7 @@ const BEFORE = {
   295: { description: 'Snack wraps from the chips and crackers line in our Food Stuff department. Two sizes: 40ct and 12ct.' },
   350: { name: "Uncle Al's", img: 'uncle_al_s_cookies.jpg', description: "Uncle Al's cookies, from the cookie line in our Food Stuff department." },
   351: { name: "Uncle Al's cookies", img: 'uncle_al_s_cookies.jpg', variants: ['Lemon ice'], description: "Uncle Al's cookies in single-serve packs. Stocked in one variety: Lemon ice." },
-  ...Object.fromEntries(DELISTED_IDS.map((id) => [id, { active: true }])),
+  ...Object.fromEntries(MIGRATION_DELISTED_IDS.map((id) => [id, { active: true }])),
 };
 // Column -> products.js key.
 const COLUMNS = { name: 'name', sub: 'sub', description: 'description', img: 'img', variants: 'variants', active: 'active' };
@@ -107,7 +110,8 @@ describe('20261014100000_delist_kratom_mushroom.sql', () => {
     const all = statements(DELIST);
     expect(all).toHaveLength(1);
     expect(all[0]).toMatch(/^update public\.products set active = false where id in \([\d, ]+\) and active$/);
-    expect(idsOf(all[0])).toEqual(DELISTED_IDS);
+    expect(idsOf(all[0])).toEqual(MIGRATION_DELISTED_IDS);
+    expect(DELISTED_IDS.slice(0, MIGRATION_DELISTED_IDS.length)).toEqual(MIGRATION_DELISTED_IDS);
   });
 
   it('is what supabase/tests/24_catalog_delisting.sql runs', () => {

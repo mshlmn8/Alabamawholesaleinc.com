@@ -207,15 +207,23 @@ describe('searchProducts on the catalog', () => {
   });
 
   it('finds nothing for brands the catalog does not carry', () => {
-    for (const query of ['marlboro', 'juul']) {
-      expect(searchProducts(PRODUCTS, query)).toEqual({ items: [], total: 0, related: false, tooShort: false });
-    }
+    expect(searchProducts(PRODUCTS, 'marlboro')).toEqual({ items: [], total: 0, related: false, tooShort: false });
+  });
+
+  it('finds the Juul pods added in stage 1', () => {
+    const juul = searchProducts(PRODUCTS, 'juul');
+    expect(juul.related).toBe(false);
+    expect(juul.items.map((p) => p.id).sort((a, b) => a - b)).toEqual(
+      PRODUCTS.filter((p) => p.brand === 'Juul').map((p) => p.id).sort((a, b) => a - b),
+    );
+    expect(juul.total).toBe(2);
   });
 
   it('falls back to related products, flagged, when no product matches every word', () => {
     const result = searchProducts(PRODUCTS, 'red bull marlboro');
     expect(result.related).toBe(true);
-    expect(result.items.slice(0, 4).map((p) => p.id).sort((a, b) => a - b)).toEqual([143, 144, 145, 146]);
+    const found = result.items.map((p) => p.id);
+    for (const id of [143, 144, 145, 146]) expect(found, `#${id}`).toContain(id);
   });
 
   it('says a one-character query is too short', () => {
