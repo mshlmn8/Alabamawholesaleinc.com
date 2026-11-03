@@ -40,5 +40,28 @@ Official packshots, saved as transparent PNGs (background removed from the brand
 | 408 | Geek Bar Pulse 2 | `p408-geekbar-pulse-2.png` | https://www.geekbar.com/product/PULSE-2.html | Pulse 2 Strawberry Watermelon Hubba |
 | 409 | Geek Bar X2 50K | `p409-geekbar-x2-50k.png` | https://www.geekbar.com/product/PULSE-X-2.html | Pulse X 2 device |
 | 411 | Lost Mary 35K | `p411-lost-mary-35k.png` | https://www.lostmary.com/product/ultrasonic-35k.html | Ultrasonic 35K Blue Razz Ice |
+| 500 | DayQuil | `p500-dayquil.png` | https://vicks.com/en-us/shop-products/dayquil/dayquil-cold-flu-relief-liquicaps | DayQuil Cold & Flu LiquiCaps carton |
+| 501 | Dramamine | `p501-dramamine.png` | https://www.dramamine.com/ | Dramamine Original motion-sickness box |
+| 502 | Midol | `p502-midol.png` | https://www.midol.com/midol-products/midol-complete | Midol Complete 40-caplet bottle |
+| 503 | Motrin | `p503-motrin.png` | https://www.motrin.com/products/motrin-ib | Motrin IB coated caplets box |
+| 504 | Pepto-Bismol | `p504-pepto-bismol.png` | https://pepto-bismol.com/en-us/products/pepto-bismol-original-liquid | Original liquid bottle |
+| 507 | Zyrtec | `p507-zyrtec.png` | https://www.zyrtec.com/ | Allergy tablets 30-count carton |
+| 535 | Zippo butane | `p535-zippo-butane.png` | https://zippo.com/products/premium-butane-fuel | Butane fuel can and cap |
+| 536 | Zippo lighter fluid | `p536-zippo-lighter-fluid.png` | https://zippo.com/products/4-fl-oz-lighter-fuel | 4 oz lighter fluid can |
+| 563 | Airheads bites | `p563-airheads-bites.png` | https://www.airheads.com/candy/airheads/ | Original fruit bites bag |
+| 564 | Airheads Xtremes | `p564-airheads-xtremes.png` | https://www.airheads.com/candy/xtremes/ | Xtremes Bites Rainbow Berry bag |
+| 568 | Life Savers hard candy | `p568-lifesavers-hard.png` | https://www.life-savers.com/hard-candies | 5 Flavors hard candy bag |
+| 577 | Halls | `p577-halls.png` | https://www.gethalls.com/relief/ | Relief Mentho-Lyptus 30-count bag |
+| 585 | Morton Salt | `p585-morton-salt.png` | https://www.mortonsalt.com/shop/table-salt/morton-iodized-table-salt-26-oz/ | Iodized salt 26 oz canister |
+| 587 | Pringles (big) | `p587-pringles-big.png` | https://www.pringles.com/en-us/products/favorites.html | Original tall canister |
+| 588 | Pringles (small) | `p588-pringles-small.png` | https://www.pringles.com/en-us/products/on-the-go.html | Original Grab & Go can |
+| 591 | Libby's sausage | `p591-libbys-sausage.png` | https://libbys.com/products/recCGfRTV1NwsLJ5w/ | Vienna sausage can |
+| 596 | Keebler wafers | `p596-keebler-wafers.png` | https://www.keebler.com/en/sweet-treat/cookies/other-cookies/vanilla-sugar-wafers-nutrition-king | Vanilla sugar wafers king size |
+| 597 | Rice Krispies Treats | `p597-rice-krispies.png` | https://www.ricekrispiestreats.com/en-us/products/kellogg-s-rice-krispies-treats-original-bars-product.html | Original 8-count box |
+| 606 | Fanta | `p606-fanta.png` | https://www.coca-cola.com/us/en/brands/fanta/products | Orange soda can |
+| 613 | V8 juice | `p613-v8.png` | https://www.campbells.com/v8/products/v8-vegetable-juice/original-100-vegetable-juice/ | Original 46 oz vegetable juice bottle |
+| 615 | Yoo-hoo | `p615-yoo-hoo.png` | https://www.yoo-hoo.com/ | Chocolate drink glass bottle |
+| 617 | Dasani | `p617-dasani.png` | https://www.coca-cola.com/us/en/brands/dasani | Purified water bottle |
+| 620 | Topo Chico | `p620-topo-chico.png` | https://www.coca-cola.com/us/en/brands/topo-chico/products | Mineral water, Twist of Lime, and Twist of Grapefruit bottles |
 
-Firecrawl is not connected in this workspace, so these were taken from the brand sites directly. Two files from this pass were left out: the OKF bottle was only 156 pixels wide, and the Al Capone packshot still had a white block after the background was removed.
+Firecrawl is not connected in this workspace, so these were taken from the brand sites directly. Left out: the OKF bottle was only 156 pixels wide, the Al Capone packshot still had a white block after the background was removed, Chips Ahoy was only 290 pixels wide, Niagara was only 126 pixels wide, Aquafina's file was blocked, and the Extra photo was a 15-stick pack rather than the share size.
