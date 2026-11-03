@@ -63,5 +63,22 @@ Official packshots, saved as transparent PNGs (background removed from the brand
 | 615 | Yoo-hoo | `p615-yoo-hoo.png` | https://www.yoo-hoo.com/ | Chocolate drink glass bottle |
 | 617 | Dasani | `p617-dasani.png` | https://www.coca-cola.com/us/en/brands/dasani | Purified water bottle |
 | 620 | Topo Chico | `p620-topo-chico.png` | https://www.coca-cola.com/us/en/brands/topo-chico/products | Mineral water, Twist of Lime, and Twist of Grapefruit bottles |
+| 311 | Geek Bar Mate 60K pods | `p311-geekbar-mate-pods.png` | https://www.geekbar.com/product/MATE-60K.html | Blue Straws Mate pod |
+| 369 | Al Capone cigars 10-pack | `p369-al-capone-10pk.png` | https://www.alcapone-us.com/products/blues/ | Blues 10-pack with a 2-pack and a cigarillo |
+| 373 | Djarum cigars | `p373-djarum.png` | https://www.djarumcigar.com/djarum-classic/ | Black Classic 6-pack |
+| 386 | Jungo leaf 2-pack | `p386-jungo-leaf.png` | https://jungoleaf.com/products/natural-1 | Natural 2-pack display box |
+| 389 | LooseLeaf slugs | `p389-looseleaf-slugs.png` | https://looseleaf.com/products/natural-leaf-looseleaf-slugs | Natural Leaf Slugs pouch |
+| 394 | ALP nicotine pouches 9mg | `p394-alp-9mg.png` | https://alppouch.com/products/classic-nicotine-pouches | Classic tins, including 9 mg |
+| 413 | MFU 70K | `p413-mfu-70k.png` | https://www.mfuvapeshop.com/product/shisha-x5-kit-70k-puffs-pod-x-2/ | Shisha X5 70K kit, Peach Ice |
+| 414 | MFU 80K | `p414-mfu-80k.png` | https://www.mfuvapeshop.com/product/mfu-shisha-x4-hookah-vape/ | Shisha X4 pineapple coconut device |
+| 529 | BluntEffects candles | `p529-blunteffects-candles.png` | https://www.blunteffectsusa.com/products/10-million-candle | 10 Million smoke-odor candle |
+| 569 | Sour Jacks | `p569-sour-jacks.png` | https://www.sourjacks.com/assorted/ | Assorted sour wedges bag |
+| 573 | 5 Gum | `p573-5-gum.png` | https://www.5gum.com/products/5-gum-peppermint-cobalt-sugarfree-chewing-gum-35-stick-pack-5-gum | Peppermint Cobalt 35-stick pack |
+| 576 | Extra gum share size | `p576-extra-share.png` | https://www.extragum.com/products/extra-spearmint-sugarfree-chewing-gum-35-stick-mega-pack-mega-pack | Spearmint 35-stick pack |
+| 595 | Chips Ahoy cookies | `p595-chips-ahoy.png` | https://www.snackworks.com/products/chips-ahoy-original-chocolate-chip-cookies-party-size-253-oz/ | Original party-size bag |
+| 599 | Coffee-Mate | `p599-coffee-mate.png` | https://www.goodnes.com/coffeemate/products/original-liquid-coffee-creamer-32oz/ | Original 32 fl oz bottle |
+| 608 | OKF aloe vera with fruit | `p608-okf-aloe-fruit.png` | https://www.okfamerica.com/ | Strawberry with aloe 500 mL bottle |
+| 609 | OKF Farmer's aloe vera | `p609-okf-farmers-aloe.png` | https://www.okfamerica.com/ | Farmer's Aloe Vera mango 500 mL bottle |
+| 611 | Skittles beverage | `p611-skittles-drink.png` | https://www.firebrandsus.com/ | Sour Skittles 14 oz bottle |
 
-Firecrawl is not connected in this workspace, so these were taken from the brand sites directly. Left out: the OKF bottle was only 156 pixels wide, the Al Capone packshot still had a white block after the background was removed, Chips Ahoy was only 290 pixels wide, Niagara was only 126 pixels wide, Aquafina's file was blocked, and the Extra photo was a 15-stick pack rather than the share size.
+Firecrawl is not connected in this workspace, so these were taken from the brand sites directly. Still out: Niagara was only 126 pixels wide, Aquafina's file was blocked, the Keebler crackers file would not download, and the Big Leaf singles photo still had the wooden stand under the box.
