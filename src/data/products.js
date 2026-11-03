@@ -663,7 +663,7 @@ export const CATALOG = [
     description: "Jumex fruit drinks. Five flavors: Mango, Guava, Strawberry banana, Peach and Pineapple coconut." },
   { id: 273, name: "LooseLeaf splits diamond wraps", brand: "LooseLeaf", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-LOOSE-LEAFS-SPLITS", sellUnit: "", variants: [], img: "loose_leafs_wraps_5pk.webp", tag: null,
     description: "LooseLeaf Diamond wraps in the splits format." },
-  { id: 274, name: "RAW Guarana wraps", brand: "RAW", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-RAW-GUARANA-WRAPS", sellUnit: "", variants: [], img: null, tag: null,
+  { id: 274, name: "RAW Guarana wraps", brand: "RAW", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-RAW-GUARANA-WRAPS", sellUnit: "", variants: [], img: "p274-raw-guarana.png", tag: null,
     description: "RAW Guarana wraps from the wraps and leaf line in our Tobacco department." },
   { id: 275, name: "Jolly Rancher hard candy 5 lb bag", brand: "Jolly Rancher", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-JOLLY-RANCHER", sellUnit: "5 lb bag", variants: [], img: "jolly_rancher_5lbs.webp", tag: null,
     description: "Jolly Rancher hard candy in the 5 lb bulk bag." },
@@ -785,7 +785,7 @@ export const CATALOG = [
     description: "RAW rolling tips from the papers and cones line in our Tobacco department." },
   { id: 330, name: "High Hemp organic wraps", brand: "High Hemp", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-HIGH-HEMP", sellUnit: "", variants: [], img: "high_hemp_organic.webp", tag: null,
     description: "High Hemp organic hemp wraps." },
-  { id: 331, name: "Panasonic batteries", brand: "Panasonic", cat: "MERCHANDISE", sub: "Electronics", sku: "AW-PANASONIC", sellUnit: "", variants: ["AAA 2-pack"], img: null, tag: null,
+  { id: 331, name: "Panasonic batteries", brand: "Panasonic", cat: "MERCHANDISE", sub: "Electronics", sku: "AW-PANASONIC", sellUnit: "", variants: ["AAA 2-pack"], img: "p331-panasonic.png", tag: null,
     description: "Panasonic batteries in carded packs. Stocked in one variety: AAA 2-pack." },
   // TODO(owner): Is this Honey & Energy enhancement item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
   { id: 332, name: "Black Tiger Honey", brand: "Black Tiger", cat: "MERCHANDISE", sub: "Honey & Energy", sku: "AW-BLACK-TIGER-HONEY", sellUnit: "", variantAxis: "Format", variants: ["Flat box", "Round box"], img: "black_tiger_honey.jpg", tag: "PREMIUM",

@@ -66,13 +66,14 @@ supabase/migrations/20261014110000_home_slides_warehouse_reel.sql
 supabase/migrations/20261014111000_orders_approved_accounts_only.sql
 supabase/migrations/20261014120000_staff_role.sql
 supabase/migrations/20261014121000_site_settings.sql
+supabase/migrations/20261103120000_stage2_product_photos.sql
 supabase/seed/products.sql
 ```
 
 On a project that is already running, apply only the migrations it doesn't
 have yet, in that order, then the seed, then deploy the frontend (see the
 release checklist at the end of this file). The live project has the files
-up to `20260927180000`; the thirty-three `20261008…`/`20261009…`/`20261010…`/`20261011…`/`20261012…`/`20261014…`
+up to `20260927180000`; the thirty-four `20261008…`/`20261009…`/`20261010…`/`20261011…`/`20261012…`/`20261014…`/`20261103…`
 files are new, and `supabase/release/apply-to-live-database.sql` is exactly
 those, then the seed.
 Review them before applying them; the site keeps working without them (see
@@ -159,12 +160,12 @@ Never edit a migration that has been applied anywhere; add a new file.
 
 After running the release file in the SQL editor, record its migrations as
 applied the same way (step 4, with every version from `20261008190000` to
-`20261014121000`).
+`20261103120000`).
 
 ### The release file (`supabase/release/apply-to-live-database.sql`)
 
 One file for the owner to paste into the SQL editor once (SETUP.md, part A),
-instead of thirty-three. `npm run release:sql` (`scripts/build-release-sql.mjs`)
+instead of thirty-four. `npm run release:sql` (`scripts/build-release-sql.mjs`)
 writes it: every migration after `LIVE_BASELINE` (the newest one the live
 project has, `20260927180000_application_documents.sql`), word for word under
 a numbered header, then `supabase/seed/products.sql`, then a last `select`
@@ -1360,7 +1361,7 @@ For each release:
   after" below), then publish an older frontend only if it is at or after
   the latest migration still applied.
 
-The live project needs all thirty-three, in this order (Cursor's seven
+The live project needs all thirty-four, in this order (Cursor's seven
 `20261008…` files, then the six `20261009…` ones, which build on them, then
 the five `20261010…` ones: three for the admin back office and two data-only
 catalog fixes, then `20261011110000` and `20261011111000`, which can go in
@@ -1376,7 +1377,8 @@ delisting `20261014100000`, any time, and `20261014101000`, after
 with or after `20261011131000`, then `20261014111000`, which lets only
 approved accounts place orders, any time after `20261009130000`, then the
 staff role `20261014120000`, any time, and the site settings
-`20261014121000`, after it).
+`20261014121000`, after it, then the stage 2 packshots
+`20261103120000`, data only, after the frontend that ships those files).
 Apply
 `20261008200000` and `20261009100000`–`20261009150000` in one session: the
 price boundary hides `products.variant_prices` and `20261009110000` moves it.
@@ -1445,8 +1447,11 @@ rolling it back.
     after the frontend)
 33. `20261014121000_site_settings.sql` (AW-030: the `site_settings` table
     for Admin → Site settings; after 32, before or after the frontend)
+34. `20261103120000_stage2_product_photos.sql` (data only: photos for
+    #139, #141, #274 and #331; **after the frontend that ships those
+    files**)
 
-Then `supabase/seed/products.sql`, then the frontend, then 18.
+Then `supabase/seed/products.sql`, then the frontend, then 18 and 34.
 
 | Migration | What it changes | Before and after |
 | --- | --- | --- |
@@ -1483,6 +1488,7 @@ Then `supabase/seed/products.sql`, then the frontend, then 18.
 | `20261014111000_orders_approved_accounts_only.sql` | AW-014, AW-024 (the owner's answer of October 2026: the site is for licensed store owners, anyone who buys is signed in, and customers place orders, not quotes): a new function `require_ordering_account()` (security definer; no guest or account may run it directly) refuses a caller with no signed-in user (hint `sign_in_required`), an account on hold (`account_suspended`) and any other account that isn't approved, a pending one or one without a profile (`account_not_approved`). `submit_quote` is recreated from `20261009130000` word for word with one new first statement that calls it, so all three signatures (the 16- and 13-argument wrappers run it) refuse those callers before anything is checked, counted or saved. Same signature, return value and grants; guests may still call it, so they get the hint. A commented Reverse block is at the end. | Apply any time after `20261009130000`, before or after the frontend. The new frontend already asks guests to sign in and tells accounts under review they can order once approved, and words the new hints; until the file is applied a guest's or pending account's call sent by hand through the API is still saved as a quote. The frontend deployed before it lets guests submit and would show them its generic "couldn't save" message. Quotes saved before it stay; Admin → Orders still prices and converts them. |
 | `20261014120000_staff_role.sql` | AW-030, AW-031 (the owner's answer of October 2026: the owner or any staff account runs the website from Admin): `profiles.role` may also be `staff`; `is_staff_or_admin()` (security definer, approved accounts only); every admin policy (profiles, documents and their Storage files, notes and history, products, variant prices, orders and their lines, events and notes, the last visit to Orders, home photos, the `product-images` bucket) and the eight admin functions (`admin_product_prices`, `admin_price_order`, `admin_convert_quote`, `admin_bulk_adjust_prices`, `admin_import_products`, `admin_import_products_v2`, `admin_set_order_status`, `admin_mark_orders_seen`) let approved staff in; writing `pricing_tiers` stays admin-only; the profile guard refuses staff a role change (hint `role_admin_only`), a tier change (`tier_admin_only`) and any change to a staff or admin account (`staff_account`). The functions are their latest definitions with only that call changed (`scripts/staff-role.test.mjs`). | The new frontend shows staff the admin area and offers the Staff role; before this file the database refuses the role (`profiles_role_chk`) and Admin → Accounts says it needs the update. The frontend deployed before it gives a staff account no admin link. Reverse block at its end (make every staff account a customer first). |
 | `20261014121000_site_settings.sql` | AW-030: `site_settings`, one row (`id = true`) of the announcement bar's messages, the public phone and email, the hours and the warehouse address, null meaning the site's own (`src/data/content.js`); everyone reads it, approved admin and staff accounts change it (`is_staff_or_admin()`), nobody deletes it; `updated_at` and `updated_by` are stamped; checks for each value (the form's, `src/data/siteFacts.js`). | Before it the storefront shows the values built into the site and Admin → Site settings says it needs the update; after it the storefront reads the row on each page load (one small request). Reverse block at its end. |
+| `20261103120000_stage2_product_photos.sql` | Data only: #139 Vinut, #141 Tropical Fantasy Aloe Vera, #274 RAW Guarana wraps and #331 Panasonic batteries get the transparent packshot the catalog names (`p139-vinut.png`, `p141-tropical-fantasy-aloe.png`, `p274-raw-guarana.png`, `p331-panasonic.png`), only while `img` is still null, so a photo set in Admin is kept and a re-run changes nothing. Stage 1 rows are new and take their photos from the seed. | **Apply AFTER deploying the frontend that ships these files.** Before it the storefront already shows them from the bundled catalog; a frontend from before this change would show "Photo coming soon" once the database names files it does not have. Reverse block at its end. |
 
 ### Later steps
 

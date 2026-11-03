@@ -4,7 +4,19 @@
 // A missing SKU still has no photo.
 
 export const STAGE1_PHOTOS = {
+  'AW-BLAZY-SUSAN': 'p383-blazy-susan.png',
+  'AW-BOB-MARLEY-WRAPS': 'p384-bob-marley-wraps.png',
+  'AW-HEMPARILLO': 'p385-hemparillo.png',
   'AW-KING-PALM-GOJI': 'p387-king-palm-goji.png',
+  'AW-LOOSELEAF-CRUSHED': 'p388-looseleaf-crushed.png',
+  'AW-ALP-6MG': 'p393-alp-6mg.png',
+  'AW-BOB-MARLEY-CONES': 'p397-bob-marley-cones.png',
+  'AW-OCB-CONES': 'p400-ocb-cones.png',
+  'AW-OCB-PAPERS': 'p401-ocb-papers.png',
+  'AW-GEEKBAR-CLR': 'p407-geekbar-clr.png',
+  'AW-GEEKBAR-PULSE-2': 'p408-geekbar-pulse-2.png',
+  'AW-GEEKBAR-X2-50K': 'p409-geekbar-x2-50k.png',
+  'AW-LOST-MARY-35K': 'p411-lost-mary-35k.png',
   'AW-BIDI-STICK': 'p402-bidi-stick.png',
   'AW-KADOBAR-40K': 'p410-kadobar-40k.png',
   'AW-MFU-150K': 'p412-mfu-150k.png',
