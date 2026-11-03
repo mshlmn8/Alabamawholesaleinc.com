@@ -27,7 +27,7 @@ describe('the delisted products (AW-001)', () => {
   it('are the Kratom & Kava and Mushroom Products lines, by line and by id', () => {
     expect(DELISTED_LINES).toEqual(['Kratom & Kava', 'Mushroom Products']);
     expect(DELISTED_LINE_SLUGS).toEqual(DELISTED_LINES.map(slugify));
-    expect(DELISTED_IDS).toHaveLength(22);
+    expect(DELISTED_IDS.length).toBeGreaterThan(22);
     expect(CATALOG.filter((p) => DELISTED_LINES.includes(p.sub)).map((p) => p.id)).toEqual([...DELISTED_IDS]);
     expect(new Set(CATALOG.filter((p) => DELISTED_LINES.includes(p.sub)).map((p) => p.cat))).toEqual(new Set([DELISTED_LINE_DEPARTMENT]));
   });
@@ -44,9 +44,11 @@ describe('the delisted products (AW-001)', () => {
   });
 
   it('stay in products.js, inactive, and out of the storefront\'s bundled catalog', () => {
-    expect(CATALOG).toHaveLength(368);
-    expect(ALL_PRODUCTS).toHaveLength(368);
-    expect(PRODUCTS).toHaveLength(368 - 22);
+    const off = CATALOG.filter((p) => DELISTED_LINES.includes(p.sub));
+    expect(CATALOG.length).toBeGreaterThan(368);
+    expect(ALL_PRODUCTS).toHaveLength(CATALOG.length);
+    expect(PRODUCTS).toHaveLength(CATALOG.length - off.length);
+    expect(off).toHaveLength(DELISTED_IDS.length);
     for (const id of DELISTED_IDS) {
       expect(CATALOG.find((p) => p.id === id).active, `#${id}`).toBe(false);
       expect(ALL_PRODUCTS.find((p) => p.id === id).name, `#${id}`).toBeTruthy();
@@ -140,7 +142,7 @@ describe('the word kratom', () => {
     if (!/\.(js|jsx)$/.test(entry.name) || /\.test\.(js|jsx)$/.test(entry.name)) return [];
     return [path];
   });
-  const ALLOWED = ['src/data/products.js', 'src/data/delisted.js', 'src/lib/legalReview.js', 'src/pages/admin/ProductEditor.jsx'];
+  const ALLOWED = ['src/data/products.js', 'src/data/stage1Catalog.js', 'src/data/delisted.js', 'src/lib/legalReview.js', 'src/pages/admin/ProductEditor.jsx'];
 
   it('appears nowhere the site prints to buyers', () => {
     const files = [

@@ -9,8 +9,12 @@
 // products (related.js), a department's description (meta.js) and the boost
 // a search gets for naming a product line (search.js, NEW-027).
 //
-// Pure, with no imports, so the Node-safe search module can use it.
+// Node-safe: the only import is the stage-1 honey id list, plain data, so the
+// search module can still load this file without React or Vite.
+
+import { STAGE1_HONEY_IDS } from '../data/stage1Catalog.js';
 
 export const LEGAL_REVIEW_SUBS = ['Kratom & Kava', 'Mushroom Products', 'Detox', 'Wellness Pills'];
-export const LEGAL_REVIEW_IDS = [28, 265, 266, 321, 322, 332];
+// The original enhancement items, then every Honey & Energy row stage 1 adds.
+export const LEGAL_REVIEW_IDS = [28, 265, 266, 321, 322, 332, ...STAGE1_HONEY_IDS];
 export const underLegalReview = (p) => LEGAL_REVIEW_SUBS.includes(p?.sub) || LEGAL_REVIEW_IDS.includes(Number(p?.id));

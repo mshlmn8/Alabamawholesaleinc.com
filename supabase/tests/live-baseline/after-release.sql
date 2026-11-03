@@ -40,7 +40,7 @@ begin
   assert (select sku from live_lines_before where ref_num = 'ALW-Q-LIVE00003' and product_id = 83) = 'AW-DUTCH-MASTER-GOLD',
     'the saved line keeps the SKU it was ordered under';
   assert not (select active from public.products where id = 75), 'Wava kava is delisted (AW-001)';
-  assert (select count(*) from public.products where not active) = 22, 'exactly the 22 delisted rows are inactive';
+  assert (select count(*) from public.products where not active) = 50, 'the 22 delisted rows plus the stage 1 rows in those lines are inactive';
   assert exists (select 1 from public.order_items where product_id = 75), 'the order line of a delisted product keeps its product';
 end $$;
 
@@ -50,7 +50,7 @@ begin
   assert not exists (
     select id, price from live_prices_before except select id, price from public.products
   ), 'no list price changed';
-  assert (select count(*) from public.products) = 368, 'the seed added no product';
+  assert (select count(*) from public.products) = 620, 'the seed added the stage 1 rows';
   assert not exists (select 1 from information_schema.columns where table_name = 'products' and column_name in ('flavors', 'variant_prices')),
     'flavors and variant_prices are gone';
 end $$;
@@ -58,7 +58,7 @@ select test_anon();
 do $$
 begin
   assert pg_temp.lb_hint('select price from public.products limit 1') = '42501', 'a guest can''t read list prices';
-  assert (select count(*) from public.products) = 346, 'a guest sees the 346 listed products';
+  assert (select count(*) from public.products) = 570, 'a guest sees the 570 listed products';
 end $$;
 select test_reset();
 

@@ -325,7 +325,7 @@ test.describe('after age confirmation', () => {
       await page.getByRole('link', { name: /^Cigars & Cigarillos \(/ }).click();
       await expect(page.locator('.result-note')).toHaveText(/Showing (\d+) of \1 products in Cigars & Cigarillos/);
       await page.getByRole('link', { name: /^All \(/ }).click();
-      await expect(page.locator('.result-note')).toHaveText(/Showing 68 of 68 products$/);
+      await expect(page.locator('.result-note')).toHaveText(/Showing 101 of 101 products$/);
       await expect(page.getByRole('heading', { level: 1, name: 'Tobacco' })).toBeVisible();
       expect(errors).toEqual([]);
     });

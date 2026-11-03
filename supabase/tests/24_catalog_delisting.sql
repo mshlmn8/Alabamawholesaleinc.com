@@ -1,11 +1,13 @@
 -- Kratom & Kava and every mushroom product are delisted (AW-001, the owner's
 -- answer of 2026-10; 20261014100000_delist_kratom_mushroom.sql).
 --
--- After the migrations and the seed the 22 rows are there and inactive (the
--- seed writes products.js's `active: false`): guests and buyers can't read
--- them, my_prices() leaves them out, and an order line naming one is refused.
+-- After the migrations and the seed the original 22 rows are there and
+-- inactive (the seed writes products.js's `active: false`): guests and buyers
+-- can't read them, my_prices() leaves them out, and an order line naming one
+-- is refused. Stage 1 rows in the same lines are inserted inactive by the
+-- seed; this migration does not name them.
 -- The migration's update, run again, changes nothing; run over the live
--- database's values (every row active) it deactivates exactly those 22, once,
+-- database's values (those 22 active) it deactivates exactly those 22, once,
 -- and touches no other row: not the Detox, Wellness Pills or Honey & Energy
 -- rows, and not a product staff added to a delisted line (the storefront
 -- leaves that one out by its line, src/data/delisted.js).
@@ -53,13 +55,13 @@ begin
   assert (select count(*) from public.products where id = any(delisted) and not active) = 22, 'and inactive';
   assert not exists (select 1 from public.products where sub in ('Kratom & Kava', 'Mushroom Products') and active),
     'no product of the delisted lines is active';
-  assert (select count(*) from public.products where sub in ('Kratom & Kava', 'Mushroom Products')) = 22,
-    'and those lines are exactly the 22';
+  assert (select count(*) from public.products where sub in ('Kratom & Kava', 'Mushroom Products')) = 50,
+    'and those lines are the original 22 plus the stage 1 rows';
   assert not exists (
     select 1 from public.products
     where active and (lower(name) ~ '(mushroom|shroom|kratom|kava)' or lower(description) ~ '(mushroom|shroom|kratom|kava)')
   ), 'no active product is named or described as kratom, kava or mushroom';
-  assert (select count(*) from public.products where sub in ('Detox', 'Wellness Pills', 'Honey & Energy') and active) = 14,
+  assert (select count(*) from public.products where sub in ('Detox', 'Wellness Pills', 'Honey & Energy') and active) = 30,
     'Detox, Wellness Pills and Honey & Energy stay published';
 
   -- Run again over the seed: nothing changes.

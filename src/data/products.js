@@ -1,4 +1,4 @@
-// 368 rows across 8 departments, 346 of them on the site (22 are delisted,
+// 620 rows across 8 departments, 570 of them on the site (50 are delisted,
 // AW-001). Edit here to add/remove products. The
 // departments and their product lines are derived from the cat + sub fields
 // below (departmentsFor in ../lib/departments.js) — no separate list to sync.
@@ -45,7 +45,12 @@
 // print sheets and old carts still name them (src/data/delisted.js). PRODUCTS
 // below leaves them out, the seed writes them inactive, and
 // supabase/migrations/20261014100000_delist_kratom_mushroom.sql deactivates
-// them in a database that already has them.
+// them in a database that already has them. Rows added to those lines in
+// stage 1 (./stage1Catalog.js) start inactive the same way.
+//
+// Stage 1 (November 2026): ./stage1Catalog.js adds the warehouse sheet's
+// names that were not already a row. Photos are stage 2 (img is null) and
+// prices and specifications are stage 3 (no price, no invented variants).
 //
 // TODO(owner): After legal review, which of Detox, Wellness Pills, and the
 // Honey & Energy enhancement items should be delisted, de-featured, or kept?
@@ -91,6 +96,7 @@
 
 import { productImage, sharedImageFiles } from '../lib/images.js';
 import { isDelisted } from './delisted.js';
+import { STAGE1_ROWS } from './stage1Catalog.js';
 
 export const NAV_ORDER = ['TOBACCO', 'NOVELTIES', 'MERCHANDISE', 'CANDIES', 'FOOD STUFF', 'GROCERY', 'MOTOR OIL', 'DRINKS & BAGS'];
 
@@ -384,11 +390,11 @@ export const CATALOG = [
     description: "Nail clippers from the hardware line in our Grocery department. Two sizes: Big and Small." },
   { id: 138, name: "Charcoal lighter fluid", brand: "Assorted", cat: "GROCERY", sub: "Hardware", sku: "AW-CHARCOAL-LIGHTER", sellUnit: "", variantAxis: "Size", variants: ["Big", "Small"], img: null, tag: null,
     description: "Charcoal lighter fluid. Two sizes: Big and Small." },
-  { id: 139, name: "Vinut", brand: "Vinut", cat: "DRINKS & BAGS", sub: "Juices & Teas", sku: "AW-VINUT", sellUnit: "", variantAxis: "Flavor", variants: ["Watermelon", "Pineapple", "Mango", "Soursop", "Passion fruit", "Cranberry", "Apple", "Orange"], img: null, tag: null,
+  { id: 139, name: "Vinut", brand: "Vinut", cat: "DRINKS & BAGS", sub: "Juices & Teas", sku: "AW-VINUT", sellUnit: "", variantAxis: "Flavor", variants: ["Watermelon", "Pineapple", "Mango", "Soursop", "Passion fruit", "Cranberry", "Apple", "Orange"], img: "p139-vinut.png", tag: null,
     description: "Vinut juice drinks. Eight flavors: Watermelon, Pineapple, Mango, Soursop, Passion fruit, Cranberry, Apple and Orange." },
   { id: 140, name: "Tropicana juice (small)", brand: "Tropicana", cat: "DRINKS & BAGS", sub: "Juices & Teas", sku: "AW-TROPICANA-SMALL", sellUnit: "", variantAxis: "Flavor", variants: ["Orange", "Pineapple orange", "Grape", "Cranberry", "Kiwi strawberry lemonade", "Ruby red"], img: "p140-tropicana-juice-small.jpg", tag: null,
     description: "Tropicana juice in the small bottle. Six flavors: Orange, Pineapple orange, Grape, Cranberry, Kiwi strawberry lemonade and Ruby red." },
-  { id: 141, name: "Tropical Fantasy Aloe Vera", brand: "Tropical Fantasy", cat: "DRINKS & BAGS", sub: "Juices & Teas", sku: "AW-TROPICAL-FANTASY-ALOE", sellUnit: "", variantAxis: "Flavor", variants: ["Watermelon", "Strawberry", "Mango", "Peach", "Pineapple", "Original"], img: null, tag: null,
+  { id: 141, name: "Tropical Fantasy Aloe Vera", brand: "Tropical Fantasy", cat: "DRINKS & BAGS", sub: "Juices & Teas", sku: "AW-TROPICAL-FANTASY-ALOE", sellUnit: "", variantAxis: "Flavor", variants: ["Watermelon", "Strawberry", "Mango", "Peach", "Pineapple", "Original"], img: "p141-tropical-fantasy-aloe.png", tag: null,
     description: "Tropical Fantasy aloe vera drinks. Six flavors: Watermelon, Strawberry, Mango, Peach, Pineapple and Original." },
   { id: 142, name: "Calypso lemonade", brand: "Calypso", cat: "DRINKS & BAGS", sub: "Juices & Teas", sku: "AW-CALYPSO", sellUnit: "", variantAxis: "Flavor", variants: ["Tropical mango", "Original", "Paradise punch", "Kiwi lemonade"], img: "p142-calypso-lemonade.jpg", tag: null,
     description: "Calypso lemonade. Four flavors: Tropical mango, Original, Paradise punch and Kiwi lemonade." },
@@ -657,7 +663,7 @@ export const CATALOG = [
     description: "Jumex fruit drinks. Five flavors: Mango, Guava, Strawberry banana, Peach and Pineapple coconut." },
   { id: 273, name: "LooseLeaf splits diamond wraps", brand: "LooseLeaf", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-LOOSE-LEAFS-SPLITS", sellUnit: "", variants: [], img: "loose_leafs_wraps_5pk.webp", tag: null,
     description: "LooseLeaf Diamond wraps in the splits format." },
-  { id: 274, name: "RAW Guarana wraps", brand: "RAW", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-RAW-GUARANA-WRAPS", sellUnit: "", variants: [], img: null, tag: null,
+  { id: 274, name: "RAW Guarana wraps", brand: "RAW", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-RAW-GUARANA-WRAPS", sellUnit: "", variants: [], img: "p274-raw-guarana.png", tag: null,
     description: "RAW Guarana wraps from the wraps and leaf line in our Tobacco department." },
   { id: 275, name: "Jolly Rancher hard candy 5 lb bag", brand: "Jolly Rancher", cat: "CANDIES", sub: "Sweets & Gummies", sku: "AW-JOLLY-RANCHER", sellUnit: "5 lb bag", variants: [], img: "jolly_rancher_5lbs.webp", tag: null,
     description: "Jolly Rancher hard candy in the 5 lb bulk bag." },
@@ -779,7 +785,7 @@ export const CATALOG = [
     description: "RAW rolling tips from the papers and cones line in our Tobacco department." },
   { id: 330, name: "High Hemp organic wraps", brand: "High Hemp", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-HIGH-HEMP", sellUnit: "", variants: [], img: "high_hemp_organic.webp", tag: null,
     description: "High Hemp organic hemp wraps." },
-  { id: 331, name: "Panasonic batteries", brand: "Panasonic", cat: "MERCHANDISE", sub: "Electronics", sku: "AW-PANASONIC", sellUnit: "", variants: ["AAA 2-pack"], img: null, tag: null,
+  { id: 331, name: "Panasonic batteries", brand: "Panasonic", cat: "MERCHANDISE", sub: "Electronics", sku: "AW-PANASONIC", sellUnit: "", variants: ["AAA 2-pack"], img: "p331-panasonic.png", tag: null,
     description: "Panasonic batteries in carded packs. Stocked in one variety: AAA 2-pack." },
   // TODO(owner): Is this Honey & Energy enhancement item lawful to sell, and what is in it? Awaiting legal/compliance review; kept as it is until then (AW-001)
   { id: 332, name: "Black Tiger Honey", brand: "Black Tiger", cat: "MERCHANDISE", sub: "Honey & Energy", sku: "AW-BLACK-TIGER-HONEY", sellUnit: "", variantAxis: "Format", variants: ["Flat box", "Round box"], img: "black_tiger_honey.jpg", tag: "PREMIUM",
@@ -861,6 +867,9 @@ export const CATALOG = [
     description: "LooseLeaf flavored wraps in 5-packs. Stocked in one variety: Watermelon." },
   { id: 368, name: "Camo wraps", brand: "Camo", cat: "TOBACCO", sub: "Wraps & Leafs", sku: "AW-CAMO-WRAPS", sellUnit: "", variants: ["Natural"], img: "p368-camo-wraps-natural.webp", tag: null,
     description: "Camo wraps from the wraps and leaf line in our Tobacco department. Stocked in one variety: Natural." },
+  // Stage 1 (November 2026): names and departments from the warehouse sheet.
+  // Photos, prices and specifications are later stages (./stage1Catalog.js).
+  ...STAGE1_ROWS,
 ];
 
 // img becomes the small JPEG URL (thumbnails, plain <img>), picture the
