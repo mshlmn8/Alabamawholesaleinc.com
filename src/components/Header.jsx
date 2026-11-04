@@ -35,12 +35,12 @@ import { currentFor } from '../lib/navCurrent.js';
 import { productCount } from '../lib/format.js';
 
 // The logo photo, or the brand in text when it fails to load (AW-341). The
-// photo is 320px square, so its width and height reserve the slot before it
-// loads; the link around it carries the name.
+// photo is the wordmark with a transparent background, so its width and
+// height reserve the slot before it loads; the link around it carries the name.
 function Logo() {
   const { status, attempt, ref, onLoad, onError } = useImageStatus();
   if (status === 'failed') return <span className="aw-logo-text"><span>Alabama</span><small>WHOLESALE INC.</small></span>;
-  return <img key={attempt} ref={ref} src={IMG.logo} alt="" width="320" height="320" onLoad={onLoad} onError={onError} />;
+  return <img key={attempt} ref={ref} src={IMG.logo} alt="" width="236" height="86" onLoad={onLoad} onError={onError} />;
 }
 
 // Quick Reorder is a section of My account (AW-086).

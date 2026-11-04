@@ -169,7 +169,7 @@ describe('Header logo', () => {
     const home = screen.getByRole('link', { name: 'Alabama Wholesale home' });
     const logo = home.querySelector('img');
     expect(logo.getAttribute('alt')).toBe('');
-    expect([logo.getAttribute('width'), logo.getAttribute('height')]).toEqual(['320', '320']);
+    expect([logo.getAttribute('width'), logo.getAttribute('height')]).toEqual(['236', '86']);
     fireEvent.error(logo);
     expect(home.querySelector('img')).toBeNull();
     expect(home.querySelector('.aw-logo-text').textContent).toBe('AlabamaWHOLESALE INC.');
