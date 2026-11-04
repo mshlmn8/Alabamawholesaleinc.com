@@ -71,7 +71,7 @@ function FullPageFallback({ notLoaded }) {
   return (
     <div className="error-page">
       <div className="container">
-        <img className="error-page-logo" src={IMG.logo} alt="Alabama Wholesale Inc" width="320" height="320" />
+        <img className="error-page-logo" src={IMG.logo} alt="Alabama Wholesale Inc" width="236" height="86" />
         <ErrorFallback notLoaded={notLoaded} />
       </div>
     </div>
