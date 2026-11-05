@@ -79,8 +79,6 @@ import { announce } from '../lib/announce.js';
 import { showToast } from '../lib/toast.js';
 import { BASKET } from '../data/terms.js';
 import { ProductPhoto } from './ProductPhoto.jsx';
-import { NicotineWarning } from './NicotineWarning.jsx';
-import { showsNicotineWarning } from '../lib/regulated.js';
 import { QuantityInput } from './QuantityInput.jsx';
 import { TextParts, joinParts } from './TextParts.jsx';
 
@@ -201,7 +199,6 @@ export function ProductCard({
       <p className="card-kicker"><span>{p.sub}</span>{p.tag && <span className={`card-tag${p.tag === 'NEW' ? ' new' : ''}`}>{p.tag}</span>}</p>
       <h3 id={titleId}><Link className="card-link" to={productRoute}>{p.name}</Link></h3>
       <p className="card-detail"><TextParts parts={cardDetailParts(p, { sku: showSku })} code={showSku ? p.sku : null} /></p>
-      {showsNicotineWarning(p) && <NicotineWarning compact />}
       <span className="card-meta card-actions">
         {isApprovedBuyer && soldOut ? (
           // The price row keeps its height, so the cards in a row line up.
