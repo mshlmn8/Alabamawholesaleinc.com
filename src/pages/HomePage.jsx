@@ -10,7 +10,7 @@ import { DEPARTMENT_PHOTOS, FREE_DELIVERY_THRESHOLD, SOURCING, TRUST } from '../
 import { APPLY_LABEL } from '../data/terms.js';
 import { accountView, tradeAccountPanel } from '../lib/accountStatus.js';
 import { topLines } from '../lib/departments.js';
-import { formatMoneyShort, productCount } from '../lib/format.js';
+import { formatMoneyShort } from '../lib/format.js';
 import { tierPriceNote } from '../lib/pricing.js';
 import { useHomeSlides } from '../lib/homeSlides.js';
 import { homeRails } from '../lib/merchandising.js';
@@ -34,12 +34,11 @@ const DEPT_SIZES = '(max-width: 53.125em) 46vw, (max-width: 84em) 23vw, 302px';
 export const RAIL_LENGTH = 4;
 
 const dept = (category) => ({ page: 'category', category });
-const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
-// A tile's text in parts (inline blocks in index.css): on a narrow tile it
-// wraps between "68 products ·" and "7 product lines", not inside them, and
-// a part wraps at its own spaces only when it is wider than the tile. The
-// dot is held to the part's last word by a no-break space, so it never
-// starts a line on its own (NEW-082, as TextParts).
+// A tile's line names in parts (inline blocks in index.css): on a narrow
+// tile each name moves to the next line whole, and a name wraps at its own
+// spaces only when it is wider than the tile. The dot is held to the name's
+// last word by a no-break space, so it never starts a line on its own
+// (NEW-082, as TextParts).
 const parts = (list) => list.map((part, i) => <span key={part}>{i < list.length - 1 ? `${part}${PART_SEPARATOR}` : part}</span>);
 
 // Products without a photo stay off the home rails until a packshot exists
@@ -196,8 +195,8 @@ export function HomePage({
           <Link to="/catalog">Browse the catalog</Link>
         </div>
         {/* One tile per department (AW-060, AW-061): a chosen photo, then the
-            name, counts and biggest lines on a solid band, never on the photo.
-            The name is the link, stretched over the tile (AW-170). */}
+            name and biggest lines on a solid band, never on the photo. The
+            name is the link, stretched over the tile (AW-170). */}
         <div className="dept-grid">
           {departments.map(c => {
             const photo = departmentPhoto(products, c.key);
@@ -208,7 +207,6 @@ export function HomePage({
                 </div>
                 <div className="dept-tile-body">
                   <h3><Link className="dept-tile-link" to={dept(c.key)}>{c.label}</Link></h3>
-                  <p className="dept-tile-count">{parts([productCount(c.count), count(c.subs.length, 'product line', 'product lines')])}</p>
                   <p className="dept-tile-lines">{parts(topLines(products, c.key))}</p>
                 </div>
               </div>

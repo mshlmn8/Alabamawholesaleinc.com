@@ -204,7 +204,7 @@ describe('HomePage collection cards', () => {
 });
 
 describe('HomePage department tiles', () => {
-  it('links each department, with its counts and biggest lines on the band, not the photo', () => {
+  it('links each department, with its biggest lines on the band, not the photo', () => {
     renderHome();
     const tiles = [...document.querySelectorAll('#catalog .dept-grid > .dept-tile')];
     expect(tiles).toHaveLength(DEPARTMENTS.length);
@@ -222,7 +222,8 @@ describe('HomePage department tiles', () => {
       expect(tile.querySelector('.dept-tile-body h3').textContent).toBe(d.label);
       // A no-break space holds each dot to the last word before it, so a
       // narrow tile never starts a line with a lone dot (NEW-082).
-      expect(tile.querySelector('.dept-tile-count').textContent).toBe(`${d.count} products\u00a0· ${d.subs.length} product lines`);
+      expect(tile.querySelector('.dept-tile-count')).toBeNull();
+      expect(tile.textContent).not.toMatch(/\d+ products|\d+ product lines/);
       expect(tile.querySelector('.dept-tile-lines').textContent).toBe(topLines(PRODUCTS, d.key).join('\u00a0· '));
       // Each part wraps as a unit, its separator dot with it.
       const lines = [...tile.querySelectorAll('.dept-tile-lines > span')].map((span) => span.textContent);

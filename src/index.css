@@ -822,9 +822,9 @@ p > .text-link { min-height: 0; min-width: 0; }
 .trust-sourcing { padding-left: 40px; border-left: 1px solid var(--on-dark-line); font-size: var(--text-lg); line-height: 1.5; color: var(--on-dark); }
 
 /* Shop by department (AW-060, AW-061): four tiles a row, two in the compact
-   layout. Each is a 16:10 photo frame over a solid purple band with the name,
-   the counts and the biggest lines; no text sits on the photo (AW-055). The
-   photo is placed like a card's: out of flow, never wider than itself. */
+   layout. Each is a 16:10 photo frame over a solid purple band with the name
+   and the biggest lines; no text sits on the photo (AW-055). The photo is
+   placed like a card's: out of flow, never wider than itself. */
 .dept-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--grid-gap); }
 /* The name is the link, stretched over the tile by its ::after (AW-170). */
 .dept-tile { position: relative; display: flex; flex-direction: column; min-width: 0; background: var(--purple); color: #fff; }
@@ -835,12 +835,10 @@ p > .text-link { min-height: 0; min-width: 0; }
 .dept-tile-media img { position: absolute; inset: 12px; margin: auto; height: auto; max-width: calc(100% - 24px); max-height: calc(100% - 24px); object-fit: contain; }
 .dept-tile-body { flex: 1 1 auto; display: flex; flex-direction: column; gap: 6px; padding: 16px 18px 18px; overflow-wrap: break-word; }
 .dept-tile h3 { font-size: var(--h3); margin: 0 0 2px; }
-.dept-tile-count { margin: 0; font-size: var(--text-sm); font-weight: 700; color: var(--on-dark-muted); }
-.dept-tile-lines { margin: 0; font-size: var(--text-sm); line-height: 1.5; color: var(--on-dark); }
-/* The counts and lines wrap between their parts, each moving to the next line
-   whole, and inside a part only when it is wider than the tile. */
-.dept-tile-count, .dept-tile-lines { display: flex; flex-wrap: wrap; column-gap: .25em; }
-.dept-tile-count > span, .dept-tile-lines > span { min-width: 0; }
+/* The line names wrap between them, each moving to the next line whole, and
+   inside a name only when it is wider than the tile. */
+.dept-tile-lines { display: flex; flex-wrap: wrap; column-gap: .25em; margin: 0; font-size: var(--text-sm); line-height: 1.5; color: var(--on-dark); }
+.dept-tile-lines > span { min-width: 0; }
 @media (hover: hover) {
   .dept-tile:has(.dept-tile-link:hover) { background: var(--purple-hover); }
   .dept-tile-link:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: var(--link-offset); }
@@ -2828,7 +2826,7 @@ ul.sub-pills { list-style: none; padding: 0; }
   /* Ink: no fills behind text, no shadows; the surfaces keep a thin rule. */
   .contact-strip, .support-cta, .eligibility, .editorial-card.cream, .editorial-card.purple, .dept-tile, .category-toolbar,
   .status-pill, .status-pill.contacted, .status-pill.fulfilled, .status-pill.cancelled { background: none; color: var(--ink); border: 1px solid var(--line); }
-  .contact-strip .eyebrow, .contact-strip p:not([class]), .contact-strip .text-link, .dept-tile-count, .dept-tile-lines { color: var(--ink); }
+  .contact-strip .eyebrow, .contact-strip p:not([class]), .contact-strip .text-link, .dept-tile-lines { color: var(--ink); }
   .contact-strip h2, .editorial-card.purple h2 { color: var(--ink); }
   .trust-band { background: none; color: var(--ink); border: 1px solid var(--line); }
   .trust-figure, .trust-label, .trust-sourcing { color: var(--ink); }
