@@ -1,5 +1,5 @@
-// A short list of values on one line, such as a card's "brand · 8 flavors ·
-// SKU", that wraps between its values instead of inside them (AW-304): a
+// A short list of values on one line, such as a card's "brand · Sold by the
+// 5-pack · SKU", that wraps between its values instead of inside them (AW-304): a
 // narrow card moves "AW-GEEKBAR-25K" to the next line whole, not
 // "AW-" / "GEEKBAR-25K". Each part is its own span, with its separator at its
 // end; .text-parts in index.css wraps the spans, and a part breaks inside

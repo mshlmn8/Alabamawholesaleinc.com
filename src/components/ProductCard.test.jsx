@@ -1,6 +1,7 @@
-// The product card's detail line counts variants by their axis only when
-// there is a choice (AW-233, AW-332, AW-128) and says what quantity 1 means
-// (AW-031); its price follows the variants (AW-030). Prices are test values.
+// The product card's detail line names the brand, the sell unit and the SKU.
+// Colors, flavors and varieties stay on the product page. It says what
+// quantity 1 means (AW-031); its price follows the variants (AW-030). Prices
+// are test values.
 // The add control (AW-143): one button style, sentence-case labels, and a
 // name that starts with the label and ends with the product (AW-170). The
 // card itself (AW-170): an article named by its title, a real link to the
@@ -26,13 +27,16 @@ const price = () => document.querySelector('.card-meta > span:first-child').text
 const APPROVED = { profile: { id: 'a', status: 'approved' }, isApprovedBuyer: true, pricesStatus: 'ready' };
 
 describe('ProductCard', () => {
-  it('counts variants by their axis, only when there is more than one', () => {
+  it('leaves colors, flavors and varieties off the detail line', () => {
     const view = render(card({ ...base, variants: ['Red', 'Grape', 'Diamond'], variantAxis: 'Flavor' }));
-    expect(detail()).toBe('Swisher Sweets · 3 flavors · AW-SS');
+    expect(detail()).toBe('Swisher Sweets · AW-SS');
+    expect(detail()).not.toMatch(/flavor|variety|color|size|variant/i);
     view.rerender(card({ ...base, variants: ['S', 'M'], variantAxis: 'Size' }));
-    expect(detail()).toBe('Swisher Sweets · 2 sizes · AW-SS');
+    expect(detail()).toBe('Swisher Sweets · AW-SS');
+    view.rerender(card({ ...base, variants: ['Purple', 'Black'], variantAxis: 'Color' }));
+    expect(detail()).toBe('Swisher Sweets · AW-SS');
     view.rerender(card({ ...base, variants: ['S', 'M'] }));
-    expect(detail()).toBe('Swisher Sweets · 2 variants · AW-SS');
+    expect(detail()).toBe('Swisher Sweets · AW-SS');
     view.rerender(card({ ...base, variants: ['Green'] }));
     expect(detail()).toBe('Swisher Sweets · AW-SS');
     view.rerender(card({ ...base, variants: [] }));
@@ -167,7 +171,7 @@ describe('ProductCard', () => {
 
   it('doesn’t print the placeholder brand "Assorted" (AW-286)', () => {
     render(card({ ...base, brand: 'Assorted', variants: ['S', 'M'], variantAxis: 'Size' }));
-    expect(detail()).toBe('2 sizes · AW-SS');
+    expect(detail()).toBe('AW-SS');
   });
 
   it('prints the tag as a chip beside the product line, nothing over the photo, and not the department (AW-055)', () => {
@@ -453,7 +457,7 @@ describe('ProductCard structure', () => {
     render(card({ ...base, variants: ['Red', 'Grape'], variantAxis: 'Flavor', sellUnit: '5-pack' }));
     const parts = [...document.querySelectorAll('.card-detail > .text-parts > span')].map((span) => span.textContent);
     // A no-break space holds each dot to its part's last word (NEW-082).
-    expect(parts).toEqual(['Swisher Sweets\u00a0· ', '2 flavors\u00a0· ', 'Sold by the 5-pack\u00a0· ', 'AW-SS']);
+    expect(parts).toEqual(['Swisher Sweets\u00a0· ', 'Sold by the 5-pack\u00a0· ', 'AW-SS']);
     expect(document.querySelector('.card-detail').textContent).toBe(cardDetail({ ...base, variants: ['Red', 'Grape'], variantAxis: 'Flavor', sellUnit: '5-pack' }));
     // The SKU is the code part: it never breaks at its hyphens, and its title
     // holds all of it (AW-304).

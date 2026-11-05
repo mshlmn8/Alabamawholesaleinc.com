@@ -1,7 +1,7 @@
-// The catalog index counts a product's variants by their axis, only when
-// there is a choice (AW-233, AW-332, AW-128). All products is a browsable
-// page (AW-068): a row of cards per department, the SKU list kept as a
-// secondary view, a catalog search, and labelled line pills (AW-229).
+// The catalog index lists brand, line and SKU under each name. Colors,
+// flavors and varieties stay on the product page. All products is a
+// browsable page (AW-068): a row of cards per department, the SKU list kept
+// as a secondary view, a catalog search, and labelled line pills (AW-229).
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { departmentsFor } from '../../lib/departments.js';
@@ -47,14 +47,14 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('CatalogIndexPage', () => {
-  it('counts variants by their axis, and not a single one', () => {
+  it('leaves colors, flavors and varieties off each SKU line', () => {
     render(<CatalogIndexPage products={products} departments={departmentsFor(products)} profile={null} isApprovedBuyer={false} onLoginClick={() => {}} />);
-    expect(row('Swisher Sweets cigarillos')).toBe('Swisher · Cigars · AW-SS · 2 flavors');
+    expect(row('Swisher Sweets cigarillos')).toBe('Swisher · Cigars · AW-SS');
     // The placeholder brand isn't printed (AW-286).
-    expect(row('Gas cans')).toBe('Auto · AW-GAS · 3 sizes');
+    expect(row('Gas cans')).toBe('Auto · AW-GAS');
     expect(row('Gatorade')).toBe('Gatorade · Sports · AW-GATORADE');
     expect(row('Kite')).toBe('Kite · Cigarettes · AW-KITE');
-    expect(screen.queryByText(/1 variants/)).toBeNull();
+    expect(screen.queryByText(/\d+ (flavors|sizes|colors|varieties|variants)/)).toBeNull();
   });
 
   it('heads the page once with its counts, without repeating them (AW-068, AW-284)', () => {

@@ -2,9 +2,8 @@
 // add/stepper/choose control. The price is the signed-in buyer's, from
 // priceOf(productId, variant) (App, src/lib/prices.jsx); products carry none
 // (AW-003). A product whose variants are priced differently shows "From $x"
-// (AW-030). The detail line counts variants by their axis ("8 flavors"),
-// only when there is a choice (AW-233, AW-332), and says what quantity 1
-// means when the product has a sell unit (AW-031).
+// (AW-030). The detail line names the brand and, when the product has a
+// sell unit, what quantity 1 means (AW-031).
 //
 // From Cursor's PR #13: a product without a photo shows "Photo coming soon"
 // (AW-029); a photo other rows share is badged with this row's sell unit, or
@@ -68,7 +67,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import {
-  isVariantAvailable, lineKey, parseLineKey, requiresVariantChoice, variantAxis, variantCount, variantList,
+  isVariantAvailable, lineKey, parseLineKey, requiresVariantChoice, variantList,
 } from '../lib/lines.js';
 import { PRICE_FAILED_SENTENCE, priceDidNotLoad, priceLabel, variantPriceRange } from '../lib/pricing.js';
 import { PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
@@ -87,15 +86,14 @@ const NO_PRICES = () => null;
 // How long "Added" stays under the control after an add.
 export const ADDED_NOTE_MS = 2000;
 
-// The card's detail line: brand (not the placeholder), the variant count when
-// there is a choice, the sell unit, the SKU (left off on the home page, AW-060).
-// cardDetailParts gives the values, which the card shows as TextParts
-// (AW-304); cardDetail the same line as one string.
+// The card's detail line: brand (not the placeholder), the sell unit, and the
+// SKU (left off on the home page, AW-060). Colors, flavors and varieties stay
+// on the product page, where the buyer chooses one. cardDetailParts gives the
+// values, which the card shows as TextParts (AW-304); cardDetail the same
+// line as one string.
 export function cardDetailParts(p, { sku = true } = {}) {
-  const count = variantCount(p);
   return [
     brandLabel(p.brand),
-    count > 1 ? `${count} ${variantAxis(p).plural}` : '',
     p.sellUnit ? `Sold by the ${p.sellUnit}` : '',
     sku ? p.sku : '',
   ].filter(Boolean);
