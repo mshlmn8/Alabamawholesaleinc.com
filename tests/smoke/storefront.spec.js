@@ -614,7 +614,7 @@ test.describe('tobacco and vapor', () => {
     }, [AGE_KEY, ageRecord(Date.now())]);
   });
 
-  test('the nicotine statement is on vape pages, tobacco cards and the footer, not on hemp wraps', async ({ page }) => {
+  test('the nicotine statement is on vape pages and the footer, not on catalog cards or hemp wraps', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/product/61');
     await expect(page.locator('.pd-info .nicotine-warning')).toHaveText(FDA);
@@ -626,9 +626,8 @@ test.describe('tobacco and vapor', () => {
     await page.goto('/product/330');
     await expect(page.locator('.pd-info .nicotine-warning')).toHaveCount(0);
     await page.goto('/category/tobacco/cigars-and-cigarillos');
-    const cards = page.locator('.content-card');
-    await expect(cards.first().locator('.nicotine-warning')).toHaveText(FDA);
-    expect(await cards.count()).toBe(await page.locator('.content-card .nicotine-warning').count());
+    await expect(page.locator('.content-card')).not.toHaveCount(0);
+    await expect(page.locator('.content-card .nicotine-warning')).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 
