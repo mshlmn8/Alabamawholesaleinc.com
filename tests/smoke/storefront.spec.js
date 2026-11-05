@@ -499,7 +499,7 @@ test.describe('after age confirmation', () => {
     await expect(page.locator('.pd-unit')).toHaveText('Sold by the box of 200 — quantity 1 is one box of 200.');
     await page.goto('/category/tobacco/tubes-and-filters');
     await expect(page.locator('.card-detail').filter({ hasText: 'AW-GAMBLER-TUBES' }))
-      .toHaveText('Gambler · 6 varieties · Sold by the box of 200 · AW-GAMBLER-TUBES');
+      .toHaveText('Gambler · Sold by the box of 200 · AW-GAMBLER-TUBES');
     expect(errors).toEqual([]);
   });
 });

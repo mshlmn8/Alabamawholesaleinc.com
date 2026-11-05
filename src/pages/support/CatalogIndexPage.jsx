@@ -17,7 +17,6 @@
 
 import { useState } from 'react';
 import { Link, navigate } from '../../lib/router.js';
-import { variantAxis, variantCount } from '../../lib/lines.js';
 import { brandLabel, productCount } from '../../lib/format.js';
 import { featuredOrder, underLegalReview } from '../../lib/merchandising.js';
 import { Icon } from '../../components/Icon.jsx';
@@ -114,7 +113,7 @@ export function CatalogIndexPage({ products, departments, ...cardProps }) {
                     <li key={p.id}>
                       <Link to={{ page: 'product', productId: p.id }}>
                         <b>{p.name}</b>
-                        <small>{`${brandLabel(p.brand) ? `${brandLabel(p.brand)} · ` : ''}${p.sub} · ${p.sku}${variantCount(p) > 1 ? ` · ${variantCount(p)} ${variantAxis(p).plural}` : ''}`}</small>
+                        <small>{`${brandLabel(p.brand) ? `${brandLabel(p.brand)} · ` : ''}${p.sub} · ${p.sku}`}</small>
                       </Link>
                     </li>
                   ))}
