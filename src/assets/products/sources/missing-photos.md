@@ -6,3 +6,5 @@ Official packshots for rows that had no photo. Saved as transparent PNGs. The ro
 | --- | --- | --- | --- | --- |
 | 9 | Royal Blunts EZ Roll | `p9-royal-blunts-ez-roll.png` | https://royalblunts.com/cigar-wraps/ | EZ Roll cigar-wrap pouches, including OGK, strawberry, blueberry, purple haze, wet mango and sour apple |
 | 211 | Cheyenne filtered cigars | `p211-cheyenne.png` | https://cheyennecigars.com/product/full-flavor/ | Cheyenne Full Flavor little-cigar pack |
+| 213 | Lil Leaf wraps | `p213-lil-leaf.png` | https://lilleafsmoke.com/ | Original 3-wrap pouch |
+| 269 | Airheads soda | `p269-airheads-soda.png` | https://www.bevindustry.com/articles/97994-airheads-enter-beverage-market (photo courtesy of Perfetti Van Melle / Fire Brands) | Blue raspberry, strawberry, watermelon, and orange cans |

@@ -7220,6 +7220,8 @@ update public.products p
 -- regenerated seed. No schema, function or privilege changes.
 --   #9 Royal Blunts EZ Roll
 --   #211 Cheyenne filtered cigars
+--   #213 Lil Leaf wraps
+--   #269 Airheads soda
 --
 -- A row changes only while img is still null, so a photo an admin has set
 -- is kept, and running this file again changes nothing (AW-032).
@@ -7232,7 +7234,9 @@ update public.products p
    set img = v.new_img
   from (values
     (9, 'p9-royal-blunts-ez-roll.png'),
-    (211, 'p211-cheyenne.png')
+    (211, 'p211-cheyenne.png'),
+    (213, 'p213-lil-leaf.png'),
+    (269, 'p269-airheads-soda.png')
   ) as v(id, new_img)
  where p.id = v.id
    and p.img is null;
@@ -7245,7 +7249,9 @@ update public.products p
 --    set img = null
 --   from (values
 --     (9, 'p9-royal-blunts-ez-roll.png'),
---     (211, 'p211-cheyenne.png')
+--     (211, 'p211-cheyenne.png'),
+--     (213, 'p213-lil-leaf.png'),
+--     (269, 'p269-airheads-soda.png')
 --   ) as v(id, new_img)
 --  where p.id = v.id
 --    and p.img = v.new_img;
@@ -8143,7 +8149,7 @@ insert into public.products (id, name, brand, cat, sub, sku, variants, variant_a
   (210, 'Seneca filtered cigars', 'Seneca', 'TOBACCO', 'Cigarettes', 'AW-SENECA-FILTER', '[]'::jsonb, null, 'seneca_filter_cigarettes.jpg', null, true, 'Seneca filtered cigars, cigarette-style little cigars.', ''),
   (211, 'Cheyenne filtered cigars', 'Cheyenne', 'TOBACCO', 'Cigarettes', 'AW-CHEYENNE', '[]'::jsonb, null, 'p211-cheyenne.png', null, true, 'Cheyenne from the cigarette line in our Tobacco department.', ''),
   (212, 'Ice bags', 'Assorted', 'DRINKS & BAGS', 'Bags & Carriers', 'AW-ICE-BAGS', '["8 lb","10 lb"]'::jsonb, 'Size', null, null, true, 'Ice bags from the bags and carriers line in our Drinks & Bags department. Two sizes: 8 lb and 10 lb.', ''),
-  (213, 'Lil Leaf wraps', 'Lil Leaf', 'TOBACCO', 'Wraps & Leafs', 'AW-LIL-LEAF-WRAPS', '["Original"]'::jsonb, null, null, null, true, 'Lil Leaf wraps from the wraps and leaf line in our Tobacco department. Stocked in one variety: Original.', ''),
+  (213, 'Lil Leaf wraps', 'Lil Leaf', 'TOBACCO', 'Wraps & Leafs', 'AW-LIL-LEAF-WRAPS', '["Original"]'::jsonb, null, 'p213-lil-leaf.png', null, true, 'Lil Leaf wraps from the wraps and leaf line in our Tobacco department. Stocked in one variety: Original.', ''),
   (214, 'Tropicana juice (big)', 'Tropicana', 'DRINKS & BAGS', 'Juices & Teas', 'AW-TROPICANA-BIG', '["Orange","Cranberry","Apple","Ruby red"]'::jsonb, 'Flavor', 'p214-tropicana-juice-big.jpg', null, true, 'Tropicana juice in the big bottle. Four flavors: Orange, Cranberry, Apple and Ruby red.', ''),
   (215, 'Al Capone Leaf Wraps', 'Al Capone', 'TOBACCO', 'Wraps & Leafs', 'AW-ALCAPONE-LEAFS', '["Rum","Original","Cognac"]'::jsonb, 'Flavor', 'alcapone_wraps.jpg', null, true, 'Al Capone natural leaf wraps. Three flavors: Rum, Original and Cognac.', ''),
   (216, 'Grinders', 'Assorted', 'NOVELTIES', 'Smoke Accessories', 'AW-GRINDERS', '["Big","Medium","Small"]'::jsonb, 'Size', 'p216-grinders.webp', null, true, 'Grinders from the smoke accessory line in our Novelties department. Three sizes: Big, Medium and Small.', ''),
@@ -8199,7 +8205,7 @@ insert into public.products (id, name, brand, cat, sub, sku, variants, variant_a
   (266, 'Blue Wolf honey', 'Blue Wolf', 'MERCHANDISE', 'Honey & Energy', 'AW-BLUE-WOLF-HONEY', '[]'::jsonb, null, null, null, true, 'Blue Wolf honey from the honey and energy line in our Merchandise department.', ''),
   (267, 'ZYN European mix', 'ZYN', 'TOBACCO', 'Pouches & ZYN', 'AW-ZYN-EUROPEAN', '[]'::jsonb, null, 'zyn_6mg.webp', null, true, 'ZYN nicotine pouches, European assortment.', ''),
   (268, 'Sour Strips', 'Sour Strips', 'CANDIES', 'Sweets & Gummies', 'AW-SOUR-STRIPS', '["Blue"]'::jsonb, null, 'p268-sour-strips-blue-raspberry.jpg', null, true, 'Sour Strips sour candy. Stocked in one variety: Blue.', ''),
-  (269, 'Airheads soda', 'Airheads', 'DRINKS & BAGS', 'Sodas', 'AW-AIRHEADS-SODA', '["Green","Red","Blue","Pink","Orange"]'::jsonb, 'Color', null, null, true, 'Airheads soda from the soda line in our Drinks & Bags department. Five colors: Green, Red, Blue, Pink and Orange.', ''),
+  (269, 'Airheads soda', 'Airheads', 'DRINKS & BAGS', 'Sodas', 'AW-AIRHEADS-SODA', '["Green","Red","Blue","Pink","Orange"]'::jsonb, 'Color', 'p269-airheads-soda.png', null, true, 'Airheads soda from the soda line in our Drinks & Bags department. Five colors: Green, Red, Blue, Pink and Orange.', ''),
   (270, 'Monster Energy', 'Monster', 'DRINKS & BAGS', 'Energy Drinks', 'AW-MONSTER', '["Green","White","Blue"]'::jsonb, 'Color', 'p270-monster-energy.jpg', 'DEAL', true, 'Monster Energy drinks. Three colors: Green, White and Blue.', ''),
   (271, 'Snickers chocolate milk', 'Snickers', 'DRINKS & BAGS', 'Dairy & Milk', 'AW-SNICKERS-CHOCOLATE', '[]'::jsonb, null, 'p271-snickers-chocolate-milk.jpg', null, true, 'Snickers chocolate milk, from the dairy and milk line in our Drinks & Bags department.', ''),
   (272, 'Jumex', 'Jumex', 'DRINKS & BAGS', 'Juices & Teas', 'AW-JUMEX', '["Mango","Guava","Strawberry banana","Peach","Pineapple coconut"]'::jsonb, 'Flavor', 'p272-jumex.jpg', null, true, 'Jumex fruit drinks. Five flavors: Mango, Guava, Strawberry banana, Peach and Pineapple coconut.', ''),

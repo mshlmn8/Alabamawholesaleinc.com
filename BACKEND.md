@@ -1456,8 +1456,8 @@ rolling it back.
 35. `20261103140000_stage2_more_photos.sql` (data only: photos for #311
     and sixteen stage 1 rows; **after the frontend that ships those
     files**)
-36. `20261106033000_missing_packshots.sql` (data only: photos for #9 and
-    #211; **after the frontend that ships those files**)
+36. `20261106033000_missing_packshots.sql` (data only: photos for #9,
+    #211, #213 and #269; **after the frontend that ships those files**)
 
 Then `supabase/seed/products.sql`, then the frontend, then 18, 34, 35 and 36.
 
@@ -1498,7 +1498,7 @@ Then `supabase/seed/products.sql`, then the frontend, then 18, 34, 35 and 36.
 | `20261014121000_site_settings.sql` | AW-030: `site_settings`, one row (`id = true`) of the announcement bar's messages, the public phone and email, the hours and the warehouse address, null meaning the site's own (`src/data/content.js`); everyone reads it, approved admin and staff accounts change it (`is_staff_or_admin()`), nobody deletes it; `updated_at` and `updated_by` are stamped; checks for each value (the form's, `src/data/siteFacts.js`). | Before it the storefront shows the values built into the site and Admin → Site settings says it needs the update; after it the storefront reads the row on each page load (one small request). Reverse block at its end. |
 | `20261103120000_stage2_product_photos.sql` | Data only: #139 Vinut, #141 Tropical Fantasy Aloe Vera, #274 RAW Guarana wraps and #331 Panasonic batteries get the transparent packshot the catalog names (`p139-vinut.png`, `p141-tropical-fantasy-aloe.png`, `p274-raw-guarana.png`, `p331-panasonic.png`), only while `img` is still null, so a photo set in Admin is kept and a re-run changes nothing. Stage 1 rows are new and take their photos from the seed. | **Apply AFTER deploying the frontend that ships these files.** Before it the storefront already shows them from the bundled catalog; a frontend from before this change would show "Photo coming soon" once the database names files it does not have. Reverse block at its end. |
 | `20261103140000_stage2_more_photos.sql` | Data only: #311 and sixteen stage 1 rows that are already in the database with no photo (#369, #373, #386, #389, #394, #413, #414, #529, #569, #573, #576, #595, #599, #608, #609, #611) get the transparent packshot the catalog names, only while `img` is still null. | **Apply AFTER deploying the frontend that ships these files.** A frontend from before this change would show "Photo coming soon" once the database names files it does not have. Reverse block at its end. |
-| `20261106033000_missing_packshots.sql` | Data only: #9 Royal Blunts EZ Roll and #211 Cheyenne filtered cigars get the transparent packshot the catalog names, only while `img` is still null. | **Apply AFTER deploying the frontend that ships these files.** A frontend from before this change would show "Photo coming soon" once the database names files it does not have. Reverse block at its end. |
+| `20261106033000_missing_packshots.sql` | Data only: #9 Royal Blunts EZ Roll, #211 Cheyenne filtered cigars, #213 Lil Leaf wraps and #269 Airheads soda get the transparent packshot the catalog names, only while `img` is still null. | **Apply AFTER deploying the frontend that ships these files.** A frontend from before this change would show "Photo coming soon" once the database names files it does not have. Reverse block at its end. |
 
 ### Later steps
 

@@ -5,6 +5,8 @@
 -- regenerated seed. No schema, function or privilege changes.
 --   #9 Royal Blunts EZ Roll
 --   #211 Cheyenne filtered cigars
+--   #213 Lil Leaf wraps
+--   #269 Airheads soda
 --
 -- A row changes only while img is still null, so a photo an admin has set
 -- is kept, and running this file again changes nothing (AW-032).
@@ -17,7 +19,9 @@ update public.products p
    set img = v.new_img
   from (values
     (9, 'p9-royal-blunts-ez-roll.png'),
-    (211, 'p211-cheyenne.png')
+    (211, 'p211-cheyenne.png'),
+    (213, 'p213-lil-leaf.png'),
+    (269, 'p269-airheads-soda.png')
   ) as v(id, new_img)
  where p.id = v.id
    and p.img is null;
@@ -30,7 +34,9 @@ update public.products p
 --    set img = null
 --   from (values
 --     (9, 'p9-royal-blunts-ez-roll.png'),
---     (211, 'p211-cheyenne.png')
+--     (211, 'p211-cheyenne.png'),
+--     (213, 'p213-lil-leaf.png'),
+--     (269, 'p269-airheads-soda.png')
 --   ) as v(id, new_img)
 --  where p.id = v.id
 --    and p.img = v.new_img;
