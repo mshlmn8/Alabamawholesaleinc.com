@@ -12,8 +12,7 @@ import { accountView, tradeAccountPanel } from '../lib/accountStatus.js';
 import { topLines } from '../lib/departments.js';
 import { formatMoneyShort } from '../lib/format.js';
 import { tierPriceNote } from '../lib/pricing.js';
-import { useHomeSlides } from '../lib/homeSlides.js';
-import { homeRails } from '../lib/merchandising.js';
+import { RAIL_LIMIT, homeRails } from '../lib/merchandising.js';
 import { heroImage, SIZES } from '../lib/images.js';
 import { showsNicotineWarning } from '../lib/regulated.js';
 import { Link } from '../lib/router.js';
@@ -32,6 +31,21 @@ const DEPT_SIZES = '(max-width: 53.125em) 46vw, (max-width: 84em) 23vw, 302px';
 
 // New arrivals and Bestsellers show one row of cards: two by two on phones (AW-060).
 export const RAIL_LENGTH = 4;
+
+// The hero carousel's slides: new products with a photo, the same order as
+// the New arrivals rail, up to a full reel. Each slide opens that product.
+export function newProductSlides(products, limit = RAIL_LIMIT) {
+  const { newArrivals } = homeRails(products, { limit, hasPhoto });
+  return newArrivals.map((p) => ({
+    key: `new-${p.id}`,
+    img: p.img,
+    picture: p.picture,
+    alt: p.name,
+    caption: p.name,
+    to: { page: 'product', productId: p.id },
+    nicotineWarning: showsNicotineWarning(p),
+  }));
+}
 
 const dept = (category) => ({ page: 'category', category });
 // A tile's line names in parts (inline blocks in index.css): on a narrow
@@ -152,13 +166,10 @@ export function HomePage({
   const { newArrivals, bestsellers } = homeRails(products, { limit: RAIL_LENGTH, hasPhoto });
   // Whose prices the rails show, for an approved buyer (AW-107).
   const priceNote = isApprovedBuyer ? <p className="result-note">{tierPriceNote(priceTier)}</p> : null;
-  // The hero photos staff keep in Admin -> Homepage, or the bundled ones
-  // (AW-119); while `pending` the hero holds their box empty (NEW-008).
-  const { slides, pending } = useHomeSlides();
 
   return (
     <>
-      <HomeHero signedIn={signedIn} onApplyClick={onApplyClick} slides={slides} pending={pending} />
+      <HomeHero slides={newProductSlides(products)} />
       <TrustBand />
 
       {/* What the business offers, straight after the hero and its trust

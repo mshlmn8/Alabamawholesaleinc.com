@@ -1341,7 +1341,7 @@ describe('the print stylesheet (AW-148)', () => {
   it('leaves off the header, notices, toast, dialogs, footer links and every control', () => {
     for (const s of ['.site-header', '.site-notices', '#aw-toasts', '#aw-layers > :not(.age-gate-layer)', '.footer-grid', '.footer-policies', '.policy-nav',
       '.qty-row', '.card-add', '.stepper button', '.filter-toggle', '.category-filters', '.active-filters', '.dept-jump', '.eligibility-form',
-      '.home-carousel-toggle', '.home-carousel-prev', '.home-carousel-next', '.home-carousel-dots', '.home-hero-actions', '.checkout-clear', '.drawer-remove',
+      '.home-carousel-toggle', '.home-carousel-prev', '.home-carousel-next', '.home-carousel-dots', '.checkout-clear', '.drawer-remove',
       '.dialog-actions', '.search-form', 'button.button', 'button.text-link', '.icon-btn']) {
       expect(hidden(), s).toContain(s);
     }

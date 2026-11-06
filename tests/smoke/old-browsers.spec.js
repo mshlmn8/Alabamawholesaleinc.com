@@ -66,7 +66,7 @@ async function signedInAs(page, context, profile) {
 test('the site starts, and the sign-in and application dialogs open, without .at, Object.hasOwn or Intl.ListFormat (NEW-019)', async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1, name: 'Wholesale for licensed retailers.' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Shop by department' })).toBeVisible();
   expect(await page.evaluate(() => [typeof [].at, typeof Object.hasOwn, typeof Intl.ListFormat])).toEqual(['undefined', 'undefined', 'undefined']);
   // The footer's department list, written without Intl.ListFormat.
   await expect(page.locator('.footer-brand p')).toHaveText(/^Wholesale distributor of tobacco, .+, and drinks & bags\. Serving licensed retail stores\.$/);
