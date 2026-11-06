@@ -4,8 +4,8 @@
 --
 -- Every database update the live Supabase project doesn't have yet, in order,
 -- in one file. The live project has the updates up to and including
--- 20260927180000_application_documents.sql; this file has the 35 after it
--- (20261008190000 to 20261103140000), then the product seed.
+-- 20260927180000_application_documents.sql; this file has the 36 after it
+-- (20261008190000 to 20261106033000), then the product seed.
 --
 -- How to run it (SETUP.md, part A): back up the database first. Then in
 -- Supabase open SQL Editor, start a new query, paste this whole file and
@@ -61,7 +61,8 @@
 --   33. 20261014121000_site_settings.sql
 --   34. 20261103120000_stage2_product_photos.sql
 --   35. 20261103140000_stage2_more_photos.sql
---   36. products.sql (the product seed)
+--   36. 20261106033000_missing_packshots.sql
+--   37. products.sql (the product seed)
 
 -- =============================================================================
 -- Check: is this the live database, without these updates yet?
@@ -80,7 +81,7 @@ begin
 end $$;
 
 -- =============================================================================
--- 1 of 36: 20261008190000_quote_tobacco_license.sql
+-- 1 of 37: 20261008190000_quote_tobacco_license.sql
 -- supabase/migrations/20261008190000_quote_tobacco_license.sql, word for word.
 -- =============================================================================
 
@@ -237,7 +238,7 @@ revoke all on function public.submit_quote(text, text, text, text, text, text, d
 grant execute on function public.submit_quote(text, text, text, text, text, text, date, text, text, text, text, text, jsonb, text, text, boolean) to anon, authenticated;
 
 -- =============================================================================
--- 2 of 36: 20261008191000_profile_store_address.sql
+-- 2 of 37: 20261008191000_profile_store_address.sql
 -- supabase/migrations/20261008191000_profile_store_address.sql, word for word.
 -- =============================================================================
 
@@ -283,7 +284,7 @@ end;
 $$;
 
 -- =============================================================================
--- 3 of 36: 20261008192000_profile_self_update_guard.sql
+-- 3 of 37: 20261008192000_profile_self_update_guard.sql
 -- supabase/migrations/20261008192000_profile_self_update_guard.sql, word for word.
 -- =============================================================================
 
@@ -318,7 +319,7 @@ create trigger a_protect_profile_columns
   for each row execute function public.protect_profile_columns();
 
 -- =============================================================================
--- 4 of 36: 20261008193000_profile_approval_audit.sql
+-- 4 of 37: 20261008193000_profile_approval_audit.sql
 -- supabase/migrations/20261008193000_profile_approval_audit.sql, word for word.
 -- =============================================================================
 
@@ -485,7 +486,7 @@ create policy application_documents_owner_delete on storage.objects
   );
 
 -- =============================================================================
--- 5 of 36: 20261008194000_strip_signup_metadata.sql
+-- 5 of 37: 20261008194000_strip_signup_metadata.sql
 -- supabase/migrations/20261008194000_strip_signup_metadata.sql, word for word.
 -- =============================================================================
 
@@ -537,7 +538,7 @@ end;
 $$;
 
 -- =============================================================================
--- 6 of 36: 20261008195000_application_consent.sql
+-- 6 of 37: 20261008195000_application_consent.sql
 -- supabase/migrations/20261008195000_application_consent.sql, word for word.
 -- =============================================================================
 
@@ -604,7 +605,7 @@ end;
 $$;
 
 -- =============================================================================
--- 7 of 36: 20261008200000_variant_prices_and_quote_workflow.sql
+-- 7 of 37: 20261008200000_variant_prices_and_quote_workflow.sql
 -- supabase/migrations/20261008200000_variant_prices_and_quote_workflow.sql, word for word.
 -- =============================================================================
 
@@ -815,7 +816,7 @@ grant execute on function public.admin_price_order(uuid, jsonb) to authenticated
 grant execute on function public.admin_convert_quote(uuid, uuid) to authenticated;
 
 -- =============================================================================
--- 8 of 36: 20261009100000_price_boundary.sql
+-- 8 of 37: 20261009100000_price_boundary.sql
 -- supabase/migrations/20261009100000_price_boundary.sql, word for word.
 -- =============================================================================
 
@@ -1122,7 +1123,7 @@ alter table public.profiles
 -- alter table public.products alter column price set not null;
 
 -- =============================================================================
--- 9 of 36: 20261009110000_variant_model.sql
+-- 9 of 37: 20261009110000_variant_model.sql
 -- supabase/migrations/20261009110000_variant_model.sql, word for word.
 -- =============================================================================
 
@@ -1646,7 +1647,7 @@ where p.id = v.id and p.description = v.old_text;
 -- alter table public.products drop column if exists variant_axis;
 
 -- =============================================================================
--- 10 of 36: 20261009120000_catalog_corrections.sql
+-- 10 of 37: 20261009120000_catalog_corrections.sql
 -- supabase/migrations/20261009120000_catalog_corrections.sql, word for word.
 -- =============================================================================
 
@@ -2577,7 +2578,7 @@ where p.id = v.id
 -- where p.id = v.id and p.sku = v.new_sku;
 
 -- =============================================================================
--- 11 of 36: 20261009130000_submit_quote_v3.sql
+-- 11 of 37: 20261009130000_submit_quote_v3.sql
 -- supabase/migrations/20261009130000_submit_quote_v3.sql, word for word.
 -- =============================================================================
 
@@ -3032,7 +3033,7 @@ grant execute on function public.submit_quote(text, text, text, text, text, text
 -- drop table if exists public.quote_throttle;
 
 -- =============================================================================
--- 12 of 36: 20261009140000_profile_and_document_boundaries.sql
+-- 12 of 37: 20261009140000_profile_and_document_boundaries.sql
 -- supabase/migrations/20261009140000_profile_and_document_boundaries.sql, word for word.
 -- =============================================================================
 
@@ -3435,7 +3436,7 @@ create policy application_documents_owner_update on storage.objects
 --   set search_path = public as $$ select coalesce((select role = 'admin' from public.profiles where id = auth.uid()), false); $$;
 
 -- =============================================================================
--- 13 of 36: 20261009150000_quote_workflow.sql
+-- 13 of 37: 20261009150000_quote_workflow.sql
 -- supabase/migrations/20261009150000_quote_workflow.sql, word for word.
 -- =============================================================================
 
@@ -3697,7 +3698,7 @@ grant execute on function public.admin_convert_quote(uuid, uuid) to authenticate
 --   20261008200000 definition
 
 -- =============================================================================
--- 14 of 36: 20261010120000_admin_product_editor.sql
+-- 14 of 37: 20261010120000_admin_product_editor.sql
 -- supabase/migrations/20261010120000_admin_product_editor.sql, word for word.
 -- =============================================================================
 
@@ -3901,7 +3902,7 @@ create policy product_images_admin_delete on storage.objects
 -- drop sequence if exists public.products_id_seq;
 
 -- =============================================================================
--- 15 of 36: 20261010121000_admin_bulk_products.sql
+-- 15 of 37: 20261010121000_admin_bulk_products.sql
 -- supabase/migrations/20261010121000_admin_bulk_products.sql, word for word.
 -- =============================================================================
 
@@ -4097,7 +4098,7 @@ alter table public.pricing_tiers add constraint pricing_tiers_discount_range
 -- drop function if exists public.admin_bulk_adjust_prices(integer[], numeric, numeric, boolean);
 
 -- =============================================================================
--- 16 of 36: 20261010122000_order_operations.sql
+-- 16 of 37: 20261010122000_order_operations.sql
 -- supabase/migrations/20261010122000_order_operations.sql, word for word.
 -- =============================================================================
 
@@ -4392,7 +4393,7 @@ end $$;
 -- drop table if exists public.order_events;
 
 -- =============================================================================
--- 17 of 36: 20261010130000_catalog_apostrophes.sql
+-- 17 of 37: 20261010130000_catalog_apostrophes.sql
 -- supabase/migrations/20261010130000_catalog_apostrophes.sql, word for word.
 -- =============================================================================
 
@@ -4434,7 +4435,7 @@ update public.products set brand = 'Reese''s' where id = 166 and brand = 'Reeseâ
 -- update public.products set brand = 'Reeseâ€™s' where id = 166 and brand = 'Reese''s';
 
 -- =============================================================================
--- 18 of 36: 20261010131000_photo_filenames.sql
+-- 18 of 37: 20261010131000_photo_filenames.sql
 -- supabase/migrations/20261010131000_photo_filenames.sql, word for word.
 -- =============================================================================
 
@@ -4499,7 +4500,7 @@ update public.products p
 --    and p.img = v.new_img;
 
 -- =============================================================================
--- 19 of 36: 20261011110000_order_item_hints.sql
+-- 19 of 37: 20261011110000_order_item_hints.sql
 -- supabase/migrations/20261011110000_order_item_hints.sql, word for word.
 -- =============================================================================
 
@@ -4647,7 +4648,7 @@ revoke all on function public.enforce_order_item_price() from public, anon, auth
 -- revoke all on function public.enforce_order_item_price() from public, anon, authenticated;
 
 -- =============================================================================
--- 20 of 36: 20261011111000_profile_role_audit.sql
+-- 20 of 37: 20261011111000_profile_role_audit.sql
 -- supabase/migrations/20261011111000_profile_role_audit.sql, word for word.
 -- =============================================================================
 
@@ -4743,7 +4744,7 @@ revoke all on function public.log_profile_status() from public, anon, authentica
 -- alter table public.profile_status_log drop column if exists old_role, drop column if exists new_role;
 
 -- =============================================================================
--- 21 of 36: 20261011130000_catalog_names.sql
+-- 21 of 37: 20261011130000_catalog_names.sql
 -- supabase/migrations/20261011130000_catalog_names.sql, word for word.
 -- =============================================================================
 
@@ -4835,7 +4836,7 @@ update public.products set name = 'Gold Band lubricants' where id = 355 and name
 -- update public.products set name = 'Gold Band' where id = 355 and name = 'Gold Band lubricants';
 
 -- =============================================================================
--- 22 of 36: 20261011131000_home_slides.sql
+-- 22 of 37: 20261011131000_home_slides.sql
 -- supabase/migrations/20261011131000_home_slides.sql, word for word.
 -- =============================================================================
 
@@ -5008,7 +5009,7 @@ where not exists (select 1 from public.home_slides);
 -- drop function if exists public.stamp_home_slide_editor();
 
 -- =============================================================================
--- 23 of 36: 20261012100000_document_storage_lock.sql
+-- 23 of 37: 20261012100000_document_storage_lock.sql
 -- supabase/migrations/20261012100000_document_storage_lock.sql, word for word.
 -- =============================================================================
 
@@ -5075,7 +5076,7 @@ where id = 'application-documents';
 -- where id = 'application-documents';
 
 -- =============================================================================
--- 24 of 36: 20261012110000_carts.sql
+-- 24 of 37: 20261012110000_carts.sql
 -- supabase/migrations/20261012110000_carts.sql, word for word.
 -- =============================================================================
 
@@ -5205,7 +5206,7 @@ grant all on public.carts to service_role;
 -- drop function if exists public.cart_lines_valid(jsonb);
 
 -- =============================================================================
--- 25 of 36: 20261012120000_product_description_hidden.sql
+-- 25 of 37: 20261012120000_product_description_hidden.sql
 -- supabase/migrations/20261012120000_product_description_hidden.sql, word for word.
 -- =============================================================================
 
@@ -5253,7 +5254,7 @@ grant select (description_hidden) on public.products to anon, authenticated;
 -- alter table public.products drop column if exists description_hidden;
 
 -- =============================================================================
--- 26 of 36: 20261012130000_catalog_fixups.sql
+-- 26 of 37: 20261012130000_catalog_fixups.sql
 -- supabase/migrations/20261012130000_catalog_fixups.sql, word for word.
 -- =============================================================================
 
@@ -5361,7 +5362,7 @@ update public.products set sell_unit = 'single' where id in (16, 340) and sell_u
 -- update public.products set sell_unit = '' where id in (16, 340) and sell_unit = 'single';
 
 -- =============================================================================
--- 27 of 36: 20261012140000_admin_import_create.sql
+-- 27 of 37: 20261012140000_admin_import_create.sql
 -- supabase/migrations/20261012140000_admin_import_create.sql, word for word.
 -- =============================================================================
 
@@ -5543,7 +5544,7 @@ grant execute on function public.admin_import_products_v2(jsonb) to authenticate
 -- drop function if exists public.admin_import_products_v2(jsonb);
 
 -- =============================================================================
--- 28 of 36: 20261014100000_delist_kratom_mushroom.sql
+-- 28 of 37: 20261014100000_delist_kratom_mushroom.sql
 -- supabase/migrations/20261014100000_delist_kratom_mushroom.sql, word for word.
 -- =============================================================================
 
@@ -5601,7 +5602,7 @@ where id in (69, 70, 71, 72, 73, 74, 75, 76, 258, 281, 285, 288, 289, 293, 296, 
 --   and not active;
 
 -- =============================================================================
--- 29 of 36: 20261014101000_catalog_owner_answers.sql
+-- 29 of 37: 20261014101000_catalog_owner_answers.sql
 -- supabase/migrations/20261014101000_catalog_owner_answers.sql, word for word.
 -- =============================================================================
 
@@ -5682,7 +5683,7 @@ update public.products set description = 'Uncle Al''s cookies, from the cookie l
 -- update public.products set sub = 'Wellness Pills' where id = 219 and sub = 'Gifts';
 
 -- =============================================================================
--- 30 of 36: 20261014110000_home_slides_warehouse_reel.sql
+-- 30 of 37: 20261014110000_home_slides_warehouse_reel.sql
 -- supabase/migrations/20261014110000_home_slides_warehouse_reel.sql, word for word.
 -- =============================================================================
 
@@ -5771,7 +5772,7 @@ end $$;
 -- end $$;
 
 -- =============================================================================
--- 31 of 36: 20261014111000_orders_approved_accounts_only.sql
+-- 31 of 37: 20261014111000_orders_approved_accounts_only.sql
 -- supabase/migrations/20261014111000_orders_approved_accounts_only.sql, word for word.
 -- =============================================================================
 
@@ -6145,7 +6146,7 @@ grant execute on function public.submit_quote(text, text, text, text, text, text
 -- drop function public.require_ordering_account();
 
 -- =============================================================================
--- 32 of 36: 20261014120000_staff_role.sql
+-- 32 of 37: 20261014120000_staff_role.sql
 -- supabase/migrations/20261014120000_staff_role.sql, word for word.
 -- =============================================================================
 
@@ -6888,7 +6889,7 @@ grant execute on function public.admin_import_products_v2(jsonb) to authenticate
 -- drop function if exists public.is_staff_or_admin();
 
 -- =============================================================================
--- 33 of 36: 20261014121000_site_settings.sql
+-- 33 of 37: 20261014121000_site_settings.sql
 -- supabase/migrations/20261014121000_site_settings.sql, word for word.
 -- =============================================================================
 
@@ -7065,7 +7066,7 @@ insert into public.site_settings (id) values (true) on conflict (id) do nothing;
 -- drop function if exists public.site_settings_lines_ok(text[], integer, integer);
 
 -- =============================================================================
--- 34 of 36: 20261103120000_stage2_product_photos.sql
+-- 34 of 37: 20261103120000_stage2_product_photos.sql
 -- supabase/migrations/20261103120000_stage2_product_photos.sql, word for word.
 -- =============================================================================
 
@@ -7121,7 +7122,7 @@ update public.products p
 --    and p.img = v.new_img;
 
 -- =============================================================================
--- 35 of 36: 20261103140000_stage2_more_photos.sql
+-- 35 of 37: 20261103140000_stage2_more_photos.sql
 -- supabase/migrations/20261103140000_stage2_more_photos.sql, word for word.
 -- =============================================================================
 
@@ -7208,7 +7209,49 @@ update public.products p
 --    and p.img = v.new_img;
 
 -- =============================================================================
--- 36 of 36: products.sql
+-- 36 of 37: 20261106033000_missing_packshots.sql
+-- supabase/migrations/20261106033000_missing_packshots.sql, word for word.
+-- =============================================================================
+
+-- Official packshots for rows that still had no photo (November 2026).
+--
+-- Data only: products that still have no photo get the transparent PNG the
+-- catalog now names. A fresh database gets the same filenames from the
+-- regenerated seed. No schema, function or privilege changes.
+--   #9 Royal Blunts EZ Roll
+--   #211 Cheyenne filtered cigars
+--
+-- A row changes only while img is still null, so a photo an admin has set
+-- is kept, and running this file again changes nothing (AW-032).
+--
+-- Ids, SKUs and variant labels don't change.
+--
+-- Release order: AFTER the frontend that ships these files.
+
+update public.products p
+   set img = v.new_img
+  from (values
+    (9, 'p9-royal-blunts-ez-roll.png'),
+    (211, 'p211-cheyenne.png')
+  ) as v(id, new_img)
+ where p.id = v.id
+   and p.img is null;
+
+-- ---------------------------------------------------------------------------
+-- Reverse (AW-213). Not run. Clears the photo only where the row still
+-- names the file this migration wrote.
+--
+-- update public.products p
+--    set img = null
+--   from (values
+--     (9, 'p9-royal-blunts-ez-roll.png'),
+--     (211, 'p211-cheyenne.png')
+--   ) as v(id, new_img)
+--  where p.id = v.id
+--    and p.img = v.new_img;
+
+-- =============================================================================
+-- 37 of 37: products.sql
 -- supabase/seed/products.sql, word for word: adds the products whose id is new and
 -- never changes a product that is already there (prices, names and the
 -- active flag staff set in Admin stay as they are).
@@ -7896,7 +7939,7 @@ insert into public.products (id, name, brand, cat, sub, sku, variants, variant_a
   (6, 'Game Mini cigarillos', 'Game', 'TOBACCO', 'Cigars & Cigarillos', 'AW-GAME-MINI', '["Diamond","Red sweet","Black sweet"]'::jsonb, 'Variety', 'game_mini.webp', null, true, 'Game Minis, the small-format Game cigarillo. Three varieties: Diamond, Red sweet and Black sweet.', ''),
   (7, 'Swisher Sweets Mini cigarillos', 'Swisher Sweets', 'TOBACCO', 'Cigars & Cigarillos', 'AW-SS-MINI', '["Diamond","Red","Grape","Green"]'::jsonb, 'Variety', 'p7-swisher-sweets-mini-cigarillos.jpg', null, true, 'Swisher Sweets Mini cigarillos, the small-format Swisher Sweets. Four varieties: Diamond, Red, Grape and Green.', ''),
   (8, 'Swisher Sweets Leaf', 'Swisher Sweets', 'TOBACCO', 'Wraps & Leafs', 'AW-SS-LEAF', '["Irish cream","Honey","Sweet aromatic","Red","Green","Peach","Dark leaf","Dark aromatic"]'::jsonb, 'Flavor', 'ss_leaf.jpg', null, true, 'Swisher Sweets Leaf natural leaf cigars. Eight flavors: Irish cream, Honey, Sweet aromatic, Red, Green, Peach, Dark leaf and Dark aromatic.', ''),
-  (9, 'Royal Blunts EZ Roll', 'Royal Blunts', 'TOBACCO', 'Cigars & Cigarillos', 'AW-EZ-ROLL', '["Flavorless","OGK","Sour apple","Wet mango","Purple haze","Strawberry","Blueberry","Jamaican rum"]'::jsonb, 'Variety', null, null, true, 'EZ Roll from the cigar and cigarillo line in our Tobacco department. Eight varieties: Flavorless, OGK, Sour apple, Wet mango, Purple haze, Strawberry, Blueberry and Jamaican rum.', ''),
+  (9, 'Royal Blunts EZ Roll', 'Royal Blunts', 'TOBACCO', 'Cigars & Cigarillos', 'AW-EZ-ROLL', '["Flavorless","OGK","Sour apple","Wet mango","Purple haze","Strawberry","Blueberry","Jamaican rum"]'::jsonb, 'Variety', 'p9-royal-blunts-ez-roll.png', null, true, 'EZ Roll from the cigar and cigarillo line in our Tobacco department. Eight varieties: Flavorless, OGK, Sour apple, Wet mango, Purple haze, Strawberry, Blueberry and Jamaican rum.', ''),
   (10, '4K''s Wraps', '4K''s', 'TOBACCO', 'Wraps & Leafs', 'AW-4K-WRAP', '["Diamond","White grape","Red sweet","Green sweet","Black sweet","Napa grape","Blueberry","Watermelon"]'::jsonb, 'Flavor', '4k_wraps.jpg', null, true, '4K''s flavored cigar wraps. Eight flavors: Diamond, White grape, Red sweet, Green sweet, Black sweet, Napa grape, Blueberry and Watermelon.', ''),
   (11, 'Backwoods cigars 5-pack', 'Backwoods', 'TOBACCO', 'Cigars & Cigarillos', 'AW-BACKWOODS-5PK', '["Banana","Honey berry","Sweet aromatic","Original","Russian cream","Vanilla","Black Russian","Irish cream"]'::jsonb, 'Variety', 'backwoods_5pk.webp', 'BESTSELLER', true, 'Backwoods natural leaf cigars in 5-packs. Eight varieties: Banana, Honey berry, Sweet aromatic, Original, Russian cream, Vanilla, Black Russian and Irish cream.', '5-pack'),
   (12, 'LooseLeaf wraps 2-pack', 'LooseLeaf', 'TOBACCO', 'Wraps & Leafs', 'AW-LOOSE-LEAFS-2PK', '["Cinnamon milk","Sweet","Honey","Cookies & cream","Natural","Amber dream"]'::jsonb, 'Flavor', 'loose_leafs_2_99_1_99.webp', null, true, 'LooseLeaf flavored wraps in 2-packs, stocked at the $2.99 and $1.99 price points. Six flavors: Cinnamon milk, Sweet, Honey, Cookies & cream, Natural and Amber dream.', '2-pack'),
@@ -8098,7 +8141,7 @@ insert into public.products (id, name, brand, cat, sub, sku, variants, variant_a
   (208, 'Minute Maid 12 oz', 'Minute Maid', 'DRINKS & BAGS', 'Juices & Teas', 'AW-12OZ-MINUTE-MAID', '["Orange pineapple","Orange","Cranberry","Raspberry","Apple","Tropical"]'::jsonb, 'Flavor', '12oz_minute_maid_juice.webp', null, true, 'Minute Maid juice in 12 oz bottles. Six flavors: Orange pineapple, Orange, Cranberry, Raspberry, Apple and Tropical.', ''),
   (209, '24/7 cigarettes', '24/7', 'TOBACCO', 'Cigarettes', 'AW-24-7', '["Menthol 100","Menthol short","Red 100","Red short","Silver 100","Silver short","Gold 100","Gold short"]'::jsonb, 'Variety', '24_7.jpg', null, true, '24/7 cigarettes in 100s and shorts. Eight varieties: Menthol 100, Menthol short, Red 100, Red short, Silver 100, Silver short, Gold 100 and Gold short.', ''),
   (210, 'Seneca filtered cigars', 'Seneca', 'TOBACCO', 'Cigarettes', 'AW-SENECA-FILTER', '[]'::jsonb, null, 'seneca_filter_cigarettes.jpg', null, true, 'Seneca filtered cigars, cigarette-style little cigars.', ''),
-  (211, 'Cheyenne filtered cigars', 'Cheyenne', 'TOBACCO', 'Cigarettes', 'AW-CHEYENNE', '[]'::jsonb, null, null, null, true, 'Cheyenne from the cigarette line in our Tobacco department.', ''),
+  (211, 'Cheyenne filtered cigars', 'Cheyenne', 'TOBACCO', 'Cigarettes', 'AW-CHEYENNE', '[]'::jsonb, null, 'p211-cheyenne.png', null, true, 'Cheyenne from the cigarette line in our Tobacco department.', ''),
   (212, 'Ice bags', 'Assorted', 'DRINKS & BAGS', 'Bags & Carriers', 'AW-ICE-BAGS', '["8 lb","10 lb"]'::jsonb, 'Size', null, null, true, 'Ice bags from the bags and carriers line in our Drinks & Bags department. Two sizes: 8 lb and 10 lb.', ''),
   (213, 'Lil Leaf wraps', 'Lil Leaf', 'TOBACCO', 'Wraps & Leafs', 'AW-LIL-LEAF-WRAPS', '["Original"]'::jsonb, null, null, null, true, 'Lil Leaf wraps from the wraps and leaf line in our Tobacco department. Stocked in one variety: Original.', ''),
   (214, 'Tropicana juice (big)', 'Tropicana', 'DRINKS & BAGS', 'Juices & Teas', 'AW-TROPICANA-BIG', '["Orange","Cranberry","Apple","Ruby red"]'::jsonb, 'Flavor', 'p214-tropicana-juice-big.jpg', null, true, 'Tropicana juice in the big bottle. Four flavors: Orange, Cranberry, Apple and Ruby red.', ''),

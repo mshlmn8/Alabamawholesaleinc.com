@@ -68,13 +68,14 @@ supabase/migrations/20261014120000_staff_role.sql
 supabase/migrations/20261014121000_site_settings.sql
 supabase/migrations/20261103120000_stage2_product_photos.sql
 supabase/migrations/20261103140000_stage2_more_photos.sql
+supabase/migrations/20261106033000_missing_packshots.sql
 supabase/seed/products.sql
 ```
 
 On a project that is already running, apply only the migrations it doesn't
 have yet, in that order, then the seed, then deploy the frontend (see the
 release checklist at the end of this file). The live project has the files
-up to `20260927180000`; the thirty-five `20261008…`/`20261009…`/`20261010…`/`20261011…`/`20261012…`/`20261014…`/`20261103…`
+up to `20260927180000`; the thirty-six `20261008…`/`20261009…`/`20261010…`/`20261011…`/`20261012…`/`20261014…`/`20261103…`/`20261106…`
 files are new, and `supabase/release/apply-to-live-database.sql` is exactly
 those, then the seed.
 Review them before applying them; the site keeps working without them (see
@@ -161,12 +162,12 @@ Never edit a migration that has been applied anywhere; add a new file.
 
 After running the release file in the SQL editor, record its migrations as
 applied the same way (step 4, with every version from `20261008190000` to
-`20261103140000`).
+`20261106033000`).
 
 ### The release file (`supabase/release/apply-to-live-database.sql`)
 
 One file for the owner to paste into the SQL editor once (SETUP.md, part A),
-instead of thirty-five. `npm run release:sql` (`scripts/build-release-sql.mjs`)
+instead of thirty-six. `npm run release:sql` (`scripts/build-release-sql.mjs`)
 writes it: every migration after `LIVE_BASELINE` (the newest one the live
 project has, `20260927180000_application_documents.sql`), word for word under
 a numbered header, then `supabase/seed/products.sql`, then a last `select`
@@ -1362,7 +1363,7 @@ For each release:
   after" below), then publish an older frontend only if it is at or after
   the latest migration still applied.
 
-The live project needs all thirty-five, in this order (Cursor's seven
+The live project needs all thirty-six, in this order (Cursor's seven
 `20261008…` files, then the six `20261009…` ones, which build on them, then
 the five `20261010…` ones: three for the admin back office and two data-only
 catalog fixes, then `20261011110000` and `20261011111000`, which can go in
@@ -1380,7 +1381,7 @@ approved accounts place orders, any time after `20261009130000`, then the
 staff role `20261014120000`, any time, and the site settings
 `20261014121000`, after it, then the stage 2 packshots
 `20261103120000`, data only, after the frontend that ships those files,
-then `20261103140000`, the next packshots, the same way).
+then `20261103140000`, the next packshots, the same way, then `20261106033000`, the EZ Roll and Cheyenne packshots, the same way).
 Apply
 `20261008200000` and `20261009100000`–`20261009150000` in one session: the
 price boundary hides `products.variant_prices` and `20261009110000` moves it.
@@ -1455,8 +1456,10 @@ rolling it back.
 35. `20261103140000_stage2_more_photos.sql` (data only: photos for #311
     and sixteen stage 1 rows; **after the frontend that ships those
     files**)
+36. `20261106033000_missing_packshots.sql` (data only: photos for #9 and
+    #211; **after the frontend that ships those files**)
 
-Then `supabase/seed/products.sql`, then the frontend, then 18, 34 and 35.
+Then `supabase/seed/products.sql`, then the frontend, then 18, 34, 35 and 36.
 
 | Migration | What it changes | Before and after |
 | --- | --- | --- |
@@ -1495,6 +1498,7 @@ Then `supabase/seed/products.sql`, then the frontend, then 18, 34 and 35.
 | `20261014121000_site_settings.sql` | AW-030: `site_settings`, one row (`id = true`) of the announcement bar's messages, the public phone and email, the hours and the warehouse address, null meaning the site's own (`src/data/content.js`); everyone reads it, approved admin and staff accounts change it (`is_staff_or_admin()`), nobody deletes it; `updated_at` and `updated_by` are stamped; checks for each value (the form's, `src/data/siteFacts.js`). | Before it the storefront shows the values built into the site and Admin → Site settings says it needs the update; after it the storefront reads the row on each page load (one small request). Reverse block at its end. |
 | `20261103120000_stage2_product_photos.sql` | Data only: #139 Vinut, #141 Tropical Fantasy Aloe Vera, #274 RAW Guarana wraps and #331 Panasonic batteries get the transparent packshot the catalog names (`p139-vinut.png`, `p141-tropical-fantasy-aloe.png`, `p274-raw-guarana.png`, `p331-panasonic.png`), only while `img` is still null, so a photo set in Admin is kept and a re-run changes nothing. Stage 1 rows are new and take their photos from the seed. | **Apply AFTER deploying the frontend that ships these files.** Before it the storefront already shows them from the bundled catalog; a frontend from before this change would show "Photo coming soon" once the database names files it does not have. Reverse block at its end. |
 | `20261103140000_stage2_more_photos.sql` | Data only: #311 and sixteen stage 1 rows that are already in the database with no photo (#369, #373, #386, #389, #394, #413, #414, #529, #569, #573, #576, #595, #599, #608, #609, #611) get the transparent packshot the catalog names, only while `img` is still null. | **Apply AFTER deploying the frontend that ships these files.** A frontend from before this change would show "Photo coming soon" once the database names files it does not have. Reverse block at its end. |
+| `20261106033000_missing_packshots.sql` | Data only: #9 Royal Blunts EZ Roll and #211 Cheyenne filtered cigars get the transparent packshot the catalog names, only while `img` is still null. | **Apply AFTER deploying the frontend that ships these files.** A frontend from before this change would show "Photo coming soon" once the database names files it does not have. Reverse block at its end. |
 
 ### Later steps
 
