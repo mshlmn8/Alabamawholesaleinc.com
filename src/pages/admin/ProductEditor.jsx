@@ -644,7 +644,7 @@ export function ProductEditor({ id, fromId = null, rows, columns, loadError, onR
             <option value="">—</option>
             {PRODUCT_TAGS.map((tag) => <option key={tag} value={tag}>{tag}</option>)}
           </select>
-          <small className="field-hint" id="product-tag-hint">NEW puts it in the homepage’s New arrivals, BESTSELLER in Bestsellers.</small>
+          <small className="field-hint" id="product-tag-hint">NEW puts it in the homepage’s New arrivals, DEAL in New deals, BESTSELLER in Bestsellers.</small>
           <p className="form-error" id="product-tag-error">{err('tag')}</p>
         </div>
         <div>

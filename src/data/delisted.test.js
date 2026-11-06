@@ -87,8 +87,8 @@ describe('the delisted products (AW-001)', () => {
     for (const q of ['wava kava', 'mazza', 'psyched', 'blue lotus', 'hush hit', 'stoned']) {
       expect(searchProducts(PRODUCTS, q).items.filter((p) => isDelisted(p) || WORDS.test(text(p))), q).toEqual([]);
     }
-    const { newArrivals, bestsellers } = homeRails(PRODUCTS, { limit: 8 });
-    expect([...newArrivals, ...bestsellers].filter(isDelisted)).toEqual([]);
+    const { newArrivals, deals, bestsellers } = homeRails(PRODUCTS, { limit: 8 });
+    expect([...newArrivals, ...deals, ...bestsellers].filter(isDelisted)).toEqual([]);
     expect(newArrivals.length).toBeGreaterThan(0);
   });
 

@@ -89,8 +89,8 @@ describe('Admin -> Homepage (AW-119)', () => {
   it('shows the rails as the home page has them, with each product’s tag, rank and Edit link', async () => {
     await renderHomepage();
     expect(screen.getByText(RAILS_NOTE)).toBeTruthy();
-    const { newArrivals, bestsellers } = homeRails(PRODUCTS, { limit: RAIL_LENGTH, hasPhoto });
-    for (const [title, items] of [['New arrivals', newArrivals], ['Bestsellers', bestsellers]]) {
+    const { newArrivals, deals, bestsellers } = homeRails(PRODUCTS, { limit: RAIL_LENGTH, hasPhoto });
+    for (const [title, items] of [['New arrivals', newArrivals], ['New deals', deals], ['Bestsellers', bestsellers]]) {
       const rail = screen.getByRole('region', { name: title });
       const rows = within(rail).getAllByRole('listitem');
       expect(rows.map((li) => li.querySelector('.admin-slide-alt').textContent)).toEqual(items.map((p) => p.name));

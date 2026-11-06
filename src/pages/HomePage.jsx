@@ -1,7 +1,7 @@
 // Home, in the section order the plan fixed (AW-059, AW-060): the split hero
 // (h1, pitch, calls to action and the photo carousel), the trust band under
 // it (AW-005), the three services,
-// the departments, one row each of new arrivals and bestsellers, the two
+// the departments, one row each of new arrivals, new deals and bestsellers, the two
 // collection cards and the account application steps. Only the application
 // steps are numbered, the page's one real sequence (AW-216). A signed-in
 // account sees its own account's panel in place of the steps (AW-066).
@@ -149,7 +149,7 @@ export function HomePage({
   // Tags and homepage rank (AW-119), RAIL_LENGTH cards each (AW-061). Each
   // rail links to All products (/catalog): it mixes departments, and the site
   // has no listing of every new or bestselling product (AW-056).
-  const { newArrivals, bestsellers } = homeRails(products, { limit: RAIL_LENGTH, hasPhoto });
+  const { newArrivals, deals, bestsellers } = homeRails(products, { limit: RAIL_LENGTH, hasPhoto });
   // Whose prices the rails show, for an approved buyer (AW-107).
   const priceNote = isApprovedBuyer ? <p className="result-note">{tierPriceNote(priceTier)}</p> : null;
   // The hero photos staff keep in Admin -> Homepage, or the bundled ones
@@ -222,6 +222,16 @@ export function HomePage({
         </div>
         <div className="card-grid">
           {newArrivals.map(card)}
+        </div>
+      </section>
+
+      <section className="section" id="new-deals">
+        <div className="section-head">
+          <div><p className="eyebrow">CURRENT OFFERS</p><h2>New deals</h2>{priceNote}</div>
+          <Link to="/catalog">Browse all products</Link>
+        </div>
+        <div className="card-grid">
+          {deals.map(card)}
         </div>
       </section>
 
