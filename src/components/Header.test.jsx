@@ -101,6 +101,11 @@ describe('Categories menu (AW-165)', () => {
     expect(groups.map((g) => document.getElementById(g.getAttribute('aria-labelledby')).textContent))
       .toEqual(departments.map((d) => d.label));
     expect(screen.getByRole('group', { name: departments[0].label })).toBeTruthy();
+    for (const d of departments) {
+      const heading = screen.getByRole('group', { name: d.label }).querySelector('h3');
+      expect(heading.querySelector('svg.icon')).toBeTruthy();
+      expect(heading.textContent).toBe(d.label);
+    }
     expect(menu().querySelector('.aw-menu-footer span').textContent).toBe(`${departments.length} departments · ${PRODUCTS.length} products`);
   });
 
