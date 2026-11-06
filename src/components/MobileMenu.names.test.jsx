@@ -24,7 +24,13 @@ describe('MobileMenu department counts', () => {
       expect(count.children[0].textContent).toBe(String(d.count));
       expect(count.children[1].className).toBe('sr-only');
       expect(count.children[1].textContent).toBe(' products');
+      const mark = link.querySelector('.menu-index');
+      expect(mark.textContent).toBe('');
+      expect(mark.querySelector('svg.icon')).toBeTruthy();
+      expect(mark.querySelector('svg.icon path').getAttribute('d')).toBeTruthy();
     }
+    expect([...nav.querySelectorAll('.menu-index svg.icon')].map((svg) => svg.querySelector('path') && true)).toHaveLength(departments.length);
+    expect(nav.textContent).not.toMatch(/\b0\d\b/);
   });
 
   // The same count words as the desktop menu's footer (AW-217, NEW-056).

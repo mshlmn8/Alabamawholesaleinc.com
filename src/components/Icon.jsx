@@ -33,6 +33,15 @@ const PATHS = {
   shield: 'M12 3l7 3v5c0 4.4-2.9 8.1-7 10-4.1-1.9-7-5.6-7-10V6zM9 12l2 2 4-4',
   // Back to top on long department pages (AW-223).
   'arrow-up': 'M12 19V5M5 12l7-7 7 7',
+  // Department marks in the menus, one per catalog department.
+  'dept-tobacco': 'M3 11h12v3H3zM15 11h3v3h-3zM18.5 12.5h2.5',
+  'dept-vape': 'M10 3h4v2h-4zM9 5h6v13a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2zM11 9h2M11 12.5h2',
+  'dept-bag': 'M6 8h12l-1.2 12H7.2zM9 8V6a3 3 0 0 1 6 0v2',
+  'dept-candy': 'M4 7h16v11H4zM4 11h16M4 14.5h16M9.3 7v11M14.7 7v11',
+  'dept-food': 'M8 3v18M5 3v6a3 3 0 0 0 6 0V3',
+  'dept-basket': 'M4 9h16l-1.5 11H5.5zM8 9l1.2-4h5.6L16 9M9.5 13v4M14.5 13v4',
+  'dept-oil': 'M12 3.2S6.8 9.4 6.8 13.6a5.2 5.2 0 0 0 10.4 0C17.2 9.4 12 3.2 12 3.2z',
+  'dept-drink': 'M10 2.5h4V5l2 2.5V19a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V7.5L10 5zM9.5 8.5h5',
 };
 
 export const ICON_NAMES = Object.keys(PATHS);

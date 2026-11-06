@@ -32,6 +32,7 @@ import { Icon } from './Icon.jsx';
 import { useImageStatus } from '../lib/useImageStatus.js';
 import { topLines } from '../lib/departments.js';
 import { currentFor } from '../lib/navCurrent.js';
+import { departmentIcon } from '../lib/departmentIcon.js';
 import { productCount } from '../lib/format.js';
 
 // The logo photo, or the brand in text when it fails to load (AW-341). The
@@ -203,7 +204,7 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
             <div className="aw-menu-grid">
               {departments.map((c, i) => (
                 <div className="aw-department" key={c.key} role="group" aria-labelledby={`aw-department-${i}`}>
-                  <h3><span>{String(i + 1).padStart(2, '0')}</span><span id={`aw-department-${i}`}>{c.label}</span></h3>
+                  <h3><span aria-hidden="true"><Icon name={departmentIcon(c.key)} /></span><span id={`aw-department-${i}`}>{c.label}</span></h3>
                   {topLines(products, c.key, 3).map(s => (
                     <Link key={s} to={{ page: 'category', category: c.key, sub: s }} onClick={closeMenus}
                           aria-current={currentFor(raw, { page: 'category', category: c.key, sub: s })}>{s}</Link>
