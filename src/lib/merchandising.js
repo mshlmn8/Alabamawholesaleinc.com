@@ -2,7 +2,7 @@
 // show, decided by the tags and the homepage rank staff set in Admin ->
 // Products, instead of a list of ids in the code.
 //
-//   homeRails(products, { limit, hasPhoto }) -> { newArrivals, bestsellers }
+//   homeRails(products, { limit, hasPhoto }) -> { newArrivals, deals, bestsellers }
 //
 // `limit` is how many cards each rail shows (the homepage shows RAIL_LENGTH,
 // one row, AW-060). The legal-review guard below compares with the homepage
@@ -13,8 +13,9 @@
 // (products.featured_rank, 1 first; unranked last), then by their place in
 // the old hand-picked NEW_ARRIVALS_IDS (kept only to break ties, so today's
 // order holds until staff rank them), then newest id first.
+// New deals: the same for DEAL, by rank, then id.
 // Bestsellers: the same for BESTSELLER, by rank, then id (today's order).
-// A product is never in both rails.
+// A product is never in more than one rail.
 //
 //   featuredOrder(products, { hasPhoto }) -> a new array (AW-227)
 //
@@ -74,11 +75,18 @@ export function homeRails(products, { limit = RAIL_LIMIT, hasPhoto = photoOf, le
     .sort((a, b) => byRank(a, b) || placeOf(a) - placeOf(b) || idOf(b) - idOf(a))
     .slice(0, limit);
   const taken = new Set(newArrivals.map(idOf));
+  // The old homepage had no deals rail, so an unranked product under legal
+  // review stays off until staff give it a homepage rank.
+  const deals = shown
+    .filter((p) => p.tag === 'DEAL' && !taken.has(idOf(p)) && mayFeature(p, new Set()))
+    .sort((a, b) => byRank(a, b) || idOf(a) - idOf(b))
+    .slice(0, limit);
+  for (const p of deals) taken.add(idOf(p));
   const bestsellers = shown
     .filter((p) => p.tag === 'BESTSELLER' && !taken.has(idOf(p)) && mayFeature(p, before.bestsellers))
     .sort((a, b) => byRank(a, b) || idOf(a) - idOf(b))
     .slice(0, limit);
-  return { newArrivals, bestsellers };
+  return { newArrivals, deals, bestsellers };
 }
 
 // The order of the tags in the Featured sort (AW-227); untagged comes last.
