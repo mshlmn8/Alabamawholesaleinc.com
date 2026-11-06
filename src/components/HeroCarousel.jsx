@@ -77,12 +77,13 @@ const moveTo = (view, to, count) => {
 const photoKey = (slide) => slide.img || slide.picture?.src || null;
 
 // What a slide and its dot are called after their number: the department it
-// links to, or, for a slide without a link (Admin -> Homepage's "No link",
-// AW-119), its photo's alt text.
+// links to, or, for a slide without a link (a new product, or Admin ->
+// Homepage's "No link", AW-119), its photo's alt text.
 const nameOf = (slide) => {
   const name = slide.goCat ? catLabel(slide.goCat) : String(slide.alt || '').trim();
   return name ? `: ${name}` : '';
 };
+
 
 // The band under the photo (NEW-055): there is one when there are dots to
 // show (more than one slide) or a slide with the FDA statement.
@@ -110,13 +111,13 @@ function HeroReserve({ slides, kind }) {
 // `pending`: the slides may still change (useHomeSlides), so only their box
 // shows. No slides: the empty panel, sized as the bundled carousel the page
 // first painted. Otherwise the carousel.
-export function HeroCarousel({ slides, pending = false }) {
+export function HeroCarousel({ slides, pending = false, label = 'Featured photos' }) {
   if (pending) return <HeroReserve slides={slides} kind="pending" />;
   if (!slides.length) return <HeroReserve slides={HERO_SLIDES} kind="empty" />;
-  return <Carousel slides={slides} />;
+  return <Carousel slides={slides} label={label} />;
 }
 
-function Carousel({ slides }) {
+function Carousel({ slides, label }) {
   // The photos that failed to load (AW-342), by photoKey.
   const [failed, setFailed] = useState(() => new Set());
   const markFailed = (key) => setFailed((prev) => (prev.has(key) ? prev : new Set(prev).add(key)));
@@ -176,9 +177,12 @@ function Carousel({ slides }) {
   // (NEW-055). A flagged slide's band is its statement's, so its link stays
   // on the photo.
   const captionInBand = compact && band.controls && !active.nicotineWarning;
-  const caption = active.goCat
-    ? <Link className="home-carousel-caption" to={{ page: 'category', category: active.goCat }} draggable={false}>{`Shop ${catLabel(active.goCat)}`}</Link>
-    : null;
+  // A new product opens its page; a department photo opens that department.
+  const caption = active.caption && active.to
+    ? <Link className="home-carousel-caption" to={active.to} draggable={false}>{active.caption}</Link>
+    : active.goCat
+      ? <Link className="home-carousel-caption" to={{ page: 'category', category: active.goCat }} draggable={false}>{`Shop ${catLabel(active.goCat)}`}</Link>
+      : null;
 
   // Slide 1 always; the next one once the page and slide 1's photo have
   // loaded (the app often mounts after the page's load event), or once the
@@ -234,7 +238,7 @@ function Carousel({ slides }) {
   // The swipe handlers are on the whole carousel: in the band, the link's
   // stretched area still covers the photo (index.css).
   return (
-    <section className={`home-carousel${active.nicotineWarning ? ' is-warning' : ''}`} aria-roledescription="carousel" aria-label="Featured photos"
+    <section className={`home-carousel${active.nicotineWarning ? ' is-warning' : ''}`} aria-roledescription="carousel" aria-label={label}
              onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} onFocus={onFocus} onBlur={onBlur}
              onPointerDown={onPointerDown} onPointerUp={onPointerUp} onPointerCancel={onPointerCancel} onClickCapture={onClickCapture}>
       {/* Read out when the visitor changes slides, not on every automatic turn. */}

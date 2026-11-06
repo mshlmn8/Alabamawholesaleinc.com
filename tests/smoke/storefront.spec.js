@@ -6,7 +6,7 @@
 //
 // Pages live at path URLs (AW-043); old '#/' links redirect to them.
 import { test, expect } from '@playwright/test';
-import { fulfillHomeSlides, serveCatalog } from './catalog.js';
+import { serveCatalog } from './catalog.js';
 
 const AGE_KEY = 'aw-age-verified'; // STORAGE.age in src/data/content.js
 // The dated record src/lib/ageGate.js stores for "Yes, I am 21+" (AW-340).
@@ -631,25 +631,18 @@ test.describe('tobacco and vapor', () => {
     expect(errors).toEqual([]);
   });
 
-  // The bundled warehouse reel (AW-006) has no nicotine photo, so the
-  // flagged slide comes from Admin -> Homepage's rows (home_slides).
-  test('a hero slide flagged as a nicotine product shows the statement under the photo, uncovered, and keeps its space on the others', async ({ context, page }) => {
+  // New products include nicotine vapes and a candy. The statement shows
+  // under a vape and keeps its space on the candy.
+  test('a new nicotine product shows the statement under the photo, uncovered, and keeps its space on the others', async ({ page }) => {
     const errors = trackErrors(page);
-    const slide = (id, img, alt, goCat, nicotine = false) => ({ id, img, alt, go_cat: goCat, nicotine_warning: nicotine, sort: id * 10, active: true });
-    await context.route(/\/rest\/v1\/home_slides/, (route) => fulfillHomeSlides(route, [
-      slide(1, 'hero_candy.jpg', 'Display box of Turtles Bites chocolates', 'CANDIES'),
-      slide(2, 'hero_vape.jpg', 'Geek Bar Pulse X disposable vape advertisement', 'NOVELTIES', true),
-      slide(3, 'hero_wh_soda.jpg', 'Pallets of Faygo soda by the case', 'DRINKS & BAGS'),
-    ]));
     await page.goto('/');
     const carousel = page.locator('.home-carousel');
     await expect(carousel.locator('.home-carousel-slide')).toHaveCount(3);
     const warning = carousel.locator('.nicotine-warning');
-    await expect(warning).toBeHidden();
-    const spaceBefore = await page.locator('.home-carousel-warning').boundingBox();
-    await carousel.getByRole('button', { name: 'Next slide' }).click();
+    await expect(carousel.locator('.home-carousel-slide.is-active')).toHaveAttribute('aria-label', '1 of 3: Foger Switch Pro full kit');
     await expect(warning).toBeVisible();
     await expect(warning).toHaveText(FDA);
+    const spaceBefore = await page.locator('.home-carousel-warning').boundingBox();
     // Every photo stays inside the stage; one that grew past it covered the
     // controls and this statement on phones and tablets (AW-036).
     const overflow = await carousel.locator('.home-carousel-stage').evaluate((stage) => {
@@ -668,11 +661,13 @@ test.describe('tobacco and vapor', () => {
       return !el.contains(hit);
     });
     expect(covered).toBe(false);
-    // The statement takes the same space whichever slide shows, so nothing moves.
+    await carousel.getByRole('button', { name: 'Next slide' }).click();
+    await expect(warning).toBeVisible();
+    await carousel.getByRole('button', { name: 'Next slide' }).click();
+    await expect(carousel.locator('.home-carousel-slide.is-active')).toHaveAttribute('aria-label', '3 of 3: Tueni chews');
+    await expect(warning).toBeHidden();
     const spaceAfter = await page.locator('.home-carousel-warning').boundingBox();
     expect(Math.round(spaceAfter.height)).toBe(Math.round(spaceBefore.height));
-    await carousel.getByRole('button', { name: 'Next slide' }).click();
-    await expect(warning).toBeHidden();
     expect(errors).toEqual([]);
   });
 
@@ -691,8 +686,7 @@ test.describe('tobacco and vapor', () => {
   });
 });
 
-// The home page opens with its h1, the pitch and both calls to action on the
-// first screen (AW-004), on desktop and on a phone.
+// The home page opens on the new-product carousel, with no headline box.
 test.describe('home hero', () => {
   test.beforeEach(async ({ context }) => {
     await context.addInitScript(([key, value]) => {
@@ -700,18 +694,18 @@ test.describe('home hero', () => {
     }, [AGE_KEY, ageRecord(Date.now())]);
   });
 
-  test('shows the page\'s only h1 and both calls to action without scrolling', async ({ page }) => {
+  test('shows new products in the carousel and no headline box', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/');
     const hero = page.locator('.home-hero');
     await expect(page.locator('h1')).toHaveCount(1);
-    await expect(hero.getByRole('heading', { level: 1, name: 'Wholesale for licensed retailers.' })).toBeInViewport({ ratio: 1 });
-    await expect(hero.getByRole('button', { name: 'Apply for a trade account' })).toBeInViewport({ ratio: 1 });
-    await expect(hero.getByRole('link', { name: 'Browse the catalog' })).toBeInViewport({ ratio: 1 });
-    // The owner's warehouse reel (AW-006).
-    await expect(page.locator('.home-carousel-slide.is-active')).toHaveAttribute('aria-label', '1 of 8: The Alabama Wholesale Inc sign above the loading doors');
-    await hero.getByRole('button', { name: 'Apply for a trade account' }).click();
-    await expect(page.getByRole('dialog', { name: 'Apply for a trade account' })).toBeVisible();
+    await expect(hero.locator('h1')).toHaveText('Wholesale for licensed retailers.');
+    await expect(hero.locator('.home-hero-copy')).toHaveCount(0);
+    await expect(hero).not.toContainText('WHOLESALE DISTRIBUTOR');
+    const active = page.locator('.home-carousel-slide.is-active');
+    await expect(active).toHaveAttribute('aria-label', '1 of 3: Foger Switch Pro full kit');
+    await expect(active).toBeInViewport({ ratio: 1 });
+    await expect(active.getByRole('link', { name: 'Foger Switch Pro full kit' })).toHaveAttribute('href', '/product/62');
     expect(errors).toEqual([]);
   });
 });

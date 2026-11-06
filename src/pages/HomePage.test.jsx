@@ -5,25 +5,18 @@
 // chosen photo and the biggest lines on a solid band (AW-060, AW-061); one
 // row each of new arrivals and bestsellers without SKUs (AW-060); numbers only
 // on the application steps (AW-216). Products without a photo stay off the
-// rails (AW-029, Cursor PR #13). The hero photos come from Admin -> Homepage
-// once loaded, the bundled ones until then (AW-119).
-import { act, render, screen, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { COMPANY, DEPARTMENT_PHOTOS, HERO_SLIDES, SOURCING, VOLUME_PRICING } from '../data/content.js';
+// rails (AW-029, Cursor PR #13). The hero carousel shows new products.
+import { render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { COMPANY, DEPARTMENT_PHOTOS, SOURCING, VOLUME_PRICING } from '../data/content.js';
 import { PRODUCTS, NAV_ORDER, NEW_ARRIVALS_IDS } from '../data/products.js';
 import { departmentsFor, topLines } from '../lib/departments.js';
-import { resetHomeSlidesForTests } from '../lib/homeSlides.js';
-import { heroImage } from '../lib/images.js';
 import { showsNicotineWarning } from '../lib/regulated.js';
 import { hrefFor } from '../lib/routes.js';
 import { cardDetail } from '../components/ProductCard.jsx';
-import { HomePage, RAIL_LENGTH, departmentPhoto, hasPhoto } from './HomePage.jsx';
+import { HomePage, RAIL_LENGTH, departmentPhoto, hasPhoto, newProductSlides } from './HomePage.jsx';
 
-// No backend: the bundled hero photos, and no request (the tests' .env.local
-// may name a real project).
-beforeEach(() => resetHomeSlidesForTests({ client: null }));
 afterEach(() => {
-  resetHomeSlidesForTests({ client: null });
   vi.restoreAllMocks();
 });
 
@@ -103,22 +96,14 @@ describe('HomePage rails', () => {
 });
 
 describe('HomePage sections', () => {
-  it('opens with the split hero, holding the page\'s only h1', () => {
+  it('opens with the new-product carousel and the page\'s only h1, with no headline box', () => {
     renderHome();
     expect(document.querySelectorAll('h1')).toHaveLength(1);
-    expect(screen.getByRole('heading', { level: 1 }).closest('.home-hero')).not.toBeNull();
-    // Nothing in the page comes before the hero.
+    expect(document.querySelector('h1').closest('.home-hero')).not.toBeNull();
+    expect(document.querySelector('h1').className).toBe('sr-only');
     expect(document.querySelector('.home-hero').previousElementSibling).toBeNull();
-  });
-
-  it('passes the signed-in state to the hero calls to action', () => {
-    const hero = () => within(document.querySelector('.home-hero'));
-    const { unmount } = renderHome();
-    expect(hero().getByRole('button', { name: 'Apply for a trade account' })).toBeTruthy();
-    unmount();
-    renderHome({ signedIn: true });
-    expect(hero().queryByRole('button', { name: 'Apply for a trade account' })).toBeNull();
-    expect(screen.getByRole('link', { name: 'Go to my account' }).getAttribute('href')).toBe('/account');
+    expect(document.querySelector('.home-hero-copy')).toBeNull();
+    expect(document.querySelector('.home-carousel').getAttribute('aria-label')).toBe('New products');
   });
 
   it('runs hero, trust band, services, departments, new arrivals, bestsellers, collections, application', () => {
@@ -293,95 +278,27 @@ describe('HomePage department tiles', () => {
   });
 });
 
-// Admin -> Homepage's photos (AW-119), from a stand-in for the Supabase client.
-describe('HomePage hero photos', () => {
-  const STORAGE = 'https://abcdefgh.supabase.co/storage/v1/object/public/product-images/home/1760000000000-display.jpg';
-  const slidesClient = (answer) => ({
-    calls: 0,
-    from() {
-      this.calls += 1;
-      const builder = {
-        select: () => builder, eq: () => builder, order: () => builder, abortSignal: () => builder,
-        then: (resolve, reject) => Promise.resolve(answer()).then(resolve, reject),
-      };
-      return builder;
-    },
-  });
-  const renderLoaded = async (answer) => {
-    const client = slidesClient(answer);
-    resetHomeSlidesForTests({ client });
-    renderHome();
-    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
-    return client;
-  };
-  const slideLabels = () => [...document.querySelectorAll('.home-carousel-slide')].map((s) => s.getAttribute('aria-label'));
+describe('HomePage new-product carousel', () => {
+  const labels = () => [...document.querySelectorAll('.home-carousel-slide')].map((s) => s.getAttribute('aria-label'));
 
-  it('shows the bundled photos first and with no backend', () => {
+  it('shows new products with a photo, each opening its page, and no warehouse photo', () => {
     renderHome();
-    // The owner's warehouse reel (AW-006): a slide without a department is
-    // named by its photo's description.
-    expect(slideLabels()).toEqual([
-      '1 of 8: The Alabama Wholesale Inc sign above the loading doors',
-      '2 of 8: Two box trucks, one with the Alabama Wholesale logo, at the warehouse',
-      '3 of 8: The Graymont Ave N street sign in front of the warehouse',
-      '4 of 8: A long warehouse aisle of stocked pallet racks',
-      '5 of 8: Drinks & Bags',
-      '6 of 8: Food Stuff',
-      '7 of 8: Candies',
-      '8 of 8: The candy room: shelves of candy boxes and stacked cases on a checkered floor',
-    ]);
-    expect(document.querySelector('.home-carousel-slide.is-active img').getAttribute('alt')).toBe(HERO_SLIDES[0].alt);
-    expect(document.querySelector('.home-carousel .nicotine-warning')).toBeNull();
-  });
-
-  it('swaps in the photos staff keep, in their order, starting at slide 1, with the FDA warning on the flagged one', async () => {
-    const client = await renderLoaded(() => ({
-      data: [
-        { id: 9, img: 'hero_vape.jpg', alt: 'Vape display', go_cat: 'NOVELTIES', nicotine_warning: true, sort: 5 },
-        { id: 2, img: STORAGE, alt: 'Counter display of candy', go_cat: null, nicotine_warning: false, sort: 10 },
-      ],
-      error: null,
-    }));
-    expect(client.calls).toBe(1);
-    expect(slideLabels()).toEqual(['1 of 2: Novelties & Vapes', '2 of 2: Counter display of candy']);
+    const slides = newProductSlides(PRODUCTS);
+    expect(slides.map((s) => s.alt)).toEqual(['Foger Switch Pro full kit', 'RAZ 25K', 'Tueni chews']);
+    expect(labels()).toEqual(['1 of 3: Foger Switch Pro full kit', '2 of 3: RAZ 25K', '3 of 3: Tueni chews']);
     const active = document.querySelector('.home-carousel-slide.is-active');
-    expect(active.querySelector('img').getAttribute('src')).toBe(heroImage('hero_vape.jpg').picture.src);
-    expect(within(active).getByRole('link', { name: 'Shop Novelties & Vapes' })).toBeTruthy();
-    // The warning band shows for the vape photo.
+    expect(active.querySelector('img').getAttribute('alt')).toBe('Foger Switch Pro full kit');
+    expect(within(active).getByRole('link', { name: 'Foger Switch Pro full kit' }).getAttribute('href')).toBe('/product/62');
+    expect(slides.map((s) => s.nicotineWarning)).toEqual([true, true, false]);
     expect(document.querySelector('.home-carousel-warning').getAttribute('aria-hidden')).toBeNull();
-    // A photo with no link is named by its alt text.
-    expect(screen.getByRole('button', { name: 'Show slide 2: Counter display of candy' })).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/loading doors|Graymont|pallet racks/);
   });
 
-  it('holds the photos\' box empty until staff\'s photos load, never showing the bundled ones first (NEW-008)', async () => {
-    let release;
-    const client = slidesClient(() => new Promise((resolve) => { release = resolve; }));
-    resetHomeSlidesForTests({ client });
-    renderHome();
-    // The request is out (supabase-js's builder is a thenable, read a tick later).
-    await act(async () => { await Promise.resolve(); });
-    expect(client.calls).toBe(1);
-    expect(document.querySelector('.home-hero-media > .home-carousel.is-pending')).toBeTruthy();
-    expect(document.querySelector('.home-hero img')).toBeNull();
-    await act(async () => { release({ data: [{ id: 3, img: 'hero_lighters.jpg', alt: 'BIC lighters in a counter display tray', go_cat: 'MERCHANDISE', nicotine_warning: false, sort: 1 }], error: null }); });
-    expect(slideLabels()).toEqual(['1 of 1: Merchandise']);
-    expect(document.querySelector('.home-carousel-slide.is-active img').getAttribute('alt')).toBe('BIC lighters in a counter display tray');
-  });
-
-  it('keeps an empty panel beside the headline when every photo is turned off, so nothing moves (NEW-008)', async () => {
-    await renderLoaded(() => ({ data: [], error: null }));
+  it('leaves the carousel empty when nothing new has a photo', () => {
+    renderHome({ products: PRODUCTS.filter((p) => p.tag !== 'NEW') });
+    expect(newProductSlides(PRODUCTS.filter((p) => p.tag !== 'NEW'))).toEqual([]);
     expect(document.querySelector('section.home-carousel')).toBeNull();
-    const media = document.querySelector('.home-hero-media');
-    expect([...media.children].map((el) => el.className)).toEqual(['home-carousel is-empty']);
-    expect(media.firstElementChild.getAttribute('aria-hidden')).toBe('true');
-    expect(media.querySelector('img, a, button')).toBeNull();
-    expect(screen.getByRole('heading', { level: 1, name: 'Wholesale for licensed retailers.' })).toBeTruthy();
-  });
-
-  it('keeps the bundled photos when the table is missing', async () => {
-    await renderLoaded(() => ({ data: null, error: { code: 'PGRST205', message: 'Could not find the table public.home_slides' } }));
-    expect(slideLabels()).toHaveLength(HERO_SLIDES.length);
-    expect(document.querySelector('.home-carousel-slide.is-active img').getAttribute('alt')).toBe(HERO_SLIDES[0].alt);
+    expect(document.querySelector('.home-carousel.is-empty')).toBeTruthy();
   });
 });
 

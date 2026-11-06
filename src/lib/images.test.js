@@ -192,9 +192,9 @@ describe('zoomPicture and zoomSizes', () => {
 // least as wide as the widest stage, its own width for a narrower one.
 describe('heroSizes', () => {
   it('asks for the stage’s width for the warehouse photos, and a narrower photo’s own width', () => {
-    expect(HERO_STAGE_MAX).toBe(735);
+    expect(HERO_STAGE_MAX).toBe(1278);
     expect(heroSizes({ width: 1280 })).toBe(SIZES.hero);
-    expect(heroSizes({ width: 735 })).toBe(SIZES.hero);
+    expect(heroSizes({ width: 1278 })).toBe(SIZES.hero);
     expect(heroSizes({ width: 700 })).toBe('(max-width: 37.5em) 100vw, 700px');
     expect(heroSizes({ width: undefined })).toBe(SIZES.hero);
     expect(heroSizes(null)).toBe(SIZES.hero);
@@ -320,17 +320,12 @@ describe('SIZES follow the card and product-page geometry (AW-322)', () => {
     for (const vw of [390, 600, 851, 1000, 1440]) expect(evaluate(SIZES.categoryCard, vw, false)).toBeCloseTo(categoryCard(vw, false), 5);
   });
 
-  // The home hero's stage (AW-004, AW-006): the hero's 1px borders, its two
-  // columns (1.35 : 1 above 68.75em, 1 : 1 down to the compact layout, which
-  // stacks them) and the container.
-  const heroColumns = /\.home-hero \{ display: grid; grid-template-columns: minmax\(0, ([\d.]+)fr\) minmax\(0, ([\d.]+)fr\);[^}]*border: (\d+)px solid/.exec(css);
-  if (!heroColumns) throw new Error('index.css no longer has the hero columns');
-  const heroShare = Number(heroColumns[1]) / (Number(heroColumns[1]) + Number(heroColumns[2]));
-  const heroBorders = 2 * Number(heroColumns[3]);
+  // The home hero's stage: the hero's 1px borders and the full width of the
+  // container. The compact layout uses the phone margins.
+  const heroBorders = 2 * px(/\.home-hero \{[^}]*border: (\d+)px solid/);
   const heroStage = (vw, compact) => {
     if (compact || vw <= 850) return vw - g.compactMargin - heroBorders;
-    const hero = Math.min(vw - g.margin, g.max) - heroBorders;
-    return vw <= 1100 ? hero / 2 : hero * heroShare;
+    return Math.min(vw - g.margin, g.max) - heroBorders;
   };
   // The contact page's warehouse grid (AW-006) in the support pages' column,
   // beside the help nav: three columns, two from 53.125em to 68.75em and on
@@ -365,7 +360,7 @@ describe('SIZES follow the card and product-page geometry (AW-322)', () => {
   });
 
   it('takes the 740 rendition for the widest hero at 1x and the 1280 one on a 3x phone', () => {
-    expect(evaluate(SIZES.hero, 1440, false)).toBe(735);
+    expect(evaluate(SIZES.hero, 1440, false)).toBe(1278);
     expect(evaluate(SIZES.hero, 390, false) * 3).toBeGreaterThan(1000);
     expect(evaluate(SIZES.warehouse, 1440, false)).toBe(332);
   });

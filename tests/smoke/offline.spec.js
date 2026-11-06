@@ -64,7 +64,7 @@ test('offline, the support pages still open from the cache, and after reconnecti
     if (name && r.resourceType() === 'fetch') fetched.add(name);
   });
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1, name: 'Wholesale for licensed retailers.' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Shop by department' })).toBeVisible();
   await runIdle(page);
   await expect.poll(() => FETCHED_AHEAD.filter((name) => !fetched.has(name))).toEqual([]);
 
