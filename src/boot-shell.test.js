@@ -39,8 +39,8 @@ describe('index.html boot shell', () => {
     expect(html).toContain(`localStorage.getItem('${STORAGE.age}')`);
   });
 
-  // The head script colours the shell purple for visitors the age gate will
-  // ask (AW-340). Run it against the values src/lib/ageGate.js reads.
+  // The head script colours the shell with the age gate's paper for visitors
+  // it will ask (AW-340). Run it against the values src/lib/ageGate.js reads.
   it('agrees with the app about which stored confirmations still count', () => {
     const script = bootScript();
     expect(script).toContain('aw-gate');

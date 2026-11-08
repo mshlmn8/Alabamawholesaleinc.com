@@ -12,6 +12,25 @@
 // screen readers hear why the view changed.
 
 import { useEffect, useRef } from 'react';
+import { IMG } from '../data/theme.js';
+import { useImageStatus } from '../lib/useImageStatus.js';
+
+// The wordmark, or the name in text when the photo fails to load (AW-341).
+function GateBrand() {
+  const { status, attempt, ref, onLoad, onError } = useImageStatus();
+  if (status === 'failed') {
+    return (
+      <div className="brand">
+        <span className="aw-logo-text"><span>Alabama</span><small>WHOLESALE INC.</small></span>
+      </div>
+    );
+  }
+  return (
+    <div className="brand">
+      <img key={attempt} ref={ref} src={IMG.logo} alt="Alabama Wholesale Inc" width="236" height="86" onLoad={onLoad} onError={onError} />
+    </div>
+  );
+}
 
 export function AgeGate({ declined, onYes, onNo, onBack }) {
   const ref = useRef(null);
@@ -27,13 +46,13 @@ export function AgeGate({ declined, onYes, onNo, onBack }) {
   return (
     <div className="age-gate" ref={ref} role="dialog" aria-modal="true" aria-labelledby="age-gate-title" aria-describedby="age-gate-text">
       <div className="inner fade-in">
-        <div className="brand"><span>Alabama</span><small>WHOLESALE INC.</small></div>
+        <GateBrand />
         {declined ? (
           <div key="exit">
             <h2 id="age-gate-title">We&apos;re sorry</h2>
             <p id="age-gate-text">You must be 21 or older to enter this site. The catalog is for licensed retailers.</p>
             <div className="btn-row">
-              <button type="button" className="button on-dark" data-autofocus aria-describedby="age-gate-title age-gate-text" onClick={onBack}>Back to the age question</button>
+              <button type="button" className="button ghost" data-autofocus aria-describedby="age-gate-title age-gate-text" onClick={onBack}>Back to the age question</button>
             </div>
           </div>
         ) : (
@@ -42,7 +61,7 @@ export function AgeGate({ declined, onYes, onNo, onBack }) {
             <p id="age-gate-text">This site is for licensed retail businesses. You must be 21 or older to enter.</p>
             <div className="btn-row">
               <button type="button" className="button" data-autofocus onClick={onYes}>Yes, I am 21+</button>
-              <button type="button" className="button on-dark" onClick={onNo}>No, exit</button>
+              <button type="button" className="button ghost" onClick={onNo}>No, exit</button>
             </div>
           </div>
         )}

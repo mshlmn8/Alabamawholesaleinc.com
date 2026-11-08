@@ -53,6 +53,10 @@ describe('AgeGate', () => {
     expect(root.hasAttribute('inert')).toBe(true);
     expect(root.getAttribute('aria-hidden')).toBe('true');
     expect(document.activeElement).toBe(screen.getByRole('button', { name: /Yes, I am 21\+/ }));
+    const logo = screen.getByRole('img', { name: 'Alabama Wholesale Inc' });
+    expect(logo.getAttribute('src')).toMatch(/logo\.png$/);
+    expect(logo.closest('.brand')).toBeTruthy();
+    expect(gate.textContent).not.toContain('WHOLESALE INC.');
   });
 
   it('stays open on Escape', () => {
