@@ -511,23 +511,11 @@ p > .text-link { min-height: 0; min-width: 0; }
 .num, .apply-steps li::before, .next-steps li::before { font: 700 1.75rem/1 var(--display); color: var(--orange-dark); }
 .fine { margin: 22px 0 0; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: var(--text-sm); line-height: 1.7; }
 
-/* ============================ homepage hero (AW-004) ============================
-   The approved 2A split hero: the photos and a cream copy panel with the
-   page's h1, its pitch and the calls to action, 1.35 : 1. The copy comes
-   first in the page; wide screens put the photos on the left, the compact
-   layout stacks the copy on top. */
-.home-hero { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); grid-template-areas: 'media copy'; border: 1px solid var(--line); background: var(--tile); }
-.home-hero-copy { grid-area: copy; display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 40px; background: var(--cream); color: var(--purple); }
-.home-hero h1 { font-size: clamp(3rem, 2rem + 2.6vw, 4.75rem); margin-bottom: 16px; }
-.home-hero-text { max-width: 34em; margin: 0 0 24px; color: var(--ink); font-size: var(--text-lg); line-height: 1.6; }
-.home-hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
-.home-hero-media { grid-area: media; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
-/* Every hero photo failed (AW-342): the carousel renders nothing and the copy
-   takes the whole hero. Staff turning every photo off doesn't: that leaves an
-   empty panel (.home-carousel.is-empty, NEW-008), so the copy, which the page
-   first painted at half the hero, never reflows. */
-.home-hero-media:empty { display: none; }
-.home-hero:has(> .home-hero-media:empty) { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'copy'; }
+/* ============================ homepage hero ============================
+   The new-product carousel, the full width of the page. The h1 is visually
+   hidden (.sr-only). */
+.home-hero { border: 1px solid var(--line); background: var(--tile); }
+.home-hero-media { display: flex; flex-direction: column; min-width: 0; }
 
 /* ============================ homepage carousel ============================
    One stage of a fixed aspect ratio that clips (AW-036), and the band under
@@ -1968,10 +1956,6 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
 
 /* ============================ responsive ============================ */
 @media (max-width: 68.75em) {
-  /* Narrow desktops give the copy half the width, so both calls to action
-     fit on one row above the fold (1024x768). */
-  .home-hero { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .home-hero-copy { padding: 32px; }
   /* The narrower photo leaves no room beside the dots: the department link
      moves to the top. */
   .home-carousel-slide { align-items: flex-start; }
@@ -2053,8 +2037,6 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
     .aw-search { order: 2; flex: 1 1 12rem; }
     .aw-account-actions { order: 3; }
   }
-  .home-hero { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'copy' 'media'; }
-  .home-hero-copy { padding: 32px; }
   /* A phone on its side: the whole stage, with its pause toggle, and the
      band with the dots under it fit on the screen (the photo is contained,
      so it only gets smaller). The width is set, or the cap would narrow the
@@ -2130,10 +2112,6 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .footer-contact { grid-column: 2; }
 }
 @media (max-width: 37.5em) {
-  .home-hero-copy { padding: 24px; }
-  .home-hero h1 { font-size: 2.625rem; }
-  .home-hero-text { font-size: var(--text-base); margin-bottom: 20px; }
-  .home-hero-actions .button { flex: 1 1 auto; }
   .home-carousel-caption { margin: 12px 0 0 12px; max-width: calc(100% - 24px); }
   .home-carousel-prev { left: 12px; }
   .home-carousel-next, .home-carousel-toggle { right: 12px; }
@@ -2799,7 +2777,7 @@ ul.sub-pills { list-style: none; padding: 0; }
      A stepper keeps its number. */
   .site-header, .site-notices, #aw-toasts, #aw-layers > :not(.age-gate-layer), .footer-grid, .footer-policies, .policy-nav,
   .qty-row, .card-add, .stepper button, .filter-toggle, .category-filters, .active-filters, .category-sort, .dept-jump, .eligibility-form,
-  .home-carousel-toggle, .home-carousel-prev, .home-carousel-next, .home-carousel-dots, .home-hero-actions, .checkout-clear, .drawer-remove,
+  .home-carousel-toggle, .home-carousel-prev, .home-carousel-next, .home-carousel-dots, .checkout-clear, .drawer-remove,
   .drawer-line .choose, .variant-choose .button, .dialog-actions, .search-form, .not-found-search form, #quick-reorder,
   button.button, button.text-link, button.filter-signin, .icon-btn, .added-note, .form-note, .account-signout { display: none; }
   /* :has() selectors sit in rules of their own: a browser without :has()

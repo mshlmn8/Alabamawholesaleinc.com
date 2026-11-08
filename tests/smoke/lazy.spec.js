@@ -76,7 +76,7 @@ test('the home page fetches the account, quote, sign-in and support code into th
   page.on('request', (r) => { const name = chunkOf(r.url()); if (name) chunks.push({ name, type: r.resourceType() }); });
   const named = () => chunks.map((c) => c.name);
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1, name: 'Wholesale for licensed retailers.' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Shop by department' })).toBeVisible();
   await expect(page).toHaveTitle('Wholesale Tobacco, Vapes & Candy · Alabama Wholesale Inc');
   // After the load event the app asks for an idle moment; nothing loaded yet.
   await expect.poll(() => page.evaluate(() => window.__awIdle.length)).toBeGreaterThan(0);
@@ -153,7 +153,7 @@ test('a page opened from a link shows the loading view, then its heading takes f
     await route.continue();
   });
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1, name: 'Wholesale for licensed retailers.' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Shop by department' })).toBeVisible();
   await page.locator('footer').getByRole('link', { name: 'Delivery & service area' }).click();
   await expect(page).toHaveURL(/\/delivery$/);
   await expect(page.locator('main .page-loading [role="status"]')).toHaveText('Loading…');
