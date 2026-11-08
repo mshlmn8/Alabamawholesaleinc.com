@@ -98,6 +98,10 @@ describe('footer links (AW-285)', () => {
 describe('footer copy (AW-285)', () => {
   it('names every department in the blurb, from the catalog, without the consumer aside', () => {
     render(footer());
+    const logo = document.querySelector('.footer-logo');
+    expect(logo).not.toBeNull();
+    expect(logo.getAttribute('src')).toMatch(/logo\.png$/);
+    expect(document.querySelector('.footer-brand > span')).toBeNull();
     const blurb = document.querySelector('.footer-brand p').textContent;
     expect(blurb).toBe('Wholesale distributor of tobacco, novelties & vapes, merchandise, candies, food stuff, grocery, motor oil, and drinks & bags. Serving licensed retail stores.');
     for (const d of departments) expect(blurb).toContain(d.label.toLowerCase());
