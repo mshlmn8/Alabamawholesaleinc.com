@@ -22,9 +22,11 @@
 // can put the contact details beside the longer list (index.css).
 
 import { COMPANY, LICENSED_ONLY } from '../data/content.js';
+import { IMG } from '../data/theme.js';
 import { APPLY_LABEL, SIGN_IN_LABEL, TRADE_ACCOUNT_LABEL } from '../data/terms.js';
 import { Link, useRoute } from '../lib/router.js';
 import { currentFor } from '../lib/navCurrent.js';
+import { useImageStatus } from '../lib/useImageStatus.js';
 import { useMediaQuery } from '../lib/useMediaQuery.js';
 import { useSite } from '../lib/siteSettings.js';
 import { EmailText } from './ContactLinks.jsx';
@@ -63,6 +65,15 @@ export function footerBlurb(departments) {
   return `Wholesale distributor${names ? ` of ${names}` : ''}. Serving licensed retail stores.`;
 }
 
+// The wordmark. The footer is purple, and the mark's "WHOLESALE INC" is
+// purple too, so it sits on a white plate. The typed name is the fallback
+// when the photo fails to load (AW-341).
+function FooterLogo() {
+  const { status, attempt, ref, onLoad, onError } = useImageStatus();
+  if (status === 'failed') return <span className="footer-wordmark"><span>Alabama</span><small>WHOLESALE INC.</small></span>;
+  return <img key={attempt} className="footer-logo" ref={ref} src={IMG.logo} alt="" width="236" height="86" onLoad={onLoad} onError={onError} />;
+}
+
 export function Footer({ departments, signedIn = false, onLoginClick, onApplyClick, onHelp }) {
   const { raw } = useRoute();
   const current = (to) => currentFor(raw, to);
@@ -81,7 +92,7 @@ export function Footer({ departments, signedIn = false, onLoginClick, onApplyCli
       <div className="container">
         <div className="footer-grid">
           <div className="footer-brand">
-            <span>Alabama</span><small>WHOLESALE INC.</small>
+            <Link className="footer-logo-link" to="/" aria-label="Alabama Wholesale home"><FooterLogo /></Link>
             <p>{footerBlurb(departments)}</p>
           </div>
           {fold

@@ -1,6 +1,7 @@
 // Home, in the section order the plan fixed (AW-059, AW-060): the split hero
 // (h1, pitch, calls to action and the photo carousel), the trust band under
-// it (AW-005), the three services,
+// it (AW-005), then the catalog. The three services sit last, just above
+// the footer.
 // the departments, one row each of new arrivals, new deals and bestsellers, the two
 // collection cards and the account application steps. Only the application
 // steps are numbered, the page's one real sequence (AW-216). A signed-in
@@ -172,34 +173,6 @@ export function HomePage({
       <HomeHero slides={newProductSlides(products)} />
       <TrustBand />
 
-      {/* What the business offers, straight after the hero and its trust
-          band (AW-059): an icon, the claim and a link to the page that
-          explains it, or, for volume pricing, the trade desk's email and
-          phone. */}
-      <section className="services">
-        <h2 className="sr-only">Services</h2>
-        <div className="service">
-          <span className="service-icon" aria-hidden="true"><Icon name="truck" /></span>
-          <h3>Next-day delivery, our own trucks</h3>
-          {/* The threshold comes from content.js (AW-283). */}
-          <p>{`We run our own delivery service on routes in Alabama, Mississippi and Georgia. Free delivery on orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} when the stop is on a delivery route. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
-          <Link className="text-link" to="/delivery">Delivery and service area</Link>
-        </div>
-        {/* No Net-30 terms and no published volume discounts: volume
-            pricing goes through the trade desk (AW-025, owner answer 2026-10),
-            so the line's own email and phone links are this service's links. */}
-        <div className="service">
-          <span className="service-icon" aria-hidden="true"><Icon name="tag" /></span>
-          <h3>Buying in volume?</h3><p><VolumePricing /></p>
-        </div>
-        {/* TODO(owner): Is a tobacco license required for every trade account, or only for tobacco, vapor, and nicotine? This sentence is unchanged until you decide. (AW-129) */}
-        <div className="service">
-          <span className="service-icon" aria-hidden="true"><Icon name="shield" /></span>
-          <h3>Licensed businesses only</h3><p>We verify your state retail tobacco license and resale certificate before your first order. No consumer sales, no exceptions — 21+ trade accounts only.</p>
-          <Link className="text-link" to="/apply">How to apply</Link>
-        </div>
-      </section>
-
       <section className="section" id="catalog">
         <div className="section-head">
           <div><p className="eyebrow">FULL ASSORTMENT</p><h2>Shop by department</h2></div>
@@ -270,6 +243,33 @@ export function HomePage({
       </section>
 
       <AccountSection signedIn={signedIn} view={accountView(profile, account)} onApplyClick={onApplyClick} />
+
+      {/* What the business offers (AW-059), last on the page, just above the
+          footer: an icon, the claim and a link to the page that explains it,
+          or, for volume pricing, the trade desk's email and phone. */}
+      <section className="services">
+        <h2 className="sr-only">Services</h2>
+        <div className="service">
+          <span className="service-icon" aria-hidden="true"><Icon name="truck" /></span>
+          <h3>Next-day delivery, our own trucks</h3>
+          {/* The threshold comes from content.js (AW-283). */}
+          <p>{`We run our own delivery service on routes in Alabama, Mississippi and Georgia. Free delivery on orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} when the stop is on a delivery route. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
+          <Link className="text-link" to="/delivery">Delivery and service area</Link>
+        </div>
+        {/* No Net-30 terms and no published volume discounts: volume
+            pricing goes through the trade desk (AW-025, owner answer 2026-10),
+            so the line's own email and phone links are this service's links. */}
+        <div className="service">
+          <span className="service-icon" aria-hidden="true"><Icon name="tag" /></span>
+          <h3>Buying in volume?</h3><p><VolumePricing /></p>
+        </div>
+        {/* TODO(owner): Is a tobacco license required for every trade account, or only for tobacco, vapor, and nicotine? This sentence is unchanged until you decide. (AW-129) */}
+        <div className="service">
+          <span className="service-icon" aria-hidden="true"><Icon name="shield" /></span>
+          <h3>Licensed businesses only</h3><p>We verify your state retail tobacco license and resale certificate before your first order. No consumer sales, no exceptions — 21+ trade accounts only.</p>
+          <Link className="text-link" to="/apply">How to apply</Link>
+        </div>
+      </section>
     </>
   );
 }

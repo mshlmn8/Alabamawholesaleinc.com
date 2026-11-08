@@ -106,13 +106,14 @@ describe('HomePage sections', () => {
     expect(document.querySelector('.home-carousel').getAttribute('aria-label')).toBe('New products');
   });
 
-  it('runs hero, trust band, services, departments, new arrivals, new deals, bestsellers, collections, application', () => {
+  it('runs hero, trust band, departments, new arrivals, new deals, bestsellers, collections, application, then services', () => {
     renderHome();
     expect(document.querySelector('.home-hero').nextElementSibling.className).toBe('trust-band');
-    expect(document.querySelector('.trust-band').nextElementSibling.className).toBe('services');
+    expect(document.querySelector('.trust-band').nextElementSibling.className).not.toBe('services');
     const h2s = [...document.querySelectorAll('h2')].map(text);
-    const order = ['About Alabama Wholesale', 'Services', 'Shop by department', 'New arrivals', 'New deals', 'Bestsellers', 'Disposables, detox,hookah & more.', 'Tobacco, wraps& accessories.', 'Open a trade account'];
+    const order = ['About Alabama Wholesale', 'Shop by department', 'New arrivals', 'New deals', 'Bestsellers', 'Disposables, detox,hookah & more.', 'Tobacco, wraps& accessories.', 'Open a trade account', 'Services'];
     expect(h2s).toEqual(order);
+    expect(document.querySelector('.services').nextElementSibling).toBeNull();
     expect(document.getElementById('new-deals').previousElementSibling.id).toBe('new-arrivals');
     // The header, menu and footer link to these.
     const ids = [...document.querySelectorAll('section[id]')].map((s) => s.id);
