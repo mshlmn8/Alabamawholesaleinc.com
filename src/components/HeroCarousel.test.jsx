@@ -506,17 +506,15 @@ describe('swipe (AW-161)', () => {
   });
 });
 
-// The warehouse photos are 1600px wide (AW-006): the browser is asked for
-// the stage's width (SIZES.hero), not the largest rendition's; a photo
-// narrower than the widest stage asks for its own width, so it is never
-// drawn larger than its pixels (AW-036).
+// Every slide is fitted to the same stage, so a narrow packshot asks for
+// the stage's width too (SIZES.hero), not its own pixel width.
 describe('photo sizes', () => {
   const responsive = (name, width) => ({
     img: `/${name}-480.jpg`,
     picture: { src: `/${name}-480.jpg`, srcSet: `/${name}-480.jpg 480w`, webpSrcSet: `/${name}-480.webp 480w, /${name}-${width}.webp ${width}w`, width, height: Math.round((width * 9) / 16) },
   });
 
-  it('gives a wide photo the stage’s sizes and a narrower one its own width', () => {
+  it('asks for the stage’s width for a wide photo and a narrower one', () => {
     render(<HeroCarousel slides={[{ ...responsive('wide', 1280), alt: 'Wide' }, { ...responsive('narrow', 700), alt: 'Narrow' }]} />);
     interact();
     const sizes = (i) => {
@@ -524,6 +522,6 @@ describe('photo sizes', () => {
       return [slide.querySelector('source').getAttribute('sizes'), slide.querySelector('img').getAttribute('sizes')];
     };
     expect(sizes(0)).toEqual([SIZES.hero, SIZES.hero]);
-    expect(sizes(1)).toEqual(Array(2).fill('(max-width: 37.5em) 100vw, 700px'));
+    expect(sizes(1)).toEqual([SIZES.hero, SIZES.hero]);
   });
 });
