@@ -184,7 +184,7 @@
     #   https, and it would rewrite a local http://127.0.0.1 preview's requests.
     # A third-party host is added here and to the privacy policy's processor
     # list in the same change (AW-210).
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-4Y+Hx5808wn7skDAKyyRQwAiAHe0DySei0rvG5SBkfI='; style-src 'self' 'unsafe-inline'; img-src 'self' https://*.supabase.co; font-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-gpFll0IrhNbKaBh6Ar6FyUQaD5MObXhe0CtgUaV7GYc='; style-src 'self' 'unsafe-inline'; img-src 'self' https://*.supabase.co; font-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
     # The older form of frame-ancestors 'none'.
     X-Frame-Options = "DENY"
     # Browsers use each file only as the type the server sends (no sniffing).
