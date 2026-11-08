@@ -93,9 +93,9 @@ describe('whose prices the cards show (AW-107)', () => {
       <HomePage products={PRODUCTS} departments={departmentsFor(PRODUCTS)} profile={null} isApprovedBuyer={false} cart={{}}
                 addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} onApplyClick={() => {}} {...props} />
     );
-    const notes = () => [...document.querySelectorAll('#new-arrivals .section-head .result-note, #bestsellers .section-head .result-note')].map((el) => el.textContent);
+    const notes = () => [...document.querySelectorAll('#new-arrivals .section-head .result-note, #new-deals .section-head .result-note, #bestsellers .section-head .result-note')].map((el) => el.textContent);
     const view = render(home({ ...APPROVED, priceOf: () => 10, priceTier: SILVER }));
-    expect(notes()).toEqual(['Prices shown are your Silver tier prices, 5% off list.', 'Prices shown are your Silver tier prices, 5% off list.']);
+    expect(notes()).toEqual(['Prices shown are your Silver tier prices, 5% off list.', 'Prices shown are your Silver tier prices, 5% off list.', 'Prices shown are your Silver tier prices, 5% off list.']);
     view.rerender(home({}));
     expect(notes()).toEqual([]);
     view.rerender(home({ profile: { id: 'p', status: 'pending' } }));

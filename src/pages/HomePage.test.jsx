@@ -55,7 +55,7 @@ describe('HomePage rails', () => {
     const names = (id) => [...document.querySelectorAll(`#${id} .content-card h3`)].map((h) => h.textContent);
     expect(names('new-arrivals')).not.toContain('Dubai chocolate');
     expect(names('new-arrivals').length).toBeGreaterThan(0);
-    expect(document.querySelectorAll('#new-arrivals .photo-soon, #bestsellers .photo-soon')).toHaveLength(0);
+    expect(document.querySelectorAll('#new-arrivals .photo-soon, #new-deals .photo-soon, #bestsellers .photo-soon')).toHaveLength(0);
   });
 
   it('shows one row of four cards at most in each rail, without the SKU', () => {
@@ -63,7 +63,7 @@ describe('HomePage rails', () => {
     renderHome();
     // Three products are tagged NEW with a photo since #75 Wava kava, the
     // fourth card, was delisted (AW-001); staff tag more in Admin -> Products.
-    for (const [id, count] of [['new-arrivals', 3], ['bestsellers', 4]]) {
+    for (const [id, count] of [['new-arrivals', 3], ['new-deals', 3], ['bestsellers', 4]]) {
       const cards = document.querySelectorAll(`#${id} .content-card`);
       expect(cards, id).toHaveLength(count);
       for (const card of cards) {
@@ -79,7 +79,7 @@ describe('HomePage rails', () => {
 
   it('links each rail to All products, which spans every department, not to one department (AW-056)', () => {
     renderHome();
-    for (const id of ['new-arrivals', 'bestsellers']) {
+    for (const id of ['new-arrivals', 'new-deals', 'bestsellers']) {
       const head = document.querySelector(`#${id} .section-head`);
       const links = within(head).getAllByRole('link');
       expect(links.map((a) => [a.textContent, a.getAttribute('href')]), id).toEqual([['Browse all products', '/catalog']]);
@@ -106,16 +106,17 @@ describe('HomePage sections', () => {
     expect(document.querySelector('.home-carousel').getAttribute('aria-label')).toBe('New products');
   });
 
-  it('runs hero, trust band, services, departments, new arrivals, bestsellers, collections, application', () => {
+  it('runs hero, trust band, services, departments, new arrivals, new deals, bestsellers, collections, application', () => {
     renderHome();
     expect(document.querySelector('.home-hero').nextElementSibling.className).toBe('trust-band');
     expect(document.querySelector('.trust-band').nextElementSibling.className).toBe('services');
     const h2s = [...document.querySelectorAll('h2')].map(text);
-    const order = ['About Alabama Wholesale', 'Services', 'Shop by department', 'New arrivals', 'Bestsellers', 'Disposables, detox,hookah & more.', 'Tobacco, wraps& accessories.', 'Open a trade account'];
+    const order = ['About Alabama Wholesale', 'Services', 'Shop by department', 'New arrivals', 'New deals', 'Bestsellers', 'Disposables, detox,hookah & more.', 'Tobacco, wraps& accessories.', 'Open a trade account'];
     expect(h2s).toEqual(order);
+    expect(document.getElementById('new-deals').previousElementSibling.id).toBe('new-arrivals');
     // The header, menu and footer link to these.
     const ids = [...document.querySelectorAll('section[id]')].map((s) => s.id);
-    expect(ids).toEqual(['catalog', 'new-arrivals', 'bestsellers', 'apply']);
+    expect(ids).toEqual(['catalog', 'new-arrivals', 'new-deals', 'bestsellers', 'apply']);
   });
 
   it('names no kratom, kava or mushroom product anywhere on the page (AW-001)', () => {
