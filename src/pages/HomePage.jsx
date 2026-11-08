@@ -204,7 +204,7 @@ export function HomePage({
           <div><p className="eyebrow">FRESH INVENTORY</p><h2>New arrivals</h2>{priceNote}</div>
           <Link to="/catalog">Browse all products</Link>
         </div>
-        <div className="card-grid">
+        <div className="card-grid card-rail">
           {newArrivals.map(card)}
         </div>
       </section>
@@ -214,7 +214,7 @@ export function HomePage({
           <div><p className="eyebrow">CURRENT OFFERS</p><h2>New deals</h2>{priceNote}</div>
           <Link to="/catalog">Browse all products</Link>
         </div>
-        <div className="card-grid">
+        <div className="card-grid card-rail">
           {deals.map(card)}
         </div>
       </section>
@@ -224,7 +224,7 @@ export function HomePage({
           <div><p className="eyebrow">PROVEN MOVERS</p><h2>Bestsellers</h2>{priceNote}</div>
           <Link to="/catalog">Browse all products</Link>
         </div>
-        <div className="card-grid">
+        <div className="card-grid card-rail">
           {bestsellers.map(card)}
         </div>
       </section>

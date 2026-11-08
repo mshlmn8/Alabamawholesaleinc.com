@@ -115,6 +115,9 @@ describe('HomePage sections', () => {
     expect(h2s).toEqual(order);
     expect(document.querySelector('.services').nextElementSibling).toBeNull();
     expect(document.getElementById('new-deals').previousElementSibling.id).toBe('new-arrivals');
+    for (const id of ['new-arrivals', 'new-deals', 'bestsellers']) {
+      expect(document.querySelector(`#${id} .card-rail`).classList.contains('card-grid')).toBe(true);
+    }
     // The header, menu and footer link to these.
     const ids = [...document.querySelectorAll('section[id]')].map((s) => s.id);
     expect(ids).toEqual(['catalog', 'new-arrivals', 'new-deals', 'bestsellers', 'apply']);

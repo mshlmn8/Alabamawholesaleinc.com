@@ -404,7 +404,7 @@ export function ProductPage({
             <div><p className="eyebrow">{sameLine ? 'SAME LINE' : 'RELATED'}</p><h2>{sameLine ? `More ${p.sub}` : `More from ${catLabel(p.cat)}`}</h2></div>
             <Link to={{ page: 'category', category: p.cat, sub: sameLine ? p.sub : null }}>View all <span className="sr-only">{sameLine ? p.sub : catLabel(p.cat)}</span></Link>
           </div>
-          <div className="card-grid">
+          <div className="card-grid card-rail">
             {related.map(r => <ProductCard key={r.id} p={r} profile={profile} account={account} isApprovedBuyer={isApprovedBuyer} priceOf={priceOf} pricesStatus={pricesStatus} cart={cart} addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} />)}
           </div>
         </section>

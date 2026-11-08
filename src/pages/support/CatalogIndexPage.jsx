@@ -97,7 +97,7 @@ export function CatalogIndexPage({ products, departments, ...cardProps }) {
                 })}
               </div>
               {cards.length > 0 && (
-                <div className="card-grid">
+                <div className="card-grid card-rail">
                   {/* The first department's cards load at once, and its
                       first photo, the likely largest paint, first (AW-323). */}
                   {cards.map((p, j) => <ProductCard key={p.id} p={p} {...cardProps} eager={i === 0} priority={i === 0 && j === 0} />)}
