@@ -61,12 +61,13 @@
       .boot-brand small { display: block; margin-top: 6px; font-size: 0.75rem; letter-spacing: 0.2em; color: #281459; }
       .boot-help { visibility: hidden; }
       .boot.slow .boot-help { visibility: visible; }
-      html.aw-gate .boot, html.aw-gate .boot-brand small { background: #281459; color: #fff; }
+      html.aw-gate .boot { background: #f6f3ee; color: #24202c; }
+      html.aw-gate .boot-brand small { color: #281459; }
     </style>
     <noscript><style>#root .boot { display: none; }</style></noscript>
     <script>
-      // Visitors the age gate will ask get its purple, so the shell does not
-      // flash white first. Same test as src/lib/ageGate.js: a record from the
+      // Visitors the age gate will ask get its paper background, so the shell
+      // does not flash white first. Same test as src/lib/ageGate.js: a record from the
       // last 30 days (2592000000 ms) dated no more than a day (86400000 ms)
       // ahead; the old undated 'yes' no longer counts. The trade desk line
       // appears if the app has not rendered after 8s.

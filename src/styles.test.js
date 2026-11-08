@@ -584,7 +584,7 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
   });
 
   it('never turns a link orange on a purple surface', () => {
-    const purple = /^(\.trade-bar|\.footer|\.contact-strip|\.editorial-card|\.age-gate|\.fda-note)/;
+    const purple = /^(\.trade-bar|\.footer|\.contact-strip|\.editorial-card|\.fda-note)/;
     const onPurple = hoverRules.filter((r) => r.selectors.some((s) => purple.test(s)));
     expect(onPurple.length).toBeGreaterThan(3);
     for (const { selectors, body } of onPurple) expect(body, selectors.join(', ')).not.toMatch(/--orange/);
