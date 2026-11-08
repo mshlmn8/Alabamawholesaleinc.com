@@ -532,24 +532,23 @@ p > .text-link { min-height: 0; min-width: 0; }
    text on a 320-430px phone the toggle sat on Next. The minimum is in rem,
    so at the default text size it is at most 3px over a 320px phone's 16:9
    height (326px and wider, below it); at large text the stage
-   grows taller and the photo, never drawn larger than its own size, stays
-   centred in it. The same three rows (a flagged slide's link at the top,
+   grows taller and the photo stays fitted in that same window. The same three rows (a flagged slide's link at the top,
    previous/next, then its dots and the toggle) fit one above the other. */
 .home-carousel-stage { position: relative; aspect-ratio: 16 / 9; min-height: calc(3 * var(--tap) + 2rem); overflow: hidden; background: var(--tile); -webkit-user-select: none; user-select: none; }
 /* Each slide is a stacking context, so its photo (z-index -1) sits under
    the department link that follows it in the page. */
 .home-carousel-slide { position: absolute; inset: 0; z-index: 0; display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity .3s; }
 .home-carousel-slide.is-active { opacity: 1; pointer-events: auto; }
-/* The photo stays out of grid flow, centred by inset and auto margins:
-   inside <picture> (display: contents) the <source> takes a grid row of its
-   own, and an in-flow img then grows past the stage, over the controls and
-   the slide's nicotine warning (AW-026). It is never drawn larger than its
-   own size: no width: 100%. */
-.home-carousel-slide img { position: absolute; inset: 0; z-index: -1; margin: auto; max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; display: block; }
+/* The photo stays out of grid flow: inside <picture> (display: contents)
+   the <source> takes a grid row of its own, and an in-flow img then grows
+   past the stage, over the controls and the slide's nicotine warning
+   (AW-026). Every photo fills this one stage and is fitted inside it, so a
+   tall packshot and a wide one keep the same window. */
+.home-carousel-slide img { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; }
 /* The shown slide's department link, a solid label at the photo's foot (at
    its top on narrower screens, in the band in the compact layout). Its
    ::after covers the whole photo, so a tap anywhere on it follows the link. */
-.home-carousel-caption { display: inline-flex; align-items: center; min-height: var(--tap); max-width: calc(100% - 28px); margin: 0 0 14px 14px; padding: 6px 16px; background: var(--purple); color: #fff; font-size: var(--text-sm); font-weight: 700; line-height: 1.25; }
+.home-carousel-caption { display: inline-flex; align-items: center; min-height: var(--tap); max-width: calc(100% - 28px); margin: 0 0 14px 14px; padding: 6px 16px; background: var(--purple); color: #fff; font-size: var(--text-sm); font-weight: 700; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .home-carousel-caption::after { content: ''; position: absolute; inset: 0; }
 .home-carousel-toggle, .home-carousel-prev, .home-carousel-next { position: absolute; z-index: 2; width: var(--tap); height: var(--tap); border-color: transparent; box-shadow: 0 2px 10px var(--shadow-popover); }
 .home-carousel-prev, .home-carousel-next { top: 50%; margin-top: calc(var(--tap) / -2); font-size: 1.375rem; }
@@ -2119,7 +2118,7 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   /* Too narrow for the link and the dots side by side: two rows, the link
      over the dots. Always two, so the dots don't move when a slide has no
      link (or is the vape slide, whose link is on the photo). */
-  .home-carousel-controls { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(var(--tap), auto) minmax(var(--tap), auto); justify-items: center; row-gap: 8px; min-height: calc(2 * var(--tap) + 24px); padding: 8px 12px; }
+  .home-carousel-controls { grid-template-columns: minmax(0, 1fr); grid-template-rows: var(--tap) var(--tap); justify-items: center; row-gap: 8px; height: calc(2 * var(--tap) + 24px); min-height: 0; padding: 8px 12px; }
   .home-carousel-controls .home-carousel-caption { grid-row: 1; justify-self: center; }
   .home-carousel-controls .home-carousel-dots { grid-column: 1; grid-row: 2; }
   .button { padding: 12px 18px; }

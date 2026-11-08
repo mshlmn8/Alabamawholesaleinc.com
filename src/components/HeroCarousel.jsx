@@ -3,9 +3,9 @@
 // HERO_SLIDES, the owner's warehouse reel; AW-119, AW-006), each slide
 // linking to its department when it has one.
 //
-// - The stage keeps one aspect ratio and clips, and a photo is never drawn
-//   larger than its own size, so no slide spills over the controls or the
-//   next section (AW-036).
+// - The stage keeps one aspect ratio and clips. Every photo is fitted into
+//   that same window, so a taller or wider packshot does not resize it
+//   (AW-036).
 // - Autoplay starts only after the visitor's first interaction with the page,
 //   so the first load's largest paint stays on slide 1 or the heading
 //   (AW-177). It never runs with reduced motion; it pauses while the pointer
@@ -40,7 +40,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { HERO_SLIDES } from '../data/content.js';
 import { catLabel } from '../lib/format.js';
-import { heroSizes } from '../lib/images.js';
+import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { MOBILE_QUERY, useMediaQuery } from '../lib/useMediaQuery.js';
 import { Icon } from './Icon.jsx';
@@ -251,9 +251,9 @@ function Carousel({ slides, label }) {
             <Icon name={paused ? 'play' : 'pause'} />
           </button>
         )}
-        {/* Photos render at no more than their own pixel size, a wide one
-            (the warehouse reel) at the stage's width (heroSizes). Slide 1 is
-            the page's largest image, so it loads eagerly at high priority. */}
+        {/* Every photo is fitted to the stage, so the window stays one size.
+            Slide 1 is the page's largest image, so it loads eagerly at high
+            priority. */}
         {media.map(({ slide, index }, i) => {
           const isActive = i === safeIndex;
           const warm = isWarm(i);
@@ -262,7 +262,7 @@ function Carousel({ slides, label }) {
                  role="group" aria-roledescription="slide" aria-label={`${i + 1} of ${count}${nameOf(slide)}`}
                  aria-hidden={isActive ? undefined : 'true'}>
               {warm && slide.picture?.src && (
-                <Picture picture={slide.picture} alt={slide.alt || ''} draggable={false} sizes={heroSizes(slide.picture)}
+                <Picture picture={slide.picture} alt={slide.alt || ''} draggable={false} sizes={SIZES.hero}
                          priority={i === 0} loading={i === 0 ? 'eager' : 'lazy'} onFail={() => markFailed(photoKey(slide))}
                          onLoad={i === 0 ? onFirstPhoto : undefined} onError={i === 0 ? onFirstPhoto : undefined} />
               )}

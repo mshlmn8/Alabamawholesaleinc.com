@@ -1981,6 +1981,8 @@ describe('the hero stage at large browser text', () => {
   it('is at least three touch targets and 2rem tall, so the pause toggle never meets Next', () => {
     expect(own('.home-carousel-stage')['min-height']).toBe('calc(3 * var(--tap) + 2rem)');
     expect(own('.home-carousel-stage')['aspect-ratio']).toBe('16 / 9');
+    // Every photo fills that one stage. Its own pixel size does not change the window.
+    expect(own('.home-carousel-slide img')).toMatchObject({ width: '100%', height: '100%', 'object-fit': 'contain', 'object-position': 'center' });
     expect(own('.home-carousel-prev, .home-carousel-next')).toMatchObject({ top: '50%', 'margin-top': 'calc(var(--tap) / -2)' });
     // The toggle's distance from the stage's foot, at every width.
     const bottoms = all.filter((r) => r.selectors.includes('.home-carousel-toggle')).map((r) => declarations(r.body).bottom).filter(Boolean).map(px);
