@@ -712,6 +712,7 @@ describe('cards with a stretched link (AW-170, AW-154, AW-304, AW-303)', () => {
 
   it('keeps cards at least 12.5rem wide: four in a row only where they fit, at most three beside the filters, two on phones', () => {
     expect(own('.card-grid')['grid-template-columns']).toBe('repeat(4, minmax(0,1fr))');
+    expect(own('.card-rail')).toMatchObject({ display: 'flex', 'overflow-x': 'auto', 'scroll-snap-type': 'x mandatory' });
     expect(inBlock('(max-width: 58.5em)', '.card-grid')).toEqual([{ 'grid-template-columns': 'repeat(2, minmax(0,1fr))' }]);
     expect(own('.category-card-grid')['grid-template-columns']).toBe('repeat(auto-fill, minmax(max(12.5rem, (100% - 2 * var(--grid-gap)) / 3), 1fr))');
     // The department grid rule follows the 58.5em block, and the phone rule follows both.

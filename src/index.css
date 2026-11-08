@@ -608,9 +608,15 @@ p > .text-link { min-height: 0; min-width: 0; }
 .section-head .result-note { margin-top: 8px; }
 .section-head > a { display: flex; align-items: center; min-height: var(--tap); font-size: var(--text-sm); font-weight: 600; white-space: nowrap; background: none; border: 0; color: var(--link-color); padding: 0; text-decoration: underline; text-underline-offset: var(--link-offset); }
 .card-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: var(--grid-gap); }
-/* No card narrower than 12.5rem (AW-154): a row of four (the home rails, the
-   product page's "More" row, search) becomes two by two below about 58em. The
-   department grid sets its own columns further down, and phones keep two. */
+/* A short product row (home rails, a department preview, "more from this
+   line"): one line, swiped sideways to the rest. A card is never the full
+   width, so the next one peeks in and shows there is more. */
+.card-rail { display: flex; gap: var(--grid-gap); overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scroll-padding-inline: 2px; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+.card-rail > .content-card { flex: 0 0 16.5rem; width: 16.5rem; max-width: calc(100% - 2.75rem); scroll-snap-align: start; }
+/* No card narrower than 12.5rem (AW-154): a catalog or search grid of four
+   becomes two by two below about 58em. The department grid sets its own
+   columns further down, and phones keep two. The home rails and other short
+   rows are .card-rail and stay one scrolling line. */
 @media (max-width: 58.5em) {
   .card-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
 }
@@ -2851,6 +2857,8 @@ ul.sub-pills { list-style: none; padding: 0; }
   .sub-pill { min-height: 0; padding: 4px 10px; }
   .toolbar-row { min-height: 0; }
   .card-grid, .category-card-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  .card-rail { display: grid; overflow: visible; }
+  .card-rail > .content-card { width: auto; max-width: none; }
   .card-block { aspect-ratio: 1.5; margin-bottom: 8px; }
   .content-card h3 { display: block; -webkit-line-clamp: none; overflow: visible; }
   .card-meta { min-height: 0; }
