@@ -841,6 +841,7 @@ describe('the product page photo and purchase column (AW-163, AW-150)', () => {
     expect(rules(sideways[0].body).map((r) => [r.selectors.join(', '), declarations(r.body)])).toEqual([
       ['.pd-grid', { 'grid-template-columns': 'minmax(0, 2fr) minmax(0, 3fr)' }],
       ['.pd-media', { 'max-height': '45svh' }],
+      ['.home-carousel-stage', { width: '100%', 'max-height': '75vh' }],
     ]);
   });
 
@@ -1983,7 +1984,7 @@ describe('the hero stage at large browser text', () => {
     expect(own('.home-carousel-stage')['min-height']).toBe('calc(3 * var(--tap) + 2rem)');
     expect(own('.home-carousel-stage')['aspect-ratio']).toBe('16 / 9');
     // Every photo fills that one stage. Its own pixel size does not change the window.
-    expect(own('.home-carousel-slide img')).toMatchObject({ width: '100%', height: '100%', 'object-fit': 'contain', 'object-position': 'center' });
+    expect(own('.home-carousel-slide img')).toMatchObject({ width: '100%', height: '100%', 'object-fit': 'cover', 'object-position': 'center' });
     expect(own('.home-carousel-prev, .home-carousel-next')).toMatchObject({ top: '50%', 'margin-top': 'calc(var(--tap) / -2)' });
     // The toggle's distance from the stage's foot, at every width.
     const bottoms = all.filter((r) => r.selectors.includes('.home-carousel-toggle')).map((r) => declarations(r.body).bottom).filter(Boolean).map(px);
