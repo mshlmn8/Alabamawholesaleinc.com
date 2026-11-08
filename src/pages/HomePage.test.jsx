@@ -8,13 +8,12 @@
 // rails (AW-029, Cursor PR #13). The hero carousel shows new products.
 import { render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { COMPANY, DEPARTMENT_PHOTOS, SOURCING, VOLUME_PRICING } from '../data/content.js';
+import { COMPANY, DEPARTMENT_GROUPS, SOURCING, VOLUME_PRICING } from '../data/content.js';
 import { PRODUCTS, NAV_ORDER, NEW_ARRIVALS_IDS } from '../data/products.js';
 import { departmentsFor, topLines } from '../lib/departments.js';
-import { showsNicotineWarning } from '../lib/regulated.js';
 import { hrefFor } from '../lib/routes.js';
 import { cardDetail } from '../components/ProductCard.jsx';
-import { HomePage, RAIL_LENGTH, departmentPhoto, hasPhoto, newProductSlides } from './HomePage.jsx';
+import { HomePage, RAIL_LENGTH, departmentPhotos, hasPhoto, newProductSlides } from './HomePage.jsx';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -30,14 +29,6 @@ const renderHome = (props = {}) => {
 };
 const byId = (id) => PRODUCTS.find((p) => p.id === id);
 const text = (el) => el.textContent.replace(/\s+/g, ' ').trim();
-
-// The lines waiting on the legal review (AW-001).
-const REVIEW_LINES = ['Kratom & Kava', 'Mushroom Products', 'Detox', 'Wellness Pills', 'Honey & Energy'];
-// Everything the two rails can show, before they are cut to one row.
-const RAIL_IDS = new Set([
-  ...NEW_ARRIVALS_IDS,
-  ...PRODUCTS.filter((p) => p.tag === 'BESTSELLER').map((p) => p.id),
-]);
 
 describe('HomePage rails', () => {
   it('tells a product with a photo from one without', () => {
@@ -218,61 +209,51 @@ describe('HomePage department tiles', () => {
       // Each part wraps as a unit, its separator dot with it.
       const lines = [...tile.querySelectorAll('.dept-tile-lines > span')].map((span) => span.textContent);
       expect(lines).toEqual(topLines(PRODUCTS, d.key).map((line, j, all) => (j < all.length - 1 ? `${line}\u00a0· ` : line)));
-      // Only the photo is in the frame.
+      // The frame is the group's packshots, and nothing else.
       expect(tile.querySelector('.dept-tile-media').textContent).toBe('');
-      const img = tile.querySelector('.dept-tile-media img');
-      expect(img.getAttribute('alt')).toBe('');
-      expect(img.getAttribute('src')).toBe(byId(DEPARTMENT_PHOTOS[d.key]).picture.src);
+      const imgs = [...tile.querySelectorAll('.dept-tile-media img')];
+      expect(imgs.map((img) => img.getAttribute('src'))).toEqual(DEPARTMENT_GROUPS[d.key].map((id) => byId(id).picture.src));
+      expect(imgs.every((img) => img.getAttribute('alt') === '')).toBe(true);
+      expect(tile.querySelector('.dept-tile-media').classList.contains('is-4')).toBe(true);
     });
     // Biggest lines first: Merchandise no longer leads with 'Adult Wellness'.
     expect(text(tiles[2].querySelector('.dept-tile-lines'))).toMatch(/^OTC & Health · /);
   });
 
-  it('chose a photo for every department: a packshot from its bigger lines, off the rails, no nicotine and no line under review', () => {
-    expect(Object.keys(DEPARTMENT_PHOTOS).sort()).toEqual([...NAV_ORDER].sort());
+  it('groups four photographed products for every department, Swisher, Seneca and Black & Mild among tobacco', () => {
+    expect(Object.keys(DEPARTMENT_GROUPS).sort()).toEqual([...NAV_ORDER].sort());
     for (const key of NAV_ORDER) {
-      const p = byId(DEPARTMENT_PHOTOS[key]);
-      expect(p, key).toBeTruthy();
-      expect(p.cat, key).toBe(key);
-      expect(p.picture?.src, key).toBeTruthy();
-      expect(showsNicotineWarning(p), key).toBe(false);
-      expect(RAIL_IDS.has(p.id), key).toBe(false);
-      expect(REVIEW_LINES, key).not.toContain(p.sub);
-      expect(topLines(PRODUCTS, key, 4), key).toContain(p.sub);
-      expect(departmentPhoto(PRODUCTS, key), key).toBe(p);
+      const group = departmentPhotos(PRODUCTS, key);
+      expect(group.map((p) => p.id), key).toEqual(DEPARTMENT_GROUPS[key]);
+      expect(group.every((p) => p.cat === key && p.picture?.src), key).toBe(true);
     }
+    expect(departmentPhotos(PRODUCTS, 'TOBACCO').map((p) => p.name)).toEqual([
+      'Swisher Sweets cigarillos', 'Seneca cigarettes', 'Black & Mild cigars 25-count', 'Backwoods cigars 5-pack',
+    ]);
   });
 
-  it('falls back to the first suitable photo in the department\'s biggest line that has one', () => {
-    const firstSuitable = (products, key) => {
-      for (const line of topLines(products, key, Infinity)) {
-        const p = products.find((x) => x.cat === key && x.sub === line && hasPhoto(x) && !showsNicotineWarning(x));
-        if (p) return p;
-      }
-      return null;
-    };
-    // The chosen product is missing from the live catalog. Wraps & Leafs stays
-    // the biggest line. Its first photo that is not a nicotine product is
-    // still #319, hemp: the new wraps have no photo yet.
-    const without = PRODUCTS.filter((p) => p.id !== DEPARTMENT_PHOTOS.TOBACCO);
-    expect(topLines(without, 'TOBACCO', 2)).toEqual(['Wraps & Leafs', 'Cigars & Cigarillos']);
-    const fallback = departmentPhoto(without, 'TOBACCO');
-    expect(fallback).toBe(firstSuitable(without, 'TOBACCO'));
-    expect(fallback.id).toBe(319);
-    expect(showsNicotineWarning(fallback)).toBe(false);
-    // ... or has no photo.
-    const photoless = PRODUCTS.map((p) => (p.id === DEPARTMENT_PHOTOS.CANDIES ? { ...p, img: null, picture: null } : p));
-    expect(departmentPhoto(photoless, 'CANDIES')).toBe(firstSuitable(photoless, 'CANDIES'));
-    expect(departmentPhoto(photoless, 'CANDIES').sub).toBe('Sweets & Gummies');
+  it('skips a group product that is missing or has no photo, then fills from the department', () => {
+    const withoutSwisher = PRODUCTS.filter((p) => p.id !== 1);
+    const tobacco = departmentPhotos(withoutSwisher, 'TOBACCO');
+    expect(tobacco.map((p) => p.id).slice(0, 3)).toEqual([86, 17, 11]);
+    expect(tobacco).toHaveLength(4);
+    expect(tobacco[3].cat).toBe('TOBACCO');
+    expect(tobacco[3].id).not.toBe(1);
+    const photoless = PRODUCTS.map((p) => (p.id === 163 ? { ...p, img: null, picture: null } : p));
+    const candies = departmentPhotos(photoless, 'CANDIES');
+    expect(candies.map((p) => p.id).slice(0, 3)).toEqual([171, 162, 37]);
+    expect(candies).toHaveLength(4);
+    expect(candies.every((p) => hasPhoto(p))).toBe(true);
     // A department only the live catalog has.
     const extra = [{ id: 9001, cat: 'SEASONAL', sub: 'Gifts', img: '/x.jpg', picture: { src: '/x.jpg' } }];
-    expect(departmentPhoto(extra, 'SEASONAL')).toBe(extra[0]);
-    // Nothing suitable: no photo rather than a nicotine product.
-    expect(departmentPhoto([{ id: 1, cat: 'TOBACCO', sub: 'Cigarettes', name: 'Kite', img: '/k.jpg', picture: { src: '/k.jpg' } }], 'TOBACCO')).toBeNull();
-    // The tile shows the fallback.
-    renderHome({ products: without });
+    expect(departmentPhotos(extra, 'SEASONAL')).toEqual(extra);
+    // One photographed product is the whole group.
+    const kite = { id: 14, cat: 'TOBACCO', sub: 'Cigarettes', name: 'Kite', img: '/k.jpg', picture: { src: '/k.jpg' } };
+    expect(departmentPhotos([kite], 'TOBACCO')).toEqual([kite]);
+    renderHome({ products: [kite, ...PRODUCTS.filter((p) => p.cat !== 'TOBACCO')] });
     const tile = document.querySelector('#catalog .dept-tile');
-    expect(tile.querySelector('.dept-tile-media img').getAttribute('src')).toBe(fallback.picture.src);
+    expect(tile.querySelector('.dept-tile-media').classList.contains('is-1')).toBe(true);
+    expect(tile.querySelector('.dept-tile-media img').getAttribute('src')).toBe('/k.jpg');
   });
 
   it('leaves the frame empty when a department has no suitable photo', () => {

@@ -7,7 +7,7 @@
 // steps are numbered, the page's one real sequence (AW-216). A signed-in
 // account sees its own account's panel in place of the steps (AW-066).
 
-import { DEPARTMENT_PHOTOS, FREE_DELIVERY_THRESHOLD, SOURCING, TRUST } from '../data/content.js';
+import { DEPARTMENT_GROUPS, FREE_DELIVERY_THRESHOLD, SOURCING, TRUST } from '../data/content.js';
 import { APPLY_LABEL } from '../data/terms.js';
 import { accountView, tradeAccountPanel } from '../lib/accountStatus.js';
 import { topLines } from '../lib/departments.js';
@@ -28,7 +28,7 @@ const EDITORIAL_BG = heroImage('hero_candy.jpg');
 
 // A department tile's photo frame is a quarter of the container on wide
 // screens and half the screen in the compact layout (.dept-grid in index.css).
-const DEPT_SIZES = '(max-width: 53.125em) 46vw, (max-width: 84em) 23vw, 302px';
+const DEPT_SIZES = '(max-width: 53.125em) 22vw, (max-width: 84em) 12vw, 150px';
 
 // New arrivals and Bestsellers show one row of cards: two by two on phones (AW-060).
 export const RAIL_LENGTH = 4;
@@ -60,20 +60,27 @@ const parts = (list) => list.map((part, i) => <span key={part}>{i < list.length 
 // (AW-029, Cursor PR #13); they are still in their department.
 export const hasPhoto = (p) => Boolean(p?.picture?.src || p?.img);
 
-// The product whose photo a department tile shows (AW-061): the chosen one in
-// DEPARTMENT_PHOTOS or, when the live catalog lacks it or its photo, the first
-// suitable product in the department's biggest line (the next line when that
-// one has none). Never a nicotine product, since the tiles carry no FDA
-// statement. null when there is none.
-export function departmentPhoto(products, deptKey) {
-  const suitable = (p) => p?.cat === deptKey && hasPhoto(p) && !showsNicotineWarning(p);
-  const chosen = products.find(p => Number(p.id) === DEPARTMENT_PHOTOS[deptKey]);
-  if (suitable(chosen)) return chosen;
-  for (const line of topLines(products, deptKey, Infinity)) {
-    const first = products.find(p => p.sub === line && suitable(p));
-    if (first) return first;
-  }
-  return null;
+// Up to four packshots for a department tile (AW-061): the group named in
+// DEPARTMENT_GROUPS, in that order, skipping any the live catalog lacks or
+// that has no photo. The rest of the four, if the group comes up short, are
+// other photos from the department, a new product line before another from
+// a line already shown.
+const DEPARTMENT_GROUP_SIZE = 4;
+export function departmentPhotos(products, deptKey) {
+  const rows = (products || []).filter((p) => p && p.cat === deptKey && hasPhoto(p));
+  const byId = new Map(rows.map((p) => [Number(p.id), p]));
+  const chosen = [];
+  const seen = new Set();
+  const take = (p) => {
+    if (!p || seen.has(p.id) || chosen.length >= DEPARTMENT_GROUP_SIZE) return;
+    chosen.push(p);
+    seen.add(p.id);
+  };
+  for (const id of DEPARTMENT_GROUPS[deptKey] || []) take(byId.get(Number(id)));
+  const rest = rows.filter((p) => !seen.has(p.id));
+  const shown = new Set(chosen.map((p) => p.sub));
+  for (const p of [...rest.filter((p) => !shown.has(p.sub)), ...rest.filter((p) => shown.has(p.sub))]) take(p);
+  return chosen;
 }
 
 // The foot of the page. A guest is asked to open a trade account, with the
@@ -178,16 +185,20 @@ export function HomePage({
           <div><p className="eyebrow">FULL ASSORTMENT</p><h2>Shop by department</h2></div>
           <Link to="/catalog">Browse the catalog</Link>
         </div>
-        {/* One tile per department (AW-060, AW-061): a chosen photo, then the
-            name and biggest lines on a solid band, never on the photo. The
-            name is the link, stretched over the tile (AW-170). */}
+        {/* One tile per department (AW-060, AW-061): a group of packshots,
+            then the name and biggest lines on a solid band, never on the
+            photos. The name is the link, stretched over the tile (AW-170). */}
         <div className="dept-grid">
           {departments.map(c => {
-            const photo = departmentPhoto(products, c.key);
+            const photos = departmentPhotos(products, c.key);
             return (
               <div className="dept-tile" key={c.key}>
-                <div className="dept-tile-media">
-                  {photo && <Picture picture={photo.picture ?? { src: photo.img }} alt="" sizes={DEPT_SIZES} />}
+                <div className={`dept-tile-media${photos.length ? ` is-${photos.length}` : ''}`}>
+                  {photos.map((photo) => (
+                    <span className="dept-shot" key={photo.id}>
+                      <Picture picture={photo.picture ?? { src: photo.img }} alt="" sizes={DEPT_SIZES} />
+                    </span>
+                  ))}
                 </div>
                 <div className="dept-tile-body">
                   <h3><Link className="dept-tile-link" to={dept(c.key)}>{c.label}</Link></h3>
