@@ -544,9 +544,9 @@ p > .text-link { min-height: 0; min-width: 0; }
 /* The photo stays out of grid flow: inside <picture> (display: contents)
    the <source> takes a grid row of its own, and an in-flow img then grows
    past the stage, over the controls and the slide's nicotine warning
-   (AW-026). Every photo fills this one stage and is fitted inside it, so a
-   tall packshot and a wide one keep the same window. */
-.home-carousel-slide img { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; }
+   (AW-026). Every photo fills this one stage edge to edge, so a tall
+   packshot and a wide one keep the same window. */
+.home-carousel-slide img { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
 /* The shown slide's department link, a solid label at the photo's foot (at
    its top on narrower screens, in the band in the compact layout). Its
    ::after covers the whole photo, so a tap anywhere on it follows the link. */
@@ -574,7 +574,9 @@ p > .text-link { min-height: 0; min-width: 0; }
    the two on every slide and the page doesn't move when the slide changes.
    The statement fills the band (AW-026); on the other slides it keeps its
    space, hidden. */
-.home-carousel-band { display: grid; }
+/* One height on every slide: the controls and the warning share this box, so a
+   nicotine slide does not grow the carousel. */
+.home-carousel-band { display: grid; height: calc(2 * var(--tap) + 24px); overflow: hidden; background: var(--paper); }
 .home-carousel-band > * { grid-area: 1 / 1; min-width: 0; }
 .home-carousel-warning { display: grid; }
 .home-carousel-warning[aria-hidden="true"] { visibility: hidden; }
@@ -916,8 +918,11 @@ p > .text-link { min-height: 0; min-width: 0; }
    margins, and no padding above the toolbar. */
 .category-head { padding-bottom: 0; }
 .category-head .crumbs { margin-bottom: 10px; }
+.category-head .crumbs ol { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.category-head .crumbs ol::-webkit-scrollbar { display: none; }
+.category-head .crumbs li { flex: none; }
 .category-head .eyebrow { margin-bottom: 6px; }
-.category-head h1 { font-size: clamp(2.25rem, 1.5rem + 2vw, 3.25rem); margin-bottom: 0; }
+.category-head h1 { font-size: clamp(2.25rem, 1.5rem + 2vw, 3.25rem); margin-bottom: 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .category-title { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
 .category-title-text { min-width: 0; }
 .category-tier { margin: 8px 0 0; color: var(--muted); font-size: var(--text-sm); }
@@ -1754,7 +1759,7 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .nicotine-warning.is-compact { margin: 8px 0; padding: 8px 10px; font-size: var(--text-sm); }
 /* The vape hero slide's warning fills the band under the photo, its text
    centred (NEW-055). */
-.home-carousel .nicotine-warning { display: grid; place-content: center; margin: 0; }
+.home-carousel .nicotine-warning { display: grid; place-content: center; height: 100%; margin: 0; padding: 8px 12px; font-size: var(--text-sm); line-height: 1.35; overflow: hidden; }
 
 /* ============================ overlays: drawer / modal / gate ============================ */
 .aw-layer { position: relative; z-index: 60; }
@@ -2091,11 +2096,6 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
     .aw-search { order: 2; flex: 1 1 12rem; }
     .aw-account-actions { order: 3; }
   }
-  /* A phone on its side: the whole stage, with its pause toggle, and the
-     band with the dots under it fit on the screen (the photo is contained,
-     so it only gets smaller). The width is set, or the cap would narrow the
-     stage through its aspect ratio. */
-  .home-carousel-stage { width: 100%; max-height: 75vh; }
   .apply-panel { grid-template-columns: 1fr; gap: 18px; }
   .editorial-card h2 { font-size: var(--h2-sm); }
   .editorial-card { min-height: 245px; padding: 22px; }
@@ -2121,6 +2121,9 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   @media (orientation: landscape) {
     .pd-grid { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
     .pd-media { max-height: 45vh; max-height: 45svh; }
+    /* The stage stays 16:9 of its width, capped so the pause toggle and the
+       band still fit. Portrait keeps the plain 16:9. */
+    .home-carousel-stage { width: 100%; max-height: 75vh; }
   }
   .page-head { padding-top: 18px; }
   /* The product's trail sits closer over the photo (AW-150). */
