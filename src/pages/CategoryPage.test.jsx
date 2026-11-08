@@ -51,7 +51,7 @@ describe('CategoryPage', () => {
   it('reads the product line, search, sort and filters from the URL', () => {
     act(() => navigate('/category/tobacco/cigars?sort=name-asc&tags=bestseller', { replace: true }));
     render(<Harness />);
-    expect(note()).toBe('Showing 1 of 2 products in Cigars');
+    expect(note()).toBe('1 item in Cigars');
     expect(screen.getByRole('checkbox', { name: 'Bestsellers (1)' }).checked).toBe(true);
     expect(screen.getByLabelText('Sort by').value).toBe('name-asc');
     // The pill counts what it shows with the bestseller filter (AW-225).
@@ -66,7 +66,7 @@ describe('CategoryPage', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Has flavors or variants' }));
     expect(url()).toBe('/category/tobacco?sort=variants&tags=new&variants=1');
     expect(window.history.length).toBe(length);
-    expect(note()).toBe('Showing 0 of 3 products');
+    expect(note()).toBe('0 items');
     fireEvent.click(screen.getByRole('button', { name: 'Clear all (2)' }));
     expect(url()).toBe('/category/tobacco?sort=variants');
     expect(window.history.length).toBe(length);
@@ -89,7 +89,7 @@ describe('CategoryPage', () => {
     act(() => vi.advanceTimersByTime(300));
     expect(url()).toBe('/category/tobacco?q=kite');
     expect(box.value).toBe('kite ');
-    expect(note()).toBe('Showing 1 of 3 products');
+    expect(note()).toBe('1 item');
     vi.useRealTimers();
   });
 
@@ -100,7 +100,7 @@ describe('CategoryPage', () => {
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
     expect(screen.getByRole('searchbox', { name: 'Search in Tobacco' }).value).toBe('swisher');
-    expect(note()).toBe('Showing 1 of 3 products');
+    expect(note()).toBe('1 item');
   });
 
   it('searches with the catalog search rules: a straight apostrophe finds a curly one (AW-064)', () => {
@@ -109,7 +109,7 @@ describe('CategoryPage', () => {
     render(<Harness list={list} />);
     expect(screen.getByRole('searchbox', { name: 'Search in Candies' }).value).toBe("reese's");
     expect(cardNames()).toEqual(['Reese’s']);
-    expect(note()).toBe('Showing 1 of 2 products');
+    expect(note()).toBe('1 item');
   });
 
   it('sorts by the buyer’s prices, products without one last (AW-003)', () => {
@@ -128,10 +128,9 @@ describe('CategoryPage', () => {
   // One notice above the grid says why (AW-224); an account on hold is told
   // ordering is paused and who to call, never to wait for approval (AW-101).
   it('tells each account without prices why: guest, under review or on hold (AW-101)', () => {
-    const intro = () => document.querySelector('.page-head h1 + p').textContent;
     const notice = () => document.querySelector('.pricing-notice p').textContent;
     const view = render(<Harness />);
-    expect(intro()).toBe('Wholesale tobacco for licensed retail accounts: 3 products in 2 product lines.');
+    expect([...document.querySelectorAll('.category-stat-products strong, .category-stat-lines strong')].map((el) => el.textContent)).toEqual(['3', '2']);
     expect(notice()).toBe('Trade prices are shown to approved accounts.');
     view.unmount();
     const pending = render(<CategoryPage category="TOBACCO" products={products} departments={departments} profile={{ id: 'p', status: 'pending' }} isApprovedBuyer={false}
@@ -194,8 +193,7 @@ describe('CategoryPage', () => {
 
   it('explains pricing once, above the grid; the intro describes the department and the filters hold only filters (AW-224)', () => {
     const view = render(<Harness />);
-    const intro = () => document.querySelector('.page-head h1 + p').textContent;
-    expect(intro()).toBe('Wholesale tobacco for licensed retail accounts: 3 products in 2 product lines.');
+    expect([...document.querySelectorAll('.category-stat-products strong, .category-stat-lines strong')].map((el) => el.textContent)).toEqual(['3', '2']);
     const notices = document.querySelectorAll('.pricing-notice');
     expect(notices).toHaveLength(1);
     expect(notices[0].nextElementSibling.classList.contains('category-card-grid')).toBe(true);
@@ -213,14 +211,14 @@ describe('CategoryPage', () => {
     render(<CategoryPage category="TOBACCO" products={products} departments={departments} profile={{ id: 'p', status: 'pending' }} isApprovedBuyer={false}
                          cart={{}} addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} />);
     expect(document.querySelector('.pricing-notice').textContent).toMatch(/^Pricing unlocks after your account is approved\./);
-    expect(intro()).toBe('Wholesale tobacco for licensed retail accounts: 3 products in 2 product lines.');
+    expect(document.querySelector('.category-tier')).toBeNull();
   });
 
   it('shows approved buyers no pricing notice', () => {
     render(<Harness buyer={BUYER} />);
     expect(document.querySelector('.pricing-notice')).toBeNull();
     // Whose prices the cards show (AW-107); no notice above the grid.
-    expect(document.querySelector('.page-head h1 + p').textContent).toBe('Wholesale tobacco for licensed retail accounts: 3 products in 2 product lines. Prices shown are your account prices.');
+    expect(document.querySelector('.category-tier').textContent).toBe('Prices shown are your account prices.');
   });
 
   it('counts variants from the list: one variant is not "Has variants", and "Most variants" sorts by the count (AW-332, AW-233)', () => {
@@ -241,9 +239,9 @@ describe('CategoryPage', () => {
   it('starts another department without the old filters (AW-228)', () => {
     act(() => navigate('/category/tobacco?tags=new', { replace: true }));
     render(<Harness />);
-    expect(note()).toBe('Showing 1 of 3 products');
+    expect(note()).toBe('1 item');
     act(() => navigate('/category/candies'));
-    expect(note()).toBe('Showing 1 of 1 product');
+    expect(note()).toBe('1 item');
     expect(screen.getByRole('checkbox', { name: 'New (1)' }).checked).toBe(false);
   });
 
@@ -358,20 +356,20 @@ describe('CategoryPage brand filter (AW-067)', () => {
     const length = window.history.length;
     fireEvent.click(screen.getByRole('checkbox', { name: 'Game (3)' }));
     expect(url()).toBe('/category/tobacco?brand=game');
-    expect(note()).toBe('Showing 3 of 14 products');
+    expect(note()).toBe('3 items');
     expect(cardNames().sort()).toEqual(['Game blunt', 'Game cigarillo', 'Game leaf']);
     expect(screen.getByRole('button', { name: 'Remove filter Brand: Game' })).toBeTruthy();
     // Brand counts leave the brands out, so picking one changes none of them.
     fireEvent.click(screen.getByRole('checkbox', { name: 'Swisher Sweets (2)' }));
     expect(url()).toBe('/category/tobacco?brand=game,swisher-sweets');
-    expect(note()).toBe('Showing 5 of 14 products');
+    expect(note()).toBe('5 items');
     expect(brandLabels().slice(0, 2)).toEqual(['Game (3)', 'Swisher Sweets (2)']);
     expect(window.history.length).toBe(length);
     fireEvent.click(screen.getByRole('button', { name: 'Remove filter Brand: Game' }));
     expect(url()).toBe('/category/tobacco?brand=swisher-sweets');
     fireEvent.click(screen.getByRole('button', { name: 'Clear all (1)' }));
     expect(url()).toBe('/category/tobacco');
-    expect(note()).toBe('Showing 14 of 14 products');
+    expect(note()).toBe('14 items');
   });
 
   it('reads brands from the URL: a picked brand stays listed, at (0) where the line has none; unknown ones are ignored', () => {
@@ -382,9 +380,9 @@ describe('CategoryPage brand filter (AW-067)', () => {
     expect(screen.getByRole('checkbox', { name: 'Zig-Zag (1)' }).checked).toBe(true);
     act(() => navigate('/category/tobacco/wraps?brand=backwoods', { replace: true }));
     expect(screen.getByRole('checkbox', { name: 'Backwoods (0)' }).checked).toBe(true);
-    expect(note()).toBe('Showing 0 of 7 products in Wraps');
+    expect(note()).toBe('0 items in Wraps');
     act(() => navigate('/category/tobacco?brand=nope,assorted', { replace: true }));
-    expect(note()).toBe('Showing 14 of 14 products');
+    expect(note()).toBe('14 items');
     expect(screen.queryByRole('list', { name: 'Active filters' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Show all 10 brands' })).toBeTruthy();
   });
@@ -410,14 +408,14 @@ describe('CategoryPage line counts follow the filters (AW-225)', () => {
     act(() => navigate('/category/tobacco?tags=new', { replace: true }));
     render(<Branded />);
     expect(pills()).toEqual([
-      { text: 'All (1)', empty: false, href: '/category/tobacco?tags=new' },
-      { text: 'Cigars (0)', empty: true, href: '/category/tobacco/cigars?tags=new' },
-      { text: 'Wraps (1)', empty: false, href: '/category/tobacco/wraps?tags=new' },
+      { text: 'All 1', empty: false, href: '/category/tobacco?tags=new' },
+      { text: 'Cigars 0', empty: true, href: '/category/tobacco/cigars?tags=new' },
+      { text: 'Wraps 1', empty: false, href: '/category/tobacco/wraps?tags=new' },
     ]);
     act(() => navigate('/category/tobacco?q=swisher', { replace: true }));
-    expect(pills().map((p) => p.text)).toEqual(['All (2)', 'Cigars (1)', 'Wraps (1)']);
+    expect(pills().map((p) => p.text)).toEqual(['All 2', 'Cigars 1', 'Wraps 1']);
     act(() => navigate('/category/tobacco?brand=game', { replace: true }));
-    expect(pills().map((p) => p.text)).toEqual(['All (3)', 'Cigars (1)', 'Wraps (2)']);
+    expect(pills().map((p) => p.text)).toEqual(['All 3', 'Cigars 1', 'Wraps 2']);
     act(() => navigate('/category/tobacco?brand=backwoods&tags=new', { replace: true }));
     expect(pills().every((p) => p.empty)).toBe(true);
     // The current line keeps aria-current, even when it is empty.
@@ -427,7 +425,7 @@ describe('CategoryPage line counts follow the filters (AW-225)', () => {
     expect(current.classList.contains('active')).toBe(true);
     // No filters: the plain line sizes.
     act(() => navigate('/category/tobacco', { replace: true }));
-    expect(pills().map((p) => p.text)).toEqual(['All (14)', 'Cigars (7)', 'Wraps (7)']);
+    expect(pills().map((p) => p.text)).toEqual(['All 14', 'Cigars 7', 'Wraps 7']);
     expect(pills().some((p) => p.empty)).toBe(false);
   });
 });
@@ -435,15 +433,15 @@ describe('CategoryPage line counts follow the filters (AW-225)', () => {
 describe('CategoryPage line pages (AW-226)', () => {
   const crumbs = () => [...document.querySelectorAll('.crumbs li > *')].map((el) => ({ text: el.textContent, tag: el.tagName, href: el.getAttribute('href'), current: el.getAttribute('aria-current') }));
   const head = () => ({
-    eyebrow: document.querySelector('.page-head .eyebrow').textContent,
+    eyebrow: document.querySelector('.page-head .eyebrow')?.textContent ?? '',
     h1: screen.getByRole('heading', { level: 1 }).textContent,
-    intro: document.querySelector('.page-head h1 + p').textContent,
+    products: document.querySelector('.category-stat-products strong').textContent,
   });
 
-  it('names the line in the heading, eyebrow and intro; the trail leads back to All products and the department', () => {
+  it('names the line in the heading and the trail leads back to All products and the department', () => {
     act(() => navigate('/category/tobacco/wraps', { replace: true }));
     render(<Branded />);
-    expect(head()).toEqual({ eyebrow: 'Tobacco · 7 products', h1: 'Wraps', intro: 'Wholesale tobacco for licensed retail accounts: 7 products in Wraps.' });
+    expect(head()).toEqual({ eyebrow: 'Tobacco', h1: 'Wraps', products: '7' });
     expect(crumbs()).toEqual([
       { text: 'Home', tag: 'A', href: '/', current: null },
       { text: 'All products', tag: 'A', href: '/catalog', current: null },
@@ -453,12 +451,14 @@ describe('CategoryPage line pages (AW-226)', () => {
     // The department crumb keeps the filters, as the All pill does.
     act(() => navigate('/category/tobacco/wraps?brand=game', { replace: true }));
     expect(screen.getByRole('link', { name: 'Tobacco' }).getAttribute('href')).toBe('/category/tobacco?brand=game');
-    expect(head().eyebrow).toBe('Tobacco · 7 products');
+    expect(head().eyebrow).toBe('Tobacco');
+    expect(head().products).toBe('7');
   });
 
   it('keeps the department head on the department page', () => {
     render(<Branded />);
-    expect(head()).toEqual({ eyebrow: 'DEPARTMENT · 14 products', h1: 'Tobacco', intro: 'Wholesale tobacco for licensed retail accounts: 14 products in 2 product lines.' });
+    expect(head()).toEqual({ eyebrow: 'DEPARTMENT', h1: 'Tobacco', products: '14' });
+    expect(document.querySelector('.category-stat-lines strong').textContent).toBe('2');
     expect(crumbs().map((c) => `${c.tag}:${c.text}`)).toEqual(['A:Home', 'A:All products', 'SPAN:Tobacco']);
   });
 
@@ -471,13 +471,14 @@ describe('CategoryPage line pages (AW-226)', () => {
     act(() => navigate('/category/motor-oil/motor-oil', { replace: true }));
     const view = render(<CategoryPage category="MOTOR OIL" sub="Motor Oil" products={oil} departments={depts} profile={null} isApprovedBuyer={false}
                                       cart={{}} addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} />);
-    expect(head()).toEqual({ eyebrow: '1 product', h1: 'Motor Oil', intro: 'Wholesale motor oil for licensed retail accounts: 1 product in Motor Oil.' });
+    expect(head()).toEqual({ eyebrow: '', h1: 'Motor Oil', products: '1' });
     expect(crumbs().map((c) => `${c.tag}:${c.text}`)).toEqual(['A:Home', 'A:All products', 'A:Motor Oil department', 'SPAN:Motor Oil']);
     view.unmount();
     // Another line of the department keeps the department's name in both.
     render(<CategoryPage category="MOTOR OIL" sub="Additives" products={oil} departments={depts} profile={null} isApprovedBuyer={false}
                          cart={{}} addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} />);
-    expect(head().eyebrow).toBe('Motor Oil · 1 product');
+    expect(head().eyebrow).toBe('Motor Oil');
+    expect(head().products).toBe('1');
     expect(crumbs().map((c) => c.text)).toEqual(['Home', 'All products', 'Motor Oil', 'Additives']);
   });
 
@@ -487,8 +488,8 @@ describe('CategoryPage line pages (AW-226)', () => {
     act(() => navigate('/category/tobacco/pouches', { replace: true }));
     render(<CategoryPage category="TOBACCO" sub="Pouches" products={list} departments={depts} profile={null} isApprovedBuyer={false}
                          cart={{}} addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} />);
-    expect(head().eyebrow).toBe('Tobacco · 1 product');
-    expect(head().intro).toBe('Wholesale tobacco for licensed retail accounts: 1 product in Pouches.');
+    expect(head().eyebrow).toBe('Tobacco');
+    expect(head().products).toBe('1');
   });
 });
 
@@ -497,13 +498,14 @@ describe('CategoryPage on phones (AW-223)', () => {
     phone();
     act(() => navigate('/category/tobacco?brand=game', { replace: true }));
     render(<Branded />);
-    fireEvent.click(screen.getByRole('button', { name: /Filter & Sort/ }));
-    const drawer = screen.getByRole('dialog', { name: 'Filter & Sort' });
+    fireEvent.click(screen.getByRole('button', { name: /^Filter\b/ }));
+    const drawer = screen.getByRole('dialog', { name: 'Filter & sort' });
     const lines = within(drawer).getByRole('group', { name: 'Product line' });
-    // First in the drawer, above the sort.
-    expect(drawer.querySelector('.filter-drawer-body').firstElementChild.contains(lines)).toBe(true);
+    // Search is first; the line choice follows it, above the sort chips.
+    expect(drawer.querySelector('.filter-drawer-body').firstElementChild.classList.contains('filter-search')).toBe(true);
+    expect(drawer.querySelector('.filter-search').compareDocumentPosition(lines) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const radios = within(lines).getAllByRole('radio');
-    expect(radios.map((r) => r.closest('label').textContent.trim())).toEqual(['All (3)', 'Cigars (1)', 'Wraps (2)']);
+    expect(radios.map((r) => r.closest('label').textContent.trim())).toEqual(['All 3', 'Cigars 1', 'Wraps 2']);
     expect(radios.map((r) => r.name)).toEqual(['category-line', 'category-line', 'category-line']);
     expect(radios[0].checked).toBe(true);
     // The brand facet is in the drawer too.
@@ -516,7 +518,7 @@ describe('CategoryPage on phones (AW-223)', () => {
     expect(window.history.length).toBe(length);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Wraps');
     // The drawer stays open on the new line.
-    expect(within(screen.getByRole('dialog', { name: 'Filter & Sort' })).getByRole('radio', { name: 'Wraps (2)' }).checked).toBe(true);
+    expect(within(screen.getByRole('dialog', { name: 'Filter & sort' })).getByRole('radio', { name: 'Wraps (2)' }).checked).toBe(true);
     fireEvent.click(within(lines).getByRole('radio', { name: 'All (3)' }));
     expect(url()).toBe('/category/tobacco?brand=game');
     fireEvent.click(screen.getByRole('button', { name: 'Close filters' }));
@@ -546,10 +548,10 @@ describe('CategoryPage on a phone (AW-158, AW-157)', () => {
     // The Filter & Sort badge keeps the count.
     expect(document.querySelector('.filter-toggle .filter-count').textContent).toBe(', 3 active');
     // The phone note leaves the line to screen readers, which still hear it.
-    expect(note()).toBe('Showing 1 of 2 products in Cigars');
+    expect(note()).toBe('1 item in Cigars');
     expect(document.querySelector('.result-note .result-scope').textContent).toBe('in Cigars');
     fireEvent.click(screen.getByRole('button', { name: 'Remove filter Cigars' }));
-    expect(note()).toBe('Showing 1 of 3 products');
+    expect(note()).toBe('1 item');
     expect(document.querySelector('.result-note .result-scope').textContent).toBe('');
   });
 
@@ -557,7 +559,7 @@ describe('CategoryPage on a phone (AW-158, AW-157)', () => {
     phone();
     // Pill positions in the scrolling row, which is their offsetParent (it is
     // positioned in the compact layout); the row is 200px wide.
-    const layout = { 'All (3)': [16, 80], 'Cigarettes (1)': [104, 120], 'Cigars (2)': [232, 100] };
+    const layout = { 'All 3': [16, 80], 'Cigarettes 1': [104, 120], 'Cigars 2': [232, 100] };
     const pillBox = (el) => (el.classList.contains('sub-pill') ? layout[el.textContent] : null);
     vi.spyOn(HTMLElement.prototype, 'offsetLeft', 'get').mockImplementation(function left() { return pillBox(this)?.[0] ?? 0; });
     vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function width() { return pillBox(this)?.[1] ?? 0; });

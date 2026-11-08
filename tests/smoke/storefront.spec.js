@@ -243,7 +243,7 @@ test.describe('after age confirmation', () => {
     const phone = testInfo.project.name === 'phone';
     await page.goto('/category/candies');
     // Phones set filters in the Filter & Sort drawer.
-    if (phone) await page.getByRole('button', { name: /Filter & Sort/ }).click();
+    if (phone) await page.getByRole('button', { name: /^Filter\b/ }).click();
     await page.getByRole('checkbox', { name: 'Bestsellers' }).check();
     await page.getByLabel('Sort by').selectOption('name-desc');
     if (phone) await page.getByRole('dialog').getByRole('button', { name: /^Show \d+ products?/ }).click();
@@ -323,9 +323,9 @@ test.describe('after age confirmation', () => {
       await translate(page);
       await page.getByRole('link', { name: /^Cigarettes \(/ }).click();
       await page.getByRole('link', { name: /^Cigars & Cigarillos \(/ }).click();
-      await expect(page.locator('.result-note')).toHaveText(/Showing (\d+) of \1 products in Cigars & Cigarillos/);
+      await expect(page.locator('.result-note')).toHaveText(/^\d+ items in Cigars & Cigarillos$/);
       await page.getByRole('link', { name: /^All \(/ }).click();
-      await expect(page.locator('.result-note')).toHaveText(/Showing 101 of 101 products$/);
+      await expect(page.locator('.result-note')).toHaveText(/101 items$/);
       await expect(page.getByRole('heading', { level: 1, name: 'Tobacco' })).toBeVisible();
       expect(errors).toEqual([]);
     });

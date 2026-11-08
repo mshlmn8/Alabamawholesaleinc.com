@@ -134,8 +134,6 @@ const SEARCH_DELAY_MS = 250;
 
 const NO_PRICES = () => null;
 
-const plural = (n, noun) => `${n} ${noun}${n === 1 ? '' : 's'}`;
-
 // Price sorts use the signed-in buyer's prices (priceOf, AW-003); products
 // without one (price on request, or not loaded yet) go last, in catalog order.
 function byPrice(priceOf, direction) {
@@ -177,7 +175,7 @@ export function CategoryPage({
   const cat = departments.find(c => c.key === category);
   const deptLabel = catLabel(category);
   const inCategory = products.filter(p => p.cat === category);
-  // The department's count, for its eyebrow ('DEPARTMENT · 68 products').
+  // The department's count, shown in the header's stat card.
   const deptCount = cat?.count ?? inCategory.length;
   const activeSub = sub || null;
   const inScope = activeSub ? inCategory.filter(p => p.sub === activeSub) : inCategory;
@@ -310,16 +308,26 @@ export function CategoryPage({
     </>
   );
 
-  // With a product line picked, the count compares against that line (AW-232).
-  // Phones show the note without the line's name (AW-158, .result-scope).
+  // The toolbar shows how many products the current filters leave ("12 items").
+  // On a phone the line's name stays in the note for screen readers only
+  // (AW-158, .result-scope).
   const resultNote = (
     <p className="result-note" role="status" ref={noteRef} tabIndex={-1}>
-      Showing <strong>{items.length}</strong> <span>{`of ${productCount(inScope.length)}${activeSub ? ' ' : ''}`}</span><span className="result-scope">{activeSub ? `in ${activeSub}` : ''}</span>
+      <strong>{items.length}</strong>{` ${items.length === 1 ? 'item' : 'items'}${activeSub ? ' ' : ''}`}
+      <span className="result-scope">{activeSub ? `in ${activeSub}` : ''}</span>
     </p>
   );
+  const sortOptions = [
+    ['featured', 'Featured'],
+    ['name-asc', 'Name: A to Z'],
+    ['name-desc', 'Name: Z to A'],
+    ['brand', 'Brand: A to Z'],
+    ['variants', 'Most variants'],
+    ...(isApprovedBuyer ? [['price-low', 'Price ↑'], ['price-high', 'Price ↓']] : []),
+  ];
   const sortControl = (
-    <label className="category-sort" htmlFor="category-sort">Sort by
-      <select id="category-sort" value={sort} onChange={(e) => setFilters({ sort: e.target.value })}>
+    <label className="category-sort" htmlFor="category-sort"><span className="sort-label">Sort</span>
+      <select id="category-sort" aria-label="Sort by" value={sort} onChange={(e) => setFilters({ sort: e.target.value })}>
         <option value="featured">Featured</option>
         <option value="name-asc">Name: A to Z</option>
         <option value="name-desc">Name: Z to A</option>
@@ -330,11 +338,14 @@ export function CategoryPage({
       </select>
     </label>
   );
+  const searchField = (
+    <label className="filter-search" htmlFor="category-search"><span>{`Search in ${activeSub || catLabel(category)}`}</span>
+      <Icon name="search" />
+      <input id="category-search" type="search" value={draft} onChange={(e) => onSearchInput(e.target.value)} placeholder={`Search ${(activeSub || deptLabel).toLowerCase()} by name, brand or SKU`} autoComplete="off" />
+    </label>
+  );
   const filterPanel = (
     <div className="filter-panel">
-      <label className="filter-search" htmlFor="category-search"><span>{`Search in ${activeSub || catLabel(category)}`}</span>
-        <input id="category-search" type="search" value={draft} onChange={(e) => onSearchInput(e.target.value)} placeholder="Name, brand or SKU" autoComplete="off" />
-      </label>
       {featured.length > 0 && (
         <fieldset>
           <legend>Featured</legend>
@@ -370,9 +381,15 @@ export function CategoryPage({
     <div className="filter-panel filter-lines">
       <fieldset>
         <legend>Product line</legend>
-        <label><input type="radio" name="category-line" value="" checked={!activeSub} onChange={() => pickLine(null)} /> <span>{`All (${filtered.length})`}</span></label>
+        <label className={!activeSub ? 'is-on' : ''}>
+          <input type="radio" name="category-line" value="" checked={!activeSub} aria-label={`All (${filtered.length})`} onChange={() => pickLine(null)} />
+          <span>All</span><span className="pill-count">{` ${filtered.length}`}</span>
+        </label>
         {lines.map(({ sub: s, count }) => (
-          <label key={s}><input type="radio" name="category-line" value={s} checked={activeSub === s} onChange={() => pickLine(s)} /> <span>{`${s} (${count})`}</span></label>
+          <label key={s} className={activeSub === s ? 'is-on' : ''}>
+            <input type="radio" name="category-line" value={s} checked={activeSub === s} aria-label={`${s} (${count})`} onChange={() => pickLine(s)} />
+            <span>{s}</span><span className="pill-count">{` ${count}`}</span>
+          </label>
         ))}
       </fieldset>
     </div>
@@ -420,24 +437,60 @@ export function CategoryPage({
     if (left !== row.scrollLeft) row.scrollLeft = left;
   };
 
+  // The header counts the department (or the open line), not the filtered
+  // grid. The toolbar's "N items" is the filtered count.
+  const lineCount = lines.length;
+  const statCount = activeSub ? inScope.length : deptCount;
+  const showLineStat = !activeSub && lineCount > 0;
+  const compactCaption = showLineStat
+    ? `${statCount === 1 ? 'product' : 'products'} · ${lineCount} ${lineCount === 1 ? 'line' : 'lines'}`
+    : (statCount === 1 ? 'product' : 'products');
+  // A line named like its department leaves this blank (NEW-029).
+  const titleEyebrow = activeSub
+    ? (sharesDepartmentName(category, activeSub) ? '' : deptLabel)
+    : 'DEPARTMENT';
+
   return (
     <section>
       <div className="page-head category-head">
         <Breadcrumbs items={catalogCrumbs({ category, sub: activeSub, query })} />
-        {/* A line page names the line, its department and its own count
-            (AW-226); a line named like its department, just the count (NEW-029). */}
-        <p className="eyebrow">{activeSub
-          ? `${sharesDepartmentName(category, activeSub) ? '' : `${deptLabel} · `}${productCount(inScope.length)}`
-          : `DEPARTMENT · ${productCount(deptCount, String(deptCount).padStart(2, '0'))}`}</p>
-        <h1>{activeSub || deptLabel}</h1>
-        {/* An approved buyer is also told whose prices the cards show, from my_prices() (AW-107). */}
-        <p>{`${activeSub
-          ? `Wholesale ${deptLabel.toLowerCase()} for licensed retail accounts: ${productCount(inScope.length)} in ${activeSub}.`
-          : `Wholesale ${deptLabel.toLowerCase()} for licensed retail accounts: ${productCount(inCategory.length)}${lines.length ? ` in ${plural(lines.length, 'product line')}` : ''}.`}${isApprovedBuyer ? ` ${tierPriceNote(priceTier)}` : ''}`}</p>
+        {/* A line page names the line (AW-226). A line named like its
+            department leaves the eyebrow off, so the name is not said twice
+            (NEW-029). The counts sit in the stat cards, not the sentence. */}
+        <div className="category-title">
+          <div className="category-title-text">
+            {titleEyebrow && <p className="eyebrow">{titleEyebrow}</p>}
+            <h1>{activeSub || deptLabel}</h1>
+            {/* Whose prices the cards show, from my_prices() (AW-107). */}
+            {isApprovedBuyer && <p className="category-tier">{tierPriceNote(priceTier)}</p>}
+          </div>
+          <div className="category-stats">
+            <p className="category-stat category-stat-products">
+              <strong>{statCount}</strong>
+              <span>{statCount === 1 ? 'product' : 'products'}</span>
+            </p>
+            {showLineStat && (
+              <p className="category-stat category-stat-lines">
+                <strong>{lineCount}</strong>
+                <span>{lineCount === 1 ? 'product line' : 'product lines'}</span>
+              </p>
+            )}
+            <p className="category-stat category-stat-compact">
+              <strong>{statCount}</strong>
+              <span>{compactCaption}</span>
+            </p>
+          </div>
+        </div>
+        {isMobile && lineCount > 0 && (
+          <div className="line-label">
+            <p className="eyebrow">Product lines</p>
+            <button className="see-lines" type="button" onClick={() => setFiltersOpen(true)}>{`See all ${lineCount}`}</button>
+          </div>
+        )}
         <nav className="sub-pills" ref={pillsRef} aria-label={`${deptLabel} product lines`} onFocus={revealPill}>
-          <Link className={`sub-pill${!activeSub ? ' active' : ''}${filtered.length ? '' : ' is-empty'}`} to={here({ sub: null })} scroll={false} aria-current={!activeSub ? 'page' : undefined}>{`All (${filtered.length})`}</Link>
+          <Link className={`sub-pill${!activeSub ? ' active' : ''}${filtered.length ? '' : ' is-empty'}`} to={here({ sub: null })} scroll={false} aria-current={!activeSub ? 'page' : undefined} aria-label={`All (${filtered.length})`}><span>All</span><span className="pill-count">{` ${filtered.length}`}</span></Link>
           {lines.map(({ sub: s, count }) => (
-            <Link key={s} className={`sub-pill${activeSub === s ? ' active' : ''}${count ? '' : ' is-empty'}`} to={here({ sub: s })} scroll={false} aria-current={activeSub === s ? 'page' : undefined}>{`${s} (${count})`}</Link>
+            <Link key={s} className={`sub-pill${activeSub === s ? ' active' : ''}${count ? '' : ' is-empty'}`} to={here({ sub: s })} scroll={false} aria-current={activeSub === s ? 'page' : undefined} aria-label={`${s} (${count})`}><span>{s}</span><span className="pill-count">{` ${count}`}</span></Link>
           ))}
         </nav>
       </div>
@@ -447,12 +500,14 @@ export function CategoryPage({
           {isMobile && (
             <button className="filter-toggle" type="button" aria-expanded={filtersOpen} aria-controls={filtersOpen ? 'aw-filter-drawer' : undefined} onClick={() => setFiltersOpen(true)}>
               <Icon name="filter" />
-              Filter &amp; Sort
+              Filter
               {activeFilterCount > 0 && <span className="filter-count"><span className="sr-only">, </span><span>{activeFilterCount}</span><span className="sr-only"> active</span></span>}
             </button>
           )}
-          {resultNote}
-          {!isMobile && sortControl}
+          <div className="toolbar-end">
+            {resultNote}
+            {sortControl}
+          </div>
         </div>
       </div>
       {chips.length > 0 && (
@@ -468,20 +523,26 @@ export function CategoryPage({
         <ModalLayer onClose={closeFilters} className="aw-filter-layer">
           <div className="overlay" aria-hidden="true" onClick={closeFilters} />
           <div className="drawer filter-drawer" role="dialog" aria-modal="true" aria-labelledby="aw-filter-title" id="aw-filter-drawer">
+            <div className="sheet-handle" aria-hidden="true" />
             <div className="drawer-head">
-              <h2 id="aw-filter-title">Filter &amp; Sort</h2>
-              <button className="icon-btn" type="button" onClick={closeFilters} aria-label="Close filters"><Icon name="close" /></button>
+              <h2 id="aw-filter-title">Filter &amp; sort</h2>
+              <div className="drawer-head-actions">
+                {activeFilterCount > 0 && <button className="reset-link" type="button" onClick={() => clearFilters({ drawer: true })}>Reset</button>}
+                <button className="icon-btn" type="button" onClick={closeFilters} aria-label="Close filters"><Icon name="close" /></button>
+              </div>
             </div>
             <div className="drawer-body filter-drawer-body" ref={drawerBodyRef}>
+              {searchField}
               {linePicker}
-              {sortControl}
+              <div className="sort-chips" role="group" aria-label="Sort">
+                {sortOptions.map(([value, label]) => (
+                  <button key={value} type="button" aria-pressed={sort === value} className={sort === value ? 'is-on' : ''} onClick={() => setFilters({ sort: value })}>{label}</button>
+                ))}
+              </div>
               {filterPanel}
             </div>
             <div className="drawer-foot">
-              <div className="drawer-actions">
-                {activeFilterCount > 0 && <button className="text-link" type="button" onClick={() => clearFilters({ drawer: true })}>{`Clear all (${activeFilterCount})`}</button>}
-                <button className="button" type="button" onClick={closeFilters}><span>{`Show ${productCount(items.length)}`}</span></button>
-              </div>
+              <button className="button" type="button" onClick={closeFilters}><span>{`Show ${productCount(items.length)}`}</span></button>
             </div>
           </div>
         </ModalLayer>
@@ -494,6 +555,7 @@ export function CategoryPage({
               <h2>Filters</h2>
               {activeFilterCount > 0 && <button className="text-link" type="button" onClick={() => clearFilters()}>{`Clear all (${activeFilterCount})`}</button>}
             </div>
+            {searchField}
             {filterPanel}
           </aside>
         )}

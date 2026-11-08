@@ -598,7 +598,7 @@ describe('interaction states (AW-145, AW-160, AW-175, AW-302)', () => {
       '.policy-nav a:active': 'var(--line)',
       '.menu-group a:active': 'var(--paper)',
       '.menu-group button:not(:disabled):active': 'var(--paper)',
-      '.filter-toggle:active': 'var(--purple-hover)',
+      '.filter-toggle:active': 'var(--paper)',
       '.active-filters > li > button:not(.text-link):active': 'var(--purple-hover)',
       '.aw-category-toggle:active': 'var(--purple-hover)',
       '.aw-search > button:active': 'var(--line)',

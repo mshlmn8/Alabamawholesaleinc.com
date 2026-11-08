@@ -54,17 +54,18 @@ describe('product counts (AW-217, NEW-056)', () => {
                          products={products} departments={departments} profile={null} isApprovedBuyer={false}
                          cart={{}} addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} />);
     const eyebrow = document.querySelector('.page-head .eyebrow');
-    expect(text(eyebrow)).toBe('DEPARTMENT · 02 products');
+    expect(text(eyebrow)).toBe('DEPARTMENT');
     expect(eyebrow.querySelector('.keep-case')).toBeNull();
-    expect(text(document.querySelector('.page-head h1 + p'))).toBe('Wholesale tobacco for licensed retail accounts: 2 products in 2 product lines.');
-    expect(text(document.querySelector('.result-note'))).toBe('Showing 2 of 2 products');
+    expect(document.querySelector('.category-stat-products strong').textContent).toBe('2');
+    expect(document.querySelector('.category-stat-lines strong').textContent).toBe('2');
+    expect(text(document.querySelector('.result-note'))).toBe('2 items');
     view.unmount();
     act(() => navigate('/category/tobacco/cigars', { replace: true }));
     render(<CategoryPage category="TOBACCO" sub="Cigars" query={EMPTY_CATEGORY_QUERY}
                          products={products} departments={departments} profile={null} isApprovedBuyer={false}
                          cart={{}} addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} />);
-    expect(text(document.querySelector('.page-head .eyebrow'))).toBe('Tobacco · 1 product');
-    expect(text(document.querySelector('.result-note'))).toBe('Showing 1 of 1 product in Cigars');
+    expect(text(document.querySelector('.page-head .eyebrow'))).toBe('Tobacco');
+    expect(text(document.querySelector('.result-note'))).toBe('1 item in Cigars');
   });
 
   // The search page's label still prints 'SKUs' in an upper-case label.
