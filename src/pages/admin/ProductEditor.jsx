@@ -30,6 +30,7 @@ import { productImage } from '../../lib/images.js';
 import { currentImageFile } from '../../data/catalogAliases.js';
 import { isDelisted } from '../../data/delisted.js';
 import { catLabel } from '../../lib/format.js';
+import { tagLabel } from '../../lib/productTags.js';
 import { departmentsFor } from '../../lib/departments.js';
 import { Link } from '../../lib/router.js';
 import { MissingPhoto } from '../../components/MissingPhoto.jsx';
@@ -642,9 +643,9 @@ export function ProductEditor({ id, fromId = null, rows, columns, loadError, onR
           <select id="product-tag" value={draft.tag} aria-invalid={invalid('tag')} aria-describedby={describedBy('product-tag', true)}
             onChange={(e) => set('tag', e.target.value)}>
             <option value="">—</option>
-            {PRODUCT_TAGS.map((tag) => <option key={tag} value={tag}>{tag}</option>)}
+            {PRODUCT_TAGS.map((tag) => <option key={tag} value={tag}>{tagLabel(tag)}</option>)}
           </select>
-          <small className="field-hint" id="product-tag-hint">NEW puts it in the homepage’s New arrivals, DEAL in New deals, BESTSELLER in Bestsellers.</small>
+          <small className="field-hint" id="product-tag-hint">The tag is a feature of the product, shown on its card and page. NEW puts it in New arrivals, DEAL in New deals, BESTSELLER in Bestsellers. PREMIUM marks it Featured.</small>
           <p className="form-error" id="product-tag-error">{err('tag')}</p>
         </div>
         <div>

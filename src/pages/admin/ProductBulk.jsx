@@ -19,6 +19,7 @@
 import { useId, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
 import { formatMoney } from '../../lib/format.js';
+import { tagLabel } from '../../lib/productTags.js';
 import { MISSING_FUNCTION_CODES } from '../../lib/pricing.js';
 import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { NO_ROWS, adminErrorMessage, checkedWrite, withStatus } from './adminData.js';
@@ -341,7 +342,7 @@ export function BulkBar({ rows, adjustMissing = false, onAdjustMissing, onApplie
             <label>New tag
               <select value={tag} onChange={(e) => setTag(e.target.value)}>
                 <option value="">No tag</option>
-                {BULK_TAGS.map((t) => <option key={t} value={t}>{t}</option>)}
+                {BULK_TAGS.map((t) => <option key={t} value={t}>{tagLabel(t)}</option>)}
               </select>
             </label>
             <button className="button sm" type="submit">Set tag</button>

@@ -37,6 +37,7 @@ import { ProductEditor } from './ProductEditor.jsx';
 import { RAILS_HEADING_ID, railEditId } from './HomepageSection.jsx';
 import { BulkBar, plural } from './ProductBulk.jsx';
 import { ImportPreview } from './ProductImport.jsx';
+import { tagLabel } from '../../lib/productTags.js';
 import { PRODUCT_TAGS, STOCK_LABELS, STOCK_STATUSES } from './productForm.js';
 import { ariaSort, countText, departmentOptions, filterSignature, filterSortPage, hasFilters, isInactive, nextSort } from './productList.js';
 import { csvFileName, importPlan, productCsvRecords, sellUnitOptions } from './productBulk.js';
@@ -536,7 +537,7 @@ function ProductsList({
                     <td>{variantCount(p) || '—'}</td>
                     <td className="price">{p.price != null ? formatMoney(p.price) : 'On request'}</td>
                     <td>
-                      {p.tag ? <span>{p.tag}</span> : <span>—</span>}
+                      {p.tag ? <span>{tagLabel(p.tag)}</span> : <span>—</span>}
                       {p.tag && inactive && <span className="muted"> (not shown)</span>}
                     </td>
                     <td>{inactive ? <span className="admin-pill">Inactive</span> : <span>Yes</span>}</td>

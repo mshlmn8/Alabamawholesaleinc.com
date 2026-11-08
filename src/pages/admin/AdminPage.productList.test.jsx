@@ -208,7 +208,7 @@ describe('the products list: inactive products (AW-115)', () => {
     const rows = bodyRows();
     expect(rows.every((r) => r.className === 'inactive')).toBe(true);
     const row162 = rows.find((r) => r.cells[1].textContent === '162');
-    expect(row162.cells[9].textContent).toBe('BESTSELLER (not shown)');
+    expect(row162.cells[9].textContent).toBe('Bestseller (not shown)');
     expect(row162.cells[10].querySelector('.admin-pill').textContent).toBe('Inactive');
     expect(within(row162).queryByRole('link', { name: /View on site/ })).toBeNull();
     await act(async () => { navigate('/admin/products?q=162', { replace: true }); });

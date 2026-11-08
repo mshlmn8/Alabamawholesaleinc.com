@@ -78,6 +78,7 @@ import { announce } from '../lib/announce.js';
 import { showToast } from '../lib/toast.js';
 import { BASKET } from '../data/terms.js';
 import { ProductPhoto } from './ProductPhoto.jsx';
+import { ProductTag } from './ProductTag.jsx';
 import { QuantityInput } from './QuantityInput.jsx';
 import { TextParts, joinParts } from './TextParts.jsx';
 
@@ -194,7 +195,7 @@ export function ProductCard({
         {/* The owner adds a photo of each product that shares a file later, in Admin (AW-136, answered 2026-10). */}
         {p.picture && p.sharedPhoto && badge && <span className="pack-badge">{badge}</span>}
       </div>
-      <p className="card-kicker"><span>{p.sub}</span>{p.tag && <span className={`card-tag${p.tag === 'NEW' ? ' new' : ''}`}>{p.tag}</span>}</p>
+      <p className="card-kicker"><span>{p.sub}</span><ProductTag tag={p.tag} /></p>
       <h3 id={titleId}><Link className="card-link" to={productRoute}>{p.name}</Link></h3>
       <p className="card-detail"><TextParts parts={cardDetailParts(p, { sku: showSku })} code={showSku ? p.sku : null} /></p>
       <span className="card-meta card-actions">
