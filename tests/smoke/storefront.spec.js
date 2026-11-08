@@ -742,19 +742,23 @@ test.describe('home sections', () => {
     const tiles = page.locator('#catalog .dept-tile');
     await expect(tiles).toHaveCount(8);
     await tiles.last().scrollIntoViewIfNeeded();
-    // The photos load lazily: wait for all eight.
+    // The group photos load lazily: every packshot stays inside its frame.
     const frames = () => tiles.evaluateAll((all) => all.map((tile) => {
       const media = tile.querySelector('.dept-tile-media').getBoundingClientRect();
       const body = tile.querySelector('.dept-tile-body').getBoundingClientRect();
-      const img = tile.querySelector('.dept-tile-media img');
-      const r = img.getBoundingClientRect();
+      const imgs = [...tile.querySelectorAll('.dept-tile-media img')];
+      const inside = imgs.every((img) => {
+        const r = img.getBoundingClientRect();
+        return r.width > 0 && r.left >= media.left - 0.5 && r.right <= media.right + 0.5 && r.top >= media.top - 0.5 && r.bottom <= media.bottom + 0.5;
+      });
       return {
-        loaded: img.complete && img.naturalWidth > 0,
-        inside: r.left >= media.left - 0.5 && r.right <= media.right + 0.5 && r.top >= media.top - 0.5 && r.bottom <= media.bottom + 0.5,
+        count: imgs.length,
+        loaded: imgs.length > 0 && imgs.every((img) => img.complete && img.naturalWidth > 0),
+        inside,
         bandBelow: body.top >= media.bottom - 0.5,
       };
     }));
-    await expect.poll(frames).toEqual(Array(8).fill({ loaded: true, inside: true, bandBelow: true }));
+    await expect.poll(frames).toEqual(Array(8).fill({ count: 4, loaded: true, inside: true, bandBelow: true }));
     await tiles.filter({ hasText: 'Candies' }).click();
     await expect(page).toHaveURL(/\/category\/candies$/);
     await expect(page.getByRole('heading', { level: 1, name: 'Candies' })).toBeVisible();

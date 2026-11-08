@@ -809,17 +809,21 @@ p > .text-link { min-height: 0; min-width: 0; }
 .trust-sourcing { padding-left: 40px; border-left: 1px solid var(--on-dark-line); font-size: var(--text-lg); line-height: 1.5; color: var(--on-dark); }
 
 /* Shop by department (AW-060, AW-061): four tiles a row, two in the compact
-   layout. Each is a 16:10 photo frame over a solid purple band with the name
-   and the biggest lines; no text sits on the photo (AW-055). The photo is
-   placed like a card's: out of flow, never wider than itself. */
+   layout. Each is a square group of packshots over a solid purple band with
+   the name and the biggest lines; no text sits on the photos (AW-055). */
 .dept-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--grid-gap); }
 /* The name is the link, stretched over the tile by its ::after (AW-170). */
 .dept-tile { position: relative; display: flex; flex-direction: column; min-width: 0; background: var(--purple); color: #fff; }
 .dept-tile-link { color: inherit; }
 .dept-tile-link::after { content: ''; position: absolute; inset: 0; }
-.dept-tile-media { position: relative; aspect-ratio: 16 / 10; overflow: hidden; background: var(--tile); border: 1px solid var(--line); border-bottom: 0; }
+.dept-tile-media { display: grid; gap: 8px; padding: 10px; aspect-ratio: 1; overflow: hidden; background: var(--tile); border: 1px solid var(--line); border-bottom: 0; }
+.dept-tile-media.is-1 { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+.dept-tile-media.is-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); }
+.dept-tile-media.is-3, .dept-tile-media.is-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
+.dept-tile-media.is-3 .dept-shot:last-child { grid-column: 1 / -1; }
+.dept-shot { min-width: 0; min-height: 0; position: relative; }
 .dept-tile-media picture { display: contents; }
-.dept-tile-media img { position: absolute; inset: 12px; margin: auto; height: auto; max-width: calc(100% - 24px); max-height: calc(100% - 24px); object-fit: contain; }
+.dept-shot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .dept-tile-body { flex: 1 1 auto; display: flex; flex-direction: column; gap: 6px; padding: 16px 18px 18px; overflow-wrap: break-word; }
 .dept-tile h3 { font-size: var(--h3); margin: 0 0 2px; }
 /* The line names wrap between them, each moving to the next line whole, and
@@ -2143,7 +2147,7 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .card-add { width: 100%; white-space: normal; text-align: center; }
   .card-stepper { width: 100%; justify-content: space-between; }
   .card-stepper input { flex: 1 1 auto; }
-  .dept-tile-media img { inset: 8px; max-width: calc(100% - 16px); max-height: calc(100% - 16px); }
+  .dept-tile-media { gap: 6px; padding: 8px; }
   .dept-tile-body { gap: 4px; padding: 12px 12px 14px; }
   .dept-tile h3 { font-size: 1.25rem; }
   .editorials { grid-template-columns: 1fr; gap: 16px; }

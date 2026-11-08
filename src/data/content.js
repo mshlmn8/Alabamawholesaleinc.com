@@ -204,27 +204,21 @@ export const HOME_HERO = {
 // row can: nicotine_warning).
 export const HERO_SLIDES = HERO_REEL.map(({ file, alt, goCat }) => ({ ...heroImage(file), alt, goCat, nicotineWarning: false }));
 
-// The product whose photo stands for each department on the home page's
-// "Shop by department" tiles (AW-061), by catalog id: a clean packshot from
-// one of the department's bigger product lines that the New arrivals and
-// Bestsellers rails don't already show. None is a nicotine product, because
-// the tiles carry no FDA statement, and none is from a line waiting on the
-// legal review (AW-001). Novelties' two biggest lines are exactly those
-// (Disposable Vapes, nicotine; Wellness Pills, under review; Mushroom
-// Products, the biggest before, is delisted), so its photo comes from Hookah &
-// Shisha. A product missing from the live catalog, or without a photo, gives
-// way to the first suitable one in the department's biggest line that has
-// one (departmentPhoto in src/pages/HomePage.jsx).
-// TODO(owner): Approve these eight department photos, or supply a photo for each department. (AW-061, see AW-056)
-export const DEPARTMENT_PHOTOS = {
-  TOBACCO: 347, // Zig-Zag hemp wraps (Wraps & Leafs)
-  NOVELTIES: 314, // Coco Nara hookah charcoal (Hookah & Shisha)
-  MERCHANDISE: 196, // Advil (OTC & Health)
-  CANDIES: 163, // M&M's (Chocolate Bars)
-  'FOOD STUFF': 48, // Ritz crackers (Chips & Crackers)
-  GROCERY: 20, // Vaseline healing jelly (Personal Care)
-  'MOTOR OIL': 102, // Havoline motor oil (Motor Oil)
-  'DRINKS & BAGS': 249, // Sprite (Sodas)
+// The products whose photos stand together for each department on the home
+// page's "Shop by department" tiles (AW-061). Four packshots, in this order,
+// so a tile shows a group from that department rather than one item. A
+// missing id, or one without a photo, is skipped and the tile fills from
+// other photos in the department (departmentPhotos in src/pages/HomePage.jsx).
+// TODO(owner): Approve these department groups, or supply a photo set for each department. (AW-061, see AW-056)
+export const DEPARTMENT_GROUPS = {
+  TOBACCO: [1, 86, 17, 11], // Swisher Sweets, Seneca, Black & Mild, Backwoods
+  NOVELTIES: [314, 216, 309, 315], // Coco Nara, grinders, water bongs, Al Fakher
+  MERCHANDISE: [196, 23, 31, 27], // Advil, Tylenol, BIC, Duracell
+  CANDIES: [163, 171, 162, 37], // M&M's, Hershey's, Snickers, Airheads
+  'FOOD STUFF': [48, 328, 47, 49], // Ritz, Takis, Cheez-It, Pop-Tarts
+  GROCERY: [20, 111, 112, 115], // Vaseline, Tide, Gain, Dove
+  'MOTOR OIL': [102, 101, 105, 99], // Havoline, Castrol, WD-40, PEAK
+  'DRINKS & BAGS': [248, 249, 270, 143], // Coca-Cola, Sprite, Monster, Red Bull
 };
 
 // Not shown on the site. Kept for a possible brand strip under the hero
