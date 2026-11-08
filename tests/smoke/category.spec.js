@@ -36,7 +36,7 @@ test('a brand filter narrows the department, and the line counts follow it (AW-0
   const errors = trackErrors(page);
   const phone = testInfo.project.name === 'phone';
   await page.goto('/category/tobacco');
-  if (phone) await page.getByRole('button', { name: /Filter & Sort/ }).click();
+  if (phone) await page.getByRole('button', { name: /^Filter\b/ }).click();
   const brands = page.getByRole('group', { name: 'Brand' });
   await expect(brands.getByRole('checkbox')).toHaveCount(8);
   await expect(brands.getByRole('checkbox', { name: /Assorted/ })).toHaveCount(0);
@@ -53,11 +53,11 @@ test('a brand filter narrows the department, and the line counts follow it (AW-0
     await expect(page.getByRole('dialog')).toBeHidden();
     await expect(page).toHaveURL(/\/category\/tobacco\/wraps-and-leafs\?brand=swisher-sweets$/);
   } else {
-    await expect(page.locator('.result-note')).toHaveText('Showing 6 of 101 products');
+    await expect(page.locator('.result-note')).toHaveText('6 items');
     await expect(page.getByRole('link', { name: 'Cigarettes (0)' })).toHaveClass(/is-empty/);
     await page.getByRole('link', { name: 'Wraps & Leafs (2)' }).click();
   }
-  await expect(page.locator('.result-note')).toHaveText('Showing 2 of 34 products in Wraps & Leafs');
+  await expect(page.locator('.result-note')).toHaveText('2 items in Wraps & Leafs');
   await expect(page.getByRole('button', { name: 'Remove filter Brand: Swisher Sweets' })).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -66,7 +66,7 @@ test('a line page is headed by the line, and its trail leads back to the departm
   const errors = trackErrors(page);
   await page.goto('/category/tobacco/cigars-and-cigarillos');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Cigars & Cigarillos');
-  await expect(page.locator('.page-head .eyebrow')).toHaveText('Tobacco · 31 products');
+  await expect(page.locator('.page-head .eyebrow')).toHaveText('Tobacco');
   const trail = page.getByRole('navigation', { name: 'Breadcrumb' });
   await expect(trail.locator('li > *')).toHaveText(['Home', 'All products', 'Tobacco', 'Cigars & Cigarillos']);
   const cases = await trail.locator('li > *').evaluateAll((els) => els.map((el) => getComputedStyle(el).textTransform));

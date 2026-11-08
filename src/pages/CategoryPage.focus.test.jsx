@@ -80,20 +80,20 @@ describe('focus after a filter change (NEW-005)', () => {
     press(screen.getByRole('button', { name: 'Clear all (1)' }));
     expect(url()).toBe('/category/tobacco');
     expect(document.activeElement).toBe(note());
-    expect(note().textContent).toBe('Showing 3 of 3 products');
+    expect(note().textContent).toBe('3 items');
   });
 
   it('keeps focus in the phone drawer after its Clear all: on the drawer’s first control', () => {
     phone();
     act(() => navigate('/category/tobacco/cigars?tags=bestseller', { replace: true }));
     render(<Harness />);
-    fireEvent.click(screen.getByRole('button', { name: /Filter & Sort/ }));
-    const drawer = screen.getByRole('dialog', { name: 'Filter & Sort' });
-    press(within(drawer).getByRole('button', { name: 'Clear all (2)' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Filter\b/ }));
+    const drawer = screen.getByRole('dialog', { name: 'Filter & sort' });
+    press(within(drawer).getByRole('button', { name: 'Reset' }));
     expect(url()).toBe('/category/tobacco');
-    const first = within(screen.getByRole('dialog', { name: 'Filter & Sort' })).getByRole('radio', { name: 'All (3)' });
+    const first = within(screen.getByRole('dialog', { name: 'Filter & sort' })).getByRole('searchbox', { name: 'Search in Tobacco' });
     expect(document.activeElement).toBe(first);
-    expect(first.checked).toBe(true);
+    expect(within(drawer).getByRole('radio', { name: 'All (3)' }).checked).toBe(true);
   });
 
   it('leaves focus alone when it wasn’t lost', () => {
@@ -110,7 +110,7 @@ describe('focus after a filter change (NEW-005)', () => {
 
 describe('the phone pill row (AW-157, NEW-084)', () => {
   // Pill positions in the scrolling row, their offsetParent; the row is 200px wide.
-  const layout = { 'All (3)': [16, 80], 'Cigarettes (1)': [104, 120], 'Cigars (2)': [232, 100] };
+  const layout = { 'All 3': [16, 80], 'Cigarettes 1': [104, 120], 'Cigars 2': [232, 100] };
   const stubLayout = () => {
     const pillBox = (el) => (el.classList.contains('sub-pill') ? layout[el.textContent] : null);
     vi.spyOn(HTMLElement.prototype, 'offsetLeft', 'get').mockImplementation(function left() { return pillBox(this)?.[0] ?? 0; });
@@ -154,18 +154,18 @@ describe('the phone pill row (AW-157, NEW-084)', () => {
     expect(observer.targets.map((el) => el.className)).toEqual(['sub-pills', 'sub-pill active']);
     // The visitor scrolls the row; then the fonts arrive, wider: centred again.
     row.left = 0;
-    layout['Cigars (2)'] = [250, 120];
+    layout['Cigars 2'] = [250, 120];
     await act(async () => { fontsIn(); await Promise.resolve(); });
     expect(row.writes).toEqual([182, 210]);
     // The row resizes (the phone turned): centred again.
-    layout['Cigars (2)'] = [232, 100];
+    layout['Cigars 2'] = [232, 100];
     act(() => observer.callback([]));
     expect(row.writes).toEqual([182, 210, 182]);
     // Another line: the old observer is gone, a new one watches the new pill.
     fireEvent.click(screen.getByRole('link', { name: 'Cigarettes (1)' }));
     expect(observer.live).toBe(false);
     expect(rowObservers()).toHaveLength(2);
-    expect(rowObservers()[1].targets[1].textContent).toBe('Cigarettes (1)');
+    expect(rowObservers()[1].targets[1].textContent).toBe('Cigarettes 1');
   });
 
   it('brings a pill that takes focus at least 20px inside the row, moving the row only (NEW-084)', () => {
