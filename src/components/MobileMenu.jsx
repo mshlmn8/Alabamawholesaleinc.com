@@ -6,6 +6,7 @@
 import { APPLY_LABEL, SIGN_IN_LABEL } from '../data/terms.js';
 import { Link, useRoute } from '../lib/router.js';
 import { currentFor } from '../lib/navCurrent.js';
+import { departmentIcon } from '../lib/departmentIcon.js';
 import { productCount } from '../lib/format.js';
 import { useSite } from '../lib/siteSettings.js';
 import { ModalLayer } from './ModalLayer.jsx';
@@ -29,9 +30,9 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
         <div className="drawer-body menu-body">
           <nav className="menu-group" aria-label="Departments">
             <h3>Departments</h3>
-            {departments.map((c, i) => (
+            {departments.map((c) => (
               <Link key={c.key} to={{ page: 'category', category: c.key }} onClick={onFollowLink} aria-current={currentFor(raw, { page: 'category', category: c.key })}>
-                <span><span className="menu-index" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span><span>{c.label}</span></span>
+                <span><span className="menu-index" aria-hidden="true"><Icon name={departmentIcon(c.key)} /></span><span>{c.label}</span></span>
                 <span className="menu-count"><span>{c.count}</span><span className="sr-only"> products</span></span>
               </Link>
             ))}
