@@ -1,15 +1,16 @@
-// Credits for the four Wikimedia Commons photos in the catalog (AW-033,
-// Cursor PR #13), as their file pages give the author and licence (checked
-// 2026-10-08; also recorded in ../assets/products/sources/merchandise.md).
-// Their licences ask for the author, the licence named with a link to it,
-// and a note of any change. The build changes each photo
+// Credits for the Wikimedia Commons photos whose licences ask for them
+// (AW-033). The four merchandise photos were checked 2026-10-08 and are
+// recorded in ../assets/products/sources/merchandise.md. The Coca-Cola can
+// (#248) was added 2026-11-07 and is recorded in drinks-bags.md. Each
+// licence asks for the author, the licence named with a link to it, and a
+// note of any change. The build changes each photo
 // (scripts/build-images.mjs: a white margin to the tile's shape, then
 // smaller sizes, re-encoded), so every credit says "resized". The product
 // page prints the credit under the photo and in the enlarged view, with
 // links to the licence and to the file page.
-// The owner replaces retailer and competitor photos later, in Admin ->
-// Products, and these four stay with this attribution until then (AW-033,
-// skipped on the owner's 2026-10 answer).
+// Public-domain and CC0 photos (#205 Pepsi, #270 Monster Energy) are
+// recorded in drinks-bags.md and are not credited here: those dedications
+// do not ask for attribution.
 
 // The licence deed each credit links to.
 export const LICENCE_URLS = Object.freeze({
@@ -24,6 +25,7 @@ export const PHOTO_CREDITS = Object.freeze({
   150: Object.freeze({ author: 'J.Dncsn', licence: 'CC BY-SA 3.0', licenceUrl: 'https://creativecommons.org/licenses/by-sa/3.0/', source: 'https://commons.wikimedia.org/wiki/File:USB_cable.jpg' }),
   151: Object.freeze({ author: 'Rafasshop', licence: 'CC BY-SA 4.0', licenceUrl: 'https://creativecommons.org/licenses/by-sa/4.0/', source: 'https://commons.wikimedia.org/wiki/File:Camiseta_Blanca_con_cuello_en_V.jpg' }),
   334: Object.freeze({ author: 'Beendy234', licence: 'CC BY 4.0', licenceUrl: 'https://creativecommons.org/licenses/by/4.0/', source: 'https://commons.wikimedia.org/wiki/File:Adhesive_bandage.jpg' }),
+  248: Object.freeze({ author: 'M0tty', licence: 'CC BY-SA 3.0', licenceUrl: 'https://creativecommons.org/licenses/by-sa/3.0/', source: 'https://commons.wikimedia.org/wiki/File:Coca-cola_50cl_can_-_Italia.jpg' }),
 });
 
 // The credit of a product's photo, or null.

@@ -5,11 +5,12 @@ import { LICENCE_URLS, PHOTO_CREDITS, photoCredit, photoCreditText } from './pho
 import { CATALOG } from './products.js';
 
 describe('photoCredit (AW-033)', () => {
-  it('credits the four Wikimedia photos with the author, the licence and the change', () => {
+  it('credits each Wikimedia photo that requires it, with the author, the licence and the change', () => {
     expect(photoCreditText(photoCredit({ id: 149 }))).toBe('Photo: Dietmar Rabich, CC BY-SA 4.0, resized.');
     expect(photoCreditText(photoCredit({ id: '150' }))).toBe('Photo: J.Dncsn, CC BY-SA 3.0, resized.');
     expect(photoCreditText(photoCredit({ id: 151 }))).toBe('Photo: Rafasshop, CC BY-SA 4.0, resized.');
     expect(photoCreditText(photoCredit({ id: 334 }))).toBe('Photo: Beendy234, CC BY 4.0, resized.');
+    expect(photoCreditText(photoCredit({ id: 248 }))).toBe('Photo: M0tty, CC BY-SA 3.0, resized.');
   });
 
   it('links each licence to its deed, and each credit to its Wikimedia Commons file page', () => {
@@ -40,7 +41,9 @@ describe('photoCredit (AW-033)', () => {
   });
 
   it('agrees with the photo source log, which records each file\'s author and licence', () => {
-    const log = readFileSync(resolve(import.meta.dirname, '../assets/products/sources/merchandise.md'), 'utf8');
+    const log = ['merchandise.md', 'drinks-bags.md']
+      .map((name) => readFileSync(resolve(import.meta.dirname, '../assets/products/sources', name), 'utf8'))
+      .join('\n');
     for (const [id, credit] of Object.entries(PHOTO_CREDITS)) {
       const line = log.split('\n').find((l) => l.startsWith(`| ${id} |`));
       expect(line, id).toContain(credit.source);
