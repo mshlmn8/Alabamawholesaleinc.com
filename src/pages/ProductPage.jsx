@@ -107,6 +107,7 @@ import { Picture } from '../components/Picture.jsx';
 import { ModalLayer } from '../components/ModalLayer.jsx';
 import { photoCredit } from '../data/photoCredits.js';
 import { ProductCard } from '../components/ProductCard.jsx';
+import { ProductTag } from '../components/ProductTag.jsx';
 import { NicotineWarning } from '../components/NicotineWarning.jsx';
 import { showsNicotineWarning } from '../lib/regulated.js';
 import { Icon } from '../components/Icon.jsx';
@@ -359,7 +360,7 @@ export function ProductPage({
         <div className="pd-info">
           {showsNicotineWarning(p) && <NicotineWarning />}
           {/* The tag is a chip beside the brand line, not over the photo (AW-055). */}
-          <p className="pd-brand"><span>{brand ? `${brand} · ${p.sub}` : p.sub}</span>{p.tag && <span className={`card-tag${p.tag === 'NEW' ? ' new' : ''}`}>{p.tag}</span>}</p>
+          <p className="pd-brand"><span>{brand ? `${brand} · ${p.sub}` : p.sub}</span><ProductTag tag={p.tag} /></p>
           <h1>{p.name}</h1>
           {choiceRequired && <p id="pd-variant-label" className="pd-variant-label">{`Choose a ${axis.noun}`}</p>}
           {choiceRequired && (

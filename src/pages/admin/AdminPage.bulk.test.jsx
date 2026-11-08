@@ -138,7 +138,7 @@ describe('bulk updates (AW-114)', () => {
     expect(onCatalogChange).toHaveBeenCalledTimes(1);
     // No reload: the rows are patched where they are.
     expect(fake.find({ table: 'products', op: 'select' })).toHaveLength(1);
-    expect(rowOf(1).cells[9].textContent).toBe('DEAL');
+    expect(rowOf(1).cells[9].textContent).toBe('Deal');
     expect(screen.queryByRole('region', { name: 'Change the selected products' })).toBeNull();
   });
 

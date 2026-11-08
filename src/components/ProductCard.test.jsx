@@ -178,13 +178,19 @@ describe('ProductCard', () => {
     const picture = { src: '/x.jpg', srcSet: '', webpSrcSet: '', width: 320, height: 320 };
     const view = render(card({ ...base, variants: [], picture, tag: 'BESTSELLER' }));
     const kicker = document.querySelector('.card-kicker');
-    expect([...kicker.children].map((el) => [el.tagName, el.className, el.textContent])).toEqual([['SPAN', '', 'Cigars'], ['SPAN', 'card-tag', 'BESTSELLER']]);
+    expect([...kicker.children].map((el) => [el.tagName, el.className, el.textContent])).toEqual([['SPAN', '', 'Cigars'], ['SPAN', 'card-tag bestseller', 'Bestseller']]);
     // The photo box holds only the photo (and the sell-unit badge, AW-136).
     expect([...document.querySelector('.card-block').children].map((el) => el.tagName)).toEqual(['IMG']);
     expect(document.querySelector('.block-label')).toBeNull();
     expect(document.querySelector('.content-card').textContent).not.toMatch(/TOBACCO/);
     view.rerender(card({ ...base, variants: [], picture, tag: 'NEW' }));
     expect(document.querySelector('.card-kicker .card-tag').className).toBe('card-tag new');
+    expect(document.querySelector('.card-kicker .card-tag').textContent).toBe('New');
+    view.rerender(card({ ...base, variants: [], picture, tag: 'DEAL' }));
+    expect(document.querySelector('.card-kicker .card-tag').textContent).toBe('Deal');
+    view.rerender(card({ ...base, variants: [], picture, tag: 'PREMIUM' }));
+    expect(document.querySelector('.card-kicker .card-tag').className).toBe('card-tag featured');
+    expect(document.querySelector('.card-kicker .card-tag').textContent).toBe('Featured');
     view.rerender(card({ ...base, variants: [], picture, tag: null }));
     expect([...document.querySelector('.card-kicker').children].map((el) => el.textContent)).toEqual(['Cigars']);
   });
