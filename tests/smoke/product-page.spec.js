@@ -91,7 +91,7 @@ test('a tablet shows the product name and the add button on the first screen, an
   const order = await page.locator('.pd-info > *').evaluateAll((els) => els.map((el) => el.className.split(' ')[0]));
   expect(order.indexOf('qty-row')).toBeLessThan(order.indexOf('pd-price'));
   // A product without a photo: the placeholder's own height, not a photo frame.
-  await page.goto('/product/9');
+  await page.goto('/product/13');
   await expect(page.locator('.pd-media .photo-soon-label')).toHaveText('Photo coming soon');
   const empty = await layout(page);
   expect(empty.media.height).toBeLessThan(250);

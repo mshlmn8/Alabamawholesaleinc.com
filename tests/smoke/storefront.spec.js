@@ -791,7 +791,7 @@ test.describe('part 2 catalog', () => {
 
   test('a product without a photo says so, and only tags with products are offered', async ({ page }) => {
     const errors = trackErrors(page);
-    await page.goto('/product/9');
+    await page.goto('/product/13');
     await expect(page.locator('.pd-media .photo-soon-label')).toHaveText('Photo coming soon');
     // On phones the filters are in the Filter & Sort drawer.
     const openFilters = async () => {
