@@ -79,17 +79,15 @@ test('one banner holds the skip link and one Apply, the header’s (AW-314, AW-3
   expect(errors).toEqual([]);
 });
 
-test('a toast at the foot of the page leaves the FDA warning readable (NEW-080)', async ({ page }) => {
+test('a toast at the foot of the page stays visible, and the footer has no nicotine warning', async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto('/product/14');
   await page.locator('.pd-info').getByRole('button', { name: /^Add to order/ }).click();
   const toast = page.locator('.toast-root > *').first();
   await expect(toast).toBeVisible();
   await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
-  const note = page.locator('.fda-note');
-  await expect(note).toBeInViewport({ ratio: 0.9 });
-  // The toast rides just above the warning once the page has caught up.
-  await expect.poll(async () => (await toast.boundingBox()).y + (await toast.boundingBox()).height).toBeLessThanOrEqual((await note.boundingBox()).y);
+  await expect(page.locator('footer .fda-note, footer .nicotine-warning')).toHaveCount(0);
+  await expect(toast).toBeInViewport();
   expect(errors).toEqual([]);
 });
 

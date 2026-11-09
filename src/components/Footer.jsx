@@ -1,5 +1,5 @@
-// Site footer: departments, account and help links, contact details, the
-// policy links and the nicotine warning. Destinations are links (AW-043);
+// Site footer: departments, account and help links, contact details and the
+// policy links. Destinations are links (AW-043);
 // "Apply for a trade account", "Sign in" and "Help" open dialogs and stay
 // buttons. Signed in, a "My account" link takes the place of Apply and Sign
 // in (AW-066), and the link to /apply is "Trade account", the page's crumb,
@@ -31,7 +31,6 @@ import { useMediaQuery } from '../lib/useMediaQuery.js';
 import { useSite } from '../lib/siteSettings.js';
 import { EmailText } from './ContactLinks.jsx';
 import { Icon } from './Icon.jsx';
-import { NicotineWarning } from './NicotineWarning.jsx';
 
 // The phone layout, where Departments folds: the same condition as the
 // footer's phone block in src/index.css (styles.test.js checks they match).
@@ -65,13 +64,12 @@ export function footerBlurb(departments) {
   return `Wholesale distributor${names ? ` of ${names}` : ''}. Serving licensed retail stores.`;
 }
 
-// The wordmark. The footer is purple, and the mark's "WHOLESALE INC" is
-// purple too, so it sits on a white plate. The typed name is the fallback
-// when the photo fails to load (AW-341).
+// The wordmark, transparent so the purple footer shows through. The typed
+// name is the fallback when the photo fails to load (AW-341).
 function FooterLogo() {
   const { status, attempt, ref, onLoad, onError } = useImageStatus();
   if (status === 'failed') return <span className="footer-wordmark"><span>Alabama</span><small>WHOLESALE INC.</small></span>;
-  return <img key={attempt} className="footer-logo" ref={ref} src={IMG.logo} alt="" width="236" height="86" onLoad={onLoad} onError={onError} />;
+  return <img key={attempt} className="footer-logo" ref={ref} src={IMG.logoFooter} alt="" width="236" height="86" onLoad={onLoad} onError={onError} />;
 }
 
 export function Footer({ departments, signedIn = false, onLoginClick, onApplyClick, onHelp }) {
@@ -137,11 +135,6 @@ export function Footer({ departments, signedIn = false, onLoginClick, onApplyCli
           </nav>
           <p>{LICENSED_ONLY}</p>
         </div>
-      </div>
-      {/* The FDA statement, verbatim (AW-026). The last band of the page,
-          flush with its bottom edge (AW-144). */}
-      <div className="fda-note">
-        <div className="container"><NicotineWarning /></div>
       </div>
     </footer>
   );

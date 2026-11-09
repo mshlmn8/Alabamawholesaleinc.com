@@ -1,7 +1,7 @@
 // Keeps the FDA nicotine warning readable under the toasts (NEW-080).
 //
-// The footer's last band, .fda-note, carries the verbatim FDA warning
-// (AW-026). The commerce toast (.toast-root) and the admin's status bar
+// A .fda-note band, when a page still has one, carries the verbatim FDA
+// warning (AW-026). The footer no longer does. The commerce toast (.toast-root) and the admin's status bar
 // (.admin-status) are fixed 16px above the bottom of the window, so at the
 // bottom of a page they covered the middle of it: 'WARNING: This product
 // co[toast]r sale to anyone under 21.' for the 8 seconds a status shows.

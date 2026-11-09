@@ -100,7 +100,7 @@ describe('footer copy (AW-285)', () => {
     render(footer());
     const logo = document.querySelector('.footer-logo');
     expect(logo).not.toBeNull();
-    expect(logo.getAttribute('src')).toMatch(/logo\.png$/);
+    expect(logo.getAttribute('src')).toMatch(/logo-footer\.png$/);
     expect(document.querySelector('.footer-brand > span')).toBeNull();
     const blurb = document.querySelector('.footer-brand p').textContent;
     expect(blurb).toBe('Wholesale distributor of tobacco, novelties & vapes, merchandise, candies, food stuff, grocery, motor oil, and drinks & bags. Serving licensed retail stores.');

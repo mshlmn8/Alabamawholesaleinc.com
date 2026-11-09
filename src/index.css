@@ -1696,7 +1696,7 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
   .footer-grid button, .footer-grid .footer-link { min-height: var(--tap); min-width: var(--tap); }
   .footer-grid p > a { display: inline-flex; align-items: center; min-height: var(--tap); padding-block: 0; overflow-wrap: anywhere; }
 }
-.footer-grid a.footer-logo-link { display: inline-block; max-width: 100%; padding: 8px 12px; line-height: 0; text-decoration: none; background: #fff; }
+.footer-grid a.footer-logo-link { display: inline-block; max-width: 100%; padding: 8px 12px; line-height: 0; text-decoration: none; background: none; }
 .footer-logo { display: block; height: 52px; width: auto; max-width: 180px; }
 .footer-wordmark > span { font: 700 1.625rem/1 var(--body); letter-spacing: -.075rem; color: var(--orange); display: block; }
 .footer-wordmark > small { font: 700 var(--text-xs)/1.4 var(--body); letter-spacing: var(--track-eyebrow); color: var(--on-dark-muted); display: block; margin-top: 6px; }

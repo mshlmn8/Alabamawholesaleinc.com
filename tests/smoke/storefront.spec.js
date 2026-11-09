@@ -614,15 +614,11 @@ test.describe('tobacco and vapor', () => {
     }, [AGE_KEY, ageRecord(Date.now())]);
   });
 
-  test('the nicotine statement is on vape pages and the footer, not on catalog cards or hemp wraps', async ({ page }) => {
+  test('the nicotine statement is on vape pages, not in the footer or on catalog cards or hemp wraps', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/product/61');
     await expect(page.locator('.pd-info .nicotine-warning')).toHaveText(FDA);
-    // The footer band is the last thing on the page, flush with its bottom.
-    const band = page.locator('footer .fda-note');
-    await expect(band).toHaveText(FDA);
-    const gap = await band.evaluate((el) => document.documentElement.scrollHeight - (el.getBoundingClientRect().bottom + window.scrollY));
-    expect(Math.abs(gap)).toBeLessThan(1);
+    await expect(page.locator('footer .fda-note, footer .nicotine-warning')).toHaveCount(0);
     await page.goto('/product/330');
     await expect(page.locator('.pd-info .nicotine-warning')).toHaveCount(0);
     await page.goto('/category/tobacco/cigars-and-cigarillos');
