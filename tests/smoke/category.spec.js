@@ -62,18 +62,15 @@ test('a brand filter narrows the department, and the line counts follow it (AW-0
   expect(errors).toEqual([]);
 });
 
-test('a line page is headed by the line, and its trail leads back to the department (AW-226, AW-325)', async ({ page }) => {
+test('a line page is headed by the line, with no breadcrumb trail (AW-226)', async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto('/category/tobacco/cigars-and-cigarillos');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Cigars & Cigarillos');
   await expect(page.locator('.page-head .eyebrow')).toHaveText('Tobacco');
-  const trail = page.getByRole('navigation', { name: 'Breadcrumb' });
-  await expect(trail.locator('li > *')).toHaveText(['Home', 'All products', 'Tobacco', 'Cigars & Cigarillos']);
-  const cases = await trail.locator('li > *').evaluateAll((els) => els.map((el) => getComputedStyle(el).textTransform));
-  expect(cases).toEqual(['uppercase', 'uppercase', 'uppercase', 'uppercase']);
-  await trail.getByRole('link', { name: 'Tobacco' }).click();
-  await expect(page).toHaveURL(/\/category\/tobacco$/);
+  await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toHaveCount(0);
+  await page.goto('/category/tobacco');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tobacco');
+  await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 

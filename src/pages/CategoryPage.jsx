@@ -30,7 +30,6 @@ import { Link, navigate } from '../lib/router.js';
 import { firstControlIn, focusInPlace, focusLost, neighbourKey } from '../lib/focus.js';
 import { useToolbarHeight } from '../lib/stickyHeader.js';
 import { EMPTY_CATEGORY_QUERY, slugify } from '../lib/routes.js';
-import { Breadcrumbs, catalogCrumbs } from '../components/Breadcrumbs.jsx';
 import { BackToTop } from '../components/BackToTop.jsx';
 import { ModalLayer } from '../components/ModalLayer.jsx';
 import { EmptyState } from '../components/EmptyState.jsx';
@@ -404,7 +403,6 @@ export function CategoryPage({
   // fallback font first, and the wider Barlow pills then left the current one
   // under the fade at the end of the row.
   const pillsRef = useRef(null);
-  const crumbsRef = useRef(null);
   // The Filter & Sort row's height, for the scroll margin of the cards that
   // scroll under it where it sticks (NEW-081).
   const toolbarRef = useRef(null);
@@ -427,12 +425,6 @@ export function CategoryPage({
       observer?.disconnect();
     };
   }, [activeSub, isMobile]);
-  // A long trail stays one line. Show the current page, which is the last
-  // crumb, without scrolling the document.
-  useLayoutEffect(() => {
-    const row = crumbsRef.current?.querySelector('ol');
-    if (row && row.scrollWidth > row.clientWidth) row.scrollLeft = row.scrollWidth;
-  }, [category, activeSub]);
   // A pill reached with Tab comes fully into the row, 20px clear of its ends
   // (NEW-084): browsers leave a partly shown one where it is. The row's own
   // scrollLeft again, never the page's.
@@ -460,9 +452,6 @@ export function CategoryPage({
   return (
     <section>
       <div className="page-head category-head">
-        <div ref={crumbsRef}>
-          <Breadcrumbs items={catalogCrumbs({ category, sub: activeSub, query })} />
-        </div>
         {/* A line page names the line (AW-226). A line named like its
             department leaves the eyebrow off, so the name is not said twice
             (NEW-029). The counts sit in the stat cards, not the sentence. */}
