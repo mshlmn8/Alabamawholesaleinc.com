@@ -12,7 +12,7 @@ import { DEPARTMENT_GROUPS, FREE_DELIVERY_THRESHOLD, SOURCING, TRUST } from '../
 import { APPLY_LABEL } from '../data/terms.js';
 import { accountView, tradeAccountPanel } from '../lib/accountStatus.js';
 import { topLines } from '../lib/departments.js';
-import { formatMoneyShort } from '../lib/format.js';
+import { brandLabel, formatMoneyShort } from '../lib/format.js';
 import { COLLECTIONS } from '../lib/collections.js';
 import { tierPriceNote } from '../lib/pricing.js';
 import { RAIL_LIMIT, homeRails, homeSections } from '../lib/merchandising.js';
@@ -45,6 +45,8 @@ export function newProductSlides(products, limit = RAIL_LIMIT) {
     picture: p.picture,
     alt: p.name,
     caption: p.name,
+    kicker: [p.sub, brandLabel(p.brand)].filter(Boolean).join(' · '),
+    badge: 'New arrival',
     to: { page: 'product', productId: p.id },
     nicotineWarning: showsNicotineWarning(p),
   }));
@@ -183,7 +185,7 @@ export function HomePage({
       <section className="section" id="catalog">
         <div className="section-head">
           <div><p className="eyebrow">FULL ASSORTMENT</p><h2>Shop by department</h2></div>
-          <Link to="/catalog">Browse the catalog</Link>
+          <Link to="/catalog">Browse all</Link>
         </div>
         {/* One tile per department (AW-060, AW-061): a group of packshots,
             then the name and biggest lines on a solid band, never on the

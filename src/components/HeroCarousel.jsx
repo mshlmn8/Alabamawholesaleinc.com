@@ -42,7 +42,7 @@ import { HERO_SLIDES } from '../data/content.js';
 import { catLabel } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
-import { MOBILE_QUERY, useMediaQuery } from '../lib/useMediaQuery.js';
+import { useMediaQuery } from '../lib/useMediaQuery.js';
 import { Icon } from './Icon.jsx';
 import { NicotineWarning } from './NicotineWarning.jsx';
 import { Picture } from './Picture.jsx';
@@ -139,7 +139,6 @@ function Carousel({ slides, label }) {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const reducedMotion = useMediaQuery(REDUCED_MOTION);
-  const compact = useMediaQuery(MOBILE_QUERY);
   const visible = usePageVisible();
   const swipeStart = useRef(null);
   const swiped = useRef(false);
@@ -172,17 +171,15 @@ function Carousel({ slides, label }) {
 
   if (!active) return null;
   const band = bandOf(media.map(({ slide }) => slide));
-  // The shown slide's link: on the photo, or in the band under it in the
-  // compact layout, where on the photo it covered the packshot's logo
-  // (NEW-055). A flagged slide's band is its statement's, so its link stays
-  // on the photo.
-  const captionInBand = compact && band.controls && !active.nicotineWarning;
-  // A new product opens its page; a department photo opens that department.
-  const caption = active.caption && active.to
-    ? <Link className="home-carousel-caption" to={active.to} draggable={false}>{active.caption}</Link>
-    : active.goCat
-      ? <Link className="home-carousel-caption" to={{ page: 'category', category: active.goCat }} draggable={false}>{`Shop ${catLabel(active.goCat)}`}</Link>
-      : null;
+  const kicker = active.kicker || (active.goCat ? catLabel(active.goCat) : '');
+  const title = active.caption || active.alt || '';
+  const shopName = active.to ? active.caption : active.goCat ? catLabel(active.goCat) : '';
+  const shop = active.to || active.goCat ? (
+    <Link className="button home-carousel-shop home-carousel-caption" to={active.to || { page: 'category', category: active.goCat }} draggable={false} aria-label={shopName ? `Shop ${shopName}` : 'Shop'}>
+      <span>Shop</span>
+      <Icon name="chevron-right" />
+    </Link>
+  ) : null;
 
   // Slide 1 always; the next one once the page and slide 1's photo have
   // loaded (the app often mounts after the page's load event), or once the
@@ -244,13 +241,8 @@ function Carousel({ slides, label }) {
       {/* Read out when the visitor changes slides, not on every automatic turn. */}
       <p className="sr-only" aria-live={rotating ? 'off' : 'polite'} aria-atomic="true">{`Slide ${safeIndex + 1} of ${count}`}</p>
       <div className="home-carousel-stage">
-        {/* The rotation control comes first in the tab order (AW-168). */}
-        {count > 1 && !reducedMotion && (
-          <button className="icon-btn home-carousel-toggle" type="button" aria-label="Pause slideshow" aria-pressed={paused}
-                  onClick={() => setPaused((value) => !value)}>
-            <Icon name={paused ? 'play' : 'pause'} />
-          </button>
-        )}
+        {active.badge && <p className="home-carousel-badge">{active.badge}</p>}
+        {count > 1 && <p className="home-carousel-index" aria-hidden="true">{`${safeIndex + 1}/${count}`}</p>}
         {/* Every photo is fitted to the stage, so the window stays one size.
             Slide 1 is the page's largest image, so it loads eagerly at high
             priority. */}
@@ -271,50 +263,55 @@ function Carousel({ slides, label }) {
                      onLoad={i === 0 ? onFirstPhoto : undefined}
                      onError={() => { if (i === 0) onFirstPhoto(); markFailed(photoKey(slide)); }} />
               )}
-              {/* Only the shown slide holds a link, so hidden slides have
-                  nothing to focus. */}
-              {isActive && !captionInBand && caption}
             </div>
           );
         })}
-        {count > 1 && (
-          <>
-            <button className="icon-btn home-carousel-prev" type="button" aria-label="Previous slide" onClick={() => go(-1)}>
-              <Icon name="chevron-left" />
-            </button>
-            <button className="icon-btn home-carousel-next" type="button" aria-label="Next slide" onClick={() => go(1)}>
-              <Icon name="chevron-right" />
-            </button>
-          </>
+      </div>
+      {/* The card under the photo: the name and Shop button, then the dots
+          and the pause, previous and next controls, then the FDA statement.
+          The statement keeps its place on every slide when any slide has
+          one, so the page does not jump. */}
+      <div className="home-carousel-band">
+        {band.controls && (
+          <div className="home-carousel-controls">
+            <div className="home-carousel-nav">
+              {!reducedMotion && (
+                <button className="icon-btn home-carousel-toggle" type="button" aria-label="Pause slideshow" aria-pressed={paused}
+                        onClick={() => setPaused((value) => !value)}>
+                  <Icon name={paused ? 'play' : 'pause'} />
+                </button>
+              )}
+              <button className="icon-btn home-carousel-prev" type="button" aria-label="Previous slide" onClick={() => go(-1)}>
+                <Icon name="chevron-left" />
+              </button>
+              <button className="icon-btn home-carousel-next" type="button" aria-label="Next slide" onClick={() => go(1)}>
+                <Icon name="chevron-right" />
+              </button>
+            </div>
+            <div className="home-carousel-dots">
+              {media.map(({ slide, index }, i) => (
+                <button key={`dot-${index}`} type="button" aria-label={`Show slide ${i + 1}${nameOf(slide)}`}
+                        aria-current={i === safeIndex ? 'true' : undefined} onClick={() => show(i)}>
+                  <span />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="home-carousel-panel">
+          <div className="home-carousel-copy">
+            {kicker ? <p className="home-carousel-kicker">{kicker}</p> : null}
+            {title ? <p className="home-carousel-title">{title}</p> : null}
+          </div>
+          {shop}
+        </div>
+        {/* TODO(owner): Do the hero slides and product photos count as advertisements under 21 CFR 1143.3 (warning in the upper portion of the ad, at least 20% of its area)? A slide flagged as showing a nicotine product shows the verbatim warning under the photo until counsel answers. (AW-026) */}
+        {band.warning && (
+          <div className="home-carousel-warning" aria-hidden={active.nicotineWarning ? undefined : 'true'}>
+            <NicotineWarning />
+          </div>
         )}
       </div>
-      {/* The band (NEW-055): the controls and the statement share one cell,
-          so it is as tall as the taller of the two on every slide. The
-          statement comes last, so on a flagged slide it is on top; hidden on
-          the others, it lets clicks through to the controls. */}
-      {(band.controls || band.warning) && (
-        <div className="home-carousel-band">
-          {band.controls && (
-            <div className="home-carousel-controls">
-              {captionInBand && caption}
-              <div className="home-carousel-dots">
-                {media.map(({ slide, index }, i) => (
-                  <button key={`dot-${index}`} type="button" aria-label={`Show slide ${i + 1}${nameOf(slide)}`}
-                          aria-current={i === safeIndex ? 'true' : undefined} onClick={() => show(i)}>
-                    <span />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {/* TODO(owner): Do the hero slides and product photos count as advertisements under 21 CFR 1143.3 (warning in the upper portion of the ad, at least 20% of its area)? A slide flagged as showing a nicotine product shows the verbatim warning under the photo until counsel answers. (AW-026) */}
-          {band.warning && (
-            <div className="home-carousel-warning" aria-hidden={active.nicotineWarning ? undefined : 'true'}>
-              <NicotineWarning />
-            </div>
-          )}
-        </div>
-      )}
     </section>
   );
 }

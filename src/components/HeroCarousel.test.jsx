@@ -2,7 +2,7 @@
 // AW-321, AW-342), the band under it (NEW-055) and its box while staff's
 // photos load or when there are none (NEW-008), with fake timers and the
 // real router.
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HERO_SLIDES } from '../data/content.js';
 import { NICOTINE_WARNING_TEXT } from './NicotineWarning.jsx';
@@ -300,23 +300,24 @@ describe('controls (AW-054, AW-168)', () => {
   });
 });
 
-describe('the band under the photo (NEW-055)', () => {
+describe('the card under the photo', () => {
   const band = () => document.querySelector('.home-carousel-band');
-  const caption = () => document.querySelector('.home-carousel-caption');
+  const shop = () => document.querySelector('.home-carousel-shop');
 
-  it('holds the dots under the photo, and the hidden statement in the same cell', () => {
+  it('holds the name, Shop, the dots and the controls under the photo, with the statement last', () => {
     render(<HeroCarousel slides={SLIDES} />);
-    expect(stage().querySelector('.home-carousel-dots')).toBeNull();
+    expect(stage().querySelector('.home-carousel-dots, button')).toBeNull();
+    expect(stage().querySelector('.home-carousel-index').textContent).toBe('1/4');
     const controls = band().querySelector('.home-carousel-controls');
     expect(controls.querySelectorAll('.home-carousel-dots button')).toHaveLength(4);
-    // The controls first, the statement last (on top on the vape slide).
-    expect([...band().children].map((el) => el.className)).toEqual(['home-carousel-controls', 'home-carousel-warning']);
+    expect([...band().children].map((el) => el.className)).toEqual(['home-carousel-controls', 'home-carousel-panel', 'home-carousel-warning']);
     expect(carousel().classList.contains('is-warning')).toBe(false);
-    // The previous/next and pause controls stay on the photo.
-    for (const name of ['Previous slide', 'Next slide', 'Pause slideshow']) expect(stage().contains(screen.getByRole('button', { name }))).toBe(true);
+    for (const name of ['Previous slide', 'Next slide', 'Pause slideshow']) expect(controls.contains(screen.getByRole('button', { name }))).toBe(true);
+    expect(band().contains(shop())).toBe(true);
+    expect(document.querySelector('.home-carousel-slide.is-active a')).toBeNull();
   });
 
-  it('marks the vape slide, whose statement has the band and whose dots go back on the photo (index.css)', () => {
+  it('marks the vape slide, whose statement is shown', () => {
     render(<HeroCarousel slides={SLIDES} />);
     fireEvent.click(screen.getByRole('button', { name: 'Next slide' }));
     expect(carousel().classList.contains('is-warning')).toBe(true);
@@ -325,28 +326,12 @@ describe('the band under the photo (NEW-055)', () => {
     expect(carousel().classList.contains('is-warning')).toBe(false);
   });
 
-  it('keeps the slide\'s link on the photo outside the compact layout', () => {
+  it('keeps Shop beside the title on every slide, including a nicotine one', () => {
     render(<HeroCarousel slides={SLIDES} />);
-    expect(document.querySelector('.home-carousel-slide.is-active').contains(caption())).toBe(true);
-    expect(band().contains(caption())).toBe(false);
-  });
-
-  it('moves the link into the band in the compact layout, except on the vape slide', () => {
-    compactLayout();
-    render(<HeroCarousel slides={SLIDES} />);
-    const controls = band().querySelector('.home-carousel-controls');
-    expect(within(controls).getByRole('link', { name: 'Shop Candies' }).getAttribute('href')).toBe('/category/candies');
-    expect(document.querySelector('.home-carousel-slide.is-active a')).toBeNull();
-    // Before the dots, so the tab order follows the page: toggle, previous, next, link, dots.
-    expect([...controls.children].map((el) => el.className)).toEqual(['home-carousel-caption', 'home-carousel-dots']);
-    expect([...carousel().querySelectorAll('a, button')].slice(0, 4).map((el) => el.getAttribute('aria-label') || el.textContent))
-      .toEqual(['Pause slideshow', 'Previous slide', 'Next slide', 'Shop Candies']);
+    expect(screen.getByRole('link', { name: 'Shop Candies' })).toBe(shop());
+    expect(document.querySelector('.home-carousel-title').textContent).toBe('Display box of chocolates');
     fireEvent.click(screen.getByRole('button', { name: 'Next slide' }));
-    const vape = document.querySelector('.home-carousel-slide.is-active');
-    expect(within(vape).getByRole('link', { name: 'Shop Novelties & Vapes' })).toBeTruthy();
-    expect(controls.querySelector('a')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Next slide' }));
-    expect(within(controls).getByRole('link', { name: 'Shop Merchandise' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Shop Novelties & Vapes' })).toBe(shop());
     expect(screen.getAllByRole('link')).toHaveLength(1);
   });
 
@@ -366,20 +351,20 @@ describe('the band under the photo (NEW-055)', () => {
     expect(window.location.pathname).toBe('/category/merchandise');
   });
 
-  it('has a band for the dots without any statement, none for one plain photo, and only the statement for one vape photo', () => {
+  it('has a band for the name without a statement, and adds the statement for one vape photo', () => {
     const plain = SLIDES.map((slide) => ({ ...slide, nicotineWarning: false }));
     const { unmount } = render(<HeroCarousel slides={plain} />);
     expect(band().querySelector('.home-carousel-warning')).toBeNull();
     expect(band().querySelectorAll('.home-carousel-dots button')).toHaveLength(4);
     unmount();
     const one = render(<HeroCarousel slides={plain.slice(0, 1)} />);
-    expect(band()).toBeNull();
+    expect(one.container.querySelector('.home-carousel-controls')).toBeNull();
+    expect(one.container.querySelector('.home-carousel-panel')).toBeTruthy();
     one.unmount();
-    compactLayout();
     render(<HeroCarousel slides={SLIDES.slice(1, 2)} />);
-    expect([...band().children].map((el) => el.className)).toEqual(['home-carousel-warning']);
+    expect([...band().children].map((el) => el.className)).toEqual(['home-carousel-panel', 'home-carousel-warning']);
     expect(carousel().classList.contains('is-warning')).toBe(true);
-    expect(document.querySelector('.home-carousel-slide.is-active a').textContent).toBe('Shop Novelties & Vapes');
+    expect(screen.getByRole('link', { name: 'Shop Novelties & Vapes' }).textContent).toBe('Shop');
   });
 });
 

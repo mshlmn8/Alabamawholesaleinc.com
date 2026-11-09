@@ -275,7 +275,12 @@ describe('HomePage new-product carousel', () => {
     expect(labels()).toEqual(['1 of 3: Foger Switch Pro full kit', '2 of 3: RAZ 25K', '3 of 3: Tueni chews']);
     const active = document.querySelector('.home-carousel-slide.is-active');
     expect(active.querySelector('img').getAttribute('alt')).toBe('Foger Switch Pro full kit');
-    expect(within(active).getByRole('link', { name: 'Foger Switch Pro full kit' }).getAttribute('href')).toBe('/product/62');
+    expect(active.querySelector('a')).toBeNull();
+    expect(document.querySelector('.home-carousel-badge').textContent).toBe('New arrival');
+    expect(document.querySelector('.home-carousel-kicker').textContent).toBe('Disposable Vapes · Foger');
+    expect(document.querySelector('.home-carousel-title').textContent).toBe('Foger Switch Pro full kit');
+    expect(document.querySelector('.home-carousel-index').textContent).toBe('1/3');
+    expect(screen.getByRole('link', { name: 'Shop Foger Switch Pro full kit' }).getAttribute('href')).toBe('/product/62');
     expect(slides.map((s) => s.nicotineWarning)).toEqual([true, true, false]);
     expect(document.querySelector('.home-carousel-warning').getAttribute('aria-hidden')).toBeNull();
     expect(document.body.textContent).not.toMatch(/loading doors|Graymont|pallet racks/);

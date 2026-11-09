@@ -450,7 +450,7 @@ h2.eyebrow { font-family: var(--body); line-height: inherit; }
   .button.on-dark:not(:disabled):hover { background: var(--on-dark-fill); border-color: #fff; }
   .button.xs.text:not(:disabled):hover { background: none; border-color: transparent; color: var(--purple); text-decoration: underline; text-underline-offset: var(--link-offset); }
   .icon-btn:not(:disabled):hover, .stepper button:not(:disabled):hover { background: var(--paper); }
-  .home-carousel-dots button:not(:disabled):hover span { background: var(--line); }
+  .home-carousel-dots button:not(:disabled):hover span { background: var(--muted); }
   .home-carousel-dots button[aria-current="true"]:not(:disabled):hover span { background: var(--purple-hover); }
 }
 /* On touch screens the compact admin buttons are full-size targets, as the
@@ -515,88 +515,51 @@ p > .text-link { min-height: 0; min-width: 0; }
 /* ============================ homepage hero ============================
    The new-product carousel, the full width of the page. The h1 is visually
    hidden (.sr-only). */
-.home-hero { border: 1px solid var(--line); background: var(--tile); }
+.home-hero { background: none; }
 .home-hero-media { display: flex; flex-direction: column; min-width: 0; }
 
 /* ============================ homepage carousel ============================
-   One stage of a fixed aspect ratio that clips (AW-036), and the band under
-   it. Previous/next sit at the photo's middle and the pause toggle at its
-   bottom right (AW-054); the dots are in the band (NEW-055). A sideways
-   swipe anywhere on the carousel changes slides, so the page only scrolls up
-   and down there (AW-161). */
-.home-carousel { position: relative; background: var(--tile); touch-action: pan-y; }
-/* The stage has the warehouse photos' shape, 16:9 (AW-006), so the bundled
-   reel fills it edge to edge; a photo of another shape (an upload in Admin
-   -> Homepage) is centred in it, whole. It is never shorter than the column
-   of touch targets at its right edge: Next at its middle and the pause
-   toggle at its foot, with room between them. The targets grow with the
-   browser's text size and a 16:9 box on a phone doesn't: at 150% and 200%
-   text on a 320-430px phone the toggle sat on Next. The minimum is in rem,
-   so at the default text size it is at most 3px over a 320px phone's 16:9
-   height (326px and wider, below it); at large text the stage
-   grows taller and the photo stays fitted in that same window. The same three rows (a flagged slide's link at the top,
-   previous/next, then its dots and the toggle) fit one above the other. */
-.home-carousel-stage { position: relative; aspect-ratio: 16 / 9; min-height: calc(3 * var(--tap) + 2rem); overflow: hidden; background: var(--tile); -webkit-user-select: none; user-select: none; }
-/* Each slide is a stacking context, so its photo (z-index -1) sits under
-   the department link that follows it in the page. */
-.home-carousel-slide { position: absolute; inset: 0; z-index: 0; display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity .3s; }
+   A card: the photo in one fixed frame (AW-036), then the name and Shop
+   button, then the dots and the pause, previous and next controls. A
+   sideways swipe anywhere on the carousel changes slides (AW-161). */
+.home-carousel { position: relative; overflow: hidden; border-radius: 18px; background: #fff; border: 1px solid var(--line); touch-action: pan-y; }
+.home-carousel-stage { position: relative; aspect-ratio: 5 / 4; overflow: hidden; background: var(--stat-bg); -webkit-user-select: none; user-select: none; }
+.home-carousel-badge, .home-carousel-index { position: absolute; z-index: 2; top: 12px; margin: 0; font-size: var(--text-xs); font-weight: 700; line-height: 1; }
+.home-carousel-badge { left: 12px; padding: 8px 10px; border-radius: 6px; background: var(--orange); color: #fff; letter-spacing: var(--track-label); text-transform: uppercase; }
+.home-carousel-index { right: 12px; padding: 8px 10px; border-radius: 8px; background: var(--purple); color: #fff; }
+.home-carousel-slide { position: absolute; inset: 0; z-index: 0; opacity: 0; pointer-events: none; transition: opacity .3s; }
 .home-carousel-slide.is-active { opacity: 1; pointer-events: auto; }
-/* The photo stays out of grid flow: inside <picture> (display: contents)
-   the <source> takes a grid row of its own, and an in-flow img then grows
-   past the stage, over the controls and the slide's nicotine warning
-   (AW-026). Every photo fills this one stage edge to edge, so a tall
-   packshot and a wide one keep the same window. */
-.home-carousel-slide img { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
-/* The shown slide's department link, a solid label at the photo's foot (at
-   its top on narrower screens, in the band in the compact layout). Its
-   ::after covers the whole photo, so a tap anywhere on it follows the link. */
-.home-carousel-caption { display: inline-flex; align-items: center; min-height: var(--tap); max-width: calc(100% - 28px); margin: 0 0 14px 14px; padding: 6px 16px; background: var(--purple); color: #fff; font-size: var(--text-sm); font-weight: 700; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.home-carousel-caption::after { content: ''; position: absolute; inset: 0; }
-.home-carousel-toggle, .home-carousel-prev, .home-carousel-next { position: absolute; z-index: 2; width: var(--tap); height: var(--tap); border-color: transparent; box-shadow: 0 2px 10px var(--shadow-popover); }
-.home-carousel-prev, .home-carousel-next { top: 50%; margin-top: calc(var(--tap) / -2); font-size: 1.375rem; }
-.home-carousel-prev { left: 14px; }
-.home-carousel-next { right: 14px; }
-.home-carousel-toggle { right: 14px; bottom: 14px; font-size: 1.125rem; }
-/* The dots shrink to their row rather than widen the page when large
-   browser text makes each 44px target wider (four of them at 200% text). */
-.home-carousel-dots { display: flex; align-items: center; max-width: 100%; min-height: var(--tap); padding: 0 6px; border-radius: 999px; background: #fff; box-shadow: 0 2px 10px var(--shadow-popover); }
+/* The photo stays out of flow (a <picture> is display: contents) and is
+   contained in the frame, so a tall packshot and a wide one keep one window. */
+.home-carousel-slide img { position: absolute; inset: 28px; z-index: -1; width: calc(100% - 56px); height: calc(100% - 56px); object-fit: contain; object-position: center; display: block; }
+.home-carousel-band { display: flex; flex-direction: column; background: #fff; }
+.home-carousel-panel { order: 1; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 16px 8px; }
+.home-carousel-copy { min-width: 0; }
+.home-carousel-kicker { margin: 0 0 4px; color: var(--muted); font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; }
+.home-carousel-title { margin: 0; color: var(--ink); font: 700 1.35rem/1.25 var(--display); }
+.button.home-carousel-shop { flex: none; border-radius: 999px; gap: 8px; background: var(--purple); border-color: var(--purple); color: #fff; }
+@media (hover: hover) {
+  .button.home-carousel-shop:not(:disabled):hover { background: var(--purple-hover); border-color: var(--purple-hover); }
+}
+.home-carousel-shop .icon { font-size: 1.125rem; }
+.home-carousel-controls { order: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 16px 16px; -webkit-user-select: none; user-select: none; }
+.home-carousel-dots { order: 1; }
+.home-carousel-nav { order: 2; }
+.home-carousel-nav { display: flex; align-items: center; gap: 8px; }
+.home-carousel-toggle, .home-carousel-prev, .home-carousel-next { width: var(--tap); height: var(--tap); border-color: var(--line); background: #fff; box-shadow: none; }
+.home-carousel-dots { display: flex; align-items: center; min-width: 0; min-height: var(--tap); }
 .home-carousel-dots button { display: grid; place-items: center; width: 1.5rem; height: 1.5rem; padding: 0; border: 0; border-radius: 50%; background: none; }
 .home-carousel-dots button:focus-visible { outline-offset: -3px; }
-.home-carousel-dots span { width: .625rem; height: .625rem; border: 2px solid var(--purple); border-radius: 50%; background: #fff; }
-.home-carousel-dots [aria-current="true"] span { background: var(--purple); }
-/* On touch screens each dot is a 44px target (AW-054, AW-302), its mark
-   still centred in it; after the dot rule above (NEW-025). */
+.home-carousel-dots span { width: .4rem; height: .4rem; border-radius: 999px; background: var(--line); }
+.home-carousel-dots [aria-current="true"] span { width: 1.35rem; height: .28rem; background: var(--purple); }
 @media (pointer: coarse) {
   .home-carousel-dots button { width: var(--tap); height: var(--tap); }
 }
-/* The band under the photo (NEW-055). The vape slide's FDA statement and
-   the controls share its one cell, so the band is as tall as the taller of
-   the two on every slide and the page doesn't move when the slide changes.
-   The statement fills the band (AW-026); on the other slides it keeps its
-   space, hidden. */
-/* One height on every slide: the controls and the warning share this box, so a
-   nicotine slide does not grow the carousel. */
-.home-carousel-band { display: grid; height: calc(2 * var(--tap) + 24px); overflow: hidden; background: var(--paper); }
-.home-carousel-band > * { grid-area: 1 / 1; min-width: 0; }
-.home-carousel-warning { display: grid; }
+/* The statement keeps its box on every slide when any slide has one, hidden
+   on the others, so the card does not grow and shrink. */
+.home-carousel-warning { order: 3; margin: 0 16px 16px; border-radius: 12px; overflow: hidden; }
 .home-carousel-warning[aria-hidden="true"] { visibility: hidden; }
-/* The controls: in the compact layout the slide's link at the left, and the
-   dots in the middle, in a row as tall as a touch target. */
-.home-carousel-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-content: center; align-items: center; column-gap: 12px; min-height: calc(var(--tap) + 20px); padding: 10px 14px; -webkit-user-select: none; user-select: none; }
-.home-carousel-controls .home-carousel-caption { grid-column: 1; justify-self: start; margin: 0; max-width: 100%; }
-/* The band isn't positioned, so the link's ::after reaches over the whole
-   carousel, photo included; the dots sit above it. */
-.home-carousel-controls .home-carousel-dots { grid-column: 2; position: relative; z-index: 2; }
-/* The vape slide: the statement has the band, and the dots go back on the
-   photo, at the middle of its foot. With the band (a grid) as their
-   containing block, they take no grid area of the controls, or their offsets
-   would resolve against that area instead of the band. */
-.home-carousel.is-warning .home-carousel-band { position: relative; }
-.home-carousel.is-warning .home-carousel-dots { grid-area: auto; position: absolute; left: 50%; bottom: calc(100% + 14px); transform: translateX(-50%); }
-/* The carousel's box while staff's photos may still arrive, held empty
-   (NEW-008). With no photos at all it is a decorative panel of that size
-   that fills the media column, so the copy beside it keeps its width. */
-.home-carousel.is-empty { flex: 1 0 auto; background: var(--purple); }
+.home-carousel.is-empty { background: var(--stat-bg); }
 .home-carousel.is-empty .home-carousel-stage { background: none; }
 
 /* Responsive <picture> wrappers take no box of their own, so the existing
@@ -813,12 +776,12 @@ p > .text-link { min-height: 0; min-width: 0; }
    small capitals, then where every product comes from, after a rule. In the
    compact layout the figures share a row, each over its label, and the
    sentence goes under them. */
-.trust-band { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 16px 40px; padding: 22px 40px; background: var(--purple); color: #fff; }
-.trust-facts { display: flex; flex-wrap: wrap; gap: 16px 40px; }
-.trust-fact { display: flex; align-items: center; gap: 12px; }
-.trust-figure { font: 700 2.75rem/1 var(--display); color: #fff; }
-.trust-label { max-width: 7.5rem; font-size: var(--text-xs); font-weight: 700; line-height: 1.35; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--on-dark-muted); }
-.trust-sourcing { padding-left: 40px; border-left: 1px solid var(--on-dark-line); font-size: var(--text-lg); line-height: 1.5; color: var(--on-dark); }
+.trust-band { display: grid; gap: 12px; padding: 16px 0 0; background: none; color: var(--ink); }
+.trust-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.trust-fact { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin: 0; padding: 16px; border-radius: 16px; background: var(--stat-bg); }
+.trust-figure { font: 700 2rem/1 var(--display); color: var(--purple); }
+.trust-label { max-width: none; font-size: var(--text-sm); font-weight: 600; line-height: 1.35; letter-spacing: 0; text-transform: none; color: var(--ink); }
+.trust-sourcing { margin: 0; padding: 0; border: 0; font-size: var(--text-sm); line-height: 1.5; color: var(--muted); }
 
 /* Shop by department (AW-060, AW-061): four tiles a row, two in the compact
    layout. Each is a square group of packshots over a solid purple band with
@@ -1761,7 +1724,7 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .nicotine-warning.is-compact { margin: 8px 0; padding: 8px 10px; font-size: var(--text-sm); }
 /* The vape hero slide's warning fills the band under the photo, its text
    centred (NEW-055). */
-.home-carousel .nicotine-warning { display: grid; place-content: center; height: 100%; margin: 0; padding: 8px 12px; font-size: var(--text-sm); line-height: 1.35; overflow: hidden; }
+.home-carousel .nicotine-warning { margin: 0; padding: 14px 16px; border-radius: 12px; font-size: var(--text-sm); line-height: 1.45; }
 
 /* ============================ overlays: drawer / modal / gate ============================ */
 .aw-layer { position: relative; z-index: 60; }
@@ -2017,10 +1980,6 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
 
 /* ============================ responsive ============================ */
 @media (max-width: 68.75em) {
-  /* The narrower photo leaves no room beside the dots: the department link
-     moves to the top. */
-  .home-carousel-slide { align-items: flex-start; }
-  .home-carousel-caption { margin: 14px 0 0 14px; }
   /* The brand blurb is a full-width row above the three link columns, so no
      empty block sits under it beside the longer columns (AW-219). */
   .footer-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -2102,11 +2061,7 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .editorial-card h2 { font-size: var(--h2-sm); }
   .editorial-card { min-height: 245px; padding: 22px; }
   .services { grid-template-columns: 1fr; gap: 20px; }
-  .trust-band { grid-template-columns: minmax(0, 1fr); padding: 20px 32px; }
-  .trust-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
-  .trust-fact { flex-direction: column; align-items: flex-start; gap: 6px; }
-  .trust-label { max-width: none; }
-  .trust-sourcing { padding: 16px 0 0; border-left: 0; border-top: 1px solid var(--on-dark-line); }
+  .trust-band { padding-top: 12px; }
   .dept-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pd-grid { grid-template-columns: 1fr; row-gap: 16px; }
   /* The product photo is a wide frame no taller than 36% of the screen, so
@@ -2181,17 +2136,8 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .footer-contact { grid-column: 2; }
 }
 @media (max-width: 37.5em) {
-  .home-carousel-caption { margin: 12px 0 0 12px; max-width: calc(100% - 24px); }
-  .home-carousel-prev { left: 12px; }
-  .home-carousel-next, .home-carousel-toggle { right: 12px; }
-  .home-carousel-toggle { bottom: 12px; }
-  .home-carousel.is-warning .home-carousel-dots { bottom: calc(100% + 12px); }
-  /* Too narrow for the link and the dots side by side: two rows, the link
-     over the dots. Always two, so the dots don't move when a slide has no
-     link (or is the vape slide, whose link is on the photo). */
-  .home-carousel-controls { grid-template-columns: minmax(0, 1fr); grid-template-rows: var(--tap) var(--tap); justify-items: center; row-gap: 8px; height: calc(2 * var(--tap) + 24px); min-height: 0; padding: 8px 12px; }
-  .home-carousel-controls .home-carousel-caption { grid-row: 1; justify-self: center; }
-  .home-carousel-controls .home-carousel-dots { grid-column: 1; grid-row: 2; }
+  .home-carousel-panel { align-items: flex-start; }
+  .home-carousel-title { font-size: 1.2rem; }
   .button { padding: 12px 18px; }
   h1 { font-size: 2.625rem; }
   /* The link sits beside the heading on one line, the heading wrapping
@@ -2276,10 +2222,6 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .aw-logo img { height: 42px; }
   .aw-logo-text { min-height: 42px; }
   .aw-menu-toggle span:last-child { display: none; }
-  /* On the vape slide the dots move left, clear of the pause toggle, and
-     narrow to leave it its place at the photo's foot: at large text four
-     dots are wider than the photo (their buttons shrink to fit). */
-  .home-carousel.is-warning .home-carousel-dots { left: 12px; transform: none; max-width: calc(100% - 32px - var(--tap)); }
   /* Too narrow (or the text too large) for State and ZIP side by side: the
      state names and "Choose a state…" would be cut off (AW-241). */
   .checkout-form-grid { grid-template-columns: minmax(0, 1fr); }
