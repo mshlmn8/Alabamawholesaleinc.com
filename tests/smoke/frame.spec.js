@@ -12,9 +12,6 @@ import { mockAccount, seedAccount } from './account.js';
 
 const AGE_KEY = 'aw-age-verified'; // STORAGE.age in src/data/content.js
 const ageRecord = (at) => JSON.stringify({ ok: true, at });
-const NOTICE = 'WHOLESALE TO LICENSED RETAIL BUSINESSES ONLY · NO CONSUMER SALES · 21+';
-const ROTATE_MS = 7000; // ROTATE_MS in src/components/TradeBar.jsx
-
 const isLocal = (url) => /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(url) || url.startsWith('data:') || url.startsWith('blob:');
 
 // Page errors, console errors and failed local requests; the console errors
@@ -58,24 +55,14 @@ test('the first Tab shows the skip link, and Enter moves focus to the page witho
   expect(errors).toEqual([]);
 });
 
-test('one banner holds the skip link, the trade bar and one Apply, the header’s (AW-314, AW-315, LEFT-2)', async ({ page }, testInfo) => {
+test('one banner holds the skip link and one Apply, the header’s (AW-314, AW-315, LEFT-2)', async ({ page }, testInfo) => {
   const errors = trackErrors(page);
   await page.goto('/');
   const banner = page.getByRole('banner');
   await expect(banner).toHaveCount(1);
-  const pause = banner.getByRole('button', { name: 'Pause announcements' });
-  // 'Call' and the number on a wide window, 'Call' alone on a phone; the
-  // name always has the number.
-  const call = banner.getByRole('link', { name: /^Call \(205\) 458-4788$/ });
-  await expect(call).toBeVisible();
-  expect(await call.evaluate((el) => el.innerText.trim())).toMatch(testInfo.project.name === 'phone' ? /^Call$/ : /^Call\s+\(205\) 458-4788$/);
-  // The trade bar has no Apply of its own any more.
-  await expect(banner.locator('.trade-bar').getByRole('button')).toHaveCount(1);
-  // The tab order: skip link, pause, Call.
-  for (const control of [banner.getByRole('link', { name: 'Skip to main content' }), pause, call]) {
-    await page.keyboard.press('Tab');
-    await expect(control).toBeFocused();
-  }
+  await expect(banner.locator('.trade-bar')).toHaveCount(0);
+  await page.keyboard.press('Tab');
+  await expect(banner.getByRole('link', { name: 'Skip to main content' })).toBeFocused();
   // One visible Apply in the banner on a wide window, the header's orange
   // button; on a phone it is in the menu (and the home hero).
   const apply = banner.getByRole('button', { name: 'Apply for a trade account' });
@@ -89,35 +76,6 @@ test('one banner holds the skip link, the trade bar and one Apply, the header’
     await apply.click();
   }
   await expect(page.getByRole('dialog', { name: 'Apply for a trade account' })).toBeVisible();
-  expect(errors).toEqual([]);
-});
-
-test('on a phone the trade bar is one row, and a message longer than it scrolls once, stopping on hover (AW-153)', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'phone', 'the compact layout');
-  const errors = trackErrors(page);
-  // Real time: the scroll is a CSS animation, which the fake clock doesn't drive.
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/category/candies');
-  await expect(page.locator('main h1')).toHaveText('Candies');
-  const bar = page.locator('.trade-bar');
-  expect((await bar.boundingBox()).height).toBeLessThanOrEqual(44);
-  expect((await page.getByRole('banner').boundingBox()).height).toBeLessThanOrEqual(160);
-  const shown = page.locator('.announcement-list .is-current');
-  await expect(shown).toHaveText(NOTICE);
-  await expect(shown).toHaveClass(/is-marquee/);
-  const x = () => shown.evaluate((el) => el.getBoundingClientRect().left - el.parentElement.getBoundingClientRect().left);
-  // It shows its start for a moment (MARQUEE_HOLD_MS), then moves left.
-  await page.mouse.move(10, 800);
-  expect(await x()).toBe(0);
-  await page.waitForTimeout(3200);
-  const moved = await x();
-  expect(moved).toBeLessThan(-20);
-  // The pointer over the bar stops it where it is (and the rotation).
-  await page.locator('.announcement-list').hover();
-  const held = await x();
-  await page.waitForTimeout(1200);
-  expect(Math.abs((await x()) - held)).toBeLessThan(2);
-  await expect(shown).toHaveText(NOTICE);
   expect(errors).toEqual([]);
 });
 
@@ -135,75 +93,7 @@ test('a toast at the foot of the page leaves the FDA warning readable (NEW-080)'
   expect(errors).toEqual([]);
 });
 
-test.describe('announcements (WCAG 2.2.2)', () => {
-  const shown = (page) => page.locator('.announcement-list .is-current');
-  // Somewhere on the page below the trade bar.
-  const pointerAway = async (page) => {
-    const { height } = page.viewportSize();
-    await page.mouse.move(10, height - 10);
-  };
-
-  test('one message at a time, next after about 7s, held while hovered, focused or paused', async ({ page }) => {
-    const errors = trackErrors(page);
-    await page.clock.install();
-    await page.goto('/');
-    await pointerAway(page);
-    // The trade notice and three announcements: free delivery, will-call and
-    // volume pricing (Net-30 and the discount went, AW-025).
-    await expect(page.locator('.announcement-list li')).toHaveCount(4);
-    await expect(shown(page)).toHaveCount(1);
-    await expect(shown(page)).toHaveText(NOTICE);
-
-    await page.clock.runFor(ROTATE_MS + 500);
-    await expect(shown(page)).not.toHaveText(NOTICE);
-    let text = await shown(page).textContent();
-
-    await page.locator('.announcement-list').hover();
-    await page.clock.runFor(ROTATE_MS * 2);
-    await expect(shown(page)).toHaveText(text);
-    await pointerAway(page);
-    await page.clock.runFor(ROTATE_MS + 500);
-    await expect(shown(page)).not.toHaveText(text);
-    text = await shown(page).textContent();
-
-    await page.locator('.trade-call').focus();
-    await page.clock.runFor(ROTATE_MS * 2);
-    await expect(shown(page)).toHaveText(text);
-    await page.locator('#main').focus();
-    await page.clock.runFor(ROTATE_MS + 500);
-    await expect(shown(page)).not.toHaveText(text);
-    text = await shown(page).textContent();
-
-    const pause = page.getByRole('button', { name: 'Pause announcements' });
-    await pause.click();
-    await expect(pause).toHaveAttribute('aria-pressed', 'true');
-    await pointerAway(page);
-    await page.locator('#main').focus();
-    await page.clock.runFor(ROTATE_MS * 3);
-    await expect(shown(page)).toHaveText(text);
-    await pause.click();
-    await expect(pause).toHaveAttribute('aria-pressed', 'false');
-    await pointerAway(page);
-    await page.locator('#main').focus();
-    await page.clock.runFor(ROTATE_MS + 500);
-    await expect(shown(page)).not.toHaveText(text);
-    expect(errors).toEqual([]);
-  });
-
-  test('with reduced motion the trade notice stays, and the toggle starts paused', async ({ page }) => {
-    const errors = trackErrors(page);
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.clock.install();
-    await page.goto('/');
-    await pointerAway(page);
-    await page.clock.runFor(ROTATE_MS * 6);
-    await expect(shown(page)).toHaveText(NOTICE);
-    await expect(page.getByRole('button', { name: 'Pause announcements' })).toHaveAttribute('aria-pressed', 'true');
-    expect(errors).toEqual([]);
-  });
-});
-
-// The header sticks on wide windows at least 600px tall, with the trade bar
+// The header sticks on wide windows at least 600px tall, and everything that sticks or scrolls to an anchor stays
 // scrolled away, and everything that sticks or scrolls to an anchor stays
 // below it (AW-153, AW-312). On phones the Filter & Sort row is the one
 // sticky control, the chips scroll away (AW-158), and the current product
@@ -222,7 +112,6 @@ test.describe('the sticky header and the department page', () => {
     await page.evaluate(() => window.scrollTo({ top: 2500, behavior: 'instant' }));
     await page.waitForFunction(() => window.scrollY === 2500);
     const banner = page.getByRole('banner');
-    await expect(banner.locator('.trade-bar')).not.toBeInViewport();
     const search = banner.getByRole('combobox', { name: 'Search products' });
     const cart = banner.getByRole('button', { name: /^(Quote|Order), / });
     const categories = banner.getByRole('button', { name: 'Categories' });
@@ -270,40 +159,6 @@ test.describe('the sticky header and the department page', () => {
     };
   });
 
-  test('Shift+Tab into the trade bar shows it, and the page stays put (NEW-017)', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === 'phone', 'the 1440 layout');
-    const errors = trackErrors(page);
-    await page.goto('/category/tobacco');
-    await expect(page.locator('main h1')).toHaveText('Tobacco');
-    await page.evaluate(() => window.scrollTo({ top: 1500, behavior: 'instant' }));
-    await page.waitForFunction(() => window.scrollY === 1500);
-    const banner = page.getByRole('banner');
-    const barHeight = (await rect(banner.locator('.trade-bar'))).height;
-    await banner.getByRole('combobox', { name: 'Search products' }).focus();
-    const inBar = [];
-    for (let i = 0; i < 4; i++) {
-      await page.keyboard.press('Shift+Tab');
-      await settled(page);
-      const now = await focused(page);
-      if (now.inBar) {
-        inBar.push(now.name);
-        // The whole control is on screen.
-        expect(now.top, now.name).toBeGreaterThanOrEqual(0);
-        expect(now.bottom, now.name).toBeLessThanOrEqual(page.viewportSize().height);
-      }
-      expect(Math.abs(now.y - 1500), now.name).toBeLessThanOrEqual(barHeight);
-    }
-    expect(inBar).toContain('Pause announcements');
-    expect(inBar).toContain('Call (205) 458-4788');
-    // Back in the masthead, the trade bar scrolls away again.
-    await page.keyboard.press('Tab');
-    await page.keyboard.press('Tab');
-    await page.keyboard.press('Tab');
-    await expect(banner.getByRole('link', { name: 'Alabama Wholesale home' })).toBeFocused();
-    await expect(banner.locator('.trade-bar')).not.toBeInViewport();
-    expect(errors).toEqual([]);
-  });
-
   test('Shift+Tab back through checkout never leaves a field under the stuck header (NEW-018)', async ({ page, context }, testInfo) => {
     test.skip(testInfo.project.name === 'phone', 'the wide layouts');
     const errors = trackErrors(page);
@@ -341,11 +196,7 @@ test.describe('the sticky header and the department page', () => {
       const banner = page.getByRole('banner');
       const header = await rect(banner);
       expect(header.height).toBeLessThanOrEqual(120);
-      // One row of announcements and Call; one row of menu, logo, search and account.
       const middle = (r) => (r.top + r.bottom) / 2;
-      const announcements = await rect(banner.getByRole('list', { name: 'Announcements' }));
-      const call = await rect(banner.getByRole('link', { name: /^Call / }));
-      expect(Math.abs(middle(call) - middle(announcements))).toBeLessThan(12);
       const search = await rect(banner.getByRole('combobox', { name: 'Search products' }));
       const logo = await rect(banner.getByRole('link', { name: 'Alabama Wholesale home' }));
       const cart = await rect(banner.getByRole('button', { name: /^(Quote|Order), / }));
@@ -406,7 +257,6 @@ test.describe('the sticky header and the department page', () => {
       expect((await rect(banner)).height).toBeLessThanOrEqual(160);
       await page.evaluate(() => window.scrollTo({ top: 2500, behavior: 'instant' }));
       await page.waitForFunction(() => window.scrollY === 2500);
-      await expect(banner.locator('.trade-bar')).not.toBeInViewport();
       for (const control of [banner.getByRole('combobox', { name: 'Search products' }), banner.getByRole('button', { name: 'Menu' }), banner.getByRole('button', { name: /^(Quote|Order), / })]) {
         await expect(control).toBeInViewport({ ratio: 1 });
       }

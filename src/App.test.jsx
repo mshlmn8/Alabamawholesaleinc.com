@@ -1,7 +1,7 @@
-// The page frame (AW-314, AW-166): one banner landmark holding the skip link,
-// the trade bar and the header, with the skip link first in the tab order
-// and moving focus to <main> without changing the address. The browser
-// checks (keyboard, landmarks with axe) are in the Playwright smoke test.
+// The page frame (AW-314, AW-166): one banner landmark holding the skip link
+// and the header, with the skip link first in the tab order and moving
+// focus to <main> without changing the address. The browser checks
+// (keyboard, landmarks with axe) are in the Playwright smoke test.
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -44,7 +44,7 @@ afterEach(() => {
 });
 
 describe('page frame', () => {
-  it('has one banner, holding the skip link, the trade bar and the header', async () => {
+  it('has one banner, holding the skip link and the header', async () => {
     renderApp();
     expect(root.hasAttribute('inert')).toBe(false); // past the age gate
     const banners = screen.getAllByRole('banner');
@@ -52,7 +52,8 @@ describe('page frame', () => {
     const [banner] = banners;
     expect(banner.classList.contains('site-header')).toBe(true);
     expect(banner.firstElementChild.matches('a.skip-link')).toBe(true);
-    for (const part of ['.trade-bar', '.aw-header']) expect(banner.querySelector(part), part).toBeTruthy();
+    expect(banner.querySelector('.trade-bar')).toBeNull();
+    expect(banner.querySelector('.aw-header'), '.aw-header').toBeTruthy();
     expect(banner.querySelector('.aw-header').tagName).toBe('DIV');
     // The policy page's own nav (the support pages' side nav, AW-122) and the
     // footer's are told apart. The page's code loads on first use (AW-179).
