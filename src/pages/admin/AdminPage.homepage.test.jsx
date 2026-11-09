@@ -17,7 +17,7 @@ const { SLIDES_MISSING, RAILS_NOTE } = await import('./HomepageSection.jsx');
 const { CatalogProvider } = await import('../../lib/catalog.jsx');
 const { getHomeSlidesState, resetHomeSlidesForTests } = await import('../../lib/homeSlides.js');
 const { heroImage } = await import('../../lib/images.js');
-const { homeRails } = await import('../../lib/merchandising.js');
+const { homeRails, homeSections } = await import('../../lib/merchandising.js');
 const { PRODUCTS } = await import('../../data/products.js');
 const { HERO_SLIDES } = await import('../../data/content.js');
 const { RAIL_LENGTH, hasPhoto } = await import('../HomePage.jsx');
@@ -89,8 +89,8 @@ describe('Admin -> Homepage (AW-119)', () => {
   it('shows the rails as the home page has them, with each product’s tag, rank and Edit link', async () => {
     await renderHomepage();
     expect(screen.getByText(RAILS_NOTE)).toBeTruthy();
-    const { newArrivals, deals, bestsellers } = homeRails(PRODUCTS, { limit: RAIL_LENGTH, hasPhoto });
-    for (const [title, items] of [['New arrivals', newArrivals], ['New deals', deals], ['Bestsellers', bestsellers]]) {
+    const sections = homeSections(PRODUCTS, { limit: RAIL_LENGTH, hasPhoto });
+    for (const [title, items] of [['New arrivals', sections['new-arrivals']], ['Hot sellers', sections['hot-sellers']], ['Bestsellers', sections.bestsellers], ['New deals', sections['new-deals']]]) {
       const rail = screen.getByRole('region', { name: title });
       const rows = within(rail).getAllByRole('listitem');
       expect(rows.map((li) => li.querySelector('.admin-slide-alt').textContent)).toEqual(items.map((p) => p.name));

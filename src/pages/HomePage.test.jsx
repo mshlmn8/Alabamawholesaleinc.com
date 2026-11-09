@@ -46,7 +46,7 @@ describe('HomePage rails', () => {
     const names = (id) => [...document.querySelectorAll(`#${id} .content-card h3`)].map((h) => h.textContent);
     expect(names('new-arrivals')).not.toContain('Dubai chocolate');
     expect(names('new-arrivals').length).toBeGreaterThan(0);
-    expect(document.querySelectorAll('#new-arrivals .photo-soon, #new-deals .photo-soon, #bestsellers .photo-soon')).toHaveLength(0);
+    expect(document.querySelectorAll('#new-arrivals .photo-soon, #hot-sellers .photo-soon, #bestsellers .photo-soon, #new-deals .photo-soon')).toHaveLength(0);
   });
 
   it('shows one row of four cards at most in each rail, without the SKU', () => {
@@ -54,7 +54,7 @@ describe('HomePage rails', () => {
     renderHome();
     // Three products are tagged NEW with a photo since #75 Wava kava, the
     // fourth card, was delisted (AW-001); staff tag more in Admin -> Products.
-    for (const [id, count] of [['new-arrivals', 3], ['new-deals', 3], ['bestsellers', 4]]) {
+    for (const [id, count] of [['new-arrivals', 3], ['hot-sellers', 4], ['bestsellers', 4], ['new-deals', 3]]) {
       const cards = document.querySelectorAll(`#${id} .content-card`);
       expect(cards, id).toHaveLength(count);
       for (const card of cards) {
@@ -68,12 +68,12 @@ describe('HomePage rails', () => {
     }
   });
 
-  it('links each rail to All products, which spans every department, not to one department (AW-056)', () => {
+  it('links each rail’s Show all to that group’s own page', () => {
     renderHome();
-    for (const id of ['new-arrivals', 'new-deals', 'bestsellers']) {
+    for (const [id, name] of [['new-arrivals', 'Show all new arrivals'], ['hot-sellers', 'Show all hot sellers'], ['bestsellers', 'Show all bestsellers'], ['new-deals', 'Show all new deals']]) {
       const head = document.querySelector(`#${id} .section-head`);
       const links = within(head).getAllByRole('link');
-      expect(links.map((a) => [a.textContent, a.getAttribute('href')]), id).toEqual([['Browse all products', '/catalog']]);
+      expect(links.map((a) => [a.textContent, a.getAttribute('href')]), id).toEqual([[name, `/${id}`]]);
     }
     expect(screen.queryByRole('link', { name: 'Shop novelties' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Shop tobacco' })).toBeNull();
@@ -102,16 +102,17 @@ describe('HomePage sections', () => {
     expect(document.querySelector('.home-hero').nextElementSibling.className).toBe('trust-band');
     expect(document.querySelector('.trust-band').nextElementSibling.className).not.toBe('services');
     const h2s = [...document.querySelectorAll('h2')].map(text);
-    const order = ['About Alabama Wholesale', 'Shop by department', 'New arrivals', 'New deals', 'Bestsellers', 'Disposables, detox,hookah & more.', 'Tobacco, wraps& accessories.', 'Open a trade account', 'Services'];
+    const order = ['About Alabama Wholesale', 'Shop by department', 'New arrivals', 'Hot sellers', 'Bestsellers', 'New deals', 'Disposables, detox,hookah & more.', 'Tobacco, wraps& accessories.', 'Open a trade account', 'Services'];
     expect(h2s).toEqual(order);
     expect(document.querySelector('.services').nextElementSibling).toBeNull();
-    expect(document.getElementById('new-deals').previousElementSibling.id).toBe('new-arrivals');
-    for (const id of ['new-arrivals', 'new-deals', 'bestsellers']) {
+    expect(document.getElementById('hot-sellers').previousElementSibling.id).toBe('new-arrivals');
+    expect(document.getElementById('new-deals').previousElementSibling.id).toBe('bestsellers');
+    for (const id of ['new-arrivals', 'hot-sellers', 'bestsellers', 'new-deals']) {
       expect(document.querySelector(`#${id} .card-rail`).classList.contains('card-grid')).toBe(true);
     }
     // The header, menu and footer link to these.
     const ids = [...document.querySelectorAll('section[id]')].map((s) => s.id);
-    expect(ids).toEqual(['catalog', 'new-arrivals', 'new-deals', 'bestsellers', 'apply']);
+    expect(ids).toEqual(['catalog', 'new-arrivals', 'hot-sellers', 'bestsellers', 'new-deals', 'apply']);
   });
 
   it('names no kratom, kava or mushroom product anywhere on the page (AW-001)', () => {

@@ -12,8 +12,9 @@
 //     checked (checkedWrite) and the home page in this tab reloads its photos
 //     (refreshHomeSlides). A database without the table shows the bundled
 //     photos read-only with a note that editing needs the update.
-// (b) Homepage rails, read-only: what New arrivals, New deals and Bestsellers show now
-//     (homeRails, the home page's own rule and photo check), each product
+// (b) Homepage rails, read-only: what New arrivals, Hot sellers, Bestsellers and
+//     New deals show now (homeSections, the home page's own rule and photo
+//     check), each product
 //     with its tag, its homepage rank and an Edit link. The tags and ranks
 //     are edited in Admin -> Products; the legal-review guard is unchanged.
 //     The Edit link opens the product editor with ?back=homepage, so its
@@ -25,7 +26,7 @@ import { useCatalog } from '../../lib/catalog.jsx';
 import { departmentsFor } from '../../lib/departments.js';
 import { catLabel } from '../../lib/format.js';
 import { refreshHomeSlides, slidePhoto } from '../../lib/homeSlides.js';
-import { homeRails } from '../../lib/merchandising.js';
+import { homeSections } from '../../lib/merchandising.js';
 import { adminHref } from '../../lib/adminRoutes.js';
 import { Link } from '../../lib/router.js';
 import { EARLIER_HERO_PHOTOS, HERO_REEL, WAREHOUSE_GALLERY, bundledPhoto } from '../../data/warehousePhotos.js';
@@ -49,7 +50,7 @@ export const SLIDES_MISSING = `Editing the hero photos ${UPDATE_NOTE}. Until the
 // back to (ProductsSection.jsx, NEW-076).
 export const railEditId = (productId) => `rail-edit-product-${productId}`;
 export const RAILS_HEADING_ID = 'homepage-rails-title';
-export const RAILS_NOTE = 'The tags and the homepage rank set in each product’s editor (Products) decide these rails: New arrivals shows active products with a photo tagged NEW, New deals those tagged DEAL, Bestsellers those tagged BESTSELLER, ranked products first (1 before 2), and a product is never in more than one. Products in the lines under legal review need a homepage rank to appear, unless the home page already showed them.';
+export const RAILS_NOTE = 'The tags and the homepage rank set in each product’s editor (Products) decide these rails: New arrivals shows active products with a photo tagged NEW, Hot sellers the featured bestsellers, Bestsellers the rest of that tag, and New deals those tagged DEAL, ranked products first (1 before 2), and a product is never in more than one. Products in the lines under legal review need a homepage rank to appear, unless the home page already showed them.';
 
 // The bundled photos as rows, for the read-only view without the table:
 // the warehouse reel the home page shows (HERO_SLIDES, AW-006), none of a
@@ -334,11 +335,12 @@ export function HomepageTab({ notify, onOpenProduct, returnFocusId = null, onRet
     await refreshHomeSlides();
   };
 
-  const { newArrivals, deals, bestsellers } = homeRails(products, { limit: RAIL_LENGTH, hasPhoto });
+  const sections = homeSections(products, { limit: RAIL_LENGTH, hasPhoto });
   const rails = [
-    { key: 'new', title: 'New arrivals', items: newArrivals, empty: 'No active product with a photo is tagged NEW.' },
-    { key: 'deals', title: 'New deals', items: deals, empty: 'No active product with a photo is tagged DEAL.' },
-    { key: 'best', title: 'Bestsellers', items: bestsellers, empty: 'No active product with a photo is tagged BESTSELLER.' },
+    { key: 'new', title: 'New arrivals', items: sections['new-arrivals'], empty: 'No active product with a photo is tagged NEW.' },
+    { key: 'hot', title: 'Hot sellers', items: sections['hot-sellers'], empty: 'No featured bestseller with a photo.' },
+    { key: 'best', title: 'Bestsellers', items: sections.bestsellers, empty: 'No other bestseller with a photo.' },
+    { key: 'deals', title: 'New deals', items: sections['new-deals'], empty: 'No active product with a photo is tagged DEAL.' },
   ];
   const disabled = !!busy;
 

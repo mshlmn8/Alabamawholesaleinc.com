@@ -32,7 +32,7 @@ import { robotsTxt } from './site-url.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 // Pages without parameters that belong in search results.
-export const SITEMAP_PAGES = ['home', 'catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply'];
+export const SITEMAP_PAGES = ['home', 'catalog', 'new-arrivals', 'hot-sellers', 'bestsellers', 'new-deals', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply'];
 
 // Active products with a positive whole-number id, each once, by id.
 const listedProducts = (products) => {

@@ -2,7 +2,8 @@
 // (h1, pitch, calls to action and the photo carousel), the trust band under
 // it (AW-005), then the catalog. The three services sit last, just above
 // the footer.
-// the departments, one row each of new arrivals, new deals and bestsellers, the two
+// the departments, one row each of new arrivals, hot sellers, bestsellers and
+// new deals, the two
 // collection cards and the account application steps. Only the application
 // steps are numbered, the page's one real sequence (AW-216). A signed-in
 // account sees its own account's panel in place of the steps (AW-066).
@@ -12,8 +13,9 @@ import { APPLY_LABEL } from '../data/terms.js';
 import { accountView, tradeAccountPanel } from '../lib/accountStatus.js';
 import { topLines } from '../lib/departments.js';
 import { formatMoneyShort } from '../lib/format.js';
+import { COLLECTIONS } from '../lib/collections.js';
 import { tierPriceNote } from '../lib/pricing.js';
-import { RAIL_LIMIT, homeRails } from '../lib/merchandising.js';
+import { RAIL_LIMIT, homeRails, homeSections } from '../lib/merchandising.js';
 import { heroImage, SIZES } from '../lib/images.js';
 import { showsNicotineWarning } from '../lib/regulated.js';
 import { Link } from '../lib/router.js';
@@ -168,12 +170,10 @@ export function HomePage({
                  addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} showSku={false} />
   );
   // TODO(owner): Which products are really new and which are bestsellers, plus dedicated hero and department images? (AW-056)
-  // Tags and homepage rank (AW-119), RAIL_LENGTH cards each (AW-061). Each
-  // rail links to All products (/catalog): it mixes departments, and the site
-  // has no listing of every new or bestselling product (AW-056).
-  const { newArrivals, deals, bestsellers } = homeRails(products, { limit: RAIL_LENGTH, hasPhoto });
+  // Tags and homepage rank (AW-119), RAIL_LENGTH cards each (AW-061).
+  // Show all opens that group's own page, not the whole catalog.
+  const sections = homeSections(products, { limit: RAIL_LENGTH, hasPhoto });
   // Whose prices the rails show, for an approved buyer (AW-107).
-  const priceNote = isApprovedBuyer ? <p className="result-note">{tierPriceNote(priceTier)}</p> : null;
 
   return (
     <>
@@ -210,35 +210,17 @@ export function HomePage({
         </div>
       </section>
 
-      <section className="section" id="new-arrivals">
-        <div className="section-head">
-          <div><p className="eyebrow">FRESH INVENTORY</p><h2>New arrivals</h2>{priceNote}</div>
-          <Link to="/catalog">Browse all products</Link>
-        </div>
-        <div className="card-grid card-rail">
-          {newArrivals.map(card)}
-        </div>
-      </section>
-
-      <section className="section" id="new-deals">
-        <div className="section-head">
-          <div><p className="eyebrow">CURRENT OFFERS</p><h2>New deals</h2>{priceNote}</div>
-          <Link to="/catalog">Browse all products</Link>
-        </div>
-        <div className="card-grid card-rail">
-          {deals.map(card)}
-        </div>
-      </section>
-
-      <section className="section" id="bestsellers">
-        <div className="section-head">
-          <div><p className="eyebrow">PROVEN MOVERS</p><h2>Bestsellers</h2>{priceNote}</div>
-          <Link to="/catalog">Browse all products</Link>
-        </div>
-        <div className="card-grid card-rail">
-          {bestsellers.map(card)}
-        </div>
-      </section>
+      {COLLECTIONS.map((c) => (
+        <section className="section" id={c.page} key={c.page}>
+          <div className="section-head">
+            <div><p className="eyebrow">{c.eyebrow}</p><h2>{c.title}</h2>{isApprovedBuyer ? <p className="result-note">{tierPriceNote(priceTier)}</p> : null}</div>
+            <Link to={{ page: c.page }}>Show all<span className="sr-only">{` ${c.title.toLowerCase()}`}</span></Link>
+          </div>
+          <div className="card-grid card-rail">
+            {sections[c.page].map(card)}
+          </div>
+        </section>
+      ))}
 
       <section className="editorials" aria-label="Collections">
         {/* TODO(owner): Licensed photos for the novelties collection card and the tobacco collection card. (AW-058) */}

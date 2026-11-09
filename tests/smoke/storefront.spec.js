@@ -737,7 +737,7 @@ test.describe('home sections', () => {
     await expect(services.getByRole('link', { name: 'How to apply' })).toHaveAttribute('href', '/apply');
     await expect(services).not.toContainText(/net-30|discount/i);
     // New arrivals has three: #75 Wava kava, its fourth, is delisted (AW-001).
-    for (const [id, count] of [['new-arrivals', 3], ['new-deals', 3], ['bestsellers', 4]]) {
+    for (const [id, count] of [['new-arrivals', 3], ['hot-sellers', 4], ['bestsellers', 4], ['new-deals', 3]]) {
       await expect(page.locator(`#${id} .content-card`)).toHaveCount(count);
       for (const detail of await page.locator(`#${id} .card-detail`).allTextContents()) expect(detail).not.toMatch(/\bAW-/);
     }

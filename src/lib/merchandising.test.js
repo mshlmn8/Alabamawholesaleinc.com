@@ -3,7 +3,7 @@
 // department pages' Featured sort (AW-227) follows the same rank and guard.
 import { describe, expect, it } from 'vitest';
 import { CATALOG } from '../data/products.js';
-import { LEGAL_REVIEW_IDS, LEGAL_REVIEW_SUBS, TAG_RANK, featuredOrder, homeRails, underLegalReview } from './merchandising.js';
+import { LEGAL_REVIEW_IDS, LEGAL_REVIEW_SUBS, TAG_RANK, collectionList, featuredOrder, homeRails, homeSections, underLegalReview } from './merchandising.js';
 import { PRODUCTS } from '../data/products.js';
 import { hasPhoto } from '../pages/HomePage.jsx';
 
@@ -77,6 +77,24 @@ describe('homeRails', () => {
     expect(ids(newArrivals)).toEqual([62, 64, 184]);
     expect(ids(deals)).toEqual([82, 105, 270]);
     expect(ids(bestsellers)).toEqual([11, 31, 55, 56]);
+  });
+});
+
+describe('collection pages', () => {
+  it('lists every tagged product, and the home rows preview them without repeating a card', () => {
+    const sections = homeSections(PRODUCTS, { limit: 4, hasPhoto });
+    const rails = homeRails(PRODUCTS, { limit: 4, hasPhoto });
+    expect(ids(sections['new-arrivals'])).toEqual(ids(rails.newArrivals));
+    expect(ids(sections['new-deals'])).toEqual(ids(rails.deals));
+    expect(ids(sections['hot-sellers'])).toEqual(ids(rails.bestsellers));
+    const shown = new Set(ids(sections['hot-sellers']));
+    for (const id of ids(sections.bestsellers)) expect(shown.has(id)).toBe(false);
+    expect(ids(sections.bestsellers)).toEqual([60, 61, 143, 162]);
+    // The pages themselves are the full lists: Dubai chocolate is new but has no photo.
+    expect(ids(collectionList(PRODUCTS, 'new-arrivals'))).toContain(342);
+    expect(ids(collectionList(PRODUCTS, 'hot-sellers'))).not.toContain(218);
+    expect(ids(collectionList(PRODUCTS, 'bestsellers'))).toContain(218);
+    expect(ids(collectionList(PRODUCTS, 'new-deals'))).toEqual([82, 105, 270]);
   });
 });
 

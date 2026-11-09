@@ -89,6 +89,59 @@ export function homeRails(products, { limit = RAIL_LIMIT, hasPhoto = photoOf, le
   return { newArrivals, deals, bestsellers };
 }
 
+// Every product in a home-page group, in the rail's order, with no card
+// limit. New arrivals, new deals and hot sellers follow the homepage's
+// legal-review guard. Hot sellers are the bestsellers that guard allows
+// onto the homepage (a photo, and not held back). Bestsellers is the whole
+// tag, including a product still waiting on a photo or held for review.
+// A product has one tag, so the groups meet only where hot sellers are the
+// featured part of bestsellers.
+export function collectionList(products, page) {
+  const shown = (products || []).filter((p) => p && p.active !== false);
+  const legacyPlace = new Map(NEW_ARRIVALS_IDS.map((id, i) => [id, i]));
+  const placeOf = (p) => legacyPlace.get(idOf(p)) ?? Number.MAX_SAFE_INTEGER;
+  const withPhoto = shown.filter((p) => photoOf(p));
+  const byId = new Map(withPhoto.map((p) => [idOf(p), p]));
+  const before = {
+    newArrivals: new Set(NEW_ARRIVALS_IDS.map((id) => byId.get(id)).filter(Boolean).slice(0, RAIL_LIMIT).map(idOf)),
+    bestsellers: new Set(withPhoto.filter((p) => p.tag === 'BESTSELLER').sort((a, b) => idOf(a) - idOf(b)).slice(0, RAIL_LIMIT).map(idOf)),
+  };
+  const mayFeature = (p, shownBefore) => rankOf(p) != null || !underLegalReview(p) || shownBefore.has(idOf(p));
+  const tagged = (tag) => shown.filter((p) => p.tag === tag);
+  if (page === 'new-arrivals') {
+    return tagged('NEW').filter((p) => mayFeature(p, before.newArrivals))
+      .sort((a, b) => byRank(a, b) || placeOf(a) - placeOf(b) || idOf(b) - idOf(a));
+  }
+  if (page === 'new-deals') {
+    return tagged('DEAL').filter((p) => mayFeature(p, new Set()))
+      .sort((a, b) => byRank(a, b) || idOf(a) - idOf(b));
+  }
+  if (page === 'hot-sellers') {
+    return tagged('BESTSELLER').filter((p) => photoOf(p) && mayFeature(p, before.bestsellers))
+      .sort((a, b) => byRank(a, b) || idOf(a) - idOf(b));
+  }
+  if (page === 'bestsellers') {
+    return tagged('BESTSELLER').sort((a, b) => byRank(a, b) || idOf(a) - idOf(b));
+  }
+  return [];
+}
+
+// What each home row shows: `limit` cards with a photo. Hot sellers takes
+// the featured bestsellers first, so the Bestsellers row continues with the
+// rest and a card is never in two rows.
+export function homeSections(products, { limit = RAIL_LIMIT, hasPhoto = photoOf } = {}) {
+  const taken = new Set();
+  const sections = {};
+  for (const page of ['new-arrivals', 'hot-sellers', 'bestsellers', 'new-deals']) {
+    const cards = collectionList(products, page)
+      .filter((p) => hasPhoto(p) && !taken.has(idOf(p)) && (rankOf(p) != null || !underLegalReview(p)))
+      .slice(0, limit);
+    for (const card of cards) taken.add(idOf(card));
+    sections[page] = cards;
+  }
+  return sections;
+}
+
 // The order of the tags in the Featured sort (AW-227); untagged comes last.
 // What DEAL and PREMIUM mean is the AW-139 owner question (CategoryPage.jsx).
 export const TAG_RANK = { BESTSELLER: 0, NEW: 1, DEAL: 2, PREMIUM: 3 };

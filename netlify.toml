@@ -87,6 +87,26 @@
   status = 200
 
 [[redirects]]
+  from = "/new-arrivals"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/hot-sellers"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/bestsellers"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/new-deals"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
   from = "/search"
   to = "/index.html"
   status = 200

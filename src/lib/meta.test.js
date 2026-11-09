@@ -89,6 +89,10 @@ describe('pageMeta', () => {
   it('titles the support pages in sentence case, the words of their h1s (AW-131, LEFT-1)', () => {
     const title = (route) => pageMeta(route, products, departments).title;
     expect(title({ page: 'catalog' })).toBe('All products · Wholesale catalog · Alabama Wholesale Inc');
+    expect(title({ page: 'new-arrivals' })).toBe('New arrivals · Alabama Wholesale Inc');
+    expect(title({ page: 'hot-sellers' })).toBe('Hot sellers · Alabama Wholesale Inc');
+    expect(title({ page: 'bestsellers' })).toBe('Bestsellers · Alabama Wholesale Inc');
+    expect(title({ page: 'new-deals' })).toBe('New deals · Alabama Wholesale Inc');
     expect(title({ page: 'contact' })).toBe('Contact & visit · Alabama Wholesale Inc');
     expect(title({ page: 'delivery' })).toBe('Delivery & service area · Alabama Wholesale Inc');
     // What every link and its crumb call /shipping (NEW-043).
@@ -102,7 +106,7 @@ describe('pageMeta', () => {
     // The home title waits on the owner (AW-318), and a product, department
     // or line title starts with that name.
     const routes = [
-      ...['catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'account', 'checkout', 'search'].map((page) => ({ page })),
+      ...['catalog', 'new-arrivals', 'hot-sellers', 'bestsellers', 'new-deals', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'account', 'checkout', 'search'].map((page) => ({ page })),
       ...['guest', 'loading', 'no-profile', 'pending', 'approved', 'suspended'].map((applyAs) => ({ page: 'apply', applyAs })),
       ...['unavailable', 'request', 'checking', 'form', 'done', 'link-invalid'].map((view) => ({ page: 'reset-password', view })),
       ...[{}, { section: 'accounts' }, { section: 'accounts', id: 'x' }, { section: 'products' }, { section: 'products', id: 'new' }, { section: 'products', id: 3 },
