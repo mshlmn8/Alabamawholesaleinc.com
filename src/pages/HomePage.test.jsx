@@ -97,12 +97,12 @@ describe('HomePage sections', () => {
     expect(document.querySelector('.home-carousel').getAttribute('aria-label')).toBe('New products');
   });
 
-  it('runs hero, trust band, departments, new arrivals, new deals, bestsellers, collections, application, then services', () => {
+  it('runs hero, trust band, departments, new arrivals, hot sellers, bestsellers, new deals, application, then services', () => {
     renderHome();
     expect(document.querySelector('.home-hero').nextElementSibling.className).toBe('trust-band');
     expect(document.querySelector('.trust-band').nextElementSibling.className).not.toBe('services');
     const h2s = [...document.querySelectorAll('h2')].map(text);
-    const order = ['About Alabama Wholesale', 'Shop by department', 'New arrivals', 'Hot sellers', 'Bestsellers', 'New deals', 'Disposables, detox,hookah & more.', 'Tobacco, wraps& accessories.', 'Open a trade account', 'Services'];
+    const order = ['About Alabama Wholesale', 'Shop by department', 'New arrivals', 'Hot sellers', 'Bestsellers', 'New deals', 'Open a trade account', 'Services'];
     expect(h2s).toEqual(order);
     expect(document.querySelector('.services').nextElementSibling).toBeNull();
     expect(document.getElementById('hot-sellers').previousElementSibling.id).toBe('new-arrivals');
@@ -164,24 +164,6 @@ describe('HomePage sections', () => {
     const section = document.querySelector('.services');
     expect(section.hasAttribute('aria-label')).toBe(false);
     expect(section.querySelector('h2.sr-only').textContent).toBe('Services');
-  });
-});
-
-describe('HomePage collection cards', () => {
-  it('keeps each heading a plain heading, with the call to action as the link (AW-170)', () => {
-    renderHome();
-    const cards = [...document.querySelectorAll('.editorials > .editorial-card')];
-    expect(cards.map((c) => c.tagName)).toEqual(['DIV', 'DIV']);
-    const links = cards.map((c) => {
-      const all = c.querySelectorAll('a');
-      expect(all).toHaveLength(1);
-      expect(c.querySelector('h2').closest('a')).toBeNull();
-      return [all[0].className, all[0].textContent, all[0].getAttribute('href')];
-    });
-    expect(links).toEqual([
-      ['text-link', 'Browse novelties', hrefFor({ page: 'category', category: 'NOVELTIES' })],
-      ['text-link', 'Browse tobacco', hrefFor({ page: 'category', category: 'TOBACCO' })],
-    ]);
   });
 });
 

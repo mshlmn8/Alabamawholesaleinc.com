@@ -67,7 +67,7 @@ test('nothing on the home page, the Categories menu, All products or search name
   await page.goto('/');
   await expect(page.locator('#new-arrivals .content-card').first()).toBeVisible();
   await expect(page.locator('main')).not.toContainText(DELISTED);
-  await expect(page.getByRole('heading', { name: /Disposables, detox,\s*hookah & more\./ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Disposables, detox/ })).toHaveCount(0);
   if (testInfo.project.name !== 'phone') {
     await page.getByRole('banner').getByRole('button', { name: 'Categories' }).click();
     const menu = page.locator('#aw-mega-menu');

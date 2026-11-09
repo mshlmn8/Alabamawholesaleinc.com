@@ -3,8 +3,7 @@
 // it (AW-005), then the catalog. The three services sit last, just above
 // the footer.
 // the departments, one row each of new arrivals, hot sellers, bestsellers and
-// new deals, the two
-// collection cards and the account application steps. Only the application
+// new deals, then the account application steps. Only the application
 // steps are numbered, the page's one real sequence (AW-216). A signed-in
 // account sees its own account's panel in place of the steps (AW-066).
 
@@ -16,7 +15,6 @@ import { brandLabel, formatMoneyShort } from '../lib/format.js';
 import { COLLECTIONS } from '../lib/collections.js';
 import { tierPriceNote } from '../lib/pricing.js';
 import { RAIL_LIMIT, homeRails, homeSections } from '../lib/merchandising.js';
-import { heroImage, SIZES } from '../lib/images.js';
 import { showsNicotineWarning } from '../lib/regulated.js';
 import { Link } from '../lib/router.js';
 import { Icon } from '../components/Icon.jsx';
@@ -25,8 +23,6 @@ import { Picture } from '../components/Picture.jsx';
 import { HomeHero } from '../components/HomeHero.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
 import { PART_SEPARATOR } from '../components/TextParts.jsx';
-
-const EDITORIAL_BG = heroImage('hero_candy.jpg');
 
 // A department tile's photo frame is a quarter of the container on wide
 // screens and half the screen in the compact layout (.dept-grid in index.css).
@@ -223,19 +219,6 @@ export function HomePage({
           </div>
         </section>
       ))}
-
-      <section className="editorials" aria-label="Collections">
-        {/* TODO(owner): Licensed photos for the novelties collection card and the tobacco collection card. (AW-058) */}
-        <div className="editorial-card cream">
-          <Picture className="bg" picture={EDITORIAL_BG.picture} alt="" aria-hidden="true" sizes={SIZES.editorial} />
-          {/* Kratom is off the site (AW-001, answered 2026-10), so the headline names the Hookah & Shisha line in its place. */}
-          {/* TODO(owner): After legal review, may this card still advertise detox? Kept as published. (AW-001) */}
-          <div><p className="eyebrow">EXOTICS &amp; NOVELTIES</p><h2>Disposables, detox,<br />hookah &amp; more.</h2><Link className="text-link" to={dept('NOVELTIES')}>Browse novelties</Link></div>
-        </div>
-        <div className="editorial-card purple">
-          <div><p className="eyebrow">THE CORE BUSINESS</p><h2>Tobacco, wraps<br />&amp; accessories.</h2><Link className="text-link" to={dept('TOBACCO')}>Browse tobacco</Link></div>
-        </div>
-      </section>
 
       <AccountSection signedIn={signedIn} view={accountView(profile, account)} onApplyClick={onApplyClick} />
 
