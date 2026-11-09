@@ -14,7 +14,7 @@ const products = [{ id: 12 }, { id: 3 }, { id: 3 }, { id: 'x' }, { id: 40, activ
 describe('sitemapPaths', () => {
   it('lists the indexable pages, departments, product lines and products as paths', () => {
     expect(sitemapPaths({ departments, products })).toEqual([
-      '/', '/catalog', '/contact', '/delivery', '/shipping', '/privacy', '/terms', '/apply',
+      '/', '/catalog', '/new-arrivals', '/hot-sellers', '/bestsellers', '/new-deals', '/contact', '/delivery', '/shipping', '/privacy', '/terms', '/apply',
       '/category/tobacco', '/category/tobacco/cigarettes', '/category/tobacco/cigars-and-cigarillos',
       '/category/drinks-and-bags', '/category/drinks-and-bags/energy-drinks',
       '/product/3', '/product/12',

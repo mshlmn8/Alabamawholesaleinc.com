@@ -320,9 +320,9 @@ describe('SIZES follow the card and product-page geometry (AW-322)', () => {
     for (const vw of [390, 600, 851, 1000, 1440]) expect(evaluate(SIZES.categoryCard, vw, false)).toBeCloseTo(categoryCard(vw, false), 5);
   });
 
-  // The home hero's stage: the hero's 1px borders and the full width of the
+  // The home hero's stage: the carousel's 1px border and the full width of the
   // container. The compact layout uses the phone margins.
-  const heroBorders = 2 * px(/\.home-hero \{[^}]*border: (\d+)px solid/);
+  const heroBorders = 2 * px(/\.home-carousel \{[^}]*border: (\d+)px solid/);
   const heroStage = (vw, compact) => {
     if (compact || vw <= 850) return vw - g.compactMargin - heroBorders;
     return Math.min(vw - g.margin, g.max) - heroBorders;

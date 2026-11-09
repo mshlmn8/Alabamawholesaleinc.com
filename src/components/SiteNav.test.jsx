@@ -129,7 +129,7 @@ describe('MobileMenu current page (AW-221)', () => {
   it('marks the department and Exotics on the Novelties pages', () => {
     go('/category/novelties');
     renderMenu();
-    expect(current()).toEqual([[`02Novelties & Vapes${departments[1].count} products`, 'page'], ['Exotics', 'page']]);
+    expect(current()).toEqual([[`Novelties & Vapes${departments[1].count} products`, 'page'], ['Exotics', 'page']]);
     go('/category/novelties/disposable-vapes');
     expect(current().map(([, value]) => value)).toEqual(['true', 'true']);
   });
