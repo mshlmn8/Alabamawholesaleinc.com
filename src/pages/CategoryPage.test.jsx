@@ -431,26 +431,18 @@ describe('CategoryPage line counts follow the filters (AW-225)', () => {
 });
 
 describe('CategoryPage line pages (AW-226)', () => {
-  const crumbs = () => [...document.querySelectorAll('.crumbs li > *')].map((el) => ({ text: el.textContent, tag: el.tagName, href: el.getAttribute('href'), current: el.getAttribute('aria-current') }));
   const head = () => ({
     eyebrow: document.querySelector('.page-head .eyebrow')?.textContent ?? '',
     h1: screen.getByRole('heading', { level: 1 }).textContent,
     products: document.querySelector('.category-stat-products strong').textContent,
   });
 
-  it('names the line in the heading and the trail leads back to All products and the department', () => {
+  it('names the line in the heading, with no breadcrumb trail', () => {
     act(() => navigate('/category/tobacco/wraps', { replace: true }));
     render(<Branded />);
     expect(head()).toEqual({ eyebrow: 'Tobacco', h1: 'Wraps', products: '7' });
-    expect(crumbs()).toEqual([
-      { text: 'Home', tag: 'A', href: '/', current: null },
-      { text: 'All products', tag: 'A', href: '/catalog', current: null },
-      { text: 'Tobacco', tag: 'A', href: '/category/tobacco', current: null },
-      { text: 'Wraps', tag: 'SPAN', href: null, current: 'page' },
-    ]);
-    // The department crumb keeps the filters, as the All pill does.
+    expect(document.querySelector('nav.crumbs')).toBeNull();
     act(() => navigate('/category/tobacco/wraps?brand=game', { replace: true }));
-    expect(screen.getByRole('link', { name: 'Tobacco' }).getAttribute('href')).toBe('/category/tobacco?brand=game');
     expect(head().eyebrow).toBe('Tobacco');
     expect(head().products).toBe('7');
   });
@@ -459,10 +451,10 @@ describe('CategoryPage line pages (AW-226)', () => {
     render(<Branded />);
     expect(head()).toEqual({ eyebrow: 'DEPARTMENT', h1: 'Tobacco', products: '14' });
     expect(document.querySelector('.category-stat-lines strong').textContent).toBe('2');
-    expect(crumbs().map((c) => `${c.tag}:${c.text}`)).toEqual(['A:Home', 'A:All products', 'SPAN:Tobacco']);
+    expect(document.querySelector('nav.crumbs')).toBeNull();
   });
 
-  it('names the department once on a line named like it: the trail says which is the department, the eyebrow just counts (NEW-029)', () => {
+  it('names the department once on a line named like it, and leaves the eyebrow off (NEW-029)', () => {
     const oil = [
       { id: 57, name: 'Pure Guard motor oil', brand: 'Pure Guard', cat: 'MOTOR OIL', sub: 'Motor Oil', sku: 'AW-PG', variants: [], tag: null },
       { id: 58, name: 'Fuel additive', brand: 'X', cat: 'MOTOR OIL', sub: 'Additives', sku: 'AW-FA', variants: [], tag: null },
@@ -472,14 +464,13 @@ describe('CategoryPage line pages (AW-226)', () => {
     const view = render(<CategoryPage category="MOTOR OIL" sub="Motor Oil" products={oil} departments={depts} profile={null} isApprovedBuyer={false}
                                       cart={{}} addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} />);
     expect(head()).toEqual({ eyebrow: '', h1: 'Motor Oil', products: '1' });
-    expect(crumbs().map((c) => `${c.tag}:${c.text}`)).toEqual(['A:Home', 'A:All products', 'A:Motor Oil department', 'SPAN:Motor Oil']);
+    expect(document.querySelector('nav.crumbs')).toBeNull();
     view.unmount();
     // Another line of the department keeps the department's name in both.
     render(<CategoryPage category="MOTOR OIL" sub="Additives" products={oil} departments={depts} profile={null} isApprovedBuyer={false}
                          cart={{}} addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} />);
     expect(head().eyebrow).toBe('Motor Oil');
     expect(head().products).toBe('1');
-    expect(crumbs().map((c) => c.text)).toEqual(['Home', 'All products', 'Motor Oil', 'Additives']);
   });
 
   it('says "1 product" for a line of one', () => {
