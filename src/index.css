@@ -943,7 +943,9 @@ p > .text-link { min-height: 0; min-width: 0; }
 }
 .result-note { font-size: var(--text-sm); color: var(--muted); margin: 0; }
 .result-note strong { color: var(--purple); }
-.category-toolbar { margin-bottom: 16px; padding-block: 8px; border-block: 1px solid var(--line); }
+/* position: relative keeps the visually hidden result count (.sr-only)
+   inside the row. */
+.category-toolbar { position: relative; margin-bottom: 16px; padding-block: 8px; border-block: 1px solid var(--line); }
 .toolbar-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: var(--tap); }
 .toolbar-end { display: flex; align-items: center; gap: 16px; margin-left: auto; }
 .category-sort { display: flex; align-items: center; gap: 10px; }
@@ -2138,7 +2140,8 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .category-stat-compact strong { font-size: 1.75rem; }
   .sort-label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
   .toolbar-end { display: contents; }
-  .category-sort { order: 1; }
+  /* The item count is visually hidden, so Sort takes the right side of the row. */
+  .category-sort { order: 1; margin-left: auto; }
   .toolbar-end .result-note { order: 2; margin-left: auto; }
   .category-sort select { min-width: 0; }
   .sub-pills { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 6px 16px; margin-inline: -16px; -webkit-overflow-scrolling: touch; }

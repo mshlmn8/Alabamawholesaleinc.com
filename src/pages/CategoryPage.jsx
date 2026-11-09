@@ -307,12 +307,13 @@ export function CategoryPage({
     </>
   );
 
-  // The toolbar shows how many products the current filters leave ("12 items").
-  // On a phone the line's name stays in the note for screen readers only
-  // (AW-158, .result-scope).
+  // How many products the current filters leave. The product-line pills
+  // already show that number, so the note is for screen readers and for
+  // where focus lands after the last filter is cleared (NEW-005). On a
+  // phone the line's name stays in the note (AW-158, .result-scope).
   const resultNote = (
-    <p className="result-note" role="status" ref={noteRef} tabIndex={-1}>
-      <strong>{items.length}</strong>{` ${items.length === 1 ? 'item' : 'items'}${activeSub ? ' ' : ''}`}
+    <p className="result-note sr-only" role="status" ref={noteRef} tabIndex={-1}>
+      <span>{`${items.length} ${items.length === 1 ? 'item' : 'items'}${activeSub ? ' ' : ''}`}</span>
       <span className="result-scope">{activeSub ? `in ${activeSub}` : ''}</span>
     </p>
   );

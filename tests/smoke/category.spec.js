@@ -53,6 +53,7 @@ test('a brand filter narrows the department, and the line counts follow it (AW-0
     await expect(page.getByRole('dialog')).toBeHidden();
     await expect(page).toHaveURL(/\/category\/tobacco\/wraps-and-leafs\?brand=swisher-sweets$/);
   } else {
+    await expect(page.locator('.category-toolbar .result-note')).toHaveClass(/sr-only/);
     await expect(page.locator('.result-note')).toHaveText('6 items');
     await expect(page.getByRole('link', { name: 'Cigarettes (0)' })).toHaveClass(/is-empty/);
     await page.getByRole('link', { name: 'Wraps & Leafs (2)' }).click();
