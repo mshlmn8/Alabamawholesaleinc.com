@@ -40,7 +40,7 @@ describe('TradeBar', () => {
   it('lists the trade notice and every announcement, each the only child of its item, and shows the notice first', () => {
     render(<TradeBar onApplyClick={() => {}} />);
     expect(MESSAGES[0]).toBe(TRADE_NOTICE);
-    expect(TRADE_NOTICE).toBe('WHOLESALE TO LICENSED RETAIL BUSINESSES ONLY · NO CONSUMER SALES · 21+');
+    expect(TRADE_NOTICE).toBe('WHOLESALE TO LICENSED RETAIL BUSINESSES ONLY · NO CONSUMER SALES');
     expect(items().map((li) => li.textContent)).toEqual([TRADE_NOTICE, ...ANNOUNCEMENTS.map((a) => a.replace(/^★ /, ''))]);
     for (const li of items()) expect(li.childNodes).toHaveLength(1);
     expect(screen.getByRole('list', { name: 'Announcements' })).toBeTruthy();

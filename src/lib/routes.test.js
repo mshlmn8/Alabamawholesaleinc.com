@@ -43,7 +43,7 @@ describe('parseUrl', () => {
     expect(parseUrl({ pathname: '/category/tobacco' })).toMatchObject({ page: 'category', dept: 'tobacco', sub: null });
     expect(parseUrl({ pathname: '/category/drinks-and-bags/energy-drinks' })).toMatchObject({ page: 'category', dept: 'drinks-and-bags', sub: 'energy-drinks' });
     expect(parseUrl({ pathname: '/search', search: '?q=kite' })).toEqual({ page: 'search', q: 'kite' });
-    for (const page of ['checkout', 'account', 'admin', 'catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply', 'reset-password']) {
+    for (const page of ['checkout', 'account', 'admin', 'catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply', 'reset-password', 'new-arrivals', 'hot-sellers', 'bestsellers', 'new-deals']) {
       expect(parseUrl({ pathname: `/${page}` })).toEqual({ page });
     }
   });
@@ -73,7 +73,7 @@ describe('parseUrl', () => {
   });
 
   it('answers only the first segments in PATH_SECTIONS, the paths netlify.toml rewrites (NEW-088)', () => {
-    expect(PATH_SECTIONS).toEqual(['product', 'category', 'search', 'checkout', 'account', 'admin', 'catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply', 'reset-password']);
+    expect(PATH_SECTIONS).toEqual(['product', 'category', 'search', 'checkout', 'account', 'admin', 'catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply', 'reset-password', 'new-arrivals', 'hot-sellers', 'bestsellers', 'new-deals']);
     for (const section of ['products', 'categories', 'home', 'index', 'cart', '404', 'sitemap.xml']) {
       expect([section, parseUrl({ pathname: `/${section}` })]).toEqual([section, { page: 'not-found' }]);
     }

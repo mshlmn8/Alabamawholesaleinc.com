@@ -100,7 +100,7 @@ describe('footer copy (AW-285)', () => {
     render(footer());
     const logo = document.querySelector('.footer-logo');
     expect(logo).not.toBeNull();
-    expect(logo.getAttribute('src')).toMatch(/logo\.png$/);
+    expect(logo.getAttribute('src')).toMatch(/logo-footer\.png$/);
     expect(document.querySelector('.footer-brand > span')).toBeNull();
     const blurb = document.querySelector('.footer-brand p').textContent;
     expect(blurb).toBe('Wholesale distributor of tobacco, novelties & vapes, merchandise, candies, food stuff, grocery, motor oil, and drinks & bags. Serving licensed retail stores.');
@@ -124,7 +124,7 @@ describe('footer copy (AW-285)', () => {
   // The trade-only strip is the trade bar's first message now (AW-153).
   it('says licensed-only in one wording, in the footer and the trade bar', () => {
     render(<><TradeBar /><Footer departments={departments} onLoginClick={vi.fn()} onApplyClick={vi.fn()} onHelp={vi.fn()} /></>);
-    expect(LICENSED_ONLY).toBe('Wholesale to licensed retail businesses only · No consumer sales · 21+');
+    expect(LICENSED_ONLY).toBe('Wholesale to licensed retail businesses only · No consumer sales');
     expect(document.querySelector('.announcement-list li').textContent).toBe(LICENSED_ONLY.toUpperCase());
     expect([...document.querySelectorAll('.footer-legal p')].map((p) => p.textContent)).toContain(LICENSED_ONLY);
     // No other wording of the statement is left in the components.

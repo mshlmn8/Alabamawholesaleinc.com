@@ -66,6 +66,7 @@ import { SearchPage } from './pages/SearchPage.jsx';
 import { useAdminUnseen } from './pages/admin/useAdminUnseen.js';
 // Eager: its '#dept-…' links scroll to their department before paint.
 import { CatalogIndexPage } from './pages/support/CatalogIndexPage.jsx';
+import { CollectionPage } from './pages/CollectionPage.jsx';
 import { loadDialog, loadPage, prefetchChunks, whenIdle } from './lib/chunks.js';
 
 // Loaded when first opened (AW-179), each under its name in
@@ -441,6 +442,11 @@ export default function App() {
           <CatalogIndexPage products={products} departments={departments} profile={profile} isApprovedBuyer={isApprovedBuyer}
                             onLoginClick={openSignin} {...cardProps} />
         );
+      case 'new-arrivals':
+      case 'hot-sellers':
+      case 'bestsellers':
+      case 'new-deals':
+        return <CollectionPage key={route.page} page={route.page} products={products} {...cardProps} />;
       case 'contact':
         // Signed in, the page offers the account's own panel, never a
         // second application (AW-066, NEW-014); the support pages' side nav

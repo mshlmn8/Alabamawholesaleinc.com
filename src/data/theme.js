@@ -7,5 +7,8 @@
 // ../assets/products/ and hero photos in ../assets/; both are resolved as
 // responsive sets by ../lib/images.js. Favicons still come from logo.jpg.
 export const IMG = {
-  logo: new URL('../assets/logo.png', import.meta.url).href
+  logo: new URL('../assets/logo.png', import.meta.url).href,
+  // The same mark with the purple lettering in white, so it stays readable
+  // on the purple footer without a white plate.
+  logoFooter: new URL('../assets/logo-footer.png', import.meta.url).href,
 };

@@ -86,7 +86,7 @@ test('the controls sit above the card link, after it in the tab order (AW-170)',
   expect(errors).toEqual([]);
 });
 
-test('department tiles and collection cards open their department from anywhere on them (AW-170)', async ({ page }) => {
+test('department tiles open their department from anywhere on them (AW-170)', async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto('/');
   const tile = page.locator('#catalog .dept-tile').filter({ hasText: 'Candies' });
@@ -94,13 +94,6 @@ test('department tiles and collection cards open their department from anywhere 
   // The photo, above the link's own text.
   await clickAt(page, tile.locator('.dept-tile-media'), 0.5, 0.5);
   await expect(page).toHaveURL(/\/category\/candies$/);
-  await page.goBack();
-  const collection = page.locator('.editorial-card.purple');
-  await expect(collection.getByRole('link', { name: 'Browse tobacco' })).toHaveAttribute('href', '/category/tobacco');
-  // Its heading is a heading, not part of a link.
-  await expect(collection.getByRole('heading', { level: 2 })).toBeVisible();
-  await clickAt(page, collection, 0.8, 0.2);
-  await expect(page).toHaveURL(/\/category\/tobacco$/);
   expect(errors).toEqual([]);
 });
 

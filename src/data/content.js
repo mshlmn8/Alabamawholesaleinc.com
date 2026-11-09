@@ -144,7 +144,7 @@ export const ORDER_MINIMUM = 500;
 // The licensed-only statement, in one wording wherever the site prints it:
 // the trade-only strip above the header (upper-cased there by CSS) and the
 // footer's legal bar (AW-285). The policy pages keep their own legal text.
-export const LICENSED_ONLY = 'Wholesale to licensed retail businesses only · No consumer sales · 21+';
+export const LICENSED_ONLY = 'Wholesale to licensed retail businesses only · No consumer sales';
 
 // Volume pricing (AW-025, owner answer 2026-10): there are no Net-30 terms
 // and no published volume discounts; volume pricing is agreed with the trade

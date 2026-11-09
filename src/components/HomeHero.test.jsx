@@ -28,7 +28,7 @@ describe('HomeHero', () => {
     render(<HomeHero slides={[{ key: 'a', img: '/a.jpg', picture: { src: '/a.jpg', width: 400, height: 400 }, alt: 'Tueni chews', caption: 'Tueni chews', to: { page: 'product', productId: 184 } }]} />);
     expect([...document.querySelector('.home-hero').children].map((el) => el.className)).toEqual(['sr-only', 'home-hero-media']);
     expect(document.querySelector('.home-carousel').getAttribute('aria-label')).toBe('New products');
-    expect(screen.getByRole('link', { name: 'Tueni chews' }).getAttribute('href')).toBe('/product/184');
+    expect(screen.getByRole('link', { name: 'Shop Tueni chews' }).getAttribute('href')).toBe('/product/184');
   });
 });
 

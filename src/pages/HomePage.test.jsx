@@ -46,7 +46,7 @@ describe('HomePage rails', () => {
     const names = (id) => [...document.querySelectorAll(`#${id} .content-card h3`)].map((h) => h.textContent);
     expect(names('new-arrivals')).not.toContain('Dubai chocolate');
     expect(names('new-arrivals').length).toBeGreaterThan(0);
-    expect(document.querySelectorAll('#new-arrivals .photo-soon, #new-deals .photo-soon, #bestsellers .photo-soon')).toHaveLength(0);
+    expect(document.querySelectorAll('#new-arrivals .photo-soon, #hot-sellers .photo-soon, #bestsellers .photo-soon, #new-deals .photo-soon')).toHaveLength(0);
   });
 
   it('shows one row of four cards at most in each rail, without the SKU', () => {
@@ -54,7 +54,7 @@ describe('HomePage rails', () => {
     renderHome();
     // Three products are tagged NEW with a photo since #75 Wava kava, the
     // fourth card, was delisted (AW-001); staff tag more in Admin -> Products.
-    for (const [id, count] of [['new-arrivals', 3], ['new-deals', 3], ['bestsellers', 4]]) {
+    for (const [id, count] of [['new-arrivals', 3], ['hot-sellers', 4], ['bestsellers', 4], ['new-deals', 3]]) {
       const cards = document.querySelectorAll(`#${id} .content-card`);
       expect(cards, id).toHaveLength(count);
       for (const card of cards) {
@@ -68,12 +68,12 @@ describe('HomePage rails', () => {
     }
   });
 
-  it('links each rail to All products, which spans every department, not to one department (AW-056)', () => {
+  it('links each rail’s Show all to that group’s own page', () => {
     renderHome();
-    for (const id of ['new-arrivals', 'new-deals', 'bestsellers']) {
+    for (const [id, name] of [['new-arrivals', 'Show all new arrivals'], ['hot-sellers', 'Show all hot sellers'], ['bestsellers', 'Show all bestsellers'], ['new-deals', 'Show all new deals']]) {
       const head = document.querySelector(`#${id} .section-head`);
       const links = within(head).getAllByRole('link');
-      expect(links.map((a) => [a.textContent, a.getAttribute('href')]), id).toEqual([['Browse all products', '/catalog']]);
+      expect(links.map((a) => [a.textContent, a.getAttribute('href')]), id).toEqual([[name, `/${id}`]]);
     }
     expect(screen.queryByRole('link', { name: 'Shop novelties' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Shop tobacco' })).toBeNull();
@@ -97,21 +97,22 @@ describe('HomePage sections', () => {
     expect(document.querySelector('.home-carousel').getAttribute('aria-label')).toBe('New products');
   });
 
-  it('runs hero, trust band, departments, new arrivals, new deals, bestsellers, collections, application, then services', () => {
+  it('runs hero, trust band, departments, new arrivals, hot sellers, bestsellers, new deals, application, then services', () => {
     renderHome();
     expect(document.querySelector('.home-hero').nextElementSibling.className).toBe('trust-band');
     expect(document.querySelector('.trust-band').nextElementSibling.className).not.toBe('services');
     const h2s = [...document.querySelectorAll('h2')].map(text);
-    const order = ['About Alabama Wholesale', 'Shop by department', 'New arrivals', 'New deals', 'Bestsellers', 'Disposables, detox,hookah & more.', 'Tobacco, wraps& accessories.', 'Open a trade account', 'Services'];
+    const order = ['About Alabama Wholesale', 'Shop by department', 'New arrivals', 'Hot sellers', 'Bestsellers', 'New deals', 'Open a trade account', 'Services'];
     expect(h2s).toEqual(order);
     expect(document.querySelector('.services').nextElementSibling).toBeNull();
-    expect(document.getElementById('new-deals').previousElementSibling.id).toBe('new-arrivals');
-    for (const id of ['new-arrivals', 'new-deals', 'bestsellers']) {
+    expect(document.getElementById('hot-sellers').previousElementSibling.id).toBe('new-arrivals');
+    expect(document.getElementById('new-deals').previousElementSibling.id).toBe('bestsellers');
+    for (const id of ['new-arrivals', 'hot-sellers', 'bestsellers', 'new-deals']) {
       expect(document.querySelector(`#${id} .card-rail`).classList.contains('card-grid')).toBe(true);
     }
     // The header, menu and footer link to these.
     const ids = [...document.querySelectorAll('section[id]')].map((s) => s.id);
-    expect(ids).toEqual(['catalog', 'new-arrivals', 'new-deals', 'bestsellers', 'apply']);
+    expect(ids).toEqual(['catalog', 'new-arrivals', 'hot-sellers', 'bestsellers', 'new-deals', 'apply']);
   });
 
   it('names no kratom, kava or mushroom product anywhere on the page (AW-001)', () => {
@@ -163,24 +164,6 @@ describe('HomePage sections', () => {
     const section = document.querySelector('.services');
     expect(section.hasAttribute('aria-label')).toBe(false);
     expect(section.querySelector('h2.sr-only').textContent).toBe('Services');
-  });
-});
-
-describe('HomePage collection cards', () => {
-  it('keeps each heading a plain heading, with the call to action as the link (AW-170)', () => {
-    renderHome();
-    const cards = [...document.querySelectorAll('.editorials > .editorial-card')];
-    expect(cards.map((c) => c.tagName)).toEqual(['DIV', 'DIV']);
-    const links = cards.map((c) => {
-      const all = c.querySelectorAll('a');
-      expect(all).toHaveLength(1);
-      expect(c.querySelector('h2').closest('a')).toBeNull();
-      return [all[0].className, all[0].textContent, all[0].getAttribute('href')];
-    });
-    expect(links).toEqual([
-      ['text-link', 'Browse novelties', hrefFor({ page: 'category', category: 'NOVELTIES' })],
-      ['text-link', 'Browse tobacco', hrefFor({ page: 'category', category: 'TOBACCO' })],
-    ]);
   });
 });
 
@@ -274,7 +257,12 @@ describe('HomePage new-product carousel', () => {
     expect(labels()).toEqual(['1 of 3: Foger Switch Pro full kit', '2 of 3: RAZ 25K', '3 of 3: Tueni chews']);
     const active = document.querySelector('.home-carousel-slide.is-active');
     expect(active.querySelector('img').getAttribute('alt')).toBe('Foger Switch Pro full kit');
-    expect(within(active).getByRole('link', { name: 'Foger Switch Pro full kit' }).getAttribute('href')).toBe('/product/62');
+    expect(active.querySelector('a')).toBeNull();
+    expect(document.querySelector('.home-carousel-badge').textContent).toBe('New arrival');
+    expect(document.querySelector('.home-carousel-kicker').textContent).toBe('Disposable Vapes · Foger');
+    expect(document.querySelector('.home-carousel-title').textContent).toBe('Foger Switch Pro full kit');
+    expect(document.querySelector('.home-carousel-index').textContent).toBe('1/3');
+    expect(screen.getByRole('link', { name: 'Shop Foger Switch Pro full kit' }).getAttribute('href')).toBe('/product/62');
     expect(slides.map((s) => s.nicotineWarning)).toEqual([true, true, false]);
     expect(document.querySelector('.home-carousel-warning').getAttribute('aria-hidden')).toBeNull();
     expect(document.body.textContent).not.toMatch(/loading doors|Graymont|pallet racks/);

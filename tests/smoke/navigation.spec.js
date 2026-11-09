@@ -130,7 +130,8 @@ test('the phone footer is under 900px with Departments folded, and the tablet fo
       await expect(fold.getByRole('link', { name: 'All products' })).toBeVisible();
       await expect(fold.getByRole('link', { name: /^Tobacco \(\d+\)$/ })).toBeVisible();
       await expect(fold.getByRole('link', { name: 'Bestsellers' })).toBeVisible();
-      expect(await footer.evaluate((f) => f.lastElementChild.className)).toBe('fda-note');
+      expect(await footer.evaluate((f) => f.lastElementChild.className)).toBe('container');
+      await expect(footer.locator('.fda-note, .nicotine-warning')).toHaveCount(0);
     }
   } else {
     await page.setViewportSize({ width: 768, height: 1024 });

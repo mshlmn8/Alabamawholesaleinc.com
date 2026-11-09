@@ -7,6 +7,8 @@
 //
 //   /                                   home (anchors: /#new-arrivals, /#bestsellers)
 //   /catalog                            all products
+//   /new-arrivals /hot-sellers /bestsellers /new-deals
+//                                       every product in that home-page group
 //   /category/:dept[/:line]?q=&sort=&tags=&brand=&variants=1
 //                                       brand: brand slugs, comma-separated (AW-067)
 //   /product/:id
@@ -51,8 +53,11 @@ export function siteUrl(value) {
 
 // Static support pages: /<page> — see src/pages/support/.
 export const SUPPORT_PAGES = ['catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply', 'reset-password'];
+// Home-page groups, each with its own listing. Show all on the home page
+// opens these, not the whole catalog.
+export const COLLECTION_PAGES = ['new-arrivals', 'hot-sellers', 'bestsellers', 'new-deals'];
 // Pages that take no parameters.
-const SIMPLE_PAGES = ['checkout', 'account', 'admin', ...SUPPORT_PAGES];
+const SIMPLE_PAGES = ['checkout', 'account', 'admin', ...SUPPORT_PAGES, ...COLLECTION_PAGES];
 // Every first path segment parseUrl answers ('/' and '/index.html' are the
 // home page). Any other is not found, here and on Netlify (NEW-088), so a new
 // section goes in this list or it never resolves.

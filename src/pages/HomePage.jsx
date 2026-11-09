@@ -2,8 +2,8 @@
 // (h1, pitch, calls to action and the photo carousel), the trust band under
 // it (AW-005), then the catalog. The three services sit last, just above
 // the footer.
-// the departments, one row each of new arrivals, new deals and bestsellers, the two
-// collection cards and the account application steps. Only the application
+// the departments, one row each of new arrivals, hot sellers, bestsellers and
+// new deals, then the account application steps. Only the application
 // steps are numbered, the page's one real sequence (AW-216). A signed-in
 // account sees its own account's panel in place of the steps (AW-066).
 
@@ -11,10 +11,10 @@ import { DEPARTMENT_GROUPS, FREE_DELIVERY_THRESHOLD, SOURCING, TRUST } from '../
 import { APPLY_LABEL } from '../data/terms.js';
 import { accountView, tradeAccountPanel } from '../lib/accountStatus.js';
 import { topLines } from '../lib/departments.js';
-import { formatMoneyShort } from '../lib/format.js';
+import { brandLabel, formatMoneyShort } from '../lib/format.js';
+import { COLLECTIONS } from '../lib/collections.js';
 import { tierPriceNote } from '../lib/pricing.js';
-import { RAIL_LIMIT, homeRails } from '../lib/merchandising.js';
-import { heroImage, SIZES } from '../lib/images.js';
+import { RAIL_LIMIT, homeRails, homeSections } from '../lib/merchandising.js';
 import { showsNicotineWarning } from '../lib/regulated.js';
 import { Link } from '../lib/router.js';
 import { Icon } from '../components/Icon.jsx';
@@ -23,8 +23,6 @@ import { Picture } from '../components/Picture.jsx';
 import { HomeHero } from '../components/HomeHero.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
 import { PART_SEPARATOR } from '../components/TextParts.jsx';
-
-const EDITORIAL_BG = heroImage('hero_candy.jpg');
 
 // A department tile's photo frame is a quarter of the container on wide
 // screens and half the screen in the compact layout (.dept-grid in index.css).
@@ -43,6 +41,8 @@ export function newProductSlides(products, limit = RAIL_LIMIT) {
     picture: p.picture,
     alt: p.name,
     caption: p.name,
+    kicker: [p.sub, brandLabel(p.brand)].filter(Boolean).join(' · '),
+    badge: 'New arrival',
     to: { page: 'product', productId: p.id },
     nicotineWarning: showsNicotineWarning(p),
   }));
@@ -168,12 +168,10 @@ export function HomePage({
                  addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} showSku={false} />
   );
   // TODO(owner): Which products are really new and which are bestsellers, plus dedicated hero and department images? (AW-056)
-  // Tags and homepage rank (AW-119), RAIL_LENGTH cards each (AW-061). Each
-  // rail links to All products (/catalog): it mixes departments, and the site
-  // has no listing of every new or bestselling product (AW-056).
-  const { newArrivals, deals, bestsellers } = homeRails(products, { limit: RAIL_LENGTH, hasPhoto });
+  // Tags and homepage rank (AW-119), RAIL_LENGTH cards each (AW-061).
+  // Show all opens that group's own page, not the whole catalog.
+  const sections = homeSections(products, { limit: RAIL_LENGTH, hasPhoto });
   // Whose prices the rails show, for an approved buyer (AW-107).
-  const priceNote = isApprovedBuyer ? <p className="result-note">{tierPriceNote(priceTier)}</p> : null;
 
   return (
     <>
@@ -183,7 +181,7 @@ export function HomePage({
       <section className="section" id="catalog">
         <div className="section-head">
           <div><p className="eyebrow">FULL ASSORTMENT</p><h2>Shop by department</h2></div>
-          <Link to="/catalog">Browse the catalog</Link>
+          <Link to="/catalog">Browse all</Link>
         </div>
         {/* One tile per department (AW-060, AW-061): a group of packshots,
             then the name and biggest lines on a solid band, never on the
@@ -210,48 +208,17 @@ export function HomePage({
         </div>
       </section>
 
-      <section className="section" id="new-arrivals">
-        <div className="section-head">
-          <div><p className="eyebrow">FRESH INVENTORY</p><h2>New arrivals</h2>{priceNote}</div>
-          <Link to="/catalog">Browse all products</Link>
-        </div>
-        <div className="card-grid card-rail">
-          {newArrivals.map(card)}
-        </div>
-      </section>
-
-      <section className="section" id="new-deals">
-        <div className="section-head">
-          <div><p className="eyebrow">CURRENT OFFERS</p><h2>New deals</h2>{priceNote}</div>
-          <Link to="/catalog">Browse all products</Link>
-        </div>
-        <div className="card-grid card-rail">
-          {deals.map(card)}
-        </div>
-      </section>
-
-      <section className="section" id="bestsellers">
-        <div className="section-head">
-          <div><p className="eyebrow">PROVEN MOVERS</p><h2>Bestsellers</h2>{priceNote}</div>
-          <Link to="/catalog">Browse all products</Link>
-        </div>
-        <div className="card-grid card-rail">
-          {bestsellers.map(card)}
-        </div>
-      </section>
-
-      <section className="editorials" aria-label="Collections">
-        {/* TODO(owner): Licensed photos for the novelties collection card and the tobacco collection card. (AW-058) */}
-        <div className="editorial-card cream">
-          <Picture className="bg" picture={EDITORIAL_BG.picture} alt="" aria-hidden="true" sizes={SIZES.editorial} />
-          {/* Kratom is off the site (AW-001, answered 2026-10), so the headline names the Hookah & Shisha line in its place. */}
-          {/* TODO(owner): After legal review, may this card still advertise detox? Kept as published. (AW-001) */}
-          <div><p className="eyebrow">EXOTICS &amp; NOVELTIES</p><h2>Disposables, detox,<br />hookah &amp; more.</h2><Link className="text-link" to={dept('NOVELTIES')}>Browse novelties</Link></div>
-        </div>
-        <div className="editorial-card purple">
-          <div><p className="eyebrow">THE CORE BUSINESS</p><h2>Tobacco, wraps<br />&amp; accessories.</h2><Link className="text-link" to={dept('TOBACCO')}>Browse tobacco</Link></div>
-        </div>
-      </section>
+      {COLLECTIONS.map((c) => (
+        <section className="section" id={c.page} key={c.page}>
+          <div className="section-head">
+            <div><p className="eyebrow">{c.eyebrow}</p><h2>{c.title}</h2>{isApprovedBuyer ? <p className="result-note">{tierPriceNote(priceTier)}</p> : null}</div>
+            <Link to={{ page: c.page }}>Show all<span className="sr-only">{` ${c.title.toLowerCase()}`}</span></Link>
+          </div>
+          <div className="card-grid card-rail">
+            {sections[c.page].map(card)}
+          </div>
+        </section>
+      ))}
 
       <AccountSection signedIn={signedIn} view={accountView(profile, account)} onApplyClick={onApplyClick} />
 

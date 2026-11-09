@@ -30,6 +30,7 @@ import { catalogCrumbs } from './crumbs.js';
 import { topLines } from './departments.js';
 import { brandLabel, catLabel, formatMoney, sharesDepartmentName } from './format.js';
 import { underLegalReview } from './merchandising.js';
+import { collectionByPage } from './collections.js';
 import { NOINDEX_PAGES, pathFor, siteUrl } from './routes.js';
 import { MIN_QUERY_LENGTH, normalizeSearchText } from './search.js';
 
@@ -297,6 +298,8 @@ function pageText(route, products, departments, facts = DEFAULT_SITE) {
   }
   // Support pages (src/pages/support/).
   if (route.page === 'catalog') return { title: `All products · Wholesale catalog · ${site}`, description: clip(`Every department and product line ${site} stocks — ${products.length} wholesale SKUs for licensed retailers, from the Birmingham warehouse.`) };
+  const collection = collectionByPage(route.page);
+  if (collection) return { title: `${collection.title} · ${site}`, description: clip(collection.description) };
   // Short enough that both hours lines fit whole (the email is on the page).
   if (route.page === 'contact') return { title: `Contact & visit · ${site}`, description: clip(`Call ${facts.phone} or visit ${facts.addressShort}. ${facts.hoursCustom ? facts.hoursLines.map(plainText).join(', ') : HOURS.map(r => hoursLine(r, { nowrap: false })).join(', ')}.`) };
   if (route.page === 'delivery') return { title: `Delivery & service area · ${site}`, description: 'Next-day delivery on our own trucks when your stop is on a route in Alabama, Mississippi or Georgia, plus will-call pickup at the Birmingham warehouse.' };
