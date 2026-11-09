@@ -59,6 +59,7 @@ describe('product counts (AW-217, NEW-056)', () => {
     expect(document.querySelector('.category-stat-products strong').textContent).toBe('2');
     expect(document.querySelector('.category-stat-lines strong').textContent).toBe('2');
     expect(text(document.querySelector('.result-note'))).toBe('2 items');
+    expect(document.querySelector('.category-toolbar .result-note').classList.contains('sr-only')).toBe(true);
     view.unmount();
     act(() => navigate('/category/tobacco/cigars', { replace: true }));
     render(<CategoryPage category="TOBACCO" sub="Cigars" query={EMPTY_CATEGORY_QUERY}
