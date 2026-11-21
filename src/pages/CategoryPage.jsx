@@ -500,7 +500,7 @@ export function CategoryPage({
             <button className="filter-toggle" type="button" aria-expanded={filtersOpen} aria-controls={filtersOpen ? 'aw-filter-drawer' : undefined} onClick={() => setFiltersOpen(true)}>
               <Icon name="filter" />
               Filter
-              {activeFilterCount > 0 && <span className="filter-count"><span className="sr-only">, </span><span>{activeFilterCount}</span><span className="sr-only"> active</span></span>}
+              {activeFilterCount > 0 && <span className="filter-count sr-only"><span>, </span><span>{activeFilterCount}</span><span> active</span></span>}
             </button>
           )}
           <div className="toolbar-end">
@@ -541,7 +541,7 @@ export function CategoryPage({
               {filterPanel}
             </div>
             <div className="drawer-foot">
-              <button className="button" type="button" onClick={closeFilters}><span>{`Show ${productCount(items.length)}`}</span></button>
+              <button className="button" type="button" aria-label={`Show ${productCount(items.length)}`} onClick={closeFilters}>Show products</button>
             </div>
           </div>
         </ModalLayer>
@@ -552,7 +552,7 @@ export function CategoryPage({
           <aside className="category-filters" aria-label="Product filters">
             <div className="filter-heading">
               <h2>Filters</h2>
-              {activeFilterCount > 0 && <button className="text-link" type="button" onClick={() => clearFilters()}>{`Clear all (${activeFilterCount})`}</button>}
+              {activeFilterCount > 0 && <button className="text-link" type="button" aria-label={`Clear all (${activeFilterCount})`} onClick={() => clearFilters()}>Clear all</button>}
             </div>
             {searchField}
             {filterPanel}
