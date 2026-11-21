@@ -21,7 +21,7 @@ describe('HomeHero', () => {
     expect(h1s[0].className).toBe('sr-only');
     expect(screen.getByRole('region', { name: HOME_HERO.title })).toBeTruthy();
     expect(document.querySelector('.home-hero-copy, .home-hero-actions, .home-hero-text')).toBeNull();
-    expect(document.querySelector('.home-hero').textContent).not.toMatch(/WHOLESALE DISTRIBUTOR|Apply for a trade account|Browse the catalog/);
+    expect(document.querySelector('.home-hero').textContent).not.toMatch(/WHOLESALE DISTRIBUTOR|Apply for an account|Browse the catalog/);
   });
 
   it('is the carousel, named New products', () => {

@@ -205,7 +205,7 @@ function adminTitle(route) {
 // load: NEW-002) or accountStatus(profile). Without it, the page is the one
 // a visitor, or a search engine, sees. Each is the words of that view's h1,
 // in sentence case (AW-131): ApplyPage reads its h1 from here. A signed-in
-// account's tab says 'Your trade account' whatever its state; the page's
+// account's tab says 'Your account' whatever its state; the page's
 // eyebrow says the state ('APPLICATION UNDER REVIEW', 'ACCOUNT ON HOLD').
 export const APPLY_TITLES = Object.freeze({
   guest: APPLY_LABEL,
@@ -284,7 +284,7 @@ function pageText(route, products, departments, facts = DEFAULT_SITE) {
   // After a save, /checkout shows the receipt (App sets route.received,
   // AW-022); before, its heading. Customers place orders (AW-024).
   if (route.page === 'checkout') return { title: `${route.received ? BASKET.received : BASKET.page} · ${site}`, description: `Review your order and place it with ${site}. Minimum order ${formatMoney(ORDER_MINIMUM)}.` };
-  if (route.page === 'account') return { title: `My account · ${site}`, description: `Your ${site} trade account: order history, reorders and quick entry by SKU.` };
+  if (route.page === 'account') return { title: `My account · ${site}`, description: `Your ${site} account: order history, reorders and quick entry by SKU.` };
   // route.unseen: orders placed since the admin last opened Orders (AW-111,
   // App's useAdminUnseen), as '(2) ' in front. route.gated: the page shows
   // its sign-in or staff-only gate, not a section (App's adminGate, NEW-020),
@@ -304,10 +304,10 @@ function pageText(route, products, departments, facts = DEFAULT_SITE) {
   if (route.page === 'contact') return { title: `Contact & visit · ${site}`, description: clip(`Call ${facts.phone} or visit ${facts.addressShort}. ${facts.hoursCustom ? facts.hoursLines.map(plainText).join(', ') : HOURS.map(r => hoursLine(r, { nowrap: false })).join(', ')}.`) };
   if (route.page === 'delivery') return { title: `Delivery & service area · ${site}`, description: 'Next-day delivery on our own trucks when your stop is on a route in Alabama, Mississippi or Georgia, plus will-call pickup at the Birmingham warehouse.' };
   if (POLICY_TITLES[route.page]) return { title: `${POLICY_TITLES[route.page]} · ${site}`, description: clip(POLICY_INTROS[route.page]) };
-  if (route.page === 'apply') return { title: `${APPLY_TITLES[route.applyAs] || APPLY_TITLES.guest} · ${site}`, description: `What licensed retailers need to open an ${site} trade account: EIN, state retail tobacco license, resale certificate and store details.` };
+  if (route.page === 'apply') return { title: `${APPLY_TITLES[route.applyAs] || APPLY_TITLES.guest} · ${site}`, description: `What licensed retailers need to open an ${site} account: EIN, state retail tobacco license, resale certificate and store details.` };
   // The reset page's title follows what it shows (AW-255): App sets
   // route.view from the page's resetView().
-  if (route.page === 'reset-password') return { title: `${resetTitle(route.view)} · ${site}`, description: `Choose a new password for your ${site} trade account.` };
+  if (route.page === 'reset-password') return { title: `${resetTitle(route.view)} · ${site}`, description: `Choose a new password for your ${site} account.` };
   return { title: `${HOME_TITLE} · ${site}`, description: HOME_DESCRIPTION };
 }
 

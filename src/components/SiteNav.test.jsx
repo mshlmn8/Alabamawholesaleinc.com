@@ -51,7 +51,7 @@ describe('one apply entry in the banner (LEFT-2)', () => {
                 onLoginClick={noop} onSignupClick={noop} onLogout={noop} onHelp={noop} />
       </header>,
     );
-    const apply = screen.getAllByRole('button', { name: 'Apply for a trade account' });
+    const apply = screen.getAllByRole('button', { name: 'Apply for an account' });
     expect(apply).toHaveLength(1);
     expect(apply[0].className).toBe('button aw-desktop-only');
   });
@@ -84,7 +84,7 @@ describe('Header account links (AW-066)', () => {
 
   it('keeps "Sign in or Apply" for a guest', () => {
     renderHeader({ user: null, isAdmin: false });
-    expect(actions()).toEqual(['Sign in', 'or', 'Apply for a trade account']);
+    expect(actions()).toEqual(['Sign in', 'or', 'Apply for an account']);
   });
 });
 
@@ -153,7 +153,7 @@ describe('Footer (AW-066, AW-221)', () => {
     const onLoginClick = vi.fn();
     renderFooter({ onApplyClick, onLoginClick });
     const help = within(column('Account & help'));
-    fireEvent.click(help.getByRole('button', { name: 'Apply for a trade account' }));
+    fireEvent.click(help.getByRole('button', { name: 'Apply for an account' }));
     fireEvent.click(help.getByRole('button', { name: 'Sign in' }));
     expect([onApplyClick.mock.calls.length, onLoginClick.mock.calls.length]).toEqual([1, 1]);
     // A guest's My account says what an account gives (AW-285); it is the one link to it.
@@ -161,8 +161,8 @@ describe('Footer (AW-066, AW-221)', () => {
   });
 
   // /apply shows a signed-in account its status, not the checklist: the link
-  // is 'Trade account', the page's crumb (NEW-047).
-  it('gives a signed-in visitor My account in their place, and Trade account for the application checklist', () => {
+  // is 'Account status', the page's crumb (NEW-047).
+  it('gives a signed-in visitor My account in their place, and Account for the application checklist', () => {
     renderFooter({ signedIn: true });
     const help = within(column('Account & help'));
     // Help stays a button (AW-285); Apply and Sign in are gone.
@@ -170,7 +170,7 @@ describe('Footer (AW-066, AW-221)', () => {
     expect(help.queryByRole('link', { name: 'Application checklist' })).toBeNull();
     expect(help.getAllByRole('link').map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
       ['My account', '/account'],
-      ['Trade account', '/apply'],
+      ['Account status', '/apply'],
       ['Quick reorder', '/account#quick-reorder'],
       ['Contact & visit', '/contact'],
       ['Delivery & service area', '/delivery'],
@@ -194,7 +194,7 @@ describe('Footer (AW-066, AW-221)', () => {
     go('/apply');
     cleanup();
     renderFooter({ signedIn: true });
-    expect(current()).toEqual([['Trade account', 'page']]);
+    expect(current()).toEqual([['Account status', 'page']]);
   });
 });
 
@@ -202,11 +202,11 @@ describe('HelpDialog (AW-066)', () => {
   it('offers Apply to a guest only', () => {
     const onApply = vi.fn();
     const { unmount } = render(<HelpDialog onClose={noop} onApply={onApply} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Apply for a trade account' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply for an account' }));
     expect(onApply).toHaveBeenCalledTimes(1);
     unmount();
     render(<HelpDialog signedIn onClose={noop} onApply={onApply} />);
-    expect(screen.queryByRole('button', { name: 'Apply for a trade account' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Apply for an account' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Call now' })).toBeTruthy();
   });
 });

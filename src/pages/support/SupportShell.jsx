@@ -91,7 +91,7 @@ export function PolicyNav({ current, label = 'HELP & POLICIES', applyLabel = APP
 // The side nav beside a support page's content, below its PageHead (AW-122).
 // Full-width bands such as the ContactStrip go after it. navLabel is the
 // nav's eyebrow (null leaves it off, as on the policy pages, AW-220);
-// applyLabel names its /apply entry (signed in: 'Trade account', NEW-047).
+// applyLabel names its /apply entry (signed in: 'Account status', NEW-047).
 export function SupportLayout({ current, navLabel, applyLabel, children }) {
   return (
     <div className="policy-layout support-layout">

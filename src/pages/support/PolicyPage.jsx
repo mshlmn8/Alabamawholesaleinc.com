@@ -111,7 +111,7 @@ const POLICIES = {
       ] },
       { heading: 'Why we collect it', body: [
         { list: [
-          'To review trade account applications and check your licenses, because we sell to licensed retail businesses only.',
+          'To review account applications and check your licenses, because we sell to licensed retail businesses only.',
           'To prepare and deliver your orders, and to contact you about them and about your account.',
           'To keep our tax and licensing records.',
           'To keep your account secure, so only you and our trade desk see your prices, documents and orders.',
@@ -185,7 +185,7 @@ const POLICIES = {
     updated: POLICIES_DATE,
     sections: [
       { heading: 'Who can buy', body: [
-        // TODO(owner): Is a tobacco license required for every trade account, or only for tobacco, vapor, and nicotine? This sentence is unchanged until you decide. (AW-129)
+        // TODO(owner): Is a tobacco license required for every account, or only for tobacco, vapor, and nicotine? This sentence is unchanged until you decide. (AW-129)
         'Alabama Wholesale sells to licensed retail businesses only. We do not sell to consumers. Applicants must be 21 or older and provide a federal EIN, a state retail tobacco license number for the store, and a resale certificate number. We verify these before the first order.',
       ] },
       { heading: 'Account approval', body: [
@@ -217,7 +217,7 @@ const POLICIES = {
   },
 };
 
-// signedIn: the side nav calls /apply 'Trade account' (NEW-047).
+// signedIn: the side nav calls /apply 'Account status' (NEW-047).
 export function PolicyPage({ kind, signedIn = false }) {
   const policy = POLICIES[kind];
   if (!policy) return null;

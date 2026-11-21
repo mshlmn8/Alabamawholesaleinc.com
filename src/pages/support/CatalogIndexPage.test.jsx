@@ -161,7 +161,7 @@ describe('CatalogIndexPage pricing prompt', () => {
     expect(notice().className).toBe('callout info pricing-notice');
     expect(notice().previousElementSibling.classList.contains('page-head')).toBe(true);
     expect(notice().nextElementSibling.matches('nav.dept-jump')).toBe(true);
-    expect(notice().querySelector('p').textContent).toBe('Trade prices are shown to approved accounts.');
+    expect(notice().querySelector('p').textContent).toBe('Prices are shown to approved accounts.');
     // The old banner and the old prompt at the bottom of the page are gone.
     expect(document.querySelectorAll('.catalog-pricing, .filter-signin, .catalog-signin')).toHaveLength(0);
     expect(screen.queryByText(/Wholesale pricing is locked/)).toBeNull();
@@ -173,7 +173,7 @@ describe('CatalogIndexPage pricing prompt', () => {
     const onApplyClick = vi.fn();
     page({ onLoginClick, onApplyClick });
     const signIn = within(notice()).getByRole('button', { name: 'Sign in' });
-    const apply = within(notice()).getByRole('button', { name: 'Apply for a trade account' });
+    const apply = within(notice()).getByRole('button', { name: 'Apply for an account' });
     expect(signIn.className).toBe('button sm');
     expect(apply.className).toBe('text-link');
     fireEvent.click(signIn);

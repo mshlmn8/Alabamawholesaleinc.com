@@ -95,8 +95,8 @@ test('an application goes through auth-js: POST /auth/v1/signup with the anon ke
     return route.abort();
   });
   await page.goto('/apply');
-  await page.locator('.page-head').getByRole('button', { name: 'Apply for a trade account' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Apply for a trade account' });
+  await page.locator('.page-head').getByRole('button', { name: 'Apply for an account' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Apply for an account' });
   await expect(dialog).toBeVisible();
   const fields = {
     'Your name': 'New Buyer', 'Business name': 'New Store', 'Business email': 'new@example.test', Phone: '205-555-0199',

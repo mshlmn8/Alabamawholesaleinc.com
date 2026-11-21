@@ -19,7 +19,7 @@ import { PageHead, SupportLayout, ContactStrip, supportApplyLabel } from './Supp
 const ROUTE_STATE_NAMES = DELIVERY_STATES.map(s => s.name);
 const routeStates = `${ROUTE_STATE_NAMES.slice(0, -1).join(', ')} and ${ROUTE_STATE_NAMES[ROUTE_STATE_NAMES.length - 1]}`;
 
-// signedIn: the side nav calls /apply 'Trade account' (NEW-047).
+// signedIn: the side nav calls /apply 'Account status' (NEW-047).
 export function DeliveryPage({ signedIn = false }) {
   const site = useSite();
   const [stateCode, setStateCode] = useState('');
@@ -104,7 +104,7 @@ export function DeliveryPage({ signedIn = false }) {
           <p className="eyebrow">HOW ROUTE DELIVERY WORKS</p>
           <h2 id="how-title">From order to your back door</h2>
           <ol className="next-steps">
-            <li><b>Place your order.</b><span>Online with your trade account, or by phone with the trade desk.</span></li>
+            <li><b>Place your order.</b><span>Online with your account, or by phone with the trade desk.</span></li>
             <li><b>We confirm the details.</b><span>The trade desk confirms your route, timing and anything specific to your delivery — dock hours, pallets, substitutions.</span></li>
             <li><b>Our driver delivers.</b><span>Count the cases and check for damage while the driver is there.</span></li>
           </ol>

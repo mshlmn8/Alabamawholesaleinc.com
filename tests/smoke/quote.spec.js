@@ -85,7 +85,7 @@ test.describe('who may place an order (AW-014)', () => {
     const panel = page.getByRole('region', { name: 'Sign in to place your order' });
     await expect(panel).toBeVisible();
     await expect(panel.getByRole('button', { name: 'Sign in' })).toBeVisible();
-    await expect(panel.getByRole('button', { name: 'Apply for a trade account' })).toBeVisible();
+    await expect(panel.getByRole('button', { name: 'Apply for an account' })).toBeVisible();
     await expect(page.locator('form[aria-labelledby="quote-form-title"]')).toHaveCount(0);
     await expect(page.getByLabel('State tobacco/retail license #')).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Place order|Submit/ })).toHaveCount(0);

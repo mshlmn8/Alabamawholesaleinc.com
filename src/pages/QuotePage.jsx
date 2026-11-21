@@ -730,7 +730,7 @@ export function QuotePage({
 export const ORDER_GATE = Object.freeze({
   guest: {
     title: 'Sign in to place your order',
-    text: 'Orders are placed from an approved trade account, for licensed retailers only. Your cart is kept when you sign in.',
+    text: 'Orders are placed from an approved account, for licensed retailers only. Your cart is kept when you sign in.',
   },
   pending: {
     title: 'Your account is being reviewed',

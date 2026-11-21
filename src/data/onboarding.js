@@ -1,10 +1,10 @@
-// Trade-account onboarding copy shared by the application dialog and the
+// Account onboarding copy shared by the application dialog and the
 // support pages. Delivery states follow the owner-confirmed route list; the
 // storefront never promises a stop — customers call to confirm.
 
 export const APPLICATION_CHECKLIST = [
   { title: 'Federal EIN', detail: 'Your 9-digit Employer Identification Number.' },
-  // TODO(owner): Is a tobacco license required for every trade account, or only for buying tobacco, vapor, and nicotine products? Checklist and form still disagree until you decide. (AW-129)
+  // TODO(owner): Is a tobacco license required for every account, or only for buying tobacco, vapor, and nicotine products? Checklist and form still disagree until you decide. (AW-129)
   { title: 'State retail tobacco license number', detail: 'Issued by the state your store is in. Required before you can buy tobacco or vapor products.' },
   { title: 'Resale certificate number', detail: 'Your sales tax resale or exemption certificate for the store.' },
   // The form's optional uploads (AW-250).

@@ -223,7 +223,7 @@ const HINT_MESSAGES = {
   past_date: 'Choose a preferred date from today on.',
   // Only for an account the server doesn't see as approved (older
   // databases): approved accounts' licences were checked when they applied.
-  license_required: { before: 'This order has tobacco or vape items, which need an approved trade account. Call', after: ' and the trade desk will help.' },
+  license_required: { before: 'This order has tobacco or vape items, which need an approved account. Call', after: ' and the trade desk will help.' },
   // AW-200: the remaining ones.
   no_items: 'Add at least one item before you submit.',
   // submit_quote takes 200 lines; the storefront has no constant for that.

@@ -124,7 +124,7 @@ function takesFocus(el, { preventScroll = false } = {}) {
 
 // Hands focus back: to the layer's returnFocus element when it names one
 // still on the page (NEW-004), else along the chain of openers (AW-249).
-// Menu -> Help -> 'Apply for a trade account' unmounts the first two
+// Menu -> Help -> 'Apply for an account' unmounts the first two
 // openers, so the walk goes on to the first one still on the page. With none
 // left, focus goes to the phone menu button when it shows, else to the
 // page's heading, never to <body>; neither moves the page (a confirmed

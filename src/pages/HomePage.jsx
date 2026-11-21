@@ -83,7 +83,7 @@ export function departmentPhotos(products, deptKey) {
   return chosen;
 }
 
-// The foot of the page. A guest is asked to open a trade account, with the
+// The foot of the page. A guest is asked to open an account, with the
 // three steps. A signed-in account is never offered a second application
 // (AW-066): its panel says where the account stands, as /apply's page head
 // does (accountStatus.js tradeAccountPanel), and links to My account or the
@@ -112,7 +112,7 @@ function AccountSection({ signedIn, view, onApplyClick }) {
       <div className="apply-panel">
         <div className="apply-intro">
           <p className="eyebrow">OPEN AN ACCOUNT</p>
-          <h2>Open a trade account</h2>
+          <h2>Open an account</h2>
           <button className="button" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button>
         </div>
         <ol className="apply-steps">
@@ -241,10 +241,10 @@ export function HomePage({
           <span className="service-icon" aria-hidden="true"><Icon name="tag" /></span>
           <h3>Buying in volume?</h3><p><VolumePricing /></p>
         </div>
-        {/* TODO(owner): Is a tobacco license required for every trade account, or only for tobacco, vapor, and nicotine? This sentence is unchanged until you decide. (AW-129) */}
+        {/* TODO(owner): Is a tobacco license required for every account, or only for tobacco, vapor, and nicotine? This sentence is unchanged until you decide. (AW-129) */}
         <div className="service">
           <span className="service-icon" aria-hidden="true"><Icon name="shield" /></span>
-          <h3>Licensed businesses only</h3><p>We verify your state retail tobacco license and resale certificate before your first order. No consumer sales, no exceptions — 21+ trade accounts only.</p>
+          <h3>Licensed businesses only</h3><p>We verify your state retail tobacco license and resale certificate before your first order. No consumer sales, no exceptions — 21+ accounts only.</p>
           <Link className="text-link" to="/apply">How to apply</Link>
         </div>
       </section>

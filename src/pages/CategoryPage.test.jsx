@@ -131,7 +131,7 @@ describe('CategoryPage', () => {
     const notice = () => document.querySelector('.pricing-notice p').textContent;
     const view = render(<Harness />);
     expect([...document.querySelectorAll('.category-stat-products strong, .category-stat-lines strong')].map((el) => el.textContent)).toEqual(['3', '2']);
-    expect(notice()).toBe('Trade prices are shown to approved accounts.');
+    expect(notice()).toBe('Prices are shown to approved accounts.');
     view.unmount();
     const pending = render(<CategoryPage category="TOBACCO" products={products} departments={departments} profile={{ id: 'p', status: 'pending' }} isApprovedBuyer={false}
                                          cart={{}} addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} />);
@@ -197,8 +197,8 @@ describe('CategoryPage', () => {
     const notices = document.querySelectorAll('.pricing-notice');
     expect(notices).toHaveLength(1);
     expect(notices[0].nextElementSibling.classList.contains('category-card-grid')).toBe(true);
-    expect(notices[0].textContent).toMatch(/^Trade prices are shown to approved accounts\./);
-    expect(screen.getByRole('button', { name: 'Apply for a trade account' })).toBeTruthy();
+    expect(notices[0].textContent).toMatch(/^Prices are shown to approved accounts\./);
+    expect(screen.getByRole('button', { name: 'Apply for an account' })).toBeTruthy();
     expect(document.querySelector('.filter-panel .filter-signin')).toBeNull();
     expect(screen.queryByText(/Wholesale pricing is locked/)).toBeNull();
     // A guest's card says 'Sign in for pricing' as plain text, never as a control (NEW-050).

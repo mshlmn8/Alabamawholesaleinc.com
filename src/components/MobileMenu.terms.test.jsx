@@ -14,7 +14,7 @@ describe('MobileMenu account labels (AW-131)', () => {
     render(menu());
     const group = screen.getByRole('navigation', { name: 'Account and help' });
     expect([...group.querySelectorAll('a, button')].map((el) => el.textContent)).toEqual(['Sign in', 'Quick reorder', 'Help']);
-    const apply = screen.getAllByRole('button', { name: 'Apply for a trade account' });
+    const apply = screen.getAllByRole('button', { name: 'Apply for an account' });
     expect(apply).toHaveLength(1);
     expect(apply[0].closest('.menu-contact')).not.toBeNull();
     apply[0].click();
@@ -27,7 +27,7 @@ describe('MobileMenu account labels (AW-131)', () => {
     const group = screen.getByRole('navigation', { name: 'Account and help' });
     // (My account's line for the business name is empty here, AW-267.)
     expect([...group.querySelectorAll('a, button')].map((el) => el.textContent.trim())).toEqual(['My account', 'Quick reorder', 'Sign out', 'Help']);
-    expect(screen.queryByRole('button', { name: 'Apply for a trade account' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Apply for an account' })).toBeNull();
     expect(screen.getByRole('link', { name: 'New arrivals' })).toBeTruthy();
   });
 });

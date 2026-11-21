@@ -55,8 +55,8 @@ describe('Header account labels (AW-131)', () => {
   it('offers Sign in and the one apply label to guests', () => {
     render(<Header {...props} />);
     const actions = document.querySelector('.aw-account-actions');
-    expect([...actions.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Sign in', 'Apply for a trade account', 'Order']);
-    screen.getByRole('button', { name: 'Apply for a trade account' }).click();
+    expect([...actions.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Sign in', 'Apply for an account', 'Order']);
+    screen.getByRole('button', { name: 'Apply for an account' }).click();
     expect(props.onSignupClick).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('button', { name: /Sign up/i })).toBeNull();
   });

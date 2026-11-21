@@ -54,11 +54,11 @@ describe('AccountPage', () => {
     const onSignIn = vi.fn();
     const onApplyClick = vi.fn();
     render(<AccountPage profile={null} account="signed-out" onSignIn={onSignIn} onApplyClick={onApplyClick} />);
-    expect(SIGNED_OUT_TEXT).toBe('A trade account shows your order history, lets you reorder by SKU with Quick Reorder, and shows your wholesale prices once it is approved.');
+    expect(SIGNED_OUT_TEXT).toBe('An account shows your order history, lets you reorder by SKU with Quick Reorder, and shows your wholesale prices once it is approved.');
     expect(screen.getByText(SIGNED_OUT_TEXT).tagName).toBe('P');
     expect(screen.getByRole('navigation', { name: 'Breadcrumb' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Apply for a trade account' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply for an account' }));
     expect(onSignIn).toHaveBeenCalledTimes(1);
     expect(onApplyClick).toHaveBeenCalledTimes(1);
   });

@@ -102,7 +102,7 @@ describe('HomePage sections', () => {
     expect(document.querySelector('.home-hero').nextElementSibling.className).toBe('trust-band');
     expect(document.querySelector('.trust-band').nextElementSibling.className).not.toBe('services');
     const h2s = [...document.querySelectorAll('h2')].map(text);
-    const order = ['About Alabama Wholesale', 'Shop by department', 'New arrivals', 'Hot sellers', 'Bestsellers', 'New deals', 'Open a trade account', 'Services'];
+    const order = ['About Alabama Wholesale', 'Shop by department', 'New arrivals', 'Hot sellers', 'Bestsellers', 'New deals', 'Open an account', 'Services'];
     expect(h2s).toEqual(order);
     expect(document.querySelector('.services').nextElementSibling).toBeNull();
     expect(document.getElementById('hot-sellers').previousElementSibling.id).toBe('new-arrivals');

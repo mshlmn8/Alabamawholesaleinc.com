@@ -43,15 +43,15 @@ describe('AuthModal labels (AW-131, AW-282)', () => {
   it('titles the checklist and the form with the apply label, and links both ways', () => {
     setup('signin');
     expect(title()).toBe('Sign in');
-    fireEvent.click(screen.getByRole('button', { name: 'New here? Apply for a trade account' }));
-    expect(title()).toBe('Apply for a trade account');
+    fireEvent.click(screen.getByRole('button', { name: 'New here? Apply for an account' }));
+    expect(title()).toBe('Apply for an account');
     expect(document.querySelector('.desc').textContent)
       .toBe('Alabama Wholesale sells exclusively to licensed retail businesses. Have these on hand before you start. The application takes a few minutes.');
     fireEvent.click(screen.getByRole('button', { name: 'Continue to the application' }));
-    expect(title()).toBe('Apply for a trade account');
+    expect(title()).toBe('Apply for an account');
     fireEvent.click(screen.getByRole('button', { name: 'Already have an account? Sign in' }));
     expect(title()).toBe('Sign in');
-    expect(screen.queryByText(/Already approved|No account\?|Apply for an account/)).toBeNull();
+    expect(screen.queryByText(/Already approved|No account\?/)).toBeNull();
   });
 
   it('shows the 21+ fine print on the application form only', () => {

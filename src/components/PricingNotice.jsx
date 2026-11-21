@@ -3,8 +3,8 @@
 // department and line pages, search results and /catalog (NEW-050), in one
 // style and one wording.
 //
-//   guest      "Trade prices are shown to approved accounts." with Sign in
-//              and Apply for a trade account
+//   guest      "Prices are shown to approved accounts." with Sign in
+//              and Apply for an account
 //   pending    "Pricing unlocks after your account is approved." with a link
 //              to the account page, which shows the approval status
 //   approved   nothing: the cards show the prices

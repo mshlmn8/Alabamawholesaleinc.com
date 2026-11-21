@@ -96,7 +96,7 @@ function AccountCallToAction({ signedIn, view, onApplyClick }) {
     <section className="support-cta">
       <div>
         <p className="eyebrow">NEW TO ALABAMA WHOLESALE?</p>
-        <h2>Open a trade account</h2>
+        <h2>Open an account</h2>
         <p>Licensed retail businesses only. See what you’ll need before you start.</p>
       </div>
       <div className="contact-strip-actions">

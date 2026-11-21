@@ -676,8 +676,8 @@ test.describe('tobacco and vapor', () => {
     await expect(page.getByRole('checkbox')).toHaveCount(0);
     const panel = page.getByRole('region', { name: 'Sign in to place your order' });
     await expect(panel.getByRole('button', { name: 'Sign in' })).toBeVisible();
-    await panel.getByRole('button', { name: 'Apply for a trade account' }).click();
-    await expect(page.getByRole('dialog', { name: 'Apply for a trade account' })).toBeVisible();
+    await panel.getByRole('button', { name: 'Apply for an account' }).click();
+    await expect(page.getByRole('dialog', { name: 'Apply for an account' })).toBeVisible();
     expect(errors).toEqual([]);
   });
 });
