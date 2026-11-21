@@ -333,7 +333,6 @@ input[type="search"]:focus-visible { outline-offset: -3px; }
   .aw-discovery-nav > button:hover, .aw-discovery-nav > a:hover, .aw-service-nav button:hover, .aw-service-nav a:hover { color: var(--orange-dark); }
 }
 .aw-new-dot { height: 6px; width: 6px; background: var(--button-orange); border-radius: 50%; display: inline-block; }
-.aw-exotics-link { color: var(--orange-dark); }
 .aw-service-nav { margin-left: auto; gap: 22px; }
 .aw-service-nav button, .aw-service-nav a { padding: 0; min-height: var(--tap); display: flex; align-items: center; gap: 8px; color: var(--purple); background: none; border: 0; font-size: var(--text-sm); font-weight: 600; white-space: nowrap; }
 .aw-service-nav .icon { font-size: 1.125rem; }
@@ -682,6 +681,10 @@ p > .text-link { min-height: 0; min-width: 0; }
    only when it alone is wider than the line. */
 .text-parts { display: flex; flex-wrap: wrap; column-gap: .25em; }
 .text-parts > span { min-width: 0; }
+/* On a card the code takes a line of its own, under the brand, so no card
+   ends a line with a dot and the cards in a row read alike. */
+.card-detail .sku-part { flex-basis: 100%; }
+.card-detail .text-parts > span:has(+ .sku-part) > .part-sep { display: none; }
 /* A product code (TextParts' code: cards, cart and quote lines, header search
    results) never breaks at its hyphens (AW-304): one longer than the line,
    as some 22-29 character SKUs are on a phone's card, ends in an ellipsis.
