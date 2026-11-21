@@ -7,7 +7,6 @@ import { APPLY_LABEL, SIGN_IN_LABEL } from '../data/terms.js';
 import { Link, useRoute } from '../lib/router.js';
 import { currentFor } from '../lib/navCurrent.js';
 import { departmentIcon } from '../lib/departmentIcon.js';
-import { productCount } from '../lib/format.js';
 import { useSite } from '../lib/siteSettings.js';
 import { ModalLayer } from './ModalLayer.jsx';
 import { Icon } from './Icon.jsx';
@@ -16,7 +15,7 @@ import { AdminUnseenBadge } from './AdminUnseenBadge.jsx';
 // Quick Reorder is a section of My account (AW-086).
 const QUICK_REORDER = '/account#quick-reorder';
 
-export function MobileMenu({ onClose, onFollowLink, departments, products, user, isAdmin, adminUnseen = 0, signingOut = false, go }) {
+export function MobileMenu({ onClose, onFollowLink, departments, user, isAdmin, adminUnseen = 0, signingOut = false, go }) {
   const { raw } = useRoute();
   const site = useSite();
   return (
@@ -33,7 +32,7 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
             {departments.map((c) => (
               <Link key={c.key} to={{ page: 'category', category: c.key }} onClick={onFollowLink} aria-current={currentFor(raw, { page: 'category', category: c.key })}>
                 <span><span className="menu-index" aria-hidden="true"><Icon name={departmentIcon(c.key)} /></span><span>{c.label}</span></span>
-                <span className="menu-count"><span>{c.count}</span><span className="sr-only"> products</span></span>
+                <span className="menu-count sr-only"><span>{c.count}</span><span className="sr-only"> products</span></span>
               </Link>
             ))}
             <Link className="menu-highlight" to="/catalog" onClick={onFollowLink} aria-current={currentFor(raw, '/catalog')}>View full catalog</Link>
@@ -42,8 +41,6 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
             <h3>Discover</h3>
             <Link to="/#new-arrivals" onClick={onFollowLink}><span><span className="aw-new-dot" aria-hidden="true"></span>New arrivals</span></Link>
             <Link to="/#bestsellers" onClick={onFollowLink}>Bestsellers</Link>
-            <Link className="menu-highlight" to={{ page: 'category', category: 'NOVELTIES' }} onClick={onFollowLink}
-                  aria-current={currentFor(raw, { page: 'category', category: 'NOVELTIES' })}>Exotics</Link>
           </nav>
           <nav className="menu-group" aria-label="Account and help">
             <h3>Account</h3>
@@ -67,7 +64,7 @@ export function MobileMenu({ onClose, onFollowLink, departments, products, user,
             <button type="button" onClick={go.help}>Help</button>
           </nav>
           <div className="menu-contact">
-            <p><span>{site.addressShort}</span><br /><span>{`${departments.length} departments · ${productCount(products.length)}`}</span></p>
+            <p><span>{site.addressShort}</span></p>
             <a className="button ghost" href={`tel:${site.phoneRaw}`}>{`Call ${site.phone}`}</a>
             {!user && <button className="button" type="button" onClick={go.signup}>{APPLY_LABEL}</button>}
           </div>

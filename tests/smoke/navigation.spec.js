@@ -84,21 +84,20 @@ test.describe('the Categories menu (AW-062)', () => {
 test('the header and footer mark the page on screen (AW-221)', async ({ page }, testInfo) => {
   const errors = trackErrors(page);
   const phone = testInfo.project.name === 'phone';
-  const footerDept = page.locator('footer').getByRole('link', { name: /^Novelties & Vapes \(\d+\)$/ });
+  const footerDept = page.locator('footer').getByRole('link', { name: 'Novelties & Vapes', exact: true });
   await page.goto('/category/novelties');
   await openFooterDepartments(page);
   await expect(footerDept).toHaveAttribute('aria-current', 'page');
-  if (!phone) await expect(page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Exotics' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('link', { name: 'Exotics' })).toHaveCount(0);
   await page.goto('/category/novelties/disposable-vapes');
   await openFooterDepartments(page);
   await expect(footerDept).toHaveAttribute('aria-current', 'true');
   if (phone) {
     await page.getByRole('button', { name: 'Menu' }).click();
     const menu = page.getByRole('dialog', { name: 'Menu' });
-    await expect(menu.getByRole('link', { name: 'Exotics' })).toHaveAttribute('aria-current', 'true');
+    await expect(menu.getByRole('link', { name: /^Novelties & Vapes/ })).toHaveAttribute('aria-current', 'true');
+    await expect(menu.getByRole('link', { name: 'Exotics' })).toHaveCount(0);
     await page.keyboard.press('Escape');
-  } else {
-    await expect(page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Exotics' })).toHaveAttribute('aria-current', 'true');
   }
   await page.goto('/terms');
   await expect(page.locator('footer').getByRole('link', { name: 'Trade terms' })).toHaveAttribute('aria-current', 'page');
@@ -128,7 +127,7 @@ test('the phone footer is under 900px with Departments folded, and the tablet fo
       await fold.locator('summary').click();
       await expect(fold.getByRole('link')).toHaveCount(await fold.locator('a').count());
       await expect(fold.getByRole('link', { name: 'All products' })).toBeVisible();
-      await expect(fold.getByRole('link', { name: /^Tobacco \(\d+\)$/ })).toBeVisible();
+      await expect(fold.getByRole('link', { name: 'Tobacco', exact: true })).toBeVisible();
       await expect(fold.getByRole('link', { name: 'Bestsellers' })).toBeVisible();
       expect(await footer.evaluate((f) => f.lastElementChild.className)).toBe('container');
       await expect(footer.locator('.fda-note, .nicotine-warning')).toHaveCount(0);
@@ -206,7 +205,7 @@ test('Forward onto a dialog Back closed leaves no dead stop: the next Back leave
   await page.goto('/category/tobacco');
   await expect(page.getByRole('heading', { level: 1, name: 'Tobacco' })).toBeVisible();
   await openFooterDepartments(page);
-  await page.locator('footer').getByRole('link', { name: /^Candies \(\d+\)$/ }).click();
+  await page.locator('footer').getByRole('link', { name: 'Candies', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Candies' })).toBeVisible();
   await page.getByRole('button', { name: 'Sign in', exact: true }).first().click();
   await expect(page.getByRole('dialog')).toBeVisible();

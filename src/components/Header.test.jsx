@@ -93,7 +93,7 @@ describe('Categories menu (AW-165)', () => {
     expect(menu()).toBeTruthy();
   });
 
-  it('labels each department as a group, not a navigation landmark, and counts products', () => {
+  it('labels each department as a group, not a navigation landmark, and shows no catalog count', () => {
     renderHeader();
     fireEvent.click(toggle());
     expect(menu().querySelectorAll('nav')).toHaveLength(0);
@@ -106,7 +106,7 @@ describe('Categories menu (AW-165)', () => {
       expect(heading.querySelector('svg.icon')).toBeTruthy();
       expect(heading.textContent).toBe(d.label);
     }
-    expect(menu().querySelector('.aw-menu-footer span').textContent).toBe(`${departments.length} departments · ${PRODUCTS.length} products`);
+    expect(menu().querySelector('.aw-menu-footer').textContent).not.toMatch(/\d+ (departments|products)/);
   });
 
   it('lists each department’s three biggest product lines, then the whole department, and ends with the full catalog (AW-062)', () => {

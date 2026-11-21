@@ -383,12 +383,12 @@ export function CategoryPage({
         <legend>Product line</legend>
         <label className={!activeSub ? 'is-on' : ''}>
           <input type="radio" name="category-line" value="" checked={!activeSub} aria-label={`All (${filtered.length})`} onChange={() => pickLine(null)} />
-          <span>All</span><span className="pill-count">{` ${filtered.length}`}</span>
+          <span>All</span><span className="pill-count sr-only">{` ${filtered.length}`}</span>
         </label>
         {lines.map(({ sub: s, count }) => (
           <label key={s} className={activeSub === s ? 'is-on' : ''}>
             <input type="radio" name="category-line" value={s} checked={activeSub === s} aria-label={`${s} (${count})`} onChange={() => pickLine(s)} />
-            <span>{s}</span><span className="pill-count">{` ${count}`}</span>
+            <span>{s}</span><span className="pill-count sr-only">{` ${count}`}</span>
           </label>
         ))}
       </fieldset>
@@ -463,7 +463,7 @@ export function CategoryPage({
             {/* Whose prices the cards show, from my_prices() (AW-107). */}
             {isApprovedBuyer && <p className="category-tier">{tierPriceNote(priceTier)}</p>}
           </div>
-          <div className="category-stats">
+          <div className="category-stats sr-only">
             <p className="category-stat category-stat-products">
               <strong>{statCount}</strong>
               <span>{statCount === 1 ? 'product' : 'products'}</span>
@@ -483,13 +483,13 @@ export function CategoryPage({
         {isMobile && lineCount > 0 && (
           <div className="line-label">
             <p className="eyebrow">Product lines</p>
-            <button className="see-lines" type="button" onClick={() => setFiltersOpen(true)}>{`See all ${lineCount}`}</button>
+            <button className="see-lines" type="button" onClick={() => setFiltersOpen(true)}>See all</button>
           </div>
         )}
         <nav className="sub-pills" ref={pillsRef} aria-label={`${deptLabel} product lines`} onFocus={revealPill}>
-          <Link className={`sub-pill${!activeSub ? ' active' : ''}${filtered.length ? '' : ' is-empty'}`} to={here({ sub: null })} scroll={false} aria-current={!activeSub ? 'page' : undefined} aria-label={`All (${filtered.length})`}><span>All</span><span className="pill-count">{` ${filtered.length}`}</span></Link>
+          <Link className={`sub-pill${!activeSub ? ' active' : ''}${filtered.length ? '' : ' is-empty'}`} to={here({ sub: null })} scroll={false} aria-current={!activeSub ? 'page' : undefined} aria-label={`All (${filtered.length})`}><span>All</span><span className="pill-count sr-only">{` ${filtered.length}`}</span></Link>
           {lines.map(({ sub: s, count }) => (
-            <Link key={s} className={`sub-pill${activeSub === s ? ' active' : ''}${count ? '' : ' is-empty'}`} to={here({ sub: s })} scroll={false} aria-current={activeSub === s ? 'page' : undefined} aria-label={`${s} (${count})`}><span>{s}</span><span className="pill-count">{` ${count}`}</span></Link>
+            <Link key={s} className={`sub-pill${activeSub === s ? ' active' : ''}${count ? '' : ' is-empty'}`} to={here({ sub: s })} scroll={false} aria-current={activeSub === s ? 'page' : undefined} aria-label={`${s} (${count})`}><span>{s}</span><span className="pill-count sr-only">{` ${count}`}</span></Link>
           ))}
         </nav>
       </div>

@@ -80,7 +80,7 @@ export function Footer({ departments, signedIn = false, onLoginClick, onApplyCli
   const shopLinks = (
     <>
       <Link className="footer-link" to="/catalog" aria-current={current('/catalog')}>All products</Link>
-      {departments.map(c => <Link key={c.key} className="footer-link" to={{ page: 'category', category: c.key }} aria-current={current({ page: 'category', category: c.key })}>{`${c.label} (${c.count})`}</Link>)}
+      {departments.map(c => <Link key={c.key} className="footer-link" to={{ page: 'category', category: c.key }} aria-current={current({ page: 'category', category: c.key })}>{c.label}</Link>)}
       <Link className="footer-link" to="/#new-arrivals">New arrivals</Link>
       <Link className="footer-link" to="/#bestsellers">Bestsellers</Link>
     </>

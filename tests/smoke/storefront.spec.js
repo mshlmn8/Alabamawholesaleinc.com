@@ -207,7 +207,7 @@ test.describe('after age confirmation', () => {
       await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
       await expect(page.getByRole('searchbox', { name: 'Product, brand or SKU' })).toBeVisible();
-      await expect(page.getByRole('navigation', { name: 'Browse by department' }).getByRole('link', { name: /^Tobacco \(/ })).toBeVisible();
+      await expect(page.getByRole('navigation', { name: 'Browse by department' }).getByRole('link', { name: 'Tobacco', exact: true })).toBeVisible();
     }
     // A link cut off mid-escape (AW-185), followed inside the app.
     await page.evaluate(() => {

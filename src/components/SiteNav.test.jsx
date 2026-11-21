@@ -95,12 +95,11 @@ describe('Header current page (AW-221)', () => {
   );
   const nav = () => document.querySelector('.aw-navigation');
 
-  it('marks Exotics on the Novelties department, and as its section on one of its lines', () => {
+  it('has no Exotics link, so a department page marks nothing in the bar', () => {
     go('/category/novelties');
     renderHeader();
-    expect(current(nav())).toEqual([['Exotics', 'page']]);
-    go('/category/novelties/disposable-vapes');
-    expect(current(nav())).toEqual([['Exotics', 'true']]);
+    expect(within(nav()).queryByRole('link', { name: 'Exotics' })).toBeNull();
+    expect(current(nav())).toEqual([]);
     go('/category/tobacco');
     expect(current(nav())).toEqual([]);
   });
@@ -126,12 +125,12 @@ describe('MobileMenu current page (AW-221)', () => {
                 go={{ logout: noop, signin: noop, signup: noop, help: noop }} />,
   );
 
-  it('marks the department and Exotics on the Novelties pages', () => {
+  it('marks the department on the Novelties pages, with no Exotics link', () => {
     go('/category/novelties');
     renderMenu();
-    expect(current()).toEqual([[`Novelties & Vapes${departments[1].count} products`, 'page'], ['Exotics', 'page']]);
+    expect(current()).toEqual([[`Novelties & Vapes${departments[1].count} products`, 'page']]);
     go('/category/novelties/disposable-vapes');
-    expect(current().map(([, value]) => value)).toEqual(['true', 'true']);
+    expect(current().map(([, value]) => value)).toEqual(['true']);
   });
 
   it('marks the full catalog and Quick Reorder on their pages, signed in or not', () => {
@@ -181,9 +180,9 @@ describe('Footer (AW-066, AW-221)', () => {
   it('marks the department, the support page and the policy on screen', () => {
     go('/category/novelties');
     renderFooter();
-    expect(current()).toEqual([[`Novelties & Vapes (${departments[1].count})`, 'page']]);
+    expect(current()).toEqual([['Novelties & Vapes', 'page']]);
     go('/category/novelties/disposable-vapes');
-    expect(current()).toEqual([[`Novelties & Vapes (${departments[1].count})`, 'true']]);
+    expect(current()).toEqual([['Novelties & Vapes', 'true']]);
     for (const [url, text] of [['/catalog', 'All products'], ['/contact', 'Contact & visit'], ['/delivery', 'Delivery & service area'],
       ['/apply', 'Application checklist'], ['/shipping', 'Delivery policy'], ['/privacy', 'Privacy'], ['/terms', 'Trade terms']]) {
       go(url);

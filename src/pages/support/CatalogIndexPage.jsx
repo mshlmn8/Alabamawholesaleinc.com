@@ -17,7 +17,7 @@
 
 import { useState } from 'react';
 import { Link, navigate } from '../../lib/router.js';
-import { brandLabel, productCount } from '../../lib/format.js';
+import { brandLabel } from '../../lib/format.js';
 import { featuredOrder, underLegalReview } from '../../lib/merchandising.js';
 import { Icon } from '../../components/Icon.jsx';
 import { BackToTop } from '../../components/BackToTop.jsx';
@@ -42,14 +42,13 @@ export function catalogPreview(rows, limit = CATALOG_PREVIEW) {
   return featuredOrder(rows, { hasPhoto }).filter((p) => hasPhoto(p) && !underLegalReview(p)).slice(0, limit);
 }
 
-const seeAll = (d) => (d.count === 1 ? `See the ${d.label} product` : `See all ${d.count} ${d.label} products`);
+const seeAll = (d) => (d.count === 1 ? `See the ${d.label} product` : `See all ${d.label} products`);
 // The disclosure of every code in a department: a list of SKUs, of its products.
-const skuList = (d) => (d.count === 1 ? `SKU list: the ${d.label} product` : `SKU list: all ${d.count} ${d.label} products`);
+const skuList = (d) => (d.count === 1 ? `SKU list: the ${d.label} product` : `SKU list: all ${d.label} products`);
 
 // cardProps are App's: the cards' and the notice's account, prices and actions.
 export function CatalogIndexPage({ products, departments, ...cardProps }) {
   const { profile, account, isApprovedBuyer, onLoginClick, onApplyClick } = cardProps;
-  const lines = departments.reduce((n, d) => n + d.subs.length, 0);
   const [draft, setDraft] = useState('');
 
   // The whole catalog, as the search page shows it (AW-007).
@@ -61,7 +60,7 @@ export function CatalogIndexPage({ products, departments, ...cardProps }) {
   return (
     <section className="support-page catalog-index">
       <PageHead crumb="All products" eyebrow="FULL ASSORTMENT" title="All products">
-        <p>{`${departments.length} departments, ${lines} product lines and ${products.length} products.`}</p>
+        <p>Every department and product line in one place.</p>
         <form className="search-form" role="search" aria-label="All products" onSubmit={search}>
           <label className="filter-search" htmlFor="catalog-search-input"><span>Search all products</span>
             <input id="catalog-search-input" type="search" value={draft} onChange={(e) => setDraft(e.target.value)} autoComplete="off" />
@@ -85,16 +84,13 @@ export function CatalogIndexPage({ products, departments, ...cardProps }) {
             <section key={d.key} className="dept-section" id={`dept-${slug(d.key)}`} aria-labelledby={`dept-title-${slug(d.key)}`}>
               <div className="dept-head">
                 <div>
-                  <p className="eyebrow">{`DEPARTMENT ${String(i + 1).padStart(2, '0')} · ${productCount(d.count)}`}</p>
+                  <p className="eyebrow">{`DEPARTMENT ${String(i + 1).padStart(2, '0')}`}</p>
                   <h2 id={`dept-title-${slug(d.key)}`}>{d.label}</h2>
                 </div>
                 <Link className="text-link" to={{ page: 'category', category: d.key }}><span>{`Browse ${d.label}`}</span></Link>
               </div>
               <div className="sub-pills" role="group" aria-label={`${d.label} product lines`}>
-                {d.subs.map(s => {
-                  const count = rows.filter(p => p.sub === s).length;
-                  return <Link key={s} className="sub-pill" to={{ page: 'category', category: d.key, sub: s }}>{`${s} (${count})`}</Link>;
-                })}
+                {d.subs.map(s => <Link key={s} className="sub-pill" to={{ page: 'category', category: d.key, sub: s }}>{s}</Link>)}
               </div>
               {cards.length > 0 && (
                 <div className="card-grid card-rail">

@@ -23,7 +23,7 @@ describe('NotFoundPage', () => {
   it('links every department, the full catalog and home', () => {
     render(<NotFoundPage products={products} departments={departments} />);
     const browse = screen.getByRole('navigation', { name: 'Browse by department' });
-    expect(within(browse).getByRole('link', { name: 'Drinks & Bags (0)' }).getAttribute('href')).toBe('/category/drinks-and-bags');
+    expect(within(browse).getByRole('link', { name: 'Drinks & Bags' }).getAttribute('href')).toBe('/category/drinks-and-bags');
     expect(within(browse).getByRole('link', { name: 'All products' }).getAttribute('href')).toBe('/catalog');
     expect(within(browse).getByRole('link', { name: 'Home' }).getAttribute('href')).toBe('/');
   });
