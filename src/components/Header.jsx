@@ -33,6 +33,7 @@ import { useImageStatus } from '../lib/useImageStatus.js';
 import { topLines } from '../lib/departments.js';
 import { currentFor } from '../lib/navCurrent.js';
 import { departmentIcon } from '../lib/departmentIcon.js';
+import { useSite } from '../lib/siteSettings.js';
 
 // The logo photo, or the brand in text when it fails to load (AW-341). The
 // photo is the wordmark with a transparent background, so its width and
@@ -52,6 +53,7 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
   const [megaOpen, setMegaOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const isMobile = useMediaQuery(MOBILE_QUERY);
+  const site = useSite();
   const categoryToggleRef = useRef(null);
   const megaMenuRef = useRef(null);
   const megaOpenRef = useRef(false);
@@ -223,6 +225,7 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
           <Link to="/#bestsellers" onClick={closeMenus}>Bestsellers</Link>
         </nav>
         <div className="aw-service-nav">
+          <a className="aw-call" href={`tel:${site.phoneRaw}`}>{`Call ${site.phone}`}</a>
           <Link to={QUICK_REORDER} onClick={followReorder} aria-current={currentFor(raw, '/account')}>Quick reorder</Link>
           <button type="button" onClick={() => runNav(onHelp)}>Help <Icon name="help" /></button>
         </div>

@@ -71,7 +71,7 @@ test('the trail names the line, and a line of one gets a row from its department
   await expect(trail.getByRole('link')).toHaveText(['Home', 'All products', 'Grocery', 'Other Grocery']);
   await expect(trail.getByRole('link', { name: 'Other Grocery' })).toHaveAttribute('href', '/category/grocery/other-grocery');
   const row = page.locator('section.section').filter({ has: page.getByRole('heading', { level: 2, name: 'More from Grocery' }) });
-  await expect(row.locator('.eyebrow')).toHaveText('RELATED');
+  await expect(row.locator('.eyebrow')).toHaveCount(0);
   await expect(row.locator('.content-card')).toHaveCount(4);
   await expect(row.getByRole('link', { name: 'View all Grocery' })).toHaveAttribute('href', '/category/grocery');
   // Powerade (big)'s row never shows Powerade (small), which has the same photo.

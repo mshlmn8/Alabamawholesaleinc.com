@@ -85,9 +85,9 @@ describe('the published phone (owner answer, 2026-10)', () => {
 });
 
 describe('trust facts (AW-005)', () => {
-  it('are the two the owner confirmed and the sourcing sentence, with no count of accounts', () => {
+  it('are the two the owner confirmed, next-day delivery, licensed retailers only and the sourcing sentence, with no count of accounts', () => {
     expect(YEARS_IN_BUSINESS).toBe(20);
-    expect(TRUST.map((f) => `${f.figure} ${f.label}`)).toEqual(['20 years in business', '100% authentic products']);
+    expect(TRUST.map((f) => `${f.figure} ${f.label}`)).toEqual(['20 years in business', '100% authentic products', 'Next-day delivery on our own trucks', '21+ licensed retailers only']);
     expect(SOURCING).toBe('Every product comes from the manufacturer or an established wholesale distributor.');
   });
 });

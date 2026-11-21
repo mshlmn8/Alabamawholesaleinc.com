@@ -13,7 +13,7 @@ export function HomeHero({ slides = [], pending = false }) {
     <section className="home-hero" aria-labelledby="home-hero-title">
       <h1 id="home-hero-title" className="sr-only">{HOME_HERO.title}</h1>
       <div className="home-hero-media">
-        <HeroCarousel key={slidesKey(slides)} slides={slides} pending={pending} label="New products" />
+        <HeroCarousel key={slidesKey(slides)} slides={slides} pending={pending} label="New products and deals" />
       </div>
     </section>
   );

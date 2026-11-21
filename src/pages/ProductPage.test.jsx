@@ -285,7 +285,7 @@ describe('ProductPage trail and related row (AW-230, AW-231)', () => {
   it('heads a row from the line "More <line>", with "View all" leading to the line', () => {
     render(page({ products: LINE }));
     const row = screen.getByRole('heading', { level: 2, name: 'More Cigars & Cigarillos' }).closest('section');
-    expect(row.querySelector('.eyebrow').textContent).toBe('SAME LINE');
+    expect(row.querySelector('.eyebrow')).toBeNull();
     expect(row.querySelectorAll('.content-card')).toHaveLength(4);
     const all = screen.getByRole('link', { name: 'View all Cigars & Cigarillos' });
     expect(all.getAttribute('href')).toBe('/category/tobacco/cigars-and-cigarillos');
@@ -298,7 +298,7 @@ describe('ProductPage trail and related row (AW-230, AW-231)', () => {
     const products = [cigar(1, { name: 'Swisher Sweets cigarillos' }), cigar(2), cigar(10, { sub: 'Wraps & Leafs' }), cigar(11, { sub: 'Wraps & Leafs' }), cigar(12, { sub: 'Cigarettes' })];
     render(page({ products }));
     const row = screen.getByRole('heading', { level: 2, name: 'More from Tobacco' }).closest('section');
-    expect(row.querySelector('.eyebrow').textContent).toBe('RELATED');
+    expect(row.querySelector('.eyebrow')).toBeNull();
     expect(row.querySelectorAll('.content-card')).toHaveLength(4);
     expect(screen.getByRole('link', { name: 'View all Tobacco' }).getAttribute('href')).toBe('/category/tobacco');
   });

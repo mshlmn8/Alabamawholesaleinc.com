@@ -238,6 +238,8 @@ export const SOURCING = 'Every product comes from the manufacturer or an establi
 export const TRUST = [
   { figure: String(YEARS_IN_BUSINESS), label: 'years in business' },
   { figure: '100%', label: 'authentic products' },
+  { figure: 'Next-day', label: 'delivery on our own trucks' },
+  { figure: '21+', label: 'licensed retailers only' },
 ];
 
 // Not shown on the site. Kept for the FAQ page AW-279 asks the owner to

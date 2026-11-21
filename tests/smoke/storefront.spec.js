@@ -633,9 +633,9 @@ test.describe('tobacco and vapor', () => {
     const errors = trackErrors(page);
     await page.goto('/');
     const carousel = page.locator('.home-carousel');
-    await expect(carousel.locator('.home-carousel-slide')).toHaveCount(3);
+    await expect(carousel.locator('.home-carousel-slide')).toHaveCount(6);
     const warning = carousel.locator('.nicotine-warning');
-    await expect(carousel.locator('.home-carousel-slide.is-active')).toHaveAttribute('aria-label', '1 of 3: Foger Switch Pro full kit');
+    await expect(carousel.locator('.home-carousel-slide.is-active')).toHaveAttribute('aria-label', '1 of 6: Foger Switch Pro full kit');
     await expect(warning).toBeVisible();
     await expect(warning).toHaveText(FDA);
     const spaceBefore = await page.locator('.home-carousel-warning').boundingBox();
@@ -660,7 +660,7 @@ test.describe('tobacco and vapor', () => {
     await carousel.getByRole('button', { name: 'Next slide' }).click();
     await expect(warning).toBeVisible();
     await carousel.getByRole('button', { name: 'Next slide' }).click();
-    await expect(carousel.locator('.home-carousel-slide.is-active')).toHaveAttribute('aria-label', '3 of 3: Tueni chews');
+    await expect(carousel.locator('.home-carousel-slide.is-active')).toHaveAttribute('aria-label', '3 of 6: Tueni chews');
     await expect(warning).toBeHidden();
     const spaceAfter = await page.locator('.home-carousel-warning').boundingBox();
     expect(Math.round(spaceAfter.height)).toBe(Math.round(spaceBefore.height));
@@ -699,7 +699,7 @@ test.describe('home hero', () => {
     await expect(hero.locator('.home-hero-copy')).toHaveCount(0);
     await expect(hero).not.toContainText('WHOLESALE DISTRIBUTOR');
     const active = page.locator('.home-carousel-slide.is-active');
-    await expect(active).toHaveAttribute('aria-label', '1 of 3: Foger Switch Pro full kit');
+    await expect(active).toHaveAttribute('aria-label', '1 of 6: Foger Switch Pro full kit');
     await expect(active).toBeInViewport({ ratio: 1 });
     await expect(active.getByRole('link', { name: 'Foger Switch Pro full kit' })).toHaveAttribute('href', '/product/62');
     expect(errors).toEqual([]);
@@ -722,7 +722,7 @@ test.describe('home sections', () => {
     const errors = trackErrors(page);
     await page.goto('/');
     const band = page.locator('.home-hero + .trust-band');
-    await expect(band.locator('.trust-fact')).toHaveText([/^20\s+years in business$/i, /^100%\s+authentic products$/i]);
+    await expect(band.locator('.trust-fact')).toHaveText([/^20\s+years in business$/i, /^100%\s+authentic products$/i, /^Next-day\s+delivery on our own trucks$/i, /^21\+\s+licensed retailers only$/i]);
     await expect(band.locator('.trust-sourcing')).toHaveText('Every product comes from the manufacturer or an established wholesale distributor.');
     await expect(page.locator('.services .service')).toHaveCount(3);
     await expect(page.locator('.services').locator('xpath=following-sibling::*')).toHaveCount(0);

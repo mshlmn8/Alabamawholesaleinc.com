@@ -31,21 +31,30 @@ const DEPT_SIZES = '(max-width: 53.125em) 22vw, (max-width: 84em) 12vw, 150px';
 // New arrivals and Bestsellers show one row of cards: two by two on phones (AW-060).
 export const RAIL_LENGTH = 4;
 
+const productSlide = (p, kind, badge) => ({
+  key: `${kind}-${p.id}`,
+  img: p.img,
+  picture: p.picture,
+  alt: p.name,
+  caption: p.name,
+  kicker: [p.sub, brandLabel(p.brand)].filter(Boolean).join(' · '),
+  badge,
+  to: { page: 'product', productId: p.id },
+  nicotineWarning: showsNicotineWarning(p),
+});
+
 // The hero carousel's slides: new products with a photo, the same order as
 // the New arrivals rail, up to a full reel. Each slide opens that product.
 export function newProductSlides(products, limit = RAIL_LIMIT) {
   const { newArrivals } = homeRails(products, { limit, hasPhoto });
-  return newArrivals.map((p) => ({
-    key: `new-${p.id}`,
-    img: p.img,
-    picture: p.picture,
-    alt: p.name,
-    caption: p.name,
-    kicker: [p.sub, brandLabel(p.brand)].filter(Boolean).join(' · '),
-    badge: 'New arrival',
-    to: { page: 'product', productId: p.id },
-    nicotineWarning: showsNicotineWarning(p),
-  }));
+  return newArrivals.map((p) => productSlide(p, 'new', 'New arrival'));
+}
+
+// The carousel advertises the current deals too: the products tagged DEAL,
+// in the New deals rail's order, after the new arrivals.
+export function heroSlides(products, limit = RAIL_LIMIT) {
+  const { deals } = homeRails(products, { limit, hasPhoto });
+  return [...newProductSlides(products, limit), ...deals.map((p) => productSlide(p, 'deal', 'Deal'))].slice(0, limit);
 }
 
 const dept = (category) => ({ page: 'category', category });
@@ -111,7 +120,6 @@ function AccountSection({ signedIn, view, onApplyClick }) {
     <section className="section" id="apply">
       <div className="apply-panel">
         <div className="apply-intro">
-          <p className="eyebrow">OPEN AN ACCOUNT</p>
           <h2>Open an account</h2>
           <button className="button" type="button" onClick={onApplyClick}>{APPLY_LABEL}</button>
         </div>
@@ -175,12 +183,12 @@ export function HomePage({
 
   return (
     <>
-      <HomeHero slides={newProductSlides(products)} />
+      <HomeHero slides={heroSlides(products)} />
       <TrustBand />
 
       <section className="section" id="catalog">
         <div className="section-head">
-          <div><p className="eyebrow">FULL ASSORTMENT</p><h2>Shop by department</h2></div>
+          <div><h2>Shop by department</h2></div>
           <Link to="/catalog">Browse all</Link>
         </div>
         {/* One tile per department (AW-060, AW-061): a group of packshots,
@@ -211,7 +219,7 @@ export function HomePage({
       {COLLECTIONS.map((c) => (
         <section className="section" id={c.page} key={c.page}>
           <div className="section-head">
-            <div><p className="eyebrow">{c.eyebrow}</p><h2>{c.title}</h2>{isApprovedBuyer ? <p className="result-note">{tierPriceNote(priceTier)}</p> : null}</div>
+            <div><h2>{c.title}</h2>{isApprovedBuyer ? <p className="result-note">{tierPriceNote(priceTier)}</p> : null}</div>
             <Link to={{ page: c.page }}>Show all<span className="sr-only">{` ${c.title.toLowerCase()}`}</span></Link>
           </div>
           <div className="card-grid card-rail">
