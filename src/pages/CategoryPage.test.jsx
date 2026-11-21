@@ -261,7 +261,7 @@ describe('CategoryPage', () => {
       );
     }
     const group = () => screen.queryByRole('group', { name: 'Featured' });
-    const boxes = () => (group() ? within(group()).getAllByRole('checkbox').map((b) => b.closest('label').textContent.trim()) : []);
+    const boxes = () => (group() ? within(group()).getAllByRole('checkbox').map((b) => { expect(b.closest('label').textContent.trim()).not.toMatch(/\(\d+\)/); return b.getAttribute('aria-label'); }) : []);
     render(<Many />);
     // Tobacco: one bestseller and one new product; no deals or premium.
     expect(boxes()).toEqual(['Bestsellers (1)', 'New (1)']);
@@ -308,7 +308,7 @@ function Branded() {
   );
 }
 const brandBox = () => screen.getByRole('group', { name: 'Brand' });
-const brandLabels = () => within(brandBox()).getAllByRole('checkbox').map((b) => b.closest('label').textContent.trim());
+const brandLabels = () => within(brandBox()).getAllByRole('checkbox').map((b) => { expect(b.closest('label').textContent.trim()).not.toMatch(/\(\d+\)/); return b.getAttribute('aria-label'); });
 const pills = () => [...document.querySelectorAll('.sub-pills a')].map((a) => ({ text: a.textContent, empty: a.classList.contains('is-empty'), href: a.getAttribute('href') }));
 // The phone layout: the filters are in the Filter & Sort drawer.
 const phone = () => vi.stubGlobal('matchMedia', vi.fn((media) => ({ media, matches: true, addEventListener() {}, removeEventListener() {} })));

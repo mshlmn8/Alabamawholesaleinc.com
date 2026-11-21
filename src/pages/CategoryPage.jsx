@@ -300,7 +300,7 @@ export function CategoryPage({
       {otherDepartments.length > 0 && (
         <ul className="sub-pills" aria-label="Other departments">
           {otherDepartments.map(d => (
-            <li key={d.key}><Link className="sub-pill" to={{ page: 'category', category: d.key }}>{`${d.label} (${d.count})`}</Link></li>
+            <li key={d.key}><Link className="sub-pill" to={{ page: 'category', category: d.key }} aria-label={`${d.label} (${d.count})`}>{d.label}</Link></li>
           ))}
         </ul>
       )}
@@ -350,7 +350,7 @@ export function CategoryPage({
         <fieldset>
           <legend>Featured</legend>
           {featured.map(({ label, tag, count }) => (
-            <label key={tag}><input type="checkbox" checked={tags.includes(tag)} onChange={() => toggleTag(tag)} /> <span>{`${label} (${count})`}</span></label>
+            <label key={tag}><input type="checkbox" checked={tags.includes(tag)} aria-label={`${label} (${count})`} onChange={() => toggleTag(tag)} /> <span>{label}</span></label>
           ))}
         </fieldset>
       )}
@@ -359,7 +359,7 @@ export function CategoryPage({
           <legend>Brand</legend>
           <div id="category-brands">
             {brandsShown.map(({ slug, label, count }) => (
-              <label key={slug}><input type="checkbox" checked={brands.includes(slug)} onChange={() => toggleBrand(slug)} /> <span>{`${label} (${count})`}</span></label>
+              <label key={slug}><input type="checkbox" checked={brands.includes(slug)} aria-label={`${label} (${count})`} onChange={() => toggleBrand(slug)} /> <span>{label}</span></label>
             ))}
           </div>
           {brandChoices.length > BRANDS_SHOWN && (
