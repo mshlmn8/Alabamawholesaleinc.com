@@ -918,12 +918,6 @@ p > .text-link { min-height: 0; min-width: 0; }
 .category-head .sub-pill { padding-inline: 16px; border-radius: 999px; }
 .category-head .sub-pill .pill-count { margin-left: 8px; font-weight: 700; }
 .category-head .sub-pill:not(.active) .pill-count { color: var(--muted); }
-.line-label { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 16px; }
-.line-label .eyebrow { margin: 0; color: var(--muted); }
-.see-lines { border: 0; background: none; padding: 0; color: var(--orange-dark); font: 700 var(--text-sm) var(--body); min-height: var(--tap-sm); cursor: pointer; }
-@media (hover: hover) {
-  .see-lines:hover { color: var(--orange); }
-}
 .result-note { font-size: var(--text-sm); color: var(--muted); margin: 0; }
 .result-note strong { color: var(--purple); }
 /* position: relative keeps the visually hidden result count (.sr-only)
@@ -1693,19 +1687,20 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 }
 
 /* ============================ footer ============================ */
-.footer-main { margin-top: calc(var(--section-gap) + 16px); background: var(--purple); color: #fff; padding: 44px 0 0; }
-.footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 32px; }
+.footer-main { margin-top: calc(var(--section-gap) + 16px); background: var(--purple-deep); color: #fff; padding: 44px 0 0; border-top: 4px solid var(--orange); }
+.footer-grid { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1.2fr; gap: 32px; }
 .footer-grid h2 { font: 700 var(--text-xs)/1 var(--body); letter-spacing: var(--track-eyebrow); color: var(--on-dark-muted); text-transform: uppercase; margin: 0 0 12px; }
 .footer-grid p { font-size: var(--text-sm); color: var(--on-dark); line-height: 1.8; margin: 0; }
 .footer-grid a { display: inline-block; max-width: 100%; padding-block: 6px; color: var(--on-dark); text-decoration: underline; text-underline-offset: var(--link-offset); }
 @media (hover: hover) {
   .footer-grid a:hover { color: #fff; }
 }
-/* Footer navigation: links (.footer-link) and the two dialog buttons look alike,
-   underlined like the phone and email links (AW-297). */
-.footer-grid button, .footer-grid .footer-link { display: flex; align-items: center; min-height: 36px; font-size: var(--text-sm); color: var(--on-dark); line-height: 1.4; background: none; border: 0; padding: 0; text-align: left; text-decoration: underline; text-underline-offset: var(--link-offset); }
+/* Footer navigation: links (.footer-link) and the two dialog buttons look
+   alike, a plain list that underlines on hover; the link to the page on
+   screen is bold (AW-297). */
+.footer-grid button, .footer-grid .footer-link { display: flex; align-items: center; min-height: 36px; font-size: var(--text-sm); color: var(--on-dark); line-height: 1.4; background: none; border: 0; padding: 0; text-align: left; text-decoration: none; text-underline-offset: var(--link-offset); }
 @media (hover: hover) {
-  .footer-grid button:hover, .footer-grid .footer-link:hover { color: #fff; }
+  .footer-grid button:hover, .footer-grid .footer-link:hover { color: #fff; text-decoration: underline; }
 }
 /* The link to the page on screen (AW-221): white, bold, a heavier underline. */
 .footer-main [aria-current] { color: #fff; font-weight: 700; text-decoration-thickness: 2px; }
@@ -1723,6 +1718,11 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .footer-brand p { margin-top: 1rem; }
 /* A line of opening hours each (AW-305). */
 .footer-hours { display: block; }
+/* The contact details are a card: the phone number in the display face, then
+   the email, the address and the hours. */
+.footer-contact { align-self: start; padding: 20px; border-radius: var(--radius-box); background: var(--on-dark-fill); }
+.footer-contact p + p { margin-top: 6px; }
+.footer-grid .footer-contact a[href^="tel:"] { color: #fff; font: 700 1.625rem/1.2 var(--display); text-decoration: none; }
 /* Phones (AW-305, LEFT-4): Departments folds behind its heading, a <details>
    that Footer.jsx renders only at its FOOTER_FOLD_QUERY. The summary is the
    h2 plus the +/- box the SKU lists use: a 44px target whose label sits on
@@ -2192,8 +2192,8 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .footer-grid { grid-template-columns: minmax(0, 1fr); gap: 24px 16px; }
   .footer-departments { grid-row: auto; }
   .footer-brand, .footer-contact { grid-column: 1 / -1; }
-  .footer-main { padding: 32px 0 0; }
-  .footer-legal { flex-direction: column; align-items: flex-start; gap: 8px; padding-bottom: 20px; }
+  .footer-main { padding: 24px 0 0; }
+  .footer-legal { flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 16px; padding-bottom: 20px; }
   .dialog { padding: 24px 20px; scroll-padding-top: calc(46px + var(--tap)); }
   .dialog-top { top: -24px; margin: -24px -20px 5px; padding: 24px 20px 10px; }
   .dialog h2 { font-size: var(--h2-sm); }
@@ -2213,18 +2213,16 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
      row is sticky, so this stays inside it. */
   .result-scope { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 }
-/* The phone footer in two columns (AW-305, LEFT-4), from 21.25em, where a
-   column (about 9rem) holds the email's first part and a line of hours
-   unbroken: the folded Departments heading with the contact details under
-   it, beside Account & help. The last row takes the rest of Account & help's
-   height, so the contact details sit right under the heading; opened, the
-   department links push them down. About 840px tall at 360 and 390, the
-   links still 44px rows on touch. */
+/* The phone footer (AW-305, LEFT-4), from 21.25em: the contact card across
+   the full width under the brand, then the folded Departments heading, then
+   Account & help with its links in two columns. The links are still 44px
+   rows on touch. */
 @media (min-width: 21.25em) and (max-width: 37.5em) {
-  .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto auto 1fr; }
-  .footer-departments { grid-area: 2 / 1; }
-  .footer-account { grid-area: 2 / 2 / span 2; }
-  .footer-contact { grid-area: 3 / 1; }
+  .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 18px; }
+  .footer-contact { grid-area: 2 / 1 / auto / -1; padding: 14px 16px; }
+  .footer-departments { grid-area: 3 / 1 / auto / -1; }
+  .footer-account { grid-area: 4 / 1 / auto / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 16px; }
+  .footer-account h2 { grid-column: 1 / -1; }
 }
 /* Short screens, such as a phone in landscape (AW-245): less padding, a
    smaller title and the backdrop's full height, so the sign-in form's fields

@@ -1230,18 +1230,19 @@ describe('the footer columns and their headings (AW-305, AW-313)', () => {
     expect(code(read('src/components/Footer.jsx'))).not.toMatch(/<h[3-6]\b/);
   });
 
-  it('puts the phone footer in one column, and in two from 21.25em: the folded Departments over the contact details, beside Account & help', () => {
+  it('puts the phone footer in one column, and from 21.25em the contact card, the folded Departments and Account & help in two columns of links', () => {
     // One column: a small phone, or large text (the em follows the text size).
     expect(onPhone('.footer-grid')).toEqual([{ 'grid-template-columns': 'minmax(0, 1fr)', gap: '24px 16px' }]);
     expect(onPhone('.footer-brand, .footer-contact')).toEqual([{ 'grid-column': '1 / -1' }]);
     // The compact layout's span is undone, or it would leave an empty row.
     expect(onPhone('.footer-departments')).toEqual([{ 'grid-row': 'auto' }]);
-    // Two: the last row takes the rest of Account & help's height, so the
-    // contact details stay right under the Departments heading.
-    expect(inBlocks(TWO_ON_PHONE, '.footer-grid')).toEqual([{ 'grid-template-columns': 'repeat(2, minmax(0, 1fr))', 'grid-template-rows': 'auto auto 1fr' }]);
-    expect(inBlocks(TWO_ON_PHONE, '.footer-departments')).toEqual([{ 'grid-area': '2 / 1' }]);
-    expect(inBlocks(TWO_ON_PHONE, '.footer-account')).toEqual([{ 'grid-area': '2 / 2 / span 2' }]);
-    expect(inBlocks(TWO_ON_PHONE, '.footer-contact')).toEqual([{ 'grid-area': '3 / 1' }]);
+    // From 21.25em: the contact card under the brand, then the Departments
+    // heading, then Account & help with its links side by side.
+    expect(inBlocks(TWO_ON_PHONE, '.footer-grid')).toEqual([{ 'grid-template-columns': 'repeat(2, minmax(0, 1fr))', 'row-gap': '18px' }]);
+    expect(inBlocks(TWO_ON_PHONE, '.footer-contact')).toEqual([{ 'grid-area': '2 / 1 / auto / -1', padding: '14px 16px' }]);
+    expect(inBlocks(TWO_ON_PHONE, '.footer-departments')).toEqual([{ 'grid-area': '3 / 1 / auto / -1' }]);
+    expect(inBlocks(TWO_ON_PHONE, '.footer-account')).toEqual([{ 'grid-area': '4 / 1 / auto / -1', display: 'grid', 'grid-template-columns': 'repeat(2, minmax(0, 1fr))', 'column-gap': '16px' }]);
+    expect(inBlocks(TWO_ON_PHONE, '.footer-account h2')).toEqual([{ 'grid-column': '1 / -1' }]);
     const blocks = mediaBlocks(css);
     const at = (prelude, text) => blocks.find((b) => b.prelude === prelude && b.body.includes(text)).start;
     expect(at(TWO_ON_PHONE, '.footer-grid')).toBeGreaterThan(at('(max-width: 37.5em)', '.footer-grid'));
@@ -1579,12 +1580,12 @@ describe('one link style (AW-297)', () => {
     expect(declarations(hover.body)).toEqual({ 'text-decoration-thickness': '2px' });
   });
 
-  it('colours the section links and underlines the footer navigation like the footer phone and email', () => {
+  it('colours the section links and underlines the footer navigation on hover', () => {
     expect(ruleFor('.section-head > a')).toMatchObject({ color: 'var(--link-color)', 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' });
-    expect(ruleFor('.footer-grid button, .footer-grid .footer-link')).toMatchObject({ 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' });
+    expect(ruleFor('.footer-grid button, .footer-grid .footer-link')).toMatchObject({ 'text-decoration': 'none', 'text-underline-offset': 'var(--link-offset)' });
     const hover = mediaBlocks(css).filter((b) => b.prelude === '(hover: hover)').flatMap((b) => rules(b.body))
       .find((r) => r.selectors.join(', ') === '.footer-grid button:hover, .footer-grid .footer-link:hover');
-    expect(declarations(hover.body)).toEqual({ color: '#fff' });
+    expect(declarations(hover.body)).toEqual({ color: '#fff', 'text-decoration': 'underline' });
   });
 });
 
