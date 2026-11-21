@@ -60,7 +60,7 @@ export function CatalogIndexPage({ products, departments, ...cardProps }) {
   return (
     <section className="support-page catalog-index">
       <PageHead crumb="All products" eyebrow="FULL ASSORTMENT" title="All products">
-        <p>Every department and product line in one place.</p>
+        <p>Every department in one place.</p>
         <form className="search-form" role="search" aria-label="All products" onSubmit={search}>
           <label className="filter-search" htmlFor="catalog-search-input"><span>Search all products</span>
             <input id="catalog-search-input" type="search" value={draft} onChange={(e) => setDraft(e.target.value)} autoComplete="off" />

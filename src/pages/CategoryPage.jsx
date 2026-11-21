@@ -380,7 +380,7 @@ export function CategoryPage({
   const linePicker = lines.length > 0 && (
     <div className="filter-panel filter-lines">
       <fieldset>
-        <legend>Product line</legend>
+        <legend className="sr-only">Product line</legend>
         <label className={!activeSub ? 'is-on' : ''}>
           <input type="radio" name="category-line" value="" checked={!activeSub} aria-label={`All (${filtered.length})`} onChange={() => pickLine(null)} />
           <span>All</span><span className="pill-count sr-only">{` ${filtered.length}`}</span>
@@ -480,12 +480,6 @@ export function CategoryPage({
             </p>
           </div>
         </div>
-        {isMobile && lineCount > 0 && (
-          <div className="line-label">
-            <p className="eyebrow">Product lines</p>
-            <button className="see-lines" type="button" onClick={() => setFiltersOpen(true)}>See all</button>
-          </div>
-        )}
         <nav className="sub-pills" ref={pillsRef} aria-label={`${deptLabel} product lines`} onFocus={revealPill}>
           <Link className={`sub-pill${!activeSub ? ' active' : ''}${filtered.length ? '' : ' is-empty'}`} to={here({ sub: null })} scroll={false} aria-current={!activeSub ? 'page' : undefined} aria-label={`All (${filtered.length})`}><span>All</span><span className="pill-count sr-only">{` ${filtered.length}`}</span></Link>
           {lines.map(({ sub: s, count }) => (

@@ -30,7 +30,7 @@ describe('product counts (AW-217, NEW-056)', () => {
     render(<CatalogIndexPage products={products} departments={departments} profile={null} isApprovedBuyer={false} onLoginClick={() => {}} />);
     const head = document.querySelector('.page-head .eyebrow');
     expect(text(head)).toBe('FULL ASSORTMENT');
-    expect(text(document.querySelector('.page-head > p:not([class])'))).toBe('Every department and product line in one place.');
+    expect(text(document.querySelector('.page-head > p:not([class])'))).toBe('Every department in one place.');
     const tobacco = screen.getByRole('heading', { level: 2, name: 'Tobacco' }).previousElementSibling;
     expect(text(tobacco)).toBe('DEPARTMENT 01');
     // One text node, the eyebrow's only child (translate-safe).

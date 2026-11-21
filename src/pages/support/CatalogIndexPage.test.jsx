@@ -61,7 +61,7 @@ describe('CatalogIndexPage', () => {
     page(products);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('All products');
     expect(document.querySelector('.page-head .eyebrow').textContent).toBe('FULL ASSORTMENT');
-    expect(document.querySelector('.page-head > p:not([class])').textContent).toBe('Every department and product line in one place.');
+    expect(document.querySelector('.page-head > p:not([class])').textContent).toBe('Every department in one place.');
     expect(document.querySelector('.catalog-index .result-note')).toBeNull();
   });
 
