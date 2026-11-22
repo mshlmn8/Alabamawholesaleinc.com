@@ -96,7 +96,7 @@ describe('CatalogIndexPage', () => {
     ]);
     // 'SKU' only where the codes are listed; the count says products (NEW-056).
     expect(section('Tobacco').querySelector('details.sku-details > summary').textContent).toBe('SKU list: all Tobacco products');
-    expect(section('Tobacco').querySelector('.dept-head .eyebrow').textContent).toBe('DEPARTMENT 01');
+    expect(section('Tobacco').querySelector('.dept-head .eyebrow')).toBeNull();
   });
 
   it('leaves a department without a photographed product with its lines, link and SKU list', () => {

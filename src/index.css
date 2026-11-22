@@ -2524,7 +2524,6 @@ address.info-lead-small { font-style: normal; }
 /* all-products index */
 .dept-jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 14px; }
 .dept-jump a { display: flex; align-items: center; gap: 8px; min-height: var(--tap-sm); padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--purple); font-size: var(--text-sm); font-weight: 700; }
-.dept-jump a span:first-child { font: 700 .9375rem/1 var(--display); color: var(--orange-dark); }
 @media (hover: hover) {
   .dept-jump a:hover { border-color: var(--orange); }
 }
@@ -2532,7 +2531,6 @@ address.info-lead-small { font-style: normal; }
 .dept-index { margin-top: 6px; }
 .dept-section { padding: 26px 0 10px; border-top: 1px solid var(--line); scroll-margin-top: 24px; }
 .dept-head { display: flex; justify-content: space-between; align-items: end; gap: 20px; }
-.dept-head .eyebrow { color: var(--orange-dark); margin-bottom: 6px; }
 .dept-head h2 { font-size: var(--h2); }
 .dept-head .text-link { white-space: nowrap; }
 .dept-head .text-link, .dept-more .text-link { min-height: var(--tap-sm); }

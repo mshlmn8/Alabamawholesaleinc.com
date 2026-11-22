@@ -71,8 +71,8 @@ export function CatalogIndexPage({ products, departments, ...cardProps }) {
       <PricingNotice profile={profile} account={account} isApprovedBuyer={isApprovedBuyer} onLoginClick={onLoginClick} onApplyClick={onApplyClick} />
 
       <nav className="dept-jump" aria-label="Jump to department">
-        {departments.map((d, i) => (
-          <Link key={d.key} to={`#dept-${slug(d.key)}`}><span>{String(i + 1).padStart(2, '0')}</span><span>{d.label}</span></Link>
+        {departments.map((d) => (
+          <Link key={d.key} to={`#dept-${slug(d.key)}`}><span>{d.label}</span></Link>
         ))}
       </nav>
 
@@ -84,7 +84,6 @@ export function CatalogIndexPage({ products, departments, ...cardProps }) {
             <section key={d.key} className="dept-section" id={`dept-${slug(d.key)}`} aria-labelledby={`dept-title-${slug(d.key)}`}>
               <div className="dept-head">
                 <div>
-                  <p className="eyebrow">{`DEPARTMENT ${String(i + 1).padStart(2, '0')}`}</p>
                   <h2 id={`dept-title-${slug(d.key)}`}>{d.label}</h2>
                 </div>
                 <Link className="text-link" to={{ page: 'category', category: d.key }}><span>{`Browse ${d.label}`}</span></Link>
