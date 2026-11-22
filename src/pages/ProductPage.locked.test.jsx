@@ -35,12 +35,12 @@ describe('ProductPage price slot without a price (AW-133)', () => {
     render(page({ onLoginClick, onApplyClick }));
     expect(slot().className).toBe('pd-price is-locked');
     expect(slot().querySelector('b')).toBeNull();
-    expect(slot().querySelector('p').textContent).toBe('Trade prices are shown to approved accounts.');
+    expect(slot().querySelector('p').textContent).toBe('Prices are shown to approved accounts.');
     const signIn = within(slot()).getByRole('button', { name: 'Sign in to see wholesale prices' });
     expect(signIn.className).toBe('button ghost');
     fireEvent.click(signIn);
     expect(onLoginClick).toHaveBeenCalledTimes(1);
-    const apply = within(slot()).getByRole('button', { name: 'Apply for a trade account' });
+    const apply = within(slot()).getByRole('button', { name: 'Apply for an account' });
     expect(apply.className).toBe('text-link');
     fireEvent.click(apply);
     expect(onApplyClick).toHaveBeenCalledTimes(1);

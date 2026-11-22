@@ -402,7 +402,7 @@ export function ProductPage({
       {related.length > 0 && (
         <section className="section">
           <div className="section-head">
-            <div><p className="eyebrow">{sameLine ? 'SAME LINE' : 'RELATED'}</p><h2>{sameLine ? `More ${p.sub}` : `More from ${catLabel(p.cat)}`}</h2></div>
+            <div><h2>{sameLine ? `More ${p.sub}` : `More from ${catLabel(p.cat)}`}</h2></div>
             <Link to={{ page: 'category', category: p.cat, sub: sameLine ? p.sub : null }}>View all <span className="sr-only">{sameLine ? p.sub : catLabel(p.cat)}</span></Link>
           </div>
           <div className="card-grid card-rail">

@@ -54,7 +54,7 @@ describe('ContactPage cards', () => {
     const outline = screen.getAllByRole('heading').map((h) => `${h.tagName} ${h.textContent}`);
     expect(outline).toEqual([
       'H1 Contact & visit', 'H2 Call', 'H2 Email', 'H2 Visit', 'H2 When we’re open', 'H2 Pick up at the warehouse',
-      'H2 A look around the warehouse', 'H3 Tobacco, vapes and nicotine pouches', 'H2 Open a trade account',
+      'H2 A look around the warehouse', 'H3 Tobacco, vapes and nicotine pouches', 'H2 Open an account',
     ]);
   });
 
@@ -73,7 +73,7 @@ describe('ContactPage cards', () => {
   });
 });
 
-// 'Apply for a trade account' opens the form, as on /apply, and is the primary
+// 'Apply for an account' opens the form, as on /apply, and is the primary
 // action; the checklist is the secondary one (AW-271).
 describe('ContactPage account call to action', () => {
   it('makes the apply button the primary button, calling onApplyClick', () => {
@@ -81,7 +81,7 @@ describe('ContactPage account call to action', () => {
     render(<ContactPage onApplyClick={onApplyClick} />);
     const cta = document.querySelector('.support-cta .contact-strip-actions');
     const [first, second] = cta.children;
-    expect(first).toBe(within(cta).getByRole('button', { name: 'Apply for a trade account' }));
+    expect(first).toBe(within(cta).getByRole('button', { name: 'Apply for an account' }));
     expect(first.className).toBe('button');
     fireEvent.click(first);
     expect(onApplyClick).toHaveBeenCalledTimes(1);
@@ -106,38 +106,38 @@ describe('ContactPage account call to action', () => {
   const signedIn = (status, extra = {}) => ({ signedIn: true, profile: status ? { id: 'p', email: 'buyer@example.test', status } : null, account: status ? 'ready' : 'loading', ...extra });
 
   it.each([
-    ['approved', 'ACCOUNT ACTIVE', ['A', 'My account', '/account', 'button'], /^Your trade account is active\./],
+    ['approved', 'ACCOUNT ACTIVE', ['A', 'My account', '/account', 'button'], /^Your account is active\./],
     ['pending', 'APPLICATION UNDER REVIEW', ['A', 'Application status', '/apply', 'button'], /^Your application is with a trade rep\./],
     ['suspended', 'ACCOUNT ON HOLD', ['A', 'Application status', '/apply', 'button'], /^Ordering is paused on this account\./],
-  ])('offers a signed-in %s account its own trade account, not Apply', (status, eyebrow, link, text) => {
+  ])('offers a signed-in %s account its own account, not Apply', (status, eyebrow, link, text) => {
     const onApplyClick = vi.fn();
     render(<ContactPage onApplyClick={onApplyClick} {...signedIn(status)} />);
     const shown = panel();
-    expect(shown).toMatchObject({ eyebrow, title: 'Your trade account', actions: [link] });
+    expect(shown).toMatchObject({ eyebrow, title: 'Your account', actions: [link] });
     expect(shown.text).toMatch(text);
-    expect(screen.queryByRole('button', { name: 'Apply for a trade account' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Apply for an account' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Application checklist' })).toBeNull();
     expect(screen.queryByText('NEW TO ALABAMA WHOLESALE?')).toBeNull();
     expect(onApplyClick).not.toHaveBeenCalled();
     // The page outline ends with the account's heading.
-    expect(screen.getAllByRole('heading', { level: 2 }).at(-1).textContent).toBe('Your trade account');
+    expect(screen.getAllByRole('heading', { level: 2 }).at(-1).textContent).toBe('Your account');
   });
 
   it('offers My account, never Apply, while a signed-in account loads or when its profile didn’t load', () => {
     const view = render(<ContactPage onApplyClick={vi.fn()} {...signedIn(null)} />);
-    expect(panel()).toEqual({ eyebrow: 'TRADE ACCOUNT', title: 'Your trade account', text: 'Checking your account…', actions: [['A', 'My account', '/account', 'button']] });
+    expect(panel()).toEqual({ eyebrow: 'ACCOUNT', title: 'Your account', text: 'Checking your account…', actions: [['A', 'My account', '/account', 'button']] });
     view.rerender(<ContactPage onApplyClick={vi.fn()} {...signedIn(null, { account: 'no-profile' })} />);
-    expect(panel()).toMatchObject({ eyebrow: 'TRADE ACCOUNT', text: 'You’re signed in, but your account details didn’t load.', actions: [['A', 'My account', '/account', 'button']] });
+    expect(panel()).toMatchObject({ eyebrow: 'ACCOUNT', text: 'You’re signed in, but your account details didn’t load.', actions: [['A', 'My account', '/account', 'button']] });
     // The profile arrives: the pending account's panel, as a new block.
     view.rerender(<ContactPage onApplyClick={vi.fn()} {...signedIn('pending')} />);
     expect(panel().eyebrow).toBe('APPLICATION UNDER REVIEW');
-    expect(screen.queryByRole('button', { name: 'Apply for a trade account' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Apply for an account' })).toBeNull();
   });
 
   it('keeps the guest’s Apply when nobody is signed in, whatever the profile props say', () => {
     render(<ContactPage onApplyClick={vi.fn()} signedIn={false} profile={null} account="signed-out" />);
     expect(panel().eyebrow).toBe('NEW TO ALABAMA WHOLESALE?');
-    expect(screen.getByRole('button', { name: 'Apply for a trade account' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Apply for an account' })).toBeTruthy();
   });
 });
 

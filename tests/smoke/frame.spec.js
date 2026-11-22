@@ -65,17 +65,17 @@ test('one banner holds the skip link and one Apply, the header’s (AW-314, AW-3
   await expect(banner.getByRole('link', { name: 'Skip to main content' })).toBeFocused();
   // One visible Apply in the banner on a wide window, the header's orange
   // button; on a phone it is in the menu (and the home hero).
-  const apply = banner.getByRole('button', { name: 'Apply for a trade account' });
+  const apply = banner.getByRole('button', { name: 'Apply for an account' });
   if (testInfo.project.name === 'phone') {
     await expect(apply).toBeHidden();
     await banner.getByRole('button', { name: 'Menu' }).click();
-    await page.getByRole('dialog', { name: 'Menu' }).getByRole('button', { name: 'Apply for a trade account' }).click();
+    await page.getByRole('dialog', { name: 'Menu' }).getByRole('button', { name: 'Apply for an account' }).click();
   } else {
     await expect(apply).toHaveCount(1);
     await expect(apply).toBeVisible();
     await apply.click();
   }
-  await expect(page.getByRole('dialog', { name: 'Apply for a trade account' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Apply for an account' })).toBeVisible();
   expect(errors).toEqual([]);
 });
 

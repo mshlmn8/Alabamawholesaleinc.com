@@ -33,7 +33,7 @@ import { useImageStatus } from '../lib/useImageStatus.js';
 import { topLines } from '../lib/departments.js';
 import { currentFor } from '../lib/navCurrent.js';
 import { departmentIcon } from '../lib/departmentIcon.js';
-import { productCount } from '../lib/format.js';
+import { useSite } from '../lib/siteSettings.js';
 
 // The logo photo, or the brand in text when it fails to load (AW-341). The
 // photo is the wordmark with a transparent background, so its width and
@@ -53,6 +53,7 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
   const [megaOpen, setMegaOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const isMobile = useMediaQuery(MOBILE_QUERY);
+  const site = useSite();
   const categoryToggleRef = useRef(null);
   const megaMenuRef = useRef(null);
   const megaOpenRef = useRef(false);
@@ -182,7 +183,7 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
 
       {menuOpen && isMobile && (
         <MobileMenu
-          onClose={() => setMenuOpen(false)} onFollowLink={closeMenus} departments={departments} products={products} user={user} isAdmin={isAdmin} adminUnseen={adminUnseen}
+          onClose={() => setMenuOpen(false)} onFollowLink={closeMenus} departments={departments} user={user} isAdmin={isAdmin} adminUnseen={adminUnseen}
           signingOut={signingOut}
           go={{
             logout: () => onLogout(), signin: () => runNav(onLoginClick), signup: () => runNav(onSignupClick), help: () => runNav(onHelp), reorder: followReorder,
@@ -216,17 +217,15 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
             </div>
             <div className="aw-menu-footer">
               <Link to="/catalog" onClick={closeMenus} aria-current={currentFor(raw, '/catalog')}>View full catalog</Link>
-              <span>{`${departments.length} departments · ${productCount(products.length)}`}</span>
             </div>
           </div>
         )}
         <nav className="aw-discovery-nav" aria-label="Main navigation">
           <Link to="/#new-arrivals" onClick={closeMenus}><span className="aw-new-dot" aria-hidden="true"></span>New arrivals</Link>
           <Link to="/#bestsellers" onClick={closeMenus}>Bestsellers</Link>
-          <Link className="aw-exotics-link" to={{ page: 'category', category: 'NOVELTIES' }} onClick={closeMenus}
-                aria-current={currentFor(raw, { page: 'category', category: 'NOVELTIES' })}>Exotics</Link>
         </nav>
         <div className="aw-service-nav">
+          <a className="aw-call" href={`tel:${site.phoneRaw}`}>{`Call ${site.phone}`}</a>
           <Link to={QUICK_REORDER} onClick={followReorder} aria-current={currentFor(raw, '/account')}>Quick reorder</Link>
           <button type="button" onClick={() => runNav(onHelp)}>Help <Icon name="help" /></button>
         </div>

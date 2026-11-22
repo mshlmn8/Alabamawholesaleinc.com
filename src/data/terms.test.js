@@ -6,10 +6,10 @@ import {
 
 describe('apply and sign-in labels (AW-131)', () => {
   it('is one sentence-case label each, and the cross links build on them', () => {
-    expect(APPLY_LABEL).toBe('Apply for a trade account');
+    expect(APPLY_LABEL).toBe('Apply for an account');
     expect(SIGN_IN_LABEL).toBe('Sign in');
     expect(SIGN_IN_INSTEAD).toBe('Already have an account? Sign in');
-    expect(APPLY_INSTEAD).toBe('New here? Apply for a trade account');
+    expect(APPLY_INSTEAD).toBe('New here? Apply for an account');
     expect(SIGN_IN_INSTEAD.endsWith(SIGN_IN_LABEL)).toBe(true);
     expect(APPLY_INSTEAD.endsWith(APPLY_LABEL)).toBe(true);
   });

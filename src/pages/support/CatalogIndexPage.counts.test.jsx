@@ -26,25 +26,22 @@ beforeEach(() => vi.spyOn(window, 'scrollTo').mockImplementation(() => {}));
 afterEach(() => vi.restoreAllMocks());
 
 describe('product counts (AW-217, NEW-056)', () => {
-  it('counts products in each department eyebrow on /catalog, and the page eyebrow drops the counts the note repeats', () => {
+  it('shows no counts in the /catalog page head or department eyebrows', () => {
     render(<CatalogIndexPage products={products} departments={departments} profile={null} isApprovedBuyer={false} onLoginClick={() => {}} />);
     const head = document.querySelector('.page-head .eyebrow');
     expect(text(head)).toBe('FULL ASSORTMENT');
-    // The counts are the page head's sentence (AW-068).
-    expect(text(document.querySelector('.page-head > p:not([class])'))).toBe(`${departments.length} departments, 3 product lines and 3 products.`);
+    expect(text(document.querySelector('.page-head > p:not([class])'))).toBe('Every department in one place.');
     const tobacco = screen.getByRole('heading', { level: 2, name: 'Tobacco' }).previousElementSibling;
-    expect(text(tobacco)).toBe('DEPARTMENT 01 · 2 products');
+    expect(text(tobacco)).toBe('DEPARTMENT 01');
     // One text node, the eyebrow's only child (translate-safe).
     expect(tobacco.childNodes).toHaveLength(1);
-    const drinks = screen.getByRole('heading', { level: 2, name: 'Drinks & Bags' }).previousElementSibling;
-    expect(text(drinks)).toMatch(/ · 1 product$/);
     for (const eyebrow of document.querySelectorAll('.dept-head .eyebrow')) {
-      expect(text(eyebrow)).toMatch(/^DEPARTMENT \d\d · \d+ products?$/);
+      expect(text(eyebrow)).toMatch(/^DEPARTMENT \d\d$/);
       expect(eyebrow.querySelector('.keep-case')).toBeNull();
     }
     // 'SKU' stays where the codes are listed.
     const summaries = [...document.querySelectorAll('details.sku-details > summary')].map(text);
-    expect(summaries).toContain('SKU list: all 2 Tobacco products');
+    expect(summaries).toContain('SKU list: all Tobacco products');
     expect(summaries).toContain('SKU list: the Drinks & Bags product');
   });
 

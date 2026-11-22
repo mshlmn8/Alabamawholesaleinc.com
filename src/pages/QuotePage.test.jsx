@@ -68,9 +68,9 @@ describe('QuotePage: who may place an order (AW-014, AW-024)', () => {
     expect(screen.getByRole('textbox', { name: 'Quantity of Kite cigarette tobacco' })).toBeTruthy();
     const panel = screen.getByRole('region', { name: 'Sign in to place your order' });
     expect(panel).toBe(gate());
-    expect(panel.textContent).toMatch(/Orders are placed from an approved trade account, for licensed retailers only\. Your cart is kept when you sign in\./);
+    expect(panel.textContent).toMatch(/Orders are placed from an approved account, for licensed retailers only\. Your cart is kept when you sign in\./);
     fireEvent.click(within(panel).getByRole('button', { name: 'Sign in' }));
-    fireEvent.click(within(panel).getByRole('button', { name: 'Apply for a trade account' }));
+    fireEvent.click(within(panel).getByRole('button', { name: 'Apply for an account' }));
     expect(onSignIn).toHaveBeenCalledTimes(1);
     expect(onApplyClick).toHaveBeenCalledTimes(1);
     // No form, no licence fields, no submit (the guest quote is gone).
@@ -83,7 +83,7 @@ describe('QuotePage: who may place an order (AW-014, AW-024)', () => {
 
   it('links a guest to the apply page when there is no apply dialog', () => {
     render(page({ ...GUEST, onApplyClick: undefined }));
-    expect(within(gate()).getByRole('link', { name: 'Apply for a trade account' }).getAttribute('href')).toBe('/apply');
+    expect(within(gate()).getByRole('link', { name: 'Apply for an account' }).getAttribute('href')).toBe('/apply');
   });
 
   it('tells an account under review it can order once approved, with no approval time', () => {

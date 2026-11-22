@@ -123,7 +123,7 @@ test('an account page waits for the account instead of showing the signed-out vi
   const calls = await mockSupabase(page, { profileDelay: 800 });
   await page.goto('/account');
   await expect(page.getByText('Loading your account…')).toBeVisible();
-  await expect(page.getByText(/A trade account shows your order history/)).toHaveCount(0);
+  await expect(page.getByText(/An account shows your order history/)).toHaveCount(0);
   await expect(page.getByRole('heading', { level: 1, name: 'Test Market LLC' })).toBeVisible();
   expect(calls.profiles).toBe(1);
   expect(errors).toEqual([]);
@@ -290,14 +290,14 @@ test('guests never ask for prices and see the lock (AW-003)', async ({ page }) =
   // worded for a guest, who has no account to approve (NEW-050).
   await expect(page.locator('.content-card').filter({ hasText: 'AW-KITE' }).locator('.card-meta .lock')).toHaveText('Sign in for pricing');
   await expect(page.locator('.pricing-notice')).toHaveCount(1);
-  await expect(page.locator('.pricing-notice')).toContainText('Trade prices are shown to approved accounts.');
+  await expect(page.locator('.pricing-notice')).toContainText('Prices are shown to approved accounts.');
   // /catalog has the same notice, in the same words (NEW-050).
   await page.goto('/catalog');
   await expect(page.locator('.pricing-notice')).toHaveCount(1);
-  await expect(page.locator('.pricing-notice')).toContainText('Trade prices are shown to approved accounts.');
+  await expect(page.locator('.pricing-notice')).toContainText('Prices are shown to approved accounts.');
   await expect(page.locator('.catalog-pricing')).toHaveCount(0);
   await page.goto('/product/14');
-  await expect(page.locator('.pd-price')).toContainText('Trade prices are shown to approved accounts.');
+  await expect(page.locator('.pd-price')).toContainText('Prices are shown to approved accounts.');
   await expect(page.locator('.pd-price')).toContainText('Sign in');
   await expect(page.locator('main')).not.toContainText('$13.40');
   expect(calls.prices).toBe(0);
@@ -306,37 +306,37 @@ test('guests never ask for prices and see the lock (AW-003)', async ({ page }) =
 
 // Signed in, nothing offers a second application (AW-066, NEW-014): the home
 // page's account section and /contact show the account's own panel, the
-// footer and the support nav call /apply 'Trade account', and /apply's
+// footer and the support nav call /apply 'Account status', and /apply's
 // status panel is the application's only while it is under review (NEW-047).
 for (const [profile, eyebrow, link, panel] of [
   [PENDING_PROFILE, 'APPLICATION UNDER REVIEW', ['Application status', '/apply'], 'APPLICATION STATUS'],
   [PROFILE, 'ACCOUNT ACTIVE', ['My account', '/account'], 'ACCOUNT STATUS'],
 ]) {
-  test(`a signed-in ${profile.status} account sees its trade account where a guest is asked to apply (AW-066, NEW-014, NEW-047)`, async ({ page, context }) => {
+  test(`a signed-in ${profile.status} account sees its account where a guest is asked to apply (AW-066, NEW-014, NEW-047)`, async ({ page, context }) => {
     const errors = trackErrors(page);
     await seedSession(context);
     await mockSupabase(page, { profile });
     await page.goto('/');
     const home = page.locator('#apply');
     await expect(home.locator('.eyebrow')).toHaveText(eyebrow);
-    await expect(home.getByRole('heading', { level: 2 })).toHaveText('Your trade account');
+    await expect(home.getByRole('heading', { level: 2 })).toHaveText('Your account');
     await expect(home.getByRole('link', { name: link[0] })).toHaveAttribute('href', link[1]);
     await expect(home.getByRole('button')).toHaveCount(0);
     const footer = page.locator('footer');
-    await expect(footer.getByRole('link', { name: 'Trade account' })).toHaveAttribute('href', '/apply');
+    await expect(footer.getByRole('link', { name: 'Account status' })).toHaveAttribute('href', '/apply');
     await expect(footer.getByRole('link', { name: 'Application checklist' })).toHaveCount(0);
 
     await page.goto('/contact');
     const band = page.locator('.support-cta');
     await expect(band.locator('.eyebrow')).toHaveText(eyebrow);
     await expect(band.getByRole('link', { name: link[0] })).toHaveAttribute('href', link[1]);
-    await expect(page.getByRole('button', { name: 'Apply for a trade account' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Apply for an account' })).toHaveCount(0);
     const nav = page.getByRole('navigation', { name: 'Help and policies' });
-    await expect(nav.getByRole('link', { name: 'Trade account' })).toHaveAttribute('href', '/apply');
+    await expect(nav.getByRole('link', { name: 'Account status' })).toHaveAttribute('href', '/apply');
 
-    await nav.getByRole('link', { name: 'Trade account' }).click();
+    await nav.getByRole('link', { name: 'Account status' }).click();
     await expect(page).toHaveURL(/\/apply$/);
-    await expect(nav.getByRole('link', { name: 'Trade account' })).toHaveAttribute('aria-current', 'page');
+    await expect(nav.getByRole('link', { name: 'Account status' })).toHaveAttribute('aria-current', 'page');
     await expect(page.locator('.status-panel .eyebrow')).toHaveText(panel);
     expect(errors).toEqual([]);
   });
@@ -348,8 +348,8 @@ test('Back on a half-typed application asks first, keeps the answers, and leaves
   await page.goto('/');
   await page.goto('/apply');
   // The page head's apply button (AW-242); the checklist card has one too.
-  await page.locator('.page-head').getByRole('button', { name: 'Apply for a trade account' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Apply for a trade account' });
+  await page.locator('.page-head').getByRole('button', { name: 'Apply for an account' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Apply for an account' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Your name').fill('Typed Applicant');
 
@@ -388,11 +388,11 @@ test('a confirmation link for an application under review says what happens next
   await expect(page).toHaveURL(/:\d+\/$/);
   await notice.getByRole('button', { name: 'View application status' }).click();
   await expect(page).toHaveURL(/\/apply$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Your trade account' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Your account' })).toBeVisible();
   // The eyebrow says where the application stands (AW-098); the title is the
   // h1's words (AW-131).
   await expect(page.locator('.page-head .eyebrow')).toHaveText('APPLICATION UNDER REVIEW');
-  await expect(page).toHaveTitle(/^Your trade account · /);
+  await expect(page).toHaveTitle(/^Your account · /);
   await expect(page.locator('.site-notice[data-notice="link-confirmed"]')).toHaveCount(0);
   expect(errors).toEqual([]);
 });

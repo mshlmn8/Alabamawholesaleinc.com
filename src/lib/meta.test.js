@@ -98,7 +98,7 @@ describe('pageMeta', () => {
     // What every link and its crumb call /shipping (NEW-043).
     expect(title({ page: 'shipping' })).toBe('Delivery policy · Alabama Wholesale Inc');
     expect(title({ page: 'terms' })).toBe('Trade terms · Alabama Wholesale Inc');
-    expect(title({ page: 'apply' })).toBe('Apply for a trade account · Alabama Wholesale Inc');
+    expect(title({ page: 'apply' })).toBe('Apply for an account · Alabama Wholesale Inc');
     expect(title({ page: 'reset-password' })).toBe('Reset password · Alabama Wholesale Inc');
   });
 
@@ -307,8 +307,8 @@ describe('pageMeta', () => {
     expect(pageMeta({ page: 'not-found', kind: 'page', catalog: 'loading' }, products, departments).title).toBe('Page not found · Alabama Wholesale Inc');
   });
 
-  it('writes "an Alabama Wholesale Inc trade account" on /apply (AW-319)', () => {
-    expect(pageMeta({ page: 'apply' }, products, departments).description).toMatch(/^What licensed retailers need to open an Alabama Wholesale Inc trade account/);
+  it('writes "an Alabama Wholesale Inc account" on /apply (AW-319)', () => {
+    expect(pageMeta({ page: 'apply' }, products, departments).description).toMatch(/^What licensed retailers need to open an Alabama Wholesale Inc account/);
   });
 
   it('prints the minimum and the hours from content.js, in plain text (AW-283, AW-275)', () => {
@@ -352,25 +352,25 @@ describe('pageMeta', () => {
 describe('pageMeta for /apply (AW-098)', () => {
   it('titles the application page by the account’s view, the words of its h1, with one description and canonical path', () => {
     const guest = pageMeta({ page: 'apply' }, products, departments);
-    expect(guest).toMatchObject({ title: 'Apply for a trade account · Alabama Wholesale Inc', path: '/apply', noindex: false });
+    expect(guest).toMatchObject({ title: 'Apply for an account · Alabama Wholesale Inc', path: '/apply', noindex: false });
     const titles = Object.fromEntries(['guest', 'loading', 'no-profile', 'pending', 'approved', 'suspended'].map((applyAs) => {
       const meta = pageMeta({ page: 'apply', applyAs }, products, departments);
       expect(meta).toMatchObject({ description: guest.description, path: '/apply', noindex: false });
       return [applyAs, meta.title];
     }));
     expect(titles).toEqual({
-      guest: 'Apply for a trade account · Alabama Wholesale Inc',
-      loading: 'Trade account · Alabama Wholesale Inc',
+      guest: 'Apply for an account · Alabama Wholesale Inc',
+      loading: 'Account status · Alabama Wholesale Inc',
       // Signed in, but the profile didn't load: not the guest's 'Apply' (NEW-002).
-      'no-profile': 'Your trade account · Alabama Wholesale Inc',
-      // A signed-in account's h1 is 'Your trade account' in every state; the
+      'no-profile': 'Your account · Alabama Wholesale Inc',
+      // A signed-in account's h1 is 'Your account' in every state; the
       // eyebrow above it names the state (ApplyPage.test).
-      pending: 'Your trade account · Alabama Wholesale Inc',
-      approved: 'Your trade account · Alabama Wholesale Inc',
-      suspended: 'Your trade account · Alabama Wholesale Inc',
+      pending: 'Your account · Alabama Wholesale Inc',
+      approved: 'Your account · Alabama Wholesale Inc',
+      suspended: 'Your account · Alabama Wholesale Inc',
     });
     expect(pageMeta({ page: 'apply', applyAs: 'mystery' }, products, departments).title).toBe(guest.title);
-    expect(APPLY_TITLES.pending).toBe('Your trade account');
+    expect(APPLY_TITLES.pending).toBe('Your account');
     expect(Object.isFrozen(APPLY_TITLES)).toBe(true);
   });
 });

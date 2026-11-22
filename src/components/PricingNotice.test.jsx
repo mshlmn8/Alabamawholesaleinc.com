@@ -10,17 +10,17 @@ import { PricingNotice } from './PricingNotice.jsx';
 const notice = () => document.querySelector('.pricing-notice');
 
 describe('PricingNotice', () => {
-  it('offers guests Sign in and Apply for a trade account', () => {
+  it('offers guests Sign in and Apply for an account', () => {
     const onLoginClick = vi.fn();
     const onApplyClick = vi.fn();
     render(<PricingNotice profile={null} isApprovedBuyer={false} onLoginClick={onLoginClick} onApplyClick={onApplyClick} />);
     expect(notice().className).toBe('callout info pricing-notice');
-    expect(notice().querySelector('p').textContent).toBe('Trade prices are shown to approved accounts.');
+    expect(notice().querySelector('p').textContent).toBe('Prices are shown to approved accounts.');
     // The one guest sentence, also the product page's (NEW-050).
     expect(notice().querySelector('p').textContent).toBe(PRICE_LOCK.guest.notice);
     const signIn = screen.getByRole('button', { name: 'Sign in' });
     expect(signIn.className).toBe('button sm');
-    const apply = screen.getByRole('button', { name: 'Apply for a trade account' });
+    const apply = screen.getByRole('button', { name: 'Apply for an account' });
     expect(apply.className).toBe('text-link');
     fireEvent.click(signIn);
     fireEvent.click(apply);
@@ -56,7 +56,7 @@ describe('PricingNotice', () => {
     it('offers Sign in and Apply only when nobody is signed in', () => {
       render(<PricingNotice profile={null} account="signed-out" {...props} />);
       expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy();
-      expect(screen.getByRole('button', { name: 'Apply for a trade account' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Apply for an account' })).toBeTruthy();
     });
 
     it('says the account is being checked while it loads, in the guest notice’s shape, with nothing to press', () => {
@@ -71,7 +71,7 @@ describe('PricingNotice', () => {
       expect(hold.getAttribute('aria-hidden')).toBe('true');
       expect(container.querySelectorAll('button, a, [tabindex]')).toHaveLength(0);
       expect(screen.queryByRole('button')).toBeNull();
-      expect(screen.queryByText('Trade prices are shown to approved accounts.')).toBeNull();
+      expect(screen.queryByText('Prices are shown to approved accounts.')).toBeNull();
     });
 
     it('shows nothing when the profile didn’t load: the site notice explains it', () => {

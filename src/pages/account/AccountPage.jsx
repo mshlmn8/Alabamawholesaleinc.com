@@ -1,4 +1,4 @@
-// Trade-account dashboard: profile summary, quick reorder by SKU, and order
+// Account dashboard: profile summary, quick reorder by SKU, and order
 // history with a Reorder action per order.
 //
 // While the session and profile load it says so instead of showing the
@@ -12,7 +12,7 @@
 // application dialog's 'View account status' and its failed-upload notes
 // link to #documents. Approved and suspended accounts keep a link to /apply.
 //
-// Signed out, it says what a trade account gives and offers Sign in and
+// Signed out, it says what an account gives and offers Sign in and
 // Apply (AW-086). The header's Quick Reorder links to #quick-reorder; a guest
 // gets the sign-in dialog over this page, and once the account has loaded
 // the section is brought into view with its heading focused.
@@ -40,8 +40,8 @@ export { ORDERS_LOAD_ERROR, ORDER_HISTORY_ERRORS, OrdersLoadError } from './Orde
 // The sections a link can open My account at (AW-086): Quick Reorder from
 // the header, the license documents from the application dialog.
 const REVEALED_SECTIONS = ['quick-reorder', 'documents'];
-// What a trade account gives, for a visitor who is signed out (AW-086).
-export const SIGNED_OUT_TEXT = 'A trade account shows your order history, lets you reorder by SKU with Quick Reorder, and shows your wholesale prices once it is approved.';
+// What an account gives, for a visitor who is signed out (AW-086).
+export const SIGNED_OUT_TEXT = 'An account shows your order history, lets you reorder by SKU with Quick Reorder, and shows your wholesale prices once it is approved.';
 
 export function AccountPage({
   profile, account = profile ? 'ready' : 'signed-out', onSignIn, onApplyClick, onRetry, retrying = false, onSignOut, onSignOutEverywhere,
@@ -72,7 +72,7 @@ export function AccountPage({
       <section>
         <div className="page-head">
           <Breadcrumbs items={[HOME_CRUMB, { label: 'My account' }]} />
-          <p className="eyebrow">TRADE ACCOUNT</p>
+          <p className="eyebrow">ACCOUNT</p>
           <h1>My account</h1>
           {account === 'loading' && <AccountLoading />}
           {account === 'no-profile' && (
@@ -82,7 +82,7 @@ export function AccountPage({
           {account === 'signed-out' && (onSignIn || onApplyClick) && (
             <div className="dialog-actions compact-actions">
               {onSignIn && <button className="button" type="button" onClick={onSignIn}>Sign in</button>}
-              {onApplyClick && <button className="button ghost" type="button" onClick={onApplyClick}>Apply for a trade account</button>}
+              {onApplyClick && <button className="button ghost" type="button" onClick={onApplyClick}>Apply for an account</button>}
             </div>
           )}
         </div>
@@ -99,7 +99,7 @@ export function AccountPage({
     <section>
       <div className="page-head">
         <Breadcrumbs items={[HOME_CRUMB, { label: 'My account' }]} />
-        <p className="eyebrow">TRADE ACCOUNT</p>
+        <p className="eyebrow">ACCOUNT</p>
         <h1>{profile.business || profile.name}</h1>
         <p>{profile.email}</p>
         {/* The password and this browser's sign-out, also on phones, where

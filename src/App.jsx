@@ -219,7 +219,7 @@ export default function App() {
 
   // The title names a saved receipt ('Order received', AW-022) on /checkout,
   // the count of orders new since the last visit on /admin (AW-111), the
-  // account's view on /apply ('Your trade account' once signed in, AW-098)
+  // account's view on /apply ('Your account' once signed in, AW-098)
   // and what /reset-password shows ('Password updated', AW-255).
   // A signed-in account whose profile didn't load isn't a guest (NEW-002).
   const applyAs = accountView(profile, account);
@@ -450,7 +450,7 @@ export default function App() {
       case 'contact':
         // Signed in, the page offers the account's own panel, never a
         // second application (AW-066, NEW-014); the support pages' side nav
-        // calls /apply 'Trade account' (NEW-047).
+        // calls /apply 'Account status' (NEW-047).
         return <ContactPage onApplyClick={openApplication} signedIn={!!session} profile={profile} account={account} />;
       case 'delivery':
         return <DeliveryPage signedIn={!!session} />;
@@ -524,7 +524,7 @@ export default function App() {
           application is lost (AW-018). Sign Out closes it outright. Its code
           loads on first use, with a small dialog meanwhile (AW-179). */}
       {loginOpen && (
-        <LazyDialog eyebrow="TRADE ACCOUNTS" onClose={() => setLoginOpen(false)}>
+        <LazyDialog eyebrow="ACCOUNTS" onClose={() => setLoginOpen(false)}>
           <AuthModal initialMode={loginMode} onClose={() => setLoginOpen(false)} onSignOut={signOutHere} signingOut={signingOut} />
         </LazyDialog>
       )}

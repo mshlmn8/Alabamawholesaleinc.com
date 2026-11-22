@@ -451,8 +451,8 @@ describe('one button system and drawn icons (AW-143, AW-298, AW-293, AW-218)', (
   const outsideHover = hoverBlocks.reduceRight((text, b) => text.slice(0, b.start) + text.slice(b.end), css);
   const rule = (selector) => declarations(rules(css).find((r) => r.selectors.join(', ') === selector)?.body ?? '');
 
-  it('has one .button: label centred with no arrow slot, 2px corners, sentence case', () => {
-    expect(rule('.button')).toMatchObject({ 'justify-content': 'center', gap: '.5rem', 'border-radius': '2px', 'min-height': 'var(--tap)', 'font-size': 'var(--text-sm)', 'font-weight': '700' });
+  it('has one .button: label centred with no arrow slot, the shared corner, sentence case', () => {
+    expect(rule('.button')).toMatchObject({ 'justify-content': 'center', gap: '.5rem', 'border-radius': 'var(--radius)', 'min-height': 'var(--tap)', 'font-size': 'var(--text-sm)', 'font-weight': '700' });
     expect(rule('.button.sm')).toMatchObject({ 'min-height': 'var(--tap-sm)' });
     expect(rule('.button.xs')).toMatchObject({ 'min-height': '2rem', 'font-size': 'var(--text-xs)' });
     for (const variant of ['.button.ghost', '.button.on-dark', '.button.xs.text']) expect(Object.keys(rule(variant)).length, variant).toBeGreaterThan(0);
@@ -975,7 +975,7 @@ describe('one field system (AW-146, AW-172, AW-147, AW-309)', () => {
   it('defines the field tokens once, with a border of at least 3:1 on every surface a field sits on', () => {
     expect(root).toMatchObject({
       '--field-h': '2.75rem', '--field-h-compact': '2.125rem', '--field-bg': '#fff',
-      '--field-border': '#857d8a', '--field-radius': '2px', '--field-font': 'var(--text-base)',
+      '--field-border': '#857d8a', '--field-radius': '10px', '--field-font': 'var(--text-base)',
     });
     for (const surface of ['--field-bg', '--surface-soft', '--paper', '--cream']) {
       expect(contrast(root['--field-border'], root[surface]), surface).toBeGreaterThanOrEqual(3);
@@ -1070,7 +1070,7 @@ describe('one field system (AW-146, AW-172, AW-147, AW-309)', () => {
   it('styles the file button in two rules (Safari 14 knows only the -webkit- name) and hides the native search clear', () => {
     const standard = all.find((r) => r.selectors.join() === '.doc-file::file-selector-button');
     const webkit = all.find((r) => r.selectors.join() === '.doc-file::-webkit-file-upload-button');
-    expect(declarations(standard.body)).toMatchObject({ border: '1px solid var(--purple)', color: 'var(--purple)', font: '700 var(--text-sm) var(--body)', 'border-radius': '2px' });
+    expect(declarations(standard.body)).toMatchObject({ border: '1px solid var(--purple)', color: 'var(--purple)', font: '700 var(--text-sm) var(--body)', 'border-radius': 'var(--radius)' });
     expect(declarations(webkit.body)).toEqual(declarations(standard.body));
     expect(declarations(all.find((r) => r.selectors.join() === 'input[type=search]::-webkit-search-cancel-button').body)).toEqual({ '-webkit-appearance': 'none' });
   });
@@ -1230,18 +1230,19 @@ describe('the footer columns and their headings (AW-305, AW-313)', () => {
     expect(code(read('src/components/Footer.jsx'))).not.toMatch(/<h[3-6]\b/);
   });
 
-  it('puts the phone footer in one column, and in two from 21.25em: the folded Departments over the contact details, beside Account & help', () => {
+  it('puts the phone footer in one column, and from 21.25em the contact card, the folded Departments and Account & help in two columns of links', () => {
     // One column: a small phone, or large text (the em follows the text size).
     expect(onPhone('.footer-grid')).toEqual([{ 'grid-template-columns': 'minmax(0, 1fr)', gap: '24px 16px' }]);
     expect(onPhone('.footer-brand, .footer-contact')).toEqual([{ 'grid-column': '1 / -1' }]);
     // The compact layout's span is undone, or it would leave an empty row.
     expect(onPhone('.footer-departments')).toEqual([{ 'grid-row': 'auto' }]);
-    // Two: the last row takes the rest of Account & help's height, so the
-    // contact details stay right under the Departments heading.
-    expect(inBlocks(TWO_ON_PHONE, '.footer-grid')).toEqual([{ 'grid-template-columns': 'repeat(2, minmax(0, 1fr))', 'grid-template-rows': 'auto auto 1fr' }]);
-    expect(inBlocks(TWO_ON_PHONE, '.footer-departments')).toEqual([{ 'grid-area': '2 / 1' }]);
-    expect(inBlocks(TWO_ON_PHONE, '.footer-account')).toEqual([{ 'grid-area': '2 / 2 / span 2' }]);
-    expect(inBlocks(TWO_ON_PHONE, '.footer-contact')).toEqual([{ 'grid-area': '3 / 1' }]);
+    // From 21.25em: the contact card under the brand, then the Departments
+    // heading, then Account & help with its links side by side.
+    expect(inBlocks(TWO_ON_PHONE, '.footer-grid')).toEqual([{ 'grid-template-columns': 'repeat(2, minmax(0, 1fr))', 'row-gap': '18px' }]);
+    expect(inBlocks(TWO_ON_PHONE, '.footer-contact')).toEqual([{ 'grid-area': '2 / 1 / auto / -1', padding: '14px 16px' }]);
+    expect(inBlocks(TWO_ON_PHONE, '.footer-departments')).toEqual([{ 'grid-area': '3 / 1 / auto / -1' }]);
+    expect(inBlocks(TWO_ON_PHONE, '.footer-account')).toEqual([{ 'grid-area': '4 / 1 / auto / -1', display: 'grid', 'grid-template-columns': 'repeat(2, minmax(0, 1fr))', 'column-gap': '16px' }]);
+    expect(inBlocks(TWO_ON_PHONE, '.footer-account h2')).toEqual([{ 'grid-column': '1 / -1' }]);
     const blocks = mediaBlocks(css);
     const at = (prelude, text) => blocks.find((b) => b.prelude === prelude && b.body.includes(text)).start;
     expect(at(TWO_ON_PHONE, '.footer-grid')).toBeGreaterThan(at('(max-width: 37.5em)', '.footer-grid'));
@@ -1579,12 +1580,12 @@ describe('one link style (AW-297)', () => {
     expect(declarations(hover.body)).toEqual({ 'text-decoration-thickness': '2px' });
   });
 
-  it('colours the section links and underlines the footer navigation like the footer phone and email', () => {
+  it('colours the section links and underlines the footer navigation on hover', () => {
     expect(ruleFor('.section-head > a')).toMatchObject({ color: 'var(--link-color)', 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' });
-    expect(ruleFor('.footer-grid button, .footer-grid .footer-link')).toMatchObject({ 'text-decoration': 'underline', 'text-underline-offset': 'var(--link-offset)' });
+    expect(ruleFor('.footer-grid button, .footer-grid .footer-link')).toMatchObject({ 'text-decoration': 'none', 'text-underline-offset': 'var(--link-offset)' });
     const hover = mediaBlocks(css).filter((b) => b.prelude === '(hover: hover)').flatMap((b) => rules(b.body))
       .find((r) => r.selectors.join(', ') === '.footer-grid button:hover, .footer-grid .footer-link:hover');
-    expect(declarations(hover.body)).toEqual({ color: '#fff' });
+    expect(declarations(hover.body)).toEqual({ color: '#fff', 'text-decoration': 'underline' });
   });
 });
 
@@ -1626,7 +1627,7 @@ describe('one callout, and status colours for errors and success (AW-295)', () =
       ['.callout.error', '.form-error.support-alert'],
     ]);
     expect(modifiers.map((r) => declarations(r.body))).toEqual([
-      { padding: '.875rem 1rem', 'border-left': '4px solid var(--orange)', background: 'var(--cream)', color: 'var(--ink)', 'font-size': 'var(--text-base)', 'line-height': '1.6' },
+      { padding: '.875rem 1rem', 'border-radius': 'var(--radius)', 'border-left': '4px solid var(--orange)', background: 'var(--cream)', color: 'var(--ink)', 'font-size': 'var(--text-base)', 'line-height': '1.6' },
       { 'border-left-color': 'var(--purple)', background: 'var(--paper)' },
       { 'border-left-color': 'var(--success)', background: 'var(--success-bg)' },
       { 'border-left-color': 'var(--danger)', background: 'var(--danger-bg)', color: 'var(--danger)' },

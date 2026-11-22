@@ -164,7 +164,7 @@ Open <https://app.netlify.com>.
    **Menu**). Admin's front page has a **How to use Admin** panel with the
    everyday jobs.
 2. **A staff test account.** In a private (incognito) window, open the
-   site, click **Apply for a trade account** and apply with a second email
+   site, click **Apply for an account** and apply with a second email
    you can read (for example `alwholesaleorders+test@gmail.com`, which arrives in
    the alwholesaleorders inbox). Click the link in the confirmation email: that
    proves Supabase's email works.

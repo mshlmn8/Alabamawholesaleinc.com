@@ -49,7 +49,7 @@ describe('SearchPage', () => {
     show('cigar');
     const notices = document.querySelectorAll('.pricing-notice');
     expect(notices).toHaveLength(1);
-    expect(notices[0].textContent).toMatch(/^Trade prices are shown to approved accounts\./);
+    expect(notices[0].textContent).toMatch(/^Prices are shown to approved accounts\./);
     expect(screen.queryAllByRole('button', { name: /Sign in/ })).toHaveLength(1);
   });
 

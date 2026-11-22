@@ -72,7 +72,7 @@ test('offline, the support pages still open from the cache, and after reconnecti
   await expect(page.locator('.site-notice[data-notice="offline"]')).toBeVisible();
   const pages = [
     ['/contact', () => footerLink(page, 'Contact & visit').click(), 'Contact & visit'],
-    ['/apply', () => footerLink(page, 'Application checklist').click(), 'Apply for a trade account'],
+    ['/apply', () => footerLink(page, 'Application checklist').click(), 'Apply for an account'],
     ['/delivery', () => footerLink(page, 'Delivery & service area').click(), 'Delivery & service area'],
     ['/shipping', () => footerLink(page, 'Delivery policy').click(), 'Delivery policy'],
     ['/privacy', () => footerLink(page, 'Privacy').click(), 'Privacy'],

@@ -163,7 +163,7 @@ describe('AuthModal and a sign-in in another tab (AW-335)', () => {
 
   it('leaves the application checklist open for a signed-in visitor', () => {
     const t = setup({ session: SESSION, profileReady: true, profile: { id: 'u1', status: 'approved' } }, { initialMode: 'signup' });
-    expect(screen.getByRole('heading', { name: 'Apply for a trade account' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Apply for an account' })).toBeTruthy();
     t.update({ profile: { id: 'u1', status: 'approved', name: 'x' } });
     expect(t.onClose).not.toHaveBeenCalled();
   });
@@ -571,14 +571,14 @@ describe('AuthModal step changes (AW-090, AW-096, AW-245)', () => {
     press('Continue to the application');
     expect(document.activeElement).toBe(title());
     press('Back to the checklist');
-    expect(title().textContent).toBe('Apply for a trade account');
+    expect(title().textContent).toBe('Apply for an account');
     expect(screen.getByRole('heading', { name: 'What you’ll need' })).toBeTruthy();
     expect(document.activeElement).toBe(title());
   });
 
   it('focuses the heading on a return to Sign in', () => {
     setup();
-    press('New here? Apply for a trade account');
+    press('New here? Apply for an account');
     expect(document.activeElement).toBe(title());
     press('Already have an account? Sign in');
     expect(title().textContent).toBe('Sign in');
@@ -612,9 +612,9 @@ describe('AuthModal step changes (AW-090, AW-096, AW-245)', () => {
     const top = document.querySelector('[role="dialog"] .dialog-top');
     expect([...top.children].map((el) => el.className)).toEqual(['kicker', 'icon-btn']);
     expect(top.querySelector('.kicker').textContent).toBe('EXISTING ACCOUNTS');
-    expect(screen.queryByText('TRADE ACCOUNT')).toBeNull();
+    expect(screen.queryByText('ACCOUNT')).toBeNull();
     expect(document.querySelectorAll('[role="dialog"] .kicker')).toHaveLength(1);
-    press('New here? Apply for a trade account');
+    press('New here? Apply for an account');
     expect(top.querySelector('.kicker').textContent).toBe('NEW ACCOUNTS · LICENSED RETAILERS ONLY');
   });
 });

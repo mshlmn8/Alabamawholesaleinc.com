@@ -1,4 +1,4 @@
-// Trade account application page: the "what you'll need" checklist, how the
+// Account application page: the "what you'll need" checklist, how the
 // process works, and — for a signed-in applicant — the current approval status.
 //
 // The page head, intro and contact strip follow the account (AW-098): a guest
@@ -53,7 +53,7 @@ function ApplyIntro({ view }) {
   if (view === 'approved') {
     return (
       <p>
-        Your trade account is active. Browse <Link className="text-link" to="/catalog">the catalog</Link> with your pricing,
+        Your account is active. Browse <Link className="text-link" to="/catalog">the catalog</Link> with your pricing,
         see your orders in <Link className="text-link" to="/account">My account</Link>, or reorder by SKU
         with <Link className="text-link" to="/account#quick-reorder">Quick Reorder</Link>.
       </p>
@@ -98,7 +98,7 @@ export function ApplyPage({
         )}
       </PageHead>
       {/* The side nav names this page as the crumb does once there is an
-          account: 'Trade account', not the guest's apply label (NEW-047). */}
+          account: 'Account status', not the guest's apply label (NEW-047). */}
       <SupportLayout current="apply" applyLabel={supportApplyLabel(view !== 'guest')}>
 
       {/* Holds about the room the status and documents take, so they don't

@@ -57,11 +57,11 @@ describe('CatalogIndexPage', () => {
     expect(screen.queryByText(/\d+ (flavors|sizes|colors|varieties|variants)/)).toBeNull();
   });
 
-  it('heads the page once with its counts, without repeating them (AW-068, AW-284)', () => {
+  it('heads the page once, with no counts (AW-068, AW-284)', () => {
     page(products);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('All products');
     expect(document.querySelector('.page-head .eyebrow').textContent).toBe('FULL ASSORTMENT');
-    expect(document.querySelector('.page-head > p:not([class])').textContent).toBe('8 departments, 4 product lines and 4 products.');
+    expect(document.querySelector('.page-head > p:not([class])').textContent).toBe('Every department in one place.');
     expect(document.querySelector('.catalog-index .result-note')).toBeNull();
   });
 
@@ -72,7 +72,7 @@ describe('CatalogIndexPage', () => {
     expect(cardNames(section('Tobacco'))).toEqual(['Ranked wraps', 'Bestseller cigars', 'New papers', 'Deal wraps']);
     expect(CATALOG_PREVIEW).toBe(4);
     const tobacco = within(section('Tobacco'));
-    expect(tobacco.getByRole('link', { name: 'See all 7 Tobacco products' }).getAttribute('href')).toBe('/category/tobacco');
+    expect(tobacco.getByRole('link', { name: 'See all Tobacco products' }).getAttribute('href')).toBe('/category/tobacco');
     expect(tobacco.getByRole('link', { name: 'Browse Tobacco' }).getAttribute('href')).toBe('/category/tobacco');
     // Guests see the lock on each card, no price (AW-224), worded for a guest (NEW-050).
     expect(tobacco.getAllByText('Sign in for pricing')).toHaveLength(4);
@@ -95,8 +95,8 @@ describe('CatalogIndexPage', () => {
       'Bestseller cigars', 'Deal wraps', 'Last cigars', 'New papers', 'No-photo bestseller', 'Ranked wraps', 'Untagged cigars',
     ]);
     // 'SKU' only where the codes are listed; the count says products (NEW-056).
-    expect(section('Tobacco').querySelector('details.sku-details > summary').textContent).toBe('SKU list: all 7 Tobacco products');
-    expect(section('Tobacco').querySelector('.dept-head .eyebrow').textContent).toBe('DEPARTMENT 01 · 7 products');
+    expect(section('Tobacco').querySelector('details.sku-details > summary').textContent).toBe('SKU list: all Tobacco products');
+    expect(section('Tobacco').querySelector('.dept-head .eyebrow').textContent).toBe('DEPARTMENT 01');
   });
 
   it('leaves a department without a photographed product with its lines, link and SKU list', () => {
@@ -119,7 +119,7 @@ describe('CatalogIndexPage', () => {
     page();
     const group = screen.getByRole('group', { name: 'Tobacco product lines' });
     expect(within(group).getAllByRole('link').map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
-      ['Cigars (3)', '/category/tobacco/cigars'], ['Papers (2)', '/category/tobacco/papers'], ['Wraps (2)', '/category/tobacco/wraps'],
+      ['Cigars', '/category/tobacco/cigars'], ['Papers', '/category/tobacco/papers'], ['Wraps', '/category/tobacco/wraps'],
     ]);
     // The jump links are anchors to the sections; the router focuses the
     // first heading in the section, which is its h2, not a card's h3.
@@ -161,7 +161,7 @@ describe('CatalogIndexPage pricing prompt', () => {
     expect(notice().className).toBe('callout info pricing-notice');
     expect(notice().previousElementSibling.classList.contains('page-head')).toBe(true);
     expect(notice().nextElementSibling.matches('nav.dept-jump')).toBe(true);
-    expect(notice().querySelector('p').textContent).toBe('Trade prices are shown to approved accounts.');
+    expect(notice().querySelector('p').textContent).toBe('Prices are shown to approved accounts.');
     // The old banner and the old prompt at the bottom of the page are gone.
     expect(document.querySelectorAll('.catalog-pricing, .filter-signin, .catalog-signin')).toHaveLength(0);
     expect(screen.queryByText(/Wholesale pricing is locked/)).toBeNull();
@@ -173,7 +173,7 @@ describe('CatalogIndexPage pricing prompt', () => {
     const onApplyClick = vi.fn();
     page({ onLoginClick, onApplyClick });
     const signIn = within(notice()).getByRole('button', { name: 'Sign in' });
-    const apply = within(notice()).getByRole('button', { name: 'Apply for a trade account' });
+    const apply = within(notice()).getByRole('button', { name: 'Apply for an account' });
     expect(signIn.className).toBe('button sm');
     expect(apply.className).toBe('text-link');
     fireEvent.click(signIn);

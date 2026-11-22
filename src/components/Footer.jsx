@@ -1,8 +1,8 @@
 // Site footer: departments, account and help links, contact details and the
 // policy links. Destinations are links (AW-043);
-// "Apply for a trade account", "Sign in" and "Help" open dialogs and stay
+// "Apply for an account", "Sign in" and "Help" open dialogs and stay
 // buttons. Signed in, a "My account" link takes the place of Apply and Sign
-// in (AW-066), and the link to /apply is "Trade account", the page's crumb,
+// in (AW-066), and the link to /apply is "Account status", the page's crumb,
 // where /apply shows the application's or the account's status and its
 // documents; a guest's is "Application checklist" (NEW-047). Links to the
 // page on screen carry aria-current (AW-221).
@@ -80,7 +80,7 @@ export function Footer({ departments, signedIn = false, onLoginClick, onApplyCli
   const shopLinks = (
     <>
       <Link className="footer-link" to="/catalog" aria-current={current('/catalog')}>All products</Link>
-      {departments.map(c => <Link key={c.key} className="footer-link" to={{ page: 'category', category: c.key }} aria-current={current({ page: 'category', category: c.key })}>{`${c.label} (${c.count})`}</Link>)}
+      {departments.map(c => <Link key={c.key} className="footer-link" to={{ page: 'category', category: c.key }} aria-current={current({ page: 'category', category: c.key })}>{c.label}</Link>)}
       <Link className="footer-link" to="/#new-arrivals">New arrivals</Link>
       <Link className="footer-link" to="/#bestsellers">Bestsellers</Link>
     </>

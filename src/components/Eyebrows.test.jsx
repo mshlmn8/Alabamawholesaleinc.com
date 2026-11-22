@@ -57,7 +57,7 @@ describe('Account dialog (AW-220)', () => {
   it('names the mode in its one eyebrow, beside the close button', () => {
     for (const [mode, eyebrow, title] of [
       ['signin', 'EXISTING ACCOUNTS', 'Sign in'],
-      ['signup', 'NEW ACCOUNTS · LICENSED RETAILERS ONLY', 'Apply for a trade account'],
+      ['signup', 'NEW ACCOUNTS · LICENSED RETAILERS ONLY', 'Apply for an account'],
       ['reset', 'PASSWORD HELP', 'Reset your password'],
     ]) {
       const { unmount } = renderModal(mode);

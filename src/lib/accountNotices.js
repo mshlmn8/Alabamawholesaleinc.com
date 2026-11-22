@@ -68,7 +68,7 @@ function linkConfirmedNotice(state, act) {
     return {
       id: 'link-confirmed',
       title: 'Your email is confirmed',
-      text: 'You’re signed in. Your application is waiting for review — see its status and add your license documents on your trade account page.',
+      text: 'You’re signed in. Your application is waiting for review — see its status and add your license documents on your account page.',
       // No link to the page the buyer is already on.
       actions: state.routePage === 'apply' ? [] : [{ id: 'view-application', label: 'View application status', onClick: act.viewApplication }],
       onDismiss: act.dismissLink,

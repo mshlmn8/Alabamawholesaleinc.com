@@ -62,11 +62,11 @@ describe('ApplyPage', () => {
 
   // The side nav names the page as its crumb does once there is an account
   // (NEW-047); a guest keeps the apply label.
-  it('names its side-nav entry Trade account for every signed-in view, and the apply label for a guest', () => {
+  it('names its side-nav entry Account for every signed-in view, and the apply label for a guest', () => {
     const navCurrent = () => screen.getByRole('navigation', { name: 'Help and policies' }).querySelector('a[aria-current="page"]');
     const guest = page();
-    expect(navCurrent().textContent).toBe('Apply for a trade account');
-    expect(document.querySelector('.crumbs').textContent).toContain('Trade account');
+    expect(navCurrent().textContent).toBe('Apply for an account');
+    expect(document.querySelector('.crumbs').textContent).toContain('Account status');
     guest.unmount();
     for (const props of [
       { profile: null, account: 'loading' },
@@ -74,7 +74,7 @@ describe('ApplyPage', () => {
       ...['pending', 'approved', 'suspended'].map((status) => ({ profile: { id: 'p', email: 'buyer@example.test', status }, account: 'ready' })),
     ]) {
       const view = page(props);
-      expect(navCurrent().textContent, props.account).toBe('Trade account');
+      expect(navCurrent().textContent, props.account).toBe('Account status');
       expect(navCurrent().getAttribute('href')).toBe('/apply');
       view.unmount();
     }
@@ -94,14 +94,14 @@ describe('ApplyPage for each account state', () => {
     const aside = screen.getByRole('complementary', { name: 'Contact the trade desk' });
     return [aside.querySelector('.eyebrow').textContent, aside.querySelector('h2').textContent];
   };
-  const startButtons = () => screen.queryAllByRole('button', { name: 'Apply for a trade account' });
+  const startButtons = () => screen.queryAllByRole('button', { name: 'Apply for an account' });
 
   it('invites a guest to apply, with the apply button in the page head and on the checklist', () => {
     const onApplyClick = vi.fn();
     const onLoginClick = vi.fn();
     page({ onApplyClick, onLoginClick });
     expect(eyebrow()).toBe('OPEN AN ACCOUNT');
-    expect(h1()).toBe('Apply for a trade account');
+    expect(h1()).toBe('Apply for an account');
     expect(intro()).toBe('Alabama Wholesale sells exclusively to licensed retail businesses — 21+, no consumer sales. Here is what to have ready, and what happens after you apply.');
     expect(strip()).toEqual(['RATHER TALK IT THROUGH?', 'Apply with a trade rep']);
     const [first, last] = startButtons();
@@ -116,7 +116,7 @@ describe('ApplyPage for each account state', () => {
     fireEvent.click(signIns[0]);
     expect(onLoginClick).toHaveBeenCalledTimes(1);
     // No arrow glyphs on the buttons (styles.test).
-    expect(head().querySelector('.dialog-actions').textContent).toBe('Apply for a trade accountAlready have an account? Sign in');
+    expect(head().querySelector('.dialog-actions').textContent).toBe('Apply for an accountAlready have an account? Sign in');
   });
 
   it('offers the phone in the page head without a backend', () => {
@@ -128,8 +128,8 @@ describe('ApplyPage for each account state', () => {
 
   it('promises nothing while the account loads', () => {
     page({ account: 'loading' });
-    expect(eyebrow()).toBe('TRADE ACCOUNT');
-    expect(h1()).toBe('Trade account');
+    expect(eyebrow()).toBe('ACCOUNT');
+    expect(h1()).toBe('Account status');
     expect(intro()).toBe('Alabama Wholesale sells exclusively to licensed retail businesses — 21+, no consumer sales.');
     expect(strip()).toEqual(['QUESTIONS?', 'Talk to the warehouse']);
     expect(startButtons()).toHaveLength(0);
@@ -140,7 +140,7 @@ describe('ApplyPage for each account state', () => {
   it('tells an applicant under review where the application stands', () => {
     page(as('pending'));
     expect(eyebrow()).toBe('APPLICATION UNDER REVIEW');
-    expect(h1()).toBe('Your trade account');
+    expect(h1()).toBe('Your account');
     expect(intro()).toBe('Your application is with a trade rep. Here is where it stands, and the license documents you can add while you wait.');
     expect(intro()).not.toMatch(/what to have ready|business day/);
     expect(strip()).toEqual(['QUESTIONS ABOUT YOUR APPLICATION?', 'Talk to a trade rep']);
@@ -151,8 +151,8 @@ describe('ApplyPage for each account state', () => {
   it('points an approved account at the catalog, My account and Quick Reorder', () => {
     page(as('approved'));
     expect(eyebrow()).toBe('ACCOUNT ACTIVE');
-    expect(h1()).toBe('Your trade account');
-    expect(intro()).toMatch(/^Your trade account is active\. /);
+    expect(h1()).toBe('Your account');
+    expect(intro()).toMatch(/^Your account is active\. /);
     const links = within(head().querySelector('h1 + p')).getAllByRole('link').map((a) => [a.textContent, a.getAttribute('href')]);
     expect(links).toEqual([['the catalog', '/catalog'], ['My account', '/account'], ['Quick Reorder', '/account#quick-reorder']]);
     expect(strip()).toEqual(['QUESTIONS?', 'Talk to the warehouse']);
@@ -163,7 +163,7 @@ describe('ApplyPage for each account state', () => {
   it('tells an account on hold who to call, and never invites it to apply again', () => {
     page(as('suspended'));
     expect(eyebrow()).toBe('ACCOUNT ON HOLD');
-    expect(h1()).toBe('Your trade account');
+    expect(h1()).toBe('Your account');
     expect(intro()).toMatch(/^Ordering is paused on this account\. Call .+ or email .+ and a trade rep will help you sort it out\.$/);
     const contacts = within(head().querySelector('h1 + p')).getAllByRole('link').map((a) => a.getAttribute('href'));
     expect(contacts).toEqual([expect.stringMatching(/^tel:/), expect.stringMatching(/^mailto:/)]);
@@ -177,7 +177,7 @@ describe('ApplyPage for each account state', () => {
   // guest's Apply and Sign in (NEW-002).
   it('offers no guest Apply or Sign in while a signed-in account’s profile loads', () => {
     page({ profile: null, account: 'loading' });
-    expect(h1()).toBe('Trade account');
+    expect(h1()).toBe('Account status');
     expect(startButtons()).toHaveLength(0);
     expect(screen.queryByRole('button', { name: 'Already have an account? Sign in' })).toBeNull();
   });
@@ -186,8 +186,8 @@ describe('ApplyPage for each account state', () => {
     const onRetry = vi.fn();
     const onSignOut = vi.fn();
     const view = page({ profile: null, account: 'no-profile', onRetry, onSignOut });
-    expect(eyebrow()).toBe('TRADE ACCOUNT');
-    expect(h1()).toBe('Your trade account');
+    expect(eyebrow()).toBe('ACCOUNT');
+    expect(h1()).toBe('Your account');
     expect(intro()).toBe('Alabama Wholesale sells exclusively to licensed retail businesses — 21+, no consumer sales.');
     expect(strip()).toEqual(['QUESTIONS?', 'Talk to the warehouse']);
     expect(startButtons()).toHaveLength(0);

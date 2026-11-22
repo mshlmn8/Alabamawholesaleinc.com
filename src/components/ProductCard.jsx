@@ -52,7 +52,7 @@
 // unless the page says `eager`; the first card of a department page is also
 // `priority` (AW-323).
 //
-// Without trade pricing the card says why as plain text, one line, with no
+// Without pricing the card says why as plain text, one line, with no
 // tab stop of its own (AW-224); the page shows one PricingNotice with Sign
 // in and Apply above the grid instead of a sign-in link on every card.
 // Callers may still pass onLoginClick. The words are PRICE_LOCK's `short`

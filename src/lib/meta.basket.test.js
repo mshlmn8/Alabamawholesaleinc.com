@@ -23,6 +23,6 @@ describe('page titles and the basket (AW-132, AW-024)', () => {
 describe('page titles in sentence case (AW-131)', () => {
   it('titles the account and apply pages like their headings', () => {
     expect(title({ page: 'account' })).toBe('My account · Alabama Wholesale Inc');
-    expect(title({ page: 'apply' })).toBe('Apply for a trade account · Alabama Wholesale Inc');
+    expect(title({ page: 'apply' })).toBe('Apply for an account · Alabama Wholesale Inc');
   });
 });

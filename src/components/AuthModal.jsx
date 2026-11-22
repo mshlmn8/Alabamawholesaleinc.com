@@ -65,7 +65,7 @@ const volumeLabel = (value) => value.replace(' — ', '–');
 // A store outside the delivery routes is told how orders would reach it,
 // instead of the list offering only nearby states and 'Other' (AW-282). No
 // state chosen yet (an empty default) is no store off the routes.
-// TODO(owner): Do you accept trade accounts from stores outside AL, MS and GA, for will-call only? (AW-282)
+// TODO(owner): Do you accept accounts from stores outside AL, MS and GA, for will-call only? (AW-282)
 const ROUTE_STATE_NAMES = DELIVERY_ROUTE_STATES.map(stateName);
 // No Array.prototype.at: the build targets Safari 14, which lacks it (NEW-019).
 const ROUTE_STATES_TEXT = `${ROUTE_STATE_NAMES.slice(0, -1).join(', ')} and ${ROUTE_STATE_NAMES[ROUTE_STATE_NAMES.length - 1]}`;
@@ -777,7 +777,7 @@ export function AuthModal({ initialMode = 'signin', onClose, onSignOut, signingO
               <Field id="aw-su-ein" label="Federal EIN" hint="9 digits, for example 12-3456789." full>
                 <input id="aw-su-ein" name="ein" value={signup.ein} onChange={setU('ein')} required inputMode="numeric" pattern="[0-9]{2}-?[0-9]{7}" title="Enter the 9-digit EIN, for example 12-3456789." placeholder="12-3456789" autoComplete="off" aria-describedby="aw-su-ein-hint" />
               </Field>
-              {/* TODO(owner): Is a tobacco license required for every trade account, or only for tobacco, vapor, and nicotine? This field stays required for every application until you decide. (AW-129) */}
+              {/* TODO(owner): Is a tobacco license required for every account, or only for tobacco, vapor, and nicotine? This field stays required for every application until you decide. (AW-129) */}
               <Field id="aw-su-license" label="State retail tobacco license #" hint="From the state where the store is licensed.">
                 <input id="aw-su-license" name="license_no" value={signup.license_no} onChange={setU('license_no')} required autoComplete="off" aria-describedby="aw-su-license-hint" data-required-message={LICENSE_REQUIRED} />
               </Field>

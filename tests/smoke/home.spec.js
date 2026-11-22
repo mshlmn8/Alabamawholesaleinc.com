@@ -36,14 +36,18 @@ test('the carousel shows new products and no warehouse photo or headline box', a
   await page.goto('/');
   await expect(page.locator('.home-hero-copy')).toHaveCount(0);
   await expect(page.locator('.home-hero')).not.toContainText('WHOLESALE DISTRIBUTOR');
-  await expect(page.locator('.home-carousel-slide')).toHaveCount(3);
+  await expect(page.locator('.home-carousel-slide')).toHaveCount(6);
+  // The new arrivals, then the products on deal.
   expect(await page.locator('.home-carousel-slide').evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')))).toEqual([
-    '1 of 3: Foger Switch Pro full kit',
-    '2 of 3: RAZ 25K',
-    '3 of 3: Tueni chews',
+    '1 of 6: Foger Switch Pro full kit',
+    '2 of 6: RAZ 25K',
+    '3 of 6: Tueni chews',
+    '4 of 6: Pom Pom cigarillos',
+    '5 of 6: WD-40',
+    '6 of 6: Monster Energy',
   ]);
   const active = page.locator('.home-carousel-slide.is-active');
-  await expect(active).toHaveAttribute('aria-label', '1 of 3: Foger Switch Pro full kit');
+  await expect(active).toHaveAttribute('aria-label', '1 of 6: Foger Switch Pro full kit');
   await expect(active.getByRole('link', { name: 'Foger Switch Pro full kit' })).toHaveAttribute('href', '/product/62');
   await expect(active.locator('img')).toHaveAttribute('alt', 'Foger Switch Pro full kit');
   await expect(page.locator('.home-carousel')).not.toContainText(/loading doors|Graymont|pallet racks|Shop Food Stuff/);

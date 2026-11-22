@@ -116,7 +116,7 @@ export function NotFoundPage({ kind = 'page', category = null, products, departm
             <h2 id="not-found-browse-title">Browse by department</h2>
             <ul className="sub-pills">
               {departments.map(d => (
-                <li key={d.key}><Link className="sub-pill" to={{ page: 'category', category: d.key }}>{`${d.label} (${d.count})`}</Link></li>
+                <li key={d.key}><Link className="sub-pill" to={{ page: 'category', category: d.key }}>{d.label}</Link></li>
               ))}
             </ul>
             <p className="not-found-links">

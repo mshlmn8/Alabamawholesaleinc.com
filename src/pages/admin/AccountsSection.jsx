@@ -404,7 +404,7 @@ function AccountsList({
 // The "Email applicant" message after approval (AW-088, Cursor's PR #13).
 // TODO(owner): Should approvals send an automatic email, which needs an email provider or SMTP set up in Supabase, or will a trade rep call or email each approved applicant by hand? (AW-088)
 export function approvalEmail(p) {
-  const subject = 'Your Alabama Wholesale trade account';
-  const body = 'Your Alabama Wholesale trade account is approved. Sign in to see pricing.';
+  const subject = 'Your Alabama Wholesale account';
+  const body = 'Your Alabama Wholesale account is approved. Sign in to see pricing.';
   return `mailto:${p.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }

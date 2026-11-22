@@ -1,7 +1,7 @@
 // The cart drawer names the basket an order for everyone (AW-132, AW-024:
 // customers place orders, not quotes): 'Your order' in its heading, list,
 // empty note and notices, and Checkout on its button, which leads to
-// /checkout. Guests are told prices are for approved trade accounts, with a
+// /checkout. Guests are told prices are for approved accounts, with a
 // way to sign in for pricing and ordering.
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -43,9 +43,9 @@ describe('CartDrawer basket names (AW-132, AW-024)', () => {
     expect(screen.queryByRole('link', { name: 'Checkout' })).toBeNull();
   });
 
-  it('tells a guest prices show for approved trade accounts, and offers sign-in for pricing and ordering', () => {
+  it('tells a guest prices show for approved accounts, and offers sign-in for pricing and ordering', () => {
     render(drawer({}));
-    expect(document.querySelector('.drawer-total-note').textContent).toBe('Prices show for approved trade accounts');
+    expect(document.querySelector('.drawer-total-note').textContent).toBe('Prices show for approved accounts');
     expect(screen.getByRole('button', { name: 'Sign in for pricing and ordering' })).toBeTruthy();
     expect(screen.queryByText(/after sign-in|Sign in for pricing$/)).toBeNull();
   });

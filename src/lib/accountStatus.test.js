@@ -43,7 +43,7 @@ describe('PRICE_LOCK', () => {
   it('keeps the guest and pending wording the storefront already uses', () => {
     expect(PRICE_LOCK.guest).toMatchObject({ short: 'Sign in for pricing', line: 'Sign in to see your wholesale pricing.' });
     // The one guest prompt above a grid and in the product page's price slot (NEW-050).
-    expect(PRICE_LOCK.guest.notice).toBe('Trade prices are shown to approved accounts.');
+    expect(PRICE_LOCK.guest.notice).toBe('Prices are shown to approved accounts.');
     expect(PRICE_LOCK.pending).toMatchObject({ short: 'Pricing after approval', line: 'Pricing unlocks after your account is approved.' });
   });
 
@@ -146,7 +146,7 @@ describe('tradeAccountPanel', () => {
     expect(tradeAccountPanel('guest')).toBeNull();
     expect(Object.keys(TRADE_ACCOUNT_PANELS)).toEqual(Object.keys(ACCOUNT_EYEBROWS));
     expect(ACCOUNT_EYEBROWS).toEqual({
-      loading: 'TRADE ACCOUNT', 'no-profile': 'TRADE ACCOUNT', pending: 'APPLICATION UNDER REVIEW', approved: 'ACCOUNT ACTIVE', suspended: 'ACCOUNT ON HOLD',
+      loading: 'ACCOUNT', 'no-profile': 'ACCOUNT', pending: 'APPLICATION UNDER REVIEW', approved: 'ACCOUNT ACTIVE', suspended: 'ACCOUNT ON HOLD',
     });
   });
 
@@ -159,7 +159,7 @@ describe('tradeAccountPanel', () => {
       approved: { to: '/account', label: 'My account' },
       suspended: { to: '/apply', label: 'Application status' },
     });
-    expect(tradeAccountPanel('approved')).toMatchObject({ eyebrow: 'ACCOUNT ACTIVE', title: 'Your trade account' });
+    expect(tradeAccountPanel('approved')).toMatchObject({ eyebrow: 'ACCOUNT ACTIVE', title: 'Your account' });
     // An account on hold is never told to wait for approval (AW-101), and no panel asks anyone to apply.
     expect(tradeAccountPanel('suspended').text).not.toMatch(/approv/i);
     for (const view of Object.keys(TRADE_ACCOUNT_PANELS)) expect(tradeAccountPanel(view).text).not.toMatch(/apply for/i);

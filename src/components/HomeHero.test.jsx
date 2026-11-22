@@ -21,13 +21,13 @@ describe('HomeHero', () => {
     expect(h1s[0].className).toBe('sr-only');
     expect(screen.getByRole('region', { name: HOME_HERO.title })).toBeTruthy();
     expect(document.querySelector('.home-hero-copy, .home-hero-actions, .home-hero-text')).toBeNull();
-    expect(document.querySelector('.home-hero').textContent).not.toMatch(/WHOLESALE DISTRIBUTOR|Apply for a trade account|Browse the catalog/);
+    expect(document.querySelector('.home-hero').textContent).not.toMatch(/WHOLESALE DISTRIBUTOR|Apply for an account|Browse the catalog/);
   });
 
-  it('is the carousel, named New products', () => {
+  it('is the carousel, named New products and deals', () => {
     render(<HomeHero slides={[{ key: 'a', img: '/a.jpg', picture: { src: '/a.jpg', width: 400, height: 400 }, alt: 'Tueni chews', caption: 'Tueni chews', to: { page: 'product', productId: 184 } }]} />);
     expect([...document.querySelector('.home-hero').children].map((el) => el.className)).toEqual(['sr-only', 'home-hero-media']);
-    expect(document.querySelector('.home-carousel').getAttribute('aria-label')).toBe('New products');
+    expect(document.querySelector('.home-carousel').getAttribute('aria-label')).toBe('New products and deals');
     expect(screen.getByRole('link', { name: 'Shop Tueni chews' }).getAttribute('href')).toBe('/product/184');
   });
 });

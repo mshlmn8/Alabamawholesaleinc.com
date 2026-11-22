@@ -100,11 +100,15 @@
      text size. The border is 3.96:1 on white, 3.67:1 on --surface-soft,
      3.58:1 on --paper and 3.29:1 on --cream (WCAG 1.4.11 asks for 3:1).
      Admin tables use the compact height on desktop only. */
+  /* Corners: controls (buttons, fields, chips) and boxes (photo frames,
+     tiles, panels), in step with the home carousel card. */
+  --radius: 10px;
+  --radius-box: 14px;
   --field-h: 2.75rem;
   --field-h-compact: 2.125rem;
   --field-bg: #fff;
   --field-border: #857d8a;
-  --field-radius: 2px;
+  --field-radius: 10px;
   --field-font: var(--text-base);
 }
 @media (max-width: 37.5em) {
@@ -277,7 +281,7 @@ input[type="search"]:focus-visible { outline-offset: -3px; }
 .aw-search input:focus-visible { outline: none; }
 .aw-search > button:focus-visible { outline-offset: -6px; }
 .aw-search input::placeholder { font-size: var(--text-sm); }
-.aw-search > button { flex: 0 0 52px; display: grid; place-items: center; border: 0; border-left: 1px solid var(--field-border); border-radius: 0 2px 2px 0; color: var(--purple); background: var(--paper); font-size: 1.25rem; }
+.aw-search > button { flex: 0 0 52px; display: grid; place-items: center; border: 0; border-left: 1px solid var(--field-border); border-radius: 0 calc(var(--field-radius) - 1px) calc(var(--field-radius) - 1px) 0; color: var(--purple); background: var(--paper); font-size: 1.25rem; }
 /* Hover only where there is a mouse (AW-160): a tap leaves no hover colour
    behind. */
 @media (hover: hover) {
@@ -289,7 +293,7 @@ input[type="search"]:focus-visible { outline-offset: -3px; }
 /* :where() keeps this at one class, so the .button sizes below win. */
 .aw-account-actions :where(button, a) { font-size: var(--text-sm); font-weight: 700; min-height: var(--tap); }
 .aw-account-actions a { display: inline-flex; align-items: center; }
-.aw-signin { border: 0; background: transparent; color: var(--purple); padding: 10px 4px; }
+.aw-signin { border: 0; background: transparent; color: var(--purple); padding: 10px 4px; white-space: nowrap; }
 @media (hover: hover) {
   .aw-signin:hover { text-decoration: underline; text-underline-offset: var(--link-offset); }
 }
@@ -329,10 +333,10 @@ input[type="search"]:focus-visible { outline-offset: -3px; }
   .aw-discovery-nav > button:hover, .aw-discovery-nav > a:hover, .aw-service-nav button:hover, .aw-service-nav a:hover { color: var(--orange-dark); }
 }
 .aw-new-dot { height: 6px; width: 6px; background: var(--button-orange); border-radius: 50%; display: inline-block; }
-.aw-exotics-link { color: var(--orange-dark); }
 .aw-service-nav { margin-left: auto; gap: 22px; }
 .aw-service-nav button, .aw-service-nav a { padding: 0; min-height: var(--tap); display: flex; align-items: center; gap: 8px; color: var(--purple); background: none; border: 0; font-size: var(--text-sm); font-weight: 600; white-space: nowrap; }
 .aw-service-nav .icon { font-size: 1.125rem; }
+.aw-service-nav .aw-call { font-weight: 700; }
 /* The link to the page on screen (AW-221), in the navigation rows and the
    phone menu: text orange, with an orange bar along its foot. */
 .aw-discovery-nav a[aria-current], .aw-service-nav a[aria-current], .menu-group a[aria-current] { color: var(--orange-dark); box-shadow: inset 0 -3px 0 var(--orange); }
@@ -421,7 +425,7 @@ h2.eyebrow { font-family: var(--body); line-height: inherit; }
    the smaller sizes, and .xs.text the quiet text-style one. Sentence case,
    label centred, no arrow. Hover only where there is a mouse, never on a
    disabled button, which keeps its resting colours (AW-298). */
-.button { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: var(--tap); padding: 12px 22px; font-size: var(--text-sm); font-weight: 700; line-height: 1.25; text-align: center; background: var(--button-orange); color: #fff; border-radius: 2px; transition: background-color .2s, border-color .2s, color .2s; border: 1px solid var(--button-orange); }
+.button { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: var(--tap); padding: 12px 22px; font-size: var(--text-sm); font-weight: 700; line-height: 1.25; text-align: center; background: var(--button-orange); color: #fff; border-radius: var(--radius); transition: background-color .2s, border-color .2s, color .2s; border: 1px solid var(--button-orange); }
 .button.ghost { background: transparent; color: var(--purple); border-color: var(--purple); }
 .button.on-dark { background: transparent; color: #fff; border-color: var(--on-dark-line); }
 .button.sm { min-height: var(--tap-sm); padding: 0 .875rem; }
@@ -440,7 +444,7 @@ h2.eyebrow { font-family: var(--body); line-height: inherit; }
    narrowest the page around it can be: at 200% text on a 320px phone the
    product page then scrolled sideways (AW-162). Where there is room the
    buttons keep their full 40px, or 44px on touch (AW-302). */
-.stepper { display: inline-flex; align-items: center; flex-shrink: 0; max-width: 100%; border: 1px solid var(--line); background: #fff; }
+.stepper { display: inline-flex; align-items: center; flex-shrink: 0; max-width: 100%; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; overflow: hidden; }
 .stepper button { display: grid; place-items: center; flex: 0 1 auto; min-width: 0; width: var(--tap-sm); height: var(--tap-sm); padding: 0; border: 0; background: #fff; color: var(--purple); font-size: 1.25rem; }
 .stepper input { width: 100%; max-width: calc(6ch + 1.5rem + 2px); min-width: 0; flex: 0 1 auto; text-align: center; }
 .icon-btn:disabled, .stepper button:disabled { opacity: var(--disabled-opacity); cursor: not-allowed; }
@@ -502,7 +506,7 @@ p > .text-link { min-height: 0; min-width: 0; }
    saved-quantity notes and the site and cart notices are .info, and the
    .is-warn site and cart notices the plain callout. */
 .callout, .notice, .support-alert, .qr-summary, .order-foot, .site-notice, .cart-notice, .pd-unit, .pd-saved {
-  padding: .875rem 1rem; border-left: 4px solid var(--orange); background: var(--cream); color: var(--ink); font-size: var(--text-base); line-height: 1.6;
+  padding: .875rem 1rem; border-left: 4px solid var(--orange); border-radius: var(--radius); background: var(--cream); color: var(--ink); font-size: var(--text-base); line-height: 1.6;
 }
 .callout.info, .site-notice:not(.is-warn), .cart-notice:not(.is-warn), .pd-unit, .pd-saved { border-left-color: var(--purple); background: var(--paper); }
 .callout.success { border-left-color: var(--success); background: var(--success-bg); }
@@ -523,7 +527,7 @@ p > .text-link { min-height: 0; min-width: 0; }
    button, then the dots and the pause, previous and next controls. A
    sideways swipe anywhere on the carousel changes slides (AW-161). */
 .home-carousel { position: relative; overflow: hidden; border-radius: 18px; background: #fff; border: 1px solid var(--line); touch-action: pan-y; }
-.home-carousel-stage { position: relative; aspect-ratio: 5 / 4; overflow: hidden; background: var(--stat-bg); -webkit-user-select: none; user-select: none; }
+.home-carousel-stage { position: relative; aspect-ratio: 5 / 4; overflow: hidden; background: #fff; -webkit-user-select: none; user-select: none; }
 .home-carousel-badge, .home-carousel-index { position: absolute; z-index: 2; top: 12px; margin: 0; font-size: var(--text-xs); font-weight: 700; line-height: 1; }
 .home-carousel-badge { left: 12px; padding: 8px 10px; border-radius: 6px; background: var(--orange); color: #fff; letter-spacing: var(--track-label); text-transform: uppercase; }
 .home-carousel-index { right: 12px; padding: 8px 10px; border-radius: 8px; background: var(--purple); color: #fff; }
@@ -531,7 +535,7 @@ p > .text-link { min-height: 0; min-width: 0; }
 .home-carousel-slide.is-active { opacity: 1; pointer-events: auto; }
 /* The photo stays out of flow (a <picture> is display: contents) and is
    contained in the frame, so a tall packshot and a wide one keep one window. */
-.home-carousel-slide img { position: absolute; inset: 28px; z-index: -1; width: calc(100% - 56px); height: calc(100% - 56px); object-fit: contain; object-position: center; display: block; }
+.home-carousel-slide img { position: absolute; inset: 12px; z-index: -1; width: calc(100% - 24px); height: calc(100% - 24px); object-fit: contain; object-position: center; display: block; }
 .home-carousel-band { display: flex; flex-direction: column; background: #fff; }
 .home-carousel-panel { order: 1; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 16px 8px; }
 .home-carousel-copy { min-width: 0; }
@@ -561,6 +565,17 @@ p > .text-link { min-height: 0; min-width: 0; }
 .home-carousel-warning[aria-hidden="true"] { visibility: hidden; }
 .home-carousel.is-empty { background: var(--stat-bg); }
 .home-carousel.is-empty .home-carousel-stage { background: none; }
+/* A wide screen: the photo beside the name, the Shop button and the
+   controls, so the card is one screen tall and the departments follow it. */
+@media (min-width: 53.1875em) {
+  .home-carousel { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+  .home-carousel-stage { aspect-ratio: 4 / 3; }
+  .home-carousel-band { justify-content: center; padding-block: 24px; }
+  .home-carousel-panel { flex-direction: column; align-items: flex-start; gap: 20px; padding: 0 28px 20px; }
+  .home-carousel-title { font-size: 2.25rem; line-height: 1.1; }
+  .home-carousel-controls { padding: 0 28px 20px; }
+  .home-carousel-warning { margin: 0 28px; }
+}
 
 /* Responsive <picture> wrappers take no box of their own, so the existing
    img rules (absolute fill, object-fit) keep applying to the photo. */
@@ -578,7 +593,7 @@ p > .text-link { min-height: 0; min-width: 0; }
    line"): one line, swiped sideways to the rest. A card is never the full
    width, so the next one peeks in and shows there is more. */
 .card-rail { display: flex; gap: var(--grid-gap); overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scroll-padding-inline: 2px; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
-.card-rail > .content-card { flex: 0 0 16.5rem; width: 16.5rem; max-width: calc(100% - 2.75rem); scroll-snap-align: start; }
+.card-rail > .content-card { flex: 1 0 16.5rem; width: 16.5rem; max-width: min(26rem, calc(100% - 2.75rem)); scroll-snap-align: start; }
 /* No card narrower than 12.5rem (AW-154): a catalog or search grid of four
    becomes two by two below about 58em. The department grid sets its own
    columns further down, and phones keep two. The home rails and other short
@@ -603,7 +618,7 @@ p > .text-link { min-height: 0; min-width: 0; }
    the link. A size container (its width comes from the card and its height
    from the aspect ratio, never from what is in it), so "Photo coming soon"
    can fit itself to the tile (NEW-083). */
-.card-block { aspect-ratio: 1.1; display: grid; place-items: center; margin-bottom: 14px; position: relative; overflow: hidden; background: var(--tile); border: 1px solid var(--line); isolation: isolate; container-type: size; }
+.card-block { aspect-ratio: 1.1; display: grid; place-items: center; margin-bottom: 14px; position: relative; overflow: hidden; background: var(--tile); border: 1px solid var(--line); isolation: isolate; container-type: size; border-radius: var(--radius-box); }
 .card-initials { font: 500 3.625rem/1 var(--display); color: var(--initials); letter-spacing: -.125rem; }
 /* A photo is never drawn larger than its own pixel size (AW-073): its width
    comes from the img width attribute (the largest rendition, never wider than
@@ -650,7 +665,7 @@ p > .text-link { min-height: 0; min-width: 0; }
    the photo (AW-055): beside the product line on a card, beside the brand
    line on the product page. White on the button orange or purple, at least
    4.5:1. As tall as the kicker's line, so tagged and untagged cards match. */
-.card-tag { display: inline-block; background: var(--button-orange); color: #fff; font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); padding: 3px 6px; line-height: 1; }
+.card-tag { display: inline-block; background: var(--button-orange); color: #fff; font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); padding: 3px 6px; line-height: 1; border-radius: 4px; }
 .card-tag.new { background: var(--purple); }
 .card-tag.deal { background: var(--button-orange); }
 .card-tag.bestseller { background: var(--purple-deep); }
@@ -667,6 +682,10 @@ p > .text-link { min-height: 0; min-width: 0; }
    only when it alone is wider than the line. */
 .text-parts { display: flex; flex-wrap: wrap; column-gap: .25em; }
 .text-parts > span { min-width: 0; }
+/* On a card the code takes a line of its own, under the brand, so no card
+   ends a line with a dot and the cards in a row read alike. */
+.card-detail .sku-part { flex-basis: 100%; }
+.card-detail .text-parts > span:has(+ .sku-part) > .part-sep { display: none; }
 /* A product code (TextParts' code: cards, cart and quote lines, header search
    results) never breaks at its hyphens (AW-304): one longer than the line,
    as some 22-29 character SKUs are on a phone's card, ends in an ellipsis.
@@ -777,9 +796,9 @@ p > .text-link { min-height: 0; min-width: 0; }
    compact layout the figures share a row, each over its label, and the
    sentence goes under them. */
 .trust-band { display: grid; gap: 12px; padding: 16px 0 0; background: none; color: var(--ink); }
-.trust-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.trust-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
 .trust-fact { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin: 0; padding: 16px; border-radius: 16px; background: var(--stat-bg); }
-.trust-figure { font: 700 2rem/1 var(--display); color: var(--purple); }
+.trust-figure { font: 700 1.75rem/1 var(--display); color: var(--purple); }
 .trust-label { max-width: none; font-size: var(--text-sm); font-weight: 600; line-height: 1.35; letter-spacing: 0; text-transform: none; color: var(--ink); }
 .trust-sourcing { margin: 0; padding: 0; border: 0; font-size: var(--text-sm); line-height: 1.5; color: var(--muted); }
 
@@ -788,10 +807,10 @@ p > .text-link { min-height: 0; min-width: 0; }
    the name and the biggest lines; no text sits on the photos (AW-055). */
 .dept-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--grid-gap); }
 /* The name is the link, stretched over the tile by its ::after (AW-170). */
-.dept-tile { position: relative; display: flex; flex-direction: column; min-width: 0; background: var(--purple); color: #fff; }
+.dept-tile { position: relative; display: flex; flex-direction: column; min-width: 0; background: var(--purple); color: #fff; border-radius: var(--radius-box); }
 .dept-tile-link { color: inherit; }
 .dept-tile-link::after { content: ''; position: absolute; inset: 0; }
-.dept-tile-media { display: grid; gap: 8px; padding: 10px; aspect-ratio: 1; overflow: hidden; background: var(--tile); border: 1px solid var(--line); border-bottom: 0; }
+.dept-tile-media { display: grid; gap: 8px; padding: 10px; aspect-ratio: 1; overflow: hidden; background: var(--tile); border: 1px solid var(--line); border-bottom: 0; border-radius: var(--radius-box) var(--radius-box) 0 0; }
 .dept-tile-media.is-1 { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
 .dept-tile-media.is-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); }
 .dept-tile-media.is-3, .dept-tile-media.is-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
@@ -818,6 +837,8 @@ p > .text-link { min-height: 0; min-width: 0; }
 .apply-steps { list-style: none; margin: 0; padding: 0; counter-reset: apply; }
 .apply-steps li { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr); gap: 8px 14px; padding: 16px 0; border-bottom: 1px solid var(--line); counter-increment: apply; }
 .apply-steps li:first-child { padding-top: 0; }
+/* The rule under the section follows the last step; it needs none of its own. */
+.apply-steps li:last-child { border-bottom: 0; }
 .apply-steps li::before { content: counter(apply, decimal-leading-zero); grid-row: 1 / 3; }
 .apply-steps h3 { grid-column: 2; font-family: var(--body); font-size: var(--text-lg); font-weight: 700; letter-spacing: 0; line-height: 1.3; color: var(--ink); margin: 4px 0 0; }
 .apply-steps p { grid-column: 2; margin: 0; font-size: var(--text-base); line-height: 1.6; color: var(--ink); }
@@ -867,7 +888,7 @@ p > .text-link { min-height: 0; min-width: 0; }
   .crumbs a:hover { color: var(--orange-dark); }
 }
 .sub-pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 var(--block-gap); }
-.sub-pill { display: inline-flex; align-items: center; min-height: var(--tap-sm); border: 1px solid var(--line); background: #fff; font-size: var(--text-sm); font-weight: 600; padding: 0 14px; color: var(--ink); white-space: nowrap; }
+.sub-pill { display: inline-flex; align-items: center; min-height: var(--tap-sm); border: 1px solid var(--line); background: #fff; font-size: var(--text-sm); font-weight: 600; padding: 0 14px; color: var(--ink); white-space: nowrap; border-radius: 999px; }
 @media (hover: hover) {
   .sub-pill:hover { border-color: var(--orange); }
 }
@@ -898,12 +919,6 @@ p > .text-link { min-height: 0; min-width: 0; }
 .category-head .sub-pill { padding-inline: 16px; border-radius: 999px; }
 .category-head .sub-pill .pill-count { margin-left: 8px; font-weight: 700; }
 .category-head .sub-pill:not(.active) .pill-count { color: var(--muted); }
-.line-label { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 16px; }
-.line-label .eyebrow { margin: 0; color: var(--muted); }
-.see-lines { border: 0; background: none; padding: 0; color: var(--orange-dark); font: 700 var(--text-sm) var(--body); min-height: var(--tap-sm); cursor: pointer; }
-@media (hover: hover) {
-  .see-lines:hover { color: var(--orange); }
-}
 .result-note { font-size: var(--text-sm); color: var(--muted); margin: 0; }
 .result-note strong { color: var(--purple); }
 /* position: relative keeps the visually hidden result count (.sr-only)
@@ -958,7 +973,7 @@ p > .text-link { min-height: 0; min-width: 0; }
    stays inside it; the 18px padding keeps the focus rings in view. No
    overscroll-behavior: contain, which in Chrome stops the wheel scrolling the
    page over a panel that fits; at its end the wheel moves on to the page. */
-.category-filters { position: sticky; top: calc(var(--header-h) + 18px); max-height: calc(100vh - var(--header-h) - 36px); max-height: calc(100dvh - var(--header-h) - 36px); overflow-y: auto; padding: 18px; border: 1px solid var(--line); background: var(--paper); }
+.category-filters { position: sticky; top: calc(var(--header-h) + 18px); max-height: calc(100vh - var(--header-h) - 36px); max-height: calc(100dvh - var(--header-h) - 36px); overflow-y: auto; padding: 18px; border: 1px solid var(--line); border-radius: var(--radius-box); background: var(--paper); }
 .filter-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .filter-heading h2 { margin: 0; font-size: var(--h3); }
 .filter-heading .text-link { font-size: var(--text-xs); min-height: 32px; }
@@ -990,14 +1005,14 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
   button.filter-signin:hover { border-left-color: var(--purple); }
   button.filter-signin:hover span { text-decoration-thickness: 2px; }
 }
-.empty-results { padding: var(--empty-pad) 24px; border: 1px solid var(--line); background: var(--paper); text-align: center; }
+.empty-results { padding: var(--empty-pad) 24px; border: 1px solid var(--line); border-radius: var(--radius-box); background: var(--paper); text-align: center; }
 .empty-results p { color: var(--muted); font-size: var(--text-base); }
 /* One empty state (AW-299, src/components/EmptyState.jsx): the heading, 8px,
    the line of text, 16px, then the actions, centred and wrapping. .is-boxed
    frames it where a list of products or orders would be. Inside the empty
    checkout's centred page head, that head's padding is the only padding. */
 .empty-state { padding: var(--empty-pad) 24px; text-align: center; }
-.empty-state.is-boxed { border: 1px solid var(--line); background: var(--paper); }
+.empty-state.is-boxed { border: 1px solid var(--line); border-radius: var(--radius-box); background: var(--paper); }
 .is-centered > .empty-state { padding: 0; }
 .empty-state > .empty-state-title { margin: 0 0 8px; overflow-wrap: anywhere; }
 .empty-state h3 { font-size: 1.375rem; color: var(--purple); }
@@ -1055,7 +1070,7 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
    column's height. */
 .pd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; padding: 12px 0 40px; align-items: start; }
 .pd-figure { margin: 0; min-width: 0; }
-.pd-media { position: relative; background: var(--tile); border: 1px solid var(--line); aspect-ratio: 1.05; display: grid; place-items: center; overflow: hidden; }
+.pd-media { position: relative; background: var(--tile); border: 1px solid var(--line); border-radius: var(--radius-box); aspect-ratio: 1.05; display: grid; place-items: center; overflow: hidden; }
 /* Out of the grid (a <picture>'s <source> would take a grid row), centred,
    and never wider than the photo's own pixels (AW-073). */
 .pd-media img { position: absolute; inset: 34px; margin: auto; height: auto; max-width: calc(100% - 68px); max-height: calc(100% - 68px); object-fit: contain; transition: opacity .2s ease; }
@@ -1139,7 +1154,7 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .pd-variant-label { margin: 10px 0 0; }
 .variant-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px; }
 .variant-chips + .form-error { margin: -6px 0 16px; }
-.variant-chips button { display: inline-flex; align-items: center; min-height: var(--tap-sm); border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-size: var(--text-sm); font-weight: 600; padding: 0 14px; border-radius: 2px; }
+.variant-chips button { display: inline-flex; align-items: center; min-height: var(--tap-sm); border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-size: var(--text-sm); font-weight: 600; padding: 0 14px; border-radius: 999px; }
 .variant-chips button[aria-checked="true"] { border-color: var(--purple); background: var(--purple); color: #fff; }
 /* A chip that can still be chosen: a purple frame with a mouse, a darker fill
    while pressed (AW-145, AW-160). The chosen chip keeps its purple. */
@@ -1194,7 +1209,7 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 
 /* ============================ account / admin ============================ */
 .account-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr)); gap: 18px; margin: 8px 0 8px; }
-.stat-card { background: var(--paper); border: 1px solid var(--line); padding: 18px 20px; }
+.stat-card { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-box); padding: 18px 20px; }
 .stat-card span { display: block; font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--track-label); text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
 .stat-card b { font: 700 1.75rem/1 var(--display); color: var(--purple); }
 .stat-card.ok b { color: var(--success); }
@@ -1673,19 +1688,20 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 }
 
 /* ============================ footer ============================ */
-.footer-main { margin-top: calc(var(--section-gap) + 16px); background: var(--purple); color: #fff; padding: 44px 0 0; }
-.footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 32px; }
+.footer-main { margin-top: calc(var(--section-gap) + 16px); background: var(--purple-deep); color: #fff; padding: 44px 0 0; border-top: 4px solid var(--orange); }
+.footer-grid { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1.2fr; gap: 32px; }
 .footer-grid h2 { font: 700 var(--text-xs)/1 var(--body); letter-spacing: var(--track-eyebrow); color: var(--on-dark-muted); text-transform: uppercase; margin: 0 0 12px; }
 .footer-grid p { font-size: var(--text-sm); color: var(--on-dark); line-height: 1.8; margin: 0; }
 .footer-grid a { display: inline-block; max-width: 100%; padding-block: 6px; color: var(--on-dark); text-decoration: underline; text-underline-offset: var(--link-offset); }
 @media (hover: hover) {
   .footer-grid a:hover { color: #fff; }
 }
-/* Footer navigation: links (.footer-link) and the two dialog buttons look alike,
-   underlined like the phone and email links (AW-297). */
-.footer-grid button, .footer-grid .footer-link { display: flex; align-items: center; min-height: 36px; font-size: var(--text-sm); color: var(--on-dark); line-height: 1.4; background: none; border: 0; padding: 0; text-align: left; text-decoration: underline; text-underline-offset: var(--link-offset); }
+/* Footer navigation: links (.footer-link) and the two dialog buttons look
+   alike, a plain list that underlines on hover; the link to the page on
+   screen is bold (AW-297). */
+.footer-grid button, .footer-grid .footer-link { display: flex; align-items: center; min-height: 36px; font-size: var(--text-sm); color: var(--on-dark); line-height: 1.4; background: none; border: 0; padding: 0; text-align: left; text-decoration: none; text-underline-offset: var(--link-offset); }
 @media (hover: hover) {
-  .footer-grid button:hover, .footer-grid .footer-link:hover { color: #fff; }
+  .footer-grid button:hover, .footer-grid .footer-link:hover { color: #fff; text-decoration: underline; }
 }
 /* The link to the page on screen (AW-221): white, bold, a heavier underline. */
 .footer-main [aria-current] { color: #fff; font-weight: 700; text-decoration-thickness: 2px; }
@@ -1703,6 +1719,11 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .footer-brand p { margin-top: 1rem; }
 /* A line of opening hours each (AW-305). */
 .footer-hours { display: block; }
+/* The contact details are a card: the phone number in the display face, then
+   the email, the address and the hours. */
+.footer-contact { align-self: start; padding: 20px; border-radius: var(--radius-box); background: var(--on-dark-fill); }
+.footer-contact p + p { margin-top: 6px; }
+.footer-grid .footer-contact a[href^="tel:"] { color: #fff; font: 700 1.625rem/1.2 var(--display); text-decoration: none; }
 /* Phones (AW-305, LEFT-4): Departments folds behind its heading, a <details>
    that Footer.jsx renders only at its FOOTER_FOLD_QUERY. The summary is the
    h2 plus the +/- box the SKU lists use: a 44px target whose label sits on
@@ -1719,7 +1740,7 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .fda-note { background: var(--purple-deep); color: #fff; font-size: var(--text-base); line-height: 1.45; padding: 16px 0; text-align: center; }
 .fda-note .container { max-width: 900px; }
 .fda-note .nicotine-warning { margin: 0; padding: 0; background: transparent; color: #fff; font-size: var(--text-base); line-height: 1.45; }
-.nicotine-warning { margin: 0 0 14px; padding: 12px 14px; background: var(--purple-deep); color: #fff; font-size: var(--text-base); font-weight: 700; line-height: 1.45; text-align: center; }
+.nicotine-warning { margin: 0 0 14px; padding: 12px 14px; background: var(--purple-deep); color: #fff; font-size: var(--text-base); font-weight: 700; line-height: 1.45; text-align: center; border-radius: var(--radius); }
 /* On a card, between the title and the price row, with room above and below. */
 .nicotine-warning.is-compact { margin: 8px 0; padding: 8px 10px; font-size: var(--text-sm); }
 /* The vape hero slide's warning fills the band under the photo, its text
@@ -1836,8 +1857,8 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
 /* The file inputs' Choose file button looks like a ghost button. Two rules,
    because a browser drops a whole rule over a selector it does not know, and
    Safari 14 knows only the -webkit- name. */
-.doc-file::file-selector-button { margin-right: .75rem; padding: .5rem .875rem; border: 1px solid var(--purple); border-radius: 2px; background: #fff; color: var(--purple); font: 700 var(--text-sm) var(--body); cursor: inherit; }
-.doc-file::-webkit-file-upload-button { margin-right: .75rem; padding: .5rem .875rem; border: 1px solid var(--purple); border-radius: 2px; background: #fff; color: var(--purple); font: 700 var(--text-sm) var(--body); cursor: inherit; }
+.doc-file::file-selector-button { margin-right: .75rem; padding: .5rem .875rem; border: 1px solid var(--purple); border-radius: var(--radius); background: #fff; color: var(--purple); font: 700 var(--text-sm) var(--body); cursor: inherit; }
+.doc-file::-webkit-file-upload-button { margin-right: .75rem; padding: .5rem .875rem; border: 1px solid var(--purple); border-radius: var(--radius); background: #fff; color: var(--purple); font: 700 var(--text-sm) var(--body); cursor: inherit; }
 @media (hover: hover) {
   .doc-file:not(:disabled)::file-selector-button:hover { background: var(--purple); color: #fff; }
   .doc-file:not(:disabled)::-webkit-file-upload-button:hover { background: var(--purple); color: #fff; }
@@ -2062,6 +2083,11 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .editorial-card { min-height: 245px; padding: 22px; }
   .services { grid-template-columns: 1fr; gap: 20px; }
   .trust-band { padding-top: 12px; }
+  .trust-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* One line of crumbs, scrolled sideways, as on a department page. */
+  .crumbs ol { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .crumbs ol::-webkit-scrollbar { display: none; }
+  .crumbs li { flex: none; }
   .dept-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pd-grid { grid-template-columns: 1fr; row-gap: 16px; }
   /* The product photo is a wide frame no taller than 36% of the screen, so
@@ -2088,6 +2114,8 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   /* A department or line page starts closer under the masthead, so its first
      products come up sooner on a phone (AW-153). */
   .category-head { padding-top: 8px; }
+  /* A long department name wraps onto a second line; it is never cut short. */
+  .category-head h1 { font-size: 2rem; line-height: 1.05; white-space: normal; overflow: visible; }
   .category-head .crumbs { margin-bottom: 4px; }
   .category-title { align-items: flex-start; }
   .category-stat-products, .category-stat-lines { display: none; }
@@ -2170,8 +2198,8 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .footer-grid { grid-template-columns: minmax(0, 1fr); gap: 24px 16px; }
   .footer-departments { grid-row: auto; }
   .footer-brand, .footer-contact { grid-column: 1 / -1; }
-  .footer-main { padding: 32px 0 0; }
-  .footer-legal { flex-direction: column; align-items: flex-start; gap: 8px; padding-bottom: 20px; }
+  .footer-main { padding: 24px 0 0; }
+  .footer-legal { flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 16px; padding-bottom: 20px; }
   .dialog { padding: 24px 20px; scroll-padding-top: calc(46px + var(--tap)); }
   .dialog-top { top: -24px; margin: -24px -20px 5px; padding: 24px 20px 10px; }
   .dialog h2 { font-size: var(--h2-sm); }
@@ -2191,18 +2219,16 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
      row is sticky, so this stays inside it. */
   .result-scope { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 }
-/* The phone footer in two columns (AW-305, LEFT-4), from 21.25em, where a
-   column (about 9rem) holds the email's first part and a line of hours
-   unbroken: the folded Departments heading with the contact details under
-   it, beside Account & help. The last row takes the rest of Account & help's
-   height, so the contact details sit right under the heading; opened, the
-   department links push them down. About 840px tall at 360 and 390, the
-   links still 44px rows on touch. */
+/* The phone footer (AW-305, LEFT-4), from 21.25em: the contact card across
+   the full width under the brand, then the folded Departments heading, then
+   Account & help with its links in two columns. The links are still 44px
+   rows on touch. */
 @media (min-width: 21.25em) and (max-width: 37.5em) {
-  .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto auto 1fr; }
-  .footer-departments { grid-area: 2 / 1; }
-  .footer-account { grid-area: 2 / 2 / span 2; }
-  .footer-contact { grid-area: 3 / 1; }
+  .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 18px; }
+  .footer-contact { grid-area: 2 / 1 / auto / -1; padding: 14px 16px; }
+  .footer-departments { grid-area: 3 / 1 / auto / -1; }
+  .footer-account { grid-area: 4 / 1 / auto / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 16px; }
+  .footer-account h2 { grid-column: 1 / -1; }
 }
 /* Short screens, such as a phone in landscape (AW-245): less padding, a
    smaller title and the backdrop's full height, so the sign-in form's fields
@@ -2271,7 +2297,7 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
 .support-alert { margin: 0 0 22px; font-size: var(--text-base); }
 
 .info-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 18px; }
-.info-card { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 26px; background: var(--paper); border: 1px solid var(--line); }
+.info-card { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 26px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-box); }
 .info-card .eyebrow { color: var(--orange-dark); margin: 0; }
 .info-card h2:not(.eyebrow) { font-size: var(--h3); margin: 0; }
 /* The will-call card's hours never wrap mid-range (AW-275); at a very large
@@ -2304,7 +2330,7 @@ address.info-lead-small { font-style: normal; }
 .hours-list dt { font-weight: 700; color: var(--purple); }
 .hours-list dd { margin: 0; text-align: right; }
 
-.contact-strip, .support-cta, .status-panel, .eligibility { display: flex; justify-content: space-between; align-items: center; gap: 28px; padding: 30px 32px; margin-top: 40px; }
+.contact-strip, .support-cta, .status-panel, .eligibility { display: flex; justify-content: space-between; align-items: center; gap: 28px; padding: 30px 32px; margin-top: 40px; border-radius: var(--radius-box); }
 .contact-strip { background: var(--purple); color: #fff; }
 .contact-strip .eyebrow { color: var(--on-dark-muted); margin-bottom: 8px; }
 .contact-strip h2 { color: #fff; font-size: var(--h2-sm); margin-bottom: 8px; }
@@ -2405,7 +2431,7 @@ address.info-lead-small { font-style: normal; }
 
 /* application page */
 .apply-layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px 40px; margin-top: 22px; align-items: start; }
-.checklist-card { padding: 28px; background: var(--paper); border: 1px solid var(--line); border-top: 4px solid var(--orange); }
+.checklist-card { padding: 28px; background: var(--paper); border: 1px solid var(--line); border-top: 4px solid var(--orange); border-radius: var(--radius-box); }
 .checklist-card .eyebrow { color: var(--orange-dark); margin-bottom: 8px; }
 .checklist-card h2 { font-size: var(--h2-sm); margin-bottom: 14px; }
 .apply-layout .support-block { border-top: 0; padding-top: 0; }
@@ -2469,7 +2495,7 @@ address.info-lead-small { font-style: normal; }
 /* policies */
 .policy-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 40px; align-items: start; margin-top: 10px; }
 /* Clears the sticky header once it publishes its height (AW-153). */
-.policy-nav { position: sticky; top: calc(var(--header-h) + 18px); padding: 18px; background: var(--paper); border: 1px solid var(--line); }
+.policy-nav { position: sticky; top: calc(var(--header-h) + 18px); padding: 18px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-box); }
 .policy-nav .eyebrow { color: var(--orange-dark); margin-bottom: 10px; }
 .policy-nav a { display: block; width: 100%; text-align: left; padding: 8px 0; border: 0; border-top: 1px solid var(--line); background: none; color: var(--ink); font-size: var(--text-sm); font-weight: 600; }
 /* The current page by more than colour (AW-273): bolder, with an orange bar
@@ -2497,7 +2523,7 @@ address.info-lead-small { font-style: normal; }
 
 /* all-products index */
 .dept-jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 14px; }
-.dept-jump a { display: flex; align-items: center; gap: 8px; min-height: var(--tap-sm); padding: 8px 14px; border: 1px solid var(--line); background: #fff; color: var(--purple); font-size: var(--text-sm); font-weight: 700; }
+.dept-jump a { display: flex; align-items: center; gap: 8px; min-height: var(--tap-sm); padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--purple); font-size: var(--text-sm); font-weight: 700; }
 .dept-jump a span:first-child { font: 700 .9375rem/1 var(--display); color: var(--orange-dark); }
 @media (hover: hover) {
   .dept-jump a:hover { border-color: var(--orange); }
@@ -2705,7 +2731,7 @@ ul.sub-pills { list-style: none; padding: 0; }
    in the prefers-reduced-motion block, and it is not printed. Spoken through
    announce(), so no live region. */
 .toast-root { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; justify-content: center; padding: 0 0 calc(max(16px, env(safe-area-inset-bottom)) + var(--fda-visible-h, 0px)); pointer-events: none; }
-.toast { --focus-ring: var(--focus-on-dark); pointer-events: auto; display: flex; align-items: center; gap: 12px; width: min(28rem, 100% - 32px); padding: 10px 10px 10px 16px; background: var(--purple-deep); color: #fff; border: 1px solid var(--on-dark-line); border-radius: 2px; box-shadow: 0 12px 30px var(--shadow-popover); font-size: var(--text-base); line-height: 1.45; animation: toast-in .2s ease-out both; }
+.toast { --focus-ring: var(--focus-on-dark); pointer-events: auto; display: flex; align-items: center; gap: 12px; width: min(28rem, 100% - 32px); padding: 10px 10px 10px 16px; background: var(--purple-deep); color: #fff; border: 1px solid var(--on-dark-line); border-radius: var(--radius); box-shadow: 0 12px 30px var(--shadow-popover); font-size: var(--text-base); line-height: 1.45; animation: toast-in .2s ease-out both; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .toast-text { flex: 1 1 auto; min-width: 0; margin: 0; font-weight: 600; }
 .toast .toast-action { flex: none; }

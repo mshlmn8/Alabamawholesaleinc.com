@@ -204,7 +204,7 @@ describe('quoteErrorMessage', () => {
     ['delivery_state', /^Delivery routes cover AL, MS and GA\. For another state, choose will-call pickup\.$/],
     ['past_date', /from today on/],
     ['address_required', /or choose will-call pickup/],
-    ['license_required', /^This order has tobacco or vape items, which need an approved trade account\. Call$/],
+    ['license_required', /^This order has tobacco or vape items, which need an approved account\. Call$/],
     ['contact_required', /business, contact, email and phone/],
   ])('words the %s hint', (hint, text) => {
     const message = quoteErrorMessage({ code: 'P0001', message: 'server text', hint });
@@ -213,7 +213,7 @@ describe('quoteErrorMessage', () => {
 
   it('words PR #12’s license refusal, which has no hint, for the account the server doesn’t see as approved', () => {
     const refused = { code: 'P0001', message: 'A tobacco license, resale certificate, and 21+ confirmation are required' };
-    expect(quoteErrorMessage(refused).before).toMatch(/need an approved trade account/);
+    expect(quoteErrorMessage(refused).before).toMatch(/need an approved account/);
     // Checkout has no licence fields any more (AW-014): no field to mark.
     expect(quoteErrorField(refused)).toBeNull();
   });

@@ -1,4 +1,4 @@
-// A signed-in trade account for the smoke specs, mocked: only an approved
+// A signed-in account for the smoke specs, mocked: only an approved
 // account that isn't on hold places orders (AW-014, AW-024), so every spec
 // that sends one signs in this way. The saved session goes in 'aw-auth'
 // (AUTH_STORAGE_KEY in src/lib/supabase.js) before the site's code runs;

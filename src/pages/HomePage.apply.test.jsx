@@ -10,15 +10,15 @@ import { HomePage } from './HomePage.jsx';
 const text = (el) => el.textContent.replace(/\s+/g, ' ').trim();
 
 describe('HomePage application panel (AW-281)', () => {
-  it('asks stores to open a trade account with the one apply label', () => {
+  it('asks stores to open an account with the one apply label', () => {
     const onApplyClick = vi.fn();
     render(
       <HomePage products={PRODUCTS} departments={departmentsFor(PRODUCTS)} profile={null} isApprovedBuyer={false} cart={{}}
                 addLine={vi.fn()} decLine={vi.fn()} onLoginClick={vi.fn()} onApplyClick={onApplyClick} />,
     );
     const panel = within(document.getElementById('apply'));
-    expect(panel.getByRole('heading', { level: 2 }).textContent).toBe('Open a trade account');
-    panel.getByRole('button', { name: 'Apply for a trade account' }).click();
+    expect(panel.getByRole('heading', { level: 2 }).textContent).toBe('Open an account');
+    panel.getByRole('button', { name: 'Apply for an account' }).click();
     expect(onApplyClick).toHaveBeenCalledTimes(1);
     const steps = [...document.querySelectorAll('.apply-steps li p')].map(text);
     expect(steps[0]).toMatch(/ Takes a few minutes\.$/);
@@ -50,21 +50,21 @@ describe('HomePage account panel for a signed-in account (AW-066)', () => {
     ['approved', 'ACCOUNT ACTIVE', ['A', 'My account', '/account']],
     ['pending', 'APPLICATION UNDER REVIEW', ['A', 'Application status', '/apply']],
     ['suspended', 'ACCOUNT ON HOLD', ['A', 'Application status', '/apply']],
-  ])('shows a %s account its trade account, with no Apply and no steps', (status, eyebrow, link) => {
+  ])('shows a %s account its account, with no Apply and no steps', (status, eyebrow, link) => {
     home({ signedIn: true, account: 'ready', profile: { id: 'p', status }, isApprovedBuyer: status === 'approved' });
-    expect(panel()).toMatchObject({ eyebrow, title: 'Your trade account', links: [link] });
+    expect(panel()).toMatchObject({ eyebrow, title: 'Your account', links: [link] });
     expect(panel().text.length).toBeGreaterThan(0);
     expect(within(document.getElementById('apply')).queryByRole('button')).toBeNull();
     expect(document.querySelector('.apply-steps')).toBeNull();
-    expect(screen.queryByRole('heading', { name: 'Open a trade account' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Open an account' })).toBeNull();
   });
 
   it('offers My account while the profile loads, and keeps Apply for a guest', () => {
     const view = home({ signedIn: true, account: 'loading', profile: null });
-    expect(panel()).toEqual({ eyebrow: 'TRADE ACCOUNT', title: 'Your trade account', text: 'Checking your account…', links: [['A', 'My account', '/account']] });
+    expect(panel()).toEqual({ eyebrow: 'ACCOUNT', title: 'Your account', text: 'Checking your account…', links: [['A', 'My account', '/account']] });
     view.unmount();
     home({ signedIn: false, account: 'signed-out', profile: null });
-    expect(within(document.getElementById('apply')).getByRole('button', { name: 'Apply for a trade account' })).toBeTruthy();
+    expect(within(document.getElementById('apply')).getByRole('button', { name: 'Apply for an account' })).toBeTruthy();
     expect(document.querySelectorAll('.apply-steps li')).toHaveLength(3);
   });
 });

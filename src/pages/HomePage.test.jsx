@@ -13,7 +13,7 @@ import { PRODUCTS, NAV_ORDER, NEW_ARRIVALS_IDS } from '../data/products.js';
 import { departmentsFor, topLines } from '../lib/departments.js';
 import { hrefFor } from '../lib/routes.js';
 import { cardDetail } from '../components/ProductCard.jsx';
-import { HomePage, RAIL_LENGTH, departmentPhotos, hasPhoto, newProductSlides } from './HomePage.jsx';
+import { HomePage, RAIL_LENGTH, departmentPhotos, hasPhoto, heroSlides, newProductSlides } from './HomePage.jsx';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -94,7 +94,7 @@ describe('HomePage sections', () => {
     expect(document.querySelector('h1').className).toBe('sr-only');
     expect(document.querySelector('.home-hero').previousElementSibling).toBeNull();
     expect(document.querySelector('.home-hero-copy')).toBeNull();
-    expect(document.querySelector('.home-carousel').getAttribute('aria-label')).toBe('New products');
+    expect(document.querySelector('.home-carousel').getAttribute('aria-label')).toBe('New products and deals');
   });
 
   it('runs hero, trust band, departments, new arrivals, hot sellers, bestsellers, new deals, application, then services', () => {
@@ -102,7 +102,7 @@ describe('HomePage sections', () => {
     expect(document.querySelector('.home-hero').nextElementSibling.className).toBe('trust-band');
     expect(document.querySelector('.trust-band').nextElementSibling.className).not.toBe('services');
     const h2s = [...document.querySelectorAll('h2')].map(text);
-    const order = ['About Alabama Wholesale', 'Shop by department', 'New arrivals', 'Hot sellers', 'Bestsellers', 'New deals', 'Open a trade account', 'Services'];
+    const order = ['About Alabama Wholesale', 'Shop by department', 'New arrivals', 'Hot sellers', 'Bestsellers', 'New deals', 'Open an account', 'Services'];
     expect(h2s).toEqual(order);
     expect(document.querySelector('.services').nextElementSibling).toBeNull();
     expect(document.getElementById('hot-sellers').previousElementSibling.id).toBe('new-arrivals');
@@ -133,10 +133,10 @@ describe('HomePage sections', () => {
   it('numbers only the application steps', () => {
     renderHome();
     const labels = [...document.querySelectorAll('.eyebrow, .card-kicker')].map(text);
-    expect(labels.length).toBeGreaterThan(0);
     for (const label of labels) expect(label).not.toMatch(/ \/ \d{2}$/);
     expect(document.body.textContent).not.toMatch(/COLLECTION|DEPARTMENT/);
-    expect([...document.querySelectorAll('.eyebrow')].map(text)).toEqual(expect.arrayContaining(['FRESH INVENTORY', 'PROVEN MOVERS', 'FULL ASSORTMENT', 'OPEN AN ACCOUNT']));
+    // No small label sits over a section heading.
+    expect([...document.querySelectorAll('.eyebrow')].map(text)).toEqual([]);
     expect(document.querySelectorAll('.apply-steps > li')).toHaveLength(3);
   });
 
@@ -254,23 +254,27 @@ describe('HomePage new-product carousel', () => {
     renderHome();
     const slides = newProductSlides(PRODUCTS);
     expect(slides.map((s) => s.alt)).toEqual(['Foger Switch Pro full kit', 'RAZ 25K', 'Tueni chews']);
-    expect(labels()).toEqual(['1 of 3: Foger Switch Pro full kit', '2 of 3: RAZ 25K', '3 of 3: Tueni chews']);
+    const all = heroSlides(PRODUCTS);
+    expect(all.slice(0, 3)).toEqual(slides);
+    expect(all.slice(3).every((s) => s.badge === 'Deal' && s.key.startsWith('deal-'))).toBe(true);
+    expect(labels()).toEqual(all.map((s, i) => `${i + 1} of ${all.length}: ${s.alt}`));
     const active = document.querySelector('.home-carousel-slide.is-active');
     expect(active.querySelector('img').getAttribute('alt')).toBe('Foger Switch Pro full kit');
     expect(active.querySelector('a')).toBeNull();
     expect(document.querySelector('.home-carousel-badge').textContent).toBe('New arrival');
     expect(document.querySelector('.home-carousel-kicker').textContent).toBe('Disposable Vapes · Foger');
     expect(document.querySelector('.home-carousel-title').textContent).toBe('Foger Switch Pro full kit');
-    expect(document.querySelector('.home-carousel-index').textContent).toBe('1/3');
+    expect(document.querySelector('.home-carousel-index').textContent).toBe(`1/${all.length}`);
     expect(screen.getByRole('link', { name: 'Shop Foger Switch Pro full kit' }).getAttribute('href')).toBe('/product/62');
     expect(slides.map((s) => s.nicotineWarning)).toEqual([true, true, false]);
     expect(document.querySelector('.home-carousel-warning').getAttribute('aria-hidden')).toBeNull();
     expect(document.body.textContent).not.toMatch(/loading doors|Graymont|pallet racks/);
   });
 
-  it('leaves the carousel empty when nothing new has a photo', () => {
-    renderHome({ products: PRODUCTS.filter((p) => p.tag !== 'NEW') });
-    expect(newProductSlides(PRODUCTS.filter((p) => p.tag !== 'NEW'))).toEqual([]);
+  it('leaves the carousel empty when nothing new or on deal has a photo', () => {
+    const plain = PRODUCTS.filter((p) => p.tag !== 'NEW' && p.tag !== 'DEAL');
+    renderHome({ products: plain });
+    expect(heroSlides(plain)).toEqual([]);
     expect(document.querySelector('section.home-carousel')).toBeNull();
     expect(document.querySelector('.home-carousel.is-empty')).toBeTruthy();
   });
@@ -279,12 +283,12 @@ describe('HomePage new-product carousel', () => {
 // AW-005 (owner answers 2026-10): the confirmed facts, in a band under the
 // hero, and nothing the owner ruled out.
 describe('HomePage trust band (AW-005)', () => {
-  it('names 20 years in business, 100% authentic products and where every product comes from', () => {
+  it('names 20 years in business, 100% authentic products, delivery, licensed retailers and where every product comes from', () => {
     renderHome();
     const band = document.querySelector('.trust-band');
     expect(band.getAttribute('aria-labelledby')).toBe('trust-band-title');
     expect(document.getElementById('trust-band-title').textContent).toBe('About Alabama Wholesale');
-    expect([...band.querySelectorAll('.trust-fact')].map(text)).toEqual(['20 years in business', '100% authentic products']);
+    expect([...band.querySelectorAll('.trust-fact')].map(text)).toEqual(['20 years in business', '100% authentic products', 'Next-day delivery on our own trucks', '21+ licensed retailers only']);
     expect(band.querySelector('.trust-sourcing').textContent).toBe(SOURCING);
   });
 

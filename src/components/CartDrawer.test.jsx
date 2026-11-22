@@ -25,7 +25,7 @@ const note = () => document.querySelector('.drawer-total-note')?.textContent;
 describe('CartDrawer', () => {
   it('asks guests to sign in, and leads to checkout, which asks them too (AW-014)', () => {
     render(drawer({ profile: null, isApprovedBuyer: false }));
-    expect(note()).toBe('Prices show for approved trade accounts');
+    expect(note()).toBe('Prices show for approved accounts');
     expect(screen.getByRole('link', { name: 'Checkout' }).getAttribute('href')).toBe('/checkout');
     expect(screen.getByRole('button', { name: 'Sign in for pricing and ordering' })).toBeTruthy();
   });

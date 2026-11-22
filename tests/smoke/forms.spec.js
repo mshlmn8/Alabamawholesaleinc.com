@@ -95,8 +95,8 @@ test('an empty order names each missing answer under its field, focuses Business
 test('the application dialog explains a mistyped EIN under the field (AW-173)', async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto('/checkout');
-  await page.getByRole('region', { name: 'Sign in to place your order' }).getByRole('button', { name: 'Apply for a trade account' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Apply for a trade account' });
+  await page.getByRole('region', { name: 'Sign in to place your order' }).getByRole('button', { name: 'Apply for an account' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Apply for an account' });
   // The checklist first, then the form.
   await dialog.getByRole('button', { name: 'Continue to the application' }).click();
   await expect(dialog.getByText('All fields are required unless marked optional.')).toBeVisible();

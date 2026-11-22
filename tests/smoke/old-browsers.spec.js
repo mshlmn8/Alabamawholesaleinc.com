@@ -81,8 +81,8 @@ test('the site starts, and the sign-in and application dialogs open, without .at
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
   await page.goto('/apply');
-  await page.getByRole('button', { name: 'Apply for a trade account' }).first().click();
-  await expect(page.getByRole('dialog', { name: 'Apply for a trade account' })).toBeVisible();
+  await page.getByRole('button', { name: 'Apply for an account' }).first().click();
+  await expect(page.getByRole('dialog', { name: 'Apply for an account' })).toBeVisible();
   await expect(page.getByRole('alertdialog')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
@@ -97,7 +97,7 @@ test('My account and the application page render for an approved and a pending a
   await page.unroute(/supabase\.co\//);
   await signedInAs(page, context, PENDING);
   await page.goto('/apply');
-  await expect(page.getByRole('heading', { level: 1, name: 'Your trade account' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Your account' })).toBeVisible();
   await expect(page.getByText('Pending approval').first()).toBeVisible();
   await expect(page.locator('.error-fallback')).toHaveCount(0);
   expect(errors).toEqual([]);

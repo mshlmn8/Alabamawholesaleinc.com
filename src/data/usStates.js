@@ -1,5 +1,5 @@
 // The 50 US states and the District of Columbia, sorted by name, for state
-// pickers (the trade account application, AW-282). The value stored is the
+// pickers (the account application, AW-282). The value stored is the
 // two-letter postal code, as profiles.state and the quote's ship_state
 // always hold. Pure: no imports.
 

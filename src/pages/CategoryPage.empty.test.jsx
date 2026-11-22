@@ -53,7 +53,7 @@ describe('CategoryPage with no matches (AW-299)', () => {
     // The other departments that have products, as pills; not this one.
     const list = screen.getByRole('list', { name: 'Other departments' });
     expect(list.className).toBe('sub-pills');
-    expect([...list.querySelectorAll('a.sub-pill')].map((a) => [a.textContent, a.getAttribute('href')]))
+    expect([...list.querySelectorAll('a.sub-pill')].map((a) => [a.getAttribute('aria-label'), a.getAttribute('href')]))
       .toEqual([['Candies (1)', '/category/candies'], ['Food Stuff (1)', '/category/food-stuff']]);
     // In the order the actions read: search, clear, then the departments.
     const actions = box().querySelector('.empty-state-actions');

@@ -132,7 +132,7 @@ describe('quote workflow helpers', () => {
     const body = decodeURIComponent(href.split('&body=')[1]);
     expect(body).toBe('Quote ALW-Q-5E4F3A2B1C\n\n3 × Kite (AW-KITE) at $12.50 = $37.50\n1 × Gas cans (AW-GAS), price to follow\n\nTotal: $37.50\n');
     expect(decodeURIComponent(approvalEmail({ email: 'a@example.test' })))
-      .toBe('mailto:a@example.test?subject=Your Alabama Wholesale trade account&body=Your Alabama Wholesale trade account is approved. Sign in to see pricing.');
+      .toBe('mailto:a@example.test?subject=Your Alabama Wholesale account&body=Your Alabama Wholesale account is approved. Sign in to see pricing.');
   });
 });
 

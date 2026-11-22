@@ -53,7 +53,7 @@ describe('accountNotices', () => {
       expect(notice).toMatchObject({
         id: 'link-confirmed',
         title: 'Your email is confirmed',
-        text: 'You’re signed in. Your application is waiting for review — see its status and add your license documents on your trade account page.',
+        text: 'You’re signed in. Your application is waiting for review — see its status and add your license documents on your account page.',
       });
       expect(notice.actions.map((x) => x.label)).toEqual(['View application status']);
       notice.actions[0].onClick();

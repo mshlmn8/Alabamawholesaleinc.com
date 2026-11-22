@@ -131,7 +131,7 @@ describe('CategoryPage', () => {
     const notice = () => document.querySelector('.pricing-notice p').textContent;
     const view = render(<Harness />);
     expect([...document.querySelectorAll('.category-stat-products strong, .category-stat-lines strong')].map((el) => el.textContent)).toEqual(['3', '2']);
-    expect(notice()).toBe('Trade prices are shown to approved accounts.');
+    expect(notice()).toBe('Prices are shown to approved accounts.');
     view.unmount();
     const pending = render(<CategoryPage category="TOBACCO" products={products} departments={departments} profile={{ id: 'p', status: 'pending' }} isApprovedBuyer={false}
                                          cart={{}} addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} />);
@@ -197,8 +197,8 @@ describe('CategoryPage', () => {
     const notices = document.querySelectorAll('.pricing-notice');
     expect(notices).toHaveLength(1);
     expect(notices[0].nextElementSibling.classList.contains('category-card-grid')).toBe(true);
-    expect(notices[0].textContent).toMatch(/^Trade prices are shown to approved accounts\./);
-    expect(screen.getByRole('button', { name: 'Apply for a trade account' })).toBeTruthy();
+    expect(notices[0].textContent).toMatch(/^Prices are shown to approved accounts\./);
+    expect(screen.getByRole('button', { name: 'Apply for an account' })).toBeTruthy();
     expect(document.querySelector('.filter-panel .filter-signin')).toBeNull();
     expect(screen.queryByText(/Wholesale pricing is locked/)).toBeNull();
     // A guest's card says 'Sign in for pricing' as plain text, never as a control (NEW-050).
@@ -261,7 +261,7 @@ describe('CategoryPage', () => {
       );
     }
     const group = () => screen.queryByRole('group', { name: 'Featured' });
-    const boxes = () => (group() ? within(group()).getAllByRole('checkbox').map((b) => b.closest('label').textContent.trim()) : []);
+    const boxes = () => (group() ? within(group()).getAllByRole('checkbox').map((b) => { expect(b.closest('label').textContent.trim()).not.toMatch(/\(\d+\)/); return b.getAttribute('aria-label'); }) : []);
     render(<Many />);
     // Tobacco: one bestseller and one new product; no deals or premium.
     expect(boxes()).toEqual(['Bestsellers (1)', 'New (1)']);
@@ -308,7 +308,7 @@ function Branded() {
   );
 }
 const brandBox = () => screen.getByRole('group', { name: 'Brand' });
-const brandLabels = () => within(brandBox()).getAllByRole('checkbox').map((b) => b.closest('label').textContent.trim());
+const brandLabels = () => within(brandBox()).getAllByRole('checkbox').map((b) => { expect(b.closest('label').textContent.trim()).not.toMatch(/\(\d+\)/); return b.getAttribute('aria-label'); });
 const pills = () => [...document.querySelectorAll('.sub-pills a')].map((a) => ({ text: a.textContent, empty: a.classList.contains('is-empty'), href: a.getAttribute('href') }));
 // The phone layout: the filters are in the Filter & Sort drawer.
 const phone = () => vi.stubGlobal('matchMedia', vi.fn((media) => ({ media, matches: true, addEventListener() {}, removeEventListener() {} })));

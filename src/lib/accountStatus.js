@@ -1,5 +1,5 @@
 // One account-status model for the storefront (AW-101, AW-097, AW-098,
-// AW-149): what a visitor's trade account allows, the label each status
+// AW-149): what a visitor's account allows, the label each status
 // shows, and the pricing-lock copy for everyone who can't see prices yet.
 // Pure and Node-safe, so meta.js and tests can use it.
 //
@@ -37,12 +37,12 @@ export const PRICE_LOCK = {
     short: 'Sign in for pricing',
     line: 'Sign in to see your wholesale pricing.',
     detail: 'Sign in to see your account pricing.',
-    notice: 'Trade prices are shown to approved accounts.',
+    notice: 'Prices are shown to approved accounts.',
   },
   pending: {
     short: 'Pricing after approval',
     line: 'Pricing unlocks after your account is approved.',
-    detail: 'Your account is not approved for trade pricing yet.',
+    detail: 'Your account is not approved for pricing yet.',
   },
   suspended: {
     short: 'Account on hold',
@@ -120,10 +120,10 @@ export function accountView(profile, account) {
 // for approval or on hold to /apply, which shows where the application
 // stands and who to call. Before the profile is known, or when it didn't
 // load, My account, which says which.
-export const TRADE_ACCOUNT_TITLE = 'Your trade account';
+export const TRADE_ACCOUNT_TITLE = 'Your account';
 export const ACCOUNT_EYEBROWS = Object.freeze({
-  loading: 'TRADE ACCOUNT',
-  'no-profile': 'TRADE ACCOUNT',
+  loading: 'ACCOUNT',
+  'no-profile': 'ACCOUNT',
   pending: 'APPLICATION UNDER REVIEW',
   approved: 'ACCOUNT ACTIVE',
   suspended: 'ACCOUNT ON HOLD',
@@ -134,7 +134,7 @@ export const TRADE_ACCOUNT_PANELS = Object.freeze({
   loading: { text: CHECKING_ACCOUNT_TEXT, link: MY_ACCOUNT },
   'no-profile': { text: 'You’re signed in, but your account details didn’t load.', link: MY_ACCOUNT },
   pending: { text: 'Your application is with a trade rep. See where it stands, and add your license documents while you wait.', link: APPLICATION_STATUS },
-  approved: { text: 'Your trade account is active. See your orders and reorder by SKU in My account.', link: MY_ACCOUNT },
+  approved: { text: 'Your account is active. See your orders and reorder by SKU in My account.', link: MY_ACCOUNT },
   suspended: { text: `${PRICE_LOCK.suspended.line} See who to call on your application status page.`, link: APPLICATION_STATUS },
 });
 // The panel for a signed-in visitor's view (accountView), with its eyebrow;

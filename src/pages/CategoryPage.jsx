@@ -300,7 +300,7 @@ export function CategoryPage({
       {otherDepartments.length > 0 && (
         <ul className="sub-pills" aria-label="Other departments">
           {otherDepartments.map(d => (
-            <li key={d.key}><Link className="sub-pill" to={{ page: 'category', category: d.key }}>{`${d.label} (${d.count})`}</Link></li>
+            <li key={d.key}><Link className="sub-pill" to={{ page: 'category', category: d.key }} aria-label={`${d.label} (${d.count})`}>{d.label}</Link></li>
           ))}
         </ul>
       )}
@@ -350,7 +350,7 @@ export function CategoryPage({
         <fieldset>
           <legend>Featured</legend>
           {featured.map(({ label, tag, count }) => (
-            <label key={tag}><input type="checkbox" checked={tags.includes(tag)} onChange={() => toggleTag(tag)} /> <span>{`${label} (${count})`}</span></label>
+            <label key={tag}><input type="checkbox" checked={tags.includes(tag)} aria-label={`${label} (${count})`} onChange={() => toggleTag(tag)} /> <span>{label}</span></label>
           ))}
         </fieldset>
       )}
@@ -359,7 +359,7 @@ export function CategoryPage({
           <legend>Brand</legend>
           <div id="category-brands">
             {brandsShown.map(({ slug, label, count }) => (
-              <label key={slug}><input type="checkbox" checked={brands.includes(slug)} onChange={() => toggleBrand(slug)} /> <span>{`${label} (${count})`}</span></label>
+              <label key={slug}><input type="checkbox" checked={brands.includes(slug)} aria-label={`${label} (${count})`} onChange={() => toggleBrand(slug)} /> <span>{label}</span></label>
             ))}
           </div>
           {brandChoices.length > BRANDS_SHOWN && (
@@ -380,15 +380,15 @@ export function CategoryPage({
   const linePicker = lines.length > 0 && (
     <div className="filter-panel filter-lines">
       <fieldset>
-        <legend>Product line</legend>
+        <legend className="sr-only">Product line</legend>
         <label className={!activeSub ? 'is-on' : ''}>
           <input type="radio" name="category-line" value="" checked={!activeSub} aria-label={`All (${filtered.length})`} onChange={() => pickLine(null)} />
-          <span>All</span><span className="pill-count">{` ${filtered.length}`}</span>
+          <span>All</span><span className="pill-count sr-only">{` ${filtered.length}`}</span>
         </label>
         {lines.map(({ sub: s, count }) => (
           <label key={s} className={activeSub === s ? 'is-on' : ''}>
             <input type="radio" name="category-line" value={s} checked={activeSub === s} aria-label={`${s} (${count})`} onChange={() => pickLine(s)} />
-            <span>{s}</span><span className="pill-count">{` ${count}`}</span>
+            <span>{s}</span><span className="pill-count sr-only">{` ${count}`}</span>
           </label>
         ))}
       </fieldset>
@@ -463,7 +463,7 @@ export function CategoryPage({
             {/* Whose prices the cards show, from my_prices() (AW-107). */}
             {isApprovedBuyer && <p className="category-tier">{tierPriceNote(priceTier)}</p>}
           </div>
-          <div className="category-stats">
+          <div className="category-stats sr-only">
             <p className="category-stat category-stat-products">
               <strong>{statCount}</strong>
               <span>{statCount === 1 ? 'product' : 'products'}</span>
@@ -480,16 +480,10 @@ export function CategoryPage({
             </p>
           </div>
         </div>
-        {isMobile && lineCount > 0 && (
-          <div className="line-label">
-            <p className="eyebrow">Product lines</p>
-            <button className="see-lines" type="button" onClick={() => setFiltersOpen(true)}>{`See all ${lineCount}`}</button>
-          </div>
-        )}
         <nav className="sub-pills" ref={pillsRef} aria-label={`${deptLabel} product lines`} onFocus={revealPill}>
-          <Link className={`sub-pill${!activeSub ? ' active' : ''}${filtered.length ? '' : ' is-empty'}`} to={here({ sub: null })} scroll={false} aria-current={!activeSub ? 'page' : undefined} aria-label={`All (${filtered.length})`}><span>All</span><span className="pill-count">{` ${filtered.length}`}</span></Link>
+          <Link className={`sub-pill${!activeSub ? ' active' : ''}${filtered.length ? '' : ' is-empty'}`} to={here({ sub: null })} scroll={false} aria-current={!activeSub ? 'page' : undefined} aria-label={`All (${filtered.length})`}><span>All</span><span className="pill-count sr-only">{` ${filtered.length}`}</span></Link>
           {lines.map(({ sub: s, count }) => (
-            <Link key={s} className={`sub-pill${activeSub === s ? ' active' : ''}${count ? '' : ' is-empty'}`} to={here({ sub: s })} scroll={false} aria-current={activeSub === s ? 'page' : undefined} aria-label={`${s} (${count})`}><span>{s}</span><span className="pill-count">{` ${count}`}</span></Link>
+            <Link key={s} className={`sub-pill${activeSub === s ? ' active' : ''}${count ? '' : ' is-empty'}`} to={here({ sub: s })} scroll={false} aria-current={activeSub === s ? 'page' : undefined} aria-label={`${s} (${count})`}><span>{s}</span><span className="pill-count sr-only">{` ${count}`}</span></Link>
           ))}
         </nav>
       </div>
@@ -500,7 +494,7 @@ export function CategoryPage({
             <button className="filter-toggle" type="button" aria-expanded={filtersOpen} aria-controls={filtersOpen ? 'aw-filter-drawer' : undefined} onClick={() => setFiltersOpen(true)}>
               <Icon name="filter" />
               Filter
-              {activeFilterCount > 0 && <span className="filter-count"><span className="sr-only">, </span><span>{activeFilterCount}</span><span className="sr-only"> active</span></span>}
+              {activeFilterCount > 0 && <span className="filter-count sr-only"><span>, </span><span>{activeFilterCount}</span><span> active</span></span>}
             </button>
           )}
           <div className="toolbar-end">
@@ -541,7 +535,7 @@ export function CategoryPage({
               {filterPanel}
             </div>
             <div className="drawer-foot">
-              <button className="button" type="button" onClick={closeFilters}><span>{`Show ${productCount(items.length)}`}</span></button>
+              <button className="button" type="button" aria-label={`Show ${productCount(items.length)}`} onClick={closeFilters}>Show products</button>
             </div>
           </div>
         </ModalLayer>
@@ -552,7 +546,7 @@ export function CategoryPage({
           <aside className="category-filters" aria-label="Product filters">
             <div className="filter-heading">
               <h2>Filters</h2>
-              {activeFilterCount > 0 && <button className="text-link" type="button" onClick={() => clearFilters()}>{`Clear all (${activeFilterCount})`}</button>}
+              {activeFilterCount > 0 && <button className="text-link" type="button" aria-label={`Clear all (${activeFilterCount})`} onClick={() => clearFilters()}>Clear all</button>}
             </div>
             {searchField}
             {filterPanel}

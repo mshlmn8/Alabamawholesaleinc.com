@@ -76,12 +76,12 @@ export function CartDrawer({
   const unavailable = items.filter(it => it.unavailable);
   const basket = BASKET;
   const excluded = isApprovedBuyer ? variantExcludedText(items, pricesStatus) : '';
-  // Guests are told prices are for approved trade accounts, with a way to
+  // Guests are told prices are for approved accounts, with a way to
   // sign in; signed-in buyers who are not approved yet are told pricing is
   // waiting on approval instead, and suspended ones that the account is on
   // hold.
   const pendingBuyer = Boolean(profile) && !isApprovedBuyer;
-  let note = 'Prices show for approved trade accounts';
+  let note = 'Prices show for approved accounts';
   if (isSuspended) note = 'Account on hold';
   // The card's and checkout's words for it (accountStatus.js PRICE_LOCK).
   else if (pendingBuyer) note = PRICE_LOCK.pending.short;

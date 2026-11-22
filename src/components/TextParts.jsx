@@ -27,9 +27,14 @@ export function TextParts({ parts, code = null }) {
   return (
     <span className="text-parts">
       {list.map((part, i) => {
-        const text = i < list.length - 1 ? `${part}${PART_SEPARATOR}` : part;
         const isCode = code != null && part === code;
-        return <span key={`${i}:${part}`} className={isCode ? 'sku-part' : undefined} title={isCode ? part : undefined}>{text}</span>;
+        // The separator has its own span, so a card can drop the one before a
+        // code that takes a line of its own (.card-detail in index.css).
+        return (
+          <span key={`${i}:${part}`} className={isCode ? 'sku-part' : undefined} title={isCode ? part : undefined}>
+            <span>{part}</span>{i < list.length - 1 ? <span className="part-sep">{PART_SEPARATOR}</span> : null}
+          </span>
+        );
       })}
     </span>
   );

@@ -33,13 +33,10 @@ describe('MobileMenu department counts', () => {
     expect(nav.textContent).not.toMatch(/\b0\d\b/);
   });
 
-  // The same count words as the desktop menu's footer (AW-217, NEW-056).
-  it('counts the catalog in products at its foot, as the desktop menu does', () => {
+  it('shows no catalog count at its foot, only the address', () => {
     render(<MobileMenu onClose={noop} onFollowLink={noop} departments={departments} products={PRODUCTS} user={null} isAdmin={false} go={go} />);
-    // After the warehouse address (its own span, AW-030).
-    const line = document.querySelector('.menu-contact p span:last-child');
-    expect(line.textContent).toBe(`${departments.length} departments · ${PRODUCTS.length} products`);
-    expect(line.textContent).not.toMatch(/SKU/);
+    expect(document.querySelector('.menu-contact p').textContent).not.toMatch(/\d+ (departments|products)|SKU/);
+    for (const count of document.querySelectorAll('.menu-count')) expect(count.classList.contains('sr-only')).toBe(true);
     expect([productCount(1), productCount(2), productCount(2, '02')]).toEqual(['1 product', '2 products', '02 products']);
   });
 });

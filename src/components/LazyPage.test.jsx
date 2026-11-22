@@ -138,9 +138,9 @@ describe('LazyDialog', () => {
     const load = deferred();
     const Dialog = lazyPage(() => load.promise);
     const onClose = vi.fn();
-    render(<LazyDialog eyebrow="TRADE ACCOUNTS" onClose={onClose}><Dialog title="Sign in" /></LazyDialog>);
+    render(<LazyDialog eyebrow="ACCOUNTS" onClose={onClose}><Dialog title="Sign in" /></LazyDialog>);
     const loading = screen.getByRole('dialog', { name: 'Loading' });
-    expect(loading.textContent).toContain('TRADE ACCOUNTS');
+    expect(loading.textContent).toContain('ACCOUNTS');
     expect(screen.getByRole('status').textContent).toBe('Loading…');
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -154,7 +154,7 @@ describe('LazyDialog', () => {
     const load = deferred();
     const Dialog = lazyPage(() => load.promise);
     const onClose = vi.fn();
-    render(<LazyDialog eyebrow="TRADE ACCOUNTS" onClose={onClose}><Dialog title="Sign in" /></LazyDialog>);
+    render(<LazyDialog eyebrow="ACCOUNTS" onClose={onClose}><Dialog title="Sign in" /></LazyDialog>);
     await act(async () => {
       load.reject(new TypeError('Failed to fetch dynamically imported module: http://localhost/assets/AuthModal-abc.js'));
       await load.promise.catch(() => {});
@@ -173,7 +173,7 @@ describe('LazyDialog', () => {
     // arrived, so a reload alone won't fix it.
     const load = deferred();
     const Dialog = lazyPage(() => load.promise);
-    render(<LazyDialog eyebrow="TRADE ACCOUNTS" onClose={() => {}}><Dialog title="Sign in" /></LazyDialog>);
+    render(<LazyDialog eyebrow="ACCOUNTS" onClose={() => {}}><Dialog title="Sign in" /></LazyDialog>);
     await act(async () => {
       load.reject(new TypeError('Qe.at is not a function'));
       await load.promise.catch(() => {});
