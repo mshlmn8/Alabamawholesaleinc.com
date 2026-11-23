@@ -1,6 +1,5 @@
 // An approved buyer's price on a product card (AW-107): the figure in its own
-// element, larger than the name, with what it buys under it when the product
-// has a sell unit, and the same caption over the cards on the department and
+// element, larger than the name, and the same caption over the cards on the department and
 // home pages, from my_prices()' tier. Prices are test values.
 import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -20,16 +19,16 @@ const priceBox = () => document.querySelector('.card-meta > .card-price');
 const SILVER = { tier: 'silver', label: 'Silver (5% off)', discountPct: 5 };
 
 describe('ProductCard price (AW-107)', () => {
-  it('shows the price in its own element, and "per" the sell unit under it', () => {
+  it('shows the price in its own element, with no "per" the sell unit under it', () => {
     render(card(BOX, { ...APPROVED, priceOf: () => 20.34 }));
     const box = priceBox();
     expect(box.querySelector('b').textContent).toBe('$20.34');
-    expect(box.querySelector('small').textContent).toBe('per 36-count box');
+    expect(box.querySelector('small')).toBeNull();
+    expect(box.textContent).toBe('$20.34');
     expect(box.firstElementChild.tagName).toBe('B');
-    expect(box.children).toHaveLength(2);
   });
 
-  it('leaves the unit line off a product without a sell unit, and while there is no price to go with it', () => {
+  it('leaves the unit line off while there is no price to go with it', () => {
     const view = render(card(KITE, { ...APPROVED, priceOf: () => 13.4 }));
     expect(priceBox().textContent).toBe('$13.40');
     expect(priceBox().querySelector('small')).toBeNull();
@@ -59,7 +58,7 @@ describe('ProductCard price (AW-107)', () => {
   it('shows "From" for variants priced differently', () => {
     const p = { ...BOX, variants: ['Blue', 'Cherry'] };
     render(card(p, { ...APPROVED, priceOf: (id, v) => (v === 'Blue' ? 21 : 20.34) }));
-    expect(priceBox().textContent).toBe('From $20.34per 36-count box');
+    expect(priceBox().textContent).toBe('From $20.34');
   });
 
   it('has no price box for guests or accounts awaiting approval', () => {

@@ -758,14 +758,13 @@ describe('cards with a stretched link (AW-170, AW-154, AW-304, AW-303)', () => {
     expect(own('.dept-section .sub-pill')).toEqual({ 'white-space': 'normal' });
   });
 
-  // Every approved price block keeps room for its 'per <unit>' line, so the
-  // figures of a grid row line up (AW-107, NEW-039): the figure's line, the
-  // small's margin and its line.
-  it('lines up the price figures of a grid row, with or without a sell unit (AW-107, NEW-039)', () => {
-    const b = own('.card-price b'), small = own('.card-price small');
+  // Every approved price is the figure alone, so the figures of a grid row
+  // line up (AW-107).
+  it('lines up the price figures of a grid row (AW-107)', () => {
+    const b = own('.card-price b');
     expect(b.font).toBe('700 1.25rem/1.05 var(--display)');
-    expect(small).toMatchObject({ 'margin-top': '.125rem', font: '400 var(--text-xs)/1.3 var(--body)' });
-    expect(own('.card-price')).toEqual({ 'min-height': 'calc(1.25rem * 1.05 + .125rem + var(--text-xs) * 1.3)' });
+    expect(own('.card-price small')).toEqual({});
+    expect(own('.card-price')).toEqual({ 'min-height': 'calc(1.25rem * 1.05)' });
     // The lock and failed-price lines keep their own height.
     for (const s of ['.card-meta .lock', '.card-meta .card-price-failed']) expect(own(s), s).not.toHaveProperty('min-height');
   });

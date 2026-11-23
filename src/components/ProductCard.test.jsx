@@ -121,8 +121,8 @@ describe('ProductCard', () => {
     expect(document.querySelector('.card-initials')).toBeNull();
     const picture = { src: '/x.jpg', srcSet: '', webpSrcSet: '', width: 320, height: 320 };
     view.rerender(card({ ...base, variants: [], picture, sharedPhoto: true, sellUnit: '5-pack' }));
-    expect(document.querySelector('.pack-badge').textContent).toBe('5-pack');
-    // Not shared, or no sell unit: no badge.
+    expect(document.querySelector('.pack-badge')).toBeNull();
+    expect(document.body.textContent).not.toMatch(/Sold by the|per 5-pack/);
     view.rerender(card({ ...base, variants: [], picture, sharedPhoto: false, sellUnit: '5-pack' }));
     expect(document.querySelector('.pack-badge')).toBeNull();
     view.rerender(card({ ...base, variants: [], picture, sharedPhoto: true, sellUnit: '' }));
@@ -138,16 +138,15 @@ describe('ProductCard', () => {
     expect(sizes()).toEqual([SIZES.categoryCard, SIZES.categoryCard]);
   });
 
-  it('badges a shared photo with the size word in the name when there is no sell unit, and calls it representative (AW-136)', () => {
+  it('puts no pack or size badge on a shared photo, and calls it representative (AW-136)', () => {
     const picture = { src: '/x.jpg', srcSet: '', webpSrcSet: '', width: 320, height: 320 };
     const mamba = { ...base, id: 190, name: 'Mamba (small)', variants: [], picture };
     const view = render(card({ ...mamba, sharedPhoto: true, sellUnit: '' }));
-    expect(document.querySelector('.pack-badge').textContent).toBe('small');
+    expect(document.querySelector('.pack-badge')).toBeNull();
     expect(document.querySelector('.card-block img').getAttribute('alt')).toBe('Mamba (small) (representative photo)');
-    // The sell unit comes first.
     view.rerender(card({ ...mamba, sharedPhoto: true, sellUnit: 'box of 24' }));
-    expect(document.querySelector('.pack-badge').textContent).toBe('box of 24');
-    // No word and no sell unit: nothing extra on a card (the product page has the note).
+    expect(document.querySelector('.pack-badge')).toBeNull();
+    expect(document.body.textContent).not.toMatch(/box of 24|per box/);
     view.rerender(card({ ...mamba, name: 'Gain dish liquid', sharedPhoto: true, sellUnit: '' }));
     expect(document.querySelector('.pack-badge')).toBeNull();
     expect(document.querySelector('.photo-note')).toBeNull();

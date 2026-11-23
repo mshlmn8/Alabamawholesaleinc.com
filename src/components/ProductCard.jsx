@@ -6,16 +6,15 @@
 // sell unit, what quantity 1 means (AW-031).
 //
 // From Cursor's PR #13: a product without a photo shows "Photo coming soon"
-// (AW-029); a photo other rows share is badged with this row's sell unit, or
-// else the size word in its name, and its alt calls it representative
-// (AW-136); the placeholder brand "Assorted" isn't printed (AW-286); the
+// (AW-029); a photo other rows share is not badged, and its alt calls it
+// representative (AW-136); the placeholder brand "Assorted" isn't printed
+// (AW-286); the
 // buttons say "Select options" or "Add to order" (the basket is an order for
 // everyone, AW-024), and an add shows "Added" for a moment and is announced
 // (AW-057).
 //
-// An approved buyer's price is the card's figure, larger than the name, with
-// what it buys under it ("per 36-count box") when the product has a sell
-// unit (AW-107). The price row sits at the foot of the card, so the rows line
+// An approved buyer's price is the card's figure, larger than the name
+// (AW-107). The price row sits at the foot of the card, so the rows line
 // up across a grid row. Prices that didn't load are "Your price didn’t load."
 // in body type, like the lock text, never a word in price type (NEW-054); the
 // site notice offers Try again.
@@ -71,7 +70,6 @@ import {
 } from '../lib/lines.js';
 import { PRICE_FAILED_SENTENCE, priceDidNotLoad, priceLabel, variantPriceRange } from '../lib/pricing.js';
 import { PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
-import { sharedPhotoBadge } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { announce } from '../lib/announce.js';
@@ -181,14 +179,10 @@ export function ProductCard({
     else if (n < qty) decLine(key, qty - n);
   };
   const titleId = useId();
-  // A photo other rows share says which of them this is (AW-136).
-  const badge = p.sharedPhoto ? sharedPhotoBadge(p) : '';
   return (
     <article className="content-card" aria-labelledby={titleId}>
       <div className="card-block">
         <ProductPhoto product={p} sizes={sizes} priority={priority} loading={eager ? 'eager' : 'lazy'} />
-        {/* The owner adds a photo of each product that shares a file later, in Admin (AW-136, answered 2026-10). */}
-        {p.picture && p.sharedPhoto && badge && <span className="pack-badge">{badge}</span>}
       </div>
       <p className="card-kicker"><span>{p.sub}</span><ProductTag tag={p.tag} /></p>
       <h3 id={titleId}><Link className="card-link" to={productRoute}>{p.name}</Link></h3>
@@ -203,7 +197,6 @@ export function ProductCard({
         ) : isApprovedBuyer ? (
           <span className="card-price">
             <b>{priceLabel(shown.unit, pricesStatus, { from: shown.from })}</b>
-            {shown.unit != null && p.sellUnit && <small>{`per ${p.sellUnit}`}</small>}
           </span>
         ) : (
           // Its line stays while the account loads, so the rows of a grid
