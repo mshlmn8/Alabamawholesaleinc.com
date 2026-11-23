@@ -499,7 +499,7 @@ test.describe('after age confirmation', () => {
     await expect(page.locator('.pd-unit')).toHaveCount(0);
     await expect(page.locator('main')).not.toContainText('Sold by the');
     await page.goto('/category/tobacco/tubes-and-filters');
-    await expect(page.getByRole('article', { name: 'Gambler cigarette tubes' }).locator('.card-detail')).toHaveCount(0);
+    await expect(page.getByRole('article', { name: 'Gambler cigarette tubes' }).locator('.card-detail')).toHaveText('6 varieties');
     expect(errors).toEqual([]);
   });
 });
