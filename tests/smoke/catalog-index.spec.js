@@ -41,7 +41,7 @@ test('every department shows four product cards, its lines in full and its SKU l
   await expect(sections).toHaveCount(8);
   for (const section of await sections.all()) {
     await expect(section.locator('.card-grid .content-card')).toHaveCount(4);
-    await expect(section.locator('details.sku-details summary')).toHaveText(/^SKU list: all .+ products$/);
+    await expect(section.locator('details.sku-details')).toHaveCount(0);
   }
   // The first photo loads first; the restricted lines are never a card.
   await expect(page.locator('#dept-tobacco .card-grid img').first()).toHaveAttribute('fetchpriority', 'high');

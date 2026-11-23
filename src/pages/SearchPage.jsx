@@ -49,7 +49,7 @@ export function SearchPage({ q = '', products, departments, ...cardProps }) {
         <p className="eyebrow">SEARCH</p>
         <h1>{ready ? `Results for “${query}”` : 'Search the catalog'}</h1>
         <form className="search-form" role="search" aria-label="Catalog" onSubmit={submit}>
-          <label className="filter-search" htmlFor="search-page-input"><span>Search products, brands or <span className="keep-case">SKUs</span></span>
+          <label className="filter-search" htmlFor="search-page-input"><span>Search products or brands</span>
             <input id="search-page-input" type="search" value={draft} onChange={(e) => setDraft(e.target.value)} autoComplete="off" />
           </label>
           <button className="button" type="submit">Search</button>
@@ -68,10 +68,9 @@ export function SearchPage({ q = '', products, departments, ...cardProps }) {
           {/* The cards' h3 titles sit under an h2, as on department pages. */}
           <h2 className="sr-only">Products</h2>
           <div className="card-grid" ref={grid}>
-            {/* showSku: search results keep the SKU on the card. The first
-                row (four cards, two on phones) loads at once, the first photo
-                first (AW-323); the explicit props come after the spread. */}
-            {shown.map((p, i) => <ProductCard key={p.id} p={p} {...cardProps} showSku eager={i < 4} priority={i === 0} />)}
+            {/* The first row (four cards, two on phones) loads at once, the
+                first photo first (AW-323); the explicit props come after the spread. */}
+            {shown.map((p, i) => <ProductCard key={p.id} p={p} {...cardProps} eager={i < 4} priority={i === 0} />)}
           </div>
           {!showAll && result.total > SEARCH_PAGE_SIZE && (
             <div className="search-more">
@@ -84,7 +83,7 @@ export function SearchPage({ q = '', products, departments, ...cardProps }) {
       {ready && result.total === 0 && (
         <div className="empty-results search-empty">
           <h2>{`No products match “${query}”.`}</h2>
-          <p>Try another spelling, a brand or a SKU, or browse a department.</p>
+          <p>Try another spelling or a brand, or browse a department.</p>
           <ul className="sub-pills">
             {departments.map(d => (
               <li key={d.key}><Link className="sub-pill" to={{ page: 'category', category: d.key }}>{`${d.label} (${d.count})`}</Link></li>

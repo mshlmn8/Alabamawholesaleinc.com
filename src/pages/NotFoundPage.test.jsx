@@ -36,17 +36,17 @@ describe('NotFoundPage', () => {
 
   it('searches the catalog and lists matches as product links', () => {
     render(<NotFoundPage products={products} departments={departments} />);
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Product, brand or SKU' }), { target: { value: 'kite' } });
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Product or brand' }), { target: { value: 'kite' } });
     expect(screen.getByRole('status').textContent).toBe('1 matching product');
     expect(screen.getByRole('link', { name: /Kite tobacco/ }).getAttribute('href')).toBe('/product/12');
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Product, brand or SKU' }), { target: { value: 'zzz' } });
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Product or brand' }), { target: { value: 'zzz' } });
     expect(screen.getByRole('status').textContent).toMatch(/^No matches/);
   });
 
   it('opens every result on the search page on Enter (AW-007)', () => {
     window.history.replaceState(null, '', '/no-such-page');
     render(<NotFoundPage products={products} departments={departments} />);
-    const box = screen.getByRole('searchbox', { name: 'Product, brand or SKU' });
+    const box = screen.getByRole('searchbox', { name: 'Product or brand' });
     // Too short: it says so and stays.
     fireEvent.change(box, { target: { value: 'k' } });
     fireEvent.submit(screen.getByRole('search'));

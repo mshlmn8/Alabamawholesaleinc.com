@@ -67,10 +67,9 @@ describe('combobox semantics (AW-171)', () => {
     const { items } = searchProducts(PRODUCTS, 'mental health');
     const first = options()[0];
     const parts = [...first.querySelectorAll('small > .text-parts > span')];
-    expect(parts.map((span) => span.textContent.replace(/\u00a0/g, ' ').trim())).toEqual([`${catLabel(items[0].cat)} ·`, `${items[0].sub} ·`, items[0].sku]);
-    const code = first.querySelector('.sku-part');
-    expect(code).toBe(parts[2]);
-    expect(code.getAttribute('title')).toBe(items[0].sku);
+    expect(parts.map((span) => span.textContent.replace(/\u00a0/g, ' ').trim())).toEqual([`${catLabel(items[0].cat)} ·`, items[0].sub]);
+    expect(first.querySelector('.sku-part')).toBeNull();
+    expect(first.textContent).not.toContain(items[0].sku);
   });
 
   it('shows no listbox when nothing matches, and says so', () => {

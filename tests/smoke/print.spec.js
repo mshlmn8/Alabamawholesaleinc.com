@@ -65,7 +65,7 @@ test('printing /catalog opens every SKU list and closes them again afterwards (A
   await expect(page.locator('main h1')).toHaveText('All products');
   const lists = page.locator('details.sku-details');
   const count = await lists.count();
-  expect(count).toBeGreaterThan(5);
+  expect(count).toBe(0);
   // Open during the print: beforeprint fires inside page.pdf, and the app's
   // listener (installed at start-up) runs before this one.
   await page.evaluate(() => {

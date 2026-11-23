@@ -32,7 +32,7 @@
 // is left to fill in, since the list itself goes away.
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { resolveSkuLine, variantSku } from '../../lib/lines.js';
+import { resolveSkuLine } from '../../lib/lines.js';
 import { BASKET } from '../../data/terms.js';
 import { brandLabel, formatMoney } from '../../lib/format.js';
 import { lineTotal, priceLabel } from '../../lib/pricing.js';
@@ -278,7 +278,7 @@ export function QuickReorder({ products, addLines, onOpenCart, isApprovedBuyer, 
               {res.status === 'ok' && (
                 <p className="qr-match">
                   <b>{`${res.product.name}${res.variant ? ` — ${res.variant}` : ''}`}</b>
-                  <small>{[variantSku(res.product.sku, res.variant), brandLabel(res.product.brand)].filter(Boolean).join(' · ')}</small>
+                  {brandLabel(res.product.brand) ? <small>{brandLabel(res.product.brand)}</small> : null}
                   {isApprovedBuyer && <span className="qr-price">{price}</span>}
                 </p>
               )}

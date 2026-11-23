@@ -206,7 +206,7 @@ test.describe('after age confirmation', () => {
       if (status === 404) missing.add(`HTTP 404 ${response.url()}`);
       await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
-      await expect(page.getByRole('searchbox', { name: 'Product, brand or SKU' })).toBeVisible();
+      await expect(page.getByRole('searchbox', { name: 'Product or brand' })).toBeVisible();
       await expect(page.getByRole('navigation', { name: 'Browse by department' }).getByRole('link', { name: 'Tobacco', exact: true })).toBeVisible();
     }
     // A link cut off mid-escape (AW-185), followed inside the app.
@@ -488,7 +488,7 @@ test.describe('after age confirmation', () => {
     // Gas cans: sizes, no flavor note.
     await page.goto('/product/356');
     await expect(page.getByRole('radiogroup', { name: 'Choose a size' })).toBeVisible();
-    await expect(page.getByText('Add each size you want separately.')).toBeVisible();
+    await expect(page.getByText('Add each size you want separately.')).toHaveCount(0);
     await expect(page.getByText('Flavors and availability change often.', { exact: false })).toHaveCount(0);
     // RAW tips: no variants (its lone "Tips" was no choice, AW-138), no chips.
     await page.goto('/product/329');
@@ -498,8 +498,8 @@ test.describe('after age confirmation', () => {
     await page.goto('/product/242');
     await expect(page.locator('.pd-unit')).toHaveText('Sold by the box of 200 — quantity 1 is one box of 200.');
     await page.goto('/category/tobacco/tubes-and-filters');
-    await expect(page.locator('.card-detail').filter({ hasText: 'AW-GAMBLER-TUBES' }))
-      .toHaveText('Gambler · Sold by the box of 200 · AW-GAMBLER-TUBES');
+    await expect(page.getByRole('article', { name: 'Gambler cigarette tubes' }).locator('.card-detail'))
+      .toHaveText('Sold by the box of 200');
     expect(errors).toEqual([]);
   });
 });
@@ -760,8 +760,7 @@ test.describe('home sections', () => {
     await tiles.filter({ hasText: 'Candies' }).click();
     await expect(page).toHaveURL(/\/category\/candies$/);
     await expect(page.getByRole('heading', { level: 1, name: 'Candies' })).toBeVisible();
-    // Department pages keep the SKU on the card.
-    await expect(page.locator('.card-detail').first()).toContainText('AW-');
+    await expect(page.locator('main')).not.toContainText(/\bAW-[A-Z0-9]/);
     expect(errors).toEqual([]);
   });
 });

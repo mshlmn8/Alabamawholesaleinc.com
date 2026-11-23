@@ -341,7 +341,7 @@ export function CategoryPage({
   const searchField = (
     <label className="filter-search" htmlFor="category-search"><span>{`Search in ${activeSub || catLabel(category)}`}</span>
       <Icon name="search" />
-      <input id="category-search" type="search" value={draft} onChange={(e) => onSearchInput(e.target.value)} placeholder={`Search ${(activeSub || deptLabel).toLowerCase()} by name, brand or SKU`} autoComplete="off" />
+      <input id="category-search" type="search" value={draft} onChange={(e) => onSearchInput(e.target.value)} placeholder={`Search ${(activeSub || deptLabel).toLowerCase()} by name or brand`} autoComplete="off" />
     </label>
   );
   const filterPanel = (

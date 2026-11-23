@@ -804,8 +804,8 @@ describe('QuotePage receipt', () => {
     expect(screen.getByText('ALW-O-TEST000001')).toBeTruthy();
     expect(screen.getByRole('heading', { level: 2, name: 'Items in your order' })).toBeTruthy();
     expect([...document.querySelectorAll('.receipt-items li')].map((li) => li.textContent)).toEqual([
-      '2 × Kite cigarette tobacco (AW-KITE)',
-      '3 × Argo corn starch (AW-ARGO-CORN-STARCH · sold by the case of 24)',
+      '2 × Kite cigarette tobacco',
+      '3 × Argo corn starch Sold by the case of 24',
     ]);
     const details = Object.fromEntries([...document.querySelectorAll('.receipt-details > div')].map((row) => [row.querySelector('dt').textContent, row.querySelector('dd').textContent]));
     // When it was sent comes first, on the warehouse's clock (NEW-062).

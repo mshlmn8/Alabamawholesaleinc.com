@@ -31,7 +31,7 @@ beforeEach(() => {
 describe('Header search', () => {
   it('names no product count in its placeholder', () => {
     renderHeader();
-    expect(box().getAttribute('placeholder')).toBe('Search products, brands or SKUs');
+    expect(box().getAttribute('placeholder')).toBe('Search products or brands');
   });
 
   it('lists the best 8, says how many there are and links to all of them', () => {

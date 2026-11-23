@@ -59,11 +59,11 @@ describe('HomePage rails', () => {
       expect(cards, id).toHaveLength(count);
       for (const card of cards) {
         const product = PRODUCTS.find((p) => p.name === card.querySelector('h3').textContent);
-        const detail = card.querySelector('.card-detail').textContent;
+        const line = card.querySelector('.card-detail');
+        const detail = line ? line.textContent : '';
         expect(detail, product.name).not.toContain(product.sku);
         expect(detail).not.toMatch(/\bAW-[A-Z0-9]/);
-        // Everything else on the line stays.
-        expect(detail).toBe(cardDetail(product, { sku: false }));
+        expect(detail).toBe(cardDetail(product));
       }
     }
   });
@@ -79,10 +79,9 @@ describe('HomePage rails', () => {
     expect(screen.queryByRole('link', { name: 'Shop tobacco' })).toBeNull();
   });
 
-  it('keeps the SKU on cards everywhere else', () => {
-    const p = { brand: 'Swisher Sweets', sku: 'AW-SS', variants: [] };
-    expect(cardDetail(p)).toBe('Swisher Sweets\u00a0· AW-SS');
-    expect(cardDetail(p, { sku: false })).toBe('Swisher Sweets');
+  it('never puts the brand or the SKU on a card', () => {
+    expect(cardDetail({ brand: 'Swisher Sweets', sku: 'AW-SS', variants: [] })).toBe('');
+    expect(cardDetail({ brand: 'Swisher Sweets', sku: 'AW-SS', sellUnit: '5-pack' })).toBe('Sold by the 5-pack');
   });
 });
 

@@ -32,7 +32,7 @@ describe('SearchPage', () => {
     const total = Number(note().split(' ')[0]);
     expect(total).toBeGreaterThanOrEqual(30);
     expect(cards()).toHaveLength(total);
-    expect(screen.getByRole('searchbox', { name: 'Search products, brands or SKUs' }).value).toBe('cigar');
+    expect(screen.getByRole('searchbox', { name: 'Search products or brands' }).value).toBe('cigar');
   });
 
   it('loads the first row of photos at once, the first one first; the rest lazily (AW-323)', () => {
@@ -99,7 +99,7 @@ describe('SearchPage', () => {
 
   it('searches again from its own box', () => {
     show('cigar');
-    const box = screen.getByRole('searchbox', { name: 'Search products, brands or SKUs' });
+    const box = screen.getByRole('searchbox', { name: 'Search products or brands' });
     fireEvent.change(box, { target: { value: '  red bull ' } });
     fireEvent.submit(screen.getByRole('search', { name: 'Catalog' }));
     expect(window.location.pathname + window.location.search).toBe('/search?q=red+bull');
