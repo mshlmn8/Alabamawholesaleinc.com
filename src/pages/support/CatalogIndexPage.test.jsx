@@ -14,8 +14,6 @@ const products = [
   { id: 3, name: 'Gatorade', brand: 'Gatorade', cat: 'DRINKS & BAGS', sub: 'Sports', sku: 'AW-GATORADE', variants: ['Blue'] },
   { id: 4, name: 'Kite', brand: 'Kite', cat: 'TOBACCO', sub: 'Cigarettes', sku: 'AW-KITE', variants: [] },
 ];
-const row = (name) => screen.getByText(name).closest('a').querySelector('small').textContent;
-
 // Products with photos and tags, and rows of the restricted lines (decision 2).
 const photo = (id) => ({ src: `/img/p${id}.jpg`, width: 400, height: 400 });
 const item = (id, fields) => ({ id, brand: 'Brand', sku: `AW-${id}`, variants: [], tag: null, picture: photo(id), img: `p${id}.jpg`, ...fields });
@@ -38,8 +36,6 @@ const cardProps = { profile: null, isApprovedBuyer: false, cart: {}, addLine: ()
 const page = (list = CATALOG, props = {}) => render(<CatalogIndexPage products={list} departments={departmentsFor(list)} {...cardProps} {...props} />);
 const section = (label) => screen.getByRole('region', { name: label });
 const cardNames = (el) => [...el.querySelectorAll('.card-grid .content-card h3')].map((h) => h.textContent);
-const skuNames = (el) => [...el.querySelectorAll('details.sku-details .sku-list b')].map((b) => b.textContent);
-
 beforeEach(() => {
   vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
   act(() => navigate('/catalog', { replace: true }));
@@ -47,13 +43,10 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('CatalogIndexPage', () => {
-  it('leaves colors, flavors and varieties off each SKU line', () => {
+  it('lists no SKU codes', () => {
     render(<CatalogIndexPage products={products} departments={departmentsFor(products)} profile={null} isApprovedBuyer={false} onLoginClick={() => {}} />);
-    expect(row('Swisher Sweets cigarillos')).toBe('Swisher · Cigars · AW-SS');
-    // The placeholder brand isn't printed (AW-286).
-    expect(row('Gas cans')).toBe('Auto · AW-GAS');
-    expect(row('Gatorade')).toBe('Gatorade · Sports · AW-GATORADE');
-    expect(row('Kite')).toBe('Kite · Cigarettes · AW-KITE');
+    expect(document.querySelectorAll('details.sku-details')).toHaveLength(0);
+    expect(document.body.textContent).not.toMatch(/AW-/);
     expect(screen.queryByText(/\d+ (flavors|sizes|colors|varieties|variants)/)).toBeNull();
   });
 
@@ -84,26 +77,19 @@ describe('CatalogIndexPage', () => {
     expect(cardNames(section('Novelties & Vapes'))).toEqual(['Disposable vape']);
     expect(cardNames(section('Merchandise'))).toEqual(['Energy honey sticks']);
     expect(catalogPreview(CATALOG.filter((p) => p.cat === 'NOVELTIES')).map((p) => p.id)).toEqual([22]);
-    // They stay in the SKU list, like every other product.
-    expect(skuNames(section('Novelties & Vapes'))).toEqual(['Disposable vape', 'Kava shot', 'Mushroom gummies']);
-    expect(skuNames(section('Merchandise'))).toEqual(['Energy honey sticks', 'Enhancement honey']);
   });
 
-  it('keeps every SKU of a department in its list, by name, behind its toggle', () => {
+  it('does not list every product code under a department', () => {
     page();
-    expect(skuNames(section('Tobacco'))).toEqual([
-      'Bestseller cigars', 'Deal wraps', 'Last cigars', 'New papers', 'No-photo bestseller', 'Ranked wraps', 'Untagged cigars',
-    ]);
-    // 'SKU' only where the codes are listed; the count says products (NEW-056).
-    expect(section('Tobacco').querySelector('details.sku-details > summary').textContent).toBe('SKU list: all Tobacco products');
-    expect(section('Tobacco').querySelector('.dept-head .eyebrow').textContent).toBe('DEPARTMENT 01');
+    expect(document.querySelector('details.sku-details')).toBeNull();
+    expect(section('Tobacco').querySelector('.dept-head .eyebrow')).toBeNull();
   });
 
   it('leaves a department without a photographed product with its lines, link and SKU list', () => {
     page(products);
     expect(section('Motor Oil').querySelector('.card-grid')).toBeNull();
     expect(within(section('Motor Oil')).getByRole('link', { name: 'See the Motor Oil product' }).getAttribute('href')).toBe('/category/motor-oil');
-    expect(skuNames(section('Motor Oil'))).toEqual(['Gas cans']);
+    expect(section('Motor Oil').querySelector('details.sku-details')).toBeNull();
   });
 
   it("loads the first department's photos at once, its first one first (AW-323)", () => {

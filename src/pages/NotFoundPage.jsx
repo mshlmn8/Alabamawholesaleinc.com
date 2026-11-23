@@ -54,7 +54,7 @@ export function NotFoundPage({ kind = 'page', category = null, products, departm
   const searching = query.trim().length >= MIN_QUERY_LENGTH;
   const dept = category ? departments.find(d => d.key === category) : null;
   let status = '';
-  if (searching) status = hits.length ? `${hits.length} matching product${hits.length === 1 ? '' : 's'}` : 'No matches. Try a brand, a product line or a SKU.';
+  if (searching) status = hits.length ? `${hits.length} matching product${hits.length === 1 ? '' : 's'}` : 'No matches. Try a brand or a product line.';
   else if (tooShort) status = `Type at least ${MIN_QUERY_LENGTH} characters.`;
 
   const openResults = (e) => {
@@ -92,7 +92,7 @@ export function NotFoundPage({ kind = 'page', category = null, products, departm
           <section className="not-found-search" aria-labelledby="not-found-search-title">
             <h2 id="not-found-search-title">Search the catalog</h2>
             <form role="search" aria-labelledby="not-found-search-title" onSubmit={openResults}>
-              <label className="filter-search" htmlFor="not-found-search"><span>Product, brand or SKU</span>
+              <label className="filter-search" htmlFor="not-found-search"><span>Product or brand</span>
                 <input id="not-found-search" type="search" value={query} onChange={(e) => { setQuery(e.target.value); setTooShort(false); }}
                        placeholder="Backwoods, energy drinks, AW-KITE…" autoComplete="off" />
               </label>
@@ -104,7 +104,7 @@ export function NotFoundPage({ kind = 'page', category = null, products, departm
                   <li key={p.id}>
                     <Link to={{ page: 'product', productId: p.id }}>
                       <b>{p.name}</b>
-                      <small>{`${catLabel(p.cat)} · ${p.sub} · ${p.sku}`}</small>
+                      <small>{`${catLabel(p.cat)} · ${p.sub}`}</small>
                     </Link>
                   </li>
                 ))}

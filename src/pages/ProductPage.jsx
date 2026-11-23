@@ -92,9 +92,9 @@
 
 import { useRef, useState } from 'react';
 import {
-  informativeVariant, isVariantAvailable, lineKey, requiresVariantChoice, variantAxis, variantList, variantSku,
+  informativeVariant, isVariantAvailable, lineKey, requiresVariantChoice, variantAxis, variantList,
 } from '../lib/lines.js';
-import { PRICE_FAILED_SENTENCE, lineTotal, pctText, priceDidNotLoad, priceLabel, tierName, variantPriceRange } from '../lib/pricing.js';
+import { PRICE_FAILED_SENTENCE, pctText, priceDidNotLoad, priceLabel, tierName, variantPriceRange } from '../lib/pricing.js';
 import { CHECKING_ACCOUNT_TEXT, PRICES_NEED_PROFILE, PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
 import { SHARED_PHOTO_NOTE, brandLabel, catLabel, formatMoney, photoAlt, sharedPhotoBadge } from '../lib/format.js';
 import { SIZES, zoomPicture, zoomSizes } from '../lib/images.js';
@@ -220,11 +220,10 @@ export function ProductPage({
   const tier = tierName(priceTier?.tier);
   const discountPct = Number(priceTier?.discountPct) || 0;
   const showSaving = shown.unit != null && !shown.from && list != null && discountPct > 0;
-  // quantity × price = line total, for a single known price of something
-  // that can be added.
-  const qtyTotal = isApprovedBuyer && !noneAvailable && shown.unit != null && !shown.from
-    ? `${desiredQty.toLocaleString('en-US')} × ${formatMoney(shown.unit)} = ${formatMoney(lineTotal(shown.unit, desiredQty))}`
-    : '';
+  // "Standard price" is not shown. A named tier ("Silver price") is.
+  const tierCaption = shown.unit != null && tier
+    ? (/^standard$/i.test(tier) ? '' : `${tier} price`)
+    : 'Wholesale unit price';
   // What the price slot says without a price. The account decides first
   // (NEW-002): Sign in and Apply only when nobody is signed in; while the
   // account is checked, a status in the shape of the pending line (the
@@ -308,9 +307,8 @@ export function ProductPage({
       {lockedPrice || (
         <>
           <b>{priceLabel(shown.unit, pricesStatus, { from: shown.from })}</b>
-          <span>{shown.unit != null && tier ? `${tier} price` : 'Wholesale unit price'}</span>
+          {tierCaption ? <span>{tierCaption}</span> : null}
           {showSaving && <span className="pd-save">list <s>{formatMoney(list)}</s> · you save <strong>{pctText(discountPct)}</strong></span>}
-          {/* The SKU is the .pd-sku line below, for everyone (AW-234). */}
         </>
       )}
     </div>
@@ -325,7 +323,6 @@ export function ProductPage({
       {addRow}
     </div>
   ) : addRow;
-  const totalNote = qtyTotal ? <p key="total" className="in-cart-note pd-line-total">{qtyTotal}</p> : null;
   const inCartNote = qty > 0
     ? <p key="in-cart" className="in-cart-note"><span>{`Already in ${BASKET.noun}: `}</span><strong>{qty}</strong><span>{selected ? ` · ${selected}` : ''}</span></p>
     : null;
@@ -374,7 +371,6 @@ export function ProductPage({
           )}
           {variantError && <p id="pd-variant-error" className="form-error" role="alert">{`Select a ${axis.noun} before adding this product.`}</p>}
           {soleShown && <p className="pd-desc">{`${axis.label}: ${soleShown}${soleUnavailable ? ' (not available)' : ''}`}</p>}
-          {choiceRequired && !noneAvailable && <p className="in-cart-note">{`Add each ${axis.noun} you want separately.`}</p>}
           {savedQty > 0 && !noneAvailable && <p className="pd-saved">{`From your last visit: quantity ${savedQty}.${choiceRequired ? ` Choose a ${axis.noun}, then add it.` : ''}`}</p>}
           {/* Price, sell unit, quantity and add, line total, "Already in":
               price first on a desktop, the add row first in the compact
@@ -383,20 +379,14 @@ export function ProductPage({
           {priceFirst && priceOrNone}
           {unitNote}
           {addBlock}
-          {totalNote}
           {inCartNote}
           {!priceFirst && priceOrNone}
-          {/* The SKU for everyone, and the chosen variant's once there is one
-              (AW-234), after the add row so that row stays in the first
-              screen of a laptop (AW-163). */}
-          <p className="pd-sku">SKU <span>{variantSku(p.sku, selected)}</span></p>
-          {/* The description, the flavor note and the fine print after the
-              price and the add row, so those are in the first screen (AW-163).
-              Staff can show none at all (AW-023, "Show no description"): then
-              neither the stored or bundled text nor the generic sentence. */}
+          {/* The description and the flavor note after the price and the add
+              row, so those are in the first screen (AW-163). Staff can show
+              no description (AW-023, "Show no description"): then neither the
+              stored or bundled text nor the generic sentence. */}
           {!p.descriptionHidden && <p className="pd-desc">{p.description || `Wholesale ${p.sub.toLowerCase()}${brand ? ` from ${brand}` : ''}.`}</p>}
           {choiceRequired && !noneAvailable && axis.label === 'Flavor' && <p className="in-cart-note pd-flavor-note">Flavors and availability change often. The trade desk confirms what is in stock.</p>}
-          <p className="pd-desc pd-fine">{`Supplied to licensed retail businesses for lawful resale. Next-day delivery on our trucks when the stop is on a delivery route in AL, MS and GA. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
         </div>
       </div>
       {related.length > 0 && (

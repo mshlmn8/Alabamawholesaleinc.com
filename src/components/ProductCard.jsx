@@ -71,7 +71,7 @@ import {
 } from '../lib/lines.js';
 import { PRICE_FAILED_SENTENCE, priceDidNotLoad, priceLabel, variantPriceRange } from '../lib/pricing.js';
 import { PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
-import { brandLabel, sharedPhotoBadge } from '../lib/format.js';
+import { sharedPhotoBadge } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { announce } from '../lib/announce.js';
@@ -87,17 +87,13 @@ const NO_PRICES = () => null;
 // How long "Added" stays under the control after an add.
 export const ADDED_NOTE_MS = 2000;
 
-// The card's detail line: brand (not the placeholder), the sell unit, and the
-// SKU (left off on the home page, AW-060). Colors, flavors and varieties stay
-// on the product page, where the buyer chooses one. cardDetailParts gives the
-// values, which the card shows as TextParts (AW-304); cardDetail the same
-// line as one string.
-export function cardDetailParts(p, { sku = true } = {}) {
-  return [
-    brandLabel(p.brand),
-    p.sellUnit ? `Sold by the ${p.sellUnit}` : '',
-    sku ? p.sku : '',
-  ].filter(Boolean);
+// The card's detail line is only the sell unit, when the product has one.
+// The brand and the SKU are not shown (the name already says the product).
+// Colors, flavors and varieties stay on the product page, where the buyer
+// chooses one. cardDetailParts gives the values, which the card shows as
+// TextParts; cardDetail the same line as one string.
+export function cardDetailParts(p) {
+  return [p.sellUnit ? `Sold by the ${p.sellUnit}` : ''].filter(Boolean);
 }
 
 export function cardDetail(p, options) {
@@ -114,7 +110,7 @@ export function cardLockText(profile, account = profile ? 'ready' : 'signed-out'
 }
 
 export function ProductCard({
-  p, profile = null, account = profile ? 'ready' : 'signed-out', isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, showSku = true, eager = false, priority = false,
+  p, profile = null, account = profile ? 'ready' : 'signed-out', isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, eager = false, priority = false,
   sizes = SIZES.card,
 }) {
   // Counts the adds since "Added" last went away; each add restarts its timer.
@@ -197,7 +193,7 @@ export function ProductCard({
       </div>
       <p className="card-kicker"><span>{p.sub}</span><ProductTag tag={p.tag} /></p>
       <h3 id={titleId}><Link className="card-link" to={productRoute}>{p.name}</Link></h3>
-      <p className="card-detail"><TextParts parts={cardDetailParts(p, { sku: showSku })} code={showSku ? p.sku : null} /></p>
+      {cardDetailParts(p).length > 0 && <p className="card-detail"><TextParts parts={cardDetailParts(p)} /></p>}
       <span className="card-meta card-actions">
         {isApprovedBuyer && soldOut ? (
           // The price row keeps its height, so the cards in a row line up.

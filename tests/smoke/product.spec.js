@@ -39,7 +39,7 @@ test('the variants are one required choice, adding before a choice says so, and 
   await page.goto('/product/162');
   const group = page.getByRole('radiogroup', { name: 'Choose a variety' });
   await expect(group).toHaveAttribute('aria-required', 'true');
-  await expect(page.locator('.pd-sku')).toHaveText('SKU AW-SNICKERS');
+  await expect(page.locator('.pd-sku')).toHaveCount(0);
   const add = page.locator('.pd-info').getByRole('button', { name: /^Add to order/ });
   await expect(add).toBeEnabled();
   await add.click();
@@ -51,7 +51,7 @@ test('the variants are one required choice, adding before a choice says so, and 
   await expect(king).toBeFocused();
   await expect(king).toHaveAttribute('aria-checked', 'true');
   await expect(page.getByText('Select a variety before adding this product.')).toHaveCount(0);
-  await expect(page.locator('.pd-sku')).toHaveText('SKU AW-SNICKERS-KING-SIZE');
+  await expect(page.locator('.pd-sku')).toHaveCount(0);
   await page.keyboard.press('End');
   await expect(group.getByRole('radio', { name: 'Almond, king size' })).toBeFocused();
   await page.keyboard.press('Home');

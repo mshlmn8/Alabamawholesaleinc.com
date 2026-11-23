@@ -232,7 +232,7 @@ test.describe('an approved buyer', () => {
     await expect(thanks).toBeFocused();
     await expect(page.getByText('ORDER RECEIVED')).toBeVisible();
     await expect(page.locator('.receipt-ref-number')).toHaveText('ALW-O-RECEIPT001');
-    await expect(page.locator('.receipt-items li')).toHaveText(['2 × Kite cigarette tobacco (AW-KITE)']);
+    await expect(page.locator('.receipt-items li')).toHaveText(['2 × Kite cigarette tobacco']);
     await expect(page.locator('.receipt-details')).toContainText('Next-day delivery (on route)');
     await expect(page.locator('.receipt-details')).toContainText('1 Test Way');
     await expect(page.locator('.receipt-details')).toContainText('Back door, before 10');

@@ -411,8 +411,17 @@ describe('the sticky header and what sticks under it (AW-153, AW-300, AW-312, AW
     // With reduced motion the message wraps instead of scrolling.
     const still = mediaBlocks(compact.body).filter((b) => b.prelude === '(prefers-reduced-motion: reduce)').flatMap((b) => rules(b.body));
     expect(still.map((r) => [r.selectors.join(', '), declarations(r.body)])).toEqual([['.announcement-list li', { 'white-space': 'normal' }]]);
-    // The phone masthead's two rows, tight enough for the header to stick.
-    expect(own('.aw-masthead')[0]).toMatchObject({ gap: '6px 10px', padding: '4px 0 8px' });
+    // The phone masthead's two rows: the menu mark, the logo centred between
+    // equal columns and the account and order marks, over the search.
+    expect(own('.aw-masthead')[0]).toMatchObject({ display: 'grid', 'grid-template-columns': '1fr auto 1fr', gap: '8px', padding: '8px 0 10px' });
+    expect(own('.aw-logo')[0]).toMatchObject({ 'justify-self': 'center' });
+    expect(own('.aw-search')[0]).toMatchObject({ 'grid-column': '1 / -1' });
+    // The account and order marks stand alone, 44px targets; their words are
+    // clipped, never display: none, so screen readers still have them.
+    expect(own('.aw-action-text')[0]).toMatchObject({ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden' });
+    expect(own('.aw-action-text')[0]).not.toHaveProperty('display');
+    expect(own('.aw-account-actions .aw-signin, .button.aw-cart-btn')[0]).toMatchObject({ width: 'var(--tap)', 'min-height': 'var(--tap)' });
+    expect(own('.aw-menu-toggle span')).toEqual([{ display: 'none' }]);
     expect(compact.body.indexOf(`@media ${wide}`)).toBeGreaterThan(compact.body.indexOf('.aw-search {'));
     expect(compact.body.indexOf(`@media ${wide}`)).toBeGreaterThan(compact.body.indexOf('.trade-call-number {'));
     const inWide = (selector) => mediaBlocks(compact.body).filter((b) => b.prelude === wide).flatMap((b) => rules(b.body))
@@ -420,6 +429,8 @@ describe('the sticky header and what sticks under it (AW-153, AW-300, AW-312, AW
     expect(inWide('.trade-call-number')).toEqual([{ display: 'inline' }]);
     expect(inWide('.aw-search')).toEqual([{ order: '2', flex: '1 1 12rem' }]);
     expect(inWide('.aw-account-actions')).toEqual([{ order: '3' }]);
+    expect(inWide('.aw-masthead')[0]).toMatchObject({ display: 'flex' });
+    expect(inWide('.aw-menu-toggle span')).toEqual([{ display: 'inline' }]);
   });
 
   it('hides the product line from the phone filter bar visually only', () => {

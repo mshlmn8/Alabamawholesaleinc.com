@@ -36,6 +36,9 @@ describe('Header account link (AW-267)', () => {
     expect(link.hasAttribute('aria-label')).toBe(false);
     expect(link.querySelector('small.aw-account-kicker').textContent).toBe('My account');
     expect(link.querySelector('.aw-account-label').textContent).toBe(LONG);
+    // The person mark leads; the words are one block the compact layout hides from sight only.
+    expect(link.firstElementChild.matches('svg.icon.aw-action-icon')).toBe(true);
+    expect(link.querySelector('.aw-action-text').textContent).toBe(`My account ${LONG}`);
   });
 
   it('falls back to the contact name, and to a plain My account while there is no name', () => {

@@ -31,18 +31,10 @@ describe('product counts (AW-217, NEW-056)', () => {
     const head = document.querySelector('.page-head .eyebrow');
     expect(text(head)).toBe('FULL ASSORTMENT');
     expect(text(document.querySelector('.page-head > p:not([class])'))).toBe('Every department in one place.');
-    const tobacco = screen.getByRole('heading', { level: 2, name: 'Tobacco' }).previousElementSibling;
-    expect(text(tobacco)).toBe('DEPARTMENT 01');
-    // One text node, the eyebrow's only child (translate-safe).
-    expect(tobacco.childNodes).toHaveLength(1);
-    for (const eyebrow of document.querySelectorAll('.dept-head .eyebrow')) {
-      expect(text(eyebrow)).toMatch(/^DEPARTMENT \d\d$/);
-      expect(eyebrow.querySelector('.keep-case')).toBeNull();
-    }
+    expect(screen.getByRole('heading', { level: 2, name: 'Tobacco' }).previousElementSibling).toBeNull();
+    expect(document.querySelectorAll('.dept-head .eyebrow')).toHaveLength(0);
     // 'SKU' stays where the codes are listed.
-    const summaries = [...document.querySelectorAll('details.sku-details > summary')].map(text);
-    expect(summaries).toContain('SKU list: all Tobacco products');
-    expect(summaries).toContain('SKU list: the Drinks & Bags product');
+    expect(document.querySelector('details.sku-details')).toBeNull();
   });
 
   it('does the same on a department page, its line pages and its result note', () => {
