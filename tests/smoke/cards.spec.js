@@ -72,17 +72,12 @@ test('the controls sit above the card link, after it in the tab order (AW-170)',
   await add.click();
   await expect(card.getByRole('group', { name: 'Kite cigarette tobacco quantity' })).toBeVisible();
   await expect(page).toHaveURL(/\/category\/tobacco\/cigarettes$/);
-  // Tab: the link, the guest pricing prompt (while cards have one), then the
-  // card's control.
+  // Tab: the product link, then the guest's sign-in button in place of
+  // Select options.
   const next = page.getByRole('article', { name: 'Seneca cigarettes' });
   await next.getByRole('link', { name: 'Seneca cigarettes', exact: true }).focus();
   await page.keyboard.press('Tab');
-  const prompt = next.getByRole('button', { name: 'Sign in for pricing' });
-  if (await prompt.count()) {
-    await expect(prompt).toBeFocused();
-    await page.keyboard.press('Tab');
-  }
-  await expect(next.getByRole('link', { name: /^Select options\b/ })).toBeFocused();
+  await expect(next.getByRole('button', { name: /^Sign in for pricing\b/ })).toBeFocused();
   expect(errors).toEqual([]);
 });
 

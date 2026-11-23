@@ -66,7 +66,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import {
-  isVariantAvailable, lineKey, parseLineKey, requiresVariantChoice, variantList,
+  isVariantAvailable, lineKey, optionCountLabel, parseLineKey, requiresVariantChoice, variantList,
 } from '../lib/lines.js';
 import { PRICE_FAILED_SENTENCE, priceDidNotLoad, priceLabel, variantPriceRange } from '../lib/pricing.js';
 import { PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
@@ -107,7 +107,7 @@ export function cardLockText(profile, account = profile ? 'ready' : 'signed-out'
 }
 
 export function ProductCard({
-  p, profile = null, account = profile ? 'ready' : 'signed-out', isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, eager = false, priority = false,
+  p, profile = null, account = profile ? 'ready' : 'signed-out', isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, onLoginClick, eager = false, priority = false,
   sizes = SIZES.card,
 }) {
   // Counts the adds since "Added" last went away; each add restarts its timer.
@@ -179,6 +179,11 @@ export function ProductCard({
     else if (n < qty) decLine(key, qty - n);
   };
   const titleId = useId();
+  const countLabel = optionCountLabel(p);
+  // A guest can't price a choice, so the choose button is the sign-in prompt
+  // instead of "Select options". The lock line above it would repeat the
+  // same words, so that line stays blank and keeps the row's height.
+  const guestPrompt = account === 'signed-out' && choiceRequired && !soldOut;
   return (
     <article className="content-card" aria-labelledby={titleId}>
       <div className="card-block">
@@ -186,6 +191,7 @@ export function ProductCard({
       </div>
       <p className="card-kicker"><span>{p.sub}</span><ProductTag tag={p.tag} /></p>
       <h3 id={titleId}><Link className="card-link" to={productRoute}>{p.name}</Link></h3>
+      {countLabel && <p className="card-detail">{countLabel}</p>}
       {cardDetailParts(p).length > 0 && <p className="card-detail"><TextParts parts={cardDetailParts(p)} /></p>}
       <span className="card-meta card-actions">
         {isApprovedBuyer && soldOut ? (
@@ -200,11 +206,16 @@ export function ProductCard({
           </span>
         ) : (
           // Its line stays while the account loads, so the rows of a grid
-          // keep their height (NEW-050).
-          <span className="lock" aria-hidden={lockText ? undefined : 'true'}>{lockText || '\u00A0'}</span>
+          // keep their height (NEW-050). A guest's choose button already
+          // says the same words, so this line is blank there.
+          <span className="lock" aria-hidden={lockText && !guestPrompt ? undefined : 'true'}>{guestPrompt ? '\u00A0' : (lockText || '\u00A0')}</span>
         )}
         {soldOut ? (
           <button className="button ghost sm card-add" type="button" disabled>Not available<span className="sr-only">{`, ${p.name}`}</span></button>
+        ) : guestPrompt ? (
+          <button className="button ghost sm card-add" type="button" onClick={onLoginClick}>
+            <span>{PRICE_LOCK.guest.short}</span><span className="sr-only">{`, ${p.name}`}</span>
+          </button>
         ) : choiceRequired ? (
           <Link className="button ghost sm card-add" to={productRoute}><span>{qty > 0 ? `Select options · ${qty}` : 'Select options'}</span><span className="sr-only">{`, ${p.name}`}</span></Link>
         ) : qty > 0 ? (

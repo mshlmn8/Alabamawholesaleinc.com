@@ -1521,7 +1521,7 @@ describe('the markup uses the design system (merged PR #12, PR #13 and lane p2 p
 
   it('styles the card buttons, the sold-out state and the order actions with .button', () => {
     const card = code(read('src/components/ProductCard.jsx'));
-    expect(card.match(/className="button ghost sm card-add"/g)).toHaveLength(3);
+    expect(card.match(/className="button ghost sm card-add"/g)).toHaveLength(4);
     // "Not available" uses the button's own disabled state.
     expect(card).toMatch(/className="button ghost sm card-add" type="button" disabled/);
     expect(css).not.toMatch(/\.card-add:disabled/);
@@ -1559,10 +1559,10 @@ describe('one link style (AW-297)', () => {
     }
     // The text-link keeps its own layout rule.
     expect(ruleFor('.text-link')).toEqual({ display: 'inline-flex', 'align-items': 'center', 'min-height': '36px', 'font-size': 'var(--text-sm)', background: 'none', border: '0', padding: '0' });
-    // No sign-in prompt on each card any more: the page's PricingNotice has
-    // Sign in and Apply, and the card's lock is plain text (AW-224).
+    // The old per-card price-login link is gone (AW-224). A guest's choose
+    // button is the sign-in prompt; its words come from PRICE_LOCK.
     expect(all.flatMap((r) => r.selectors).filter((s) => s.includes('.price-login'))).toEqual([]);
-    expect(code(read('src/components/ProductCard.jsx'))).not.toMatch(/price-login|onLoginClick|Sign in for pricing/);
+    expect(code(read('src/components/ProductCard.jsx'))).not.toMatch(/price-login|Sign in for pricing/);
     expect(code(read('src/components/PricingNotice.jsx'))).toMatch(/<button className="text-link" type="button" onClick=\{onApplyClick\}>\{APPLY_LABEL\}<\/button>/);
   });
 

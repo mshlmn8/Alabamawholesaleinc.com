@@ -40,6 +40,14 @@ export function parseLineKey(key) {
 // variants" sort. There is no separate stored count to drift.
 export const variantCount = (product) => variantList(product).length;
 
+// The count under a product name when there is a real choice: "8 flavors",
+// "3 sizes". One option is not a choice, so it gets no count.
+export function optionCountLabel(product) {
+  const n = variantCount(product);
+  if (n < 2) return '';
+  return `${n.toLocaleString('en-US')} ${variantAxis(product).plural}`;
+}
+
 export function requiresVariantChoice(product) {
   return variantList(product).length > 1;
 }

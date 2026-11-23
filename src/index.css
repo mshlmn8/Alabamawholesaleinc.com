@@ -682,6 +682,7 @@ p > .text-link { min-height: 0; min-width: 0; }
 /* Names stop at two lines (AW-154); the link and its name keep the whole name. */
 .content-card h3 { font: 600 .9375rem/1.4 var(--body); letter-spacing: -.0125rem; margin: 0 0 5px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .card-detail { color: var(--muted); font-size: var(--text-sm); line-height: 1.5; margin: 0 0 10px; }
+.pd-option-count { margin: 0 0 12px; color: var(--muted); font-size: var(--text-sm); line-height: 1.5; }
 /* Values joined by ' · ' (TextParts, AW-304): each moves to the next line
    whole, so a SKU or a count never breaks in the middle, and breaks inside
    only when it alone is wider than the line. */

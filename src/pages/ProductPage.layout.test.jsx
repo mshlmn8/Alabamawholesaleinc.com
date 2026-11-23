@@ -30,7 +30,7 @@ describe('ProductPage purchase column on a desktop (AW-163)', () => {
   it('runs warning, name, variants and the note, price, quantity and add, then the SKU, description, flavor note and fine print', () => {
     render(page(SWISHER, { savedQty: 3 }));
     expect(column()).toEqual([
-      'nicotine-warning', 'pd-brand', 'h1', 'pd-variant-label', 'variant-chips', 'pd-saved',
+      'nicotine-warning', 'pd-brand', 'h1', 'pd-option-count', 'pd-variant-label', 'variant-chips', 'pd-saved',
       'pd-price.is-locked', 'qty-row', 'pd-desc', 'in-cart-note.pd-flavor-note',
     ]);
   });
@@ -59,7 +59,7 @@ describe('ProductPage purchase column in the compact layout (AW-150)', () => {
     compactLayout();
     render(page(SWISHER, { savedQty: 3 }));
     expect(column()).toEqual([
-      'nicotine-warning', 'pd-brand', 'h1', 'pd-variant-label', 'variant-chips', 'pd-saved',
+      'nicotine-warning', 'pd-brand', 'h1', 'pd-option-count', 'pd-variant-label', 'variant-chips', 'pd-saved',
       'qty-row', 'pd-price.is-locked', 'pd-desc', 'in-cart-note.pd-flavor-note',
     ]);
     // In the DOM, so the add button comes before the sign-in button in Tab order.
@@ -102,7 +102,7 @@ describe('ProductPage purchase column when nothing can be ordered (NEW-052)', ()
       setUp();
       render(page({ ...SWISHER, unavailableVariants: ['Diamond', 'Red'] }, { savedQty: 3 }));
       expect(column()).toEqual([
-        'nicotine-warning', 'pd-brand', 'h1', 'pd-variant-label', 'variant-chips',
+        'nicotine-warning', 'pd-brand', 'h1', 'pd-option-count', 'pd-variant-label', 'variant-chips',
         'pd-price.is-locked.pd-cant-order', 'pd-desc',
       ]);
     });

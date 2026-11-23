@@ -45,12 +45,14 @@ describe('SearchPage', () => {
     }
   });
 
-  it('explains pricing once, above the results, with no sign-in control on the cards (AW-224)', () => {
+  it('explains pricing once above the results; a choice card’s button is the sign-in prompt (AW-224)', () => {
     show('cigar');
     const notices = document.querySelectorAll('.pricing-notice');
     expect(notices).toHaveLength(1);
     expect(notices[0].textContent).toMatch(/^Prices are shown to approved accounts\./);
-    expect(screen.queryAllByRole('button', { name: /Sign in/ })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Sign in', exact: true })).toHaveLength(1);
+    expect(document.querySelectorAll('.content-card button.card-add').length).toBeGreaterThan(0);
+    expect([...document.querySelectorAll('.content-card button.card-add')].some((el) => el.textContent.startsWith('Sign in for pricing'))).toBe(true);
   });
 
   it('finds names with either apostrophe (AW-064)', () => {

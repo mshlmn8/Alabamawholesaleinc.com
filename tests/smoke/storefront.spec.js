@@ -786,7 +786,8 @@ test.describe('part 2 catalog', () => {
     await expect(page.locator('#aw-announcer')).toHaveText('Added Kite cigarette tobacco to your order.');
     await expect(kite.locator('.added-note')).toHaveText('', { timeout: 4000 });
     await page.goto('/category/tobacco/cigars-and-cigarillos');
-    await expect(page.locator('.content-card', { hasText: 'Royal Blunts EZ Roll' }).getByRole('link', { name: /^Select options\b/ })).toBeVisible();
+    await expect(page.locator('.content-card', { hasText: 'Royal Blunts EZ Roll' }).getByRole('button', { name: /^Sign in for pricing\b/ })).toBeVisible();
+    await expect(page.locator('.content-card', { hasText: 'Royal Blunts EZ Roll' }).getByRole('link', { name: /^Select options\b/ })).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 

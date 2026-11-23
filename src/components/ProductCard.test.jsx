@@ -26,11 +26,11 @@ const APPROVED = { profile: { id: 'a', status: 'approved' }, isApprovedBuyer: tr
 describe('ProductCard', () => {
   it('leaves the brand, the SKU and the variant names off the card', () => {
     const view = render(card({ ...base, variants: ['Red', 'Grape', 'Diamond'], variantAxis: 'Flavor' }));
-    expect(document.querySelector('.card-detail')).toBeNull();
+    expect(document.querySelector('.card-detail').textContent).toBe('3 flavors');
     expect(document.body.textContent).not.toMatch(/AW-SS|Swisher Sweets ·/);
     view.rerender(card({ ...base, variants: ['S', 'M'], variantAxis: 'Size', sellUnit: '5-pack' }));
-    expect(document.querySelector('.card-detail')).toBeNull();
-    expect(document.body.textContent).not.toMatch(/Sold by the|flavor|variety|color|size|variant|AW-SS/i);
+    expect(document.querySelector('.card-detail').textContent).toBe('2 sizes');
+    expect(document.body.textContent).not.toMatch(/Sold by the|AW-SS/);
   });
 
   it('does not say what quantity 1 means', () => {
@@ -97,9 +97,13 @@ describe('ProductCard', () => {
   it('says "Select options" or "Add to order" (an order for everyone, AW-024), and "Added" after an add (AW-057)', () => {
     vi.useFakeTimers();
     const addLine = vi.fn(() => ({ key: '1', qty: 1, capped: false }));
-    const view = render(card({ ...base, variants: ['Red', 'Grape'] }, { addLine }));
-    expect(screen.getByRole('link', { name: 'Select options, Swisher Sweets cigarillos' }).getAttribute('href')).toBe('/product/1');
-    view.rerender(card({ ...base, variants: ['Red', 'Grape'] }, { addLine, cart: { '1::red': 2 } }));
+    const onLoginClick = vi.fn();
+    const view = render(card({ ...base, variants: ['Red', 'Grape'] }, { addLine, onLoginClick }));
+    const signIn = screen.getByRole('button', { name: 'Sign in for pricing, Swisher Sweets cigarillos' });
+    fireEvent.click(signIn);
+    expect(onLoginClick).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('link', { name: /Select options/ })).toBeNull();
+    view.rerender(card({ ...base, variants: ['Red', 'Grape'] }, { addLine, isApprovedBuyer: true, profile: { status: 'approved' }, cart: { '1::red': 2 } }));
     expect(screen.getByRole('link', { name: 'Select options · 2, Swisher Sweets cigarillos' })).toBeTruthy();
     view.rerender(card({ ...base, variants: [] }, { addLine }));
     const note = () => document.querySelector('.added-note').textContent;
@@ -159,7 +163,7 @@ describe('ProductCard', () => {
 
   it('doesn’t print the placeholder brand "Assorted" (AW-286)', () => {
     render(card({ ...base, brand: 'Assorted', variants: ['S', 'M'], variantAxis: 'Size' }));
-    expect(document.querySelector('.card-detail')).toBeNull();
+    expect(document.querySelector('.card-detail').textContent).toBe('2 sizes');
     expect(document.body.textContent).not.toMatch(/Assorted/);
   });
 
@@ -228,14 +232,20 @@ describe('ProductCard add control', () => {
     expect(screen.queryByRole('button', { name: /quote/i })).toBeNull();
   });
 
-  it('asks for a variant (Cursor\'s "Select options", AW-057) with a link to the product, counting what is already in the cart', () => {
-    const view = addCard({ p: SWISHER });
-    const choose = screen.getByRole('link', { name: 'Select options, Swisher Sweets cigarillos' });
+  it('asks a guest to sign in instead of choosing options, and an approved buyer to select them', () => {
+    const onLoginClick = vi.fn();
+    const view = addCard({ p: SWISHER, onLoginClick });
+    const signIn = screen.getByRole('button', { name: 'Sign in for pricing, Swisher Sweets cigarillos' });
+    expect(signIn.className).toBe('button ghost sm card-add');
+    fireEvent.click(signIn);
+    expect(onLoginClick).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('link', { name: /Select options/ })).toBeNull();
+    expect(document.querySelector('.card-detail').textContent).toBe('2 variants');
+
+    view.rerender(<ProductCard p={SWISHER} profile={APPROVED_PROFILE} isApprovedBuyer cart={{ '1::red': 2, '1::diamond': 1, 14: 5 }} addLine={vi.fn()} decLine={vi.fn()} onLoginClick={vi.fn()} />);
+    const choose = screen.getByRole('link', { name: 'Select options · 3, Swisher Sweets cigarillos' });
     expect(choose.getAttribute('href')).toBe('/product/1');
     expect(choose.className).toBe('button ghost sm card-add');
-
-    view.rerender(<ProductCard p={SWISHER} profile={null} isApprovedBuyer={false} cart={{ '1::red': 2, '1::diamond': 1, 14: 5 }} addLine={vi.fn()} decLine={vi.fn()} onLoginClick={vi.fn()} />);
-    expect(screen.getByRole('link', { name: 'Select options · 3, Swisher Sweets cigarillos' })).toBeTruthy();
   });
 
   it('names each control by its visible label, then the product, for a list of buttons (AW-170, WCAG 2.5.3)', () => {
@@ -246,7 +256,7 @@ describe('ProductCard add control', () => {
     expect(visible(add)).toBe('Add to order');
     expect(add.querySelector('.sr-only').textContent).toBe(', Kite cigarette tobacco');
 
-    addCard({ p: SWISHER, cart: { '1::red': 2 } });
+    addCard({ p: SWISHER, cart: { '1::red': 2 }, profile: APPROVED_PROFILE, isApprovedBuyer: true });
     const choose = screen.getByRole('link', { name: 'Select options · 2, Swisher Sweets cigarillos' });
     expect(visible(choose)).toBe('Select options · 2');
 
@@ -448,9 +458,9 @@ describe('ProductCard structure', () => {
     expect(order).toEqual(['card-link', 'button ghost sm card-add']);
   });
 
-  it('shows no detail line under the name', () => {
+  it('writes the number of flavors under the name, and no sell-unit line', () => {
     render(card({ ...base, variants: ['Red', 'Grape'], variantAxis: 'Flavor', sellUnit: '5-pack' }));
-    expect(document.querySelector('.card-detail')).toBeNull();
+    expect(document.querySelector('.card-detail').textContent).toBe('2 flavors');
     expect(cardDetail({ ...base, variants: ['Red', 'Grape'], variantAxis: 'Flavor', sellUnit: '5-pack' })).toBe('');
     expect(cardDetailParts({ ...base, variants: [] })).toEqual([]);
   });

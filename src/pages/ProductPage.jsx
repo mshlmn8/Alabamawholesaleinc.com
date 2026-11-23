@@ -90,7 +90,7 @@
 
 import { useRef, useState } from 'react';
 import {
-  informativeVariant, isVariantAvailable, lineKey, requiresVariantChoice, variantAxis, variantList,
+  informativeVariant, isVariantAvailable, lineKey, optionCountLabel, requiresVariantChoice, variantAxis, variantList,
 } from '../lib/lines.js';
 import { PRICE_FAILED_SENTENCE, pctText, priceDidNotLoad, priceLabel, tierName, variantPriceRange } from '../lib/pricing.js';
 import { CHECKING_ACCOUNT_TEXT, PRICES_NEED_PROFILE, PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
@@ -350,6 +350,7 @@ export function ProductPage({
           {/* The tag is a chip beside the brand line, not over the photo (AW-055). */}
           <p className="pd-brand"><span>{brand ? `${brand} · ${p.sub}` : p.sub}</span><ProductTag tag={p.tag} /></p>
           <h1>{p.name}</h1>
+          {optionCountLabel(p) && <p className="pd-option-count">{optionCountLabel(p)}</p>}
           {choiceRequired && <p id="pd-variant-label" className="pd-variant-label">{`Choose a ${axis.noun}`}</p>}
           {choiceRequired && (
             // eslint-disable-next-line jsx-a11y/interactive-supports-focus -- the radios inside take focus (roving tabindex); the group only hears their keys
