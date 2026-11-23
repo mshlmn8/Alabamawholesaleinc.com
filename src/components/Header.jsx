@@ -147,14 +147,22 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
         <div className="aw-account-actions">
           {user ? (
             <>
-              {/* What the link is for, above whose account it is (AW-267). The
-                  name is cut short to fit; the title has it in full. */}
+              {/* The person mark, then what the link is for above whose account
+                  it is (AW-267). The name is cut short to fit; the title has
+                  it in full. In the compact layout the mark stands alone and
+                  the words are left to screen readers. */}
               {accountName ? (
                 <Link key="named" className="aw-signin aw-account-name" to="/account" onClick={closeMenus} title={accountName}>
-                  <small className="aw-account-kicker">My account</small>{' '}<span className="aw-account-label">{accountName}</span>
+                  <Icon name="user" className="aw-action-icon" />
+                  <span className="aw-action-text">
+                    <small className="aw-account-kicker">My account</small>{' '}<span className="aw-account-label">{accountName}</span>
+                  </span>
                 </Link>
               ) : (
-                <Link key="plain" className="aw-signin aw-account-name" to="/account" onClick={closeMenus}>My account</Link>
+                <Link key="plain" className="aw-signin aw-account-name" to="/account" onClick={closeMenus}>
+                  <Icon name="user" className="aw-action-icon" />
+                  <span className="aw-action-text">My account</span>
+                </Link>
               )}
               {isAdmin && (
                 <>
@@ -169,13 +177,17 @@ export function Header({ cartCount, onCart, products, departments, user, isAdmin
             </>
           ) : (
             <>
-              <button className="aw-signin" type="button" onClick={() => runNav(onLoginClick)}>{SIGN_IN_LABEL}</button>
+              <button className="aw-signin" type="button" onClick={() => runNav(onLoginClick)}>
+                <Icon name="user" className="aw-action-icon" />
+                <span className="aw-action-text">{SIGN_IN_LABEL}</span>
+              </button>
               <span className="aw-account-or">or</span>
               <button className="button aw-desktop-only" type="button" onClick={() => runNav(onSignupClick)}>{APPLY_LABEL}</button>
             </>
           )}
           <button className="button ghost sm aw-cart-btn" type="button" onClick={() => runNav(onCart)} aria-label={basketButtonLabel(cartCount)}>
-            <span>{BASKET.label}</span>
+            <Icon name="cart" className="aw-action-icon" />
+            <span className="aw-action-text">{BASKET.label}</span>
             {cartCount > 0 && <span key={cartCount} className="aw-cart-count">{basketBadge(cartCount)}</span>}
           </button>
         </div>

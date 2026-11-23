@@ -16,7 +16,9 @@ describe('Header basket button (AW-132, AW-240)', () => {
   it('says Order to everyone: customers place orders, not quotes', () => {
     const view = render(<Header {...props} cartCount={3} />);
     expect(screen.getByRole('button', { name: 'Order, 3 items' })).toBe(cartButton());
-    expect(cartButton().firstElementChild.textContent).toBe('Order');
+    // The cart mark, then the word (which the compact layout leaves to screen readers).
+    expect(cartButton().firstElementChild.matches('svg.icon.aw-action-icon')).toBe(true);
+    expect(cartButton().querySelector('.aw-action-text').textContent).toBe('Order');
     view.rerender(<Header {...props} cartCount={3} user={{ name: 'Bea', business: 'Bravo' }} />);
     expect(screen.getByRole('button', { name: 'Order, 3 items' })).toBe(cartButton());
   });
@@ -56,6 +58,10 @@ describe('Header account labels (AW-131)', () => {
     render(<Header {...props} />);
     const actions = document.querySelector('.aw-account-actions');
     expect([...actions.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Sign in', 'Apply for an account', 'Order']);
+    // Sign in leads with the person mark; its name is still its words.
+    const signIn = screen.getByRole('button', { name: 'Sign in' });
+    expect(signIn.firstElementChild.matches('svg.icon.aw-action-icon')).toBe(true);
+    expect(signIn.querySelector('.aw-action-text').textContent).toBe('Sign in');
     screen.getByRole('button', { name: 'Apply for an account' }).click();
     expect(props.onSignupClick).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('button', { name: /Sign up/i })).toBeNull();
