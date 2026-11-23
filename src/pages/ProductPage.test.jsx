@@ -16,7 +16,6 @@ const page = (props) => <ProductPage productId={1} products={P} cart={{}} addLin
 const qty = () => screen.getByRole('group', { name: 'Quantity to add' }).querySelector('input').value;
 
 const pd = () => document.querySelector('.pd-price').textContent;
-const sku = () => document.querySelector('.pd-sku').textContent;
 const APPROVED = { id: 'a', status: 'approved' };
 
 describe('ProductPage prices', () => {
@@ -25,13 +24,11 @@ describe('ProductPage prices', () => {
     render(page({ profile: APPROVED, isApprovedBuyer: true, priceOf, pricesStatus: 'ready' }));
     // The SKU is the .pd-sku line, for everyone (AW-234), not in the price block.
     expect(pd()).toBe('From $12.25Wholesale unit price');
-    expect(sku()).toBe('SKU AW-SS');
+    expect(document.querySelector('.pd-sku')).toBeNull();
     fireEvent.click(screen.getByRole('radio', { name: 'Red' }));
     expect(pd()).toBe('$13.50Wholesale unit price');
-    expect(sku()).toBe('SKU AW-SS-RED');
     fireEvent.click(screen.getByRole('radio', { name: 'Diamond' }));
     expect(pd()).toBe('$12.25Wholesale unit price');
-    expect(sku()).toBe('SKU AW-SS-DIAMOND');
   });
 
   it('shows one price when every variant costs the same', () => {
@@ -76,12 +73,12 @@ describe('ProductPage variants (AW-233, AW-128, AW-030)', () => {
     const view = render(page({ products: [product({ variantAxis: 'Flavor' })] }));
     expect(screen.getByRole('radiogroup', { name: 'Choose a flavor' })).toBeTruthy();
     expect(note(FLAVOR_NOTE)).toBeTruthy();
-    expect(note('Add each flavor you want separately.')).toBeTruthy();
+    expect(note('Add each flavor you want separately.')).toBeNull();
     expect(note(/Choose one variant/)).toBeNull();
     view.rerender(page({ products: [product({ variantAxis: 'Size' })] }));
     expect(screen.getByRole('radiogroup', { name: 'Choose a size' })).toBeTruthy();
     expect(note(FLAVOR_NOTE)).toBeNull();
-    expect(note('Add each size you want separately.')).toBeTruthy();
+    expect(note('Add each size you want separately.')).toBeNull();
     view.rerender(page({ products: [product({ variantAxis: undefined })] }));
     expect(screen.getByRole('radiogroup', { name: 'Choose a variant' })).toBeTruthy();
     expect(note(FLAVOR_NOTE)).toBeNull();
@@ -120,7 +117,6 @@ describe('ProductPage variants (AW-233, AW-128, AW-030)', () => {
     expect(red.disabled).toBe(true);
     expect(screen.getByRole('radio', { name: 'Diamond' }).disabled).toBe(false);
     expect(pd()).toBe('$12.25Wholesale unit price');
-    expect(sku()).toBe('SKU AW-SS');
     fireEvent.click(red);
     expect(red.getAttribute('aria-checked')).toBe('false');
     fireEvent.click(screen.getByRole('button', { name: /Add to order/ }));
@@ -143,18 +139,12 @@ describe('ProductPage variants (AW-233, AW-128, AW-030)', () => {
     expect(document.querySelector('.pd-unit')).toBeNull();
   });
 
-  it('shows the SKU to every visitor, and the chosen variant’s once there is one (AW-234)', () => {
-    const sku = () => document.querySelector('.pd-sku').textContent;
-    const view = render(page({}));
-    expect(sku()).toBe('SKU AW-SS');
+  it('shows no SKU and no resale fine print', () => {
+    render(page({}));
     fireEvent.click(screen.getByRole('radio', { name: 'Red' }));
-    expect(sku()).toBe('SKU AW-SS-RED');
-    // The fine print no longer starts with it; the rest of the sentence is unchanged.
-    expect(document.querySelector('.pd-fine').textContent).toMatch(/^Supplied to licensed retail businesses for lawful resale\. /);
-    view.rerender(page({ profile: { id: 'p', status: 'pending' } }));
-    expect(sku()).toBe('SKU AW-SS-RED');
-    view.rerender(page({ products: [product({ name: 'Garcia y Vega cigars', sku: 'AW-GARCIA-VEGA', variants: ['Green'] })] }));
-    expect(sku()).toBe('SKU AW-GARCIA-VEGA-GREEN');
+    expect(document.querySelector('.pd-sku')).toBeNull();
+    expect(document.querySelector('.pd-fine')).toBeNull();
+    expect(document.body.textContent).not.toMatch(/Supplied to licensed retail businesses/);
   });
 
   it('says what quantity 1 means when the product has a sell unit (AW-031)', () => {
@@ -576,7 +566,7 @@ describe('ProductPage while the live catalog is checked (AW-232)', () => {
     expect(addLine).not.toHaveBeenCalled();
     // The rest of the page is there: the name, the SKU and the description.
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Swisher Sweets cigarillos');
-    expect(document.querySelector('.pd-sku').textContent).toBe('SKU AW-SS');
+    expect(document.querySelector('.pd-sku')).toBeNull();
   });
 
   it('gives the row back when the live catalog arrives', () => {
@@ -619,9 +609,9 @@ describe('ProductPage and “Show no description” (AW-023)', () => {
     expect(screen.getByText('Wholesale cigars & cigarillos from Swisher Sweets.').className).toBe('pd-desc');
   });
 
-  it('shows no description line at all, not even the generic one, when staff hid it; the fine print stays', () => {
+  it('shows no description line at all, not even the generic one, when staff hid it', () => {
     render(page({ products: [{ ...P[0], variants: [], description: '', descriptionHidden: true }] }));
-    expect(descs()).toEqual(['pd-desc pd-fine']);
+    expect(descs()).toEqual([]);
     expect(screen.queryByText(/^Wholesale cigars/)).toBeNull();
   });
 });

@@ -31,8 +31,8 @@ describe('ProductPage purchase column on a desktop (AW-163)', () => {
   it('runs warning, name, variants and the note, price, quantity and add, then the SKU, description, flavor note and fine print', () => {
     render(page(SWISHER, { savedQty: 3 }));
     expect(column()).toEqual([
-      'nicotine-warning', 'pd-brand', 'h1', 'pd-variant-label', 'variant-chips', 'in-cart-note', 'pd-saved',
-      'pd-price.is-locked', 'qty-row', 'pd-sku', 'pd-desc', 'in-cart-note.pd-flavor-note', 'pd-desc.pd-fine',
+      'nicotine-warning', 'pd-brand', 'h1', 'pd-variant-label', 'variant-chips', 'pd-saved',
+      'pd-price.is-locked', 'qty-row', 'pd-desc', 'in-cart-note.pd-flavor-note',
     ]);
   });
 
@@ -40,7 +40,7 @@ describe('ProductPage purchase column on a desktop (AW-163)', () => {
     render(page(TUBES, { profile: { id: 'p', status: 'pending' }, cart: { '2::gold': 4 } }));
     expect(column()).toEqual([
       'pd-brand', 'h1', 'pd-desc', 'pd-price.is-locked', 'pd-unit', 'qty-row', 'in-cart-note',
-      'pd-sku', 'pd-desc', 'pd-desc.pd-fine',
+      'pd-desc',
     ]);
     expect(document.querySelector('.pd-info > .pd-desc').textContent).toBe('Variety: Gold');
   });
@@ -48,8 +48,8 @@ describe('ProductPage purchase column on a desktop (AW-163)', () => {
   it('follows the price with the line total and "Already in" for an approved buyer', () => {
     render(page(TUBES, { ...APPROVED, cart: { '2::gold': 4 } }));
     expect(column()).toEqual([
-      'pd-brand', 'h1', 'pd-desc', 'pd-price', 'pd-unit', 'qty-row', 'in-cart-note.pd-line-total', 'in-cart-note',
-      'pd-sku', 'pd-desc', 'pd-desc.pd-fine',
+      'pd-brand', 'h1', 'pd-desc', 'pd-price', 'pd-unit', 'qty-row', 'in-cart-note',
+      'pd-desc',
     ]);
   });
 });
@@ -59,8 +59,8 @@ describe('ProductPage purchase column in the compact layout (AW-150)', () => {
     compactLayout();
     render(page(SWISHER, { savedQty: 3 }));
     expect(column()).toEqual([
-      'nicotine-warning', 'pd-brand', 'h1', 'pd-variant-label', 'variant-chips', 'in-cart-note', 'pd-saved',
-      'qty-row', 'pd-price.is-locked', 'pd-sku', 'pd-desc', 'in-cart-note.pd-flavor-note', 'pd-desc.pd-fine',
+      'nicotine-warning', 'pd-brand', 'h1', 'pd-variant-label', 'variant-chips', 'pd-saved',
+      'qty-row', 'pd-price.is-locked', 'pd-desc', 'in-cart-note.pd-flavor-note',
     ]);
     // In the DOM, so the add button comes before the sign-in button in Tab order.
     const add = document.querySelector('.qty-row .button');
@@ -72,8 +72,8 @@ describe('ProductPage purchase column in the compact layout (AW-150)', () => {
     compactLayout();
     render(page(TUBES, { ...APPROVED, cart: { '2::gold': 4 } }));
     expect(column()).toEqual([
-      'pd-brand', 'h1', 'pd-desc', 'pd-unit', 'qty-row', 'in-cart-note.pd-line-total', 'in-cart-note', 'pd-price',
-      'pd-sku', 'pd-desc', 'pd-desc.pd-fine',
+      'pd-brand', 'h1', 'pd-desc', 'pd-unit', 'qty-row', 'in-cart-note', 'pd-price',
+      'pd-desc',
     ]);
   });
 
@@ -102,7 +102,7 @@ describe('ProductPage purchase column when nothing can be ordered (NEW-052)', ()
       render(page({ ...SWISHER, unavailableVariants: ['Diamond', 'Red'] }, { savedQty: 3 }));
       expect(column()).toEqual([
         'nicotine-warning', 'pd-brand', 'h1', 'pd-variant-label', 'variant-chips',
-        'pd-price.is-locked.pd-cant-order', 'pd-sku', 'pd-desc', 'pd-desc.pd-fine',
+        'pd-price.is-locked.pd-cant-order', 'pd-desc',
       ]);
     });
   }
@@ -110,7 +110,7 @@ describe('ProductPage purchase column when nothing can be ordered (NEW-052)', ()
   it('leaves out the price, sell unit and line total of a product whose only variant can’t be ordered', () => {
     render(page({ ...TUBES, unavailableVariants: ['Gold'] }, { ...APPROVED, cart: { '2::gold': 4 } }));
     expect(column()).toEqual([
-      'pd-brand', 'h1', 'pd-desc', 'pd-price.is-locked.pd-cant-order', 'in-cart-note', 'pd-sku', 'pd-desc', 'pd-desc.pd-fine',
+      'pd-brand', 'h1', 'pd-desc', 'pd-price.is-locked.pd-cant-order', 'in-cart-note', 'pd-desc',
     ]);
   });
 });

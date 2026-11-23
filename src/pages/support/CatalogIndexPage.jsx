@@ -1,9 +1,6 @@
 // All products (/catalog), the "Browse the catalog" destination (AW-068): a
 // search box over the whole catalog, then every department with a row of its
-// featured products as cards, its product lines, a link to the department
-// and, as a secondary view, the expandable list of every SKU in it. Counts
-// say 'products' (productCount, AW-217, NEW-056); 'SKU' names only the list
-// of codes.
+// featured products as cards, its product lines and a link to the department.
 //
 // The jump links are '#dept-…' anchors: the router scrolls to the section and
 // focuses its h2 (useNavigationEffects), and Back returns to where the jump
@@ -17,9 +14,7 @@
 
 import { useState } from 'react';
 import { Link, navigate } from '../../lib/router.js';
-import { brandLabel } from '../../lib/format.js';
 import { featuredOrder, underLegalReview } from '../../lib/merchandising.js';
-import { Icon } from '../../components/Icon.jsx';
 import { BackToTop } from '../../components/BackToTop.jsx';
 import { PricingNotice } from '../../components/PricingNotice.jsx';
 import { ProductCard } from '../../components/ProductCard.jsx';
@@ -43,8 +38,6 @@ export function catalogPreview(rows, limit = CATALOG_PREVIEW) {
 }
 
 const seeAll = (d) => (d.count === 1 ? `See the ${d.label} product` : `See all ${d.label} products`);
-// The disclosure of every code in a department: a list of SKUs, of its products.
-const skuList = (d) => (d.count === 1 ? `SKU list: the ${d.label} product` : `SKU list: all ${d.label} products`);
 
 // cardProps are App's: the cards' and the notice's account, prices and actions.
 export function CatalogIndexPage({ products, departments, ...cardProps }) {
@@ -101,19 +94,6 @@ export function CatalogIndexPage({ products, departments, ...cardProps }) {
               <div className="dept-more">
                 <Link className="text-link" to={{ page: 'category', category: d.key }}>{seeAll(d)}</Link>
               </div>
-              <details className="sku-details">
-                <summary><Icon name="plus" className="sku-plus" /><Icon name="minus" className="sku-minus" /><span>{skuList(d)}</span></summary>
-                <ul className="sku-list">
-                  {rows.map(p => (
-                    <li key={p.id}>
-                      <Link to={{ page: 'product', productId: p.id }}>
-                        <b>{p.name}</b>
-                        <small>{`${brandLabel(p.brand) ? `${brandLabel(p.brand)} · ` : ''}${p.sub} · ${p.sku}`}</small>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </details>
             </section>
           );
         })}

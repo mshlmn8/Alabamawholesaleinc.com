@@ -34,9 +34,7 @@ describe('product counts (AW-217, NEW-056)', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Tobacco' }).previousElementSibling).toBeNull();
     expect(document.querySelectorAll('.dept-head .eyebrow')).toHaveLength(0);
     // 'SKU' stays where the codes are listed.
-    const summaries = [...document.querySelectorAll('details.sku-details > summary')].map(text);
-    expect(summaries).toContain('SKU list: all Tobacco products');
-    expect(summaries).toContain('SKU list: the Drinks & Bags product');
+    expect(document.querySelector('details.sku-details')).toBeNull();
   });
 
   it('does the same on a department page, its line pages and its result note', () => {

@@ -78,7 +78,7 @@ export function QuoteReceipt({ receipt, signedIn = false, headingRef = null }) {
           {receipt.lines.map((line) => (
             <li key={line.lineKey}>
               <span>
-                <span>{`${line.qty} × ${line.name}`}</span> <span className="sku">{`(${line.sku}${line.sellUnit ? ` · sold by the ${line.sellUnit}` : ''})`}</span>
+                <span>{`${line.qty} × ${line.name}`}</span>{line.sellUnit ? <span>{` Sold by the ${line.sellUnit}`}</span> : null}
               </span>
             </li>
           ))}

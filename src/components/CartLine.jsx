@@ -111,9 +111,9 @@ export function CartLine({ item: it, layout = 'drawer', showPrice, pricesStatus 
   const linked = it.unavailable !== 'product';
   const productPage = { page: 'product', productId: it.productId };
   let detail;
-  if (gone) detail = [it.sku, `Quantity ${it.qty}`, checkout ? '' : 'No longer available'];
-  else if (it.needsVariant) detail = [it.sku, unit, showPrice ? variantPriceText(it.variantPrice) : ''];
-  else detail = [it.sku, unit, priced ? `${formatMoney(it.price)} each` : noPrice];
+  if (gone) detail = [`Quantity ${it.qty}`, checkout ? '' : 'No longer available'];
+  else if (it.needsVariant) detail = [unit, showPrice ? variantPriceText(it.variantPrice) : ''];
+  else detail = [unit, priced ? `${formatMoney(it.price)} each` : noPrice];
   return (
     <li className={className} data-line-key={it.lineKey}>
       {/* No photo yet: the picture mark (AW-029). A product no catalog knows gets an empty tile. */}
@@ -122,7 +122,7 @@ export function CartLine({ item: it, layout = 'drawer', showPrice, pricesStatus 
         : <span className="thumb">{gone && !it.sku && !it.img ? null : <Thumb src={it.img} />}</span>}
       <span className="info">
         {linked ? <Link className="line-name" to={productPage} onClick={onChoose}>{it.name}</Link> : <b>{it.name}</b>}
-        <small><TextParts parts={detail.filter(Boolean)} code={it.sku} /></small>
+        <small><TextParts parts={detail.filter(Boolean)} /></small>
         {it.needsVariant && <small>{`${it.qty} ${it.qty === 1 ? 'unit' : 'units'} · choose a ${noun}`}</small>}
         {checkout && gone && <small className="line-flag">No longer available. Remove it to continue.</small>}
       </span>

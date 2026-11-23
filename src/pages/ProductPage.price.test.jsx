@@ -19,16 +19,14 @@ const page = (product, props) => (
   <ProductPage productId={product.id} products={[product]} cart={{}} addLine={vi.fn(() => ({ key: 'k', qty: 1 }))} decLine={vi.fn()} profile={null} isApprovedBuyer={false} {...props} />
 );
 const lines = () => [...document.querySelector('.pd-price').children].map((el) => el.textContent);
-// The SKU line, for everyone (AW-234); the price block has no SKU of its own.
-const sku = () => document.querySelector('.pd-sku').textContent;
-const qtyNote = () => document.querySelector('.qty-row + .pd-line-total')?.textContent ?? null;
+const qtyNote = () => document.querySelector('.pd-line-total')?.textContent ?? null;
 const qtyInput = () => screen.getByRole('group', { name: 'Quantity to add' }).querySelector('input');
 
 describe('ProductPage price context (AW-265)', () => {
   it('names the tier, strikes through the list price and says what is saved', () => {
     render(page(KITE, approved()));
     expect(lines()).toEqual(['$32.35', 'Silver price', 'list $34.05 · you save 5%']);
-    expect(sku()).toBe('SKU AW-KITE');
+    expect(document.querySelector('.pd-sku')).toBeNull();
     const save = document.querySelector('.pd-save');
     expect(save.querySelector('s').textContent).toBe('$34.05');
     expect(save.querySelector('strong').textContent).toBe('5%');
@@ -38,25 +36,18 @@ describe('ProductPage price context (AW-265)', () => {
     render(page(SNICKERS, approved()));
     expect(lines()).toEqual(['$32.35', 'Silver price', 'list $34.05 · you save 5%']);
     expect(document.querySelector('.pd-variant-label').textContent).toBe('Choose a variety');
-    expect(sku()).toBe('SKU AW-SNICKERS');
+    expect(document.querySelector('.pd-sku')).toBeNull();
     fireEvent.click(screen.getByRole('radio', { name: 'King size' }));
-    expect(sku()).toBe('SKU AW-SNICKERS-KING-SIZE');
+    expect(document.body.textContent).not.toMatch(/AW-SNICKERS/);
   });
 
-  it('shows quantity × price = line total under the quantity, in cents', () => {
+  it('shows no quantity × price line under the quantity', () => {
     render(page(KITE, approved()));
-    expect(qtyNote()).toBe('1 × $32.35 = $32.35');
+    expect(qtyNote()).toBeNull();
     fireEvent.change(qtyInput(), { target: { value: '6' } });
     fireEvent.blur(qtyInput());
-    expect(qtyNote()).toBe('6 × $32.35 = $194.10');
-  });
-
-  it('works the line total in cents, so it is the cart’s line total', () => {
-    // In floats 0.1 × 3 is 0.30000000000000004.
-    render(page(KITE, approved({ priceOf: () => 0.1, listOf: () => 0.11 })));
-    fireEvent.change(qtyInput(), { target: { value: '3' } });
-    fireEvent.blur(qtyInput());
-    expect(qtyNote()).toBe('3 × $0.10 = $0.30');
+    expect(qtyNote()).toBeNull();
+    expect(document.body.textContent).not.toMatch(/× \$/);
   });
 
   it('leaves out the saving and the line total where they would not be one figure', () => {
@@ -66,10 +57,10 @@ describe('ProductPage price context (AW-265)', () => {
     expect(qtyNote()).toBeNull();
     fireEvent.click(screen.getByRole('radio', { name: 'King size' }));
     expect(lines()).toEqual(['$40.50', 'Silver price', 'list $42.60 · you save 5%']);
-    expect(qtyNote()).toBe('1 × $40.50 = $40.50');
-    // A tier without a discount: no saving to show.
+    expect(qtyNote()).toBeNull();
+    // A standard tier: the price, and no "Standard price" label.
     view.rerender(page(KITE, approved({ priceTier: { tier: 'standard', discountPct: 0 }, priceOf: () => 34.05 })));
-    expect(lines()).toEqual(['$34.05', 'Standard price']);
+    expect(lines()).toEqual(['$34.05']);
     // Price on request, or prices still loading: no tier price, no line total.
     view.rerender(page(KITE, approved({ priceOf: () => null, listOf: () => null })));
     expect(lines()).toEqual(['Price on request', 'Wholesale unit price']);

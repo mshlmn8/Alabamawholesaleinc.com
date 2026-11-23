@@ -223,7 +223,7 @@ export function HeaderSearch({ products, isMobile = false, onOpen }) {
 
   return (
     <form className="aw-search" role="search" ref={formRef} onSubmit={submit} onBlur={onBlur}>
-      <input ref={inputRef} type="search" value={query} placeholder="Search products, brands or SKUs"
+      <input ref={inputRef} type="search" value={query} placeholder="Search products or brands"
              autoComplete="off" role="combobox" aria-label="Search products" aria-autocomplete="list"
              aria-expanded={expanded} aria-controls={expanded ? LIST_ID : undefined}
              aria-activedescendant={current >= 0 ? optionId(current) : undefined}
@@ -247,7 +247,7 @@ export function HeaderSearch({ products, isMobile = false, onOpen }) {
                 <Link key={p.id} to={{ page: 'product', productId: p.id }} role="option" id={optionId(i)} aria-selected={i === current} tabIndex={-1}
                       onMouseDown={keepFocus} onClick={pickProduct}>
                   <span className="sr-thumb"><Thumb src={p.img} /></span>
-                  <span><strong>{p.name}</strong><small><TextParts parts={[catLabel(p.cat), p.sub, p.sku]} code={p.sku} /></small></span>
+                  <span><strong>{p.name}</strong><small><TextParts parts={[catLabel(p.cat), p.sub]} /></small></span>
                 </Link>
               ))}
               {seeAll && (

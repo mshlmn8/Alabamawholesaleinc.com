@@ -169,11 +169,9 @@ export function HomePage({
   products, departments, profile, account = profile ? 'ready' : 'signed-out', isApprovedBuyer, priceOf, pricesStatus, priceTier = null,
   cart, addLine, decLine, onLoginClick, onApplyClick, signedIn = false,
 }) {
-  // The home rails leave the SKU off the card; category, search and product
-  // pages keep it (AW-060).
   const card = (p) => (
     <ProductCard key={p.id} p={p} profile={profile} account={account} isApprovedBuyer={isApprovedBuyer} priceOf={priceOf} pricesStatus={pricesStatus} cart={cart}
-                 addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} showSku={false} />
+                 addLine={addLine} decLine={decLine} onLoginClick={onLoginClick} />
   );
   // TODO(owner): Which products are really new and which are bestsellers, plus dedicated hero and department images? (AW-056)
   // Tags and homepage rank (AW-119), RAIL_LENGTH cards each (AW-061).

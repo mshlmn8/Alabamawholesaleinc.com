@@ -58,7 +58,7 @@ test('a product card is an article whose title links to the product, and its pho
   await expect(page).toHaveURL(/\/product\/14$/);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Kite cigarette tobacco');
   await page.goBack();
-  await clickAt(page, page.getByRole('article', { name: 'Kite cigarette tobacco' }).locator('.card-detail'), 0.2, 0.5);
+  await clickAt(page, page.getByRole('article', { name: 'Kite cigarette tobacco' }).locator('.card-kicker'), 0.2, 0.5);
   await expect(page).toHaveURL(/\/product\/14$/);
   expect(errors).toEqual([]);
 });
@@ -122,25 +122,12 @@ test('card action rows line up across each grid row, and no card is narrower tha
   expect(errors).toEqual([]);
 });
 
-test('a SKU moves to the next line whole, unless it alone is wider than the card (AW-304)', async ({ page }) => {
+test('product cards do not show a SKU (AW-304)', async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto('/category/tobacco');
-  await expect(page.locator('main .card-detail').first()).toContainText('AW-');
-  const split = await page.evaluate(() => [...document.querySelectorAll('main .card-detail')].flatMap((detail) => {
-    const part = [...detail.querySelectorAll('.text-parts > span')].find((span) => /^AW-/.test(span.textContent));
-    if (!part) return [];
-    const range = document.createRange();
-    range.selectNodeContents(part);
-    const lines = new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size;
-    const probe = document.createElement('span');
-    probe.textContent = part.textContent;
-    probe.style.cssText = 'position:absolute;white-space:nowrap';
-    part.append(probe);
-    const wider = probe.getBoundingClientRect().width > detail.getBoundingClientRect().width;
-    probe.remove();
-    return lines > 1 && !wider ? [part.textContent] : [];
-  }));
-  expect(split).toEqual([]);
+  await expect(page.locator('main .content-card').first()).toBeVisible();
+  const codes = await page.locator('main .card-detail').allTextContents();
+  expect(codes.join(' ')).not.toMatch(/\bAW-/);
   expect(errors).toEqual([]);
 });
 

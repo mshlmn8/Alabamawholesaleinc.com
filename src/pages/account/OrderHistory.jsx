@@ -329,7 +329,7 @@ function OrderCard({ order: o, headingId, onReorder, onOpenCart, note, noteHasLi
       <ul className="order-items" id={listId}>
         {shown.map((it) => (
           <li key={it.id}>
-            <span><span>{`${it.qty} × ${it.product_name}`}</span> <span className="sku">{`(${it.sku})`}</span></span>
+            <span>{`${it.qty} × ${it.product_name}`}</span>
             <span className={`line-total${it.unit_price == null ? ' is-pending' : ''}`}>{it.unit_price != null ? formatMoney(lineTotal(it.unit_price, it.qty)) : PRICE_PENDING}</span>
           </li>
         ))}

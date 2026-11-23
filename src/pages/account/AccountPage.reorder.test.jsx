@@ -40,12 +40,13 @@ describe('AccountPage Reorder with old SKUs', () => {
     const addLines = vi.fn();
     render(<AccountPage profile={PROFILE} account="ready" products={PRODUCTS} addLines={addLines} isApprovedBuyer />);
     // The history shows the order as it was saved.
-    expect(await screen.findByText('(AW-BRILLO-BASICS--YELLOW)')).toBeTruthy();
+    expect(await screen.findByText(/Brillo Basics all-purpose cleaner/)).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/AW-BRILLO/);
     // Three lines show until Show all; Reorder takes every line, and its
     // name says which order (AW-104, AW-105).
-    expect(screen.queryByText('(AW-LOOSE-LEAFS-5P-WATERMELON)')).toBeNull();
+    expect(screen.queryByText(/LooseLeaf wraps/)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Show all 6 items' }));
-    expect(screen.getByText('(AW-LOOSE-LEAFS-5P-WATERMELON)')).toBeTruthy();
+    expect(screen.getByText(/LooseLeaf wraps/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Reorder T-C3-OLD-SKUS' }));
     expect(addLines).toHaveBeenCalledWith([
       { productId: 60, variant: 'F*** fab', qty: 2 },
