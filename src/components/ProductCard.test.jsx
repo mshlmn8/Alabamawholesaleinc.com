@@ -1,6 +1,6 @@
-// The product card's detail line names the brand, the sell unit and the SKU.
-// Colors, flavors and varieties stay on the product page. It says what
-// quantity 1 means (AW-031); its price follows the variants (AW-030). Prices
+// The product card shows no detail line under the name: no brand, no SKU
+// and no "Sold by the …". Colors, flavors and varieties stay on the product
+// page. Its price follows the variants (AW-030). Prices
 // are test values.
 // The add control (AW-143): one button style, sentence-case labels, and a
 // name that starts with the label and ends with the product (AW-170). The
@@ -20,9 +20,6 @@ const base = { id: 1, name: 'Swisher Sweets cigarillos', brand: 'Swisher Sweets'
 const card = (p, props = {}) => (
   <ProductCard p={p} profile={null} isApprovedBuyer={false} cart={{}} addLine={vi.fn()} decLine={vi.fn()} onLoginClick={vi.fn()} {...props} />
 );
-// The detail line as it reads: its separators hold a no-break space before
-// the dot (NEW-082), compared here as a plain space.
-const detail = () => document.querySelector('.card-detail').textContent.replace(/\u00a0/g, ' ');
 const price = () => document.querySelector('.card-meta > span:first-child').textContent;
 const APPROVED = { profile: { id: 'a', status: 'approved' }, isApprovedBuyer: true, pricesStatus: 'ready' };
 
@@ -32,13 +29,15 @@ describe('ProductCard', () => {
     expect(document.querySelector('.card-detail')).toBeNull();
     expect(document.body.textContent).not.toMatch(/AW-SS|Swisher Sweets ·/);
     view.rerender(card({ ...base, variants: ['S', 'M'], variantAxis: 'Size', sellUnit: '5-pack' }));
-    expect(detail()).toBe('Sold by the 5-pack');
-    expect(detail()).not.toMatch(/flavor|variety|color|size|variant|AW-SS/i);
+    expect(document.querySelector('.card-detail')).toBeNull();
+    expect(document.body.textContent).not.toMatch(/Sold by the|flavor|variety|color|size|variant|AW-SS/i);
   });
 
-  it('says what quantity 1 means (AW-031)', () => {
+  it('does not say what quantity 1 means', () => {
     render(card({ ...base, variants: [], sellUnit: '5-pack' }));
-    expect(detail()).toBe('Sold by the 5-pack');
+    expect(document.querySelector('.card-detail')).toBeNull();
+    expect(document.body.textContent).not.toMatch(/Sold by the/);
+    expect(cardDetail({ ...base, sellUnit: '5-pack' })).toBe('');
   });
 
   it('shows "From" the lowest price when the variants are priced differently (AW-030)', () => {
@@ -450,12 +449,10 @@ describe('ProductCard structure', () => {
     expect(order).toEqual(['card-link', 'button ghost sm card-add']);
   });
 
-  it('shows the detail line as parts that wrap between them, reading as one line (AW-304, NEW-082)', () => {
+  it('shows no detail line under the name', () => {
     render(card({ ...base, variants: ['Red', 'Grape'], variantAxis: 'Flavor', sellUnit: '5-pack' }));
-    const parts = [...document.querySelectorAll('.card-detail > .text-parts > span')].map((span) => span.textContent);
-    expect(parts).toEqual(['Sold by the 5-pack']);
-    expect(document.querySelector('.card-detail').textContent).toBe(cardDetail({ ...base, variants: ['Red', 'Grape'], variantAxis: 'Flavor', sellUnit: '5-pack' }));
-    expect(document.querySelector('.card-detail .sku-part')).toBeNull();
+    expect(document.querySelector('.card-detail')).toBeNull();
+    expect(cardDetail({ ...base, variants: ['Red', 'Grape'], variantAxis: 'Flavor', sellUnit: '5-pack' })).toBe('');
     expect(cardDetailParts({ ...base, variants: [] })).toEqual([]);
   });
 });

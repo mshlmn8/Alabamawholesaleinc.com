@@ -147,9 +147,10 @@ describe('ProductPage variants (AW-233, AW-128, AW-030)', () => {
     expect(document.body.textContent).not.toMatch(/Supplied to licensed retail businesses/);
   });
 
-  it('says what quantity 1 means when the product has a sell unit (AW-031)', () => {
+  it('does not say what quantity 1 means, even when the product has a sell unit', () => {
     const view = render(page({ products: [product({ sellUnit: 'box of 200' })] }));
-    expect(screen.getByText('Sold by the box of 200 — quantity 1 is one box of 200.')).toBeTruthy();
+    expect(document.querySelector('.pd-unit')).toBeNull();
+    expect(document.body.textContent).not.toMatch(/Sold by the/);
     view.rerender(page({ products: [product({ sellUnit: '' })] }));
     expect(document.querySelector('.pd-unit')).toBeNull();
   });

@@ -87,13 +87,12 @@ const NO_PRICES = () => null;
 // How long "Added" stays under the control after an add.
 export const ADDED_NOTE_MS = 2000;
 
-// The card's detail line is only the sell unit, when the product has one.
-// The brand and the SKU are not shown (the name already says the product).
-// Colors, flavors and varieties stay on the product page, where the buyer
-// chooses one. cardDetailParts gives the values, which the card shows as
-// TextParts; cardDetail the same line as one string.
-export function cardDetailParts(p) {
-  return [p.sellUnit ? `Sold by the ${p.sellUnit}` : ''].filter(Boolean);
+// The card shows no detail line under the name: no brand, no product code,
+// and no "Sold by the …". Colors, flavors and varieties stay on the product
+// page, where the buyer chooses one. cardDetailParts is the (empty) list the
+// card would show as TextParts; cardDetail the same line as one string.
+export function cardDetailParts() {
+  return [];
 }
 
 export function cardDetail(p, options) {

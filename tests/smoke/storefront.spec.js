@@ -494,12 +494,12 @@ test.describe('after age confirmation', () => {
     await page.goto('/product/329');
     await expect(page.locator('main h1')).toHaveText('RAW tips');
     await expect(page.locator('.variant-chips')).toHaveCount(0);
-    // Gambler tubes: the sell unit, on the page and its card.
+    // Gambler tubes: no "Sold by the …" on the page or its card.
     await page.goto('/product/242');
-    await expect(page.locator('.pd-unit')).toHaveText('Sold by the box of 200 — quantity 1 is one box of 200.');
+    await expect(page.locator('.pd-unit')).toHaveCount(0);
+    await expect(page.locator('main')).not.toContainText('Sold by the');
     await page.goto('/category/tobacco/tubes-and-filters');
-    await expect(page.getByRole('article', { name: 'Gambler cigarette tubes' }).locator('.card-detail'))
-      .toHaveText('Sold by the box of 200');
+    await expect(page.getByRole('article', { name: 'Gambler cigarette tubes' }).locator('.card-detail')).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 });

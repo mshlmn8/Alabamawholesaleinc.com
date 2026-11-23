@@ -313,7 +313,6 @@ export function ProductPage({
       )}
     </div>
   );
-  const unitNote = p.sellUnit && !noneAvailable ? <p key="unit" className="pd-unit">{`Sold by the ${p.sellUnit} — quantity 1 is one ${p.sellUnit}.`}</p> : null;
   const addBlock = noneAvailable ? null : provisional ? (
     // While the live catalog is checked (AW-232) the row is there but
     // unseen, so the line over it has its height, and the page doesn't
@@ -372,12 +371,10 @@ export function ProductPage({
           {variantError && <p id="pd-variant-error" className="form-error" role="alert">{`Select a ${axis.noun} before adding this product.`}</p>}
           {soleShown && <p className="pd-desc">{`${axis.label}: ${soleShown}${soleUnavailable ? ' (not available)' : ''}`}</p>}
           {savedQty > 0 && !noneAvailable && <p className="pd-saved">{`From your last visit: quantity ${savedQty}.${choiceRequired ? ` Choose a ${axis.noun}, then add it.` : ''}`}</p>}
-          {/* Price, sell unit, quantity and add, line total, "Already in":
-              price first on a desktop, the add row first in the compact
-              layout (AW-150); or the one sentence when nothing can be
-              ordered (NEW-052). */}
+          {/* Price, quantity and add, "Already in": price first on a
+              desktop, the add row first in the compact layout (AW-150);
+              or the one sentence when nothing can be ordered (NEW-052). */}
           {priceFirst && priceOrNone}
-          {unitNote}
           {addBlock}
           {inCartNote}
           {!priceFirst && priceOrNone}

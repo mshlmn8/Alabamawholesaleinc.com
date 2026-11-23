@@ -81,7 +81,7 @@ describe('HomePage rails', () => {
 
   it('never puts the brand or the SKU on a card', () => {
     expect(cardDetail({ brand: 'Swisher Sweets', sku: 'AW-SS', variants: [] })).toBe('');
-    expect(cardDetail({ brand: 'Swisher Sweets', sku: 'AW-SS', sellUnit: '5-pack' })).toBe('Sold by the 5-pack');
+    expect(cardDetail({ brand: 'Swisher Sweets', sku: 'AW-SS', sellUnit: '5-pack' })).toBe('');
   });
 });
 
