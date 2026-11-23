@@ -261,13 +261,13 @@ test('an approved buyer’s prices come from my_prices(), and each × quantity i
   await page.locator('.pd-info').getByRole('button', { name: /^Add to order/ }).click();
   await page.getByRole('button', { name: 'Order, 3 items' }).click();
   const drawer = page.getByRole('dialog', { name: 'Your order' });
-  await expect(drawer.locator('.drawer-line small').first()).toHaveText('AW-KITE · $13.40 each');
+  await expect(drawer.locator('.drawer-line small').first()).toHaveText('$13.40 each');
   await expect(drawer.locator('.drawer-line .line-total')).toHaveText('$40.20');
   await expect(drawer.locator('.drawer-total')).toContainText('$40.20');
   await drawer.getByRole('link', { name: 'Checkout' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Checkout' })).toBeVisible();
   const line = page.locator('.checkout-lines .drawer-line').first();
-  await expect(line.locator('small').first()).toHaveText('AW-KITE · $13.40 each');
+  await expect(line.locator('small').first()).toHaveText('$13.40 each');
   await expect(line.locator('.line-total')).toHaveText('$40.20');
   await expect(page.locator('.checkout-total')).toHaveText('Estimated total · 3 units$40.20');
   // A product without a price (synthetic: ids ending in 7).
@@ -275,7 +275,7 @@ test('an approved buyer’s prices come from my_prices(), and each × quantity i
   await expect(page.locator('.pd-price')).toContainText('Price on request');
   // Cards show the same prices.
   await page.goto('/category/tobacco/cigarettes');
-  await expect(page.locator('.content-card').filter({ hasText: 'AW-KITE' }).locator('.card-meta')).toContainText('$13.40');
+  await expect(page.getByRole('article', { name: 'Kite cigarette tobacco' }).locator('.card-meta')).toContainText('$13.40');
   expect(calls.prices).toBeGreaterThan(0);
   expect(selects.length).toBeGreaterThan(0);
   expect(selects.every((s) => s && s !== '*' && !s.split(',').includes('price'))).toBe(true);
@@ -288,7 +288,7 @@ test('guests never ask for prices and see the lock (AW-003)', async ({ page }) =
   await page.goto('/category/tobacco/cigarettes');
   // One pricing notice above the grid; the card's lock is plain text (AW-224),
   // worded for a guest, who has no account to approve (NEW-050).
-  await expect(page.locator('.content-card').filter({ hasText: 'AW-KITE' }).locator('.card-meta .lock')).toHaveText('Sign in for pricing');
+  await expect(page.getByRole('article', { name: 'Kite cigarette tobacco' }).locator('.card-meta .lock')).toHaveText('Sign in for pricing');
   await expect(page.locator('.pricing-notice')).toHaveCount(1);
   await expect(page.locator('.pricing-notice')).toContainText('Prices are shown to approved accounts.');
   // /catalog has the same notice, in the same words (NEW-050).
