@@ -64,12 +64,24 @@ create or replace function pg_temp.p22_old() returns void language sql as $fn$
   update public.products set sku = 'AW-RED-BULL-12OZ' where id = 143;
   update public.products set name = 'RAZ Vue Full kit', description = 'RAZ Vue Full kit from the disposable vape line in our Novelties department.' where id = 65;
   update public.products set name = 'Uncle Al''s cookies' where id = 350;
-  update public.products set description = replace(description, 'Havana Leaf wraps', 'Havana leaf wraps') where id = 13;
-  update public.products set description = replace(description, 'Extra Gum from', 'Extra gum from') where id = 183;
-  update public.products set description = replace(description, 'Pure Eyes from', 'Pure eyes from') where id = 193;
-  update public.products set description = replace(description, 'Lil Leaf wraps', 'Lil leaf wraps') where id = 213;
-  update public.products set description = replace(description, 'Backwoods True Wraps', 'Backwoods true wraps') where id = 260;
+  update public.products set description = 'Havana leaf wraps from the wraps and leaf line in our Tobacco department. Eight flavors: Milk cookies, Sweet aromatic, Strawberry, 8 Miles, Russian cream, Purple, Yellow and Honey bourbon.' where id = 13;
+  update public.products set description = 'Extra gum from the gum and mints line in our Candies department. Five flavors: Watermelon, Spearmint, Peppermint, Polar ice and Winterfresh.' where id = 183;
+  update public.products set description = 'Pure eyes from the OTC and health line in our Merchandise department.' where id = 193;
+  update public.products set description = 'Lil leaf wraps from the wraps and leaf line in our Tobacco department. Stocked in one variety: Original.' where id = 213;
+  update public.products set description = 'Backwoods true wraps from the wraps and leaf line in our Tobacco department. Three flavors: Original, Vanilla and Aromatic.' where id = 260;
   update public.products set sell_unit = '' where id in (16, 340);
+$fn$;
+
+-- 20261127030000 rewrote these descriptions after the spelling fix. The
+-- spelling migration still writes the sentence it was published with; this
+-- puts the seed's sentence back.
+create or replace function pg_temp.p22_copy() returns void language sql as $fn$
+  update public.products set description = 'Havana Leaf little wraps, a small flavored leaf wrap for one roll.' where id = 13;
+  update public.products set description = 'RAZ Vue sold as a full kit, the device and its prefilled pod together.' where id = 65;
+  update public.products set description = 'Extra sugar-free gum in the long pack, a soft stick made for a long chew.' where id = 183;
+  update public.products set description = 'Pure Eyes redness-relief eye drops for the OTC shelf.' where id = 193;
+  update public.products set description = 'Lil Leaf wraps, a small tobacco wrap. This row is the original style.' where id = 213;
+  update public.products set description = 'Backwoods True Wraps, a uniform leaf wrap made to roll like a Backwoods cigar.' where id = 260;
 $fn$;
 
 -- The columns the migration changes, on the rows it changes.
@@ -103,7 +115,7 @@ begin
 
   -- (b) Names: no two products are called the same (NEW-023).
   assert (select name from public.products where id = 65) = 'RAZ Vue full kit', '#65 is RAZ Vue full kit';
-  assert (select description from public.products where id = 65) like 'RAZ Vue full kit from %', 'and its description says so';
+  assert (select description from public.products where id = 65) = 'RAZ Vue sold as a full kit, the device and its prefilled pod together.', 'and its description says so';
   assert (select name from public.products where id = 350) = 'Uncle Al''s', '#350 is Uncle Al''s again';
   assert (select name from public.products where id = 351) = 'Uncle Al''s cookies', '#351 keeps its name';
   select string_agg(name, ', ') into dupes from (
@@ -112,15 +124,15 @@ begin
   assert dupes is null, 'products sharing a name: ' || dupes;
 
   -- (c) The brand's spelling, as in each row's brand and name (AW-075).
-  assert (select description like 'Havana Leaf wraps from %' and brand = 'Havana Leaf' from public.products where id = 13), '#13 Havana Leaf';
-  assert (select description like 'Extra Gum from %' and name = 'Extra Gum' from public.products where id = 183), '#183 Extra Gum';
-  assert (select description like 'Pure Eyes from %' and brand = 'Pure Eyes' from public.products where id = 193), '#193 Pure Eyes';
-  assert (select description like 'Lil Leaf wraps from %' and brand = 'Lil Leaf' from public.products where id = 213), '#213 Lil Leaf';
-  assert (select description like 'Backwoods True Wraps from %' and name = 'Backwoods True Wraps' from public.products where id = 260), '#260 Backwoods True Wraps';
+  assert (select description = 'Havana Leaf little wraps, a small flavored leaf wrap for one roll.' and brand = 'Havana Leaf' from public.products where id = 13), '#13 Havana Leaf';
+  assert (select description = 'Extra sugar-free gum in the long pack, a soft stick made for a long chew.' and name = 'Extra Gum' from public.products where id = 183), '#183 Extra Gum';
+  assert (select description = 'Pure Eyes redness-relief eye drops for the OTC shelf.' and brand = 'Pure Eyes' from public.products where id = 193), '#193 Pure Eyes';
+  assert (select description = 'Lil Leaf wraps, a small tobacco wrap. This row is the original style.' and brand = 'Lil Leaf' from public.products where id = 213), '#213 Lil Leaf';
+  assert (select description = 'Backwoods True Wraps, a uniform leaf wrap made to roll like a Backwoods cigar.' and name = 'Backwoods True Wraps' from public.products where id = 260), '#260 Backwoods True Wraps';
 
   -- (d) Sold as singles, as the descriptions say (AW-136); the 5-packs whose
   -- photo they share keep theirs.
-  assert (select count(*) from public.products where id in (16, 340) and sell_unit = 'single' and description like '%sold as singles%') = 2,
+  assert (select count(*) from public.products where id in (16, 340) and sell_unit = 'single' and description like 'A single %') = 2,
     '#16 and #340 are sold by the single';
   assert (select count(*) from public.products where id in (11, 77) and sell_unit = '5-pack') = 2, '#11 and #77 are 5-packs';
 
@@ -132,6 +144,7 @@ begin
   perform pg_temp.p22_old();
   assert pg_temp.p22_rows() <> seeded, 'the old values are back';
   assert pg_temp.p22_apply() = 14, 'four codes, two names, six descriptions and two sell units change';
+  perform pg_temp.p22_copy();
   assert pg_temp.p22_rows() = seeded, 'to the seed''s values';
   assert pg_temp.p22_apply() = 0, 'and a second run changes nothing';
 
@@ -151,7 +164,8 @@ begin
   update public.products set sku = 'AW-DUTCH-MASTERS' where id = 83;
   update public.products set sell_unit = 'single' where id = 340;
   update public.products set name = 'Uncle Al''s' where id = 350;
-  update public.products set description = 'Pure Eyes from the OTC and health line in our Merchandise department.' where id = 193;
+  update public.products set description = 'Pure Eyes redness-relief eye drops for the OTC shelf.' where id = 193;
+  perform pg_temp.p22_copy();
   assert pg_temp.p22_rows() = seeded, 'put back';
 
   -- A code another product already has is never written twice.
@@ -162,11 +176,12 @@ begin
   assert (select sku from public.products where id = 121) = 'AW-PLASTIC', '#121 keeps its old code while another product has the new one';
   delete from public.products where id = 92201;
   assert pg_temp.p22_apply() = 1, 'and takes it once that product is gone';
+  perform pg_temp.p22_copy();
   assert pg_temp.p22_rows() = seeded, 'back to the seed''s values';
 end $$;
 
 -- Leave the shared database as later test files expect it: the seed's
 -- values for #350 and #351.
 delete from public.products where id = 92201;
-update public.products set name = 'Uncle Al''s cookies', description = 'Uncle Al''s cookies, from the cookie line in our Food Stuff department. Flavors vary by availability.' where id = 350;
+update public.products set name = 'Uncle Al''s cookies', description = 'Uncle Al''s cookies in a bag. The flavor on the bag is whatever the warehouse has in.' where id = 350;
 update public.products set name = 'Uncle Al''s creme' where id = 351;

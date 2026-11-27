@@ -13,6 +13,7 @@
 // Ids start at 369 and follow this list. Append new rows; do not reorder
 // these, or a SKU already seeded keeps the old id.
 
+import { productCopy } from './productCopy.js';
 import { STAGE1_PHOTOS } from './stage1Photos.js';
 
 const FIRST_ID = 369;
@@ -313,10 +314,6 @@ function sellUnitOf(name) {
   return '';
 }
 
-function linePhrase(sub) {
-  return sub.replace(/&/g, 'and').replace(/\b[A-Z][a-z]+\b/g, (word) => word.toLowerCase());
-}
-
 function brandInName(name, brand) {
   if (brand === 'Assorted') return true;
   const flat = (value) => value.toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '');
@@ -339,10 +336,8 @@ function build([name, brand, cat, sub, sku], index) {
     variants: [],
     img: STAGE1_PHOTOS[sku] ?? null,
     tag: null,
-    description: sku === 'AW-JUUL-PODS-4PK'
-      ? 'Juul pods 4-pack menthol, 5%, from the vape pods line in our Novelties department.'
-      : `${name} from the ${linePhrase(sub)} line in our ${DEPT[cat]} department.`,
   };
+  row.description = productCopy(row);
   if (DELISTED_SUBS.has(sub)) row.active = false;
   return row;
 }

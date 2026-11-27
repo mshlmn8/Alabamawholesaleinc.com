@@ -22,6 +22,7 @@ import { seedSql } from './seed-sql.mjs';
 const read = (path) => readFileSync(resolve(import.meta.dirname, '..', path), 'utf8');
 const DELIST = read('supabase/migrations/20261014100000_delist_kratom_mushroom.sql');
 const ANSWERS = read('supabase/migrations/20261014101000_catalog_owner_answers.sql');
+const DESCRIPTIONS = read('supabase/migrations/20261127030000_manufacturer_style_descriptions.sql');
 const DELIST_TEST = read('supabase/tests/24_catalog_delisting.sql');
 const ANSWERS_TEST = read('supabase/tests/25_catalog_owner_answers.sql');
 
@@ -158,15 +159,18 @@ describe('the two files over the live database', () => {
     expect(await rows()).not.toEqual(seeded);
     await db.exec(DELIST);
     await db.exec(ANSWERS);
+    await db.exec(DESCRIPTIONS);
     expect(await rows()).toEqual(expected());
     await db.exec(DELIST);
     await db.exec(ANSWERS);
+    await db.exec(DESCRIPTIONS);
     expect(await rows()).toEqual(expected());
   });
 
   it('change nothing on a database seeded from products.js', async () => {
     await db.exec(DELIST);
     await db.exec(ANSWERS);
+    await db.exec(DESCRIPTIONS);
     expect(await rows()).toEqual(expected());
   });
 });

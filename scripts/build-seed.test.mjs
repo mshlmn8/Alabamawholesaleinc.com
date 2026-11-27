@@ -178,10 +178,10 @@ describe('product names (AW-071)', () => {
       ['Value antifreeze', 'AW-CHEAP-ANTIFREEZE'], ['Value scales', 'AW-CHEAP-SCALES'],
       ['Value incense', 'AW-CHEAP-INCENSE'], ['Value lighters', 'AW-CHEAP-LIGHTERS'],
     ]);
-    // Each name now agrees with its own description.
-    for (const id of [100, 221, 246, 250]) expect(byId(id).description, `#${id}`).toMatch(/^Value /);
+    // The Value rows keep that word in the description, without a retail price.
+    for (const id of [100, 221, 246, 250]) expect(byId(id).description, `#${id}`).toMatch(/Value/i);
     expect(byId(12).name).toBe('LooseLeaf wraps 2-pack');
-    expect(byId(12).description).toMatch(/\$2\.99 and \$1\.99 price points/);
+    expect(byId(12).description).toMatch(/LooseLeaf/);
     expect([290, 291, 335, 336, 190, 132, 133].map((id) => byId(id).name)).toEqual([
       'Powerade (big)', 'Powerade (small)', 'Gatorade (small)', 'Gatorade (big)', 'Mamba (small)', 'Charcoal bags (small)', 'Charcoal bags (big)',
     ]);
@@ -192,16 +192,15 @@ describe('product names (AW-071)', () => {
     // cookies and creme, no Lemon ice (20261014101000_catalog_owner_answers.sql).
     expect([350, 351].map((id) => byId(id).name)).toEqual(["Uncle Al's cookies", "Uncle Al's creme"]);
     expect(byId(351).variants).toEqual([]);
-    // Descriptions spell the product as its name does.
-    expect(byId(9).description).toMatch(/^EZ Roll from/);
-    expect(byId(274).description).toMatch(/^RAW Guarana wraps from/);
-    expect(byId(310).description).toMatch(/^Geek Bar Mate from/);
-    expect(byId(311).description).toMatch(/^Geek Bar Mate pods from/);
-    expect(byId(65).description).toMatch(/^RAZ Vue full kit from/);
-    // The brand as the row's brand and name spell it (AW-075).
-    expect([13, 183, 193, 213, 260].map((id) => byId(id).description.split(' from ')[0])).toEqual([
-      'Havana Leaf wraps', 'Extra Gum', 'Pure Eyes', 'Lil Leaf wraps', 'Backwoods True Wraps',
-    ]);
+    // Descriptions spell the product as its name does (AW-075).
+    expect(byId(9).description).toMatch(/EZ Roll/);
+    expect(byId(274).description).toMatch(/RAW Guarana wraps/);
+    expect(byId(310).description).toMatch(/Geek Bar Mate/);
+    expect(byId(311).description).toMatch(/Geek Bar Mate/);
+    expect(byId(65).description).toMatch(/RAZ Vue/);
+    for (const [id, spelled] of [[13, 'Havana Leaf'], [183, 'Extra'], [193, 'Pure Eyes'], [213, 'Lil Leaf'], [260, 'Backwoods True Wraps']]) {
+      expect(byId(id).description, `#${id}`).toMatch(spelled);
+    }
     // A cart key and a price-point product stay (TODO(owner) AW-071).
     expect(byId(252).variants).toEqual(['Aviator', 'Cheap']);
     expect(byId(40).name).toBe("Wrigley's 50¢ gum");
