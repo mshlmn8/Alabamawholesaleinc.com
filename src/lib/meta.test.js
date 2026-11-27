@@ -89,6 +89,8 @@ describe('pageMeta', () => {
   it('titles the support pages in sentence case, the words of their h1s (AW-131, LEFT-1)', () => {
     const title = (route) => pageMeta(route, products, departments).title;
     expect(title({ page: 'catalog' })).toBe('All products · Wholesale catalog · Alabama Wholesale Inc');
+    expect(title({ page: 'brands' })).toBe('Brands · Alabama Wholesale Inc');
+    expect(title({ page: 'brand', slug: 'kite' })).toBe('Kite · Brands · Alabama Wholesale Inc');
     expect(title({ page: 'new-arrivals' })).toBe('New arrivals · Alabama Wholesale Inc');
     expect(title({ page: 'hot-sellers' })).toBe('Hot sellers · Alabama Wholesale Inc');
     expect(title({ page: 'bestsellers' })).toBe('Bestsellers · Alabama Wholesale Inc');

@@ -32,7 +32,11 @@ function targetRoute(target) {
 
 export function currentFor(raw, target) {
   const to = targetRoute(target);
-  if (!raw || !to || raw.page !== to.page || raw.page === 'not-found') return undefined;
+  if (!raw || !to || raw.page === 'not-found' || to.page === 'not-found') return undefined;
+  // The brands index is the section link; a brand's own page sits under it.
+  if (to.page === 'brands' && (raw.page === 'brands' || raw.page === 'brand')) return raw.page === 'brands' ? 'page' : 'true';
+  if (raw.page === 'brand' && to.page === 'brand') return slugify(raw.slug) && slugify(raw.slug) === slugify(to.slug) ? 'page' : undefined;
+  if (raw.page !== to.page) return undefined;
   if (raw.page === 'category') {
     if (!slugify(raw.dept) || slugify(raw.dept) !== slugify(to.dept)) return undefined;
     if (to.sub != null) return raw.sub != null && slugify(raw.sub) === slugify(to.sub) ? 'page' : undefined;

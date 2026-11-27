@@ -67,6 +67,8 @@ import { useAdminUnseen } from './pages/admin/useAdminUnseen.js';
 // Eager: its '#dept-…' links scroll to their department before paint.
 import { CatalogIndexPage } from './pages/support/CatalogIndexPage.jsx';
 import { CollectionPage } from './pages/CollectionPage.jsx';
+import { BrandsPage } from './pages/BrandsPage.jsx';
+import { BrandPage } from './pages/BrandPage.jsx';
 import { loadDialog, loadPage, prefetchChunks, whenIdle } from './lib/chunks.js';
 
 // Loaded when first opened (AW-179), each under its name in
@@ -87,7 +89,7 @@ const AuthModal = lazy(() => loadDialog('auth', () => import('./components/AuthM
 const IDLE_CHUNKS = ['quote', 'account', 'auth', 'contact', 'delivery', 'policy', 'apply', 'reset'];
 
 // Not-found routes that depend on what is in the catalog.
-const CATALOG_KINDS = ['product', 'department', 'line'];
+const CATALOG_KINDS = ['product', 'department', 'line', 'brand'];
 // Sign Out leads home, and its notice shows there.
 const SIGNED_OUT_PAGE = '/';
 const SIGNED_OUT_PAGE_KEY = pageKeyFor({ pathname: SIGNED_OUT_PAGE });
@@ -442,6 +444,10 @@ export default function App() {
           <CatalogIndexPage products={products} departments={departments} profile={profile} isApprovedBuyer={isApprovedBuyer}
                             onLoginClick={openSignin} {...cardProps} />
         );
+      case 'brands':
+        return <BrandsPage products={products} />;
+      case 'brand':
+        return <BrandPage key={route.slug} slug={route.slug} products={products} {...cardProps} />;
       case 'new-arrivals':
       case 'hot-sellers':
       case 'bestsellers':

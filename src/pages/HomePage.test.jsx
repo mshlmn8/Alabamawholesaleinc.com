@@ -70,7 +70,7 @@ describe('HomePage rails', () => {
 
   it('links each rail’s Show all to that group’s own page', () => {
     renderHome();
-    for (const [id, name] of [['new-arrivals', 'Show all new arrivals'], ['hot-sellers', 'Show all hot sellers'], ['bestsellers', 'Show all bestsellers'], ['new-deals', 'Show all new deals']]) {
+    for (const [id, name] of [['brands', 'Show all brands'], ['new-arrivals', 'Show all new arrivals'], ['hot-sellers', 'Show all hot sellers'], ['bestsellers', 'Show all bestsellers'], ['new-deals', 'Show all new deals']]) {
       const head = document.querySelector(`#${id} .section-head`);
       const links = within(head).getAllByRole('link');
       expect(links.map((a) => [a.textContent, a.getAttribute('href')]), id).toEqual([[name, `/${id}`]]);
@@ -102,9 +102,10 @@ describe('HomePage sections', () => {
     expect(document.querySelector('.trust-band')).toBeNull();
     expect(document.querySelector('.services')).toBeNull();
     const h2s = [...document.querySelectorAll('h2')].map(text);
-    const order = ['Shop by department', 'New arrivals', 'Hot sellers', 'Bestsellers', 'New deals', 'Open an account'];
+    const order = ['Shop by department', 'Brands', 'New arrivals', 'Hot sellers', 'Bestsellers', 'New deals', 'Open an account'];
     expect(h2s).toEqual(order);
     expect(document.getElementById('apply').nextElementSibling).toBeNull();
+    expect(document.getElementById('new-arrivals').previousElementSibling.id).toBe('brands');
     expect(document.getElementById('hot-sellers').previousElementSibling.id).toBe('new-arrivals');
     expect(document.getElementById('new-deals').previousElementSibling.id).toBe('bestsellers');
     for (const id of ['new-arrivals', 'hot-sellers', 'bestsellers', 'new-deals']) {
@@ -112,7 +113,7 @@ describe('HomePage sections', () => {
     }
     // The header, menu and footer link to these.
     const ids = [...document.querySelectorAll('section[id]')].map((s) => s.id);
-    expect(ids).toEqual(['catalog', 'new-arrivals', 'hot-sellers', 'bestsellers', 'new-deals', 'apply']);
+    expect(ids).toEqual(['catalog', 'brands', 'new-arrivals', 'hot-sellers', 'bestsellers', 'new-deals', 'apply']);
   });
 
   it('names no kratom, kava or mushroom product anywhere on the page (AW-001)', () => {

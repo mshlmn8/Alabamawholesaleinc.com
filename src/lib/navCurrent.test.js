@@ -32,6 +32,9 @@ describe('currentFor', () => {
     expect(currentFor(at('/terms'), '/terms')).toBe('page');
     expect(currentFor(at('/privacy'), '/terms')).toBeUndefined();
     expect(currentFor(at('/catalog'), '/catalog')).toBe('page');
+    expect(currentFor(at('/brands'), '/brands')).toBe('page');
+    expect(currentFor(at('/brands/swisher-sweets'), '/brands')).toBe('true');
+    expect(currentFor(at('/brands/swisher-sweets'), { page: 'brand', slug: 'swisher-sweets' })).toBe('page');
     expect(currentFor(at('/'), '/')).toBe('page');
     expect(currentFor(at('/product/12'), '/product/12')).toBe('page');
     expect(currentFor(at('/product/12'), { page: 'product', productId: 13 })).toBeUndefined();

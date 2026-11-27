@@ -34,6 +34,7 @@ describe('footer links (AW-285)', () => {
     render(footer());
     expect(column('Departments')).toEqual([
       { text: 'All products', href: '/catalog' },
+      { text: 'Brands', href: '/brands' },
       ...departments.map((d) => ({ text: d.label, href: expect.stringMatching(/^\/category\/[a-z-]+$/) })),
       { text: 'New arrivals', href: '/#new-arrivals' },
       { text: 'Bestsellers', href: '/#bestsellers' },

@@ -43,6 +43,8 @@ describe('parseUrl', () => {
     expect(parseUrl({ pathname: '/category/tobacco' })).toMatchObject({ page: 'category', dept: 'tobacco', sub: null });
     expect(parseUrl({ pathname: '/category/drinks-and-bags/energy-drinks' })).toMatchObject({ page: 'category', dept: 'drinks-and-bags', sub: 'energy-drinks' });
     expect(parseUrl({ pathname: '/search', search: '?q=kite' })).toEqual({ page: 'search', q: 'kite' });
+    expect(parseUrl({ pathname: '/brands' })).toEqual({ page: 'brands' });
+    expect(parseUrl({ pathname: '/brands/swisher-sweets' })).toEqual({ page: 'brand', slug: 'swisher-sweets' });
     for (const page of ['checkout', 'account', 'admin', 'catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply', 'reset-password', 'new-arrivals', 'hot-sellers', 'bestsellers', 'new-deals']) {
       expect(parseUrl({ pathname: `/${page}` })).toEqual({ page });
     }
@@ -73,7 +75,7 @@ describe('parseUrl', () => {
   });
 
   it('answers only the first segments in PATH_SECTIONS, the paths netlify.toml rewrites (NEW-088)', () => {
-    expect(PATH_SECTIONS).toEqual(['product', 'category', 'search', 'checkout', 'account', 'admin', 'catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply', 'reset-password', 'new-arrivals', 'hot-sellers', 'bestsellers', 'new-deals']);
+    expect(PATH_SECTIONS).toEqual(['product', 'category', 'brands', 'search', 'checkout', 'account', 'admin', 'catalog', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply', 'reset-password', 'new-arrivals', 'hot-sellers', 'bestsellers', 'new-deals']);
     for (const section of ['products', 'categories', 'home', 'index', 'cart', '404', 'sitemap.xml']) {
       expect([section, parseUrl({ pathname: `/${section}` })]).toEqual([section, { page: 'not-found' }]);
     }
@@ -85,6 +87,7 @@ describe('parseUrl', () => {
     expect(parseUrl({ pathname: '/category' })).toEqual({ page: 'not-found', kind: 'department' });
     expect(parseUrl({ pathname: '/product/1/2' })).toEqual({ page: 'not-found', kind: 'page' });
     expect(parseUrl({ pathname: '/category/a/b/c' })).toEqual({ page: 'not-found', kind: 'page' });
+    expect(parseUrl({ pathname: '/brands/a/b' })).toEqual({ page: 'not-found', kind: 'page' });
     expect(parseUrl({ pathname: '/quote/extra' })).toEqual({ page: 'not-found' });
   });
 });
@@ -171,6 +174,8 @@ describe('resolveRoute (AW-188)', () => {
     expect(resolve('/category/%20')).toEqual({ page: 'not-found', kind: 'department', malformed: true });
     expect(resolve('/category/tobacco/---')).toEqual({ page: 'not-found', kind: 'line', category: 'TOBACCO', malformed: true });
     expect(resolve('/nowhere')).toEqual({ page: 'not-found', kind: 'page' });
+    expect(resolve('/brands/---')).toEqual({ page: 'not-found', kind: 'brand', malformed: true });
+    expect(resolve('/brands/no-such-brand')).toEqual({ page: 'not-found', kind: 'brand' });
     expect(resolve('/product/1/2')).toEqual({ page: 'not-found', kind: 'page' });
   });
 
@@ -185,6 +190,7 @@ describe('canonical addresses', () => {
     expect(pathFor(resolve('/category/TOBACCO'))).toBe('/category/tobacco');
     expect(pathFor(resolve('/category/DRINKS%20%26%20BAGS/Bags%20%26%20Carriers'))).toBe('/category/drinks-and-bags/bags-and-carriers');
     expect(pathFor(resolve('/product/01'))).toBe('/product/1');
+    expect(pathFor(resolve('/brands/Swisher-Sweets'))).toBe('/brands/swisher-sweets');
     expect(pathFor(resolve('/Account'))).toBe('/account');
     expect(pathFor(resolve('/index.html'))).toBe('/');
     expect(pathFor(resolve('/nowhere'))).toBeNull();
@@ -197,6 +203,8 @@ describe('canonical addresses', () => {
       { page: 'category', category: 'DRINKS & BAGS', sub: null, query: { q: '', sort: 'featured', tags: [], brands: [], variants: false } },
       { page: 'category', category: 'TOBACCO', sub: 'Cigars & Cigarillos', query: { q: 'swisher', sort: 'name-asc', tags: ['NEW'], brands: [], variants: true } },
       { page: 'category', category: 'TOBACCO', sub: 'Wraps & Leafs', query: { q: '', sort: 'brand', tags: [], brands: ['game', 'swisher-sweets'], variants: false } },
+      { page: 'brands' },
+      { page: 'brand', slug: 'swisher-sweets' },
       { page: 'checkout' }, { page: 'account' }, { page: 'admin' }, { page: 'catalog' }, { page: 'terms' }, { page: 'reset-password' },
     ];
     for (const route of routes) expect(resolve(hrefFor(route))).toEqual(route);

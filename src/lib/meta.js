@@ -28,6 +28,7 @@ import { POLICY_TITLES, POLICY_INTROS } from '../pages/support/policyText.js';
 import { resetTitle } from '../pages/support/resetView.js';
 import { catalogCrumbs } from './crumbs.js';
 import { topLines } from './departments.js';
+import { brandBySlug } from './brands.js';
 import { brandLabel, catLabel, formatMoney, sharesDepartmentName } from './format.js';
 import { underLegalReview } from './merchandising.js';
 import { collectionByPage } from './collections.js';
@@ -176,6 +177,7 @@ const imageOf = (product, alt) => {
 const NOT_FOUND = {
   page: { title: 'Page not found', description: 'This page could not be found. Search the catalog or browse the departments.' },
   product: { title: 'Product not found', description: 'This product is not in the catalog. Search for it or browse the departments.' },
+  brand: { title: 'Brand not found', description: 'This brand is not in the catalog. Browse the brands or search the catalog.' },
   department: { title: 'Department not found', description: 'This department does not exist. Browse the departments or search the catalog.' },
   line: { title: 'Product line not found', description: 'This product line does not exist. Browse the department or search the catalog.' },
 };
@@ -183,7 +185,7 @@ const NOT_FOUND = {
 // A product, department or line that isn't in the bundled catalog while the
 // live one loads (route.catalog 'loading') or could not be loaded ('error')
 // (AW-204, App.jsx).
-const CATALOG_PENDING = { product: 'product', department: 'department', line: 'product line' };
+const CATALOG_PENDING = { product: 'product', department: 'department', line: 'product line', brand: 'brand' };
 
 // The admin section or view a title names (AW-118). Never a name or email:
 // titles end up in history, bookmarks and screen-sharing.
@@ -298,6 +300,22 @@ function pageText(route, products, departments, facts = DEFAULT_SITE) {
   }
   // Support pages (src/pages/support/).
   if (route.page === 'catalog') return { title: `All products · Wholesale catalog · ${site}`, description: clip(`Every department and product line ${site} stocks — ${products.length} wholesale SKUs for licensed retailers, from the Birmingham warehouse.`) };
+  if (route.page === 'brands') {
+    return {
+      title: `Brands · ${site}`,
+      description: clip(`Every brand ${site} stocks for licensed retailers, from the Birmingham warehouse.`),
+      breadcrumbs: [{ name: 'Home', path: '/' }, { name: 'Brands', path: '/brands' }],
+    };
+  }
+  if (route.page === 'brand') {
+    const brand = brandBySlug(products, route.slug);
+    const label = brand?.label || 'Brand';
+    return {
+      title: fitTitle([label, 'Brands', site]),
+      description: clip(`Wholesale ${label} for licensed retailers. ${productCount(brand?.products.length || 0)}.`),
+      breadcrumbs: [{ name: 'Home', path: '/' }, { name: 'Brands', path: '/brands' }, { name: label, path: pathFor(route) }],
+    };
+  }
   const collection = collectionByPage(route.page);
   if (collection) return { title: `${collection.title} · ${site}`, description: clip(collection.description) };
   // Short enough that both hours lines fit whole (the email is on the page).

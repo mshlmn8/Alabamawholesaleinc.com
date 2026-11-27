@@ -9,6 +9,8 @@
 //   /catalog                            all products
 //   /new-arrivals /hot-sellers /bestsellers /new-deals
 //                                       every product in that home-page group
+//   /brands                              every brand in the catalog
+//   /brands/:slug                        that brand's products
 //   /category/:dept[/:line]?q=&sort=&tags=&brand=&variants=1
 //                                       brand: brand slugs, comma-separated (AW-067)
 //   /product/:id
@@ -30,6 +32,7 @@
 
 // The admin sections' URLs are in ./adminRoutes.js.
 import { adminHref, adminPath, parseAdminPath } from './adminRoutes.js';
+import { brandBySlug } from './brands.js';
 import { DELISTED_LINE_DEPARTMENT, DELISTED_LINE_SLUGS } from '../data/delisted.js';
 
 // The production origin. VITE_SITE_URL overrides it (see src/lib/meta.js and
@@ -61,7 +64,7 @@ const SIMPLE_PAGES = ['checkout', 'account', 'admin', ...SUPPORT_PAGES, ...COLLE
 // Every first path segment parseUrl answers ('/' and '/index.html' are the
 // home page). Any other is not found, here and on Netlify (NEW-088), so a new
 // section goes in this list or it never resolves.
-export const PATH_SECTIONS = ['product', 'category', 'search', ...SIMPLE_PAGES];
+export const PATH_SECTIONS = ['product', 'category', 'brands', 'search', ...SIMPLE_PAGES];
 // Old addresses of a page, as { old section: page }. Each one parses as its
 // page, so App redirects it to the page's own path (and '#/quote' from the
 // hash router lands there too); netlify.toml moves it permanently, so it is
@@ -166,6 +169,11 @@ export function parseUrl({ pathname = '/', search = '' } = {}) {
     }
     return { page: 'not-found', kind: rest.length ? 'page' : 'department' };
   }
+  if (section === 'brands') {
+    if (rest.length === 0) return { page: 'brands' };
+    if (rest.length === 1) return { page: 'brand', slug: rest[0] };
+    return { page: 'not-found', kind: 'page' };
+  }
   if (section === 'search' && rest.length === 0) return { page: 'search', q: (searchParams(search).get('q') || '').slice(0, 200) };
   if (section === 'admin') return parseAdminPath(rest, search);
   if (SIMPLE_PAGES.includes(section) && rest.length === 0) return { page: section };
@@ -209,6 +217,14 @@ export function resolveRoute(raw, { departments = [], products = [] } = {}) {
     }
     return { page: 'category', category: dept.key, sub, query: raw.query || EMPTY_CATEGORY_QUERY };
   }
+  if (raw.page === 'brands') return raw;
+  if (raw.page === 'brand') {
+    const slug = slugify(raw.slug);
+    if (!slug) return { page: 'not-found', kind: 'brand', malformed: true };
+    const brand = brandBySlug(products, slug);
+    if (!brand) return { page: 'not-found', kind: 'brand' };
+    return { page: 'brand', slug: brand.slug };
+  }
   if (raw.page === 'product') {
     const productId = productIdOf(raw.id);
     if (productId === null || productId < 1) return { page: 'not-found', kind: 'product', malformed: true };
@@ -230,6 +246,8 @@ export function pathFor(route) {
     case 'home': return '/';
     case 'product': return `/product/${route.productId}`;
     case 'category': return `/category/${slugify(route.category)}${route.sub ? `/${slugify(route.sub)}` : ''}`;
+    case 'brands': return '/brands';
+    case 'brand': return `/brands/${route.slug}`;
     case 'search': return '/search';
     case 'admin': return adminPath(route);
     case 'not-found': return null;
@@ -263,6 +281,7 @@ export function routeKey(route) {
 export function pageKeyFor({ pathname = '/', search = '' } = {}) {
   const raw = parseUrl({ pathname, search });
   if (raw.page === 'category') return `category:${slugify(raw.dept)}`;
+  if (raw.page === 'brand') return `brand:${slugify(raw.slug)}`;
   if (raw.page === 'product') return `product:${productIdOf(raw.id) ?? raw.id}`;
   if (raw.page === 'search') return `search:${raw.q.trim().toLowerCase()}`;
   return raw.page;
