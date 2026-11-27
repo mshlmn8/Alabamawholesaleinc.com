@@ -17,7 +17,10 @@ const MIGRATION = read('supabase/migrations/20261012130000_catalog_fixups.sql');
 // The catalog files after it that change the same rows, in release order:
 // 20261014101000 gives #350 and #351 the owner's names (AW-140), the values
 // products.js has now. scripts/catalog-owner-answers.test.mjs tests it.
-const LATER = [read('supabase/migrations/20261014101000_catalog_owner_answers.sql')];
+const LATER = [
+  read('supabase/migrations/20261014101000_catalog_owner_answers.sql'),
+  read('supabase/migrations/20261127030000_manufacturer_style_descriptions.sql'),
+];
 const applyLater = async () => { for (const sql of LATER) await db.exec(sql); };
 const DB_TEST = read('supabase/tests/22_catalog_fixups.sql');
 
