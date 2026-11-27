@@ -25,6 +25,7 @@ import { execFileSync } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { catalogBrands } from '../src/lib/brands.js';
 import { hrefFor, siteUrl } from '../src/lib/routes.js';
 import { loadAppModules, loadCatalogSource, productDate, writeSnapshot } from './catalog-source.mjs';
 import { robotsTxt } from './site-url.mjs';
@@ -32,7 +33,7 @@ import { robotsTxt } from './site-url.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 // Pages without parameters that belong in search results.
-export const SITEMAP_PAGES = ['home', 'catalog', 'new-arrivals', 'hot-sellers', 'bestsellers', 'new-deals', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply'];
+export const SITEMAP_PAGES = ['home', 'catalog', 'brands', 'new-arrivals', 'hot-sellers', 'bestsellers', 'new-deals', 'contact', 'delivery', 'shipping', 'privacy', 'terms', 'apply'];
 
 // Active products with a positive whole-number id, each once, by id.
 const listedProducts = (products) => {
@@ -51,6 +52,7 @@ const listedProducts = (products) => {
 // lastmod is its updated_at date, else `lastmod`.
 export function sitemapEntries({ departments, products, lastmod = null }) {
   const entries = SITEMAP_PAGES.map((page) => ({ path: hrefFor({ page }), lastmod }));
+  for (const brand of catalogBrands(products)) entries.push({ path: hrefFor({ page: 'brand', slug: brand.slug }), lastmod });
   for (const d of departments) {
     entries.push({ path: hrefFor({ page: 'category', category: d.key, sub: null }), lastmod });
     for (const sub of d.subs) entries.push({ path: hrefFor({ page: 'category', category: d.key, sub }), lastmod });

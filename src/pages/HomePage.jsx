@@ -8,11 +8,13 @@
 
 import { DEPARTMENT_GROUPS } from '../data/content.js';
 import { APPLY_LABEL } from '../data/terms.js';
+import { homeBrands } from '../lib/brands.js';
 import { topLines } from '../lib/departments.js';
 import { brandLabel } from '../lib/format.js';
 import { COLLECTIONS } from '../lib/collections.js';
 import { RAIL_LIMIT, homeRails, homeSections } from '../lib/merchandising.js';
 import { Link } from '../lib/router.js';
+import { BrandList } from '../components/BrandList.jsx';
 import { Picture } from '../components/Picture.jsx';
 import { HomeHero } from '../components/HomeHero.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
@@ -169,6 +171,14 @@ export function HomePage({
             );
           })}
         </div>
+      </section>
+
+      <section className="section" id="brands">
+        <div className="section-head">
+          <div><h2>Brands</h2></div>
+          <Link to="/brands">Show all<span className="sr-only"> brands</span></Link>
+        </div>
+        <BrandList brands={homeBrands(products)} />
       </section>
 
       {COLLECTIONS.map((c) => (

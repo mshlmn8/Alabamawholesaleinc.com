@@ -30,6 +30,7 @@ const UUID = '0b6c7c1e-8f0a-4c51-9d3e-2a4f5b6c7d8e';
 const SHAPES = {
   product: ['/product/12', '/product/9001'],
   category: ['/category/tobacco', '/category/drinks-and-bags/energy-drinks'],
+  brands: ['/brands', '/brands/swisher-sweets'],
   search: ['/search'],
   admin: [
     '/admin', ...ADMIN_SECTIONS.map((s) => `/admin/${s}`),

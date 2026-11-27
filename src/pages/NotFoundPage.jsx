@@ -22,6 +22,7 @@ const PENDING = {
   product: { title: 'Loading product…', eyebrow: 'PRODUCT', failed: 'We couldn’t load this product' },
   department: { title: 'Loading department…', eyebrow: 'DEPARTMENT', failed: 'We couldn’t load this department' },
   line: { title: 'Loading product line…', eyebrow: 'PRODUCT LINE', failed: 'We couldn’t load this product line' },
+  brand: { title: 'Loading brand…', eyebrow: 'BRAND', failed: 'We couldn’t load this brand' },
 };
 
 const COPY = {
@@ -29,6 +30,7 @@ const COPY = {
   product: { title: 'Product not found', text: 'This product isn’t in the catalog. It may no longer be listed, or the link may be incomplete.' },
   department: { title: 'Department not found', text: 'There’s no department at this address. Choose one of the departments below or search the catalog.' },
   line: { title: 'Product line not found', text: 'This product line isn’t in the department. The link may be incomplete or out of date.' },
+  brand: { title: 'Brand not found', text: 'This brand isn’t in the catalog. It may no longer be listed, or the link may be incomplete.' },
 };
 
 export function NotFoundPage({ kind = 'page', category = null, products, departments, catalog = null, onRetry, retrying = false }) {

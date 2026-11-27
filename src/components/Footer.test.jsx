@@ -70,7 +70,7 @@ describe('Footer on phones (AW-305, LEFT-4)', () => {
     expect(details.className).toBe('footer-departments footer-fold');
     expect(details.open).toBe(false);
     expect(shopLinks(details)).toEqual(open);
-    expect(open).toHaveLength(departmentsFor(PRODUCTS).length + 3);
+    expect(open).toHaveLength(departmentsFor(PRODUCTS).length + 4);
     // The same headings, in the same order.
     expect(within(screen.getByRole('contentinfo')).getAllByRole('heading').map((h) => h.textContent)).toEqual(['Departments', 'Account & help', 'Contact']);
     fireEvent.click(summary);
