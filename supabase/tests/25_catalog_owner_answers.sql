@@ -53,6 +53,15 @@ create or replace function pg_temp.p25_old() returns void language sql as $fn$
     description = 'Uncle Al''s cookies in single-serve packs. Stocked in one variety: Lemon ice.' where id = 351;
 $fn$;
 
+-- 20261127030000 rewrote three of these sentences after this file. The
+-- owner-answer migration still writes the sentence it was published with;
+-- this puts the seed's sentence back.
+create or replace function pg_temp.p25_copy() returns void language sql as $fn$
+  update public.products set description = 'Happy valentines jar, a novelty gift for the counter.' where id = 219;
+  update public.products set description = 'Uncle Al''s cookies in a bag. The flavor on the bag is whatever the warehouse has in.' where id = 350;
+  update public.products set description = 'Uncle Al''s creme cookies, a sandwich cookie. The flavor on the bag is whatever the warehouse has in.' where id = 351;
+$fn$;
+
 -- The columns the migration changes, on the rows it changes.
 create or replace function pg_temp.p25_rows() returns text language sql as $fn$
   select string_agg(format('%s|%s|%s|%s|%s|%s|%s|%s', id, name, sub, sku, description, img, variants, unavailable_variants), E'\n' order by id)
@@ -94,6 +103,7 @@ begin
   perform pg_temp.p25_old();
   assert pg_temp.p25_rows() <> seeded, 'the old values are back';
   assert pg_temp.p25_apply() = 10, 'two for #219, one for #295, three for #351, the photo of both, and two for #350';
+  perform pg_temp.p25_copy();
   assert pg_temp.p25_rows() = seeded, 'to the seed''s values';
   assert pg_temp.p25_apply() = 0, 'and a second run changes nothing';
 
@@ -101,6 +111,7 @@ begin
   perform pg_temp.p25_old();
   update public.products set unavailable_variants = '["Lemon ice"]'::jsonb where id = 351;
   assert pg_temp.p25_apply() = 11, 'the list of variants that can''t be ordered empties too';
+  perform pg_temp.p25_copy();
   assert pg_temp.p25_rows() = seeded, 'back to the seed''s values';
 
   -- An admin's own value is kept.
@@ -113,9 +124,10 @@ begin
   assert (select name from public.products where id = 350) = 'Uncle Al''s (staff)', 'so does a name staff changed';
   assert (select img from public.products where id = 351) = 'p351-staff-photo.jpg', 'and a photo staff set';
   assert (select name from public.products where id = 351) = 'Uncle Al''s creme', 'while #351 is renamed';
-  update public.products set sub = 'Gifts', description = 'Happy valentines jar, a novelty gift sold from a counter jar. Three varieties: 4 inch, 6 inch and Colored.' where id = 219;
+  update public.products set sub = 'Gifts', description = 'Happy valentines jar, a novelty gift for the counter.' where id = 219;
   update public.products set name = 'Uncle Al''s cookies' where id = 350;
   update public.products set img = null where id = 351;
+  perform pg_temp.p25_copy();
   assert pg_temp.p25_rows() = seeded, 'put back';
 end $$;
 
