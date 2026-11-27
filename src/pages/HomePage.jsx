@@ -1,21 +1,19 @@
-// Home, in the section order the plan fixed (AW-059, AW-060): the split hero
+// Home, in the section order the plan fixed (AW-060): the split hero
 // (h1, pitch, calls to action and the photo carousel), then the catalog.
-// The three services sit last, just above the footer.
 // the departments, one row each of new arrivals, hot sellers, bestsellers and
 // new deals, then, for a guest, the account application steps. Only the
 // application steps are numbered, the page's one real sequence (AW-216).
 // A signed-in account does not get that section; My account is in the header.
+// The delivery, volume, and license services are not on this page.
 
-import { DEPARTMENT_GROUPS, FREE_DELIVERY_THRESHOLD } from '../data/content.js';
+import { DEPARTMENT_GROUPS } from '../data/content.js';
 import { APPLY_LABEL } from '../data/terms.js';
 import { topLines } from '../lib/departments.js';
-import { brandLabel, formatMoneyShort } from '../lib/format.js';
+import { brandLabel } from '../lib/format.js';
 import { COLLECTIONS } from '../lib/collections.js';
 import { RAIL_LIMIT, homeRails, homeSections } from '../lib/merchandising.js';
 import { showsNicotineWarning } from '../lib/regulated.js';
 import { Link } from '../lib/router.js';
-import { Icon } from '../components/Icon.jsx';
-import { VolumePricing } from '../components/ContactLinks.jsx';
 import { Picture } from '../components/Picture.jsx';
 import { HomeHero } from '../components/HomeHero.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
@@ -188,33 +186,6 @@ export function HomePage({
       ))}
 
       <AccountSection signedIn={signedIn} onApplyClick={onApplyClick} />
-
-      {/* What the business offers (AW-059), last on the page, just above the
-          footer: an icon, the claim and a link to the page that explains it,
-          or, for volume pricing, the trade desk's email and phone. */}
-      <section className="services">
-        <h2 className="sr-only">Services</h2>
-        <div className="service">
-          <span className="service-icon" aria-hidden="true"><Icon name="truck" /></span>
-          <h3>Next-day delivery, our own trucks</h3>
-          {/* The threshold comes from content.js (AW-283). */}
-          <p>{`We run our own delivery service on routes in Alabama, Mississippi and Georgia. Free delivery on orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} when the stop is on a delivery route. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
-          <Link className="text-link" to="/delivery">Delivery and service area</Link>
-        </div>
-        {/* No Net-30 terms and no published volume discounts: volume
-            pricing goes through the trade desk (AW-025, owner answer 2026-10),
-            so the line's own email and phone links are this service's links. */}
-        <div className="service">
-          <span className="service-icon" aria-hidden="true"><Icon name="tag" /></span>
-          <h3>Buying in volume?</h3><p><VolumePricing /></p>
-        </div>
-        {/* TODO(owner): Is a tobacco license required for every account, or only for tobacco, vapor, and nicotine? This sentence is unchanged until you decide. (AW-129) */}
-        <div className="service">
-          <span className="service-icon" aria-hidden="true"><Icon name="shield" /></span>
-          <h3>Licensed businesses only</h3><p>We verify your state retail tobacco license and resale certificate before your first order. No consumer sales, no exceptions — 21+ accounts only.</p>
-          <Link className="text-link" to="/apply">How to apply</Link>
-        </div>
-      </section>
     </>
   );
 }

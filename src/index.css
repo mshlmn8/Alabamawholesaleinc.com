@@ -483,7 +483,7 @@ h2.eyebrow { font-family: var(--body); line-height: inherit; }
    context goes into this list (and into LINKS in styles.test.js). Links on
    purple surfaces (trade bar, footer, contact strip, collection card) keep
    their light colours with the same offset. */
-.text-link, .support-note a, .checklist a, .checklist-note a, .next-steps a, .policy-body a, .contact-grid a, .doc-uploads-note a, .doc-panel a, .doc-admin a, .status-panel p a, .eligibility-result a, .error-fallback > p a, .dialog > .desc a, .form-error a, .dialog .form-grid a, .consent-block .consent a, .photo-credit a, .order-contact a, .account-link, .order-account-link, .account-contact a, .account-detail-contact a, p.notice a, .notice p a, .pd-price.is-locked p a, .quote-paused a, .drawer-paused a, .service p a {
+.text-link, .support-note a, .checklist a, .checklist-note a, .next-steps a, .policy-body a, .contact-grid a, .doc-uploads-note a, .doc-panel a, .doc-admin a, .status-panel p a, .eligibility-result a, .error-fallback > p a, .dialog > .desc a, .form-error a, .dialog .form-grid a, .consent-block .consent a, .photo-credit a, .order-contact a, .account-link, .order-account-link, .account-contact a, .account-detail-contact a, p.notice a, .notice p a, .pd-price.is-locked p a, .quote-paused a, .drawer-paused a {
   color: var(--link-color); font-weight: 600; text-decoration: underline; text-underline-offset: var(--link-offset);
 }
 .text-link { display: inline-flex; align-items: center; min-height: 36px; font-size: var(--text-sm); background: none; border: 0; padding: 0; }
@@ -492,7 +492,7 @@ p > .text-link { min-height: 0; min-width: 0; }
    surfaces alike, so no link turns orange on purple (AW-145). The list is the
    link list above. */
 @media (hover: hover) {
-  .text-link:not(:disabled):hover, .support-note a:hover, .checklist a:hover, .checklist-note a:hover, .next-steps a:hover, .policy-body a:hover, .contact-grid a:hover, .doc-uploads-note a:hover, .doc-panel a:hover, .doc-admin a:hover, .status-panel p a:hover, .eligibility-result a:hover, .error-fallback > p a:hover, .dialog > .desc a:hover, .form-error a:hover, .dialog .form-grid a:hover, .consent-block .consent a:hover, .photo-credit a:hover, .order-contact a:hover, .account-link:hover, .order-account-link:hover, .account-contact a:hover, .account-detail-contact a:hover, p.notice a:hover, .notice p a:hover, .pd-price.is-locked p a:hover, .quote-paused a:hover, .drawer-paused a:hover, .service p a:hover {
+  .text-link:not(:disabled):hover, .support-note a:hover, .checklist a:hover, .checklist-note a:hover, .next-steps a:hover, .policy-body a:hover, .contact-grid a:hover, .doc-uploads-note a:hover, .doc-panel a:hover, .doc-admin a:hover, .status-panel p a:hover, .eligibility-result a:hover, .error-fallback > p a:hover, .dialog > .desc a:hover, .form-error a:hover, .dialog .form-grid a:hover, .consent-block .consent a:hover, .photo-credit a:hover, .order-contact a:hover, .account-link:hover, .order-account-link:hover, .account-contact a:hover, .account-detail-contact a:hover, p.notice a:hover, .notice p a:hover, .pd-price.is-locked p a:hover, .quote-paused a:hover, .drawer-paused a:hover {
     text-decoration-thickness: 2px;
   }
 }
@@ -782,18 +782,6 @@ p > .text-link { min-height: 0; min-width: 0; }
 }
 .editorial-card .text-link:focus-visible { outline: none; text-decoration-thickness: 2px; }
 .editorial-card .text-link:focus-visible::after { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
-
-/* Services (AW-059), the last block of the home page, just above the
-   footer: one light row of three, each a 28px icon beside the claim and a
-   link to the page that explains it. No boxes, so the shorter items leave
-   no empty space; one column in the compact layout. */
-.services { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 24px 40px; margin-top: var(--section-gap); padding: 8px 0 0; border-top: 1px solid var(--line); }
-.service { display: grid; grid-template-columns: auto minmax(0, 1fr); align-content: start; column-gap: 16px; }
-.service > :not(.service-icon) { grid-column: 2; }
-.service-icon { grid-row: 1 / span 3; display: grid; place-items: center; width: 3.25rem; height: 3.25rem; border-radius: 50%; background: var(--cream); color: var(--orange-dark); font-size: 1.75rem; }
-.service h3 { font-family: var(--body); font-size: .9375rem; letter-spacing: 0; line-height: 1.4; margin: 0 0 6px; }
-.service p { font-size: var(--text-base); line-height: 1.6; color: var(--muted); margin: 0; }
-.service .text-link { justify-self: start; min-height: var(--tap); margin-top: 4px; }
 
 /* Shop by department (AW-060, AW-061): four tiles a row, two in the compact
    layout. Each is a square group of packshots over a solid purple band with
@@ -2087,7 +2075,6 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .apply-panel { grid-template-columns: 1fr; gap: 18px; }
   .editorial-card h2 { font-size: var(--h2-sm); }
   .editorial-card { min-height: 245px; padding: 22px; }
-  .services { grid-template-columns: 1fr; gap: 20px; }
   /* One line of crumbs, scrolled sideways, as on a department page. */
   .crumbs ol { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .crumbs ol::-webkit-scrollbar { display: none; }
@@ -2354,9 +2341,9 @@ address.info-lead-small { font-style: normal; }
    expired link. */
 .status-panel.status-approved { border-left-color: var(--success); }
 .status-panel.status-suspended { border-left-color: var(--danger); }
-/* A phone number in a panel's text (AW-261), a dialog's (AW-097), a policy's
-   or the home page's volume-pricing line (AW-025) never breaks across lines. */
-.status-panel p a[href^="tel:"], .dialog > .desc a[href^="tel:"], .policy-body a[href^="tel:"], .service p a[href^="tel:"] { white-space: nowrap; }
+/* A phone number in a panel's text (AW-261), a dialog's (AW-097) or a
+   policy's never breaks across lines. */
+.status-panel p a[href^="tel:"], .dialog > .desc a[href^="tel:"], .policy-body a[href^="tel:"] { white-space: nowrap; }
 
 .eligibility { background: var(--cream); border: 1px solid var(--line); align-items: start; }
 .eligibility .eyebrow { color: var(--orange-dark); margin-bottom: 8px; }
@@ -2906,7 +2893,7 @@ ul.sub-pills { list-style: none; padding: 0; }
   .nicotine-warning.is-compact { padding: 4px 6px; font-size: var(--text-xs); line-height: 1.35; }
   .home-carousel-stage { max-height: 3.5in; }
   .dept-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .services, .account-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .account-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .info-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
   .info-card { padding: 14px 16px; gap: 6px; }
   .support-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 32px; margin-top: 20px; }

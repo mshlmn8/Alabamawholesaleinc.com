@@ -706,9 +706,7 @@ test.describe('home hero', () => {
   });
 });
 
-// The services (AW-059), with
-// volume pricing's email and phone (AW-025), sit last, just above the
-// footer. The department
+// The home page ends after the guest application steps. The department
 // tiles with a photo in the frame and the text on the band below it (AW-060,
 // AW-061), and one row each of new arrivals and bestsellers without SKUs.
 test.describe('home sections', () => {
@@ -718,19 +716,14 @@ test.describe('home sections', () => {
     }, [AGE_KEY, ageRecord(Date.now())]);
   });
 
-  test('the services end the page, and the department tiles lead to their departments', async ({ page }) => {
+  test('the application steps end the page, and the department tiles lead to their departments', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/');
     await expect(page.locator('.trust-band')).toHaveCount(0);
+    await expect(page.locator('.services')).toHaveCount(0);
     await expect(page.locator('main')).not.toContainText('years in business');
-    await expect(page.locator('.services .service')).toHaveCount(3);
-    await expect(page.locator('.services').locator('xpath=following-sibling::*')).toHaveCount(0);
-    const services = page.locator('.services');
-    await expect(services.getByRole('link', { name: 'Delivery and service area' })).toHaveAttribute('href', '/delivery');
-    await expect(services.getByRole('link', { name: 'email us' })).toHaveAttribute('href', /^mailto:/);
-    await expect(services.getByRole('link', { name: '(205) 458-4788' })).toHaveAttribute('href', 'tel:+12054584788');
-    await expect(services.getByRole('link', { name: 'How to apply' })).toHaveAttribute('href', '/apply');
-    await expect(services).not.toContainText(/net-30|discount/i);
+    await expect(page.locator('main')).not.toContainText('Next-day delivery, our own trucks');
+    await expect(page.locator('#apply').locator('xpath=following-sibling::*')).toHaveCount(0);
     // New arrivals has three: #75 Wava kava, its fourth, is delisted (AW-001).
     for (const [id, count] of [['new-arrivals', 3], ['hot-sellers', 4], ['bestsellers', 4], ['new-deals', 3]]) {
       await expect(page.locator(`#${id} .content-card`)).toHaveCount(count);

@@ -1,14 +1,13 @@
 // The home page: one h1, in the split hero (AW-004); the planned section order
-// with the trust band (AW-005) and the services straight after the hero
-// (AW-059); no Net-30 or volume discounts, and the volume-pricing line in
-// their place (AW-025); no approval time (AW-246); department tiles with a
-// chosen photo and the biggest lines on a solid band (AW-060, AW-061); one
-// row each of new arrivals and bestsellers without SKUs (AW-060); numbers only
-// on the application steps (AW-216). Products without a photo stay off the
-// rails (AW-029, Cursor PR #13). The hero carousel shows new products.
+// without the facts band or the services block; no approval time (AW-246);
+// department tiles with a chosen photo and the biggest lines on a solid band
+// (AW-060, AW-061); one row each of new arrivals and bestsellers without SKUs
+// (AW-060); numbers only on the application steps (AW-216). Products without
+// a photo stay off the rails (AW-029, Cursor PR #13). The hero carousel shows
+// new products.
 import { render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { COMPANY, DEPARTMENT_GROUPS, VOLUME_PRICING } from '../data/content.js';
+import { DEPARTMENT_GROUPS } from '../data/content.js';
 import { PRODUCTS, NAV_ORDER, NEW_ARRIVALS_IDS } from '../data/products.js';
 import { departmentsFor, topLines } from '../lib/departments.js';
 import { hrefFor } from '../lib/routes.js';
@@ -96,14 +95,15 @@ describe('HomePage sections', () => {
     expect(document.querySelector('.home-carousel').getAttribute('aria-label')).toBe('New products and deals');
   });
 
-  it('runs hero, departments, new arrivals, hot sellers, bestsellers, new deals, application, then services', () => {
+  it('runs hero, departments, new arrivals, hot sellers, bestsellers, new deals, then the application', () => {
     renderHome();
     expect(document.querySelector('.home-hero').nextElementSibling.id).toBe('catalog');
     expect(document.querySelector('.trust-band')).toBeNull();
+    expect(document.querySelector('.services')).toBeNull();
     const h2s = [...document.querySelectorAll('h2')].map(text);
-    const order = ['Shop by department', 'New arrivals', 'Hot sellers', 'Bestsellers', 'New deals', 'Open an account', 'Services'];
+    const order = ['Shop by department', 'New arrivals', 'Hot sellers', 'Bestsellers', 'New deals', 'Open an account'];
     expect(h2s).toEqual(order);
-    expect(document.querySelector('.services').nextElementSibling).toBeNull();
+    expect(document.getElementById('apply').nextElementSibling).toBeNull();
     expect(document.getElementById('hot-sellers').previousElementSibling.id).toBe('new-arrivals');
     expect(document.getElementById('new-deals').previousElementSibling.id).toBe('bestsellers');
     for (const id of ['new-arrivals', 'hot-sellers', 'bestsellers', 'new-deals']) {
@@ -139,30 +139,9 @@ describe('HomePage sections', () => {
     expect(document.querySelectorAll('.apply-steps > li')).toHaveLength(3);
   });
 
-  it('gives each service an icon, the claim and a link to its page, or the trade desk\'s email and phone for volume pricing', () => {
+  it('does not repeat delivery, volume pricing, or the license rules at the foot of the page', () => {
     renderHome();
-    const services = [...document.querySelectorAll('.services .service')];
-    expect(services).toHaveLength(3);
-    expect(services.map((s) => s.querySelector('h3').textContent)).toEqual(['Next-day delivery, our own trucks', 'Buying in volume?', 'Licensed businesses only']);
-    const links = services.map((s) => {
-      const icon = s.querySelector('.service-icon');
-      expect(icon.getAttribute('aria-hidden')).toBe('true');
-      expect(icon.querySelector('svg')).not.toBeNull();
-      expect(icon.textContent).toBe('');
-      return within(s).getAllByRole('link').map((link) => [link.textContent, link.getAttribute('href')]);
-    });
-    expect(links).toEqual([
-      [['Delivery and service area', '/delivery']],
-      [['email us', `mailto:${COMPANY.email}`], [COMPANY.phone, `tel:${COMPANY.phoneRaw}`]],
-      [['How to apply', '/apply']],
-    ]);
-    // AW-025: the volume-pricing line, word for word, and no Net-30 or discount.
-    expect(services[1].querySelector('p').textContent).toBe(VOLUME_PRICING);
-    expect(document.querySelector('.services').textContent).not.toMatch(/net[- ]?30|discount|\d+ ?%/i);
-    // The section is named by a heading, not an aria-label.
-    const section = document.querySelector('.services');
-    expect(section.hasAttribute('aria-label')).toBe(false);
-    expect(section.querySelector('h2.sr-only').textContent).toBe('Services');
+    expect(document.body.textContent).not.toMatch(/Next-day delivery, our own trucks|Buying in volume\?|Licensed businesses only|How to apply/);
   });
 });
 
