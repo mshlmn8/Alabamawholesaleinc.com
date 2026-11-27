@@ -2,13 +2,12 @@
 // (h1, pitch, calls to action and the photo carousel), then the catalog.
 // The three services sit last, just above the footer.
 // the departments, one row each of new arrivals, hot sellers, bestsellers and
-// new deals, then the account application steps. Only the application
-// steps are numbered, the page's one real sequence (AW-216). A signed-in
-// account sees its own account's panel in place of the steps (AW-066).
+// new deals, then, for a guest, the account application steps. Only the
+// application steps are numbered, the page's one real sequence (AW-216).
+// A signed-in account does not get that section; My account is in the header.
 
 import { DEPARTMENT_GROUPS, FREE_DELIVERY_THRESHOLD } from '../data/content.js';
 import { APPLY_LABEL } from '../data/terms.js';
-import { accountView, tradeAccountPanel } from '../lib/accountStatus.js';
 import { topLines } from '../lib/departments.js';
 import { brandLabel, formatMoneyShort } from '../lib/format.js';
 import { COLLECTIONS } from '../lib/collections.js';
@@ -90,30 +89,12 @@ export function departmentPhotos(products, deptKey) {
   return chosen;
 }
 
-// The foot of the page. A guest is asked to open an account, with the
-// three steps. A signed-in account is never offered a second application
-// (AW-066): its panel says where the account stands, as /apply's page head
-// does (accountStatus.js tradeAccountPanel), and links to My account or the
-// application status. Keyed by view, so each view's words are a new block
-// (Google Translate).
-function AccountSection({ signedIn, view, onApplyClick }) {
-  const panel = signedIn ? tradeAccountPanel(view) : null;
-  if (panel) {
-    return (
-      <section className="section" id="apply">
-        <div key={view} className="apply-panel trade-account-panel">
-          <div className="apply-intro">
-            <p className="eyebrow">{panel.eyebrow}</p>
-            <h2>{panel.title}</h2>
-          </div>
-          <div className="trade-account-body">
-            <p>{panel.text}</p>
-            <Link className="button" to={panel.link.to}>{panel.link.label}</Link>
-          </div>
-        </div>
-      </section>
-    );
-  }
+// The foot of the page for a guest: open an account, with the three steps.
+// A signed-in account does not get this section.
+function AccountSection({ signedIn, onApplyClick }) {
+  // Signed in, the home page does not repeat the account. My account is in
+  // the header. Guests still get the steps to open one.
+  if (signedIn) return null;
   return (
     <section className="section" id="apply">
       <div className="apply-panel">
@@ -143,8 +124,9 @@ function AccountSection({ signedIn, view, onApplyClick }) {
 }
 
 // account is useAuth's ('loading' | 'signed-out' | 'no-profile' | 'ready'),
-// through App's cardProps: the cards and the account panel tell a guest from
-// a signed-in buyer whose profile is still loading (NEW-002, NEW-050).
+// through App's cardProps: the cards tell a guest from a signed-in buyer
+// whose profile is still loading (NEW-002, NEW-050). The guest apply steps
+// are the only account block on this page.
 export function HomePage({
   products, departments, profile, account = profile ? 'ready' : 'signed-out', isApprovedBuyer, priceOf, pricesStatus,
   cart, addLine, decLine, onLoginClick, onApplyClick, signedIn = false,
@@ -205,7 +187,7 @@ export function HomePage({
         </section>
       ))}
 
-      <AccountSection signedIn={signedIn} view={accountView(profile, account)} onApplyClick={onApplyClick} />
+      <AccountSection signedIn={signedIn} onApplyClick={onApplyClick} />
 
       {/* What the business offers (AW-059), last on the page, just above the
           footer: an icon, the claim and a link to the page that explains it,
