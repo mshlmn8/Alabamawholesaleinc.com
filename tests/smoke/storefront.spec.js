@@ -627,20 +627,16 @@ test.describe('tobacco and vapor', () => {
     expect(errors).toEqual([]);
   });
 
-  // New products include nicotine vapes and a candy. The statement shows
-  // under a vape and keeps its space on the candy.
-  test('a new nicotine product shows the statement under the photo, uncovered, and keeps its space on the others', async ({ page }) => {
+  // New products include nicotine vapes and a candy. The carousel does not
+  // show the statement on either, so a candy slide has no empty warning box.
+  test('the home carousel shows no nicotine statement, on a vape or a candy', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/');
     const carousel = page.locator('.home-carousel');
     await expect(carousel.locator('.home-carousel-slide')).toHaveCount(6);
-    const warning = carousel.locator('.nicotine-warning');
     await expect(carousel.locator('.home-carousel-slide.is-active')).toHaveAttribute('aria-label', '1 of 6: Foger Switch Pro full kit');
-    await expect(warning).toBeVisible();
-    await expect(warning).toHaveText(FDA);
-    const spaceBefore = await page.locator('.home-carousel-warning').boundingBox();
-    // Every photo stays inside the stage; one that grew past it covered the
-    // controls and this statement on phones and tablets (AW-036).
+    await expect(carousel.locator('.nicotine-warning, .home-carousel-warning')).toHaveCount(0);
+    // Every photo stays inside the stage (AW-036).
     const overflow = await carousel.locator('.home-carousel-stage').evaluate((stage) => {
       const s = stage.getBoundingClientRect();
       return [...stage.querySelectorAll('.home-carousel-slide img')].map((img) => {
@@ -650,20 +646,10 @@ test.describe('tobacco and vapor', () => {
     });
     expect(overflow.length).toBeGreaterThan(0);
     expect(Math.max(...overflow)).toBeLessThanOrEqual(0.5);
-    await warning.scrollIntoViewIfNeeded();
-    const covered = await warning.evaluate((el) => {
-      const r = el.getBoundingClientRect();
-      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-      return !el.contains(hit);
-    });
-    expect(covered).toBe(false);
     await carousel.getByRole('button', { name: 'Next slide' }).click();
-    await expect(warning).toBeVisible();
     await carousel.getByRole('button', { name: 'Next slide' }).click();
     await expect(carousel.locator('.home-carousel-slide.is-active')).toHaveAttribute('aria-label', '3 of 6: Tueni chews');
-    await expect(warning).toBeHidden();
-    const spaceAfter = await page.locator('.home-carousel-warning').boundingBox();
-    expect(Math.round(spaceAfter.height)).toBe(Math.round(spaceBefore.height));
+    await expect(carousel.locator('.nicotine-warning, .home-carousel-warning')).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 

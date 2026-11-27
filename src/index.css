@@ -564,10 +564,6 @@ p > .text-link { min-height: 0; min-width: 0; }
 @media (pointer: coarse) {
   .home-carousel-dots button { width: var(--tap); height: var(--tap); }
 }
-/* The statement keeps its box on every slide when any slide has one, hidden
-   on the others, so the card does not grow and shrink. */
-.home-carousel-warning { order: 3; margin: 0 16px 16px; border-radius: 12px; overflow: hidden; }
-.home-carousel-warning[aria-hidden="true"] { visibility: hidden; }
 .home-carousel.is-empty { background: var(--stat-bg); }
 .home-carousel.is-empty .home-carousel-stage { background: none; }
 /* A wide screen: the photo beside the name, the Shop button and the
@@ -579,7 +575,6 @@ p > .text-link { min-height: 0; min-width: 0; }
   .home-carousel-panel { flex-direction: column; align-items: flex-start; gap: 20px; padding: 0 28px 20px; }
   .home-carousel-title { font-size: 2.25rem; line-height: 1.1; }
   .home-carousel-controls { padding: 0 28px 20px; }
-  .home-carousel-warning { margin: 0 28px; }
 }
 
 /* Responsive <picture> wrappers take no box of their own, so the existing
@@ -1721,9 +1716,6 @@ button.filter-signin span { color: var(--link-color); font-weight: 600; text-dec
 .nicotine-warning { margin: 0 0 14px; padding: 12px 14px; background: var(--purple-deep); color: #fff; font-size: var(--text-base); font-weight: 700; line-height: 1.45; text-align: center; border-radius: var(--radius); }
 /* On a card, between the title and the price row, with room above and below. */
 .nicotine-warning.is-compact { margin: 8px 0; padding: 8px 10px; font-size: var(--text-sm); }
-/* The vape hero slide's warning fills the band under the photo, its text
-   centred (NEW-055). */
-.home-carousel .nicotine-warning { margin: 0; padding: 14px 16px; border-radius: 12px; font-size: var(--text-sm); line-height: 1.45; }
 
 /* ============================ overlays: drawer / modal / gate ============================ */
 .aw-layer { position: relative; z-index: 60; }

@@ -5,7 +5,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HERO_SLIDES } from '../data/content.js';
-import { NICOTINE_WARNING_TEXT } from './NicotineWarning.jsx';
 import { SIZES } from '../lib/images.js';
 import { navigate } from '../lib/router.js';
 import { MOBILE_QUERY } from '../lib/useMediaQuery.js';
@@ -82,23 +81,13 @@ describe('slides', () => {
     }
   });
 
-  it('shows the FDA statement under the vape slide and keeps its space, hidden, on the others', () => {
+  it('does not show the FDA statement under a nicotine product, or reserve its space', () => {
     render(<HeroCarousel slides={SLIDES} />);
-    const band = document.querySelector('.home-carousel-warning');
-    expect(band.textContent).toBe(NICOTINE_WARNING_TEXT);
-    expect(band.getAttribute('aria-hidden')).toBe('true');
+    expect(document.querySelector('.home-carousel-warning, .nicotine-warning')).toBeNull();
+    expect(screen.queryByRole('note')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Next slide' }));
     expect(activeSlide()).toBe('2 of 4: Novelties & Vapes');
-    expect(document.querySelector('.home-carousel-warning')).toBe(band);
-    expect(band.hasAttribute('aria-hidden')).toBe(false);
-    expect(screen.getByRole('note').textContent).toBe(NICOTINE_WARNING_TEXT);
-    fireEvent.click(screen.getByRole('button', { name: 'Next slide' }));
-    expect(band.getAttribute('aria-hidden')).toBe('true');
-  });
-
-  it('has no warning band when no slide needs one', () => {
-    render(<HeroCarousel slides={SLIDES.map((slide) => ({ ...slide, nicotineWarning: false }))} />);
-    expect(document.querySelector('.home-carousel-warning')).toBeNull();
+    expect(document.querySelector('.home-carousel-warning, .nicotine-warning')).toBeNull();
   });
 });
 
@@ -310,20 +299,10 @@ describe('the card under the photo', () => {
     expect(stage().querySelector('.home-carousel-index').textContent).toBe('1/4');
     const controls = band().querySelector('.home-carousel-controls');
     expect(controls.querySelectorAll('.home-carousel-dots button')).toHaveLength(4);
-    expect([...band().children].map((el) => el.className)).toEqual(['home-carousel-controls', 'home-carousel-panel', 'home-carousel-warning']);
-    expect(carousel().classList.contains('is-warning')).toBe(false);
+    expect([...band().children].map((el) => el.className)).toEqual(['home-carousel-controls', 'home-carousel-panel']);
     for (const name of ['Previous slide', 'Next slide', 'Pause slideshow']) expect(controls.contains(screen.getByRole('button', { name }))).toBe(true);
     expect(band().contains(shop())).toBe(true);
     expect(document.querySelector('.home-carousel-slide.is-active a')).toBeNull();
-  });
-
-  it('marks the vape slide, whose statement is shown', () => {
-    render(<HeroCarousel slides={SLIDES} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Next slide' }));
-    expect(carousel().classList.contains('is-warning')).toBe(true);
-    expect(band().querySelector('.home-carousel-warning').hasAttribute('aria-hidden')).toBe(false);
-    fireEvent.click(screen.getByRole('button', { name: 'Next slide' }));
-    expect(carousel().classList.contains('is-warning')).toBe(false);
   });
 
   it('keeps Shop beside the title on every slide, including a nicotine one', () => {
@@ -351,19 +330,18 @@ describe('the card under the photo', () => {
     expect(window.location.pathname).toBe('/category/merchandise');
   });
 
-  it('has a band for the name without a statement, and adds the statement for one vape photo', () => {
-    const plain = SLIDES.map((slide) => ({ ...slide, nicotineWarning: false }));
-    const { unmount } = render(<HeroCarousel slides={plain} />);
+  it('has a band for the name, and a single vape photo still has no statement', () => {
+    const { unmount } = render(<HeroCarousel slides={SLIDES} />);
     expect(band().querySelector('.home-carousel-warning')).toBeNull();
     expect(band().querySelectorAll('.home-carousel-dots button')).toHaveLength(4);
     unmount();
-    const one = render(<HeroCarousel slides={plain.slice(0, 1)} />);
+    const one = render(<HeroCarousel slides={SLIDES.slice(0, 1)} />);
     expect(one.container.querySelector('.home-carousel-controls')).toBeNull();
     expect(one.container.querySelector('.home-carousel-panel')).toBeTruthy();
     one.unmount();
     render(<HeroCarousel slides={SLIDES.slice(1, 2)} />);
-    expect([...band().children].map((el) => el.className)).toEqual(['home-carousel-panel', 'home-carousel-warning']);
-    expect(carousel().classList.contains('is-warning')).toBe(true);
+    expect([...band().children].map((el) => el.className)).toEqual(['home-carousel-panel']);
+    expect(document.querySelector('.nicotine-warning')).toBeNull();
     expect(screen.getByRole('link', { name: 'Shop Novelties & Vapes' }).textContent).toBe('Shop');
   });
 });
@@ -375,11 +353,9 @@ describe('while staff\'s photos load, and with none (NEW-008)', () => {
     expect(box.className).toBe('home-carousel is-pending');
     expect(box.getAttribute('aria-hidden')).toBe('true');
     expect(box.querySelector('img, a, button, [tabindex]')).toBeNull();
-    // The stage and the band as the carousel has them, the statement hidden.
     expect([...box.children].map((el) => el.className)).toEqual(['home-carousel-stage', 'home-carousel-band']);
-    expect([...box.querySelector('.home-carousel-band').children].map((el) => [el.className, el.getAttribute('aria-hidden')]))
-      .toEqual([['home-carousel-controls', null], ['home-carousel-warning', 'true']]);
-    expect(box.querySelector('.home-carousel-warning').textContent).toBe(NICOTINE_WARNING_TEXT);
+    expect([...box.querySelector('.home-carousel-band').children].map((el) => el.className)).toEqual(['home-carousel-controls']);
+    expect(box.querySelector('.nicotine-warning')).toBeNull();
     expect(screen.queryByRole('note')).toBeNull();
   });
 
@@ -422,8 +398,7 @@ describe('failed photos (AW-342)', () => {
     expect(counter().textContent).toBe('Slide 2 of 3');
     expect(activeSlide()).toBe('2 of 3: Merchandise');
     expect(dotLabels()).toEqual(['Show slide 1: Candies', 'Show slide 2: Merchandise', 'Show slide 3: Drinks & Bags']);
-    // The vape slide is gone, and with it the FDA band's slot.
-    expect(document.querySelector('.home-carousel-warning')).toBeNull();
+    expect(document.querySelector('.home-carousel-warning, .nicotine-warning')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Next slide' }));
     expect(activeSlide()).toBe('3 of 3: Drinks & Bags');
   });

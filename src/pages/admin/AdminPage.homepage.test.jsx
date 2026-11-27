@@ -182,12 +182,11 @@ describe('Admin -> Homepage (AW-119)', () => {
     expect(document.querySelector('.slide-form .product-photo-preview img').getAttribute('src')).toBe(address);
     fireEvent.change(screen.getByLabelText('Description of the photo'), { target: { value: ' Counter display of lighters ' } });
     fireEvent.change(screen.getByLabelText('Links to'), { target: { value: 'MERCHANDISE' } });
-    fireEvent.click(screen.getByLabelText('Shows a nicotine product (adds the FDA warning)'));
     const readsBefore = storeReads().length;
     await click(screen.getByRole('button', { name: 'Add photo' }));
     expect(calls('insert')).toHaveLength(1);
     expect(calls('insert')[0]).toMatchObject({
-      rows: { img: address, alt: 'Counter display of lighters', go_cat: 'MERCHANDISE', nicotine_warning: true, active: true, sort: 40 },
+      rows: { img: address, alt: 'Counter display of lighters', go_cat: 'MERCHANDISE', nicotine_warning: false, active: true, sort: 40 },
       returning: 'id,img,alt,go_cat,nicotine_warning,sort,active,updated_at',
     });
     expect(statusText()).toBe('Added “Counter display of lighters” to the hero photos.');
@@ -221,8 +220,8 @@ describe('Admin -> Homepage (AW-119)', () => {
 
   // The owner's warehouse photos (AW-006): every bundled photo, grouped and
   // named by what it shows; choosing one fills in its description (unless
-  // staff wrote their own) and ticks the FDA warning for a nicotine product.
-  it('offers every bundled photo by what it shows, and fills in a chosen photo’s description and warning', async () => {
+  // staff wrote their own). A nicotine photo does not add a carousel warning.
+  it('offers every bundled photo by what it shows, and fills in a chosen photo’s description', async () => {
     await renderHomepage();
     await click(screen.getByRole('button', { name: 'Add a photo' }));
     const select = screen.getByLabelText('Bundled photo');
@@ -231,19 +230,16 @@ describe('Admin -> Homepage (AW-119)', () => {
     ]);
     expect(select.querySelector('option[value="hero_wh_soda.jpg"]').textContent).toBe('Pallets of Faygo soda by the case (hero_wh_soda.jpg)');
     const alt = () => screen.getByLabelText('Description of the photo');
-    const warning = () => screen.getByLabelText('Shows a nicotine product (adds the FDA warning)');
     fireEvent.change(select, { target: { value: 'hero_wh_soda.jpg' } });
     expect(alt().value).toBe('Pallets of Faygo soda by the case');
-    expect(warning().checked).toBe(false);
     // Another bundled photo replaces the description it filled in.
     fireEvent.change(select, { target: { value: 'hero_wh_vapes.jpg' } });
     expect(alt().value).toBe('Disposable vapes on display shelves');
-    expect(warning().checked).toBe(true);
-    // Staff's own words stay, and the warning is never unticked for them.
+    expect(screen.queryByLabelText('Shows a nicotine product (adds the FDA warning)')).toBeNull();
+    // Staff's own words stay.
     fireEvent.change(alt(), { target: { value: 'Our vape wall' } });
     fireEvent.change(select, { target: { value: 'hero_wh_soda.jpg' } });
     expect(alt().value).toBe('Our vape wall');
-    expect(warning().checked).toBe(true);
     expect(document.querySelector('.slide-form .product-photo-preview img').getAttribute('src')).toBe(heroImage('hero_wh_soda.jpg').picture.src);
   });
 
@@ -252,7 +248,7 @@ describe('Admin -> Homepage (AW-119)', () => {
     await click(screen.getByRole('button', { name: 'Edit Geek Bar Pulse X disposable vape advertisement' }));
     expect(screen.getByLabelText('Bundled photo').value).toBe('hero_vape.jpg');
     expect(screen.getByLabelText('Links to').value).toBe('NOVELTIES');
-    expect(screen.getByLabelText('Shows a nicotine product (adds the FDA warning)').checked).toBe(true);
+    expect(screen.queryByLabelText('Shows a nicotine product (adds the FDA warning)')).toBeNull();
     await click(screen.getByRole('button', { name: 'Save photo' }));
     expect(screen.getByRole('alert').textContent).toBe('Nothing has changed.');
     fireEvent.change(screen.getByLabelText('Links to'), { target: { value: '' } });

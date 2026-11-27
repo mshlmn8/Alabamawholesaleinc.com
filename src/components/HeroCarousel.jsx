@@ -17,15 +17,12 @@
 //   neighbours once it has been shown (AW-321).
 // - Previous/next and a pause toggle on the photo, one dot per slide
 //   (AW-054); a sideways swipe on the carousel changes slides too (AW-161).
-// - A band under the photo (NEW-055) holds the FDA statement of a slide
-//   that shows a nicotine product (nicotineWarning, a home_slides row's
-//   nicotine_warning; AW-026, PR #12; none of the bundled warehouse reel
-//   does) and, on every other slide, the dots, plus the slide's "Shop …"
-//   link in the compact layout, so they no longer cover the photo. On a
-//   flagged slide the statement has the band, and the dots (and the link)
-//   stay on the photo. The band keeps one height on every slide, so the
-//   page doesn't move when the slide changes. Where the statement goes is a
-//   question for counsel (the TODO(owner) at the band, AW-026).
+// - A band under the photo holds the slide's name and Shop link, and, when
+//   there is more than one slide, the dots and the pause, previous and next
+//   controls, so they no longer cover the photo. A nicotine product does
+//   not add the FDA statement here (owner, 2026-11): the product page still
+//   shows it. The statement used to keep a box on every slide, which left
+//   an empty gap under candy and other slides.
 // - While the first load of staff's photos is pending (NEW-008) the
 //   carousel is an empty box the size of the bundled one, so the bundled
 //   photos never flash before staff's; with no photos at all (staff turned
@@ -44,7 +41,6 @@ import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { useMediaQuery } from '../lib/useMediaQuery.js';
 import { Icon } from './Icon.jsx';
-import { NicotineWarning } from './NicotineWarning.jsx';
 import { Picture } from './Picture.jsx';
 
 export const AUTOPLAY_MS = 6000;
@@ -85,23 +81,22 @@ const nameOf = (slide) => {
 };
 
 
-// The band under the photo (NEW-055): there is one when there are dots to
-// show (more than one slide) or a slide with the FDA statement.
-const bandOf = (slides) => ({ controls: slides.length > 1, warning: slides.some((slide) => slide.nicotineWarning) });
+// The band under the photo: the dots and controls when there is more than
+// one slide. A single slide still has the name and Shop link.
+const bandOf = (slides) => ({ controls: slides.length > 1 });
 
 // The carousel's box with nothing in it (NEW-008): the stage at its aspect
-// ratio and the band as the bundled slides have it, its statement there but
-// hidden. `kind` 'pending' is plain (the photos are on their way); 'empty'
+// ratio and, when the slides would have controls, an empty controls row.
+// `kind` 'pending' is plain (the photos are on their way); 'empty'
 // (no photos) is a decorative panel. Hidden from assistive technology.
 function HeroReserve({ slides, kind }) {
   const band = bandOf(slides);
   return (
     <div className={`home-carousel is-${kind}`} aria-hidden="true">
       <div className="home-carousel-stage" />
-      {(band.controls || band.warning) && (
+      {band.controls && (
         <div className="home-carousel-band">
-          {band.controls && <div className="home-carousel-controls" />}
-          {band.warning && <div className="home-carousel-warning" aria-hidden="true"><NicotineWarning /></div>}
+          <div className="home-carousel-controls" />
         </div>
       )}
     </div>
@@ -235,7 +230,7 @@ function Carousel({ slides, label }) {
   // The swipe handlers are on the whole carousel: in the band, the link's
   // stretched area still covers the photo (index.css).
   return (
-    <section className={`home-carousel${active.nicotineWarning ? ' is-warning' : ''}`} aria-roledescription="carousel" aria-label={label}
+    <section className="home-carousel" aria-roledescription="carousel" aria-label={label}
              onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} onFocus={onFocus} onBlur={onBlur}
              onPointerDown={onPointerDown} onPointerUp={onPointerUp} onPointerCancel={onPointerCancel} onClickCapture={onClickCapture}>
       {/* Read out when the visitor changes slides, not on every automatic turn. */}
@@ -268,9 +263,8 @@ function Carousel({ slides, label }) {
         })}
       </div>
       {/* The card under the photo: the name and Shop button, then the dots
-          and the pause, previous and next controls, then the FDA statement.
-          The statement keeps its place on every slide when any slide has
-          one, so the page does not jump. */}
+          and the pause, previous and next controls. No FDA statement: a
+          nicotine product uses the same card as any other slide. */}
       <div className="home-carousel-band">
         {band.controls && (
           <div className="home-carousel-controls">
@@ -305,12 +299,6 @@ function Carousel({ slides, label }) {
           </div>
           {shop}
         </div>
-        {/* TODO(owner): Do the hero slides and product photos count as advertisements under 21 CFR 1143.3 (warning in the upper portion of the ad, at least 20% of its area)? A slide flagged as showing a nicotine product shows the verbatim warning under the photo until counsel answers. (AW-026) */}
-        {band.warning && (
-          <div className="home-carousel-warning" aria-hidden={active.nicotineWarning ? undefined : 'true'}>
-            <NicotineWarning />
-          </div>
-        )}
       </div>
     </section>
   );

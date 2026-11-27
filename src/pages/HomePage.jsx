@@ -12,7 +12,6 @@ import { topLines } from '../lib/departments.js';
 import { brandLabel } from '../lib/format.js';
 import { COLLECTIONS } from '../lib/collections.js';
 import { RAIL_LIMIT, homeRails, homeSections } from '../lib/merchandising.js';
-import { showsNicotineWarning } from '../lib/regulated.js';
 import { Link } from '../lib/router.js';
 import { Picture } from '../components/Picture.jsx';
 import { HomeHero } from '../components/HomeHero.jsx';
@@ -35,7 +34,6 @@ const productSlide = (p, kind, badge) => ({
   kicker: [p.sub, brandLabel(p.brand)].filter(Boolean).join(' · '),
   badge,
   to: { page: 'product', productId: p.id },
-  nicotineWarning: showsNicotineWarning(p),
 });
 
 // The hero carousel's slides: new products with a photo, the same order as
