@@ -245,8 +245,7 @@ describe('HomePage new-product carousel', () => {
     expect(document.querySelector('.home-carousel-title').textContent).toBe('Foger Switch Pro full kit');
     expect(document.querySelector('.home-carousel-index').textContent).toBe(`1/${all.length}`);
     expect(screen.getByRole('link', { name: 'Shop Foger Switch Pro full kit' }).getAttribute('href')).toBe('/product/62');
-    expect(slides.map((s) => s.nicotineWarning)).toEqual([true, true, false]);
-    expect(document.querySelector('.home-carousel-warning').getAttribute('aria-hidden')).toBeNull();
+    expect(document.querySelector('.home-carousel-warning, .home-carousel .nicotine-warning')).toBeNull();
     expect(document.body.textContent).not.toMatch(/loading doors|Graymont|pallet racks/);
   });
 

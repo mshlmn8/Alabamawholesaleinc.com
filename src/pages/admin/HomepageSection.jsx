@@ -500,15 +500,14 @@ function SlideForm({
   const offSite = !!img && !bundled && !isSlidePhoto(img);
   const knownDept = !draft.goCat || departments.some((d) => d.key === draft.goCat);
   // Choosing a bundled photo fills in its description when the field is
-  // empty or still holds the last bundled photo's, and ticks the FDA
-  // warning for a photo of a nicotine product (it never unticks it).
+  // empty or still holds the last bundled photo's. A nicotine product does
+  // not add a warning to the carousel.
   const pickBundled = (file) => {
     onSet('img', file);
     const photo = bundledPhoto(file);
     if (!photo) return;
     const alt = draft.alt.trim();
     if (!alt || alt === bundledPhoto(img)?.alt) onSet('alt', photo.alt);
-    if (photo.nicotine && !draft.nicotineWarning) onSet('nicotineWarning', true);
   };
   const onKey = (event) => {
     if (event.key !== 'Escape' || event.defaultPrevented) return;
@@ -576,10 +575,6 @@ function SlideForm({
           {!knownDept && <option value={draft.goCat}>{`${draft.goCat} (not in the catalog)`}</option>}
         </select>
         <p className="form-error" id={`${f('slide-dept')}-error`}>{err('goCat')}</p>
-      </div>
-      <div className="full consent">
-        <input id={f('slide-nicotine')} type="checkbox" checked={draft.nicotineWarning} onChange={(e) => onSet('nicotineWarning', e.target.checked)} />
-        <label htmlFor={f('slide-nicotine')}>Shows a nicotine product (adds the FDA warning)</label>
       </div>
       <div className="full consent">
         <input id={f('slide-active')} type="checkbox" checked={draft.active} onChange={(e) => onSet('active', e.target.checked)} />
