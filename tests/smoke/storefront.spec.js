@@ -494,12 +494,12 @@ test.describe('after age confirmation', () => {
     await page.goto('/product/329');
     await expect(page.locator('main h1')).toHaveText('RAW tips');
     await expect(page.locator('.variant-chips')).toHaveCount(0);
-    // Gambler tubes: the sell unit, on the page and its card.
+    // Gambler tubes: no "Sold by the …" on the page or its card.
     await page.goto('/product/242');
-    await expect(page.locator('.pd-unit')).toHaveText('Sold by the box of 200 — quantity 1 is one box of 200.');
+    await expect(page.locator('.pd-unit')).toHaveCount(0);
+    await expect(page.locator('main')).not.toContainText('Sold by the');
     await page.goto('/category/tobacco/tubes-and-filters');
-    await expect(page.getByRole('article', { name: 'Gambler cigarette tubes' }).locator('.card-detail'))
-      .toHaveText('Sold by the box of 200');
+    await expect(page.getByRole('article', { name: 'Gambler cigarette tubes' }).locator('.card-detail')).toHaveText('6 varieties');
     expect(errors).toEqual([]);
   });
 });
@@ -778,7 +778,8 @@ test.describe('part 2 catalog', () => {
     await expect(page.locator('#aw-announcer')).toHaveText('Added Kite cigarette tobacco to your order.');
     await expect(kite.locator('.added-note')).toHaveText('', { timeout: 4000 });
     await page.goto('/category/tobacco/cigars-and-cigarillos');
-    await expect(page.locator('.content-card', { hasText: 'Royal Blunts EZ Roll' }).getByRole('link', { name: /^Select options\b/ })).toBeVisible();
+    await expect(page.locator('.content-card', { hasText: 'Royal Blunts EZ Roll' }).getByRole('button', { name: /^Sign in for pricing\b/ })).toBeVisible();
+    await expect(page.locator('.content-card', { hasText: 'Royal Blunts EZ Roll' }).getByRole('link', { name: /^Select options\b/ })).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 

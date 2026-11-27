@@ -201,9 +201,11 @@ describe('CategoryPage', () => {
     expect(screen.getByRole('button', { name: 'Apply for an account' })).toBeTruthy();
     expect(document.querySelector('.filter-panel .filter-signin')).toBeNull();
     expect(screen.queryByText(/Wholesale pricing is locked/)).toBeNull();
-    // A guest's card says 'Sign in for pricing' as plain text, never as a control (NEW-050).
+    // A guest's card with a choice uses those words as its button. A card
+    // without a choice keeps them as plain text.
     const locks = screen.getAllByText('Sign in for pricing');
-    expect(locks.map((el) => `${el.tagName}.${el.className}`)).toEqual(locks.map(() => 'SPAN.lock'));
+    expect(locks.map((el) => (el.closest('button') ? 'button' : `${el.tagName}.${el.className}`))).toEqual(['button', 'SPAN.lock', 'SPAN.lock']);
+    expect(screen.getByRole('button', { name: 'Sign in for pricing, Swisher Sweets' })).toBeTruthy();
     // No card has a sign-in control of its own: its only controls are the add or choose ones.
     for (const control of document.querySelectorAll('.content-card .card-meta :is(button, a)')) expect(control.classList.contains('card-add')).toBe(true);
     // An account waiting for approval: the status link.

@@ -682,6 +682,7 @@ p > .text-link { min-height: 0; min-width: 0; }
 /* Names stop at two lines (AW-154); the link and its name keep the whole name. */
 .content-card h3 { font: 600 .9375rem/1.4 var(--body); letter-spacing: -.0125rem; margin: 0 0 5px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .card-detail { color: var(--muted); font-size: var(--text-sm); line-height: 1.5; margin: 0 0 10px; }
+.pd-option-count { margin: 0 0 12px; color: var(--muted); font-size: var(--text-sm); line-height: 1.5; }
 /* Values joined by ' · ' (TextParts, AW-304): each moves to the next line
    whole, so a SKU or a count never breaks in the middle, and breaks inside
    only when it alone is wider than the line. */
@@ -727,14 +728,10 @@ p > .text-link { min-height: 0; min-width: 0; }
 /* An approved buyer's price that didn't load (NEW-054): a sentence in body
    type like the lock text, on its own line above the control. */
 .card-meta .card-price-failed { flex-basis: 100%; color: var(--ink); font-weight: 400; font-size: var(--text-xs); line-height: 1.4; }
-/* An approved buyer's price, larger than the name, and what it buys (AW-107).
-   Every price block keeps room for the 'per <unit>' line, so the figures of
-   a grid row line up whether or not a card has a sell unit (AW-107,
-   NEW-039): the figure's line, the small's margin and its line. The lock
-   and failed-price lines are not .card-price, so they keep their height. */
-.card-price { min-height: calc(1.25rem * 1.05 + .125rem + var(--text-xs) * 1.3); }
+/* An approved buyer's price, larger than the name (AW-107). The lock and
+   failed-price lines are not .card-price, so they keep their height. */
+.card-price { min-height: calc(1.25rem * 1.05); }
 .card-price b { display: block; font: 700 1.25rem/1.05 var(--display); color: var(--purple); }
-.card-price small { display: block; margin-top: .125rem; font: 400 var(--text-xs)/1.3 var(--body); color: var(--muted); }
 /* On touch screens a card's stepper keeps its 44px buttons in a phone's
    136-171px card (AW-302): the quantity box gives way first, down to three
    figures, and only then the buttons, so at a large text size the stepper

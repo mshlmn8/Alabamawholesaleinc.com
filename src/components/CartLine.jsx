@@ -35,10 +35,8 @@
 // quantity on show but has no stepper: it says so, offers another variant
 // when only its variant went away, and can be removed.
 //
-// A product with a sell unit says what quantity 1 means ("Sold by the
-// 5-pack", AW-031) after the SKU, in both layouts. The line wraps between
-// its values, never inside the SKU, which ends in an ellipsis when it is
-// longer than the line (TextParts, AW-304).
+// The line does not repeat the sell unit ("Sold by the 5-pack"). It wraps
+// between its values (TextParts, AW-304).
 //
 // With showPrice (an approved buyer), a line without a price says why:
 // "Loading price…" while the buyer's prices load, "Price on request" for a
@@ -107,13 +105,12 @@ export function CartLine({ item: it, layout = 'drawer', showPrice, pricesStatus 
   const pickHere = choose && !!it.variants?.some((v) => v.available);
   const noun = it.axis?.noun || 'variant';
   const className = ['drawer-line', checkout && 'checkout-line', gone && 'is-unavailable'].filter(Boolean).join(' ');
-  const unit = it.sellUnit ? `Sold by the ${it.sellUnit}` : '';
   const linked = it.unavailable !== 'product';
   const productPage = { page: 'product', productId: it.productId };
   let detail;
   if (gone) detail = [`Quantity ${it.qty}`, checkout ? '' : 'No longer available'];
-  else if (it.needsVariant) detail = [unit, showPrice ? variantPriceText(it.variantPrice) : ''];
-  else detail = [unit, priced ? `${formatMoney(it.price)} each` : noPrice];
+  else if (it.needsVariant) detail = [showPrice ? variantPriceText(it.variantPrice) : ''];
+  else detail = [priced ? `${formatMoney(it.price)} each` : noPrice];
   return (
     <li className={className} data-line-key={it.lineKey}>
       {/* No photo yet: the picture mark (AW-029). A product no catalog knows gets an empty tile. */}

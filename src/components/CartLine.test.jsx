@@ -55,11 +55,12 @@ describe('CartLine', () => {
     expect(remove.querySelector('svg')).toBeNull();
   });
 
-  it('leaves the SKU off the line and keeps the sell unit (AW-304)', () => {
+  it('leaves the SKU and the sell unit off the line (AW-304)', () => {
     renderLine({ item: { ...item, sku: 'AW-MENTAL-HEALTH-PREROLLS-2PK', sellUnit: '2-pack' }, layout: 'checkout', showPrice: true, ...handlers() });
     expect(document.querySelector('.info .sku-part')).toBeNull();
     expect(screen.queryByText(/AW-MENTAL/)).toBeNull();
-    expect(detailLine('Sold by the 2-pack · $12.34 each')).toBeTruthy();
+    expect(screen.queryByText(/Sold by the/)).toBeNull();
+    expect(detailLine('$12.34 each')).toBeTruthy();
   });
 
   it('checkout layout: "each" price and a line total', () => {
@@ -139,14 +140,15 @@ describe('CartLine', () => {
     expect(h.onRemove).toHaveBeenCalledTimes(1);
   });
 
-  it('says what quantity 1 means in both layouts (AW-031)', () => {
+  it('does not say what quantity 1 means, in either layout', () => {
     const boxed = { ...item, sku: 'AW-TUBES', name: 'Tubes', sellUnit: 'box of 200' };
     const view = renderLine({ item: boxed, layout: 'drawer', showPrice: true, ...handlers() });
-    expect(detailLine('Sold by the box of 200 · $12.34 each')).toBeTruthy();
+    expect(detailLine('$12.34 each')).toBeTruthy();
+    expect(screen.queryByText(/Sold by the/)).toBeNull();
     view.rerender(<ul><CartLine item={boxed} layout="checkout" showPrice {...handlers()} /></ul>);
-    expect(detailLine('Sold by the box of 200 · $12.34 each')).toBeTruthy();
+    expect(detailLine('$12.34 each')).toBeTruthy();
     view.rerender(<ul><CartLine item={boxed} layout="checkout" showPrice={false} {...handlers()} /></ul>);
-    expect(detailLine('Sold by the box of 200')).toBeTruthy();
+    expect(document.querySelector('.info > small').textContent).toBe('');
     view.rerender(<ul><CartLine item={{ ...boxed, sellUnit: '' }} layout="drawer" showPrice={false} {...handlers()} /></ul>);
     expect(screen.queryByText('AW-TUBES')).toBeNull();
   });

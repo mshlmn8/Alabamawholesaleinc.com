@@ -12,6 +12,7 @@ import { PRODUCTS, NAV_ORDER, NEW_ARRIVALS_IDS } from '../data/products.js';
 import { departmentsFor, topLines } from '../lib/departments.js';
 import { hrefFor } from '../lib/routes.js';
 import { cardDetail } from '../components/ProductCard.jsx';
+import { optionCountLabel } from '../lib/lines.js';
 import { HomePage, RAIL_LENGTH, departmentPhotos, hasPhoto, heroSlides, newProductSlides } from './HomePage.jsx';
 
 afterEach(() => {
@@ -62,7 +63,7 @@ describe('HomePage rails', () => {
         const detail = line ? line.textContent : '';
         expect(detail, product.name).not.toContain(product.sku);
         expect(detail).not.toMatch(/\bAW-[A-Z0-9]/);
-        expect(detail).toBe(cardDetail(product));
+        expect(detail, product.name).toBe(optionCountLabel(product) || cardDetail(product));
       }
     }
   });
@@ -80,7 +81,7 @@ describe('HomePage rails', () => {
 
   it('never puts the brand or the SKU on a card', () => {
     expect(cardDetail({ brand: 'Swisher Sweets', sku: 'AW-SS', variants: [] })).toBe('');
-    expect(cardDetail({ brand: 'Swisher Sweets', sku: 'AW-SS', sellUnit: '5-pack' })).toBe('Sold by the 5-pack');
+    expect(cardDetail({ brand: 'Swisher Sweets', sku: 'AW-SS', sellUnit: '5-pack' })).toBe('');
   });
 });
 

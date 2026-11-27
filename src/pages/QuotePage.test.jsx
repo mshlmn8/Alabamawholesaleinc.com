@@ -805,7 +805,7 @@ describe('QuotePage receipt', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Items in your order' })).toBeTruthy();
     expect([...document.querySelectorAll('.receipt-items li')].map((li) => li.textContent)).toEqual([
       '2 × Kite cigarette tobacco',
-      '3 × Argo corn starch Sold by the case of 24',
+      '3 × Argo corn starch',
     ]);
     const details = Object.fromEntries([...document.querySelectorAll('.receipt-details > div')].map((row) => [row.querySelector('dt').textContent, row.querySelector('dd').textContent]));
     // When it was sent comes first, on the warehouse's clock (NEW-062).
