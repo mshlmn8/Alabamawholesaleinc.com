@@ -8,7 +8,7 @@
 // rails (AW-029, Cursor PR #13). The hero carousel shows new products.
 import { render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { COMPANY, DEPARTMENT_GROUPS, SOURCING, VOLUME_PRICING } from '../data/content.js';
+import { COMPANY, DEPARTMENT_GROUPS, VOLUME_PRICING } from '../data/content.js';
 import { PRODUCTS, NAV_ORDER, NEW_ARRIVALS_IDS } from '../data/products.js';
 import { departmentsFor, topLines } from '../lib/departments.js';
 import { hrefFor } from '../lib/routes.js';
@@ -96,12 +96,12 @@ describe('HomePage sections', () => {
     expect(document.querySelector('.home-carousel').getAttribute('aria-label')).toBe('New products and deals');
   });
 
-  it('runs hero, trust band, departments, new arrivals, hot sellers, bestsellers, new deals, application, then services', () => {
+  it('runs hero, departments, new arrivals, hot sellers, bestsellers, new deals, application, then services', () => {
     renderHome();
-    expect(document.querySelector('.home-hero').nextElementSibling.className).toBe('trust-band');
-    expect(document.querySelector('.trust-band').nextElementSibling.className).not.toBe('services');
+    expect(document.querySelector('.home-hero').nextElementSibling.id).toBe('catalog');
+    expect(document.querySelector('.trust-band')).toBeNull();
     const h2s = [...document.querySelectorAll('h2')].map(text);
-    const order = ['About Alabama Wholesale', 'Shop by department', 'New arrivals', 'Hot sellers', 'Bestsellers', 'New deals', 'Open an account', 'Services'];
+    const order = ['Shop by department', 'New arrivals', 'Hot sellers', 'Bestsellers', 'New deals', 'Open an account', 'Services'];
     expect(h2s).toEqual(order);
     expect(document.querySelector('.services').nextElementSibling).toBeNull();
     expect(document.getElementById('hot-sellers').previousElementSibling.id).toBe('new-arrivals');
@@ -279,16 +279,11 @@ describe('HomePage new-product carousel', () => {
   });
 });
 
-// AW-005 (owner answers 2026-10): the confirmed facts, in a band under the
-// hero, and nothing the owner ruled out.
-describe('HomePage trust band (AW-005)', () => {
-  it('names 20 years in business, 100% authentic products, delivery, licensed retailers and where every product comes from', () => {
+describe('HomePage claims', () => {
+  it('does not show the years, authentic-products, delivery or 21+ boxes, or the sourcing sentence', () => {
     renderHome();
-    const band = document.querySelector('.trust-band');
-    expect(band.getAttribute('aria-labelledby')).toBe('trust-band-title');
-    expect(document.getElementById('trust-band-title').textContent).toBe('About Alabama Wholesale');
-    expect([...band.querySelectorAll('.trust-fact')].map(text)).toEqual(['20 years in business', '100% authentic products', 'Next-day delivery on our own trucks', '21+ licensed retailers only']);
-    expect(band.querySelector('.trust-sourcing').textContent).toBe(SOURCING);
+    expect(document.querySelector('.trust-band')).toBeNull();
+    expect(document.body.textContent).not.toMatch(/years in business|authentic products|licensed retailers only|Every product comes from the manufacturer/);
   });
 
   it('claims no account count, no generations and never "direct from the manufacturer" anywhere on the page', () => {

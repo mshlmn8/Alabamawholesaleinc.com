@@ -1,13 +1,12 @@
 // Home, in the section order the plan fixed (AW-059, AW-060): the split hero
-// (h1, pitch, calls to action and the photo carousel), the trust band under
-// it (AW-005), then the catalog. The three services sit last, just above
-// the footer.
+// (h1, pitch, calls to action and the photo carousel), then the catalog.
+// The three services sit last, just above the footer.
 // the departments, one row each of new arrivals, hot sellers, bestsellers and
 // new deals, then the account application steps. Only the application
 // steps are numbered, the page's one real sequence (AW-216). A signed-in
 // account sees its own account's panel in place of the steps (AW-066).
 
-import { DEPARTMENT_GROUPS, FREE_DELIVERY_THRESHOLD, SOURCING, TRUST } from '../data/content.js';
+import { DEPARTMENT_GROUPS, FREE_DELIVERY_THRESHOLD } from '../data/content.js';
 import { APPLY_LABEL } from '../data/terms.js';
 import { accountView, tradeAccountPanel } from '../lib/accountStatus.js';
 import { topLines } from '../lib/departments.js';
@@ -144,24 +143,6 @@ function AccountSection({ signedIn, view, onApplyClick }) {
   );
 }
 
-// The facts the owner confirmed (AW-005, 2026-10), in a band under the hero:
-// 20 years in business, 100% authentic products, and where every product
-// comes from. Nothing else: no count of accounts, no "three generations",
-// and never "direct from the manufacturer" alone.
-export function TrustBand() {
-  return (
-    <section className="trust-band" aria-labelledby="trust-band-title">
-      <h2 id="trust-band-title" className="sr-only">About Alabama Wholesale</h2>
-      <ul className="trust-facts">
-        {TRUST.map((fact) => (
-          <li key={fact.label} className="trust-fact"><span className="trust-figure">{fact.figure}</span> <span className="trust-label">{fact.label}</span></li>
-        ))}
-      </ul>
-      <p className="trust-sourcing">{SOURCING}</p>
-    </section>
-  );
-}
-
 // account is useAuth's ('loading' | 'signed-out' | 'no-profile' | 'ready'),
 // through App's cardProps: the cards and the account panel tell a guest from
 // a signed-in buyer whose profile is still loading (NEW-002, NEW-050).
@@ -182,7 +163,6 @@ export function HomePage({
   return (
     <>
       <HomeHero slides={heroSlides(products)} />
-      <TrustBand />
 
       <section className="section" id="catalog">
         <div className="section-head">

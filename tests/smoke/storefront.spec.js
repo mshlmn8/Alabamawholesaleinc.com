@@ -706,7 +706,7 @@ test.describe('home hero', () => {
   });
 });
 
-// Under the hero: the trust band (AW-005). The services (AW-059), with
+// The services (AW-059), with
 // volume pricing's email and phone (AW-025), sit last, just above the
 // footer. The department
 // tiles with a photo in the frame and the text on the band below it (AW-060,
@@ -718,12 +718,11 @@ test.describe('home sections', () => {
     }, [AGE_KEY, ageRecord(Date.now())]);
   });
 
-  test('the trust band follows the hero, the services end the page, and the department tiles lead to their departments', async ({ page }) => {
+  test('the services end the page, and the department tiles lead to their departments', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/');
-    const band = page.locator('.home-hero + .trust-band');
-    await expect(band.locator('.trust-fact')).toHaveText([/^20\s+years in business$/i, /^100%\s+authentic products$/i, /^Next-day\s+delivery on our own trucks$/i, /^21\+\s+licensed retailers only$/i]);
-    await expect(band.locator('.trust-sourcing')).toHaveText('Every product comes from the manufacturer or an established wholesale distributor.');
+    await expect(page.locator('.trust-band')).toHaveCount(0);
+    await expect(page.locator('main')).not.toContainText('years in business');
     await expect(page.locator('.services .service')).toHaveCount(3);
     await expect(page.locator('.services').locator('xpath=following-sibling::*')).toHaveCount(0);
     const services = page.locator('.services');

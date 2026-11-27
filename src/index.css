@@ -795,18 +795,6 @@ p > .text-link { min-height: 0; min-width: 0; }
 .service p { font-size: var(--text-base); line-height: 1.6; color: var(--muted); margin: 0; }
 .service .text-link { justify-self: start; min-height: var(--tap); margin-top: 4px; }
 
-/* The trust band (AW-005): the facts the owner confirmed, on a purple strip
-   joined to the foot of the hero. Two figures, each beside its label in
-   small capitals, then where every product comes from, after a rule. In the
-   compact layout the figures share a row, each over its label, and the
-   sentence goes under them. */
-.trust-band { display: grid; gap: 12px; padding: 16px 0 0; background: none; color: var(--ink); }
-.trust-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
-.trust-fact { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin: 0; padding: 16px; border-radius: 16px; background: var(--stat-bg); }
-.trust-figure { font: 700 1.75rem/1 var(--display); color: var(--purple); }
-.trust-label { max-width: none; font-size: var(--text-sm); font-weight: 600; line-height: 1.35; letter-spacing: 0; text-transform: none; color: var(--ink); }
-.trust-sourcing { margin: 0; padding: 0; border: 0; font-size: var(--text-sm); line-height: 1.5; color: var(--muted); }
-
 /* Shop by department (AW-060, AW-061): four tiles a row, two in the compact
    layout. Each is a square group of packshots over a solid purple band with
    the name and the biggest lines; no text sits on the photos (AW-055). */
@@ -2100,8 +2088,6 @@ input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
   .editorial-card h2 { font-size: var(--h2-sm); }
   .editorial-card { min-height: 245px; padding: 22px; }
   .services { grid-template-columns: 1fr; gap: 20px; }
-  .trust-band { padding-top: 12px; }
-  .trust-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   /* One line of crumbs, scrolled sideways, as on a department page. */
   .crumbs ol { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .crumbs ol::-webkit-scrollbar { display: none; }
@@ -2858,9 +2844,6 @@ ul.sub-pills { list-style: none; padding: 0; }
   .status-pill, .status-pill.contacted, .status-pill.fulfilled, .status-pill.cancelled { background: none; color: var(--ink); border: 1px solid var(--line); }
   .contact-strip .eyebrow, .contact-strip p:not([class]), .contact-strip .text-link, .dept-tile-lines { color: var(--ink); }
   .contact-strip h2, .editorial-card.purple h2 { color: var(--ink); }
-  .trust-band { background: none; color: var(--ink); border: 1px solid var(--line); }
-  .trust-figure, .trust-label, .trust-sourcing { color: var(--ink); }
-  .trust-sourcing { border-color: var(--line); }
   .editorial-card { min-height: 0; padding: 16px 18px; }
   .editorial-card img.bg { display: none; }
   .dept-tile-media { border: 0; border-bottom: 1px solid var(--line); }
