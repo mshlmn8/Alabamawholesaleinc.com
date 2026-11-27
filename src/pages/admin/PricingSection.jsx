@@ -5,12 +5,11 @@
 // pricing_tiers_admin_write policy already allows; 20261010121000 adds the
 // 0-to-under-100 check the form also makes. Tiers are not added or removed
 // here (accounts point at them; see BACKEND.md). The tiers' label column is
-// not shown or edited (NEW-078): buyers and staff see a tier by its key's
-// name and its discount (tierPriceNote), which the hint quotes.
+// not shown or edited (NEW-078). Approved accounts are priced from the
+// discount; the storefront does not name the tier.
 
 import { useEffect, useId, useState } from 'react';
 import { supabase } from '../../lib/supabase.js';
-import { tierPriceNote } from '../../lib/pricing.js';
 import { ConfirmDialog } from './ConfirmDialog.jsx';
 import { LoadProblem } from './AdminStatus.jsx';
 import { useLeaveGuard } from './useLeaveGuard.js';
@@ -163,7 +162,7 @@ export function PricingTab({ notify }) {
           </table>
         </div>
         {example && (
-          <p className="field-hint">{`Buyers see their tier by its name and discount, for example “${tierPriceNote({ tier: example.tier, discountPct: example.discount_pct })}”`}</p>
+          <p className="field-hint">Approved accounts are priced from these discounts.</p>
         )}
         {saveError && <p className="form-error" role="alert">{saveError}</p>}
         <div className="inline-actions bulk-actions">

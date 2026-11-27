@@ -1,24 +1,19 @@
-// Home, in the section order the plan fixed (AW-059, AW-060): the split hero
-// (h1, pitch, calls to action and the photo carousel), the trust band under
-// it (AW-005), then the catalog. The three services sit last, just above
-// the footer.
+// Home, in the section order the plan fixed (AW-060): the split hero
+// (h1, pitch, calls to action and the photo carousel), then the catalog.
 // the departments, one row each of new arrivals, hot sellers, bestsellers and
-// new deals, then the account application steps. Only the application
-// steps are numbered, the page's one real sequence (AW-216). A signed-in
-// account sees its own account's panel in place of the steps (AW-066).
+// new deals, then, for a guest, the account application steps. Only the
+// application steps are numbered, the page's one real sequence (AW-216).
+// A signed-in account does not get that section; My account is in the header.
+// The delivery, volume, and license services are not on this page.
 
-import { DEPARTMENT_GROUPS, FREE_DELIVERY_THRESHOLD, SOURCING, TRUST } from '../data/content.js';
+import { DEPARTMENT_GROUPS } from '../data/content.js';
 import { APPLY_LABEL } from '../data/terms.js';
-import { accountView, tradeAccountPanel } from '../lib/accountStatus.js';
 import { topLines } from '../lib/departments.js';
-import { brandLabel, formatMoneyShort } from '../lib/format.js';
+import { brandLabel } from '../lib/format.js';
 import { COLLECTIONS } from '../lib/collections.js';
-import { tierPriceNote } from '../lib/pricing.js';
 import { RAIL_LIMIT, homeRails, homeSections } from '../lib/merchandising.js';
 import { showsNicotineWarning } from '../lib/regulated.js';
 import { Link } from '../lib/router.js';
-import { Icon } from '../components/Icon.jsx';
-import { VolumePricing } from '../components/ContactLinks.jsx';
 import { Picture } from '../components/Picture.jsx';
 import { HomeHero } from '../components/HomeHero.jsx';
 import { ProductCard } from '../components/ProductCard.jsx';
@@ -92,30 +87,12 @@ export function departmentPhotos(products, deptKey) {
   return chosen;
 }
 
-// The foot of the page. A guest is asked to open an account, with the
-// three steps. A signed-in account is never offered a second application
-// (AW-066): its panel says where the account stands, as /apply's page head
-// does (accountStatus.js tradeAccountPanel), and links to My account or the
-// application status. Keyed by view, so each view's words are a new block
-// (Google Translate).
-function AccountSection({ signedIn, view, onApplyClick }) {
-  const panel = signedIn ? tradeAccountPanel(view) : null;
-  if (panel) {
-    return (
-      <section className="section" id="apply">
-        <div key={view} className="apply-panel trade-account-panel">
-          <div className="apply-intro">
-            <p className="eyebrow">{panel.eyebrow}</p>
-            <h2>{panel.title}</h2>
-          </div>
-          <div className="trade-account-body">
-            <p>{panel.text}</p>
-            <Link className="button" to={panel.link.to}>{panel.link.label}</Link>
-          </div>
-        </div>
-      </section>
-    );
-  }
+// The foot of the page for a guest: open an account, with the three steps.
+// A signed-in account does not get this section.
+function AccountSection({ signedIn, onApplyClick }) {
+  // Signed in, the home page does not repeat the account. My account is in
+  // the header. Guests still get the steps to open one.
+  if (signedIn) return null;
   return (
     <section className="section" id="apply">
       <div className="apply-panel">
@@ -144,29 +121,12 @@ function AccountSection({ signedIn, view, onApplyClick }) {
   );
 }
 
-// The facts the owner confirmed (AW-005, 2026-10), in a band under the hero:
-// 20 years in business, 100% authentic products, and where every product
-// comes from. Nothing else: no count of accounts, no "three generations",
-// and never "direct from the manufacturer" alone.
-export function TrustBand() {
-  return (
-    <section className="trust-band" aria-labelledby="trust-band-title">
-      <h2 id="trust-band-title" className="sr-only">About Alabama Wholesale</h2>
-      <ul className="trust-facts">
-        {TRUST.map((fact) => (
-          <li key={fact.label} className="trust-fact"><span className="trust-figure">{fact.figure}</span> <span className="trust-label">{fact.label}</span></li>
-        ))}
-      </ul>
-      <p className="trust-sourcing">{SOURCING}</p>
-    </section>
-  );
-}
-
 // account is useAuth's ('loading' | 'signed-out' | 'no-profile' | 'ready'),
-// through App's cardProps: the cards and the account panel tell a guest from
-// a signed-in buyer whose profile is still loading (NEW-002, NEW-050).
+// through App's cardProps: the cards tell a guest from a signed-in buyer
+// whose profile is still loading (NEW-002, NEW-050). The guest apply steps
+// are the only account block on this page.
 export function HomePage({
-  products, departments, profile, account = profile ? 'ready' : 'signed-out', isApprovedBuyer, priceOf, pricesStatus, priceTier = null,
+  products, departments, profile, account = profile ? 'ready' : 'signed-out', isApprovedBuyer, priceOf, pricesStatus,
   cart, addLine, decLine, onLoginClick, onApplyClick, signedIn = false,
 }) {
   const card = (p) => (
@@ -182,7 +142,6 @@ export function HomePage({
   return (
     <>
       <HomeHero slides={heroSlides(products)} />
-      <TrustBand />
 
       <section className="section" id="catalog">
         <div className="section-head">
@@ -217,7 +176,7 @@ export function HomePage({
       {COLLECTIONS.map((c) => (
         <section className="section" id={c.page} key={c.page}>
           <div className="section-head">
-            <div><h2>{c.title}</h2>{isApprovedBuyer ? <p className="result-note">{tierPriceNote(priceTier)}</p> : null}</div>
+            <div><h2>{c.title}</h2></div>
             <Link to={{ page: c.page }}>Show all<span className="sr-only">{` ${c.title.toLowerCase()}`}</span></Link>
           </div>
           <div className="card-grid card-rail">
@@ -226,34 +185,7 @@ export function HomePage({
         </section>
       ))}
 
-      <AccountSection signedIn={signedIn} view={accountView(profile, account)} onApplyClick={onApplyClick} />
-
-      {/* What the business offers (AW-059), last on the page, just above the
-          footer: an icon, the claim and a link to the page that explains it,
-          or, for volume pricing, the trade desk's email and phone. */}
-      <section className="services">
-        <h2 className="sr-only">Services</h2>
-        <div className="service">
-          <span className="service-icon" aria-hidden="true"><Icon name="truck" /></span>
-          <h3>Next-day delivery, our own trucks</h3>
-          {/* The threshold comes from content.js (AW-283). */}
-          <p>{`We run our own delivery service on routes in Alabama, Mississippi and Georgia. Free delivery on orders over ${formatMoneyShort(FREE_DELIVERY_THRESHOLD)} when the stop is on a delivery route. Will-call is pickup at the Birmingham warehouse during business hours.`}</p>
-          <Link className="text-link" to="/delivery">Delivery and service area</Link>
-        </div>
-        {/* No Net-30 terms and no published volume discounts: volume
-            pricing goes through the trade desk (AW-025, owner answer 2026-10),
-            so the line's own email and phone links are this service's links. */}
-        <div className="service">
-          <span className="service-icon" aria-hidden="true"><Icon name="tag" /></span>
-          <h3>Buying in volume?</h3><p><VolumePricing /></p>
-        </div>
-        {/* TODO(owner): Is a tobacco license required for every account, or only for tobacco, vapor, and nicotine? This sentence is unchanged until you decide. (AW-129) */}
-        <div className="service">
-          <span className="service-icon" aria-hidden="true"><Icon name="shield" /></span>
-          <h3>Licensed businesses only</h3><p>We verify your state retail tobacco license and resale certificate before your first order. No consumer sales, no exceptions — 21+ accounts only.</p>
-          <Link className="text-link" to="/apply">How to apply</Link>
-        </div>
-      </section>
+      <AccountSection signedIn={signedIn} onApplyClick={onApplyClick} />
     </>
   );
 }

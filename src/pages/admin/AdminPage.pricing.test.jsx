@@ -60,11 +60,11 @@ describe('Admin -> Pricing (AW-114)', () => {
     expect(select.columns).toBe('tier,discount_pct');
     expect(screen.getAllByRole('rowheader').map((th) => th.textContent)).toEqual(['standard', 'silver', 'gold']);
     expect(pct('silver').value).toBe('5');
-    // Nothing edits a label no page shows; the hint says how buyers see a tier.
+    // Nothing edits a label no page shows.
     expect(screen.getAllByRole('columnheader').map((th) => th.textContent)).toEqual(['Tier', 'Discount (%)']);
     expect(screen.queryByLabelText(/^Label of/)).toBeNull();
     expect(screen.getAllByRole('textbox')).toHaveLength(3);
-    expect(screen.getByText('Buyers see their tier by its name and discount, for example “Prices shown are your Silver tier prices, 5% off list.”')).toBeTruthy();
+    expect(screen.getByText('Approved accounts are priced from these discounts.')).toBeTruthy();
     // No adding or removing tiers.
     expect(screen.queryByRole('button', { name: /add|remove|delete/i })).toBeNull();
   });
@@ -101,8 +101,7 @@ describe('Admin -> Pricing (AW-114)', () => {
     expect(updates()[0].patch).not.toHaveProperty('label');
     expect(statusText()).toBe('Saved the silver tier.');
     expect(pct('silver').value).toBe('7.5');
-    // The hint follows the saved discount.
-    expect(screen.getByText(/for example “Prices shown are your Silver tier prices, 7\.5% off list\.”$/)).toBeTruthy();
+    expect(screen.getByText('Approved accounts are priced from these discounts.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Undo changes' })).toBeNull();
   });
 

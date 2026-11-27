@@ -6,16 +6,15 @@
 // sell unit, what quantity 1 means (AW-031).
 //
 // From Cursor's PR #13: a product without a photo shows "Photo coming soon"
-// (AW-029); a photo other rows share is badged with this row's sell unit, or
-// else the size word in its name, and its alt calls it representative
-// (AW-136); the placeholder brand "Assorted" isn't printed (AW-286); the
+// (AW-029); a photo other rows share is not badged, and its alt calls it
+// representative (AW-136); the placeholder brand "Assorted" isn't printed
+// (AW-286); the
 // buttons say "Select options" or "Add to order" (the basket is an order for
 // everyone, AW-024), and an add shows "Added" for a moment and is announced
 // (AW-057).
 //
-// An approved buyer's price is the card's figure, larger than the name, with
-// what it buys under it ("per 36-count box") when the product has a sell
-// unit (AW-107). The price row sits at the foot of the card, so the rows line
+// An approved buyer's price is the card's figure, larger than the name
+// (AW-107). The price row sits at the foot of the card, so the rows line
 // up across a grid row. Prices that didn't load are "Your price didn’t load."
 // in body type, like the lock text, never a word in price type (NEW-054); the
 // site notice offers Try again.
@@ -67,11 +66,10 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import {
-  isVariantAvailable, lineKey, parseLineKey, requiresVariantChoice, variantList,
+  isVariantAvailable, lineKey, optionCountLabel, parseLineKey, requiresVariantChoice, variantList,
 } from '../lib/lines.js';
 import { PRICE_FAILED_SENTENCE, priceDidNotLoad, priceLabel, variantPriceRange } from '../lib/pricing.js';
 import { PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
-import { sharedPhotoBadge } from '../lib/format.js';
 import { SIZES } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { announce } from '../lib/announce.js';
@@ -87,13 +85,12 @@ const NO_PRICES = () => null;
 // How long "Added" stays under the control after an add.
 export const ADDED_NOTE_MS = 2000;
 
-// The card's detail line is only the sell unit, when the product has one.
-// The brand and the SKU are not shown (the name already says the product).
-// Colors, flavors and varieties stay on the product page, where the buyer
-// chooses one. cardDetailParts gives the values, which the card shows as
-// TextParts; cardDetail the same line as one string.
-export function cardDetailParts(p) {
-  return [p.sellUnit ? `Sold by the ${p.sellUnit}` : ''].filter(Boolean);
+// The card shows no detail line under the name: no brand, no product code,
+// and no "Sold by the …". Colors, flavors and varieties stay on the product
+// page, where the buyer chooses one. cardDetailParts is the (empty) list the
+// card would show as TextParts; cardDetail the same line as one string.
+export function cardDetailParts() {
+  return [];
 }
 
 export function cardDetail(p, options) {
@@ -110,7 +107,7 @@ export function cardLockText(profile, account = profile ? 'ready' : 'signed-out'
 }
 
 export function ProductCard({
-  p, profile = null, account = profile ? 'ready' : 'signed-out', isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, eager = false, priority = false,
+  p, profile = null, account = profile ? 'ready' : 'signed-out', isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off', cart, addLine, decLine, onLoginClick, eager = false, priority = false,
   sizes = SIZES.card,
 }) {
   // Counts the adds since "Added" last went away; each add restarts its timer.
@@ -182,17 +179,19 @@ export function ProductCard({
     else if (n < qty) decLine(key, qty - n);
   };
   const titleId = useId();
-  // A photo other rows share says which of them this is (AW-136).
-  const badge = p.sharedPhoto ? sharedPhotoBadge(p) : '';
+  const countLabel = optionCountLabel(p);
+  // A guest can't price a choice, so the choose button is the sign-in prompt
+  // instead of "Select options". The lock line above it would repeat the
+  // same words, so that line stays blank and keeps the row's height.
+  const guestPrompt = account === 'signed-out' && choiceRequired && !soldOut;
   return (
     <article className="content-card" aria-labelledby={titleId}>
       <div className="card-block">
         <ProductPhoto product={p} sizes={sizes} priority={priority} loading={eager ? 'eager' : 'lazy'} />
-        {/* The owner adds a photo of each product that shares a file later, in Admin (AW-136, answered 2026-10). */}
-        {p.picture && p.sharedPhoto && badge && <span className="pack-badge">{badge}</span>}
       </div>
       <p className="card-kicker"><span>{p.sub}</span><ProductTag tag={p.tag} /></p>
       <h3 id={titleId}><Link className="card-link" to={productRoute}>{p.name}</Link></h3>
+      {countLabel && <p className="card-detail">{countLabel}</p>}
       {cardDetailParts(p).length > 0 && <p className="card-detail"><TextParts parts={cardDetailParts(p)} /></p>}
       <span className="card-meta card-actions">
         {isApprovedBuyer && soldOut ? (
@@ -204,15 +203,19 @@ export function ProductCard({
         ) : isApprovedBuyer ? (
           <span className="card-price">
             <b>{priceLabel(shown.unit, pricesStatus, { from: shown.from })}</b>
-            {shown.unit != null && p.sellUnit && <small>{`per ${p.sellUnit}`}</small>}
           </span>
         ) : (
           // Its line stays while the account loads, so the rows of a grid
-          // keep their height (NEW-050).
-          <span className="lock" aria-hidden={lockText ? undefined : 'true'}>{lockText || '\u00A0'}</span>
+          // keep their height (NEW-050). A guest's choose button already
+          // says the same words, so this line is blank there.
+          <span className="lock" aria-hidden={lockText && !guestPrompt ? undefined : 'true'}>{guestPrompt ? '\u00A0' : (lockText || '\u00A0')}</span>
         )}
         {soldOut ? (
           <button className="button ghost sm card-add" type="button" disabled>Not available<span className="sr-only">{`, ${p.name}`}</span></button>
+        ) : guestPrompt ? (
+          <button className="button ghost sm card-add" type="button" onClick={onLoginClick}>
+            <span>{PRICE_LOCK.guest.short}</span><span className="sr-only">{`, ${p.name}`}</span>
+          </button>
         ) : choiceRequired ? (
           <Link className="button ghost sm card-add" to={productRoute}><span>{qty > 0 ? `Select options · ${qty}` : 'Select options'}</span><span className="sr-only">{`, ${p.name}`}</span></Link>
         ) : qty > 0 ? (

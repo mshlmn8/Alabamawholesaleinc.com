@@ -84,19 +84,17 @@
 // is, and adding works as before, so the page never waits for good.
 //
 // From Cursor's PR #13: "Photo coming soon" without a photo (AW-029), the
-// sell unit badged on a photo other rows share (AW-136), the Wikimedia credit
-// under the photo (AW-033), and no placeholder brand "Assorted" (AW-286).
-// A shared photo without a sell unit is badged with the size word in the
-// name, or else captioned "Photo shows a related pack or size.", and its alt
-// calls it representative (AW-136).
+// Wikimedia credit under the photo (AW-033), and no placeholder brand
+// "Assorted" (AW-286). A photo other rows share is not badged or captioned;
+// its alt calls it representative (AW-136).
 
 import { useRef, useState } from 'react';
 import {
-  informativeVariant, isVariantAvailable, lineKey, requiresVariantChoice, variantAxis, variantList,
+  informativeVariant, isVariantAvailable, lineKey, optionCountLabel, requiresVariantChoice, variantAxis, variantList,
 } from '../lib/lines.js';
 import { PRICE_FAILED_SENTENCE, pctText, priceDidNotLoad, priceLabel, tierName, variantPriceRange } from '../lib/pricing.js';
 import { CHECKING_ACCOUNT_TEXT, PRICES_NEED_PROFILE, PRICE_LOCK, accountStatus } from '../lib/accountStatus.js';
-import { SHARED_PHOTO_NOTE, brandLabel, catLabel, formatMoney, photoAlt, sharedPhotoBadge } from '../lib/format.js';
+import { brandLabel, catLabel, formatMoney, photoAlt } from '../lib/format.js';
 import { SIZES, zoomPicture, zoomSizes } from '../lib/images.js';
 import { Link } from '../lib/router.js';
 import { APPLY_LABEL, BASKET } from '../data/terms.js';
@@ -193,13 +191,8 @@ export function ProductPage({
   const sameLine = related.every(x => x.sub === p.sub);
   const brand = brandLabel(p.brand);
   const credit = p.picture ? photoCredit(p) : null;
-  // A photo other rows share shows a sibling (AW-136): its badge says which
-  // row this is, from the sell unit or the name; with neither, the caption
-  // says the photo shows a related pack or size.
-  const badge = p.picture && p.sharedPhoto ? sharedPhotoBadge(p) : '';
   // The enlarged photo's candidates: the largest rendition and the zoom one (AW-236).
   const zoomed = zoomPicture(p.picture, p.zoom);
-  const photoNote = p.picture && p.sharedPhoto && !badge ? SHARED_PHOTO_NOTE : '';
   // An account on hold is told ordering is paused and who to call, not that
   // pricing waits for approval (AW-101).
   const onHold = !isApprovedBuyer && accountStatus(profile) === 'suspended';
@@ -313,7 +306,6 @@ export function ProductPage({
       )}
     </div>
   );
-  const unitNote = p.sellUnit && !noneAvailable ? <p key="unit" className="pd-unit">{`Sold by the ${p.sellUnit} — quantity 1 is one ${p.sellUnit}.`}</p> : null;
   const addBlock = noneAvailable ? null : provisional ? (
     // While the live catalog is checked (AW-232) the row is there but
     // unseen, so the line over it has its height, and the page doesn't
@@ -346,11 +338,10 @@ export function ProductPage({
             <ProductPhoto product={p} sizes={SIZES.detail} priority />
             {/* Focused on click too (Safari doesn't), so closing the dialog brings focus back here. */}
             {p.picture?.src && <button type="button" className="pd-zoom" aria-label={`Enlarge photo of ${p.name}`} onClick={(e) => { e.currentTarget.focus(); setZoomOpen(true); }} />}
-            {badge && <span className="pack-badge">{badge}</span>}
           </div>
-          {(photoNote || credit) && (
+          {credit && (
             <figcaption className="photo-credit">
-              <PhotoCaption note={photoNote} credit={credit} />
+              <PhotoCaption credit={credit} />
             </figcaption>
           )}
         </figure>
@@ -359,6 +350,7 @@ export function ProductPage({
           {/* The tag is a chip beside the brand line, not over the photo (AW-055). */}
           <p className="pd-brand"><span>{brand ? `${brand} · ${p.sub}` : p.sub}</span><ProductTag tag={p.tag} /></p>
           <h1>{p.name}</h1>
+          {optionCountLabel(p) && <p className="pd-option-count">{optionCountLabel(p)}</p>}
           {choiceRequired && <p id="pd-variant-label" className="pd-variant-label">{`Choose a ${axis.noun}`}</p>}
           {choiceRequired && (
             // eslint-disable-next-line jsx-a11y/interactive-supports-focus -- the radios inside take focus (roving tabindex); the group only hears their keys
@@ -372,12 +364,10 @@ export function ProductPage({
           {variantError && <p id="pd-variant-error" className="form-error" role="alert">{`Select a ${axis.noun} before adding this product.`}</p>}
           {soleShown && <p className="pd-desc">{`${axis.label}: ${soleShown}${soleUnavailable ? ' (not available)' : ''}`}</p>}
           {savedQty > 0 && !noneAvailable && <p className="pd-saved">{`From your last visit: quantity ${savedQty}.${choiceRequired ? ` Choose a ${axis.noun}, then add it.` : ''}`}</p>}
-          {/* Price, sell unit, quantity and add, line total, "Already in":
-              price first on a desktop, the add row first in the compact
-              layout (AW-150); or the one sentence when nothing can be
-              ordered (NEW-052). */}
+          {/* Price, quantity and add, "Already in": price first on a
+              desktop, the add row first in the compact layout (AW-150);
+              or the one sentence when nothing can be ordered (NEW-052). */}
           {priceFirst && priceOrNone}
-          {unitNote}
           {addBlock}
           {inCartNote}
           {!priceFirst && priceOrNone}
@@ -412,7 +402,7 @@ export function ProductPage({
               {/* Sized to the most the dialog shows, at most the zoom file's width, so the
                   browser takes the 1024 or the zoom rendition for the screen (AW-236). */}
               <Picture picture={zoomed} alt={photoAlt(p)} sizes={zoomSizes(zoomed?.width)} loading="eager" />
-              {(photoNote || credit) && <p className="photo-credit"><PhotoCaption note={photoNote} credit={credit} /></p>}
+              {credit && <p className="photo-credit"><PhotoCaption credit={credit} /></p>}
             </div>
           </div>
         </ModalLayer>

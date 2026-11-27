@@ -305,7 +305,7 @@ test('guests never ask for prices and see the lock (AW-003)', async ({ page }) =
 });
 
 // Signed in, nothing offers a second application (AW-066, NEW-014): the home
-// page's account section and /contact show the account's own panel, the
+// page has no account section, /contact shows the account's own panel, the
 // footer and the support nav call /apply 'Account status', and /apply's
 // status panel is the application's only while it is under review (NEW-047).
 for (const [profile, eyebrow, link, panel] of [
@@ -317,11 +317,8 @@ for (const [profile, eyebrow, link, panel] of [
     await seedSession(context);
     await mockSupabase(page, { profile });
     await page.goto('/');
-    const home = page.locator('#apply');
-    await expect(home.locator('.eyebrow')).toHaveText(eyebrow);
-    await expect(home.getByRole('heading', { level: 2 })).toHaveText('Your account');
-    await expect(home.getByRole('link', { name: link[0] })).toHaveAttribute('href', link[1]);
-    await expect(home.getByRole('button')).toHaveCount(0);
+    await expect(page.locator('#apply')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Your account' })).toHaveCount(0);
     const footer = page.locator('footer');
     await expect(footer.getByRole('link', { name: 'Account status' })).toHaveAttribute('href', '/apply');
     await expect(footer.getByRole('link', { name: 'Application checklist' })).toHaveCount(0);

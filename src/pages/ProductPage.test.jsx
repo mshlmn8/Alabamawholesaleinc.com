@@ -147,9 +147,10 @@ describe('ProductPage variants (AW-233, AW-128, AW-030)', () => {
     expect(document.body.textContent).not.toMatch(/Supplied to licensed retail businesses/);
   });
 
-  it('says what quantity 1 means when the product has a sell unit (AW-031)', () => {
+  it('does not say what quantity 1 means, even when the product has a sell unit', () => {
     const view = render(page({ products: [product({ sellUnit: 'box of 200' })] }));
-    expect(screen.getByText('Sold by the box of 200 — quantity 1 is one box of 200.')).toBeTruthy();
+    expect(document.querySelector('.pd-unit')).toBeNull();
+    expect(document.body.textContent).not.toMatch(/Sold by the/);
     view.rerender(page({ products: [product({ sellUnit: '' })] }));
     expect(document.querySelector('.pd-unit')).toBeNull();
   });
@@ -307,23 +308,24 @@ describe('ProductPage shared photos (AW-136)', () => {
   const badge = () => document.querySelector('.pd-media .pack-badge')?.textContent ?? null;
   const caption = () => document.querySelector('figure.pd-figure > figcaption')?.textContent ?? null;
 
-  it('badges the photo with the sell unit, else the size word in the name', () => {
+  it('puts no pack or size badge on the photo', () => {
     const view = render(shared({ name: 'Backwoods cigars singles', sellUnit: 'single' }));
-    expect(badge()).toBe('single');
+    expect(badge()).toBeNull();
     expect(caption()).toBeNull();
+    expect(document.body.textContent).not.toMatch(/Sold by the|per single/);
     view.rerender(shared({ name: 'Gatorade (big)' }));
-    expect(badge()).toBe('big');
+    expect(badge()).toBeNull();
     expect(caption()).toBeNull();
   });
 
-  it('says the photo shows a related pack or size when there is neither, under the photo and in the enlarged view', () => {
+  it('does not say the photo shows a related pack or size', () => {
     render(shared({ name: "Uncle Al's" }));
     expect(badge()).toBeNull();
-    expect(caption()).toBe('Photo shows a related pack or size.');
-    expect(document.querySelector('figure.pd-figure > figcaption.photo-credit .photo-note')).not.toBeNull();
+    expect(caption()).toBeNull();
+    expect(document.body.textContent).not.toMatch(/related pack or size/);
     fireEvent.click(screen.getByRole('button', { name: "Enlarge photo of Uncle Al's" }));
     const dialog = screen.getByRole('dialog', { name: "Photo of Uncle Al's" });
-    expect(dialog.querySelector('.photo-credit').textContent).toBe('Photo shows a related pack or size.');
+    expect(dialog.querySelector('.photo-credit')).toBeNull();
     expect(dialog.querySelector('img').getAttribute('alt')).toBe("Uncle Al's (representative photo)");
   });
 

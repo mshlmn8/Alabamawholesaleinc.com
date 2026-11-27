@@ -4,8 +4,8 @@
 --
 -- Every database update the live Supabase project doesn't have yet, in order,
 -- in one file. The live project has the updates up to and including
--- 20260927180000_application_documents.sql; this file has the 36 after it
--- (20261008190000 to 20261106033000), then the product seed.
+-- 20260927180000_application_documents.sql; this file has the 37 after it
+-- (20261008190000 to 20261123164000), then the product seed.
 --
 -- How to run it (SETUP.md, part A): back up the database first. Then in
 -- Supabase open SQL Editor, start a new query, paste this whole file and
@@ -62,7 +62,8 @@
 --   34. 20261103120000_stage2_product_photos.sql
 --   35. 20261103140000_stage2_more_photos.sql
 --   36. 20261106033000_missing_packshots.sql
---   37. products.sql (the product seed)
+--   37. 20261123164000_drop_sold_by_descriptions.sql
+--   38. products.sql (the product seed)
 
 -- =============================================================================
 -- Check: is this the live database, without these updates yet?
@@ -81,7 +82,7 @@ begin
 end $$;
 
 -- =============================================================================
--- 1 of 37: 20261008190000_quote_tobacco_license.sql
+-- 1 of 38: 20261008190000_quote_tobacco_license.sql
 -- supabase/migrations/20261008190000_quote_tobacco_license.sql, word for word.
 -- =============================================================================
 
@@ -238,7 +239,7 @@ revoke all on function public.submit_quote(text, text, text, text, text, text, d
 grant execute on function public.submit_quote(text, text, text, text, text, text, date, text, text, text, text, text, jsonb, text, text, boolean) to anon, authenticated;
 
 -- =============================================================================
--- 2 of 37: 20261008191000_profile_store_address.sql
+-- 2 of 38: 20261008191000_profile_store_address.sql
 -- supabase/migrations/20261008191000_profile_store_address.sql, word for word.
 -- =============================================================================
 
@@ -284,7 +285,7 @@ end;
 $$;
 
 -- =============================================================================
--- 3 of 37: 20261008192000_profile_self_update_guard.sql
+-- 3 of 38: 20261008192000_profile_self_update_guard.sql
 -- supabase/migrations/20261008192000_profile_self_update_guard.sql, word for word.
 -- =============================================================================
 
@@ -319,7 +320,7 @@ create trigger a_protect_profile_columns
   for each row execute function public.protect_profile_columns();
 
 -- =============================================================================
--- 4 of 37: 20261008193000_profile_approval_audit.sql
+-- 4 of 38: 20261008193000_profile_approval_audit.sql
 -- supabase/migrations/20261008193000_profile_approval_audit.sql, word for word.
 -- =============================================================================
 
@@ -486,7 +487,7 @@ create policy application_documents_owner_delete on storage.objects
   );
 
 -- =============================================================================
--- 5 of 37: 20261008194000_strip_signup_metadata.sql
+-- 5 of 38: 20261008194000_strip_signup_metadata.sql
 -- supabase/migrations/20261008194000_strip_signup_metadata.sql, word for word.
 -- =============================================================================
 
@@ -538,7 +539,7 @@ end;
 $$;
 
 -- =============================================================================
--- 6 of 37: 20261008195000_application_consent.sql
+-- 6 of 38: 20261008195000_application_consent.sql
 -- supabase/migrations/20261008195000_application_consent.sql, word for word.
 -- =============================================================================
 
@@ -605,7 +606,7 @@ end;
 $$;
 
 -- =============================================================================
--- 7 of 37: 20261008200000_variant_prices_and_quote_workflow.sql
+-- 7 of 38: 20261008200000_variant_prices_and_quote_workflow.sql
 -- supabase/migrations/20261008200000_variant_prices_and_quote_workflow.sql, word for word.
 -- =============================================================================
 
@@ -816,7 +817,7 @@ grant execute on function public.admin_price_order(uuid, jsonb) to authenticated
 grant execute on function public.admin_convert_quote(uuid, uuid) to authenticated;
 
 -- =============================================================================
--- 8 of 37: 20261009100000_price_boundary.sql
+-- 8 of 38: 20261009100000_price_boundary.sql
 -- supabase/migrations/20261009100000_price_boundary.sql, word for word.
 -- =============================================================================
 
@@ -1123,7 +1124,7 @@ alter table public.profiles
 -- alter table public.products alter column price set not null;
 
 -- =============================================================================
--- 9 of 37: 20261009110000_variant_model.sql
+-- 9 of 38: 20261009110000_variant_model.sql
 -- supabase/migrations/20261009110000_variant_model.sql, word for word.
 -- =============================================================================
 
@@ -1647,7 +1648,7 @@ where p.id = v.id and p.description = v.old_text;
 -- alter table public.products drop column if exists variant_axis;
 
 -- =============================================================================
--- 10 of 37: 20261009120000_catalog_corrections.sql
+-- 10 of 38: 20261009120000_catalog_corrections.sql
 -- supabase/migrations/20261009120000_catalog_corrections.sql, word for word.
 -- =============================================================================
 
@@ -2578,7 +2579,7 @@ where p.id = v.id
 -- where p.id = v.id and p.sku = v.new_sku;
 
 -- =============================================================================
--- 11 of 37: 20261009130000_submit_quote_v3.sql
+-- 11 of 38: 20261009130000_submit_quote_v3.sql
 -- supabase/migrations/20261009130000_submit_quote_v3.sql, word for word.
 -- =============================================================================
 
@@ -3033,7 +3034,7 @@ grant execute on function public.submit_quote(text, text, text, text, text, text
 -- drop table if exists public.quote_throttle;
 
 -- =============================================================================
--- 12 of 37: 20261009140000_profile_and_document_boundaries.sql
+-- 12 of 38: 20261009140000_profile_and_document_boundaries.sql
 -- supabase/migrations/20261009140000_profile_and_document_boundaries.sql, word for word.
 -- =============================================================================
 
@@ -3436,7 +3437,7 @@ create policy application_documents_owner_update on storage.objects
 --   set search_path = public as $$ select coalesce((select role = 'admin' from public.profiles where id = auth.uid()), false); $$;
 
 -- =============================================================================
--- 13 of 37: 20261009150000_quote_workflow.sql
+-- 13 of 38: 20261009150000_quote_workflow.sql
 -- supabase/migrations/20261009150000_quote_workflow.sql, word for word.
 -- =============================================================================
 
@@ -3698,7 +3699,7 @@ grant execute on function public.admin_convert_quote(uuid, uuid) to authenticate
 --   20261008200000 definition
 
 -- =============================================================================
--- 14 of 37: 20261010120000_admin_product_editor.sql
+-- 14 of 38: 20261010120000_admin_product_editor.sql
 -- supabase/migrations/20261010120000_admin_product_editor.sql, word for word.
 -- =============================================================================
 
@@ -3902,7 +3903,7 @@ create policy product_images_admin_delete on storage.objects
 -- drop sequence if exists public.products_id_seq;
 
 -- =============================================================================
--- 15 of 37: 20261010121000_admin_bulk_products.sql
+-- 15 of 38: 20261010121000_admin_bulk_products.sql
 -- supabase/migrations/20261010121000_admin_bulk_products.sql, word for word.
 -- =============================================================================
 
@@ -4098,7 +4099,7 @@ alter table public.pricing_tiers add constraint pricing_tiers_discount_range
 -- drop function if exists public.admin_bulk_adjust_prices(integer[], numeric, numeric, boolean);
 
 -- =============================================================================
--- 16 of 37: 20261010122000_order_operations.sql
+-- 16 of 38: 20261010122000_order_operations.sql
 -- supabase/migrations/20261010122000_order_operations.sql, word for word.
 -- =============================================================================
 
@@ -4393,7 +4394,7 @@ end $$;
 -- drop table if exists public.order_events;
 
 -- =============================================================================
--- 17 of 37: 20261010130000_catalog_apostrophes.sql
+-- 17 of 38: 20261010130000_catalog_apostrophes.sql
 -- supabase/migrations/20261010130000_catalog_apostrophes.sql, word for word.
 -- =============================================================================
 
@@ -4435,7 +4436,7 @@ update public.products set brand = 'Reese''s' where id = 166 and brand = 'Reese�
 -- update public.products set brand = 'Reese’s' where id = 166 and brand = 'Reese''s';
 
 -- =============================================================================
--- 18 of 37: 20261010131000_photo_filenames.sql
+-- 18 of 38: 20261010131000_photo_filenames.sql
 -- supabase/migrations/20261010131000_photo_filenames.sql, word for word.
 -- =============================================================================
 
@@ -4500,7 +4501,7 @@ update public.products p
 --    and p.img = v.new_img;
 
 -- =============================================================================
--- 19 of 37: 20261011110000_order_item_hints.sql
+-- 19 of 38: 20261011110000_order_item_hints.sql
 -- supabase/migrations/20261011110000_order_item_hints.sql, word for word.
 -- =============================================================================
 
@@ -4648,7 +4649,7 @@ revoke all on function public.enforce_order_item_price() from public, anon, auth
 -- revoke all on function public.enforce_order_item_price() from public, anon, authenticated;
 
 -- =============================================================================
--- 20 of 37: 20261011111000_profile_role_audit.sql
+-- 20 of 38: 20261011111000_profile_role_audit.sql
 -- supabase/migrations/20261011111000_profile_role_audit.sql, word for word.
 -- =============================================================================
 
@@ -4744,7 +4745,7 @@ revoke all on function public.log_profile_status() from public, anon, authentica
 -- alter table public.profile_status_log drop column if exists old_role, drop column if exists new_role;
 
 -- =============================================================================
--- 21 of 37: 20261011130000_catalog_names.sql
+-- 21 of 38: 20261011130000_catalog_names.sql
 -- supabase/migrations/20261011130000_catalog_names.sql, word for word.
 -- =============================================================================
 
@@ -4836,7 +4837,7 @@ update public.products set name = 'Gold Band lubricants' where id = 355 and name
 -- update public.products set name = 'Gold Band' where id = 355 and name = 'Gold Band lubricants';
 
 -- =============================================================================
--- 22 of 37: 20261011131000_home_slides.sql
+-- 22 of 38: 20261011131000_home_slides.sql
 -- supabase/migrations/20261011131000_home_slides.sql, word for word.
 -- =============================================================================
 
@@ -5009,7 +5010,7 @@ where not exists (select 1 from public.home_slides);
 -- drop function if exists public.stamp_home_slide_editor();
 
 -- =============================================================================
--- 23 of 37: 20261012100000_document_storage_lock.sql
+-- 23 of 38: 20261012100000_document_storage_lock.sql
 -- supabase/migrations/20261012100000_document_storage_lock.sql, word for word.
 -- =============================================================================
 
@@ -5076,7 +5077,7 @@ where id = 'application-documents';
 -- where id = 'application-documents';
 
 -- =============================================================================
--- 24 of 37: 20261012110000_carts.sql
+-- 24 of 38: 20261012110000_carts.sql
 -- supabase/migrations/20261012110000_carts.sql, word for word.
 -- =============================================================================
 
@@ -5206,7 +5207,7 @@ grant all on public.carts to service_role;
 -- drop function if exists public.cart_lines_valid(jsonb);
 
 -- =============================================================================
--- 25 of 37: 20261012120000_product_description_hidden.sql
+-- 25 of 38: 20261012120000_product_description_hidden.sql
 -- supabase/migrations/20261012120000_product_description_hidden.sql, word for word.
 -- =============================================================================
 
@@ -5254,7 +5255,7 @@ grant select (description_hidden) on public.products to anon, authenticated;
 -- alter table public.products drop column if exists description_hidden;
 
 -- =============================================================================
--- 26 of 37: 20261012130000_catalog_fixups.sql
+-- 26 of 38: 20261012130000_catalog_fixups.sql
 -- supabase/migrations/20261012130000_catalog_fixups.sql, word for word.
 -- =============================================================================
 
@@ -5362,7 +5363,7 @@ update public.products set sell_unit = 'single' where id in (16, 340) and sell_u
 -- update public.products set sell_unit = '' where id in (16, 340) and sell_unit = 'single';
 
 -- =============================================================================
--- 27 of 37: 20261012140000_admin_import_create.sql
+-- 27 of 38: 20261012140000_admin_import_create.sql
 -- supabase/migrations/20261012140000_admin_import_create.sql, word for word.
 -- =============================================================================
 
@@ -5544,7 +5545,7 @@ grant execute on function public.admin_import_products_v2(jsonb) to authenticate
 -- drop function if exists public.admin_import_products_v2(jsonb);
 
 -- =============================================================================
--- 28 of 37: 20261014100000_delist_kratom_mushroom.sql
+-- 28 of 38: 20261014100000_delist_kratom_mushroom.sql
 -- supabase/migrations/20261014100000_delist_kratom_mushroom.sql, word for word.
 -- =============================================================================
 
@@ -5602,7 +5603,7 @@ where id in (69, 70, 71, 72, 73, 74, 75, 76, 258, 281, 285, 288, 289, 293, 296, 
 --   and not active;
 
 -- =============================================================================
--- 29 of 37: 20261014101000_catalog_owner_answers.sql
+-- 29 of 38: 20261014101000_catalog_owner_answers.sql
 -- supabase/migrations/20261014101000_catalog_owner_answers.sql, word for word.
 -- =============================================================================
 
@@ -5683,7 +5684,7 @@ update public.products set description = 'Uncle Al''s cookies, from the cookie l
 -- update public.products set sub = 'Wellness Pills' where id = 219 and sub = 'Gifts';
 
 -- =============================================================================
--- 30 of 37: 20261014110000_home_slides_warehouse_reel.sql
+-- 30 of 38: 20261014110000_home_slides_warehouse_reel.sql
 -- supabase/migrations/20261014110000_home_slides_warehouse_reel.sql, word for word.
 -- =============================================================================
 
@@ -5772,7 +5773,7 @@ end $$;
 -- end $$;
 
 -- =============================================================================
--- 31 of 37: 20261014111000_orders_approved_accounts_only.sql
+-- 31 of 38: 20261014111000_orders_approved_accounts_only.sql
 -- supabase/migrations/20261014111000_orders_approved_accounts_only.sql, word for word.
 -- =============================================================================
 
@@ -6146,7 +6147,7 @@ grant execute on function public.submit_quote(text, text, text, text, text, text
 -- drop function public.require_ordering_account();
 
 -- =============================================================================
--- 32 of 37: 20261014120000_staff_role.sql
+-- 32 of 38: 20261014120000_staff_role.sql
 -- supabase/migrations/20261014120000_staff_role.sql, word for word.
 -- =============================================================================
 
@@ -6889,7 +6890,7 @@ grant execute on function public.admin_import_products_v2(jsonb) to authenticate
 -- drop function if exists public.is_staff_or_admin();
 
 -- =============================================================================
--- 33 of 37: 20261014121000_site_settings.sql
+-- 33 of 38: 20261014121000_site_settings.sql
 -- supabase/migrations/20261014121000_site_settings.sql, word for word.
 -- =============================================================================
 
@@ -7066,7 +7067,7 @@ insert into public.site_settings (id) values (true) on conflict (id) do nothing;
 -- drop function if exists public.site_settings_lines_ok(text[], integer, integer);
 
 -- =============================================================================
--- 34 of 37: 20261103120000_stage2_product_photos.sql
+-- 34 of 38: 20261103120000_stage2_product_photos.sql
 -- supabase/migrations/20261103120000_stage2_product_photos.sql, word for word.
 -- =============================================================================
 
@@ -7122,7 +7123,7 @@ update public.products p
 --    and p.img = v.new_img;
 
 -- =============================================================================
--- 35 of 37: 20261103140000_stage2_more_photos.sql
+-- 35 of 38: 20261103140000_stage2_more_photos.sql
 -- supabase/migrations/20261103140000_stage2_more_photos.sql, word for word.
 -- =============================================================================
 
@@ -7209,7 +7210,7 @@ update public.products p
 --    and p.img = v.new_img;
 
 -- =============================================================================
--- 36 of 37: 20261106033000_missing_packshots.sql
+-- 36 of 38: 20261106033000_missing_packshots.sql
 -- supabase/migrations/20261106033000_missing_packshots.sql, word for word.
 -- =============================================================================
 
@@ -7257,7 +7258,32 @@ update public.products p
 --    and p.img = v.new_img;
 
 -- =============================================================================
--- 37 of 37: products.sql
+-- 37 of 38: 20261123164000_drop_sold_by_descriptions.sql
+-- supabase/migrations/20261123164000_drop_sold_by_descriptions.sql, word for word.
+-- =============================================================================
+
+-- Drop the sell-unit sentences from three grocery descriptions.
+--
+-- The storefront no longer prints "Sold by the …", "per <unit>" or a pack
+-- badge. These three rows still said the same thing in their description:
+-- #122 "stocked by the case", #123 and #124 "sold by the case". New databases
+-- get the shorter text from the regenerated seed. This updates a row only
+-- while it still has the old sentence, so an admin's edit is left alone and
+-- running the file again changes nothing.
+--
+-- Reverse (not run). Each statement puts the old sentence back only where
+-- the row still has the new one.
+--
+-- update public.products set description = 'Bath tissue in 4-roll packs, stocked by the case.' where id = 122 and description = 'Bath tissue in 4-roll packs.';
+-- update public.products set description = 'Paper towel rolls, sold by the case.' where id = 123 and description = 'Paper towel rolls.';
+-- update public.products set description = 'Bath tissue in single rolls, sold by the case.' where id = 124 and description = 'Bath tissue in single rolls.';
+
+update public.products set description = 'Bath tissue in 4-roll packs.' where id = 122 and description = 'Bath tissue in 4-roll packs, stocked by the case.';
+update public.products set description = 'Paper towel rolls.' where id = 123 and description = 'Paper towel rolls, sold by the case.';
+update public.products set description = 'Bath tissue in single rolls.' where id = 124 and description = 'Bath tissue in single rolls, sold by the case.';
+
+-- =============================================================================
+-- 38 of 38: products.sql
 -- supabase/seed/products.sql, word for word: adds the products whose id is new and
 -- never changes a product that is already there (prices, names and the
 -- active flag staff set in Admin stay as they are).
@@ -8058,9 +8084,9 @@ insert into public.products (id, name, brand, cat, sub, sku, variants, variant_a
   (119, 'Foam bowls', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-FOAM-BOWLS', '[]'::jsonb, null, null, null, true, 'Foam bowls from the paper and plastic line in our Grocery department.', ''),
   (120, 'Foam cups', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-FOAM-CUPS', '["20 oz","16 oz","12 oz","8 oz"]'::jsonb, 'Size', 'foam_cups.jpg', null, true, 'Insulated foam cups. Four sizes: 20 oz, 16 oz, 12 oz and 8 oz.', ''),
   (121, 'Plastic cutlery', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-PLASTIC-CUTLERY', '["Spoons","Forks","Assorted cutlery"]'::jsonb, 'Type', null, null, true, 'Plastic cutlery from the paper and plastic line in our Grocery department. Three types: Spoons, Forks and Assorted cutlery.', ''),
-  (122, 'Bath tissue 4-pack', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-4PK-TISSUES', '[]'::jsonb, null, '4pk_tissues.avif', null, true, 'Bath tissue in 4-roll packs, stocked by the case.', '4-pack'),
-  (123, 'Paper towels', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-PAPER-TOWELS', '[]'::jsonb, null, 'paper_towels.jpg', null, true, 'Paper towel rolls, sold by the case.', 'case'),
-  (124, 'Bath tissue single rolls', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-SINGLE-TISSUES', '[]'::jsonb, null, 'single_tissues.jpg', null, true, 'Bath tissue in single rolls, sold by the case.', 'case'),
+  (122, 'Bath tissue 4-pack', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-4PK-TISSUES', '[]'::jsonb, null, '4pk_tissues.avif', null, true, 'Bath tissue in 4-roll packs.', '4-pack'),
+  (123, 'Paper towels', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-PAPER-TOWELS', '[]'::jsonb, null, 'paper_towels.jpg', null, true, 'Paper towel rolls.', 'case'),
+  (124, 'Bath tissue single rolls', 'Assorted', 'GROCERY', 'Paper & Plastic', 'AW-SINGLE-TISSUES', '[]'::jsonb, null, 'single_tissues.jpg', null, true, 'Bath tissue in single rolls.', 'case'),
   (125, 'Baby diapers', 'Assorted', 'GROCERY', 'Personal Care', 'AW-BABY-DIAPERS', '["Small","Medium","Big"]'::jsonb, 'Size', null, null, true, 'Baby diapers from the personal care line in our Grocery department. Three sizes: Small, Medium and Big.', ''),
   (126, 'Baby wipes', 'Assorted', 'GROCERY', 'Personal Care', 'AW-BABY-WIPES', '["Boys","Girls"]'::jsonb, 'Variety', null, null, true, 'Baby wipes from the personal care line in our Grocery department. Two varieties: Boys and Girls.', ''),
   (127, 'Drain opener', 'Assorted', 'GROCERY', 'Cleaning', 'AW-DRAIN-OPENER', '[]'::jsonb, null, null, null, true, 'Drain opener from the cleaning line in our Grocery department.', ''),

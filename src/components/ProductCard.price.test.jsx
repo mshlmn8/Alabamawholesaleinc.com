@@ -1,6 +1,5 @@
 // An approved buyer's price on a product card (AW-107): the figure in its own
-// element, larger than the name, with what it buys under it when the product
-// has a sell unit, and the same caption over the cards on the department and
+// element, larger than the name, and the same caption over the cards on the department and
 // home pages, from my_prices()' tier. Prices are test values.
 import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -20,16 +19,16 @@ const priceBox = () => document.querySelector('.card-meta > .card-price');
 const SILVER = { tier: 'silver', label: 'Silver (5% off)', discountPct: 5 };
 
 describe('ProductCard price (AW-107)', () => {
-  it('shows the price in its own element, and "per" the sell unit under it', () => {
+  it('shows the price in its own element, with no "per" the sell unit under it', () => {
     render(card(BOX, { ...APPROVED, priceOf: () => 20.34 }));
     const box = priceBox();
     expect(box.querySelector('b').textContent).toBe('$20.34');
-    expect(box.querySelector('small').textContent).toBe('per 36-count box');
+    expect(box.querySelector('small')).toBeNull();
+    expect(box.textContent).toBe('$20.34');
     expect(box.firstElementChild.tagName).toBe('B');
-    expect(box.children).toHaveLength(2);
   });
 
-  it('leaves the unit line off a product without a sell unit, and while there is no price to go with it', () => {
+  it('leaves the unit line off while there is no price to go with it', () => {
     const view = render(card(KITE, { ...APPROVED, priceOf: () => 13.4 }));
     expect(priceBox().textContent).toBe('$13.40');
     expect(priceBox().querySelector('small')).toBeNull();
@@ -59,7 +58,7 @@ describe('ProductCard price (AW-107)', () => {
   it('shows "From" for variants priced differently', () => {
     const p = { ...BOX, variants: ['Blue', 'Cherry'] };
     render(card(p, { ...APPROVED, priceOf: (id, v) => (v === 'Blue' ? 21 : 20.34) }));
-    expect(priceBox().textContent).toBe('From $20.34per 36-count box');
+    expect(priceBox().textContent).toBe('From $20.34');
   });
 
   it('has no price box for guests or accounts awaiting approval', () => {
@@ -76,29 +75,22 @@ describe('whose prices the cards show (AW-107)', () => {
   const category = (props) => (
     <CategoryPage category="CANDIES" products={[BOX]} departments={departments} cart={{}} addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} {...props} />
   );
-  const intro = () => document.querySelector('.page-head h1 + p').textContent;
-
-  it('names the tier and its discount in the department intro, from my_prices()', () => {
+  it('does not name the tier under a department heading', () => {
     const view = render(category({ ...APPROVED, priceOf: () => 20.34, priceTier: SILVER }));
-    expect(intro()).toBe('Prices shown are your Silver tier prices, 5% off list.');
+    expect(document.querySelector('.category-tier')).toBeNull();
+    expect(document.body.textContent).not.toMatch(/Prices shown are your/);
     view.rerender(category({ ...APPROVED, priceOf: () => 20.34, priceTier: { tier: 'standard', discountPct: 0 } }));
-    expect(intro()).toBe('Prices shown are your Standard tier prices.');
-    // Before the prices are in, no tier is named.
-    view.rerender(category({ ...APPROVED, priceOf: () => null, pricesStatus: 'loading', priceTier: null }));
-    expect(intro()).toBe('Prices shown are your account prices.');
+    expect(document.body.textContent).not.toMatch(/Prices shown are your/);
   });
 
-  it('captions the New arrivals and Bestsellers rails for an approved buyer only', () => {
+  it('does not caption the home rails with the tier', () => {
     const home = (props) => (
       <HomePage products={PRODUCTS} departments={departmentsFor(PRODUCTS)} profile={null} isApprovedBuyer={false} cart={{}}
                 addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} onApplyClick={() => {}} {...props} />
     );
-    const notes = () => [...document.querySelectorAll('#new-arrivals .section-head .result-note, #new-deals .section-head .result-note, #bestsellers .section-head .result-note')].map((el) => el.textContent);
-    const view = render(home({ ...APPROVED, priceOf: () => 10, priceTier: SILVER }));
-    expect(notes()).toEqual(['Prices shown are your Silver tier prices, 5% off list.', 'Prices shown are your Silver tier prices, 5% off list.', 'Prices shown are your Silver tier prices, 5% off list.']);
-    view.rerender(home({}));
+    const notes = () => [...document.querySelectorAll('#new-arrivals .section-head .result-note, #new-deals .section-head .result-note, #bestsellers .section-head .result-note')];
+    render(home({ ...APPROVED, priceOf: () => 10, priceTier: SILVER }));
     expect(notes()).toEqual([]);
-    view.rerender(home({ profile: { id: 'p', status: 'pending' } }));
-    expect(notes()).toEqual([]);
+    expect(document.body.textContent).not.toMatch(/Prices shown are your/);
   });
 });

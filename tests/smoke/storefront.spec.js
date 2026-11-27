@@ -494,12 +494,12 @@ test.describe('after age confirmation', () => {
     await page.goto('/product/329');
     await expect(page.locator('main h1')).toHaveText('RAW tips');
     await expect(page.locator('.variant-chips')).toHaveCount(0);
-    // Gambler tubes: the sell unit, on the page and its card.
+    // Gambler tubes: no "Sold by the …" on the page or its card.
     await page.goto('/product/242');
-    await expect(page.locator('.pd-unit')).toHaveText('Sold by the box of 200 — quantity 1 is one box of 200.');
+    await expect(page.locator('.pd-unit')).toHaveCount(0);
+    await expect(page.locator('main')).not.toContainText('Sold by the');
     await page.goto('/category/tobacco/tubes-and-filters');
-    await expect(page.getByRole('article', { name: 'Gambler cigarette tubes' }).locator('.card-detail'))
-      .toHaveText('Sold by the box of 200');
+    await expect(page.getByRole('article', { name: 'Gambler cigarette tubes' }).locator('.card-detail')).toHaveText('6 varieties');
     expect(errors).toEqual([]);
   });
 });
@@ -706,9 +706,7 @@ test.describe('home hero', () => {
   });
 });
 
-// Under the hero: the trust band (AW-005). The services (AW-059), with
-// volume pricing's email and phone (AW-025), sit last, just above the
-// footer. The department
+// The home page ends after the guest application steps. The department
 // tiles with a photo in the frame and the text on the band below it (AW-060,
 // AW-061), and one row each of new arrivals and bestsellers without SKUs.
 test.describe('home sections', () => {
@@ -718,20 +716,14 @@ test.describe('home sections', () => {
     }, [AGE_KEY, ageRecord(Date.now())]);
   });
 
-  test('the trust band follows the hero, the services end the page, and the department tiles lead to their departments', async ({ page }) => {
+  test('the application steps end the page, and the department tiles lead to their departments', async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto('/');
-    const band = page.locator('.home-hero + .trust-band');
-    await expect(band.locator('.trust-fact')).toHaveText([/^20\s+years in business$/i, /^100%\s+authentic products$/i, /^Next-day\s+delivery on our own trucks$/i, /^21\+\s+licensed retailers only$/i]);
-    await expect(band.locator('.trust-sourcing')).toHaveText('Every product comes from the manufacturer or an established wholesale distributor.');
-    await expect(page.locator('.services .service')).toHaveCount(3);
-    await expect(page.locator('.services').locator('xpath=following-sibling::*')).toHaveCount(0);
-    const services = page.locator('.services');
-    await expect(services.getByRole('link', { name: 'Delivery and service area' })).toHaveAttribute('href', '/delivery');
-    await expect(services.getByRole('link', { name: 'email us' })).toHaveAttribute('href', /^mailto:/);
-    await expect(services.getByRole('link', { name: '(205) 458-4788' })).toHaveAttribute('href', 'tel:+12054584788');
-    await expect(services.getByRole('link', { name: 'How to apply' })).toHaveAttribute('href', '/apply');
-    await expect(services).not.toContainText(/net-30|discount/i);
+    await expect(page.locator('.trust-band')).toHaveCount(0);
+    await expect(page.locator('.services')).toHaveCount(0);
+    await expect(page.locator('main')).not.toContainText('years in business');
+    await expect(page.locator('main')).not.toContainText('Next-day delivery, our own trucks');
+    await expect(page.locator('#apply').locator('xpath=following-sibling::*')).toHaveCount(0);
     // New arrivals has three: #75 Wava kava, its fourth, is delisted (AW-001).
     for (const [id, count] of [['new-arrivals', 3], ['hot-sellers', 4], ['bestsellers', 4], ['new-deals', 3]]) {
       await expect(page.locator(`#${id} .content-card`)).toHaveCount(count);
@@ -786,7 +778,8 @@ test.describe('part 2 catalog', () => {
     await expect(page.locator('#aw-announcer')).toHaveText('Added Kite cigarette tobacco to your order.');
     await expect(kite.locator('.added-note')).toHaveText('', { timeout: 4000 });
     await page.goto('/category/tobacco/cigars-and-cigarillos');
-    await expect(page.locator('.content-card', { hasText: 'Royal Blunts EZ Roll' }).getByRole('link', { name: /^Select options\b/ })).toBeVisible();
+    await expect(page.locator('.content-card', { hasText: 'Royal Blunts EZ Roll' }).getByRole('button', { name: /^Sign in for pricing\b/ })).toBeVisible();
+    await expect(page.locator('.content-card', { hasText: 'Royal Blunts EZ Roll' }).getByRole('link', { name: /^Select options\b/ })).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 

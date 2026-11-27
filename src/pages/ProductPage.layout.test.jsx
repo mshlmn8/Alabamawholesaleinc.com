@@ -1,9 +1,8 @@
 // The product page's purchase column (AW-163, AW-150): the FDA statement,
 // brand and name, then the variant chips under their 'Choose a …' label
-// (AW-235) and the note about adding each one; then, on a desktop, the price,
-// the sell unit, quantity and add, and in the compact layout (tablets and
-// phones, MOBILE_QUERY) the sell unit, quantity and add first and the price
-// after them, in the DOM so Tab follows the eye; and only then the SKU line
+// (AW-235); then, on a desktop, the price, quantity and add, and in the
+// compact layout (tablets and phones, MOBILE_QUERY) quantity and add first
+// and the price after them, in the DOM so Tab follows the eye; and only then the SKU line
 // (AW-234), the description, the flavor note and the fine print. No sign-in
 // links under the add button (AW-133). With nothing that can be ordered
 // (NEW-052), one sentence in place of the price and the add row. Kept apart
@@ -31,24 +30,25 @@ describe('ProductPage purchase column on a desktop (AW-163)', () => {
   it('runs warning, name, variants and the note, price, quantity and add, then the SKU, description, flavor note and fine print', () => {
     render(page(SWISHER, { savedQty: 3 }));
     expect(column()).toEqual([
-      'nicotine-warning', 'pd-brand', 'h1', 'pd-variant-label', 'variant-chips', 'pd-saved',
+      'nicotine-warning', 'pd-brand', 'h1', 'pd-option-count', 'pd-variant-label', 'variant-chips', 'pd-saved',
       'pd-price.is-locked', 'qty-row', 'pd-desc', 'in-cart-note.pd-flavor-note',
     ]);
   });
 
-  it('puts the sell unit right above the quantity it explains, and the single variant under the name', () => {
+  it('puts the quantity under the single variant, with no sell-unit note', () => {
     render(page(TUBES, { profile: { id: 'p', status: 'pending' }, cart: { '2::gold': 4 } }));
     expect(column()).toEqual([
-      'pd-brand', 'h1', 'pd-desc', 'pd-price.is-locked', 'pd-unit', 'qty-row', 'in-cart-note',
+      'pd-brand', 'h1', 'pd-desc', 'pd-price.is-locked', 'qty-row', 'in-cart-note',
       'pd-desc',
     ]);
+    expect(document.querySelector('.pd-unit')).toBeNull();
     expect(document.querySelector('.pd-info > .pd-desc').textContent).toBe('Variety: Gold');
   });
 
   it('follows the price with the line total and "Already in" for an approved buyer', () => {
     render(page(TUBES, { ...APPROVED, cart: { '2::gold': 4 } }));
     expect(column()).toEqual([
-      'pd-brand', 'h1', 'pd-desc', 'pd-price', 'pd-unit', 'qty-row', 'in-cart-note',
+      'pd-brand', 'h1', 'pd-desc', 'pd-price', 'qty-row', 'in-cart-note',
       'pd-desc',
     ]);
   });
@@ -59,7 +59,7 @@ describe('ProductPage purchase column in the compact layout (AW-150)', () => {
     compactLayout();
     render(page(SWISHER, { savedQty: 3 }));
     expect(column()).toEqual([
-      'nicotine-warning', 'pd-brand', 'h1', 'pd-variant-label', 'variant-chips', 'pd-saved',
+      'nicotine-warning', 'pd-brand', 'h1', 'pd-option-count', 'pd-variant-label', 'variant-chips', 'pd-saved',
       'qty-row', 'pd-price.is-locked', 'pd-desc', 'in-cart-note.pd-flavor-note',
     ]);
     // In the DOM, so the add button comes before the sign-in button in Tab order.
@@ -68,13 +68,14 @@ describe('ProductPage purchase column in the compact layout (AW-150)', () => {
     expect(add.compareDocumentPosition(signIn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('keeps the sell unit above the quantity, and the line total and "Already in" under it', () => {
+  it('keeps "Already in" under the quantity, and the price after them', () => {
     compactLayout();
     render(page(TUBES, { ...APPROVED, cart: { '2::gold': 4 } }));
     expect(column()).toEqual([
-      'pd-brand', 'h1', 'pd-desc', 'pd-unit', 'qty-row', 'in-cart-note', 'pd-price',
+      'pd-brand', 'h1', 'pd-desc', 'qty-row', 'in-cart-note', 'pd-price',
       'pd-desc',
     ]);
+    expect(document.querySelector('.pd-unit')).toBeNull();
   });
 
   it('keeps the typed quantity when the layout changes', () => {
@@ -101,7 +102,7 @@ describe('ProductPage purchase column when nothing can be ordered (NEW-052)', ()
       setUp();
       render(page({ ...SWISHER, unavailableVariants: ['Diamond', 'Red'] }, { savedQty: 3 }));
       expect(column()).toEqual([
-        'nicotine-warning', 'pd-brand', 'h1', 'pd-variant-label', 'variant-chips',
+        'nicotine-warning', 'pd-brand', 'h1', 'pd-option-count', 'pd-variant-label', 'variant-chips',
         'pd-price.is-locked.pd-cant-order', 'pd-desc',
       ]);
     });

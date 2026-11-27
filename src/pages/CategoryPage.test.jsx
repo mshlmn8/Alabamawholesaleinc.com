@@ -201,9 +201,11 @@ describe('CategoryPage', () => {
     expect(screen.getByRole('button', { name: 'Apply for an account' })).toBeTruthy();
     expect(document.querySelector('.filter-panel .filter-signin')).toBeNull();
     expect(screen.queryByText(/Wholesale pricing is locked/)).toBeNull();
-    // A guest's card says 'Sign in for pricing' as plain text, never as a control (NEW-050).
+    // A guest's card with a choice uses those words as its button. A card
+    // without a choice keeps them as plain text.
     const locks = screen.getAllByText('Sign in for pricing');
-    expect(locks.map((el) => `${el.tagName}.${el.className}`)).toEqual(locks.map(() => 'SPAN.lock'));
+    expect(locks.map((el) => (el.closest('button') ? 'button' : `${el.tagName}.${el.className}`))).toEqual(['button', 'SPAN.lock', 'SPAN.lock']);
+    expect(screen.getByRole('button', { name: 'Sign in for pricing, Swisher Sweets' })).toBeTruthy();
     // No card has a sign-in control of its own: its only controls are the add or choose ones.
     for (const control of document.querySelectorAll('.content-card .card-meta :is(button, a)')) expect(control.classList.contains('card-add')).toBe(true);
     // An account waiting for approval: the status link.
@@ -217,8 +219,8 @@ describe('CategoryPage', () => {
   it('shows approved buyers no pricing notice', () => {
     render(<Harness buyer={BUYER} />);
     expect(document.querySelector('.pricing-notice')).toBeNull();
-    // Whose prices the cards show (AW-107); no notice above the grid.
-    expect(document.querySelector('.category-tier').textContent).toBe('Prices shown are your account prices.');
+    expect(document.querySelector('.category-tier')).toBeNull();
+    expect(document.body.textContent).not.toMatch(/Prices shown are your/);
   });
 
   it('counts variants from the list: one variant is not "Has variants", and "Most variants" sorts by the count (AW-332, AW-233)', () => {
