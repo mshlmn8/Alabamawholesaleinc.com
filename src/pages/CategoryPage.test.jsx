@@ -217,8 +217,8 @@ describe('CategoryPage', () => {
   it('shows approved buyers no pricing notice', () => {
     render(<Harness buyer={BUYER} />);
     expect(document.querySelector('.pricing-notice')).toBeNull();
-    // Whose prices the cards show (AW-107); no notice above the grid.
-    expect(document.querySelector('.category-tier').textContent).toBe('Prices shown are your account prices.');
+    expect(document.querySelector('.category-tier')).toBeNull();
+    expect(document.body.textContent).not.toMatch(/Prices shown are your/);
   });
 
   it('counts variants from the list: one variant is not "Has variants", and "Most variants" sorts by the count (AW-332, AW-233)', () => {

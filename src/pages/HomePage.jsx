@@ -12,7 +12,6 @@ import { accountView, tradeAccountPanel } from '../lib/accountStatus.js';
 import { topLines } from '../lib/departments.js';
 import { brandLabel, formatMoneyShort } from '../lib/format.js';
 import { COLLECTIONS } from '../lib/collections.js';
-import { tierPriceNote } from '../lib/pricing.js';
 import { RAIL_LIMIT, homeRails, homeSections } from '../lib/merchandising.js';
 import { showsNicotineWarning } from '../lib/regulated.js';
 import { Link } from '../lib/router.js';
@@ -147,7 +146,7 @@ function AccountSection({ signedIn, view, onApplyClick }) {
 // through App's cardProps: the cards and the account panel tell a guest from
 // a signed-in buyer whose profile is still loading (NEW-002, NEW-050).
 export function HomePage({
-  products, departments, profile, account = profile ? 'ready' : 'signed-out', isApprovedBuyer, priceOf, pricesStatus, priceTier = null,
+  products, departments, profile, account = profile ? 'ready' : 'signed-out', isApprovedBuyer, priceOf, pricesStatus,
   cart, addLine, decLine, onLoginClick, onApplyClick, signedIn = false,
 }) {
   const card = (p) => (
@@ -197,7 +196,7 @@ export function HomePage({
       {COLLECTIONS.map((c) => (
         <section className="section" id={c.page} key={c.page}>
           <div className="section-head">
-            <div><h2>{c.title}</h2>{isApprovedBuyer ? <p className="result-note">{tierPriceNote(priceTier)}</p> : null}</div>
+            <div><h2>{c.title}</h2></div>
             <Link to={{ page: c.page }}>Show all<span className="sr-only">{` ${c.title.toLowerCase()}`}</span></Link>
           </div>
           <div className="card-grid card-rail">

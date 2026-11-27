@@ -76,29 +76,22 @@ describe('whose prices the cards show (AW-107)', () => {
   const category = (props) => (
     <CategoryPage category="CANDIES" products={[BOX]} departments={departments} cart={{}} addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} {...props} />
   );
-  const intro = () => document.querySelector('.page-head h1 + p').textContent;
-
-  it('names the tier and its discount in the department intro, from my_prices()', () => {
+  it('does not name the tier under a department heading', () => {
     const view = render(category({ ...APPROVED, priceOf: () => 20.34, priceTier: SILVER }));
-    expect(intro()).toBe('Prices shown are your Silver tier prices, 5% off list.');
+    expect(document.querySelector('.category-tier')).toBeNull();
+    expect(document.body.textContent).not.toMatch(/Prices shown are your/);
     view.rerender(category({ ...APPROVED, priceOf: () => 20.34, priceTier: { tier: 'standard', discountPct: 0 } }));
-    expect(intro()).toBe('Prices shown are your Standard tier prices.');
-    // Before the prices are in, no tier is named.
-    view.rerender(category({ ...APPROVED, priceOf: () => null, pricesStatus: 'loading', priceTier: null }));
-    expect(intro()).toBe('Prices shown are your account prices.');
+    expect(document.body.textContent).not.toMatch(/Prices shown are your/);
   });
 
-  it('captions the New arrivals and Bestsellers rails for an approved buyer only', () => {
+  it('does not caption the home rails with the tier', () => {
     const home = (props) => (
       <HomePage products={PRODUCTS} departments={departmentsFor(PRODUCTS)} profile={null} isApprovedBuyer={false} cart={{}}
                 addLine={() => {}} decLine={() => {}} onLoginClick={() => {}} onApplyClick={() => {}} {...props} />
     );
-    const notes = () => [...document.querySelectorAll('#new-arrivals .section-head .result-note, #new-deals .section-head .result-note, #bestsellers .section-head .result-note')].map((el) => el.textContent);
-    const view = render(home({ ...APPROVED, priceOf: () => 10, priceTier: SILVER }));
-    expect(notes()).toEqual(['Prices shown are your Silver tier prices, 5% off list.', 'Prices shown are your Silver tier prices, 5% off list.', 'Prices shown are your Silver tier prices, 5% off list.']);
-    view.rerender(home({}));
+    const notes = () => [...document.querySelectorAll('#new-arrivals .section-head .result-note, #new-deals .section-head .result-note, #bestsellers .section-head .result-note')];
+    render(home({ ...APPROVED, priceOf: () => 10, priceTier: SILVER }));
     expect(notes()).toEqual([]);
-    view.rerender(home({ profile: { id: 'p', status: 'pending' } }));
-    expect(notes()).toEqual([]);
+    expect(document.body.textContent).not.toMatch(/Prices shown are your/);
   });
 });

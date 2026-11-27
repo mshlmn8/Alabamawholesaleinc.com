@@ -24,7 +24,6 @@ import { matchesQuery } from '../lib/search.js';
 import { variantCount } from '../lib/lines.js';
 import { featuredOrder } from '../lib/merchandising.js';
 import { brandLabel, catLabel, productCount, sharesDepartmentName } from '../lib/format.js';
-import { tierPriceNote } from '../lib/pricing.js';
 import { SIZES } from '../lib/images.js';
 import { Link, navigate } from '../lib/router.js';
 import { firstControlIn, focusInPlace, focusLost, neighbourKey } from '../lib/focus.js';
@@ -146,7 +145,7 @@ function byPrice(priceOf, direction) {
 
 export function CategoryPage({
   category, sub, query = EMPTY_CATEGORY_QUERY, products, departments, profile, account, isApprovedBuyer, priceOf = NO_PRICES, pricesStatus = 'off',
-  priceTier = null, cart, addLine, decLine, onLoginClick, onApplyClick,
+  cart, addLine, decLine, onLoginClick, onApplyClick,
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [allBrands, setAllBrands] = useState(false);
@@ -460,8 +459,6 @@ export function CategoryPage({
           <div className="category-title-text">
             {titleEyebrow && <p className="eyebrow">{titleEyebrow}</p>}
             <h1>{activeSub || deptLabel}</h1>
-            {/* Whose prices the cards show, from my_prices() (AW-107). */}
-            {isApprovedBuyer && <p className="category-tier">{tierPriceNote(priceTier)}</p>}
           </div>
           <div className="category-stats sr-only">
             <p className="category-stat category-stat-products">
